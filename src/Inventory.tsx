@@ -20,7 +20,7 @@ interface InventoryProps {
   onBackFromDetail?: () => void;
 }
 
-type InventoryView = 'kanban' | 'detail' | 'add' | 'ordering';
+type InventoryView = 'kanban' | 'add' | 'ordering';
 
 const Inventory: React.FC<InventoryProps> = ({
   inventory,
@@ -36,8 +36,9 @@ const Inventory: React.FC<InventoryProps> = ({
   initialItemId,
   onBackFromDetail,
 }) => {
+  // Local state only for internal views (add, ordering)
+  // Detail view is handled via URL routing (initialItemId prop)
   const [view, setView] = useState<InventoryView>('kanban');
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredInventory = useMemo(() => {
@@ -63,27 +64,24 @@ const Inventory: React.FC<InventoryProps> = ({
     });
   }, [inventory, searchQuery]);
 
-  const selectedItem = selectedItemId ? inventory.find((i) => i.id === selectedItemId) : null;
-
-  // NEW: Navigate to specific item if initialItemId provided
-  useEffect(() => {
-    if (initialItemId && inventory.length > 0) {
-      const item = inventory.find((i) => i.id === initialItemId);
-      if (item) {
-        setSelectedItemId(initialItemId);
-        setView('detail');
-      }
-    }
-  }, [initialItemId, inventory]);
+  // Use URL-based routing for detail view (via initialItemId prop)
+  // Local state only for internal views: 'add' and 'ordering'
+  const selectedItem = initialItemId ? inventory.find((i) => i.id === initialItemId) : null;
+  const showingDetail = !!initialItemId && !!selectedItem;
 
   const handleNavigateToDetail = (itemId: string) => {
-    setSelectedItemId(itemId);
-    setView('detail');
+    // Navigate via URL so browser back/forward works correctly
+    onNavigate('inventory-detail', itemId);
   };
 
   const handleBack = () => {
-    setView('kanban');
-    setSelectedItemId(null);
+    if (showingDetail && onBackFromDetail) {
+      // Use provided back handler (from App.tsx) to return to previous view
+      onBackFromDetail();
+    } else {
+      // For internal views (add, ordering), just reset to kanban
+      setView('kanban');
+    }
   };
 
   const handleAddItem = () => {
@@ -104,7 +102,8 @@ const Inventory: React.FC<InventoryProps> = ({
     return <AddInventoryItem onAdd={handleAddComplete} onCancel={handleBack} />;
   }
 
-  if (view === 'detail' && selectedItem) {
+  // Detail view: shown when URL is /inventory/:id (via initialItemId prop)
+  if (showingDetail && selectedItem) {
     return (
       <InventoryDetail
         item={selectedItem}
@@ -133,65 +132,67 @@ const Inventory: React.FC<InventoryProps> = ({
     );
   }
 
-  // Default: Kanban view with tabs
+  // Default: Kanban view with tabs (only show when not in detail view)
   return (
     <div className="flex h-full flex-col">
-      {/* Tabs */}
-      <div className="border-b border-white/10 bg-background-light">
-        <div className="flex">
-          <button
-            onClick={() => setView('kanban')}
-            className={`flex-1 px-4 py-3 font-bold ${
-              view === 'kanban' ? 'border-b-2 border-primary text-white' : 'text-slate-400'
-            }`}
-          >
-            All Items
-          </button>
-          <button
-            onClick={() => setView('ordering')}
-            className={`flex-1 px-4 py-3 font-bold ${
-              view === 'ordering' ? 'border-b-2 border-primary text-white' : 'text-slate-400'
-            }`}
-          >
-            Ordering
-          </button>
-        </div>
-        {/* Search bar */}
-        <div className="px-4 pb-3 pt-1">
-          <div className="relative">
-            <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-slate-400">
-              search
-            </span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, category, bin, barcode, vendor..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-label="Search inventory"
-            />
+      {/* Tabs - hidden when showing detail view */}
+      {!showingDetail && (
+        <div className="border-b border-white/10 bg-background-light">
+          <div className="flex">
+            <button
+              onClick={() => setView('kanban')}
+              className={`flex-1 px-4 py-3 font-bold ${
+                view === 'kanban' ? 'border-b-2 border-primary text-white' : 'text-slate-400'
+              }`}
+            >
+              All Items
+            </button>
+            <button
+              onClick={() => setView('ordering')}
+              className={`flex-1 px-4 py-3 font-bold ${
+                view === 'ordering' ? 'border-b-2 border-primary text-white' : 'text-slate-400'
+              }`}
+            >
+              Ordering
+            </button>
+          </div>
+          {/* Search bar */}
+          <div className="px-4 pb-3 pt-1">
+            <div className="relative">
+              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-slate-400">
+                search
+              </span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, category, bin, barcode, vendor..."
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Search inventory"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  aria-label="Clear search"
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              )}
+            </div>
             {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                aria-label="Clear search"
-              >
-                <span className="material-symbols-outlined text-xl">close</span>
-              </button>
+              <p className="mt-1.5 text-xs text-slate-500">
+                {filteredInventory.length} item{filteredInventory.length !== 1 ? 's' : ''} match
+              </p>
             )}
           </div>
-          {searchQuery && (
-            <p className="mt-1.5 text-xs text-slate-500">
-              {filteredInventory.length} item{filteredInventory.length !== 1 ? 's' : ''} match
-            </p>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {view === 'kanban' && (
+        {!showingDetail && view === 'kanban' && (
           <InventoryKanban
             inventory={filteredInventory}
             searchActive={!!searchQuery.trim()}
