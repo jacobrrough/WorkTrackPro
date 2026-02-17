@@ -4,8 +4,13 @@
 import React from 'react';
 import { getSupabaseUrl, isSupabaseUrlValid } from './lib/supabaseEnv';
 
-const hasUrl = getSupabaseUrl().length > 0;
+const detectedUrl = getSupabaseUrl();
+const hasUrl = detectedUrl.length > 0;
 const urlInvalid = hasUrl && !isSupabaseUrlValid();
+// Show first/last few chars for debugging (mask middle for security)
+const maskedUrl = detectedUrl.length > 20 
+  ? `${detectedUrl.slice(0, 15)}...${detectedUrl.slice(-10)}`
+  : detectedUrl || '(empty)';
 
 const containerStyle: React.CSSProperties = { minHeight: '100vh', background: '#0f172a', color: '#e2e8f0' };
 
@@ -28,17 +33,35 @@ const SetupRequired: React.FC = () => (
 
       {urlInvalid ? (
         <>
+          <div className="mb-4 rounded bg-red-500/10 border border-red-500/30 p-3">
+            <p className="mb-2 text-sm font-medium text-red-400">Detected URL value:</p>
+            <p className="font-mono text-xs text-slate-300 break-all">{maskedUrl}</p>
+            <p className="mt-2 text-xs text-slate-400">
+              {detectedUrl.length === 0 
+                ? 'The URL is empty — the build likely ran before env vars were set.'
+                : 'This URL failed validation. Check for hidden characters or incorrect format.'}
+            </p>
+          </div>
           <p className="mb-4 text-slate-300">
             In <strong>Netlify</strong> → Site configuration → Environment variables, set <code className="rounded bg-slate-800 px-1">VITE_SUPABASE_URL</code> to <strong>exactly</strong>:
           </p>
           <p className="mb-4 rounded bg-slate-800 p-3 font-mono text-sm text-green-400">
-            https://YOUR-PROJECT-REF.supabase.co
+            https://bbqudyybacwbubkgktwf.supabase.co
           </p>
-          <ul className="mb-6 list-inside list-disc text-sm text-slate-400">
+          <ul className="mb-4 list-inside list-disc text-sm text-slate-400">
             <li>No trailing slash</li>
             <li>No spaces or quotes — paste the URL only (Netlify may add quotes; delete them)</li>
             <li>Copy from Supabase → Project Settings → API → Project URL</li>
           </ul>
+          <div className="mb-6 rounded bg-amber-500/10 border border-amber-500/30 p-3">
+            <p className="text-sm font-medium text-amber-400 mb-1">⚠️ Critical: After setting env vars, you MUST:</p>
+            <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1 mt-2">
+              <li>Go to <strong>Deploys</strong> → <strong>Trigger deploy</strong></li>
+              <li>Select <strong>"Clear cache and deploy site"</strong></li>
+              <li>Wait for the deploy to finish (build must run with the new env vars)</li>
+            </ol>
+            <p className="text-xs text-slate-400 mt-2">Vite bakes env vars at build time. If you don't redeploy, the old (empty) values stay in the bundle.</p>
+          </div>
         </>
       ) : (
         <>

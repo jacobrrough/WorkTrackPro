@@ -18,8 +18,17 @@ export function isSupabaseUrlValid(): boolean {
   if (!RAW_URL) return false;
   try {
     const u = new URL(RAW_URL);
+    // Must be https (http allowed for local dev but warn)
     if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    // Hostname must end with .supabase.co
     if (!u.hostname.endsWith('.supabase.co')) return false;
+    // No path, query, or hash allowed (Supabase URL is just the base)
+    if (u.pathname !== '/' && u.pathname !== '') return false;
+    if (u.search) return false;
+    if (u.hash) return false;
+    // Hostname should match pattern: [project-ref].supabase.co
+    const hostParts = u.hostname.split('.');
+    if (hostParts.length !== 3 || hostParts[1] !== 'supabase' || hostParts[2] !== 'co') return false;
     return true;
   } catch {
     return false;
