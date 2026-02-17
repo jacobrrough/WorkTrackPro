@@ -1,10 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseUrl, getSupabaseAnonKey } from '../../lib/supabaseEnv';
 
-// Use trimmed values so trailing/leading spaces from Netlify don't cause "Invalid Supabase URL"
-const supabaseUrl = getSupabaseUrl();
-const supabaseAnonKey = getSupabaseAnonKey();
+let _client: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function getClient(): SupabaseClient {
+  if (_client) return _client;
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseAnonKey = getSupabaseAnonKey();
+  _client = createClient(supabaseUrl, supabaseAnonKey);
+  return _client;
+}
+
+/** Lazy-initialized Supabase client so invalid env shows setup screen instead of throwing at import time */
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    return (getClient() as Record<string | symbol, unknown>)[prop];
+  },
+});
 
 export default supabase;
