@@ -29,11 +29,10 @@ const Landing: React.FC = () => {
             </span>
           </div>
 
-          <h1 className="mb-3 text-4xl font-bold tracking-tight text-white md:text-5xl">
-            Rough Cut
+          <h1 className="mb-6 text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
+            Rough Cut Manufacturing
           </h1>
-          <p className="mb-2 text-xl font-medium tracking-wide text-slate-400">Manufacturing</p>
-          <p className="mb-12 mt-4 max-w-sm text-sm text-slate-500">
+          <p className="mb-12 max-w-sm text-sm text-slate-500">
             Custom manufacturing and fabrication. Jobs, inventory, and time tracking for the team.
           </p>
 

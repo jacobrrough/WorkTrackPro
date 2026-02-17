@@ -5,8 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
     <title>WorkTrack Pro</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+      #root { min-height: 100%; }
+      #root:empty::after { content: 'Loading WorkTrack Pro…'; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+    </style>
   </head>
   <body>
+    <noscript>
+      <div style="max-width: 32rem; margin: 2rem auto; padding: 1.5rem; background: #1e293b; border-radius: 0.5rem;">
+        <p style="margin: 0 0 1rem;">WorkTrack Pro needs JavaScript to run. Enable it and reload.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>
