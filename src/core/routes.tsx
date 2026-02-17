@@ -31,6 +31,10 @@ export function getPath(view: ViewState, id?: string): string {
       return '/admin';
     case 'quotes':
       return '/admin/quotes';
+    case 'completed-jobs':
+      return '/admin/completed';
+    case 'calendar':
+      return '/calendar';
     default:
       return '/dashboard';
   }
@@ -57,6 +61,8 @@ export function getViewFromPath(pathname: string): {
   if (pathname === '/admin/jobs/new') return { view: 'admin-create-job' };
   if (pathname === '/admin/board') return { view: 'board-admin' };
   if (pathname === '/admin/quotes') return { view: 'quotes' };
+  if (pathname === '/admin/completed') return { view: 'completed-jobs' };
+  if (pathname === '/calendar') return { view: 'calendar' };
   if (pathname === '/admin') return { view: 'admin-console' };
   return { view: 'dashboard' };
 }

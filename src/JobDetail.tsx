@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Job,
   ViewState,
@@ -20,6 +20,7 @@ import { formatDateOnly, isoToDateInput, dateInputToISO } from '@/core/date';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { useToast } from './Toast';
 import { StatusBadge } from './components/ui/StatusBadge';
+import { getLaborSuggestion } from './lib/laborSuggestion';
 
 interface JobDetailProps {
   job: Job;
@@ -30,6 +31,8 @@ interface JobDetailProps {
   onClockOut: () => void;
   activeShift: Shift | null;
   inventory: InventoryItem[];
+  jobs: Job[]; // For labor hours suggestion
+  shifts: Shift[]; // For labor hours suggestion
   onAddComment: (jobId: string, text: string) => Promise<Comment | null>;
   onAddInventory: (
     jobId: string,
@@ -73,6 +76,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   onClockOut,
   activeShift,
   inventory,
+  jobs,
+  shifts,
   onAddComment,
   onAddInventory,
   onRemoveInventory,
@@ -111,10 +116,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
     dueDate: isoToDateInput(job.dueDate),
     ecd: isoToDateInput(job.ecd),
     qty: job.qty || '',
+    laborHours: job.laborHours?.toString() || '',
     status: job.status,
     isRush: job.isRush,
     binLocation: job.binLocation || '',
   });
+
+  // Calculate labor hours suggestion from similar jobs
+  const laborSuggestion = useMemo(() => {
+    if (!editForm.name.trim()) return null;
+    const suggestion = getLaborSuggestion(editForm.name, jobs, shifts);
+    return suggestion > 0 ? suggestion : null;
+  }, [editForm.name, jobs, shifts]);
 
   // Reset edit form when job changes
   useEffect(() => {
@@ -125,6 +138,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       dueDate: isoToDateInput(job.dueDate),
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
+      laborHours: job.laborHours?.toString() || '',
       status: job.status,
       isRush: job.isRush,
       binLocation: job.binLocation || '',
@@ -217,6 +231,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         dueDate: dateInputToISO(editForm.dueDate),
         ECD: dateInputToISO(editForm.ecd),
         qty: editForm.qty.trim() || undefined,
+        laborHours: editForm.laborHours ? parseFloat(editForm.laborHours) : undefined,
         status: editForm.status,
         isRush: editForm.isRush,
         binLocation: editForm.binLocation.trim() || undefined,
@@ -499,6 +514,36 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
                 placeholder="e.g., 100 units"
               />
+            </div>
+
+            {/* Labor Hours (Expected Time) */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase text-slate-400">
+                  Labor Hours (expected time)
+                </label>
+                {laborSuggestion && (
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })}
+                    className="text-xs font-medium text-primary hover:text-primary/80"
+                  >
+                    Use {laborSuggestion.toFixed(1)}h
+                  </button>
+                )}
+              </div>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={editForm.laborHours}
+                onChange={(e) => setEditForm({ ...editForm, laborHours: e.target.value })}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
+                placeholder="e.g., 8.5 (for calendar scheduling)"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Used for calendar timeline calculation. Suggestion from similar jobs shown above.
+              </p>
             </div>
 
             {/* Bin Location */}

@@ -9,6 +9,8 @@ import { Dashboard } from '@/features/dashboard';
 import { JobDetail, KanbanBoard, AdminCreateJob } from '@/features/jobs';
 import { Inventory, NeedsOrdering } from '@/features/inventory';
 import { AdminConsole } from '@/features/admin';
+import CompletedJobs from '@/features/admin/CompletedJobs';
+import Calendar from '@/features/admin/Calendar';
 import { TimeReports, ClockInScreen } from '@/features/time';
 import { Quotes } from '@/features/quotes';
 import { BottomNavigation } from './BottomNavigation';
@@ -126,7 +128,7 @@ const App: React.FC = () => {
           navigate('/jobs');
         }
       }
-    } else if (currentView === 'admin-console' || currentView === 'clock-in') {
+    } else if (currentView === 'admin-console' || currentView === 'clock-in' || currentView === 'completed-jobs' || currentView === 'calendar') {
       navigate('/dashboard');
     } else if (currentView === 'needs-ordering') {
       navigate('/inventory');
@@ -146,6 +148,8 @@ const App: React.FC = () => {
     currentView === 'admin-create-job' ||
     currentView === 'admin-console' ||
     currentView === 'quotes' ||
+    currentView === 'completed-jobs' ||
+    currentView === 'calendar' ||
     currentView === 'clock-in' ||
     currentView === 'needs-ordering';
 
@@ -427,6 +431,8 @@ const App: React.FC = () => {
                       onClockOut={handleClockOut}
                       activeShift={activeShift}
                       inventory={inventory}
+                      jobs={jobs}
+                      shifts={shifts}
                       onAddComment={handleAddJobComment}
                       onAddInventory={handleAddJobInventory}
                       onRemoveInventory={handleRemoveJobInventory}
@@ -471,6 +477,8 @@ const App: React.FC = () => {
                     users={users}
                     existingJobCodes={jobs.map((j) => j.jobCode)}
                     currentUser={currentUser}
+                    jobs={jobs}
+                    shifts={shifts}
                   />
                 )}
 
@@ -489,6 +497,25 @@ const App: React.FC = () => {
                   <Quotes
                     jobs={jobs}
                     inventory={inventory}
+                    shifts={shifts}
+                    currentUser={currentUser}
+                    onNavigate={navigateTo}
+                    onBack={canGoBack ? navigateBack : undefined}
+                  />
+                )}
+
+                {currentUser.isAdmin && currentView === 'completed-jobs' && (
+                  <CompletedJobs
+                    jobs={jobs}
+                    currentUser={currentUser}
+                    onNavigate={navigateTo}
+                    onBack={canGoBack ? navigateBack : undefined}
+                  />
+                )}
+
+                {currentUser.isAdmin && currentView === 'calendar' && (
+                  <Calendar
+                    jobs={jobs}
                     shifts={shifts}
                     currentUser={currentUser}
                     onNavigate={navigateTo}

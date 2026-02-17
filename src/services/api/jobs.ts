@@ -23,6 +23,7 @@ function mapRowToJob(
     description: row.description as string | undefined,
     ecd: row.ecd as string | undefined,
     dueDate: row.due_date ? new Date(row.due_date as string).toISOString().slice(0, 10) : undefined,
+    laborHours: row.labor_hours ? (row.labor_hours as number) : undefined,
     active: (row.active as boolean) ?? true,
     status: (row.status as JobStatus) ?? 'pending',
     boardType: row.board_type as Job['boardType'],
@@ -252,6 +253,7 @@ export const jobService = {
       description: data.description ?? null,
       ecd: data.ecd ?? null,
       due_date: data.dueDate ?? null,
+      labor_hours: data.laborHours ?? null,
       active: data.active ?? true,
       status: data.status ?? 'pending',
       board_type: data.boardType ?? 'shopFloor',
@@ -275,6 +277,7 @@ export const jobService = {
     if (data.description != null) row.description = data.description;
     if (data.ecd != null) row.ecd = data.ecd;
     if (data.dueDate != null) row.due_date = data.dueDate;
+    if (data.laborHours != null) row.labor_hours = data.laborHours;
     if (data.active != null) row.active = data.active;
     if (data.status != null) row.status = data.status;
     if (data.boardType != null) row.board_type = data.boardType;

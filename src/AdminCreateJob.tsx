@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Job, User, ViewState, JobStatus, BoardType } from '@/core/types';
+import React, { useState, useMemo } from 'react';
+import { Job, User, ViewState, JobStatus, BoardType, Shift } from '@/core/types';
 import { dateInputToISO } from '@/core/date';
+import { getLaborSuggestion } from '@/lib/laborSuggestion';
 
 interface AdminCreateJobProps {
   onCreate: (data: {
@@ -12,6 +13,7 @@ interface AdminCreateJobProps {
     ECD?: string; // Added: PocketBase schema uses uppercase
     qty?: string;
     description?: string;
+    laborHours?: number;
     status: JobStatus;
     isRush?: boolean;
     active: boolean;
@@ -24,6 +26,8 @@ interface AdminCreateJobProps {
   users: User[];
   existingJobCodes: number[];
   currentUser: User;
+  jobs: Job[];
+  shifts: Shift[];
 }
 
 const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
@@ -32,6 +36,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   users: _users,
   existingJobCodes,
   currentUser,
+  jobs,
+  shifts,
 }) => {
   // Generate a unique job code
   const generateJobCode = () => {
@@ -52,11 +58,19 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     dueDate: '',
     ecd: '',
     qty: '',
+    laborHours: '',
     isRush: false,
     description: '',
     status: 'toBeQuoted' as JobStatus,
     binLocation: '',
   });
+
+  // Calculate labor hours suggestion from similar jobs
+  const laborSuggestion = useMemo(() => {
+    if (!formData.name.trim()) return null;
+    const suggestion = getLaborSuggestion(formData.name, jobs, shifts);
+    return suggestion > 0 ? suggestion : null;
+  }, [formData.name, jobs, shifts]);
 
   // Comprehensive validation
   const validateForm = (): boolean => {
@@ -128,6 +142,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         ECD: dateInputToISO(formData.ecd),
         qty: formData.qty.trim() || undefined,
         description: formData.description.trim() || undefined,
+        laborHours: formData.laborHours ? parseFloat(formData.laborHours) : undefined,
         status: formData.isRush ? 'rush' : formData.status,
         isRush: formData.isRush,
         active: true, // CRITICAL: Set active to true!
@@ -339,6 +354,33 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               />
               <p className="mt-1 text-xs text-slate-500">
                 Format: Letter-Number-letter (e.g., A4c)
+              </p>
+            </div>
+            <div className="mt-4 flex flex-col">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-sm font-medium text-white">Expected Time (hours)</label>
+                {laborSuggestion && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, laborHours: laborSuggestion.toString() })}
+                    className="text-xs font-medium text-primary hover:text-primary/80"
+                  >
+                    Use {laborSuggestion.toFixed(1)}h
+                  </button>
+                )}
+              </div>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                className="h-14 w-full rounded-lg border border-[#4d3465] bg-[#261a32] p-[15px] text-white placeholder:text-slate-600"
+                placeholder="e.g., 8.5 (for calendar scheduling)"
+                value={formData.laborHours}
+                onChange={(e) => setFormData({ ...formData, laborHours: e.target.value })}
+                disabled={isSubmitting}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Used for calendar timeline calculation. Suggestion from similar jobs shown above.
               </p>
             </div>
           </div>

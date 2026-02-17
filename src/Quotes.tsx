@@ -13,7 +13,8 @@ interface QuotesProps {
   onBack?: () => void;
 }
 
-const DEFAULT_LABOR_RATE = 50; // Default hourly rate
+const DEFAULT_LABOR_RATE = 175; // Default hourly rate ($175/hour per V7 spec)
+const MATERIAL_MARKUP_MULTIPLIER = 2.25; // Material unit price = cost × 2.25 (V7 spec)
 const DEFAULT_MARKUP_PERCENT = 20; // Default 20% markup
 
 const Quotes: React.FC<QuotesProps> = ({
@@ -168,15 +169,18 @@ const Quotes: React.FC<QuotesProps> = ({
       // Calculate average hours per job
       const avgHours = similarJobs.length > 0 ? totalHours / similarJobs.length : 0;
 
-      // Create line items
-      const lineItems: QuoteLineItem[] = Array.from(materialMap.values()).map((item) => ({
-        inventoryName: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        unitPrice: item.price,
-        totalPrice: item.quantity * item.price,
-        isManual: false,
-      }));
+      // Create line items with material markup (cost × 2.25 per V7 spec)
+      const lineItems: QuoteLineItem[] = Array.from(materialMap.values()).map((item) => {
+        const unitPrice = item.price * MATERIAL_MARKUP_MULTIPLIER; // Our cost × 2.25
+        return {
+          inventoryName: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPrice,
+          totalPrice: item.quantity * unitPrice,
+          isManual: false,
+        };
+      });
 
       const materialCost = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const laborRate = DEFAULT_LABOR_RATE;

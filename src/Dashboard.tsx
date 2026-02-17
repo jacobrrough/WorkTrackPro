@@ -309,13 +309,22 @@ const Dashboard: React.FC<DashboardProps> = ({
           {/* Secondary Actions Row */}
           <div className="grid grid-cols-2 gap-3">
             {user.isAdmin && (
-              <button
-                onClick={() => onNavigate('admin-create-job')}
-                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/20 to-primary/10 text-white transition-all hover:border-primary/50 active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-3xl text-primary">add_circle</span>
-                <span className="text-sm font-bold">New Job</span>
-              </button>
+              <>
+                <button
+                  onClick={() => onNavigate('admin-create-job')}
+                  className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/20 to-primary/10 text-white transition-all hover:border-primary/50 active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-3xl text-primary">add_circle</span>
+                  <span className="text-sm font-bold">New Job</span>
+                </button>
+                <button
+                  onClick={() => onNavigate('calendar')}
+                  className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 text-white transition-all hover:border-cyan-500/50 active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-3xl text-cyan-400">calendar_month</span>
+                  <span className="text-sm font-bold">Calendar</span>
+                </button>
+              </>
             )}
 
             <button
@@ -339,15 +348,31 @@ const Dashboard: React.FC<DashboardProps> = ({
             )}
 
             {user.isAdmin && (
-              <button
-                onClick={() => onNavigate('quotes')}
-                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/20 to-amber-600/10 text-white transition-all hover:border-yellow-500/50 active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-3xl text-yellow-400">
-                  receipt_long
-                </span>
-                <span className="text-sm font-bold">Quotes</span>
-              </button>
+              <>
+                <button
+                  onClick={() => onNavigate('quotes')}
+                  className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/20 to-amber-600/10 text-white transition-all hover:border-yellow-500/50 active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-3xl text-yellow-400">
+                    receipt_long
+                  </span>
+                  <span className="text-sm font-bold">Quotes</span>
+                </button>
+                <button
+                  onClick={() => onNavigate('calendar')}
+                  className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 text-white transition-all hover:border-cyan-500/50 active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-3xl text-cyan-400">calendar_month</span>
+                  <span className="text-sm font-bold">Calendar</span>
+                </button>
+                <button
+                  onClick={() => onNavigate('completed-jobs')}
+                  className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl border border-green-500/30 bg-gradient-to-br from-green-500/20 to-green-600/10 text-white transition-all hover:border-green-500/50 active:scale-[0.98]"
+                >
+                  <span className="material-symbols-outlined text-3xl text-green-400">archive</span>
+                  <span className="text-sm font-bold">Completed</span>
+                </button>
+              </>
             )}
           </div>
         </div>

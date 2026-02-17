@@ -71,6 +71,7 @@ export interface Job {
   description?: string;
   ecd?: string; // Expected Completion Date
   dueDate?: string;
+  laborHours?: number; // Expected time in hours (for calendar scheduling)
   active: boolean;
   status: JobStatus;
   boardType?: BoardType;
@@ -282,7 +283,9 @@ export type ViewState =
   | 'board-shop'
   | 'board-admin'
   | 'clock-in'
-  | 'quotes';
+  | 'quotes'
+  | 'completed-jobs'
+  | 'calendar';
 
 // Column configurations matching V1's BoardColumnFactory
 export const SHOP_FLOOR_COLUMNS: Omit<BoardColumn, 'cards'>[] = [

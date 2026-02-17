@@ -215,6 +215,26 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
                 From JSON
               </p>
             </button>
+            <button
+              onClick={() => onNavigate('calendar')}
+              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-600/20 to-blue-600/20 p-4"
+            >
+              <span className="material-symbols-outlined text-3xl text-cyan-500">calendar_month</span>
+              <p className="font-bold text-white">Calendar</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+                Job Timeline
+              </p>
+            </button>
+            <button
+              onClick={() => onNavigate('completed-jobs')}
+              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-xl border border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20 p-4"
+            >
+              <span className="material-symbols-outlined text-3xl text-green-500">archive</span>
+              <p className="font-bold text-white">Completed Jobs</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+                Archive
+              </p>
+            </button>
           </div>
         </div>
 

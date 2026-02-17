@@ -25,6 +25,7 @@ create table public.jobs (
   description text,
   ecd text,
   due_date date,
+  labor_hours numeric,
   active boolean not null default true,
   status text not null default 'pending',
   board_type text default 'shopFloor',
