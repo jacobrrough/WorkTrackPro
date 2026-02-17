@@ -1,0 +1,15 @@
+# Ignore root Dockerfile - Railway should use PocketBaseServer/Dockerfile
+Dockerfile
+Dockerfile.frontend
+
+# Ignore frontend files when building PocketBase
+src/
+public/
+node_modules/
+dist/
+*.html
+package*.json
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+tsconfig*.json

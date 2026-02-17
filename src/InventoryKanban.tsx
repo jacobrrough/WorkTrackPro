@@ -1,0 +1,228 @@
+import React, { useMemo, useState, useEffect } from 'react';
+import { InventoryItem, InventoryCategory } from '@/core/types';
+
+interface InventoryKanbanProps {
+  inventory: InventoryItem[];
+  searchActive?: boolean;
+  onNavigate: (itemId: string) => void; // Navigate to item detail
+  onBack: () => void; // Navigate back to dashboard
+  onAddItem: () => void;
+  isAdmin: boolean;
+  calculateAvailable: (item: InventoryItem) => number;
+}
+
+const CATEGORIES: { id: InventoryCategory; label: string }[] = [
+  { id: 'material', label: 'Material' },
+  { id: 'foam', label: 'Foam' },
+  { id: 'trimCord', label: 'Trim Cord' },
+  { id: 'printing3d', label: '3D Printing' },
+  { id: 'chemicals', label: 'Chemicals' },
+  { id: 'hardware', label: 'Hardware' },
+  { id: 'miscSupplies', label: 'Misc Supplies' },
+];
+
+const InventoryKanban: React.FC<InventoryKanbanProps> = ({
+  inventory,
+  searchActive = false,
+  onNavigate,
+  onBack,
+  onAddItem,
+  isAdmin,
+  calculateAvailable,
+}) => {
+  // Start with all categories COLLAPSED
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  const categorizedInventory = useMemo(() => {
+    const result: Record<string, InventoryItem[]> = {};
+    CATEGORIES.forEach((cat) => {
+      result[cat.id] = inventory
+        .filter((item) => item.category === cat.id)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    });
+    return result;
+  }, [inventory]);
+
+  // When search is active, auto-expand categories that have matching items so results are visible
+  useEffect(() => {
+    if (searchActive) {
+      const withItems = new Set(
+        CATEGORIES.filter((cat) => (categorizedInventory[cat.id]?.length ?? 0) > 0).map((c) => c.id)
+      );
+      setExpandedCategories(withItems);
+    }
+  }, [searchActive, categorizedInventory]);
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
+
+  const collapseAll = () => setExpandedCategories(new Set());
+  const expandAll = () => setExpandedCategories(new Set(CATEGORIES.map((c) => c.id)));
+
+  return (
+    <div className="flex h-full flex-col bg-background-dark">
+      <div className="border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="text-white transition-colors hover:text-primary">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 className="text-2xl font-bold text-white">Inventory</h1>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={onAddItem}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-white"
+            >
+              <span className="material-symbols-outlined">add</span>
+              Add Item
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={expandAll} className="text-sm font-bold text-primary">
+            Expand All
+          </button>
+          <span className="text-slate-600">|</span>
+          <button onClick={collapseAll} className="text-sm font-bold text-primary">
+            Collapse All
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {CATEGORIES.map((category) => {
+          const items = categorizedInventory[category.id] || [];
+          const isExpanded = expandedCategories.has(category.id);
+
+          return (
+            <div key={category.id} className="border-b border-white/10">
+              <button
+                onClick={() => toggleCategory(category.id)}
+                className="sticky top-0 z-10 w-full border-b border-white/10 bg-background-light p-4 transition-colors hover:bg-background-light/80"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-xl text-white">
+                      {isExpanded ? 'expand_more' : 'chevron_right'}
+                    </span>
+                    <h2 className="text-lg font-bold text-white">{category.label}</h2>
+                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-bold text-white">
+                      {items.length}
+                    </span>
+                  </div>
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="space-y-3 p-4">
+                  {items.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-slate-500">
+                      No items in this category
+                    </p>
+                  ) : (
+                    items.map((item) => {
+                      const available = item.available ?? calculateAvailable(item);
+                      const allocated = item.allocated ?? 0;
+                      const shortForJobs = allocated > 0 && available < allocated;
+                      const belowReorder =
+                        item.reorderPoint != null && available <= item.reorderPoint;
+                      const isLowStock = belowReorder || shortForJobs;
+
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => onNavigate(item.id)}
+                          className="w-full rounded-xl border border-white/10 bg-card-dark p-4 text-left transition-colors hover:bg-card-dark/80"
+                        >
+                          <div className="mb-3 flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-bold text-white">{item.name}</h3>
+                              {item.description && (
+                                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-300">
+                                  {item.description}
+                                </p>
+                              )}
+                            </div>
+                            {isLowStock && (
+                              <span className="material-symbols-outlined ml-2 text-xl text-red-500">
+                                warning
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-3">
+                            <div>
+                              <p className="text-xs text-slate-400">In Stock</p>
+                              <p className="font-bold text-white">{item.inStock}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-400">Available</p>
+                              <p
+                                className={`font-bold ${available > 0 ? 'text-green-400' : 'text-red-400'}`}
+                              >
+                                {available}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-400">Needed (jobs)</p>
+                              <p className="font-bold text-yellow-400">{allocated}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-400">Unit</p>
+                              <p className="font-bold text-white">{item.unit}</p>
+                            </div>
+                            {item.price ? (
+                              <div>
+                                <p className="text-xs text-slate-400">Price</p>
+                                <p className="font-bold text-white">${item.price.toFixed(2)}</p>
+                              </div>
+                            ) : (
+                              <div></div>
+                            )}
+                          </div>
+
+                          {item.binLocation && (
+                            <div className="mt-2">
+                              <p className="flex items-center gap-1 text-xs text-slate-400">
+                                <span className="material-symbols-outlined text-sm">
+                                  location_on
+                                </span>
+                                {item.binLocation}
+                              </p>
+                            </div>
+                          )}
+
+                          {isLowStock && (
+                            <div className="mt-2 space-y-0.5 rounded border border-red-500/30 bg-red-500/10 px-2 py-1">
+                              <p className="text-xs font-bold text-red-400">Reorder recommended</p>
+                              <p className="text-xs text-red-300">
+                                {allocated} {item.unit} needed to complete all jobs.
+                                {shortForJobs && ` Need ${allocated - available} more.`}
+                              </p>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export default InventoryKanban;

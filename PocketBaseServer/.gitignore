@@ -1,0 +1,34 @@
+# PocketBase executable
+pocketbase.exe
+
+# Caddy executable  
+caddy.exe
+
+# Database and data (don't commit sensitive data)
+pb_data/data.db
+pb_data/auxiliary.db
+pb_data/backups/
+pb_data/storage/
+
+# Logs
+*.log
+
+# Old/backup files
+*.bak
+*.backup
+*.old
+server.crt
+server.key
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Keep these directories but ignore contents
+pb_data/*
+!pb_data/.gitkeep
+
+# Keep hooks and migrations (these should be version controlled)
+!pb_hooks/
+!pb_migrations/

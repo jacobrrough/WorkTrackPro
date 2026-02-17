@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_POCKETBASE_URL=http://pocketbase:8090
+    depends_on:
+      - pocketbase
+    restart: unless-stopped
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    volumes:
+      - pocketbase_data:/pb_data
+      - ./PocketBaseServer/pb_migrations:/pb_migrations
+      - ./PocketBaseServer/pb_hooks:/pb_hooks
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    command:
+      - --encryptionEnv=PB_ENCRYPTION_KEY
+    environment:
+      - PB_ENCRYPTION_KEY=${PB_ENCRYPTION_KEY:-your-encryption-key-change-in-production}
+
+volumes:
+  pocketbase_data:

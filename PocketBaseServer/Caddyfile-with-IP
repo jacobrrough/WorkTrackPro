@@ -1,0 +1,24 @@
+# Caddy Configuration - Explicit Network Binding
+# This FORCES Caddy to listen on your network IP
+
+# Replace 192.168.1.100 with YOUR actual IP address!
+192.168.1.100:8090 {
+    # Reverse proxy to PocketBase
+    reverse_proxy localhost:8091
+    
+    # Self-signed certificate
+    tls internal
+    
+    # CORS
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+}
+
+# Also listen on localhost for direct access
+localhost:8090 {
+    reverse_proxy localhost:8091
+    tls internal
+}

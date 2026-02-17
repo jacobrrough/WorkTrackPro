@@ -1,0 +1,67 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# SSL Certificates (IMPORTANT - Keep these private!)
+*.pem
+*.key
+*.cert
+*.crt
+key.pem
+cert.pem
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# PocketBase data (if running locally)
+pb_data/
+pocketbase
+# Note: pb_migrations/ should be included in repo (needed for deployment)
+
+# Build output
+build/
+out/
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Misc
+.cache/
+.temp/
+.tmp/
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Backup files
+backups/
+*.backup
+*.bak
+*~
