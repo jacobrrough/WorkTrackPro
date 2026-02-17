@@ -35,8 +35,8 @@ const SetupRequired: React.FC = () => (
             https://YOUR-PROJECT-REF.supabase.co
           </p>
           <ul className="mb-6 list-inside list-disc text-sm text-slate-400">
-            <li>No trailing slash (or one is OK)</li>
-            <li>No spaces, quotes, or extra path</li>
+            <li>No trailing slash</li>
+            <li>No spaces or quotes — paste the URL only (Netlify may add quotes; delete them)</li>
             <li>Copy from Supabase → Project Settings → API → Project URL</li>
           </ul>
         </>

@@ -41,22 +41,22 @@ You can now log in to the app with that email/password and have admin access.
 
 ## 4. Set env vars in Netlify and redeploy
 
-If the **site is still blank**, the build probably ran without Supabase env vars. They must be set in Netlify and then you must redeploy (Vite bakes them in at build time).
+If the **site is still blank** or shows **“Invalid supabase URL”**, the build probably ran without the env vars or with old values. Vite bakes `VITE_*` at **build time**, so you must redeploy after setting or changing them.
 
-1. In Supabase: **Project Settings** (gear) → **API**.
+1. In Supabase: **Project Settings** (gear) → **API**, or use **Connect** → **API Keys** tab.
 2. Copy:
-   - **Project URL**
-   - **anon public** key (under “Project API keys”).
+   - **Project URL** (e.g. `https://xxxx.supabase.co` — no path after `.co`)
+   - **Anon key (Legacy)** — use this one for `VITE_SUPABASE_ANON_KEY`, not the “Publishable key”.
 3. In **Netlify**: your site → **Site configuration** → **Environment variables**.
-4. Add:
+4. Add or edit:
    - **Key:** `VITE_SUPABASE_URL`  
-     **Value:** (paste Project URL)
+     **Value:** (paste Project URL only; no trailing slash)
    - **Key:** `VITE_SUPABASE_ANON_KEY`  
-     **Value:** (paste anon key)
+     **Value:** (paste the **Anon key (Legacy)** from Supabase)
 5. Save.
-6. **Trigger a new deploy:** **Deploys** → **Trigger deploy** → **Deploy site** (so a new build runs with these variables).
+6. **Trigger a fresh deploy:** **Deploys** → **Trigger deploy** → **Clear cache and deploy site**. This forces a new build so the live bundle gets the current env values.
 
-After the deploy finishes, reload your site. You should see either the **Rough Cut / Employee Login** landing page or the **“Setup required”** message (which will disappear once the new build with env vars is live).
+After the deploy finishes, reload your site. You should see the **Rough Cut** landing page or the app.
 
 ---
 

@@ -1,10 +1,17 @@
 /**
  * Validates Supabase env vars. Use for guarding app load and for trimming before createClient.
- * Supabase URL must be a valid HTTP/HTTPS URL (same check the Supabase client uses).
+ * Normalizes so Netlify-stored values (e.g. with accidental quotes) still work.
+ * Note: Vite bakes these at build time—after changing env vars in Netlify, trigger "Clear cache and deploy".
  */
 
-const RAW_URL = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
-const RAW_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+function normalizeEnvValue(value: string): string {
+  return value
+    .replace(/^[\s"'\uFEFF]+|[\s"']+$/g, '') // trim whitespace, quotes, BOM
+    .replace(/\/+$/, '');                     // no trailing slash (Supabase adds it)
+}
+
+const RAW_URL = normalizeEnvValue(String(import.meta.env.VITE_SUPABASE_URL ?? ''));
+const RAW_KEY = normalizeEnvValue(String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''));
 
 /** Must be valid URL per URL constructor and https + *.supabase.co (avoids "Invalid supabaseUrl" at createClient) */
 export function isSupabaseUrlValid(): boolean {
@@ -12,7 +19,8 @@ export function isSupabaseUrlValid(): boolean {
   try {
     const u = new URL(RAW_URL);
     if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
-    return u.hostname.endsWith('.supabase.co');
+    if (!u.hostname.endsWith('.supabase.co')) return false;
+    return true;
   } catch {
     return false;
   }
