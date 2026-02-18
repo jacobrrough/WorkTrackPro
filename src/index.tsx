@@ -38,5 +38,9 @@ try {
   }
 } catch (err) {
   const msg = err instanceof Error ? err.message : String(err);
-  renderFallback('Setup error: ' + msg + '. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify, then redeploy.');
+  renderFallback(
+    'Setup error: ' +
+      msg +
+      '. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify, then redeploy.'
+  );
 }

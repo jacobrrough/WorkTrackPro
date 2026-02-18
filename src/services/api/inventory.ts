@@ -55,7 +55,9 @@ export const inventoryService = {
     const from = (page - 1) * perPage;
     const { data, error, count } = await q.range(from, from + perPage - 1);
     if (error) throw error;
-    const items = (data ?? []).map((row) => mapRowToItem(row as unknown as Record<string, unknown>));
+    const items = (data ?? []).map((row) =>
+      mapRowToItem(row as unknown as Record<string, unknown>)
+    );
     const totalItems = count ?? 0;
     return { items, page, perPage, totalItems, totalPages: Math.ceil(totalItems / perPage) };
   },
@@ -78,7 +80,11 @@ export const inventoryService = {
       bin_location: data.binLocation ?? null,
       vendor: data.vendor ?? null,
     };
-    const { data: created, error } = await supabase.from('inventory').insert(row).select('*').single();
+    const { data: created, error } = await supabase
+      .from('inventory')
+      .insert(row)
+      .select('*')
+      .single();
     if (error) return null;
     return mapRowToItem(created as unknown as Record<string, unknown>);
   },
@@ -100,12 +106,20 @@ export const inventoryService = {
     if (data.barcode != null) row.barcode = data.barcode;
     if (data.binLocation != null) row.bin_location = data.binLocation;
     if (data.vendor != null) row.vendor = data.vendor;
-    const { data: updated, error } = await supabase.from('inventory').update(row).eq('id', id).select('*').single();
+    const { data: updated, error } = await supabase
+      .from('inventory')
+      .update(row)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error) return null;
     return mapRowToItem(updated as unknown as Record<string, unknown>);
   },
 
   async updateStock(id: string, inStock: number): Promise<void> {
-    await supabase.from('inventory').update({ in_stock: inStock, available: inStock, updated_at: new Date().toISOString() }).eq('id', id);
+    await supabase
+      .from('inventory')
+      .update({ in_stock: inStock, available: inStock, updated_at: new Date().toISOString() })
+      .eq('id', id);
   },
 };

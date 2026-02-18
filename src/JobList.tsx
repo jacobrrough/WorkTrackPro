@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { Job, ViewState, User, Shift, getStatusDisplayName } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
-import { formatJobCode, formatDashSummary, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
+import {
+  formatJobCode,
+  formatDashSummary,
+  getJobDisplayName,
+  formatJobIdentityLine,
+} from '@/lib/formatJob';
 
 interface JobListProps {
   jobs: Job[];
@@ -175,7 +180,9 @@ const JobList: React.FC<JobListProps> = ({
                             RUSH
                           </span>
                         )}
-                        <span className="text-xs font-medium text-slate-400">{formatJobCode(job.jobCode)}</span>
+                        <span className="text-xs font-medium text-slate-400">
+                          {formatJobCode(job.jobCode)}
+                        </span>
                       </div>
                       <h4 className="truncate text-lg font-bold text-white">
                         {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
@@ -194,9 +201,13 @@ const JobList: React.FC<JobListProps> = ({
                         >
                           {getStatusDisplayName(job.status)}
                         </span>
-                        {(job.dashQuantities && Object.keys(job.dashQuantities).length > 0)
-                          ? <span className="text-xs text-slate-500">Qty: {formatDashSummary(job.dashQuantities)}</span>
-                          : job.qty && <span className="text-xs text-slate-500">Qty: {job.qty}</span>}
+                        {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 ? (
+                          <span className="text-xs text-slate-500">
+                            Qty: {formatDashSummary(job.dashQuantities)}
+                          </span>
+                        ) : (
+                          job.qty && <span className="text-xs text-slate-500">Qty: {job.qty}</span>
+                        )}
                       </div>
                     </div>
 

@@ -41,20 +41,13 @@ function mapRowToPartMaterial(row: Record<string, unknown>): PartMaterial {
 
 export const partsService = {
   async getAllParts(): Promise<Part[]> {
-    const { data, error } = await supabase
-      .from('parts')
-      .select('*')
-      .order('part_number');
+    const { data, error } = await supabase.from('parts').select('*').order('part_number');
     if (error) throw error;
     return (data ?? []).map((row) => mapRowToPart(row as unknown as Record<string, unknown>));
   },
 
   async getPartById(id: string): Promise<Part | null> {
-    const { data, error } = await supabase
-      .from('parts')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data, error } = await supabase.from('parts').select('*').eq('id', id).single();
     if (error || !data) return null;
     return mapRowToPart(data as unknown as Record<string, unknown>);
   },
@@ -113,7 +106,11 @@ export const partsService = {
 
     for (const v of part.variants) {
       v.materials = (materialsData ?? [])
-        .filter((r) => ((r as { part_variant_id?: string; variant_id?: string }).part_variant_id ?? (r as { variant_id: string }).variant_id) === v.id)
+        .filter(
+          (r) =>
+            ((r as { part_variant_id?: string; variant_id?: string }).part_variant_id ??
+              (r as { variant_id: string }).variant_id) === v.id
+        )
         .map((row) => {
           const m = mapRowToPartMaterial(row as unknown as Record<string, unknown>);
           m.inventoryName = invNameMap.get(m.inventoryId) ?? 'Unknown';
@@ -129,11 +126,7 @@ export const partsService = {
       name: data.name ?? '',
       description: data.description ?? null,
     };
-    const { data: created, error } = await supabase
-      .from('parts')
-      .insert(row)
-      .select('*')
-      .single();
+    const { data: created, error } = await supabase.from('parts').insert(row).select('*').single();
     if (error) return null;
     return mapRowToPart(created as unknown as Record<string, unknown>);
   },
@@ -158,7 +151,11 @@ export const partsService = {
     return !error;
   },
 
-  async addVariant(partId: string, variantSuffix: string, name?: string): Promise<PartVariant | null> {
+  async addVariant(
+    partId: string,
+    variantSuffix: string,
+    name?: string
+  ): Promise<PartVariant | null> {
     const { data, error } = await supabase
       .from('part_variants')
       .insert({

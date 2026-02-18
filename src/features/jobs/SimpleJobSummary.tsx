@@ -67,7 +67,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="flex size-11 min-w-[44px] items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white touch-manipulation"
+            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Back"
           >
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -90,7 +90,9 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
             <p className="text-xl font-bold text-white">
               {formatDashSummary(job.dashQuantities)}
               {totalQty > 0 && (
-                <span className="ml-2 text-base font-medium text-slate-300">({totalQty} total)</span>
+                <span className="ml-2 text-base font-medium text-slate-300">
+                  ({totalQty} total)
+                </span>
               )}
             </p>
           </div>
@@ -111,7 +113,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
               href={drawingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 py-3 font-bold text-white transition-colors hover:bg-primary/90 active:scale-[0.98] touch-manipulation"
+              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-primary px-4 py-3 font-bold text-white transition-colors hover:bg-primary/90 active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-xl">picture_as_pdf</span>
               View Drawing
@@ -146,7 +148,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
               </div>
               <button
                 onClick={onClockOut}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98] touch-manipulation"
+                className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined">logout</span>
                 Clock Out
@@ -155,7 +157,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
           ) : (
             <button
               onClick={onClockIn}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98] touch-manipulation"
+              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
             >
               <span className="material-symbols-outlined">login</span>
               Clock In
@@ -172,7 +174,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         {/* More / Full Details */}
         <button
           onClick={() => onNavigate('job-detail', job.id)}
-          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm border-2 border-primary bg-primary/20 py-3 font-bold text-primary transition-colors hover:bg-primary/30 active:scale-[0.98] touch-manipulation"
+          className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm border-2 border-primary bg-primary/20 py-3 font-bold text-primary transition-colors hover:bg-primary/30 active:scale-[0.98]"
         >
           <span className="material-symbols-outlined">open_in_new</span>
           More / Full Details

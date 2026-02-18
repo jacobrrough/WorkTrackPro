@@ -9,7 +9,7 @@
 function normalizeEnvValue(value: string): string {
   return value
     .replace(/^[\s"'\uFEFF]+|[\s"']+$/g, '') // trim whitespace, quotes, BOM
-    .replace(/\/+$/, '');                     // no trailing slash (Supabase adds it)
+    .replace(/\/+$/, ''); // no trailing slash (Supabase adds it)
 }
 
 const RAW_URL = normalizeEnvValue(String(import.meta.env.VITE_SUPABASE_URL ?? ''));
@@ -30,7 +30,8 @@ export function isSupabaseUrlValid(): boolean {
     if (u.hash) return false;
     // Hostname should match pattern: [project-ref].supabase.co
     const hostParts = u.hostname.split('.');
-    if (hostParts.length !== 3 || hostParts[1] !== 'supabase' || hostParts[2] !== 'co') return false;
+    if (hostParts.length !== 3 || hostParts[1] !== 'supabase' || hostParts[2] !== 'co')
+      return false;
     return true;
   } catch {
     return false;

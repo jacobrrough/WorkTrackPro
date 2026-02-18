@@ -25,7 +25,13 @@ interface JobTimeline {
  * Uses due date and expected labor hours (or recorded shift hours) to calculate timelines.
  * Work schedule: 9h Mon-Thu, 4h Fri.
  */
-const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser, onNavigate, onBack }) => {
+const Calendar: React.FC<CalendarProps> = ({
+  jobs: allJobs,
+  shifts,
+  currentUser,
+  onNavigate,
+  onBack,
+}) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const jobs = useMemo(() => allJobs.filter((j) => j.status !== 'paid'), [allJobs]);
 
@@ -57,12 +63,16 @@ const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser,
   // Generate calendar days
   const calendarDays = useMemo(() => {
     const days: Array<{ date: Date; isCurrentMonth: boolean }> = [];
-    
+
     // Previous month days
     const prevMonthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 0);
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       days.push({
-        date: new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), prevMonthEnd.getDate() - i),
+        date: new Date(
+          prevMonthEnd.getFullYear(),
+          prevMonthEnd.getMonth(),
+          prevMonthEnd.getDate() - i
+        ),
         isCurrentMonth: false,
       });
     }
@@ -194,8 +204,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser,
           {/* Calendar days */}
           {calendarDays.map((dayData, idx) => {
             const jobsForDay = getJobsForDate(dayData.date);
-            const isToday =
-              dayData.date.toDateString() === new Date().toDateString();
+            const isToday = dayData.date.toDateString() === new Date().toDateString();
             const workHours = getWorkHoursForDate(dayData.date);
 
             return (
@@ -204,7 +213,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser,
                 className={`min-h-[80px] rounded border p-1 ${
                   dayData.isCurrentMonth
                     ? 'border-white/10 bg-white/5'
-                    : 'border-white/5 bg-white/2'
+                    : 'bg-white/2 border-white/5'
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
               >
                 <div
@@ -214,9 +223,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser,
                 >
                   {dayData.date.getDate()}
                   {workHours > 0 && (
-                    <span className="ml-1 text-[10px] text-slate-500">
-                      ({workHours}h)
-                    </span>
+                    <span className="ml-1 text-[10px] text-slate-500">({workHours}h)</span>
                   )}
                 </div>
                 <div className="mt-1 space-y-0.5">
@@ -227,14 +234,11 @@ const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser,
                       className={`w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-white transition-colors hover:opacity-80 ${getJobColor(tl.job.id)}`}
                       title={`#${tl.job.jobCode} - ${getJobDisplayName(tl.job)}`}
                     >
-                      {tl.job.isRush && '⚡ '}
-                      #{tl.job.jobCode}
+                      {tl.job.isRush && '⚡ '}#{tl.job.jobCode}
                     </button>
                   ))}
                   {jobsForDay.length > 3 && (
-                    <div className="text-[10px] text-slate-500">
-                      +{jobsForDay.length - 3} more
-                    </div>
+                    <div className="text-[10px] text-slate-500">+{jobsForDay.length - 3} more</div>
                   )}
                 </div>
               </div>
@@ -260,23 +264,15 @@ const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser,
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white">#{tl.job.jobCode}</span>
                         <span className="text-sm text-slate-300">{getJobDisplayName(tl.job)}</span>
-                        {tl.job.isRush && (
-                          <span className="text-yellow-400">⚡</span>
-                        )}
+                        {tl.job.isRush && <span className="text-yellow-400">⚡</span>}
                       </div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
-                        <span>
-                          Start: {formatDateOnly(tl.startDate)}
-                        </span>
-                        <span>
-                          Due: {formatDateOnly(tl.endDate)}
-                        </span>
+                        <span>Start: {formatDateOnly(tl.startDate)}</span>
+                        <span>Due: {formatDateOnly(tl.endDate)}</span>
                         <span>{tl.hours.toFixed(1)}h</span>
                       </div>
                     </div>
-                    <span className="material-symbols-outlined text-slate-400">
-                      chevron_right
-                    </span>
+                    <span className="material-symbols-outlined text-slate-400">chevron_right</span>
                   </div>
                 </button>
               ))}

@@ -122,8 +122,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         continue;
       }
 
-      if (inMaterials && /^[A-Z][a-z]+[:：]\s*$/.test(line) && !materialKeywords.some((p) => p.test(line))) {
-        const nextLines = lines.slice(i + 1, i + 3).join(' ').trim();
+      if (
+        inMaterials &&
+        /^[A-Z][a-z]+[:：]\s*$/.test(line) &&
+        !materialKeywords.some((p) => p.test(line))
+      ) {
+        const nextLines = lines
+          .slice(i + 1, i + 3)
+          .join(' ')
+          .trim();
         if (!nextLines || !/[\d•\-*]/.test(nextLines)) {
           break;
         }
@@ -164,7 +171,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         // Validate and add material
         if (materialName.length >= 2 && qty > 0 && qty <= 100000) {
           const isLikelyMaterial =
-            !/^(note|note:|important|warning|tip|instructions?|steps?|process|procedure)/i.test(materialName) &&
+            !/^(note|note:|important|warning|tip|instructions?|steps?|process|procedure)/i.test(
+              materialName
+            ) &&
             !/^[A-Z][a-z]+\s*[:：]\s*$/.test(materialName) &&
             materialName.length <= 200;
 
@@ -188,7 +197,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           const qty = parseFloat(match[1]);
           const material = match[2].trim();
           if (qty > 0 && qty <= 100000 && material.length >= 2 && material.length <= 200) {
-            const exists = materials.some((m) => m.material.toLowerCase() === material.toLowerCase());
+            const exists = materials.some(
+              (m) => m.material.toLowerCase() === material.toLowerCase()
+            );
             if (!exists) {
               materials.push({ material, qty });
             }
@@ -388,7 +399,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         }
 
         // Enhanced parsing from card name and description
-        const poMatch = cardName.match(/PO#?\s*:?\s*(\S+)/i) || description.match(/PO#?\s*:?\s*(\S+)/i);
+        const poMatch =
+          cardName.match(/PO#?\s*:?\s*(\S+)/i) || description.match(/PO#?\s*:?\s*(\S+)/i);
         const po = poMatch ? poMatch[1] : '';
 
         // Extract part number (common patterns: DASH-123, PART-456-01, etc.)
@@ -405,7 +417,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         // Extract due date from description if not in card.due
         let dueDate = card.due || undefined;
         if (!dueDate) {
-          const dateMatch = description.match(/(?:Due|Due Date|Deadline)[:：]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/i);
+          const dateMatch = description.match(
+            /(?:Due|Due Date|Deadline)[:：]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/i
+          );
           if (dateMatch) {
             const dateStr = dateMatch[1];
             // Try to parse and format
@@ -422,16 +436,22 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // Extract labor hours from description
         let laborHours: number | undefined = undefined;
-        const laborMatch = description.match(/(?:Labor|Hours|Time)[:：]?\s*(\d+(?:\.\d+)?)\s*(?:h|hours?)?/i);
+        const laborMatch = description.match(
+          /(?:Labor|Hours|Time)[:：]?\s*(\d+(?:\.\d+)?)\s*(?:h|hours?)?/i
+        );
         if (laborMatch) {
           laborHours = parseFloat(laborMatch[1]);
         }
 
         // Extract bin location
-        const binMatch = cardName.match(/\[([A-Z]\d+[a-z]?)\]/i) || description.match(/Bin[:：]?\s*([A-Z]\d+[a-z]?)/i);
+        const binMatch =
+          cardName.match(/\[([A-Z]\d+[a-z]?)\]/i) ||
+          description.match(/Bin[:：]?\s*([A-Z]\d+[a-z]?)/i);
         const binLocation = binMatch ? binMatch[1] : undefined;
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         const createdJob = await jobService.createJob({
           jobCode: nextCode + i,
           name: cardName,

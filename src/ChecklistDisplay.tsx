@@ -47,7 +47,10 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
             if (newRecord) matchingChecklist = newRecord;
             else matchingChecklist = template;
           } catch (createError: unknown) {
-            console.warn('Could not create checklist (may need admin), using template:', createError);
+            console.warn(
+              'Could not create checklist (may need admin), using template:',
+              createError
+            );
             matchingChecklist = template;
           }
         }

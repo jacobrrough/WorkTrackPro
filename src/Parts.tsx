@@ -64,7 +64,7 @@ const AddPartForm: React.FC<AddPartFormProps> = ({ onSave, onCancel, saving }) =
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white touch-manipulation"
+          className="flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
           aria-label="Back"
         >
           <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -120,12 +120,7 @@ interface PartsProps {
   isAdmin: boolean;
 }
 
-const Parts: React.FC<PartsProps> = ({
-  onNavigate,
-  onBack,
-  initialPartId,
-  isAdmin,
-}) => {
+const Parts: React.FC<PartsProps> = ({ onNavigate, onBack, initialPartId, isAdmin }) => {
   const { showToast } = useToast();
   const [parts, setParts] = useState<Part[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,7 +210,9 @@ const Parts: React.FC<PartsProps> = ({
           try {
             const created = await partsService.createPart(data);
             if (created) {
-              setParts((prev) => [...prev, created].sort((a, b) => a.partNumber.localeCompare(b.partNumber)));
+              setParts((prev) =>
+                [...prev, created].sort((a, b) => a.partNumber.localeCompare(b.partNumber))
+              );
               showToast('Part created', 'success');
               setView('list');
               onNavigate('part-detail', created.id);
@@ -242,7 +239,7 @@ const Parts: React.FC<PartsProps> = ({
             <button
               type="button"
               onClick={onBack}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white touch-manipulation"
+              className="flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
               aria-label="Back"
             >
               <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -253,7 +250,7 @@ const Parts: React.FC<PartsProps> = ({
             <button
               type="button"
               onClick={() => setView('add')}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-primary text-white hover:bg-primary/90 touch-manipulation"
+              className="flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-sm bg-primary text-white hover:bg-primary/90"
               aria-label="Add part"
             >
               <span className="material-symbols-outlined text-2xl">add</span>
@@ -295,7 +292,9 @@ const Parts: React.FC<PartsProps> = ({
           <LoadingSpinner text="Loading parts..." />
         ) : filteredParts.length === 0 ? (
           <div className="rounded-sm border border-white/10 bg-white/5 p-8 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">precision_manufacturing</span>
+            <span className="material-symbols-outlined text-4xl text-slate-500">
+              precision_manufacturing
+            </span>
             <p className="mt-2 text-slate-400">
               {searchTerm.trim() ? 'No parts match your search.' : 'No parts yet.'}
             </p>
@@ -313,13 +312,17 @@ const Parts: React.FC<PartsProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-primary/20 text-primary">
-                      <span className="material-symbols-outlined text-2xl">precision_manufacturing</span>
+                      <span className="material-symbols-outlined text-2xl">
+                        precision_manufacturing
+                      </span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-white">{part.partNumber}</p>
                       <p className="truncate text-sm text-slate-400">{part.name || '—'}</p>
                     </div>
-                    <span className="material-symbols-outlined text-xl text-slate-500">chevron_right</span>
+                    <span className="material-symbols-outlined text-xl text-slate-500">
+                      chevron_right
+                    </span>
                   </div>
                 </Card>
               </li>

@@ -90,7 +90,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
               <h1 className="text-lg font-bold leading-tight text-white">Admin Console</h1>
             </div>
           </div>
-          <button className="bg-surface-dark relative flex size-10 items-center justify-center rounded-sm border border-white/5 text-white">
+          <button className="relative flex size-10 items-center justify-center rounded-sm border border-white/5 bg-surface-dark text-white">
             <span className="material-symbols-outlined">notifications</span>
           </button>
         </div>
@@ -165,7 +165,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => onNavigate('board-admin')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-orange-500/30 bg-gradient-to-br from-orange-600/20 to-red-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-orange-500/30 bg-gradient-to-br from-orange-600/20 to-red-600/20 p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-orange-500">
                 view_kanban
@@ -177,7 +177,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('board-shop')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-blue-500/30 bg-gradient-to-br from-blue-600/20 to-cyan-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-blue-500/30 bg-gradient-to-br from-blue-600/20 to-cyan-600/20 p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-blue-500">view_kanban</span>
               <p className="font-bold text-white">Shop Floor</p>
@@ -187,7 +187,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('time-reports')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20 p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-green-500">analytics</span>
               <p className="font-bold text-white">Time Reports</p>
@@ -197,7 +197,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('inventory')}
-              className="bg-surface-dark active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-white/5 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-white/5 bg-surface-dark p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-primary">inventory_2</span>
               <p className="font-bold text-white">Inventory</p>
@@ -207,7 +207,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => setShowTrelloImport(true)}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-purple-500/30 bg-gradient-to-br from-purple-600/20 to-pink-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-purple-500/30 bg-gradient-to-br from-purple-600/20 to-pink-600/20 p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-purple-500">
                 upload_file
@@ -219,9 +219,11 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('calendar')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-cyan-500/30 bg-gradient-to-br from-cyan-600/20 to-blue-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-cyan-500/30 bg-gradient-to-br from-cyan-600/20 to-blue-600/20 p-3 active:bg-surface-dark/60"
             >
-              <span className="material-symbols-outlined text-3xl text-cyan-500">calendar_month</span>
+              <span className="material-symbols-outlined text-3xl text-cyan-500">
+                calendar_month
+              </span>
               <p className="font-bold text-white">Calendar</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">
                 Job Timeline
@@ -229,9 +231,11 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('parts')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20 p-3 active:bg-surface-dark/60"
             >
-              <span className="material-symbols-outlined text-3xl text-green-500">precision_manufacturing</span>
+              <span className="material-symbols-outlined text-3xl text-green-500">
+                precision_manufacturing
+              </span>
               <p className="font-bold text-white">Parts</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">
                 Parts Repository
@@ -239,7 +243,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('completed-jobs')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-emerald-500/30 bg-gradient-to-br from-emerald-600/20 to-teal-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-emerald-500/30 bg-gradient-to-br from-emerald-600/20 to-teal-600/20 p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-emerald-500">archive</span>
               <p className="font-bold text-white">Completed Jobs</p>
@@ -249,7 +253,7 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({
             </button>
             <button
               onClick={() => onNavigate('admin-settings')}
-              className="active:bg-surface-dark/60 flex flex-col items-start gap-3 rounded-sm border border-primary/30 bg-gradient-to-br from-primary/20 to-purple-600/20 p-3"
+              className="flex flex-col items-start gap-3 rounded-sm border border-primary/30 bg-gradient-to-br from-primary/20 to-purple-600/20 p-3 active:bg-surface-dark/60"
             >
               <span className="material-symbols-outlined text-3xl text-primary">settings</span>
               <p className="font-bold text-white">Settings</p>

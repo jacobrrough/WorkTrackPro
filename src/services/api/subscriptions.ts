@@ -71,7 +71,12 @@ export const subscriptions = {
     const channel = supabase
       .channel('jobs-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
-        const action = payload.eventType === 'INSERT' ? 'create' : payload.eventType === 'UPDATE' ? 'update' : 'delete';
+        const action =
+          payload.eventType === 'INSERT'
+            ? 'create'
+            : payload.eventType === 'UPDATE'
+              ? 'update'
+              : 'delete';
         const record = (payload.new ?? payload.old) as Record<string, unknown>;
         if (record) callback(action, mapJobRow(record));
       })
@@ -85,7 +90,12 @@ export const subscriptions = {
     const channel = supabase
       .channel('shifts-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, (payload) => {
-        const action = payload.eventType === 'INSERT' ? 'create' : payload.eventType === 'UPDATE' ? 'update' : 'delete';
+        const action =
+          payload.eventType === 'INSERT'
+            ? 'create'
+            : payload.eventType === 'UPDATE'
+              ? 'update'
+              : 'delete';
         const record = (payload.new ?? payload.old) as Record<string, unknown>;
         if (record) callback(action, mapShiftRow(record));
       })
@@ -99,7 +109,12 @@ export const subscriptions = {
     const channel = supabase
       .channel('inventory-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
-        const action = payload.eventType === 'INSERT' ? 'create' : payload.eventType === 'UPDATE' ? 'update' : 'delete';
+        const action =
+          payload.eventType === 'INSERT'
+            ? 'create'
+            : payload.eventType === 'UPDATE'
+              ? 'update'
+              : 'delete';
         const record = (payload.new ?? payload.old) as Record<string, unknown>;
         if (record) callback(action, mapInventoryRow(record));
       })

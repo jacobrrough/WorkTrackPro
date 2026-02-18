@@ -2,7 +2,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Job, User, ViewState, JobStatus, BoardType, Shift, Part } from '@/core/types';
 import { dateInputToISO } from '@/core/date';
 import { getLaborSuggestion } from '@/lib/laborSuggestion';
-import { formatJobCode, formatDashSummary, totalFromDashQuantities, getJobNameForSave } from '@/lib/formatJob';
+import {
+  formatJobCode,
+  formatDashSummary,
+  totalFromDashQuantities,
+  getJobNameForSave,
+} from '@/lib/formatJob';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
@@ -193,9 +198,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         po: formData.po.trim() || undefined,
         dueDate: dateInputToISO(formData.dueDate),
         ecd: dateInputToISO(formData.ecd), // Fixed: use lowercase 'ecd' not 'ECD'
-        qty: totalFromDashQuantities(dashQuantities) > 0
-          ? String(totalFromDashQuantities(dashQuantities))
-          : (formData.qty.trim() || undefined),
+        qty:
+          totalFromDashQuantities(dashQuantities) > 0
+            ? String(totalFromDashQuantities(dashQuantities))
+            : formData.qty.trim() || undefined,
         description: formData.description.trim() || undefined,
         laborHours: formData.laborHours ? parseFloat(formData.laborHours) : undefined,
         status: formData.isRush ? 'rush' : formData.status,
@@ -245,7 +251,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             }
           } catch (syncErr) {
             console.error('Material sync after job create:', syncErr);
-            showToast('Job created; material assignment failed. Assign from job detail.', 'warning');
+            showToast(
+              'Job created; material assignment failed. Assign from job detail.',
+              'warning'
+            );
           }
         }
         // Success! Navigate to admin board
@@ -354,7 +363,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 transition-colors hover:border-primary hover:bg-[#261a32]"
                 title="Click to regenerate code"
               >
-                <span className="font-mono text-sm font-bold text-primary">{formatJobCode(formData.jobCode)}</span>
+                <span className="font-mono text-sm font-bold text-primary">
+                  {formatJobCode(formData.jobCode)}
+                </span>
                 <span className="material-symbols-outlined ml-auto text-xs text-[#ad93c8]">
                   refresh
                 </span>
@@ -380,7 +391,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-slate-300">Rev</label>
                 <input
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm font-mono uppercase text-white placeholder:text-slate-600"
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-slate-600"
                   placeholder="e.g. A, B, NC"
                   value={formData.revision}
                   onChange={(e) => setFormData({ ...formData, revision: e.target.value })}
@@ -398,10 +409,17 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                       value={partNameEdit}
                       onChange={(e) => setPartNameEdit(e.target.value)}
                       onBlur={async () => {
-                        if (!selectedPart || partNameEdit.trim() === (selectedPart.name ?? '').trim()) return;
+                        if (
+                          !selectedPart ||
+                          partNameEdit.trim() === (selectedPart.name ?? '').trim()
+                        )
+                          return;
                         try {
-                          const updated = await partsService.updatePart(selectedPart.id, { name: partNameEdit.trim() });
-                          if (updated) setSelectedPart((p) => (p ? { ...p, name: updated.name } : null));
+                          const updated = await partsService.updatePart(selectedPart.id, {
+                            name: partNameEdit.trim(),
+                          });
+                          if (updated)
+                            setSelectedPart((p) => (p ? { ...p, name: updated.name } : null));
                           showToast('Part name updated', 'success');
                         } catch {
                           showToast('Failed to update part name', 'error');
@@ -409,7 +427,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                       }}
                       disabled={isSubmitting}
                     />
-                    <p className="mt-1 text-xs text-slate-500">Editable; saved to Part when you blur</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Editable; saved to Part when you blur
+                    </p>
                   </>
                 ) : (
                   <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-500">
@@ -421,7 +441,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <label className="pb-1 text-xs font-medium text-slate-300">Qty</label>
                 {totalFromDashQuantities(dashQuantities) > 0 ? (
                   <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-300">
-                    {formatDashSummary(dashQuantities)} → Total: {totalFromDashQuantities(dashQuantities)}
+                    {formatDashSummary(dashQuantities)} → Total:{' '}
+                    {totalFromDashQuantities(dashQuantities)}
                   </div>
                 ) : (
                   <input
@@ -505,7 +526,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             <div className="mt-3 flex flex-col">
               <label className="pb-1 text-xs font-medium text-slate-300">Bin Location</label>
               <input
-                className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm font-mono uppercase text-white placeholder:text-slate-600"
+                className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-slate-600"
                 placeholder="e.g., A4c"
                 value={formData.binLocation}
                 onChange={(e) =>
@@ -521,7 +542,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 {laborSuggestion && (
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, laborHours: laborSuggestion.toString() })}
+                    onClick={() =>
+                      setFormData({ ...formData, laborHours: laborSuggestion.toString() })
+                    }
                     className="text-[10px] font-medium text-primary hover:text-primary/80"
                   >
                     Use {laborSuggestion.toFixed(1)}h

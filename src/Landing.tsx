@@ -33,7 +33,8 @@ const Landing: React.FC = () => {
               Custom manufacturing and fabrication
             </h1>
             <p className="mt-6 text-lg text-slate-400">
-              From concept to finished product. We handle jobs, inventory, and precision work for our clients.
+              From concept to finished product. We handle jobs, inventory, and precision work for
+              our clients.
             </p>
           </div>
         </section>
@@ -47,7 +48,8 @@ const Landing: React.FC = () => {
               </div>
               <h2 className="text-xl font-semibold text-white">What we do</h2>
               <p className="mt-2 text-slate-400">
-                Fabrication, machining, and custom manufacturing. We track every job and keep inventory and time in sync.
+                Fabrication, machining, and custom manufacturing. We track every job and keep
+                inventory and time in sync.
               </p>
             </div>
             <div>
@@ -56,7 +58,8 @@ const Landing: React.FC = () => {
               </div>
               <h2 className="text-xl font-semibold text-white">Our team</h2>
               <p className="mt-2 text-slate-400">
-                Employees use WorkTrack Pro to clock in, manage jobs, and update inventory. Sign in via Employee Login above.
+                Employees use WorkTrack Pro to clock in, manage jobs, and update inventory. Sign in
+                via Employee Login above.
               </p>
             </div>
           </div>
@@ -65,11 +68,10 @@ const Landing: React.FC = () => {
         {/* CTA / contact hint */}
         <section className="border-t border-white/10 px-4 py-12 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-slate-500">
-              Interested in working with us? Reach out for a quote.
-            </p>
+            <p className="text-slate-500">Interested in working with us? Reach out for a quote.</p>
             <p className="mt-2 text-sm text-slate-600">
-              Current employees: use <strong className="text-slate-400">Employee Login</strong> in the top right to access WorkTrack Pro.
+              Current employees: use <strong className="text-slate-400">Employee Login</strong> in
+              the top right to access WorkTrack Pro.
             </p>
           </div>
         </section>

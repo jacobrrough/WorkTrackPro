@@ -59,10 +59,14 @@ class ErrorBoundary extends Component<Props, State> {
                   this.state.error.message.includes('Supabase') ||
                   this.state.error.message.includes('VITE_SUPABASE')) ? (
                   <>
-                    <p className="mb-2 font-medium text-amber-400">Supabase not configured correctly</p>
+                    <p className="mb-2 font-medium text-amber-400">
+                      Supabase not configured correctly
+                    </p>
                     <p className="text-sm text-slate-300">
                       Set <code className="rounded bg-black/30 px-1">VITE_SUPABASE_URL</code> and{' '}
-                      <code className="rounded bg-black/30 px-1">VITE_SUPABASE_ANON_KEY</code> in your Netlify site environment variables, then redeploy. Use your project URL (e.g. https://xxxx.supabase.co) and anon key from the Supabase dashboard.
+                      <code className="rounded bg-black/30 px-1">VITE_SUPABASE_ANON_KEY</code> in
+                      your Netlify site environment variables, then redeploy. Use your project URL
+                      (e.g. https://xxxx.supabase.co) and anon key from the Supabase dashboard.
                     </p>
                   </>
                 ) : (

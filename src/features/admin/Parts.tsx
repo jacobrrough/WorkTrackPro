@@ -146,13 +146,12 @@ const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
       </div>
 
       {/* Parts List */}
-      <div
-        ref={listRef}
-        className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8"
-      >
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
         {filteredParts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <span className="material-symbols-outlined mb-4 text-6xl text-slate-600">precision_manufacturing</span>
+            <span className="material-symbols-outlined mb-4 text-6xl text-slate-600">
+              precision_manufacturing
+            </span>
             <p className="mb-2 text-lg font-medium text-white">
               {searchQuery ? 'No parts found' : 'No parts yet'}
             </p>
@@ -186,19 +185,27 @@ const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
                     className="flex w-full flex-col items-start gap-1 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
                   >
                     <div className="flex w-full items-center justify-between gap-3">
-                      <span className="font-mono text-base font-semibold text-white">{part.partNumber}</span>
+                      <span className="font-mono text-base font-semibold text-white">
+                        {part.partNumber}
+                      </span>
                       <div className="flex items-center gap-3">
                         {part.pricePerSet != null && (
-                          <span className="text-sm text-slate-400">${Number(part.pricePerSet).toFixed(2)}/set</span>
+                          <span className="text-sm text-slate-400">
+                            ${Number(part.pricePerSet).toFixed(2)}/set
+                          </span>
                         )}
-                        <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+                        <span className="material-symbols-outlined text-slate-500">
+                          chevron_right
+                        </span>
                       </div>
                     </div>
                     {part.name && part.name !== part.partNumber && (
                       <span className="text-sm text-slate-400">{part.name}</span>
                     )}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                      <span>{part.variantCount} variant{part.variantCount !== 1 ? 's' : ''}</span>
+                      <span>
+                        {part.variantCount} variant{part.variantCount !== 1 ? 's' : ''}
+                      </span>
                       {setSummary ? (
                         <span className="text-slate-400">Set: {setSummary}</span>
                       ) : (

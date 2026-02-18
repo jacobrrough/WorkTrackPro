@@ -59,7 +59,11 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
         return;
       }
 
-      const record = await checklistService.create({ job_id: null, status: selectedStatus, items: [] });
+      const record = await checklistService.create({
+        job_id: null,
+        status: selectedStatus,
+        items: [],
+      });
       if (!record) throw new Error('Create failed');
       const newChecklist: Checklist = {
         id: record.id,

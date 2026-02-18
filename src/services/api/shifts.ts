@@ -33,8 +33,12 @@ export const shiftService = {
     const userIds = [...new Set(list.map((r) => r.user_id))];
     const jobIds = [...new Set(list.map((r) => r.job_id))];
     const [profilesRes, jobsRes] = await Promise.all([
-      userIds.length ? supabase.from('profiles').select('id, name, initials').in('id', userIds) : { data: [] },
-      jobIds.length ? supabase.from('jobs').select('id, name, job_code').in('id', jobIds) : { data: [] },
+      userIds.length
+        ? supabase.from('profiles').select('id, name, initials').in('id', userIds)
+        : { data: [] },
+      jobIds.length
+        ? supabase.from('jobs').select('id, name, job_code').in('id', jobIds)
+        : { data: [] },
     ]);
     const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
     const jobMap = new Map((jobsRes.data ?? []).map((j) => [j.id, j]));
@@ -61,17 +65,29 @@ export const shiftService = {
   },
 
   async clockOut(shiftId: string): Promise<void> {
-    await supabase.from('shifts').update({ clock_out_time: new Date().toISOString() }).eq('id', shiftId);
+    await supabase
+      .from('shifts')
+      .update({ clock_out_time: new Date().toISOString() })
+      .eq('id', shiftId);
   },
 
-  async updateShiftTimes(shiftId: string, clockInTime: string, clockOutTime?: string): Promise<boolean> {
+  async updateShiftTimes(
+    shiftId: string,
+    clockInTime: string,
+    clockOutTime?: string
+  ): Promise<boolean> {
     const row: Record<string, unknown> = { clock_in_time: clockInTime };
     if (clockOutTime !== undefined) row.clock_out_time = clockOutTime;
     const { error } = await supabase.from('shifts').update(row).eq('id', shiftId);
     return !error;
   },
 
-  async createShiftManual(data: { user: string; job: string; clockInTime: string; clockOutTime?: string }): Promise<Shift | null> {
+  async createShiftManual(data: {
+    user: string;
+    job: string;
+    clockInTime: string;
+    clockOutTime?: string;
+  }): Promise<Shift | null> {
     const row = {
       user_id: data.user,
       job_id: data.job,

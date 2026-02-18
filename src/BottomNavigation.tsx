@@ -7,10 +7,7 @@ interface BottomNavigationProps {
 }
 
 /** Persistent bottom tab bar for shop floor: Home | Jobs | Clock In | Stock */
-const BottomNavigation: React.FC<BottomNavigationProps> = ({
-  currentView,
-  onNavigate,
-}) => {
+const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate }) => {
   const isHome = currentView === 'dashboard';
   const isJobs = currentView === 'job-list' || currentView === 'board-shop';
   const isClockIn = currentView === 'clock-in';
@@ -19,7 +16,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const navToJobs = () => onNavigate('board-shop');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1a1122]/95 pb-safe pt-2 backdrop-blur-lg">
+    <nav className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1a1122]/95 pt-2 backdrop-blur-lg">
       <div className="mx-auto flex max-w-md items-center justify-around px-3">
         <button
           type="button"
@@ -50,7 +47,9 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
           onClick={() => onNavigate('inventory')}
           className={`flex flex-col items-center gap-1 transition-colors ${isStock ? 'text-primary' : 'text-slate-400'}`}
         >
-          <span className={`material-symbols-outlined ${isStock ? 'fill-1' : ''}`}>inventory_2</span>
+          <span className={`material-symbols-outlined ${isStock ? 'fill-1' : ''}`}>
+            inventory_2
+          </span>
           <span className="text-[10px] font-bold uppercase">Stock</span>
         </button>
       </div>

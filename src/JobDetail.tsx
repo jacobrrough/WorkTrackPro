@@ -21,7 +21,17 @@ import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { useToast } from './Toast';
 import { StatusBadge } from './components/ui/StatusBadge';
 import { getLaborSuggestion } from './lib/laborSuggestion';
-import { formatJobCode, formatDashSummary, totalFromDashQuantities, formatSetComposition, calculateSetCompletion, getJobDisplayName, getJobDisplaySubline, getJobNameForSave, formatJobIdentityLine } from './lib/formatJob';
+import {
+  formatJobCode,
+  formatDashSummary,
+  totalFromDashQuantities,
+  formatSetComposition,
+  calculateSetCompletion,
+  getJobDisplayName,
+  getJobDisplaySubline,
+  getJobNameForSave,
+  formatJobIdentityLine,
+} from './lib/formatJob';
 import { partsService } from './services/api/parts';
 import { Part, PartVariant } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -128,7 +138,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const materialUpcharge = settings.materialUpcharge;
   const location = useLocation();
   const { state: navState, updateState } = useNavigation();
-  const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(job.dashQuantities || {});
+  const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(
+    job.dashQuantities || {}
+  );
   const [editForm, setEditForm] = useState({
     po: job.po || '',
     description: job.description || '',
@@ -146,11 +158,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
     invNumber: job.invNumber || '',
     rfqNumber: job.rfqNumber || '',
   });
-  
+
   // Store current pathname and scrollPositions in refs to avoid dependency issues
   const pathnameRef = useRef(location.pathname);
   const scrollPositionsRef = useRef(navState.scrollPositions);
-  
+
   useEffect(() => {
     pathnameRef.current = location.pathname;
     scrollPositionsRef.current = navState.scrollPositions;
@@ -163,7 +175,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       window.scrollTo(0, scrollPos);
     }
   }, [location.pathname, navState.scrollPositions]);
-  
+
   // Save scroll position on scroll (throttled)
   const handleScroll = useThrottle(() => {
     updateState({
@@ -178,7 +190,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
-  
+
   // Save last viewed job
   useEffect(() => {
     updateState({ lastViewedJobId: job.id });
@@ -206,73 +218,77 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [autoJobName, jobs, shifts]);
 
   // Calculate material costs from part materials × dashQuantities (live recalculation)
-  const calculateMaterialCosts = useCallback((part: Part, variantSuffix?: string) => {
-    const costs = new Map<string, number>();
-    
-    // If we have dashQuantities, calculate from variants × quantities
-    if (dashQuantities && Object.keys(dashQuantities).length > 0 && part.variants) {
-      // For each dash quantity, get variant materials and multiply
-      for (const [suffix, qty] of Object.entries(dashQuantities)) {
-        if (qty <= 0) continue;
-        const variant = part.variants.find(
-          (v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, '')
-        );
-        if (variant?.materials) {
-          for (const material of variant.materials) {
-            const invItem = inventory.find((i) => i.id === material.inventoryId);
-            if (invItem && invItem.price) {
-              const requiredQty = material.quantity * qty;
-              const cost = requiredQty * invItem.price * materialUpcharge;
-              const existing = costs.get(material.inventoryId) || 0;
-              costs.set(material.inventoryId, existing + cost);
-            }
-          }
-        }
-      }
-      
-      // Also add part-level per_set materials (multiply by total quantity)
-      const totalQty = totalFromDashQuantities(dashQuantities);
-      if (part.materials) {
-        for (const material of part.materials) {
-          if (material.usageType === 'per_set') {
-            const invItem = inventory.find((i) => i.id === material.inventoryId);
-            if (invItem && invItem.price) {
-              const requiredQty = material.quantity * totalQty;
-              const cost = requiredQty * invItem.price * materialUpcharge;
-              const existing = costs.get(material.inventoryId) || 0;
-              costs.set(material.inventoryId, existing + cost);
-            }
-          }
-        }
-      }
-    } else {
-      // Fallback: single variant or part-level materials
-      const variant = variantSuffix && part.variants
-        ? part.variants.find((v) => v.variantSuffix === variantSuffix)
-        : null;
-      const materials = variant?.materials || part.materials || [];
+  const calculateMaterialCosts = useCallback(
+    (part: Part, variantSuffix?: string) => {
+      const costs = new Map<string, number>();
 
-      for (const material of materials) {
-        const invItem = inventory.find((i) => i.id === material.inventoryId);
+      // If we have dashQuantities, calculate from variants × quantities
+      if (dashQuantities && Object.keys(dashQuantities).length > 0 && part.variants) {
+        // For each dash quantity, get variant materials and multiply
+        for (const [suffix, qty] of Object.entries(dashQuantities)) {
+          if (qty <= 0) continue;
+          const variant = part.variants.find(
+            (v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, '')
+          );
+          if (variant?.materials) {
+            for (const material of variant.materials) {
+              const invItem = inventory.find((i) => i.id === material.inventoryId);
+              if (invItem && invItem.price) {
+                const requiredQty = material.quantity * qty;
+                const cost = requiredQty * invItem.price * materialUpcharge;
+                const existing = costs.get(material.inventoryId) || 0;
+                costs.set(material.inventoryId, existing + cost);
+              }
+            }
+          }
+        }
+
+        // Also add part-level per_set materials (multiply by total quantity)
+        const totalQty = totalFromDashQuantities(dashQuantities);
+        if (part.materials) {
+          for (const material of part.materials) {
+            if (material.usageType === 'per_set') {
+              const invItem = inventory.find((i) => i.id === material.inventoryId);
+              if (invItem && invItem.price) {
+                const requiredQty = material.quantity * totalQty;
+                const cost = requiredQty * invItem.price * materialUpcharge;
+                const existing = costs.get(material.inventoryId) || 0;
+                costs.set(material.inventoryId, existing + cost);
+              }
+            }
+          }
+        }
+      } else {
+        // Fallback: single variant or part-level materials
+        const variant =
+          variantSuffix && part.variants
+            ? part.variants.find((v) => v.variantSuffix === variantSuffix)
+            : null;
+        const materials = variant?.materials || part.materials || [];
+
+        for (const material of materials) {
+          const invItem = inventory.find((i) => i.id === material.inventoryId);
+          if (invItem && invItem.price) {
+            const cost = material.quantity * invItem.price * materialUpcharge;
+            costs.set(material.inventoryId, cost);
+          }
+        }
+      }
+
+      // Add manually-assigned job-specific materials (not from part)
+      for (const jobMaterial of job.inventoryItems || []) {
+        const invItem = inventory.find((i) => i.id === jobMaterial.inventoryId);
         if (invItem && invItem.price) {
-          const cost = material.quantity * invItem.price * materialUpcharge;
-          costs.set(material.inventoryId, cost);
+          const existingCost = costs.get(jobMaterial.inventoryId) || 0;
+          const additionalCost = jobMaterial.quantity * invItem.price * materialUpcharge;
+          costs.set(jobMaterial.inventoryId, existingCost + additionalCost);
         }
       }
-    }
 
-    // Add manually-assigned job-specific materials (not from part)
-    for (const jobMaterial of job.inventoryItems || []) {
-      const invItem = inventory.find((i) => i.id === jobMaterial.inventoryId);
-      if (invItem && invItem.price) {
-        const existingCost = costs.get(jobMaterial.inventoryId) || 0;
-        const additionalCost = jobMaterial.quantity * invItem.price * materialUpcharge;
-        costs.set(jobMaterial.inventoryId, existingCost + additionalCost);
-      }
-    }
-
-    setMaterialCosts(costs);
-  }, [inventory, job.inventoryItems, dashQuantities, materialUpcharge]);
+      setMaterialCosts(costs);
+    },
+    [inventory, job.inventoryItems, dashQuantities, materialUpcharge]
+  );
 
   // Recalculate materials when dashQuantities change (live update)
   useEffect(() => {
@@ -282,34 +298,39 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [dashQuantities, linkedPart, calculateMaterialCosts]);
 
   // Load linked part
-  const loadLinkedPart = useCallback(async (partNumber: string) => {
-    if (!partNumber.trim()) {
-      setLinkedPart(null);
-      return;
-    }
-    setLoadingPart(true);
-    try {
-      const part = await partsService.getPartByNumber(partNumber);
-      if (part) {
-        const partWithVariants = await partsService.getPartWithVariants(part.id);
-        setLinkedPart(partWithVariants);
-        // Set selected variant if job has one
-        if (job.variantSuffix && partWithVariants.variants) {
-          const variant = partWithVariants.variants.find((v) => v.variantSuffix === job.variantSuffix);
-          setSelectedVariant(variant || null);
-        }
-        // Calculate material costs
-        calculateMaterialCosts(partWithVariants, job.variantSuffix);
-      } else {
+  const loadLinkedPart = useCallback(
+    async (partNumber: string) => {
+      if (!partNumber.trim()) {
         setLinkedPart(null);
+        return;
       }
-    } catch (error) {
-      console.error('Error loading part:', error);
-      setLinkedPart(null);
-    } finally {
-      setLoadingPart(false);
-    }
-  }, [job.variantSuffix, calculateMaterialCosts]);
+      setLoadingPart(true);
+      try {
+        const part = await partsService.getPartByNumber(partNumber);
+        if (part) {
+          const partWithVariants = await partsService.getPartWithVariants(part.id);
+          setLinkedPart(partWithVariants);
+          // Set selected variant if job has one
+          if (job.variantSuffix && partWithVariants.variants) {
+            const variant = partWithVariants.variants.find(
+              (v) => v.variantSuffix === job.variantSuffix
+            );
+            setSelectedVariant(variant || null);
+          }
+          // Calculate material costs
+          calculateMaterialCosts(partWithVariants, job.variantSuffix);
+        } else {
+          setLinkedPart(null);
+        }
+      } catch (error) {
+        console.error('Error loading part:', error);
+        setLinkedPart(null);
+      } finally {
+        setLoadingPart(false);
+      }
+    },
+    [job.variantSuffix, calculateMaterialCosts]
+  );
 
   // Load linked part when part number changes
   useEffect(() => {
@@ -355,7 +376,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
     let totalFromDash = 0;
     for (const [suffix, qty] of Object.entries(dashQuantities)) {
       if (qty <= 0) continue;
-      const variant = linkedPart.variants.find((v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, ''));
+      const variant = linkedPart.variants.find(
+        (v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, '')
+      );
       const hoursPerUnit = variant?.laborHours ?? linkedPart.laborHours ?? 0;
       const totalHours = hoursPerUnit * qty;
       totalFromDash += totalHours;
@@ -384,19 +407,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
       const searchPartNumber = partNumberSearch.trim();
       // Extract base part number (remove variant suffix if present)
       const basePartNumber = searchPartNumber.replace(/-\d+$/, '');
-      
+
       let part = await partsService.getPartByNumber(basePartNumber);
-      
+
       if (!part) {
         // Part doesn't exist - try to create it (if parts table exists)
         try {
           // Use edit form values if available, otherwise fall back to job values
           const partName = autoJobName || basePartNumber;
           const partDescription = editForm.description?.trim() || job.description || undefined;
-          const laborHours = editForm.laborHours 
-            ? parseFloat(editForm.laborHours) 
-            : (job.laborHours || undefined);
-          
+          const laborHours = editForm.laborHours
+            ? parseFloat(editForm.laborHours)
+            : job.laborHours || undefined;
+
           part = await partsService.createPart({
             partNumber: basePartNumber,
             name: partName,
@@ -406,7 +429,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
           showToast(`Created new part: ${part.name}`, 'success');
         } catch (createError: unknown) {
           const err = createError as { message?: string; code?: string };
-          const isPartsTableMissing = err?.message === 'PARTS_TABLE_NOT_FOUND' || err?.code === 'PGRST205';
+          const isPartsTableMissing =
+            err?.message === 'PARTS_TABLE_NOT_FOUND' || err?.code === 'PGRST205';
           if (isPartsTableMissing) {
             showToast(
               'Parts table not set up. Part number will save on the job. Run the database migration to enable parts linking.',
@@ -425,7 +449,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
           return;
         }
       }
-      
+
       // Link to the part (found or newly created)
       const partWithVariants = await partsService.getPartWithVariants(part.id);
       if (!partWithVariants) {
@@ -435,21 +459,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
         return;
       }
       setLinkedPart(partWithVariants);
-      
+
       // Keep part number field exactly as user typed (e.g. DASH-123-01), not base
       setEditForm((prev) => ({ ...prev, partNumber: searchPartNumber }));
-      
+
       // Pre-fill labor hours from part if not already set (job name is auto from convention)
       setEditForm((prev) => {
-        const updates: { partNumber: string; laborHours?: string } = { partNumber: searchPartNumber };
+        const updates: { partNumber: string; laborHours?: string } = {
+          partNumber: searchPartNumber,
+        };
         if (!prev.laborHours && part.laborHours) {
           updates.laborHours = part.laborHours.toString();
         }
         return { ...prev, ...updates };
       });
-      
+
       calculateMaterialCosts(partWithVariants);
-      
+
       if (part) {
         showToast(`Linked to part: ${part.name}`, 'success');
       }
@@ -460,7 +486,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
     } finally {
       setLoadingPart(false);
     }
-  }, [partNumberSearch, calculateMaterialCosts, job.description, job.laborHours, editForm.description, editForm.laborHours, autoJobName, showToast]);
+  }, [
+    partNumberSearch,
+    calculateMaterialCosts,
+    job.description,
+    job.laborHours,
+    editForm.description,
+    editForm.laborHours,
+    autoJobName,
+    showToast,
+  ]);
 
   // Recalculate material costs when variant or linked part changes
   useEffect(() => {
@@ -497,7 +532,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
       setLinkedPart(null);
       setSelectedVariant(null);
     }
-  }, [jobId, jobPartNumber, job.po, job.description, job.dueDate, job.ecd, job.qty, job.laborHours, job.status, job.isRush, job.binLocation, job.revision, job.variantSuffix, job.estNumber, job.invNumber, job.rfqNumber, loadLinkedPart]);
+  }, [
+    jobId,
+    jobPartNumber,
+    job.po,
+    job.description,
+    job.dueDate,
+    job.ecd,
+    job.qty,
+    job.laborHours,
+    job.status,
+    job.isRush,
+    job.binLocation,
+    job.revision,
+    job.variantSuffix,
+    job.estNumber,
+    job.invNumber,
+    job.rfqNumber,
+    loadLinkedPart,
+  ]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -587,7 +640,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       status: editForm.status,
       isRush: editForm.isRush,
       binLocation: editForm.binLocation?.trim() || undefined,
-      variantSuffix: selectedVariant ? selectedVariant.variantSuffix : (editForm.variantSuffix?.trim() || undefined),
+      variantSuffix: selectedVariant
+        ? selectedVariant.variantSuffix
+        : editForm.variantSuffix?.trim() || undefined,
       estNumber,
       invNumber: editForm.invNumber?.trim() || undefined,
       rfqNumber: editForm.rfqNumber?.trim() || undefined,
@@ -613,7 +668,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
             await onReloadJob?.();
           } catch (syncErr) {
             console.error('Material sync after save:', syncErr);
-            showToast('Job saved; material sync failed. Use Auto-assign materials to retry.', 'warning');
+            showToast(
+              'Job saved; material sync failed. Use Auto-assign materials to retry.',
+              'warning'
+            );
           }
         }
         setIsEditing(false);
@@ -826,35 +884,54 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       <main
         className="flex-1 overflow-y-auto pb-24"
-        style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingBottom: !isEditing ? '100px' : '24px' }}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          paddingBottom: !isEditing ? '100px' : '24px',
+        }}
       >
         {/* EDIT MODE - compact, sharp */}
         {isEditing ? (
           <div className="space-y-2 p-3 sm:p-3">
             {/* Set comparison + Auto-assign in one strip */}
-            {linkedPart && linkedPart.setComposition && Object.keys(linkedPart.setComposition).length > 0 && Object.keys(dashQuantities).length > 0 && (
-              <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-slate-400">Set:</span>
-                    <span className="font-medium text-white">{formatSetComposition(linkedPart.setComposition)}</span>
-                    <span className="text-slate-400">Ordered:</span>
-                    <span className="font-medium text-white">{formatDashSummary(dashQuantities)}</span>
-                  </div>
-                  {(() => {
-                    const { completeSets, percentage } = calculateSetCompletion(dashQuantities, linkedPart.setComposition);
-                    return (
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 rounded-sm bg-white/10 overflow-hidden">
-                          <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, percentage)}%` }} />
+            {linkedPart &&
+              linkedPart.setComposition &&
+              Object.keys(linkedPart.setComposition).length > 0 &&
+              Object.keys(dashQuantities).length > 0 && (
+                <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-slate-400">Set:</span>
+                      <span className="font-medium text-white">
+                        {formatSetComposition(linkedPart.setComposition)}
+                      </span>
+                      <span className="text-slate-400">Ordered:</span>
+                      <span className="font-medium text-white">
+                        {formatDashSummary(dashQuantities)}
+                      </span>
+                    </div>
+                    {(() => {
+                      const { completeSets, percentage } = calculateSetCompletion(
+                        dashQuantities,
+                        linkedPart.setComposition
+                      );
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-16 overflow-hidden rounded-sm bg-white/10">
+                            <div
+                              className="h-full bg-primary transition-all"
+                              style={{ width: `${Math.min(100, percentage)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-primary">
+                            {completeSets} sets ({percentage}%)
+                          </span>
                         </div>
-                        <span className="text-xs font-medium text-primary">{completeSets} sets ({percentage}%)</span>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {linkedPart && Object.values(dashQuantities).some((q) => q > 0) && (
               <button
@@ -863,28 +940,41 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 disabled={syncingMaterials}
                 className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
               >
-                <span className="material-symbols-outlined text-base">{syncingMaterials ? 'hourglass_empty' : 'inventory_2'}</span>
+                <span className="material-symbols-outlined text-base">
+                  {syncingMaterials ? 'hourglass_empty' : 'inventory_2'}
+                </span>
                 {syncingMaterials ? 'Syncing…' : 'Auto-assign materials from part'}
               </button>
             )}
 
             {/* Main fields - order: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Part Number</label>
                   <input
                     type="text"
                     value={editForm.partNumber || ''}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, partNumber: e.target.value }))}
-                    onBlur={(e) => { const v = e.currentTarget.value?.trim(); if (v) loadLinkedPart(v); }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-mono text-white focus:border-primary/50 focus:outline-none"
+                    onChange={(e) =>
+                      setEditForm((prev) => ({ ...prev, partNumber: e.target.value }))
+                    }
+                    onBlur={(e) => {
+                      const v = e.currentTarget.value?.trim();
+                      if (v) loadLinkedPart(v);
+                    }}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none"
                     placeholder="e.g., SK-F35-0911"
                   />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Rev</label>
-                  <input type="text" value={editForm.revision} onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="A, B, NC" />
+                  <input
+                    type="text"
+                    value={editForm.revision}
+                    onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="A, B, NC"
+                  />
                 </div>
                 <div className="col-span-2 sm:col-span-3 lg:col-span-2">
                   <label className="mb-0.5 block text-[11px] text-slate-400">Part Name</label>
@@ -898,86 +988,179 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       placeholder="Part name"
                     />
                   ) : (
-                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-500">— Link part above to edit</div>
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-500">
+                      — Link part above to edit
+                    </div>
                   )}
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">EST #</label>
-                  <input type="text" value={editForm.estNumber} onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="EST#" />
+                  <input
+                    type="text"
+                    value={editForm.estNumber}
+                    onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="EST#"
+                  />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">RFQ #</label>
-                  <input type="text" value={editForm.rfqNumber} onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="RFQ#" />
+                  <input
+                    type="text"
+                    value={editForm.rfqNumber}
+                    onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="RFQ#"
+                  />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">PO #</label>
-                  <input type="text" value={editForm.po} onChange={(e) => setEditForm({ ...editForm, po: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="PO" />
+                  <input
+                    type="text"
+                    value={editForm.po}
+                    onChange={(e) => setEditForm({ ...editForm, po: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="PO"
+                  />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">INV#</label>
-                  <input type="text" value={editForm.invNumber} onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="INV#" />
+                  <input
+                    type="text"
+                    value={editForm.invNumber}
+                    onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="INV#"
+                  />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Due</label>
-                  <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" />
+                  <input
+                    type="date"
+                    value={editForm.dueDate}
+                    onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">ECD</label>
-                  <input type="date" value={editForm.ecd} onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" />
+                  <input
+                    type="date"
+                    value={editForm.ecd}
+                    onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Status</label>
-                  <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as JobStatus })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none">
-                    {ALL_STATUSES.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
+                  <select
+                    value={editForm.status}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, status: e.target.value as JobStatus })
+                    }
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                  >
+                    {ALL_STATUSES.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Bin</label>
                   <div className="flex gap-1">
-                    <input type="text" value={editForm.binLocation} onChange={(e) => setEditForm({ ...editForm, binLocation: e.target.value.toUpperCase() })} className="flex-1 min-w-0 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-mono uppercase text-white focus:border-primary/50 focus:outline-none" placeholder="A4c" maxLength={10} />
-                    <button type="button" onClick={() => setShowBinLocationScanner(true)} className="rounded border border-primary/30 bg-primary/20 p-1.5 text-white hover:bg-primary/30" title="Scan"><span className="material-symbols-outlined text-sm">qr_code_scanner</span></button>
+                    <input
+                      type="text"
+                      value={editForm.binLocation}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, binLocation: e.target.value.toUpperCase() })
+                      }
+                      className="min-w-0 flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm uppercase text-white focus:border-primary/50 focus:outline-none"
+                      placeholder="A4c"
+                      maxLength={10}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBinLocationScanner(true)}
+                      className="rounded border border-primary/30 bg-primary/20 p-1.5 text-white hover:bg-primary/30"
+                      title="Scan"
+                    >
+                      <span className="material-symbols-outlined text-sm">qr_code_scanner</span>
+                    </button>
                   </div>
                 </div>
                 <div className="col-span-2 flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5">
                   <span className="text-[11px] font-medium text-white">Rush</span>
-                  <button type="button" onClick={() => setEditForm({ ...editForm, isRush: !editForm.isRush })} className={`h-5 w-9 rounded-sm transition-colors ${editForm.isRush ? 'bg-red-500' : 'bg-white/20'}`}>
-                    <div className={`h-4 w-4 transform rounded-sm bg-white transition-transform ${editForm.isRush ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, isRush: !editForm.isRush })}
+                    className={`h-5 w-9 rounded-sm transition-colors ${editForm.isRush ? 'bg-red-500' : 'bg-white/20'}`}
+                  >
+                    <div
+                      className={`h-4 w-4 transform rounded-sm bg-white transition-transform ${editForm.isRush ? 'translate-x-4' : 'translate-x-0.5'}`}
+                    />
                   </button>
                 </div>
                 <div className="col-span-2 sm:col-span-3 lg:col-span-4">
                   <label className="mb-0.5 block text-[11px] text-slate-400">Description</label>
-                  <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="Description..." />
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    rows={2}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="Description..."
+                  />
                 </div>
               </div>
             </div>
 
             {/* Variants & quantities - own section below Description */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Variants & quantities</h3>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                Variants & quantities
+              </h3>
               <div className="space-y-3">
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
                   {totalFromDashQuantities(dashQuantities) > 0 ? (
-                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">{formatDashSummary(dashQuantities)} → Total: {totalFromDashQuantities(dashQuantities)}</div>
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
+                      {formatDashSummary(dashQuantities)} → Total:{' '}
+                      {totalFromDashQuantities(dashQuantities)}
+                    </div>
                   ) : (
-                    <input type="text" value={editForm.qty} onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="Qty" />
+                    <input
+                      type="text"
+                      value={editForm.qty}
+                      onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
+                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                      placeholder="Qty"
+                    />
                   )}
                 </div>
                 {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-medium text-slate-400">Per variant</p>
                     {linkedPart.variants.map((variant) => {
-                      const qty = dashQuantities[variant.variantSuffix] ?? dashQuantities[`-${variant.variantSuffix}`] ?? 0;
+                      const qty =
+                        dashQuantities[variant.variantSuffix] ??
+                        dashQuantities[`-${variant.variantSuffix}`] ??
+                        0;
                       return (
                         <div key={variant.id} className="flex items-center gap-2">
-                          <label className="w-28 truncate text-xs text-slate-400">{linkedPart.partNumber}-{variant.variantSuffix}</label>
+                          <label className="w-28 truncate text-xs text-slate-400">
+                            {linkedPart.partNumber}-{variant.variantSuffix}
+                          </label>
                           <input
                             type="number"
                             min={0}
                             value={qty}
                             onChange={(e) => {
                               const v = parseInt(e.target.value, 10) || 0;
-                              setDashQuantities((prev) => ({ ...prev, [variant.variantSuffix]: v }));
+                              setDashQuantities((prev) => ({
+                                ...prev,
+                                [variant.variantSuffix]: v,
+                              }));
                             }}
                             className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                           />
@@ -991,37 +1174,68 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Labor & Materials intertwined with variants section */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Labor & materials</h3>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                Labor & materials
+              </h3>
               {currentUser.isAdmin ? (
                 <>
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 mb-3">
+                  <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div>
                       <div className="mb-0.5 flex items-center justify-between">
                         <label className="text-[11px] text-slate-400">Labor hrs</label>
                         {laborSuggestion != null && (
-                          <button type="button" onClick={() => setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })} className="text-[10px] text-primary hover:underline">Use {laborSuggestion.toFixed(1)}h</button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })
+                            }
+                            className="text-[10px] text-primary hover:underline"
+                          >
+                            Use {laborSuggestion.toFixed(1)}h
+                          </button>
                         )}
                       </div>
-                      <input type="number" step="0.1" min="0" value={editForm.laborHours} onChange={(e) => setEditForm({ ...editForm, laborHours: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="0" />
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={editForm.laborHours}
+                        onChange={(e) => setEditForm({ ...editForm, laborHours: e.target.value })}
+                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        placeholder="0"
+                      />
                     </div>
                     <div>
                       <label className="mb-0.5 block text-[11px] text-slate-400">Rate</label>
-                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white">${laborRate}/hr</div>
+                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white">
+                        ${laborRate}/hr
+                      </div>
                     </div>
                     <div>
                       <label className="mb-0.5 block text-[11px] text-slate-400">Labor $</label>
-                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">${laborCost.toFixed(2)}</div>
+                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
+                        ${laborCost.toFixed(2)}
+                      </div>
                     </div>
                     <div>
                       <label className="mb-0.5 block text-[11px] text-slate-400">Materials $</label>
-                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">${totalMaterialCost.toFixed(2)}</div>
+                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
+                        ${totalMaterialCost.toFixed(2)}
+                      </div>
                     </div>
                   </div>
-                  <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">Total ${(laborCost + totalMaterialCost).toFixed(2)}</div>
+                  <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
+                    Total ${(laborCost + totalMaterialCost).toFixed(2)}
+                  </div>
                   {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
                     <div className="mb-3 space-y-0.5">
                       {laborBreakdownByDash.entries.map(({ suffix, qty, totalHours }) => (
-                        <div key={suffix} className="flex justify-between text-[10px] text-slate-400">{suffix} ×{qty} = {totalHours.toFixed(1)}h</div>
+                        <div
+                          key={suffix}
+                          className="flex justify-between text-[10px] text-slate-400"
+                        >
+                          {suffix} ×{qty} = {totalHours.toFixed(1)}h
+                        </div>
                       ))}
                     </div>
                   )}
@@ -1029,16 +1243,26 @@ const JobDetail: React.FC<JobDetailProps> = ({
               ) : (
                 <div className="mb-3">
                   <label className="text-[11px] text-slate-400">Labor hours</label>
-                  <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white">{parseFloat(editForm.laborHours) || 0} h</div>
+                  <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white">
+                    {parseFloat(editForm.laborHours) || 0} h
+                  </div>
                 </div>
               )}
               <div className="border-t border-white/10 pt-2">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">Materials</span>
-                  <button type="button" onClick={() => setShowAddInventory(true)} className="text-[11px] font-medium text-primary hover:underline">+ Add</button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddInventory(true)}
+                    className="text-[11px] font-medium text-primary hover:underline"
+                  >
+                    + Add
+                  </button>
                 </div>
                 {!job.inventoryItems?.length ? (
-                  <p className="text-xs text-slate-400">No materials assigned. Add from part or manually.</p>
+                  <p className="text-xs text-slate-400">
+                    No materials assigned. Add from part or manually.
+                  </p>
                 ) : (
                   <ul className="space-y-1.5">
                     {job.inventoryItems.map((item) => {
@@ -1055,7 +1279,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           >
                             {item.inventoryName || invItem?.name || 'Unknown'}
                           </button>
-                          <span className="ml-2 text-[10px] text-slate-400">{item.quantity} {item.unit}</span>
+                          <span className="ml-2 text-[10px] text-slate-400">
+                            {item.quantity} {item.unit}
+                          </span>
                           <button
                             type="button"
                             onClick={() => item.id && onRemoveInventory(job.id, item.id)}
@@ -1074,11 +1300,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {linkedPart && (
               <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                <h3 className="mb-1.5 text-xs font-semibold text-white">Part BOM {linkedPart.variants?.length ? `(${linkedPart.partNumber})` : ''}</h3>
+                <h3 className="mb-1.5 text-xs font-semibold text-white">
+                  Part BOM {linkedPart.variants?.length ? `(${linkedPart.partNumber})` : ''}
+                </h3>
                 {(() => {
                   const materials = selectedVariant?.materials || linkedPart.materials || [];
                   if (materials.length === 0) {
-                    return <p className="text-xs text-slate-400">No materials defined for this part.</p>;
+                    return (
+                      <p className="text-xs text-slate-400">No materials defined for this part.</p>
+                    );
                   }
                   return (
                     <div className="space-y-1.5">
@@ -1091,24 +1321,26 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             key={material.id}
                             className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex min-w-0 items-center gap-2">
                               {invItem ? (
                                 <button
                                   type="button"
                                   onClick={() => onNavigate('inventory-detail', invItem.id)}
-                                  className="truncate text-xs font-medium text-primary hover:underline text-left"
+                                  className="truncate text-left text-xs font-medium text-primary hover:underline"
                                 >
                                   {materialName}
                                 </button>
                               ) : (
-                                <span className="truncate text-xs font-medium text-white">{materialName}</span>
+                                <span className="truncate text-xs font-medium text-white">
+                                  {materialName}
+                                </span>
                               )}
-                              <span className="text-[10px] text-slate-400 shrink-0">
+                              <span className="shrink-0 text-[10px] text-slate-400">
                                 {material.quantity} {material.unit}
                               </span>
                             </div>
                             {currentUser.isAdmin && cost > 0 && (
-                              <span className="text-xs font-semibold text-white shrink-0">
+                              <span className="shrink-0 text-xs font-semibold text-white">
                                 ${cost.toFixed(2)}
                               </span>
                             )}
@@ -1150,7 +1382,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         Rush
                       </span>
                     )}
-                    <span className="text-xs font-bold text-primary">{formatJobCode(job.jobCode)}</span>
+                    <span className="text-xs font-bold text-primary">
+                      {formatJobCode(job.jobCode)}
+                    </span>
                   </div>
                   <h2 className="text-lg font-bold leading-tight text-white">
                     {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
@@ -1183,36 +1417,46 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <div>
                       <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
                       <p className="mb-2 text-sm font-medium text-white">
-                        {formatDashSummary(job.dashQuantities)} → {totalFromDashQuantities(job.dashQuantities)} total
+                        {formatDashSummary(job.dashQuantities)} →{' '}
+                        {totalFromDashQuantities(job.dashQuantities)} total
                       </p>
-                      {linkedPart && linkedPart.setComposition && Object.keys(linkedPart.setComposition).length > 0 && (
-                        <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
-                          <div className="mb-1 flex items-center justify-between text-xs">
-                            <span className="text-slate-300">Set:</span>
-                            <span className="font-medium text-white">{formatSetComposition(linkedPart.setComposition)}</span>
-                          </div>
-                          {(() => {
-                            const { completeSets, percentage } = calculateSetCompletion(job.dashQuantities, linkedPart.setComposition);
-                            return (
-                              <>
-                                <div className="mb-1 flex items-center justify-between text-xs">
-                                  <span className="text-slate-300">Complete:</span>
-                                  <span className="font-bold text-primary">{completeSets}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1 h-1.5 rounded-sm bg-white/10 overflow-hidden">
-                                    <div
-                                      className="h-full bg-primary transition-all"
-                                      style={{ width: `${Math.min(100, percentage)}%` }}
-                                    />
+                      {linkedPart &&
+                        linkedPart.setComposition &&
+                        Object.keys(linkedPart.setComposition).length > 0 && (
+                          <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
+                            <div className="mb-1 flex items-center justify-between text-xs">
+                              <span className="text-slate-300">Set:</span>
+                              <span className="font-medium text-white">
+                                {formatSetComposition(linkedPart.setComposition)}
+                              </span>
+                            </div>
+                            {(() => {
+                              const { completeSets, percentage } = calculateSetCompletion(
+                                job.dashQuantities,
+                                linkedPart.setComposition
+                              );
+                              return (
+                                <>
+                                  <div className="mb-1 flex items-center justify-between text-xs">
+                                    <span className="text-slate-300">Complete:</span>
+                                    <span className="font-bold text-primary">{completeSets}</span>
                                   </div>
-                                  <span className="text-[10px] font-medium text-slate-300">{percentage}%</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-1.5 flex-1 overflow-hidden rounded-sm bg-white/10">
+                                      <div
+                                        className="h-full bg-primary transition-all"
+                                        style={{ width: `${Math.min(100, percentage)}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-slate-300">
+                                      {percentage}%
+                                    </span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                     </div>
                   )}
                 </div>
@@ -1263,7 +1507,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <p className="text-sm font-bold text-white">
                     {job.dashQuantities && Object.keys(job.dashQuantities).length > 0
                       ? `${formatDashSummary(job.dashQuantities)} (${totalFromDashQuantities(job.dashQuantities)})`
-                      : (job.qty || 'N/A')}
+                      : job.qty || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -1730,7 +1974,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
           </>
         )}
       </main>
-
 
       {/* Add Inventory Modal */}
       {showAddInventory && (

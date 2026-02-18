@@ -823,7 +823,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                         <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>
                         <p className="text-sm text-slate-400">{h.reason}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {(h as any).profiles?.name || (h as any).expand?.user?.name || 'System'} • {formatHistoryDate((h as any).created_at ?? (h as any).created)}
+                          {(h as any).profiles?.name || (h as any).expand?.user?.name || 'System'} •{' '}
+                          {formatHistoryDate((h as any).created_at ?? (h as any).created)}
                         </p>
                       </div>
                       <div className="ml-3 text-right">

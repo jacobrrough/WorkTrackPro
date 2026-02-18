@@ -27,10 +27,7 @@ export const checklistService = {
     const chunkSize = 80; // avoid PostgREST URL/query limits
     for (let i = 0; i < jobIds.length; i += chunkSize) {
       const chunk = jobIds.slice(i, i + chunkSize);
-      const { data, error } = await supabase
-        .from('checklists')
-        .select('*')
-        .in('job_id', chunk);
+      const { data, error } = await supabase.from('checklists').select('*').in('job_id', chunk);
       if (error) continue;
       for (const row of data ?? []) {
         const jobId = row.job_id as string;
@@ -43,13 +40,22 @@ export const checklistService = {
   },
 
   async getTemplates(): Promise<Checklist[]> {
-    const { data, error } = await supabase.from('checklists').select('*').is('job_id', null).order('status');
+    const { data, error } = await supabase
+      .from('checklists')
+      .select('*')
+      .is('job_id', null)
+      .order('status');
     if (error) return [];
     return (data ?? []).map((row) => mapRowToChecklist(row as unknown as Record<string, unknown>));
   },
 
   async getByJobAndStatus(jobId: string, status: JobStatus): Promise<Checklist | null> {
-    const { data, error } = await supabase.from('checklists').select('*').eq('job_id', jobId).eq('status', status).maybeSingle();
+    const { data, error } = await supabase
+      .from('checklists')
+      .select('*')
+      .eq('job_id', jobId)
+      .eq('status', status)
+      .maybeSingle();
     if (error || !data) return null;
     return mapRowToChecklist(data as unknown as Record<string, unknown>);
   },
@@ -64,7 +70,11 @@ export const checklistService = {
     return (data ?? []).map((row) => mapRowToChecklist(row as unknown as Record<string, unknown>));
   },
 
-  async create(data: { job_id: string | null; status: JobStatus; items: ChecklistItem[] }): Promise<Checklist | null> {
+  async create(data: {
+    job_id: string | null;
+    status: JobStatus;
+    items: ChecklistItem[];
+  }): Promise<Checklist | null> {
     const { data: created, error } = await supabase
       .from('checklists')
       .insert({ job_id: data.job_id || null, status: data.status, items: data.items })
@@ -74,11 +84,19 @@ export const checklistService = {
     return mapRowToChecklist(created as unknown as Record<string, unknown>);
   },
 
-  async update(id: string, data: { status?: JobStatus; items?: ChecklistItem[] }): Promise<Checklist | null> {
+  async update(
+    id: string,
+    data: { status?: JobStatus; items?: ChecklistItem[] }
+  ): Promise<Checklist | null> {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.status != null) row.status = data.status;
     if (data.items != null) row.items = data.items;
-    const { data: updated, error } = await supabase.from('checklists').update(row).eq('id', id).select('*').single();
+    const { data: updated, error } = await supabase
+      .from('checklists')
+      .update(row)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error) return null;
     return mapRowToChecklist(updated as unknown as Record<string, unknown>);
   },
@@ -110,7 +128,9 @@ export const checklistHistoryService = {
       .order('created_at', { ascending: false });
     if (error) return [];
     const userIds = [...new Set((data ?? []).map((r) => r.user_id))];
-    const { data: profiles } = userIds.length ? await supabase.from('profiles').select('id, name, initials').in('id', userIds) : { data: [] };
+    const { data: profiles } = userIds.length
+      ? await supabase.from('profiles').select('id, name, initials').in('id', userIds)
+      : { data: [] };
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
     return (data ?? []).map((r) => ({
       id: r.id,
@@ -125,7 +145,13 @@ export const checklistHistoryService = {
     }));
   },
 
-  async create(data: { checklist_id: string; user_id: string; item_index: number; item_text: string; checked: boolean }): Promise<boolean> {
+  async create(data: {
+    checklist_id: string;
+    user_id: string;
+    item_index: number;
+    item_text: string;
+    checked: boolean;
+  }): Promise<boolean> {
     const { error } = await supabase.from('checklist_history').insert(data);
     return !error;
   },

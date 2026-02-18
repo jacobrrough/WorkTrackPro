@@ -23,9 +23,7 @@ import { jobService } from './pocketbase';
 function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <NavigationProvider>
-      <SettingsProvider>
-        {children}
-      </SettingsProvider>
+      <SettingsProvider>{children}</SettingsProvider>
     </NavigationProvider>
   );
 }
@@ -68,20 +66,23 @@ export default function App() {
   const [id, setId] = useState<string | undefined>(undefined);
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
 
-  const handleNavigate = useCallback((nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
-    setView(nextView);
-    if (nextId === undefined) {
-      setId(undefined);
-    } else if (typeof nextId === 'string') {
-      setId(nextId);
-    } else if (nextId && 'jobId' in nextId && nextId.jobId) {
-      setId(nextId.jobId);
-    } else if (nextId && 'partId' in nextId && nextId.partId) {
-      setId(nextId.partId);
-    } else {
-      setId(undefined);
-    }
-  }, []);
+  const handleNavigate = useCallback(
+    (nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
+      setView(nextView);
+      if (nextId === undefined) {
+        setId(undefined);
+      } else if (typeof nextId === 'string') {
+        setId(nextId);
+      } else if (nextId && 'jobId' in nextId && nextId.jobId) {
+        setId(nextId.jobId);
+      } else if (nextId && 'partId' in nextId && nextId.partId) {
+        setId(nextId.partId);
+      } else {
+        setId(undefined);
+      }
+    },
+    []
+  );
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
@@ -95,19 +96,15 @@ export default function App() {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
       const ok = await clockIn(job.id);
-      return ok ? { success: true, message: 'Clocked in' } : { success: false, message: 'Failed to clock in' };
+      return ok
+        ? { success: true, message: 'Clocked in' }
+        : { success: false, message: 'Failed to clock in' };
     },
     [getJobByCode, clockIn]
   );
 
   if (!currentUser && !isLoading) {
-    return (
-      <Login
-        onLogin={handleLogin}
-        error={authError}
-        isLoading={isLoading}
-      />
-    );
+    return <Login onLogin={handleLogin} error={authError} isLoading={isLoading} />;
   }
 
   if (isLoading) {
@@ -384,10 +381,7 @@ export default function App() {
   if (view === 'admin-settings') {
     return (
       <AppShell>
-        <AdminSettings
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-        />
+        <AdminSettings onNavigate={handleNavigate} onBack={() => handleNavigate('dashboard')} />
       </AppShell>
     );
   }

@@ -32,12 +32,12 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   calculateAvailable,
 }) => {
   const { state: navState, updateState } = useNavigation();
-  
+
   // Use navigation context for expanded categories, fallback to local state
   const expandedCategories = useMemo(() => {
     return new Set(navState.expandedCategories || []);
   }, [navState.expandedCategories]);
-  
+
   const toggleCategory = (categoryId: string) => {
     const newExpanded = expandedCategories.has(categoryId)
       ? navState.expandedCategories.filter((id) => id !== categoryId)
@@ -58,7 +58,9 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   // When search is active, auto-expand categories that have matching items so results are visible
   useEffect(() => {
     if (searchActive) {
-      const withItems = CATEGORIES.filter((cat) => (categorizedInventory[cat.id]?.length ?? 0) > 0).map((c) => c.id);
+      const withItems = CATEGORIES.filter(
+        (cat) => (categorizedInventory[cat.id]?.length ?? 0) > 0
+      ).map((c) => c.id);
       updateState({ expandedCategories: withItems });
     }
   }, [searchActive, categorizedInventory, updateState]);

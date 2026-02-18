@@ -42,10 +42,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
         {/* Company Logo - fallback icon if image missing */}
         <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-md bg-white shadow-xl">
           {logoError ? (
-            <span
-              className="material-symbols-outlined text-5xl text-primary"
-              aria-hidden
-            >
+            <span className="material-symbols-outlined text-5xl text-primary" aria-hidden>
               precision_manufacturing
             </span>
           ) : (
@@ -171,9 +168,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
           )}
         </button>
 
-        <p className="mt-6 text-center text-xs text-[#ad93c8]/60">
-          Connected to Supabase
-        </p>
+        <p className="mt-6 text-center text-xs text-[#ad93c8]/60">Connected to Supabase</p>
       </form>
 
       <div className="mt-8 flex items-center gap-1">

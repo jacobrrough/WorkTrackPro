@@ -14,12 +14,7 @@ interface PartDetailProps {
   isAdmin: boolean;
 }
 
-const PartDetail: React.FC<PartDetailProps> = ({
-  partId,
-  onNavigate,
-  onBack,
-  isAdmin,
-}) => {
+const PartDetail: React.FC<PartDetailProps> = ({ partId, onNavigate, onBack, isAdmin }) => {
   const { showToast } = useToast();
   const [part, setPart] = useState<Part | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +101,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             <button
               type="button"
               onClick={onBack}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white touch-manipulation"
+              className="flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
               aria-label="Back"
             >
               <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -170,7 +165,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsEditing(true)}
-                    className="flex h-10 w-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white touch-manipulation"
+                    className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
                     aria-label="Edit part"
                   >
                     <span className="material-symbols-outlined text-xl">edit</span>
@@ -197,7 +192,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
         </h2>
         {!part.variants?.length ? (
           <Card>
-            <p className="text-slate-400">No variants. Add variants to define materials per option.</p>
+            <p className="text-slate-400">
+              No variants. Add variants to define materials per option.
+            </p>
           </Card>
         ) : (
           <div className="space-y-3">
@@ -206,9 +203,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 <p className="font-bold text-white">
                   {part.partNumber}-{variant.variantSuffix}
                 </p>
-                {variant.name && (
-                  <p className="text-sm text-slate-400">{variant.name}</p>
-                )}
+                {variant.name && <p className="text-sm text-slate-400">{variant.name}</p>}
                 {variant.materials?.length ? (
                   <ul className="mt-3 space-y-2">
                     {variant.materials.map((mat: PartMaterial) => (
@@ -216,7 +211,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         <button
                           type="button"
                           onClick={() => handleMaterialClick(mat.inventoryId)}
-                          className="min-w-0 flex-1 truncate text-left text-primary hover:underline touch-manipulation"
+                          className="min-w-0 flex-1 touch-manipulation truncate text-left text-primary hover:underline"
                         >
                           {mat.inventoryName ?? 'Unknown'}
                         </button>

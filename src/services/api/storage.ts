@@ -13,10 +13,16 @@ export function getInventoryImagePublicUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
-export async function uploadAttachment(jobId: string, file: File, isAdminOnly: boolean): Promise<string | null> {
+export async function uploadAttachment(
+  jobId: string,
+  file: File,
+  isAdminOnly: boolean
+): Promise<string | null> {
   const ext = file.name.split('.').pop() ?? 'bin';
   const path = `${jobId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET_ATTACHMENTS).upload(path, file, { upsert: false });
+  const { error } = await supabase.storage
+    .from(BUCKET_ATTACHMENTS)
+    .upload(path, file, { upsert: false });
   if (error) {
     console.error('Upload attachment failed:', error);
     return null;
@@ -34,7 +40,11 @@ export async function uploadAttachment(jobId: string, file: File, isAdminOnly: b
 }
 
 export async function deleteAttachmentRecord(attachmentId: string): Promise<boolean> {
-  const { data: att } = await supabase.from('attachments').select('storage_path').eq('id', attachmentId).single();
+  const { data: att } = await supabase
+    .from('attachments')
+    .select('storage_path')
+    .eq('id', attachmentId)
+    .single();
   if (att?.storage_path) {
     await supabase.storage.from(BUCKET_ATTACHMENTS).remove([att.storage_path]);
   }

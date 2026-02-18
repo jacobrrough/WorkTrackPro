@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
-import { formatJobCode, formatDashSummary, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
+import {
+  formatJobCode,
+  formatDashSummary,
+  getJobDisplayName,
+  formatJobIdentityLine,
+} from '@/lib/formatJob';
 import { checklistService } from './pocketbase';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -94,7 +99,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const positions = scrollPositionsSnapshot.current;
     const timeoutId = setTimeout(() => {
       const savedHorizontalScroll = positions[horizontalScrollKey];
-      if (boardContainerRef.current && savedHorizontalScroll !== undefined && savedHorizontalScroll > 0) {
+      if (
+        boardContainerRef.current &&
+        savedHorizontalScroll !== undefined &&
+        savedHorizontalScroll > 0
+      ) {
         boardContainerRef.current.scrollLeft = savedHorizontalScroll;
       }
       columns.forEach((column) => {
@@ -123,18 +132,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   }, 100);
 
   // Throttled vertical scroll handler for columns
-  const handleColumnScroll = useThrottle((e: React.UIEvent<HTMLDivElement>, columnId: JobStatus) => {
-    const container = e.currentTarget;
-    if (!container) return;
-    
-    const columnKey = `${boardViewKey}-${columnId}`;
-    updateState({
-      scrollPositions: {
-        ...scrollPositionsRef.current,
-        [columnKey]: container.scrollTop,
-      },
-    });
-  }, 100);
+  const handleColumnScroll = useThrottle(
+    (e: React.UIEvent<HTMLDivElement>, columnId: JobStatus) => {
+      const container = e.currentTarget;
+      if (!container) return;
+
+      const columnKey = `${boardViewKey}-${columnId}`;
+      updateState({
+        scrollPositions: {
+          ...scrollPositionsRef.current,
+          [columnKey]: container.scrollTop,
+        },
+      });
+    },
+    100
+  );
 
   // Load checklist states for all jobs
   useEffect(() => {
@@ -450,7 +462,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         onDragStart={(e) => canDragCards && handleDragStart(e, job)}
                         onClick={(e) => {
                           // Don't navigate if clicking on menu or menu is open
-                          if (menuOpenFor === job.id || (e.target as HTMLElement).closest('[aria-label="Job menu"]')) {
+                          if (
+                            menuOpenFor === job.id ||
+                            (e.target as HTMLElement).closest('[aria-label="Job menu"]')
+                          ) {
                             return;
                           }
                           onNavigate('job-detail', job.id);
@@ -470,7 +485,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             </button>
 
                             {menuOpenFor === job.id && (
-                              <div 
+                              <div
                                 className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-2xl backdrop-blur-sm"
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => e.stopPropagation()}
@@ -500,7 +515,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                     onMouseDown={(e) => e.stopPropagation()}
                                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
                                   >
-                                    <span className="material-symbols-outlined text-base">payments</span>
+                                    <span className="material-symbols-outlined text-base">
+                                      payments
+                                    </span>
                                     Mark as Paid
                                   </button>
                                 )}
@@ -515,7 +532,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                   onMouseDown={(e) => e.stopPropagation()}
                                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
                                 >
-                                  <span className="material-symbols-outlined text-base">delete</span>
+                                  <span className="material-symbols-outlined text-base">
+                                    delete
+                                  </span>
                                   Delete
                                 </button>
                               </div>
@@ -542,7 +561,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         <p className="mb-1.5 pr-5">
                           {(job.ecd || job.dueDate) && (
                             <span
-                              className={`rounded px-1.5 py-0.5 text-xs font-medium ${(job.dueDate && new Date(job.dueDate) < new Date()) ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
+                              className={`rounded px-1.5 py-0.5 text-xs font-medium ${job.dueDate && new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
                             >
                               {formatDateOnly(job.ecd || job.dueDate).replace(/, \d{4}/, '')}
                             </span>
@@ -601,7 +620,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
-        <div 
+        <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
@@ -613,7 +632,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           aria-labelledby="delete-dialog-title"
         >
           <div className="w-full max-w-sm rounded-sm border border-white/10 bg-[#1a1122] p-4 shadow-2xl">
-            <h3 id="delete-dialog-title" className="mb-2 text-lg font-bold text-white">Delete Job?</h3>
+            <h3 id="delete-dialog-title" className="mb-2 text-lg font-bold text-white">
+              Delete Job?
+            </h3>
             <p className="mb-4 text-sm text-slate-400">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button

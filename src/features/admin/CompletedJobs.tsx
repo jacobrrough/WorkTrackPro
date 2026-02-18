@@ -14,12 +14,7 @@ interface CompletedJobsProps {
  * Completed Jobs - Archive of paid/completed jobs (read-only).
  * Shows jobs with status 'paid' or 'projectCompleted'.
  */
-const CompletedJobs: React.FC<CompletedJobsProps> = ({
-  jobs,
-  currentUser,
-  onNavigate,
-  onBack,
-}) => {
+const CompletedJobs: React.FC<CompletedJobsProps> = ({ jobs, currentUser, onNavigate, onBack }) => {
   const completedJobs = useMemo(() => {
     return jobs
       .filter((job) => job.status === 'paid' || job.status === 'projectCompleted')
@@ -76,7 +71,9 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
                   <div className="flex-1">
                     <div className="mb-1 flex items-center gap-2">
                       <span className="font-bold text-white">#{job.jobCode}</span>
-                      <span className="text-sm font-medium text-slate-300">{getJobDisplayName(job)}</span>
+                      <span className="text-sm font-medium text-slate-300">
+                        {getJobDisplayName(job)}
+                      </span>
                       <span
                         className={`rounded px-2 py-0.5 text-xs font-medium ${
                           job.status === 'paid'

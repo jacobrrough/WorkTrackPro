@@ -26,9 +26,7 @@ export function computeRequiredMaterials(
   for (const [suffix, qty] of Object.entries(dashQuantities)) {
     if (qty <= 0) continue;
     const normalized = normalizeSuffix(suffix);
-    const variant = part.variants?.find(
-      (v) => normalizeSuffix(v.variantSuffix) === normalized
-    );
+    const variant = part.variants?.find((v) => normalizeSuffix(v.variantSuffix) === normalized);
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
       if (material.usageType !== 'per_variant') continue;

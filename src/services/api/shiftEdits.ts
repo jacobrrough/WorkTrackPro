@@ -29,7 +29,12 @@ export const shiftEditService = {
       ? await supabase.from('profiles').select('id, name').in('id', editorIds)
       : { data: [] };
     const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.name]));
-    return (data ?? []).map((row) => mapRowToShiftEdit(row as unknown as Record<string, unknown>, nameMap.get(row.edited_by) ?? undefined));
+    return (data ?? []).map((row) =>
+      mapRowToShiftEdit(
+        row as unknown as Record<string, unknown>,
+        nameMap.get(row.edited_by) ?? undefined
+      )
+    );
   },
 
   async create(data: {

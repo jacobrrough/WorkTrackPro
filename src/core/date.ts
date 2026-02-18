@@ -168,9 +168,7 @@ export const formatDateOnly = (dateStr: string | null | undefined): string => {
 
   try {
     const datePart =
-      dateStr.includes('T') || dateStr.includes(' ')
-        ? dateStr.split(/[T ]/)[0]
-        : dateStr;
+      dateStr.includes('T') || dateStr.includes(' ') ? dateStr.split(/[T ]/)[0] : dateStr;
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
       console.warn('Invalid date format:', dateStr);

@@ -37,7 +37,10 @@ export function findSimilarJobs(searchTerm: string, jobs: Job[]): Job[] {
  * @param shifts All shifts (will be filtered by jobId)
  * @returns Total hours from completed shifts
  */
-export function calculateJobHoursFromShifts(jobId: string, shifts: Array<{ job: string; clockInTime: string; clockOutTime?: string }>): number {
+export function calculateJobHoursFromShifts(
+  jobId: string,
+  shifts: Array<{ job: string; clockInTime: string; clockOutTime?: string }>
+): number {
   const jobShifts = shifts.filter((s) => s.job === jobId && s.clockOutTime);
   return jobShifts.reduce((total, shift) => {
     return total + durationMs(shift.clockInTime, shift.clockOutTime!) / 3600000;

@@ -73,7 +73,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate, onBack }) => 
                   placeholder="175"
                 />
                 <p className="mt-1 text-[10px] text-slate-500">
-                  Used to auto-calculate labor cost (hours × rate). Manual prices are not overwritten.
+                  Used to auto-calculate labor cost (hours × rate). Manual prices are not
+                  overwritten.
                 </p>
               </div>
               <div>

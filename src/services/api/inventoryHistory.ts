@@ -52,7 +52,9 @@ export const inventoryHistoryService = {
   async getAllHistory(limit = 100): Promise<unknown[]> {
     const { data, error } = await supabase
       .from('inventory_history')
-      .select('*, profiles:user_id ( name, initials ), inventory:inventory_id ( name ), jobs:related_job_id ( name )')
+      .select(
+        '*, profiles:user_id ( name, initials ), inventory:inventory_id ( name ), jobs:related_job_id ( name )'
+      )
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) {

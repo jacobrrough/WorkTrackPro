@@ -25,7 +25,10 @@ function mapRowToQuote(row: Record<string, unknown>): Quote {
 
 export const quoteService = {
   async getAllQuotes(): Promise<Quote[]> {
-    const { data, error } = await supabase.from('quotes').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('quotes')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row) => mapRowToQuote(row as unknown as Record<string, unknown>));
   },
@@ -76,7 +79,12 @@ export const quoteService = {
     if (data.lineItems !== undefined) row.line_items = data.lineItems;
     if (data.referenceJobIds !== undefined) row.reference_job_ids = data.referenceJobIds;
     if (data.notes !== undefined) row.notes = data.notes;
-    const { data: updated, error } = await supabase.from('quotes').update(row).eq('id', id).select('*').single();
+    const { data: updated, error } = await supabase
+      .from('quotes')
+      .update(row)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error) {
       console.error('Update quote error:', error);
       return null;

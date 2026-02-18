@@ -27,7 +27,9 @@ export function formatDashSummary(
 /**
  * Total quantity from dash quantities.
  */
-export function totalFromDashQuantities(dashQuantities: Record<string, number> | undefined | null): number {
+export function totalFromDashQuantities(
+  dashQuantities: Record<string, number> | undefined | null
+): number {
   if (!dashQuantities) return 0;
   return Object.values(dashQuantities).reduce((sum, q) => sum + q, 0);
 }
@@ -35,7 +37,9 @@ export function totalFromDashQuantities(dashQuantities: Record<string, number> |
 /**
  * Format set composition for display (e.g. { "01": 2, "05": 1 } → "2× -01, 1× -05").
  */
-export function formatSetComposition(setComposition: Record<string, number> | undefined | null): string {
+export function formatSetComposition(
+  setComposition: Record<string, number> | undefined | null
+): string {
   if (!setComposition || Object.keys(setComposition).length === 0) return '';
   return Object.entries(setComposition)
     .filter(([, qty]) => qty > 0)
@@ -159,7 +163,10 @@ export function getJobDisplaySubline(job: {
   if (job.status === 'paid') return null;
   const po = (job.po ?? '').trim();
   if (!po) return null;
-  const line = partAndRev((job.partNumber ?? '').trim() || undefined, (job.revision ?? '').trim() || undefined);
+  const line = partAndRev(
+    (job.partNumber ?? '').trim() || undefined,
+    (job.revision ?? '').trim() || undefined
+  );
   return line || null;
 }
 
@@ -223,7 +230,11 @@ export function calculateSetCompletion(
   let minSets = Infinity;
   for (const [suffix, requiredPerSet] of Object.entries(setComposition)) {
     if (requiredPerSet <= 0) continue;
-    const ordered = dashQuantities[suffix] || dashQuantities[`-${suffix}`] || dashQuantities[suffix.replace(/^-/, '')] || 0;
+    const ordered =
+      dashQuantities[suffix] ||
+      dashQuantities[`-${suffix}`] ||
+      dashQuantities[suffix.replace(/^-/, '')] ||
+      0;
     const setsPossible = Math.floor(ordered / requiredPerSet);
     minSets = Math.min(minSets, setsPossible);
   }
@@ -233,7 +244,8 @@ export function calculateSetCompletion(
   // Calculate percentage: sum of ordered quantities / sum of required quantities for one set
   const totalOrdered = Object.values(dashQuantities).reduce((sum, q) => sum + q, 0);
   const totalRequiredPerSet = Object.values(setComposition).reduce((sum, q) => sum + q, 0);
-  const percentage = totalRequiredPerSet > 0 ? Math.min(100, (totalOrdered / totalRequiredPerSet) * 100) : 0;
+  const percentage =
+    totalRequiredPerSet > 0 ? Math.min(100, (totalOrdered / totalRequiredPerSet) * 100) : 0;
 
   return { completeSets: minSets, percentage: Math.round(percentage) };
 }

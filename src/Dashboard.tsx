@@ -100,7 +100,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             onClick={() => onNavigate('clock-in')}
             className="flex flex-col items-start gap-3 rounded-sm border border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20 p-3 text-left transition-colors active:opacity-90"
           >
-            <span className="material-symbols-outlined text-3xl text-amber-500">qr_code_scanner</span>
+            <span className="material-symbols-outlined text-3xl text-amber-500">
+              qr_code_scanner
+            </span>
             <div>
               <p className="font-bold text-white">Scan</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
@@ -156,7 +158,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             onClick={() => onNavigate('parts')}
             className="flex flex-col items-start gap-3 rounded-sm border border-emerald-500/30 bg-gradient-to-br from-emerald-600/20 to-teal-600/20 p-3 text-left transition-colors active:opacity-90"
           >
-            <span className="material-symbols-outlined text-3xl text-emerald-500">precision_manufacturing</span>
+            <span className="material-symbols-outlined text-3xl text-emerald-500">
+              precision_manufacturing
+            </span>
             <div>
               <p className="font-bold text-white">Parts</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">

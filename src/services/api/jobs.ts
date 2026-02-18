@@ -26,11 +26,14 @@ type AttachmentRow = {
   is_admin_only: boolean;
 };
 
-function mapJobRow(row: Record<string, unknown>, expand?: {
-  job_inventory?: JobInventoryRow[];
-  comments?: (CommentRow & { user_name?: string; user_initials?: string })[];
-  attachments?: AttachmentRow[];
-}): Job {
+function mapJobRow(
+  row: Record<string, unknown>,
+  expand?: {
+    job_inventory?: JobInventoryRow[];
+    comments?: (CommentRow & { user_name?: string; user_initials?: string })[];
+    attachments?: AttachmentRow[];
+  }
+): Job {
   const job: Job = {
     id: row.id as string,
     jobCode: row.job_code as number,
@@ -42,8 +45,8 @@ function mapJobRow(row: Record<string, unknown>, expand?: {
     dueDate: row.due_date as string | undefined,
     laborHours: row.labor_hours as number | undefined,
     active: (row.active as boolean) ?? true,
-    status: (row.status as string) as Job['status'],
-    boardType: (row.board_type as string) as Job['boardType'],
+    status: row.status as string as Job['status'],
+    boardType: row.board_type as string as Job['boardType'],
     attachments: [],
     attachmentCount: 0,
     comments: [],
@@ -113,13 +116,19 @@ async function fetchJobExpand(jobId: string): Promise<{
   attachments: AttachmentRow[];
 }> {
   const [jiRes, comRes, attRes] = await Promise.all([
-    supabase.from('job_inventory').select('id, job_id, inventory_id, quantity, unit').eq('job_id', jobId),
+    supabase
+      .from('job_inventory')
+      .select('id, job_id, inventory_id, quantity, unit')
+      .eq('job_id', jobId),
     supabase
       .from('comments')
       .select('id, job_id, user_id, text, created_at')
       .eq('job_id', jobId)
       .order('created_at', { ascending: true }),
-    supabase.from('attachments').select('id, job_id, filename, storage_path, is_admin_only').eq('job_id', jobId),
+    supabase
+      .from('attachments')
+      .select('id, job_id, filename, storage_path, is_admin_only')
+      .eq('job_id', jobId),
   ]);
 
   const job_inventory = (jiRes.data ?? []) as JobInventoryRow[];
@@ -131,7 +140,9 @@ async function fetchJobExpand(jobId: string): Promise<{
     userIds.length > 0
       ? await supabase.from('profiles').select('id, name, initials').in('id', userIds)
       : { data: [] };
-  const profileMap = new Map((profiles.data ?? []).map((p: { id: string; name?: string; initials?: string }) => [p.id, p]));
+  const profileMap = new Map(
+    (profiles.data ?? []).map((p: { id: string; name?: string; initials?: string }) => [p.id, p])
+  );
   const comments = commentsRaw.map((c) => {
     const p = profileMap.get(c.user_id) as { name?: string; initials?: string } | undefined;
     return { ...c, user_name: p?.name, user_initials: p?.initials };
@@ -164,7 +175,11 @@ export const jobService = {
   },
 
   async getJobByCode(jobCode: number): Promise<Job | null> {
-    const { data: row, error } = await supabase.from('jobs').select('*').eq('job_code', jobCode).single();
+    const { data: row, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('job_code', jobCode)
+      .single();
     if (error || !row) return null;
     const expand = await fetchJobExpand(row.id as string);
     return mapJobRow(row as Record<string, unknown>, expand);
@@ -201,7 +216,11 @@ export const jobService = {
     };
     const { data: created, error } = await supabase.from('jobs').insert(row).select('*').single();
     if (error) return null;
-    return mapJobRow(created as Record<string, unknown>, { job_inventory: [], comments: [], attachments: [] });
+    return mapJobRow(created as Record<string, unknown>, {
+      job_inventory: [],
+      comments: [],
+      attachments: [],
+    });
   },
 
   async getNextJobCode(): Promise<number | null> {
@@ -223,9 +242,11 @@ export const jobService = {
     if (data.qty !== undefined) row.qty = data.qty ?? null;
     if (data.description !== undefined) row.description = data.description ?? null;
     if (data.ecd !== undefined) row.ecd = data.ecd && String(data.ecd).trim() ? data.ecd : null;
-    if (data.dueDate !== undefined) row.due_date = data.dueDate && String(data.dueDate).trim() ? data.dueDate : null;
+    if (data.dueDate !== undefined)
+      row.due_date = data.dueDate && String(data.dueDate).trim() ? data.dueDate : null;
     if (data.laborHours !== undefined) {
-      const num = typeof data.laborHours === 'number' ? data.laborHours : parseFloat(String(data.laborHours));
+      const num =
+        typeof data.laborHours === 'number' ? data.laborHours : parseFloat(String(data.laborHours));
       row.labor_hours = Number.isFinite(num) ? num : null;
     }
     if (data.active !== undefined) row.active = data.active;
@@ -244,14 +265,22 @@ export const jobService = {
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
     row.updated_at = new Date().toISOString();
-    const { data: updated, error } = await supabase.from('jobs').update(row).eq('id', jobId).select('*').single();
+    const { data: updated, error } = await supabase
+      .from('jobs')
+      .update(row)
+      .eq('id', jobId)
+      .select('*')
+      .single();
     if (error) return null;
     const expand = await fetchJobExpand(jobId);
     return mapJobRow(updated as Record<string, unknown>, expand);
   },
 
   async updateJobStatus(jobId: string, status: JobStatus): Promise<boolean> {
-    const { error } = await supabase.from('jobs').update({ status, updated_at: new Date().toISOString() }).eq('id', jobId);
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', jobId);
     return !error;
   },
 
@@ -262,7 +291,11 @@ export const jobService = {
       .select('id, job_id, user_id, text, created_at')
       .single();
     if (error) return null;
-    const profiles = await supabase.from('profiles').select('id, name, initials').eq('id', userId).single();
+    const profiles = await supabase
+      .from('profiles')
+      .select('id, name, initials')
+      .eq('id', userId)
+      .single();
     const p = profiles.data as { name?: string; initials?: string } | null;
     return {
       id: row.id,
@@ -285,7 +318,12 @@ export const jobService = {
     return !error;
   },
 
-  async addJobInventory(jobId: string, inventoryId: string, quantity: number, unit: string): Promise<boolean> {
+  async addJobInventory(
+    jobId: string,
+    inventoryId: string,
+    quantity: number,
+    unit: string
+  ): Promise<boolean> {
     const { error } = await supabase.from('job_inventory').insert({
       job_id: jobId,
       inventory_id: inventoryId,
@@ -295,7 +333,11 @@ export const jobService = {
     return !error;
   },
 
-  async updateJobInventory(jobInventoryId: string, quantity: number, unit: string): Promise<boolean> {
+  async updateJobInventory(
+    jobInventoryId: string,
+    quantity: number,
+    unit: string
+  ): Promise<boolean> {
     const { error } = await supabase
       .from('job_inventory')
       .update({ quantity, unit: unit || 'units' })

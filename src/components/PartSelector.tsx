@@ -22,7 +22,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 }) => {
   const { showToast } = useToast();
   const [search, setSearch] = useState(initialPartNumber);
-  const [part, setPart] = useState<Part & { variants?: PartVariant[] } | null>(null);
+  const [part, setPart] = useState<(Part & { variants?: PartVariant[] }) | null>(null);
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
 
@@ -33,43 +33,48 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     }
   }, [initialPartNumber]);
 
-  const loadPart = useCallback(async (partNumber: string) => {
-    if (!partNumber.trim()) {
-      setPart(null);
-      setDashQuantities({});
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const found = await partsService.getPartByNumber(partNumber.trim());
-      if (found) {
-        const fullPart = await partsService.getPartWithVariants(found.id);
-        setPart(fullPart);
-
-        // Initialize: use initialDashQuantities when editing, else 0 per variant
-        const initial: Record<string, number> = {};
-        fullPart.variants?.forEach((v) => {
-          const key = v.variantSuffix;
-          const fromInitial = initialDashQuantities
-            ? (initialDashQuantities[key] ?? initialDashQuantities[`-${key}`] ?? initialDashQuantities[key.replace(/^-/, '')])
-            : undefined;
-          initial[key] = fromInitial ?? 0;
-        });
-        setDashQuantities(initial);
-        showToast(`Found part: ${fullPart.name}`, 'success');
-      } else {
+  const loadPart = useCallback(
+    async (partNumber: string) => {
+      if (!partNumber.trim()) {
         setPart(null);
         setDashQuantities({});
+        return;
       }
-    } catch (error) {
-      console.error('Error loading part:', error);
-      setPart(null);
-      setDashQuantities({});
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast, initialDashQuantities]);
+
+      setLoading(true);
+      try {
+        const found = await partsService.getPartByNumber(partNumber.trim());
+        if (found) {
+          const fullPart = await partsService.getPartWithVariants(found.id);
+          setPart(fullPart);
+
+          // Initialize: use initialDashQuantities when editing, else 0 per variant
+          const initial: Record<string, number> = {};
+          fullPart.variants?.forEach((v) => {
+            const key = v.variantSuffix;
+            const fromInitial = initialDashQuantities
+              ? (initialDashQuantities[key] ??
+                initialDashQuantities[`-${key}`] ??
+                initialDashQuantities[key.replace(/^-/, '')])
+              : undefined;
+            initial[key] = fromInitial ?? 0;
+          });
+          setDashQuantities(initial);
+          showToast(`Found part: ${fullPart.name}`, 'success');
+        } else {
+          setPart(null);
+          setDashQuantities({});
+        }
+      } catch (error) {
+        console.error('Error loading part:', error);
+        setPart(null);
+        setDashQuantities({});
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showToast, initialDashQuantities]
+  );
 
   const handleSearch = () => {
     loadPart(search);
@@ -97,7 +102,10 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
   const handleFillFullSet = () => {
     if (!part?.variants?.length) return;
-    const setComp = part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
+    const setComp =
+      part.setComposition && Object.keys(part.setComposition).length > 0
+        ? part.setComposition
+        : null;
     const newQuantities: Record<string, number> = {};
     part.variants.forEach((v) => {
       const qty = setComp?.[v.variantSuffix] ?? setComp?.[v.variantSuffix.replace(/^-/, '')] ?? 1;
@@ -143,7 +151,9 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           {hasSetComposition && (
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-1.5">
               <span className="text-xs text-slate-400">One set:</span>
-              <span className="text-xs font-medium text-white">{formatSetComposition(part.setComposition)}</span>
+              <span className="text-xs font-medium text-white">
+                {formatSetComposition(part.setComposition)}
+              </span>
               <button
                 type="button"
                 onClick={handleFillFullSet}
