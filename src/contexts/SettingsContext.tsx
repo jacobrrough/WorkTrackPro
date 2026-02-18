@@ -22,7 +22,9 @@ function loadSettings(): AdminSettings {
         materialUpcharge: Number(parsed.materialUpcharge) || defaults.materialUpcharge,
       };
     }
-  } catch (_) {}
+  } catch {
+    /* ignore parse errors */
+  }
   return { ...defaults };
 }
 

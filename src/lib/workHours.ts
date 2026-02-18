@@ -31,7 +31,7 @@ export function getStartDateFromDueDateAndHours(
 
   const due = typeof dueDate === 'string' ? new Date(dueDate + 'T12:00:00') : dueDate;
   let remainingHours = laborHours;
-  let currentDate = new Date(due);
+  const currentDate = new Date(due);
 
   // Work backward from due date
   while (remainingHours > 0) {

@@ -124,14 +124,14 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
       if (inMaterials && /^[A-Z][a-z]+[:：]\s*$/.test(line) && !materialKeywords.some((p) => p.test(line))) {
         const nextLines = lines.slice(i + 1, i + 3).join(' ').trim();
-        if (!nextLines || !/[\d•\-\*]/.test(nextLines)) {
+        if (!nextLines || !/[\d•\-*]/.test(nextLines)) {
           break;
         }
       }
 
-      if (inMaterials || /^[•\-\*\d.\s]/.test(line)) {
-        let cleaned = line
-          .replace(/^[•\-\*\d.)]\s*/, '')
+      if (inMaterials || /^[•\-*\d.\s]/.test(line)) {
+        const cleaned = line
+          .replace(/^[•\-*\d.)]\s*/, '')
           .replace(/^\((\d+)\)\s*/, '$1 ')
           .trim();
 
@@ -155,8 +155,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         // Clean up material name
         materialName = materialName
           .replace(/\s+/g, ' ')
-          .replace(/^[-•\*\s]+/, '')
-          .replace(/[-•\*\s]+$/, '')
+          .replace(/^[-•*\s]+/, '')
+          .replace(/[-•*\s]+$/, '')
           .trim()
           .replace(/^(need|needs|required|requires?|use|uses?|with)\s+/i, '')
           .replace(/\s+(needed|required|used)$/i, '');
