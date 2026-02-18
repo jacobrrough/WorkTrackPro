@@ -4,7 +4,6 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  environment = { VITE_SUPABASE_URL = "$VITE_SUPABASE_URL", VITE_SUPABASE_ANON_KEY = "$VITE_SUPABASE_ANON_KEY" }
 
 # SPA: all routes -> index.html
 [[redirects]]
