@@ -14,6 +14,7 @@ export {
   quoteService,
   checklistService,
   checklistHistoryService,
+  partsService,
   subscriptions,
 } from './services/api';
 export { supabase as default } from './services/api';

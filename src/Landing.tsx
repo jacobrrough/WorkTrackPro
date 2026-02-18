@@ -11,14 +11,14 @@ const Landing: React.FC = () => {
       {/* Header: logo left, Employee Login top right */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-white">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-amber-500/20 text-amber-400">
             <span className="material-symbols-outlined text-xl">precision_manufacturing</span>
           </span>
           Rough Cut Manufacturing
         </Link>
         <Link
           to="/login"
-          className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-amber-400 active:scale-[0.98]"
+          className="flex items-center gap-2 rounded-sm bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-amber-400 active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-lg">login</span>
           Employee Login
@@ -42,7 +42,7 @@ const Landing: React.FC = () => {
         <section className="border-t border-white/10 px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-4xl gap-12 sm:grid-cols-2">
             <div>
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-sm bg-amber-500/20 text-amber-400">
                 <span className="material-symbols-outlined text-2xl">build</span>
               </div>
               <h2 className="text-xl font-semibold text-white">What we do</h2>
@@ -51,7 +51,7 @@ const Landing: React.FC = () => {
               </p>
             </div>
             <div>
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-sm bg-amber-500/20 text-amber-400">
                 <span className="material-symbols-outlined text-2xl">groups</span>
               </div>
               <h2 className="text-xl font-semibold text-white">Our team</h2>

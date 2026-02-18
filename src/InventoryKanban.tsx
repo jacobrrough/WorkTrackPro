@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { InventoryItem, InventoryCategory } from '@/core/types';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface InventoryKanbanProps {
   inventory: InventoryItem[];
@@ -30,8 +31,19 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   isAdmin,
   calculateAvailable,
 }) => {
-  // Start with all categories COLLAPSED
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const { state: navState, updateState } = useNavigation();
+  
+  // Use navigation context for expanded categories, fallback to local state
+  const expandedCategories = useMemo(() => {
+    return new Set(navState.expandedCategories || []);
+  }, [navState.expandedCategories]);
+  
+  const toggleCategory = (categoryId: string) => {
+    const newExpanded = expandedCategories.has(categoryId)
+      ? navState.expandedCategories.filter((id) => id !== categoryId)
+      : [...navState.expandedCategories, categoryId];
+    updateState({ expandedCategories: newExpanded });
+  };
 
   const categorizedInventory = useMemo(() => {
     const result: Record<string, InventoryItem[]> = {};
@@ -46,31 +58,17 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   // When search is active, auto-expand categories that have matching items so results are visible
   useEffect(() => {
     if (searchActive) {
-      const withItems = new Set(
-        CATEGORIES.filter((cat) => (categorizedInventory[cat.id]?.length ?? 0) > 0).map((c) => c.id)
-      );
-      setExpandedCategories(withItems);
+      const withItems = CATEGORIES.filter((cat) => (categorizedInventory[cat.id]?.length ?? 0) > 0).map((c) => c.id);
+      updateState({ expandedCategories: withItems });
     }
-  }, [searchActive, categorizedInventory]);
+  }, [searchActive, categorizedInventory, updateState]);
 
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(categoryId)) {
-        next.delete(categoryId);
-      } else {
-        next.add(categoryId);
-      }
-      return next;
-    });
-  };
-
-  const collapseAll = () => setExpandedCategories(new Set());
-  const expandAll = () => setExpandedCategories(new Set(CATEGORIES.map((c) => c.id)));
+  const collapseAll = () => updateState({ expandedCategories: [] });
+  const expandAll = () => updateState({ expandedCategories: CATEGORIES.map((c) => c.id) });
 
   return (
     <div className="flex h-full flex-col bg-background-dark">
-      <div className="border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-4">
+      <div className="border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-3">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="text-white transition-colors hover:text-primary">
@@ -81,7 +79,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
           {isAdmin && (
             <button
               onClick={onAddItem}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-white"
+              className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2 font-bold text-white"
             >
               <span className="material-symbols-outlined">add</span>
               Add Item
@@ -108,7 +106,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
             <div key={category.id} className="border-b border-white/10">
               <button
                 onClick={() => toggleCategory(category.id)}
-                className="sticky top-0 z-10 w-full border-b border-white/10 bg-background-light p-4 transition-colors hover:bg-background-light/80"
+                className="sticky top-0 z-10 w-full border-b border-white/10 bg-background-light p-3 transition-colors hover:bg-background-light/80"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -116,7 +114,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                       {isExpanded ? 'expand_more' : 'chevron_right'}
                     </span>
                     <h2 className="text-lg font-bold text-white">{category.label}</h2>
-                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-bold text-white">
+                    <span className="rounded-sm bg-white/10 px-2 py-1 text-xs font-bold text-white">
                       {items.length}
                     </span>
                   </div>
@@ -124,7 +122,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
               </button>
 
               {isExpanded && (
-                <div className="space-y-3 p-4">
+                <div className="space-y-3 p-3">
                   {items.length === 0 ? (
                     <p className="py-4 text-center text-sm text-slate-500">
                       No items in this category
@@ -142,7 +140,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                         <button
                           key={item.id}
                           onClick={() => onNavigate(item.id)}
-                          className="w-full rounded-xl border border-white/10 bg-card-dark p-4 text-left transition-colors hover:bg-card-dark/80"
+                          className="w-full rounded-sm border border-white/10 bg-card-dark p-3 text-left transition-colors hover:bg-card-dark/80"
                         >
                           <div className="mb-3 flex items-start justify-between">
                             <div className="flex-1">

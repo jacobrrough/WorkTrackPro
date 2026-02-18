@@ -35,9 +35,9 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg',
+    sm: 'px-2.5 py-1 text-sm min-h-[36px]',
+    md: 'px-3 py-1.5 text-base min-h-[40px]',
+    lg: 'px-4 py-2 text-lg min-h-[44px]',
   };
 
   const iconSizeClasses = {
@@ -47,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const baseClasses =
-    'font-bold rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark';
+    'font-bold rounded-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark';
 
   return (
     <button

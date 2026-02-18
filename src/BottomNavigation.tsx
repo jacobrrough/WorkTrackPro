@@ -1,87 +1,61 @@
-import React, { memo } from 'react';
+import React from 'react';
 import { ViewState } from '@/core/types';
 
 interface BottomNavigationProps {
   currentView: ViewState;
   onNavigate: (view: ViewState) => void;
-  isAdmin?: boolean;
 }
 
-interface NavItem {
-  view: ViewState;
-  icon: string;
-  label: string;
-  adminOnly?: boolean;
-}
+/** Persistent bottom tab bar for shop floor: Home | Jobs | Clock In | Stock */
+const BottomNavigation: React.FC<BottomNavigationProps> = ({
+  currentView,
+  onNavigate,
+}) => {
+  const isHome = currentView === 'dashboard';
+  const isJobs = currentView === 'job-list' || currentView === 'board-shop';
+  const isClockIn = currentView === 'clock-in';
+  const isStock = currentView === 'inventory' || currentView === 'inventory-detail';
 
-const NAV_ITEMS: NavItem[] = [
-  { view: 'dashboard', icon: 'home', label: 'Home' },
-  { view: 'board-shop', icon: 'view_kanban', label: 'Jobs' },
-  { view: 'inventory', icon: 'inventory_2', label: 'Inventory' },
-  { view: 'time-reports', icon: 'schedule', label: 'Time' },
-];
+  const navToJobs = () => onNavigate('board-shop');
 
-// Memoize to prevent re-renders when parent state changes
-export const BottomNavigation: React.FC<BottomNavigationProps> = memo(
-  ({ currentView, onNavigate, isAdmin = false }) => {
-    // Determine which view is "active" for highlighting
-    const getActiveView = (): ViewState => {
-      // Map related views to their parent nav item
-      const viewMappings: Partial<Record<ViewState, ViewState>> = {
-        'job-detail': 'board-shop',
-        'board-admin': 'board-shop',
-        'admin-create-job': 'board-shop',
-        'inventory-detail': 'inventory',
-        'add-inventory': 'inventory',
-        'needs-ordering': 'inventory',
-        'clock-in': 'dashboard',
-        'admin-console': 'dashboard',
-      };
-      return viewMappings[currentView] || currentView;
-    };
-
-    const activeView = getActiveView();
-
-    return (
-      <nav
-        className="safe-area-pb border-t border-white/10 bg-background-dark px-2 py-3"
-        role="navigation"
-        aria-label="Main navigation"
-      >
-        {/* Responsive max-width to match app container */}
-        <div className="mx-auto flex max-w-md items-center justify-around md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
-          {NAV_ITEMS.map((item) => {
-            if (item.adminOnly && !isAdmin) return null;
-
-            const isActive = activeView === item.view;
-
-            return (
-              <button
-                key={item.view}
-                onClick={() => onNavigate(item.view)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onNavigate(item.view);
-                  }
-                }}
-                className={`flex flex-col items-center gap-1 rounded-lg px-3 py-1 transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark md:px-6 ${
-                  isActive ? 'text-primary' : 'text-slate-400 hover:text-white active:scale-95'
-                } `}
-                aria-label={item.label}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span className="material-symbols-outlined text-2xl">{item.icon}</span>
-                <span className="text-[10px] font-medium md:text-xs">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-    );
-  }
-);
-
-BottomNavigation.displayName = 'BottomNavigation';
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1a1122]/95 pb-safe pt-2 backdrop-blur-lg">
+      <div className="mx-auto flex max-w-md items-center justify-around px-3">
+        <button
+          type="button"
+          onClick={() => onNavigate('dashboard')}
+          className={`flex flex-col items-center gap-1 transition-colors ${isHome ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <span className={`material-symbols-outlined ${isHome ? 'fill-1' : ''}`}>grid_view</span>
+          <span className="text-[10px] font-bold uppercase">Home</span>
+        </button>
+        <button
+          type="button"
+          onClick={navToJobs}
+          className={`flex flex-col items-center gap-1 transition-colors ${isJobs ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <span className={`material-symbols-outlined ${isJobs ? 'fill-1' : ''}`}>assignment</span>
+          <span className="text-[10px] font-bold uppercase">Jobs</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('clock-in')}
+          className={`flex flex-col items-center gap-1 transition-colors ${isClockIn ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <span className={`material-symbols-outlined ${isClockIn ? 'fill-1' : ''}`}>schedule</span>
+          <span className="text-[10px] font-bold uppercase">Clock In</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('inventory')}
+          className={`flex flex-col items-center gap-1 transition-colors ${isStock ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <span className={`material-symbols-outlined ${isStock ? 'fill-1' : ''}`}>inventory_2</span>
+          <span className="text-[10px] font-bold uppercase">Stock</span>
+        </button>
+      </div>
+    </nav>
+  );
+};
 
 export default BottomNavigation;

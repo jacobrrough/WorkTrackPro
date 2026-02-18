@@ -65,7 +65,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="rounded-lg bg-white/5 px-3 py-2 text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-sm bg-white/5 px-3 py-2 text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Previous page"
         >
           <span className="material-symbols-outlined text-lg">chevron_left</span>
@@ -86,7 +86,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               <button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
+                className={`rounded-sm px-3 py-2 text-sm font-bold transition-colors ${
                   isActive ? 'bg-primary text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
                 }`}
                 aria-label={`Go to page ${pageNum}`}
@@ -101,7 +101,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="rounded-lg bg-white/5 px-3 py-2 text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-sm bg-white/5 px-3 py-2 text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Next page"
         >
           <span className="material-symbols-outlined text-lg">chevron_right</span>

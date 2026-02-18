@@ -15,12 +15,12 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const paddingClasses = {
     none: '',
-    sm: 'p-2',
-    md: 'p-4',
-    lg: 'p-6',
+    sm: 'p-1.5',
+    md: 'p-3',
+    lg: 'p-4',
   };
 
-  const baseClasses = 'bg-card-dark rounded-xl border border-white/10 shadow-lg';
+  const baseClasses = 'bg-card-dark rounded-sm border border-white/10 shadow';
   const interactiveClasses = onClick
     ? 'cursor-pointer hover:border-primary/30 transition-colors active:scale-[0.98]'
     : '';

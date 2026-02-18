@@ -176,7 +176,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
 
   // Full view for detail page
   return (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+    <div className="rounded-sm border border-white/10 bg-white/5 p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">checklist</span>
@@ -241,14 +241,14 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
       {/* History Modal */}
       {showHistory && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3"
           onClick={() => setShowHistory(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-card-dark"
+            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-sm border border-white/10 bg-card-dark"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/10 p-4">
+            <div className="flex items-center justify-between border-b border-white/10 p-3">
               <h3 className="font-bold text-white">Checklist History</h3>
               <button
                 onClick={() => setShowHistory(false)}
@@ -257,7 +257,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-4">
+            <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-3">
               {history.length === 0 ? (
                 <p className="py-8 text-center text-slate-400">No history yet</p>
               ) : (
@@ -265,7 +265,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                   {history.map((record) => (
                     <div
                       key={record.id}
-                      className="rounded-lg border border-white/10 bg-white/5 p-3"
+                      className="rounded-sm border border-white/10 bg-white/5 p-3"
                     >
                       <div className="mb-2 flex items-start justify-between">
                         <div>

@@ -205,7 +205,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => setShowOnOrder(false)}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+            className={`flex-1 rounded-sm px-4 py-2 text-sm font-bold transition-all ${
               !showOnOrder
                 ? 'border border-red-500/30 bg-red-500/20 text-red-400'
                 : 'border border-transparent bg-white/5 text-white/60'
@@ -218,7 +218,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
           </button>
           <button
             onClick={() => setShowOnOrder(true)}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+            className={`flex-1 rounded-sm px-4 py-2 text-sm font-bold transition-all ${
               showOnOrder
                 ? 'border border-blue-500/30 bg-blue-500/20 text-blue-400'
                 : 'border border-transparent bg-white/5 text-white/60'
@@ -258,7 +258,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
               return (
                 <div
                   key={group.vendor}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-card-dark"
+                  className="overflow-hidden rounded-md border border-white/10 bg-card-dark"
                 >
                   {/* Vendor Header */}
                   <button
@@ -278,7 +278,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                       </p>
                     </div>
                     {!showOnOrder && selectedCount > 0 && (
-                      <span className="rounded-full bg-primary/20 px-2 py-1 text-xs font-bold text-primary">
+                      <span className="rounded-sm bg-primary/20 px-2 py-1 text-xs font-bold text-primary">
                         {selectedCount} selected
                       </span>
                     )}
@@ -303,7 +303,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                             <button
                               onClick={() => handleMarkSelectedOrdered(group.vendor, group.items)}
                               disabled={isProcessing}
-                              className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white"
+                              className="flex items-center gap-1 rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-white"
                             >
                               <span className="material-symbols-outlined text-sm">check</span>
                               Mark {selectedCount} Ordered
@@ -392,7 +392,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                             <button
                               onClick={() => handleReceiveOrder(item)}
                               disabled={isProcessing}
-                              className="flex items-center gap-1 rounded-xl bg-green-500/20 px-3 py-2 text-sm font-bold text-green-400"
+                              className="flex items-center gap-1 rounded-sm bg-green-500/20 px-3 py-2 text-sm font-bold text-green-400"
                             >
                               <span className="material-symbols-outlined text-sm">inventory</span>
                               Receive
@@ -400,7 +400,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                           ) : (
                             /* Order Quantity + Mark Ordered */
                             <div className="flex items-center gap-2">
-                              <div className="flex items-center rounded-lg bg-white/10">
+                              <div className="flex items-center rounded-sm bg-white/10">
                                 <button
                                   onClick={() =>
                                     handleQuantityChange(
@@ -436,7 +436,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                               <button
                                 onClick={() => handleMarkOrdered(item)}
                                 disabled={isProcessing}
-                                className="rounded-xl bg-primary/20 px-3 py-2 text-sm font-bold text-primary"
+                                className="rounded-sm bg-primary/20 px-3 py-2 text-sm font-bold text-primary"
                               >
                                 Order
                               </button>
@@ -469,7 +469,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                   .forEach((item) => handleMarkOrdered(item));
               }}
               disabled={isProcessing}
-              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-white"
+              className="flex items-center gap-2 rounded-sm bg-primary px-6 py-3 font-bold text-white"
             >
               {isProcessing ? (
                 <>

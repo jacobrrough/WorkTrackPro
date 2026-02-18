@@ -122,7 +122,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
                 if (errors.name) setErrors({ ...errors, name: null });
               }}
               placeholder="e.g., Red Fabric, Foam Sheet"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               autoFocus
               aria-invalid={!!errors.name}
             />
@@ -135,7 +135,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description..."
               rows={3}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full resize-none rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </FormField>
 
@@ -144,7 +144,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value as InventoryCategory)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="material">Material</option>
               <option value="foam">Foam</option>
@@ -166,7 +166,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
                 if (errors.unit) setErrors({ ...errors, unit: null });
               }}
               placeholder="e.g., ft, lbs, ea, yards"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.unit}
             />
           </FormField>
@@ -182,7 +182,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
                 if (errors.price) setErrors({ ...errors, price: null });
               }}
               placeholder="0.00"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.price}
             />
           </FormField>
@@ -208,7 +208,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
                 if (errors.inStock) setErrors({ ...errors, inStock: null });
               }}
               placeholder="0"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.inStock}
             />
           </FormField>
@@ -229,7 +229,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
                 if (errors.reorderPoint) setErrors({ ...errors, reorderPoint: null });
               }}
               placeholder="0"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.reorderPoint}
             />
           </FormField>
@@ -246,7 +246,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               placeholder="Optional"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </FormField>
 
@@ -257,7 +257,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
               value={binLocation}
               onChange={(e) => setBinLocation(e.target.value)}
               placeholder="e.g., A3, B12, Shelf 2"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </FormField>
 
@@ -268,7 +268,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
               value={vendor}
               onChange={(e) => setVendor(e.target.value)}
               placeholder="Optional"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </FormField>
         </Card>

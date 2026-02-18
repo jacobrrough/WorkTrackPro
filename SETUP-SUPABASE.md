@@ -12,7 +12,7 @@ If your site is **blank/black** or Supabase shows **no tables**, do these in ord
 4. Open the file **`supabase/migrations/20250216000001_initial_schema.sql`** from this repo (in your project folder or on GitHub). Copy **all** of its contents.
 5. Paste into the Supabase SQL Editor.
 6. Click **Run** (or press Ctrl+Enter).
-7. You should see “Success. No rows returned.” Tables (e.g. `profiles`, `jobs`, `inventory`, `shifts`, …) will appear under **Table Editor**.
+7. You should see “Success. No rows returned.” Tables (e.g. `profiles`, `jobs`, `inventory`, `shifts`, `parts`, `part_variants`, `part_materials`, …) will appear under **Table Editor**. The migration includes the **parts** tables so job part-number linking and material explosion work.
 
 ---
 

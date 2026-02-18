@@ -256,7 +256,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-background-dark">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-md border border-white/10 bg-background-dark">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <h3 className="text-lg font-bold text-white">
@@ -282,7 +282,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
           {mode === 'manual' && (
             <div className="space-y-4">
               {/* Instructions */}
-              <div className="rounded-xl border border-primary/30 bg-primary/10 p-4">
+              <div className="rounded-sm border border-primary/30 bg-primary/10 p-4">
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-xl text-primary">info</span>
                   <div className="flex-1">
@@ -310,7 +310,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                   value={inputValue}
                   onChange={(e) => handleInputChange(e.target.value)}
                   placeholder="e.g., A4c"
-                  className={`h-12 w-full rounded-lg border bg-white/10 px-4 font-mono text-lg uppercase text-white ${
+                  className={`h-12 w-full rounded-sm border bg-white/10 px-4 font-mono text-lg uppercase text-white ${
                     validationError ? 'border-red-500' : 'border-white/20'
                   }`}
                   maxLength={10}
@@ -324,14 +324,14 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
               {/* Scan Button */}
               <button
                 onClick={startScan}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary/20 py-3 font-bold text-white transition-colors hover:bg-primary/30"
+                className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary bg-primary/20 py-3 font-bold text-white transition-colors hover:bg-primary/30"
               >
                 <span className="material-symbols-outlined">qr_code_scanner</span>
                 <span>Scan Bin Location QR</span>
               </button>
 
               {/* Info Box */}
-              <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3">
+              <div className="rounded-sm border border-blue-500/30 bg-blue-500/10 p-3">
                 <p className="text-xs text-blue-200">
                   <span className="font-bold">💡 Tip:</span> To find what's at a bin location, use
                   the main scanner button on the dashboard (bottom right).
@@ -344,7 +344,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
             <div className="space-y-4">
               {/* Video Scanner */}
               <div
-                className="relative overflow-hidden rounded-xl bg-black"
+                className="relative overflow-hidden rounded-sm bg-black"
                 style={{ aspectRatio: '4/3' }}
               >
                 <video
@@ -358,7 +358,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                 {/* Scanning overlay */}
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="relative">
-                    <div className="relative h-48 w-48 rounded-2xl border-4 border-primary/50">
+                    <div className="relative h-48 w-48 rounded-md border-4 border-primary/50">
                       {/* Corner brackets */}
                       <div className="absolute -left-1 -top-1 h-10 w-10 rounded-tl-2xl border-l-4 border-t-4 border-white"></div>
                       <div className="absolute -right-1 -top-1 h-10 w-10 rounded-tr-2xl border-r-4 border-t-4 border-white"></div>
@@ -370,7 +370,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
               </div>
 
               {/* Instructions */}
-              <div className="rounded-xl bg-white/10 p-4 backdrop-blur">
+              <div className="rounded-sm bg-white/10 p-4 backdrop-blur">
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-xl text-primary">qr_code</span>
                   <div className="flex-1">
@@ -389,7 +389,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                   stopScan();
                   setMode('manual');
                 }}
-                className="w-full rounded-xl border border-red-500 bg-red-500/20 py-3 font-bold text-white transition-colors hover:bg-red-500/30"
+                className="w-full rounded-sm border border-red-500 bg-red-500/20 py-3 font-bold text-white transition-colors hover:bg-red-500/30"
               >
                 Cancel Scan
               </button>
@@ -402,14 +402,14 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
           <div className="flex gap-3 border-t border-white/10 p-4">
             <button
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/20 bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20"
+              className="flex-1 rounded-sm border border-white/20 bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!inputValue || !!validationError}
-              className="flex-1 rounded-xl bg-primary py-3 font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save Location
             </button>

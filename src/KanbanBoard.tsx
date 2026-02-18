@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Job, JobStatus, ViewState, User, Checklist } from '@/core/types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
+import { formatJobCode, formatDashSummary, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
 import { checklistService } from './pocketbase';
 import { useToast } from './Toast';
+import { useNavigation } from '@/contexts/NavigationContext';
+import { useThrottle } from '@/useThrottle';
 
 interface KanbanBoardProps {
   jobs: Job[];
@@ -13,6 +16,7 @@ interface KanbanBoardProps {
   onDeleteJob?: (jobId: string) => Promise<void>;
   isAdmin: boolean;
   currentUser: User;
+  inventory?: InventoryItem[];
 }
 
 const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
@@ -36,11 +40,13 @@ const ADMIN_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'finished', title: 'Finished', color: 'bg-emerald-500' },
   { id: 'delivered', title: 'Delivered', color: 'bg-cyan-500' },
   { id: 'waitingForPayment', title: 'Waiting For Payment', color: 'bg-amber-500' },
-  { id: 'projectCompleted', title: 'Project Completed', color: 'bg-purple-500' },
 ];
 
+// Jobs with status 'paid' are reconciled and hidden from normal board/list views
+const excludePaid = (jobs: Job[]) => jobs.filter((j) => j.status !== 'paid');
+
 const KanbanBoard: React.FC<KanbanBoardProps> = ({
-  jobs,
+  jobs: allJobs,
   boardType,
   onNavigate,
   onUpdateJobStatus,
@@ -48,7 +54,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onDeleteJob,
   isAdmin,
   currentUser: _currentUser,
+  inventory = [],
 }) => {
+  const jobs = excludePaid(allJobs);
+  const { state: navState, updateState } = useNavigation();
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
@@ -60,8 +69,72 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const { showToast } = useToast();
 
+  // Refs for column scroll containers and horizontal board container
+  const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const boardContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollPositionsRef = useRef(navState.scrollPositions);
+
   const canDragCards = boardType === 'shopFloor' || isAdmin;
   const columns = boardType === 'shopFloor' ? SHOP_FLOOR_COLUMNS : ADMIN_COLUMNS;
+  const boardViewKey = `kanban-board-${boardType}`;
+  const horizontalScrollKey = `${boardViewKey}-horizontal`;
+
+  // Update scroll positions ref when navState changes
+  useEffect(() => {
+    scrollPositionsRef.current = navState.scrollPositions;
+  }, [navState.scrollPositions]);
+
+  // Restore scroll positions only on mount/return (NOT when scrollPositions updates, or scrolling would re-trigger restore and cause jumpiness)
+  const scrollPositionsSnapshot = useRef(navState.scrollPositions);
+  useEffect(() => {
+    scrollPositionsSnapshot.current = navState.scrollPositions;
+  }, [navState.scrollPositions]);
+
+  useEffect(() => {
+    const positions = scrollPositionsSnapshot.current;
+    const timeoutId = setTimeout(() => {
+      const savedHorizontalScroll = positions[horizontalScrollKey];
+      if (boardContainerRef.current && savedHorizontalScroll !== undefined && savedHorizontalScroll > 0) {
+        boardContainerRef.current.scrollLeft = savedHorizontalScroll;
+      }
+      columns.forEach((column) => {
+        const columnKey = `${boardViewKey}-${column.id}`;
+        const savedPosition = positions[columnKey];
+        const container = columnRefs.current[column.id];
+        if (container && savedPosition !== undefined && savedPosition > 0) {
+          container.scrollTop = savedPosition;
+        }
+      });
+    }, 80);
+
+    return () => clearTimeout(timeoutId);
+    // Intentionally exclude navState.scrollPositions so we only restore on mount/board switch, not on every scroll save
+  }, [boardViewKey, horizontalScrollKey, columns]);
+
+  // Throttled horizontal scroll handler for board container
+  const handleHorizontalScroll = useThrottle(() => {
+    if (!boardContainerRef.current) return;
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [horizontalScrollKey]: boardContainerRef.current.scrollLeft,
+      },
+    });
+  }, 100);
+
+  // Throttled vertical scroll handler for columns
+  const handleColumnScroll = useThrottle((e: React.UIEvent<HTMLDivElement>, columnId: JobStatus) => {
+    const container = e.currentTarget;
+    if (!container) return;
+    
+    const columnKey = `${boardViewKey}-${columnId}`;
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [columnKey]: container.scrollTop,
+      },
+    });
+  }, 100);
 
   // Load checklist states for all jobs
   useEffect(() => {
@@ -79,11 +152,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     try {
       const jobIds = jobs.map((j) => j.id);
-      const records = await Promise.all(jobIds.map((id) => checklistService.getByJob(id)));
+      const byJob = await checklistService.getByJobIds(jobIds);
 
-      for (let i = 0; i < jobIds.length; i++) {
-        const jobId = jobIds[i];
-        const list = records[i] ?? [];
+      for (const jobId of jobIds) {
+        const list = byJob[jobId] ?? [];
         for (const checklist of list) {
           const items = checklist.items ?? [];
           states[jobId] = {
@@ -109,8 +181,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       // Shop Floor board
       if (boardType === 'shopFloor') {
-        // Show ALL jobs with matching status (regardless of boardType)
-        // This prevents cards from disappearing when dragged
         return job.status === columnId && !job.isRush;
       }
 
@@ -202,7 +272,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const handleMenuClick = (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
-    setMenuOpenFor(menuOpenFor === jobId ? null : jobId);
+    e.preventDefault();
+    // Close other menus first
+    if (menuOpenFor && menuOpenFor !== jobId) {
+      setMenuOpenFor(null);
+      // Small delay to prevent immediate reopening
+      setTimeout(() => setMenuOpenFor(jobId), 10);
+    } else {
+      setMenuOpenFor(menuOpenFor === jobId ? null : jobId);
+    }
   };
 
   const handleDelete = async () => {
@@ -215,24 +293,34 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Close menus on outside click
   useEffect(() => {
     if (menuOpenFor || columnMenuOpen) {
-      const close = () => {
+      const close = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // Don't close if clicking inside a menu or menu button
+        if (
+          target.closest('[aria-label="Job menu"]') ||
+          target.closest('.z-\\[100\\]') ||
+          target.closest('[role="dialog"]')
+        ) {
+          return;
+        }
         setMenuOpenFor(null);
         setColumnMenuOpen(null);
       };
-      document.addEventListener('click', close);
-      return () => document.removeEventListener('click', close);
+      // Use mousedown instead of click to catch events earlier
+      document.addEventListener('mousedown', close);
+      return () => document.removeEventListener('mousedown', close);
     }
   }, [menuOpenFor, columnMenuOpen]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d] pb-20">
       {/* Header - Streamlined */}
-      <header className="sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-4 py-2.5 backdrop-blur-md">
+      <header className="sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('dashboard')}
-              className="flex size-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex size-9 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
@@ -244,10 +332,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => updateState({ minimalView: !navState.minimalView })}
+              className="flex items-center gap-1 rounded-sm bg-white/10 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+              title="Toggle minimal view"
+            >
+              <span className="material-symbols-outlined text-sm">
+                {navState.minimalView ? 'view_agenda' : 'view_compact'}
+              </span>
+            </button>
             {isAdmin && (
               <button
                 onClick={() => onNavigate(boardType === 'shopFloor' ? 'board-admin' : 'board-shop')}
-                className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+                className="rounded-sm bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
               >
                 {boardType === 'shopFloor' ? 'Admin' : 'Shop'}
               </button>
@@ -255,7 +352,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {isAdmin && (
               <button
                 onClick={onCreateJob}
-                className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary/90"
+                className="flex items-center gap-1 rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-base">add</span>
                 <span>New</span>
@@ -267,6 +364,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Board */}
       <div
+        ref={boardContainerRef}
+        onScroll={handleHorizontalScroll}
         className="flex-1 overflow-x-auto overflow-y-hidden"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
@@ -278,7 +377,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return (
               <div
                 key={column.id}
-                className={`flex w-64 flex-col rounded-lg border bg-black/20 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex w-64 flex-col rounded-sm border bg-black/20 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);
@@ -292,7 +391,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 >
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-xs font-bold text-white">{column.title}</h3>
-                    <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="rounded-sm bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {columnJobs.length}
                     </span>
                   </div>
@@ -311,7 +410,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       </button>
 
                       {columnMenuOpen === column.id && (
-                        <div className="absolute right-0 top-8 z-50 min-w-[180px] rounded-lg border border-white/20 bg-[#2a1f35] py-1 shadow-xl">
+                        <div className="absolute right-0 top-8 z-50 min-w-[180px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-xl">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -331,6 +430,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                 {/* Cards */}
                 <div
+                  ref={(el) => {
+                    columnRefs.current[column.id] = el;
+                  }}
+                  onScroll={(e) => handleColumnScroll(e, column.id)}
                   className="flex-1 space-y-1.5 overflow-y-auto p-1.5"
                   style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
                 >
@@ -345,41 +448,74 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         key={job.id}
                         draggable={canDragCards}
                         onDragStart={(e) => canDragCards && handleDragStart(e, job)}
-                        onClick={() => onNavigate('job-detail', job.id)}
-                        className={`relative cursor-pointer rounded-lg border border-white/5 bg-[#2a1f35] p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${draggedJob?.id === job.id ? 'opacity-50' : ''}`}
+                        onClick={(e) => {
+                          // Don't navigate if clicking on menu or menu is open
+                          if (menuOpenFor === job.id || (e.target as HTMLElement).closest('[aria-label="Job menu"]')) {
+                            return;
+                          }
+                          onNavigate('job-detail', job.id);
+                        }}
+                        className={`relative cursor-pointer rounded-sm border border-white/5 bg-[#2a1f35] p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''}`}
                       >
                         {/* Admin Menu Button */}
                         {isAdmin && (
-                          <div className="absolute right-2 top-2">
+                          <div className="absolute right-1 top-1 z-10">
                             <button
                               onClick={(e) => handleMenuClick(e, job.id)}
-                              className="flex size-6 items-center justify-center rounded text-slate-400 hover:bg-white/10 hover:text-white"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white/10 hover:text-white active:bg-white/20"
+                              aria-label="Job menu"
                             >
-                              <span className="material-symbols-outlined text-sm">more_vert</span>
+                              <span className="material-symbols-outlined text-base">more_vert</span>
                             </button>
 
                             {menuOpenFor === job.id && (
-                              <div className="absolute right-0 top-7 z-50 min-w-[120px] rounded-lg border border-white/20 bg-[#2a1f35] py-1 shadow-xl">
+                              <div 
+                                className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-2xl backdrop-blur-sm"
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     setMenuOpenFor(null);
                                     onNavigate('job-detail', job.id);
                                   }}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
                                 >
-                                  <span className="material-symbols-outlined text-sm">edit</span>
+                                  <span className="material-symbols-outlined text-base">edit</span>
                                   Edit
                                 </button>
+                                {job.status === 'waitingForPayment' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      setMenuOpenFor(null);
+                                      onUpdateJobStatus(job.id, 'paid');
+                                      showToast('Job marked as Paid and reconciled', 'success');
+                                    }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
+                                  >
+                                    <span className="material-symbols-outlined text-base">payments</span>
+                                    Mark as Paid
+                                  </button>
+                                )}
+                                <div className="my-1 border-t border-white/10" />
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     setMenuOpenFor(null);
                                     setDeleteConfirm(job.id);
                                   }}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
                                 >
-                                  <span className="material-symbols-outlined text-sm">delete</span>
+                                  <span className="material-symbols-outlined text-base">delete</span>
                                   Delete
                                 </button>
                               </div>
@@ -387,34 +523,34 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           </div>
                         )}
 
-                        {/* Labels - Compact */}
-                        <div className="mb-1.5 flex flex-wrap gap-1 pr-5">
+                        {/* Job identity: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
+                        <div className="mb-1 flex flex-wrap items-center gap-1.5 pr-5">
+                          <span className="text-sm font-bold text-white">
+                            {formatJobCode(job.jobCode)}
+                          </span>
                           {job.isRush && (
-                            <span className="rounded bg-red-500 px-1 py-0.5 text-[10px] font-bold text-white">
+                            <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                               Rush
                             </span>
                           )}
                         </div>
+                        <p className="mb-1 pr-5 text-sm font-medium text-slate-300">
+                          {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
+                        </p>
 
-                        {/* Title - Compact */}
-                        <h4 className="mb-0.5 line-clamp-2 pr-5 text-xs font-bold leading-tight text-white">
-                          {job.po ? `PO# ${job.po}` : job.name}
-                        </h4>
-                        {job.po && (
-                          <p className="mb-1.5 line-clamp-1 text-[10px] text-slate-300">
-                            {job.name}
-                          </p>
-                        )}
-
-                        {/* Footer - Compact */}
-                        <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
-                          {job.dueDate && (
-                            <div
-                              className={`rounded px-1 py-0.5 text-[9px] ${new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
+                        {/* Priority 3: ECD / Due date */}
+                        <p className="mb-1.5 pr-5">
+                          {(job.ecd || job.dueDate) && (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-xs font-medium ${(job.dueDate && new Date(job.dueDate) < new Date()) ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
                             >
-                              {formatDateOnly(job.dueDate).replace(/, \d{4}/, '')}
-                            </div>
+                              {formatDateOnly(job.ecd || job.dueDate).replace(/, \d{4}/, '')}
+                            </span>
                           )}
+                        </p>
+
+                        {/* Footer - checklist / comment / attachment counts */}
+                        <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
                           <div className="flex items-center gap-1">
                             {hasChecklist && (
                               <span
@@ -465,20 +601,36 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#1a1122] p-6">
-            <h3 className="mb-2 text-lg font-bold text-white">Delete Job?</h3>
-            <p className="mb-6 text-sm text-slate-400">This cannot be undone.</p>
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setDeleteConfirm(null);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+        >
+          <div className="w-full max-w-sm rounded-sm border border-white/10 bg-[#1a1122] p-4 shadow-2xl">
+            <h3 id="delete-dialog-title" className="mb-2 text-lg font-bold text-white">Delete Job?</h3>
+            <p className="mb-4 text-sm text-slate-400">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 rounded-xl bg-white/10 py-3 font-bold text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirm(null);
+                }}
+                className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20 active:scale-[0.98]"
               >
                 Cancel
               </button>
               <button
-                onClick={handleDelete}
-                className="flex-1 rounded-xl bg-red-500 py-3 font-bold text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+                className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
               >
                 Delete
               </button>
@@ -538,6 +690,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
     pod: "PO'd",
     waitingForPayment: 'Waiting For Payment',
     projectCompleted: 'Project Completed',
+    paid: 'Paid',
   };
 
   useEffect(() => {
@@ -642,17 +795,17 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-card-dark"
+        className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-sm border border-white/10 bg-card-dark"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
+        <div className="flex items-center justify-between border-b border-white/10 p-3">
           <h2 className="font-bold text-white">Checklist: {STATUS_LABELS[status]}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-4">
+        <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-3">
           {loading ? (
             <p className="py-8 text-center text-slate-400">Loading...</p>
           ) : !checklist ? (
@@ -661,15 +814,15 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
               <button
                 onClick={handleCreateChecklist}
                 disabled={saving}
-                className="rounded-lg bg-primary px-6 py-2 font-bold text-white disabled:opacity-50"
+                className="rounded-sm bg-primary px-4 py-1.5 font-bold text-white disabled:opacity-50"
               >
                 {saving ? 'Creating...' : 'Create Checklist'}
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Add Item */}
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-3">
                 <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
                   Add New Item
                 </label>
@@ -704,7 +857,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
                     (item: { id: string; text?: string; checked?: boolean }, index: number) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3"
+                        className="flex items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3"
                       >
                         <div className="flex flex-col gap-1">
                           <button

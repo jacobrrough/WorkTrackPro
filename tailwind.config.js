@@ -6,6 +6,16 @@ export default {
   ],
   theme: {
     extend: {
+      borderRadius: {
+        DEFAULT: '0',
+        none: '0',
+        sm: '0',
+        md: '1px',
+        lg: '2px',
+        xl: '3px',
+        '2xl': '4px',
+        '3xl': '4px',
+      },
       colors: {
         primary: {
           DEFAULT: '#9333ea',
@@ -18,7 +28,7 @@ export default {
         'surface-dark': '#23182d',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
       },
       animation: {
         'slide-in-right': 'slideInRight 0.3s ease-out',

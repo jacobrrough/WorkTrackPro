@@ -191,7 +191,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl border border-white/10 bg-card-dark"
+        className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-sm border border-white/10 bg-card-dark"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
@@ -240,7 +240,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                   <button
                     key={checklist.id}
                     onClick={() => setEditingChecklist(checklist)}
-                    className={`w-full rounded-lg border p-3 text-left transition-all ${
+                    className={`w-full rounded-sm border p-3 text-left transition-all ${
                       editingChecklist?.id === checklist.id
                         ? 'border-primary bg-primary/20 text-white'
                         : 'border-white/10 bg-white/5 text-slate-300 hover:border-primary/50'
@@ -272,7 +272,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                   </button>
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="rounded-sm border border-white/10 bg-white/5 p-3">
                   <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
                     Add New Item
                   </label>
@@ -307,7 +307,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                     editingChecklist.items.map((item, index) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3"
+                        className="flex items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3"
                       >
                         <div className="flex flex-col gap-1">
                           <button

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { JobStatus, InventoryCategory } from '@/core/types';
 import { jobService, inventoryService, supabase } from './pocketbase';
+import { partsService } from './services/api/parts';
 
 interface TrelloImportProps {
   onClose: () => void;
@@ -90,25 +91,51 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     const materials: Array<{ material: string; qty: number }> = [];
     if (!description) return materials;
 
-    const lines = description.split('\n');
+    // Normalize line breaks and clean up
+    const normalized = description
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[\u2000-\u200B]/g, ' ');
+
+    const lines = normalized.split('\n');
     let inMaterials = false;
+    const materialKeywords = [
+      /^materials?[:：]/i,
+      /^material\s+list[:：]/i,
+      /^supplies?[:：]/i,
+      /^components?[:：]/i,
+      /^parts?[:：]/i,
+      /^items?[:：]/i,
+      /^inventory[:：]/i,
+      /^bom\s*[:：]/i,
+      /^bill\s+of\s+materials?[:：]/i,
+    ];
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
 
-      if (/^materials?[:：]/i.test(trimmed)) {
+      const isMaterialHeader = materialKeywords.some((pattern) => pattern.test(line));
+      if (isMaterialHeader) {
         inMaterials = true;
         continue;
       }
 
-      if (inMaterials && /^[a-z]+[:：]/i.test(trimmed) && !/^materials?[:：]/i.test(trimmed)) {
-        break;
+      if (inMaterials && /^[A-Z][a-z]+[:：]\s*$/.test(line) && !materialKeywords.some((p) => p.test(line))) {
+        const nextLines = lines.slice(i + 1, i + 3).join(' ').trim();
+        if (!nextLines || !/[\d•\-\*]/.test(nextLines)) {
+          break;
+        }
       }
 
-      if (inMaterials || /^[•\-*\d.]+\s/.test(trimmed)) {
-        const cleaned = trimmed.replace(/^[•\-*\d.]+\s*/, '').trim();
-        if (cleaned.length < 2) continue;
+      if (inMaterials || /^[•\-\*\d.\s]/.test(line)) {
+        let cleaned = line
+          .replace(/^[•\-\*\d.)]\s*/, '')
+          .replace(/^\((\d+)\)\s*/, '$1 ')
+          .trim();
+
+        if (cleaned.length < 2 || /^[A-Z][a-z]+[:：]\s*$/.test(cleaned)) continue;
 
         let qty = 1;
         let materialName = cleaned;
@@ -125,9 +152,47 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           }
         }
 
-        materialName = materialName.trim();
-        if (materialName.length > 2) {
-          materials.push({ material: materialName, qty });
+        // Clean up material name
+        materialName = materialName
+          .replace(/\s+/g, ' ')
+          .replace(/^[-•\*\s]+/, '')
+          .replace(/[-•\*\s]+$/, '')
+          .trim()
+          .replace(/^(need|needs|required|requires?|use|uses?|with)\s+/i, '')
+          .replace(/\s+(needed|required|used)$/i, '');
+
+        // Validate and add material
+        if (materialName.length >= 2 && qty > 0 && qty <= 100000) {
+          const isLikelyMaterial =
+            !/^(note|note:|important|warning|tip|instructions?|steps?|process|procedure)/i.test(materialName) &&
+            !/^[A-Z][a-z]+\s*[:：]\s*$/.test(materialName) &&
+            materialName.length <= 200;
+
+          if (isLikelyMaterial) {
+            materials.push({ material: materialName, qty });
+          }
+        }
+      }
+    }
+
+    // Also try to extract materials from inline text if no materials found in lists
+    if (materials.length === 0) {
+      const inlinePatterns = [
+        /(?:need|needs|requires?|use|uses?|with)\s+(\d+\.?\d*)\s*[x×]?\s*([A-Za-z][^.!?;,\n]{2,50})/gi,
+        /(\d+\.?\d*)\s*[x×]\s*([A-Za-z][^.!?;,\n]{2,50})/gi,
+      ];
+
+      for (const pattern of inlinePatterns) {
+        let match;
+        while ((match = pattern.exec(description)) !== null) {
+          const qty = parseFloat(match[1]);
+          const material = match[2].trim();
+          if (qty > 0 && qty <= 100000 && material.length >= 2 && material.length <= 200) {
+            const exists = materials.some((m) => m.material.toLowerCase() === material.toLowerCase());
+            if (!exists) {
+              materials.push({ material, qty });
+            }
+          }
         }
       }
     }
@@ -322,8 +387,49 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             '\n\n--- Attachments ---\n' + uploads.map((a) => `• ${a.name}: ${a.url}`).join('\n');
         }
 
-        const poMatch = cardName.match(/PO#?\s*(\S+)/i);
+        // Enhanced parsing from card name and description
+        const poMatch = cardName.match(/PO#?\s*:?\s*(\S+)/i) || description.match(/PO#?\s*:?\s*(\S+)/i);
         const po = poMatch ? poMatch[1] : '';
+
+        // Extract part number (common patterns: DASH-123, PART-456-01, etc.)
+        const partNumberMatch =
+          cardName.match(/([A-Z]+-\d+(?:-\d+)?)/i) || description.match(/([A-Z]+-\d+(?:-\d+)?)/i);
+        const partNumber = partNumberMatch ? partNumberMatch[1] : '';
+
+        // Extract quantity (Qty: 100, Quantity: 50, etc.)
+        const qtyMatch =
+          cardName.match(/(?:Qty|Quantity|QTY)[:：]?\s*(\S+)/i) ||
+          description.match(/(?:Qty|Quantity|QTY)[:：]?\s*(\S+)/i);
+        const qty = qtyMatch ? qtyMatch[1] : '';
+
+        // Extract due date from description if not in card.due
+        let dueDate = card.due || undefined;
+        if (!dueDate) {
+          const dateMatch = description.match(/(?:Due|Due Date|Deadline)[:：]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/i);
+          if (dateMatch) {
+            const dateStr = dateMatch[1];
+            // Try to parse and format
+            try {
+              const parsed = new Date(dateStr);
+              if (!isNaN(parsed.getTime())) {
+                dueDate = parsed.toISOString().split('T')[0];
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        }
+
+        // Extract labor hours from description
+        let laborHours: number | undefined = undefined;
+        const laborMatch = description.match(/(?:Labor|Hours|Time)[:：]?\s*(\d+(?:\.\d+)?)\s*(?:h|hours?)?/i);
+        if (laborMatch) {
+          laborHours = parseFloat(laborMatch[1]);
+        }
+
+        // Extract bin location
+        const binMatch = cardName.match(/\[([A-Z]\d+[a-z]?)\]/i) || description.match(/Bin[:：]?\s*([A-Z]\d+[a-z]?)/i);
+        const binLocation = binMatch ? binMatch[1] : undefined;
 
         const { data: { user } } = await supabase.auth.getUser();
         const createdJob = await jobService.createJob({
@@ -331,18 +437,48 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           name: cardName,
           po: po,
           description: description,
+          qty: qty || undefined,
           status: getStatus(listMap.get(card.idList) || ''),
           boardType: 'admin',
-          dueDate: card.due || undefined,
-          ecd: card.due || undefined,
+          dueDate: dueDate,
+          ecd: dueDate,
+          laborHours: laborHours,
           active: true,
           isRush: card.labels?.some((l) => l.name?.toLowerCase().includes('rush')) || false,
           createdBy: user?.id ?? undefined,
+          binLocation: binLocation,
         });
         if (!createdJob) throw new Error('Failed to create job');
         const job = createdJob;
 
         results.success++;
+
+        // If part number was found, create or update part in Parts repository
+        if (partNumber) {
+          try {
+            const basePartNumber = partNumber.replace(/-\d+$/, ''); // Remove variant suffix
+            const existingPart = await partsService.getPartByNumber(basePartNumber);
+            if (!existingPart) {
+              // Create master part
+              await partsService.createPart({
+                partNumber: basePartNumber,
+                name: cardName,
+                description: description || undefined,
+                laborHours: laborHours,
+                pricePerSet: undefined, // Will be set later
+              });
+            } else {
+              // Update existing part if needed
+              await partsService.updatePart(existingPart.id, {
+                description: description || existingPart.description,
+                laborHours: laborHours || existingPart.laborHours,
+              });
+            }
+          } catch (partError) {
+            console.warn('Failed to create/update part:', partError);
+            // Don't fail job import if part creation fails
+          }
+        }
 
         const materials = parseMaterials(card.desc || '');
         const trelloLinks = extractTrelloLinks(card.desc || '', card.attachments);
@@ -497,8 +633,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-card-dark">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
+      <div className="w-full max-w-2xl overflow-hidden rounded-md border border-white/10 bg-card-dark">
         <div className="border-b border-white/10 p-6">
           <h2 className="text-2xl font-bold text-white">Import from Trello</h2>
         </div>
@@ -510,7 +646,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               <button
                 onClick={() => setBoardType('admin')}
                 disabled={isImporting}
-                className={`flex-1 rounded-xl py-3 font-bold transition ${
+                className={`flex-1 rounded-sm py-3 font-bold transition ${
                   boardType === 'admin'
                     ? 'bg-primary text-white'
                     : 'bg-white/10 text-slate-400 hover:bg-white/15'
@@ -521,7 +657,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               <button
                 onClick={() => setBoardType('inventory')}
                 disabled={isImporting}
-                className={`flex-1 rounded-xl py-3 font-bold transition ${
+                className={`flex-1 rounded-sm py-3 font-bold transition ${
                   boardType === 'inventory'
                     ? 'bg-primary text-white'
                     : 'bg-white/10 text-slate-400 hover:bg-white/15'
@@ -540,12 +676,12 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               accept=".json"
               disabled={isImporting}
               onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-              className="w-full rounded-xl border border-white/20 bg-white/10 p-3 text-white focus:border-primary focus:outline-none"
+              className="w-full rounded-sm border border-white/20 bg-white/10 p-3 text-white focus:border-primary focus:outline-none"
             />
           </div>
 
           {trelloData && !isImporting && !result && (
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
               <p className="font-medium text-white">{trelloData.name}</p>
               <p className="text-sm text-slate-400">
                 {trelloData.cards.filter((c) => !c.closed).length} cards
@@ -559,7 +695,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 <span className="text-sm text-slate-300">{status}</span>
                 <span className="font-bold text-primary">{progress}%</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-white/10">
+              <div className="h-2 w-full rounded-sm bg-white/10">
                 <div
                   className="h-full bg-primary transition-all"
                   style={{ width: `${progress}%` }}
@@ -569,7 +705,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           )}
 
           {result && (
-            <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="space-y-2 rounded-sm border border-white/10 bg-white/5 p-3">
               <div className="flex justify-between">
                 <span className="text-green-400">Success:</span>
                 <span className="font-bold text-white">{result.success}</span>
@@ -596,7 +732,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 {showErrorLog ? 'Ã¢â€“Â¼' : 'Ã¢â€“Â¶'} {errorLog.length} errors
               </button>
               {showErrorLog && (
-                <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+                <div className="mt-2 max-h-48 overflow-y-auto rounded-sm border border-red-500/20 bg-red-500/10 p-3">
                   {errorLog.map((err, i) => (
                     <div key={i} className="mb-2 text-xs text-red-300">
                       <span className="font-bold">{err.cardName}:</span> {err.error}
@@ -608,7 +744,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           )}
 
           {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+            <div className="rounded-sm border border-red-500/20 bg-red-500/10 p-3">
               <p className="text-sm text-red-300">{error}</p>
             </div>
           )}
@@ -618,14 +754,14 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           <button
             onClick={onClose}
             disabled={isImporting}
-            className="flex-1 rounded-xl bg-white/10 py-3 font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+            className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
           >
             {result ? 'Close' : 'Cancel'}
           </button>
           {isImporting ? (
             <button
               onClick={() => setIsCancelled(true)}
-              className="flex-1 rounded-xl bg-red-500 py-3 font-bold text-white transition hover:bg-red-600"
+              className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition hover:bg-red-600"
             >
               Cancel Import
             </button>
@@ -633,7 +769,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             <button
               onClick={handleImport}
               disabled={!trelloData || isImporting}
-              className="flex-1 rounded-xl bg-primary py-3 font-bold text-white transition hover:bg-primary/90 disabled:opacity-50"
+              className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition hover:bg-primary/90 disabled:opacity-50"
             >
               Import
             </button>

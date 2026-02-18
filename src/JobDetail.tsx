@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Job,
   ViewState,
@@ -21,6 +21,14 @@ import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { useToast } from './Toast';
 import { StatusBadge } from './components/ui/StatusBadge';
 import { getLaborSuggestion } from './lib/laborSuggestion';
+import { formatJobCode, formatDashSummary, totalFromDashQuantities, formatSetComposition, calculateSetCompletion, getJobDisplayName, getJobDisplaySubline, getJobNameForSave, formatJobIdentityLine } from './lib/formatJob';
+import { partsService } from './services/api/parts';
+import { Part, PartVariant } from '@/core/types';
+import { useNavigation } from '@/contexts/NavigationContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { useLocation } from 'react-router-dom';
+import { useThrottle } from '@/useThrottle';
+import { syncJobInventoryFromPart } from '@/lib/materialFromPart';
 
 interface JobDetailProps {
   job: Job;
@@ -99,6 +107,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [inventorySearch, setInventorySearch] = useState('');
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValue, setMaterialQtyValue] = useState<string>('');
+  const [syncingMaterials, setSyncingMaterials] = useState(false);
   const { showToast } = useToast();
 
   // File viewing state
@@ -109,8 +118,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
+  const [linkedPart, setLinkedPart] = useState<Part | null>(null);
+  const [loadingPart, setLoadingPart] = useState(false);
+  const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
+  const [selectedVariant, setSelectedVariant] = useState<PartVariant | null>(null);
+  const [materialCosts, setMaterialCosts] = useState<Map<string, number>>(new Map());
+  const { settings } = useSettings();
+  const laborRate = settings.laborRate;
+  const materialUpcharge = settings.materialUpcharge;
+  const location = useLocation();
+  const { state: navState, updateState } = useNavigation();
+  const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(job.dashQuantities || {});
   const [editForm, setEditForm] = useState({
-    name: job.name,
     po: job.po || '',
     description: job.description || '',
     dueDate: isoToDateInput(job.dueDate),
@@ -120,19 +139,341 @@ const JobDetail: React.FC<JobDetailProps> = ({
     status: job.status,
     isRush: job.isRush,
     binLocation: job.binLocation || '',
+    partNumber: job.partNumber || '',
+    revision: job.revision || '',
+    variantSuffix: job.variantSuffix || '',
+    estNumber: job.estNumber || '',
+    invNumber: job.invNumber || '',
+    rfqNumber: job.rfqNumber || '',
   });
+  
+  // Store current pathname and scrollPositions in refs to avoid dependency issues
+  const pathnameRef = useRef(location.pathname);
+  const scrollPositionsRef = useRef(navState.scrollPositions);
+  
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+    scrollPositionsRef.current = navState.scrollPositions;
+  }, [location.pathname, navState.scrollPositions]);
+
+  // Restore scroll position and active tab
+  useEffect(() => {
+    const scrollPos = navState.scrollPositions[location.pathname] || 0;
+    if (scrollPos > 0) {
+      window.scrollTo(0, scrollPos);
+    }
+  }, [location.pathname, navState.scrollPositions]);
+  
+  // Save scroll position on scroll (throttled)
+  const handleScroll = useThrottle(() => {
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [pathnameRef.current]: window.scrollY,
+      },
+    });
+  }, 100); // Throttle to once per 100ms
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+  
+  // Save last viewed job
+  useEffect(() => {
+    updateState({ lastViewedJobId: job.id });
+  }, [job.id, updateState]);
 
   // Calculate labor hours suggestion from similar jobs
-  const laborSuggestion = useMemo(() => {
-    if (!editForm.name.trim()) return null;
-    const suggestion = getLaborSuggestion(editForm.name, jobs, shifts);
-    return suggestion > 0 ? suggestion : null;
-  }, [editForm.name, jobs, shifts]);
+  // Auto job name (convention or Job #code) for labor suggestion and display
+  const autoJobName = getJobNameForSave(
+    {
+      ...job,
+      ...editForm,
+      partNumber: (editForm.partNumber ?? job.partNumber ?? '').trim(),
+      revision: editForm.revision?.trim(),
+      estNumber: editForm.estNumber?.trim(),
+      po: editForm.po?.trim(),
+      status: editForm.status,
+    },
+    job.jobCode
+  );
 
-  // Reset edit form when job changes
+  const laborSuggestion = useMemo(() => {
+    if (!autoJobName.trim()) return null;
+    const suggestion = getLaborSuggestion(autoJobName, jobs, shifts);
+    return suggestion > 0 ? suggestion : null;
+  }, [autoJobName, jobs, shifts]);
+
+  // Calculate material costs from part materials × dashQuantities (live recalculation)
+  const calculateMaterialCosts = useCallback((part: Part, variantSuffix?: string) => {
+    const costs = new Map<string, number>();
+    
+    // If we have dashQuantities, calculate from variants × quantities
+    if (dashQuantities && Object.keys(dashQuantities).length > 0 && part.variants) {
+      // For each dash quantity, get variant materials and multiply
+      for (const [suffix, qty] of Object.entries(dashQuantities)) {
+        if (qty <= 0) continue;
+        const variant = part.variants.find(
+          (v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, '')
+        );
+        if (variant?.materials) {
+          for (const material of variant.materials) {
+            const invItem = inventory.find((i) => i.id === material.inventoryId);
+            if (invItem && invItem.price) {
+              const requiredQty = material.quantity * qty;
+              const cost = requiredQty * invItem.price * materialUpcharge;
+              const existing = costs.get(material.inventoryId) || 0;
+              costs.set(material.inventoryId, existing + cost);
+            }
+          }
+        }
+      }
+      
+      // Also add part-level per_set materials (multiply by total quantity)
+      const totalQty = totalFromDashQuantities(dashQuantities);
+      if (part.materials) {
+        for (const material of part.materials) {
+          if (material.usageType === 'per_set') {
+            const invItem = inventory.find((i) => i.id === material.inventoryId);
+            if (invItem && invItem.price) {
+              const requiredQty = material.quantity * totalQty;
+              const cost = requiredQty * invItem.price * materialUpcharge;
+              const existing = costs.get(material.inventoryId) || 0;
+              costs.set(material.inventoryId, existing + cost);
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback: single variant or part-level materials
+      const variant = variantSuffix && part.variants
+        ? part.variants.find((v) => v.variantSuffix === variantSuffix)
+        : null;
+      const materials = variant?.materials || part.materials || [];
+
+      for (const material of materials) {
+        const invItem = inventory.find((i) => i.id === material.inventoryId);
+        if (invItem && invItem.price) {
+          const cost = material.quantity * invItem.price * materialUpcharge;
+          costs.set(material.inventoryId, cost);
+        }
+      }
+    }
+
+    // Add manually-assigned job-specific materials (not from part)
+    for (const jobMaterial of job.inventoryItems || []) {
+      const invItem = inventory.find((i) => i.id === jobMaterial.inventoryId);
+      if (invItem && invItem.price) {
+        const existingCost = costs.get(jobMaterial.inventoryId) || 0;
+        const additionalCost = jobMaterial.quantity * invItem.price * materialUpcharge;
+        costs.set(jobMaterial.inventoryId, existingCost + additionalCost);
+      }
+    }
+
+    setMaterialCosts(costs);
+  }, [inventory, job.inventoryItems, dashQuantities, materialUpcharge]);
+
+  // Recalculate materials when dashQuantities change (live update)
+  useEffect(() => {
+    if (linkedPart && Object.keys(dashQuantities).length > 0) {
+      calculateMaterialCosts(linkedPart);
+    }
+  }, [dashQuantities, linkedPart, calculateMaterialCosts]);
+
+  // Load linked part
+  const loadLinkedPart = useCallback(async (partNumber: string) => {
+    if (!partNumber.trim()) {
+      setLinkedPart(null);
+      return;
+    }
+    setLoadingPart(true);
+    try {
+      const part = await partsService.getPartByNumber(partNumber);
+      if (part) {
+        const partWithVariants = await partsService.getPartWithVariants(part.id);
+        setLinkedPart(partWithVariants);
+        // Set selected variant if job has one
+        if (job.variantSuffix && partWithVariants.variants) {
+          const variant = partWithVariants.variants.find((v) => v.variantSuffix === job.variantSuffix);
+          setSelectedVariant(variant || null);
+        }
+        // Calculate material costs
+        calculateMaterialCosts(partWithVariants, job.variantSuffix);
+      } else {
+        setLinkedPart(null);
+      }
+    } catch (error) {
+      console.error('Error loading part:', error);
+      setLinkedPart(null);
+    } finally {
+      setLoadingPart(false);
+    }
+  }, [job.variantSuffix, calculateMaterialCosts]);
+
+  // Load linked part when part number changes
+  useEffect(() => {
+    if (job.partNumber) {
+      loadLinkedPart(job.partNumber);
+    }
+  }, [job.partNumber, loadLinkedPart]);
+
+  // Part name (editable when linked part exists); sync from linked part
+  const [partNameEdit, setPartNameEdit] = useState(linkedPart?.name ?? '');
+  useEffect(() => {
+    setPartNameEdit(linkedPart?.name ?? '');
+  }, [linkedPart?.id, linkedPart?.name]);
+
+  const savePartName = useCallback(async () => {
+    if (!linkedPart || partNameEdit.trim() === (linkedPart.name ?? '').trim()) return;
+    try {
+      const updated = await partsService.updatePart(linkedPart.id, { name: partNameEdit.trim() });
+      if (updated) {
+        setLinkedPart((prev) => (prev ? { ...prev, name: updated.name } : null));
+        showToast('Part name updated', 'success');
+      }
+    } catch {
+      showToast('Failed to update part name', 'error');
+    }
+  }, [linkedPart, partNameEdit, showToast]);
+
+  // Calculate total material cost
+  const totalMaterialCost = useMemo(() => {
+    return Array.from(materialCosts.values()).reduce((sum, cost) => sum + cost, 0);
+  }, [materialCosts]);
+
+  // Calculate labor cost (whole job)
+  const laborCost = useMemo(() => {
+    const hours = parseFloat(editForm.laborHours) || 0;
+    return hours * laborRate;
+  }, [editForm.laborHours, laborRate]);
+
+  // Per-dash labor breakdown when we have linked part with variants and dash quantities
+  const laborBreakdownByDash = useMemo(() => {
+    if (!linkedPart || !linkedPart.variants?.length) return null;
+    const entries: { suffix: string; qty: number; hoursPerUnit: number; totalHours: number }[] = [];
+    let totalFromDash = 0;
+    for (const [suffix, qty] of Object.entries(dashQuantities)) {
+      if (qty <= 0) continue;
+      const variant = linkedPart.variants.find((v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, ''));
+      const hoursPerUnit = variant?.laborHours ?? linkedPart.laborHours ?? 0;
+      const totalHours = hoursPerUnit * qty;
+      totalFromDash += totalHours;
+      entries.push({
+        suffix: suffix.startsWith('-') ? suffix : `-${suffix}`,
+        qty,
+        hoursPerUnit,
+        totalHours,
+      });
+    }
+    if (entries.length === 0) return null;
+    return { entries, totalFromDash };
+  }, [linkedPart, dashQuantities]);
+
+  // Search for part by part number
+  const handlePartNumberSearch = useCallback(async () => {
+    if (!partNumberSearch.trim()) {
+      setLinkedPart(null);
+      setEditForm((prev) => ({ ...prev, partNumber: '', variantSuffix: '' }));
+      setSelectedVariant(null);
+      return;
+    }
+
+    setLoadingPart(true);
+    try {
+      const searchPartNumber = partNumberSearch.trim();
+      // Extract base part number (remove variant suffix if present)
+      const basePartNumber = searchPartNumber.replace(/-\d+$/, '');
+      
+      let part = await partsService.getPartByNumber(basePartNumber);
+      
+      if (!part) {
+        // Part doesn't exist - try to create it (if parts table exists)
+        try {
+          // Use edit form values if available, otherwise fall back to job values
+          const partName = autoJobName || basePartNumber;
+          const partDescription = editForm.description?.trim() || job.description || undefined;
+          const laborHours = editForm.laborHours 
+            ? parseFloat(editForm.laborHours) 
+            : (job.laborHours || undefined);
+          
+          part = await partsService.createPart({
+            partNumber: basePartNumber,
+            name: partName,
+            description: partDescription,
+            laborHours: laborHours,
+          });
+          showToast(`Created new part: ${part.name}`, 'success');
+        } catch (createError: unknown) {
+          const err = createError as { message?: string; code?: string };
+          const isPartsTableMissing = err?.message === 'PARTS_TABLE_NOT_FOUND' || err?.code === 'PGRST205';
+          if (isPartsTableMissing) {
+            showToast(
+              'Parts table not set up. Part number will save on the job. Run the database migration to enable parts linking.',
+              'warning'
+            );
+            // Still update job with part number text so user can save (show exactly what they typed)
+            setEditForm((prev) => ({ ...prev, partNumber: searchPartNumber }));
+            setLinkedPart(null);
+            setLoadingPart(false);
+            return;
+          }
+          console.error('Error creating part:', createError);
+          showToast('Failed to create part. Please try again.', 'error');
+          setLinkedPart(null);
+          setLoadingPart(false);
+          return;
+        }
+      }
+      
+      // Link to the part (found or newly created)
+      const partWithVariants = await partsService.getPartWithVariants(part.id);
+      if (!partWithVariants) {
+        setEditForm((prev) => ({ ...prev, partNumber: searchPartNumber }));
+        setLinkedPart(null);
+        setLoadingPart(false);
+        return;
+      }
+      setLinkedPart(partWithVariants);
+      
+      // Keep part number field exactly as user typed (e.g. DASH-123-01), not base
+      setEditForm((prev) => ({ ...prev, partNumber: searchPartNumber }));
+      
+      // Pre-fill labor hours from part if not already set (job name is auto from convention)
+      setEditForm((prev) => {
+        const updates: { partNumber: string; laborHours?: string } = { partNumber: searchPartNumber };
+        if (!prev.laborHours && part.laborHours) {
+          updates.laborHours = part.laborHours.toString();
+        }
+        return { ...prev, ...updates };
+      });
+      
+      calculateMaterialCosts(partWithVariants);
+      
+      if (part) {
+        showToast(`Linked to part: ${part.name}`, 'success');
+      }
+    } catch (error) {
+      console.error('Error searching for part:', error);
+      showToast('Error searching for part', 'error');
+      setLinkedPart(null);
+    } finally {
+      setLoadingPart(false);
+    }
+  }, [partNumberSearch, calculateMaterialCosts, job.description, job.laborHours, editForm.description, editForm.laborHours, autoJobName, showToast]);
+
+  // Recalculate material costs when variant or linked part changes
+  useEffect(() => {
+    if (linkedPart) {
+      calculateMaterialCosts(linkedPart, selectedVariant?.variantSuffix || editForm.variantSuffix);
+    }
+  }, [linkedPart, selectedVariant, editForm.variantSuffix, calculateMaterialCosts]);
+
+  // Reset edit form when job changes (use stable deps to avoid infinite loop)
+  const jobId = job.id;
+  const jobPartNumber = job.partNumber || '';
   useEffect(() => {
     setEditForm({
-      name: job.name,
       po: job.po || '',
       description: job.description || '',
       dueDate: isoToDateInput(job.dueDate),
@@ -142,8 +483,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
       status: job.status,
       isRush: job.isRush,
       binLocation: job.binLocation || '',
+      partNumber: jobPartNumber,
+      revision: job.revision || '',
+      variantSuffix: job.variantSuffix || '',
+      estNumber: job.estNumber || '',
+      invNumber: job.invNumber || '',
+      rfqNumber: job.rfqNumber || '',
     });
-  }, [job]);
+    setPartNumberSearch(jobPartNumber);
+    if (jobPartNumber) {
+      loadLinkedPart(jobPartNumber);
+    } else {
+      setLinkedPart(null);
+      setSelectedVariant(null);
+    }
+  }, [jobId, jobPartNumber, job.po, job.description, job.dueDate, job.ecd, job.qty, job.laborHours, job.status, job.isRush, job.binLocation, job.revision, job.variantSuffix, job.estNumber, job.invNumber, job.rfqNumber, loadLinkedPart]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -217,27 +571,51 @@ const JobDetail: React.FC<JobDetailProps> = ({
   };
 
   const handleSaveEdit = async () => {
-    if (!editForm.name.trim()) {
-      showToast('Job name is required', 'error');
-      return;
-    }
+    const partNumber = editForm.partNumber?.trim() || undefined;
+    const revision = editForm.revision?.trim() || undefined;
+    const estNumber = editForm.estNumber?.trim() || undefined;
+    const po = editForm.po?.trim() || undefined;
+    const payload = {
+      partNumber,
+      revision,
+      po,
+      description: editForm.description?.trim() || undefined,
+      dueDate: dateInputToISO(editForm.dueDate),
+      ecd: dateInputToISO(editForm.ecd),
+      qty: editForm.qty?.trim() || undefined,
+      laborHours: editForm.laborHours ? parseFloat(editForm.laborHours) : undefined,
+      status: editForm.status,
+      isRush: editForm.isRush,
+      binLocation: editForm.binLocation?.trim() || undefined,
+      variantSuffix: selectedVariant ? selectedVariant.variantSuffix : (editForm.variantSuffix?.trim() || undefined),
+      estNumber,
+      invNumber: editForm.invNumber?.trim() || undefined,
+      rfqNumber: editForm.rfqNumber?.trim() || undefined,
+      dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
+    };
+    const nameToSave = getJobNameForSave(
+      { ...job, ...editForm, partNumber, revision, estNumber, po, status: editForm.status },
+      job.jobCode
+    );
 
     setIsSubmitting(true);
     try {
       const updated = await onUpdateJob(job.id, {
-        name: editForm.name.trim(),
-        po: editForm.po.trim() || undefined,
-        description: editForm.description.trim() || undefined,
-        dueDate: dateInputToISO(editForm.dueDate),
-        ECD: dateInputToISO(editForm.ecd),
-        qty: editForm.qty.trim() || undefined,
-        laborHours: editForm.laborHours ? parseFloat(editForm.laborHours) : undefined,
-        status: editForm.status,
-        isRush: editForm.isRush,
-        binLocation: editForm.binLocation.trim() || undefined,
+        ...payload,
+        name: nameToSave,
       });
 
       if (updated) {
+        showToast('Job updated successfully', 'success');
+        if (linkedPart && Object.values(dashQuantities).some((q) => q > 0)) {
+          try {
+            await syncJobInventoryFromPart(job.id, linkedPart, dashQuantities);
+            await onReloadJob?.();
+          } catch (syncErr) {
+            console.error('Material sync after save:', syncErr);
+            showToast('Job saved; material sync failed. Use Auto-assign materials to retry.', 'warning');
+          }
+        }
         setIsEditing(false);
       } else {
         showToast('Failed to save changes', 'error');
@@ -245,23 +623,48 @@ const JobDetail: React.FC<JobDetailProps> = ({
     } catch (error) {
       console.error('Error updating job:', error);
       showToast('Failed to save changes', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleCancelEdit = () => {
     setEditForm({
-      name: job.name,
       po: job.po || '',
       description: job.description || '',
-      dueDate: job.dueDate ? job.dueDate.split('T')[0] : '',
-      ecd: job.ecd ? job.ecd.split('T')[0] : '',
+      dueDate: isoToDateInput(job.dueDate),
+      ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
+      laborHours: job.laborHours?.toString() || '',
       status: job.status,
       isRush: job.isRush,
       binLocation: job.binLocation || '',
+      partNumber: job.partNumber || '',
+      revision: job.revision || '',
+      variantSuffix: job.variantSuffix || '',
+      estNumber: job.estNumber || '',
+      invNumber: job.invNumber || '',
+      rfqNumber: job.rfqNumber || '',
     });
+    setDashQuantities(job.dashQuantities || {});
+    setPartNumberSearch(job.partNumber || '');
+    setSelectedVariant(null);
     setIsEditing(false);
+  };
+
+  const handleAutoAssignMaterials = async () => {
+    if (!linkedPart || !Object.values(dashQuantities).some((q) => q > 0)) return;
+    setSyncingMaterials(true);
+    try {
+      await syncJobInventoryFromPart(job.id, linkedPart, dashQuantities);
+      await onReloadJob?.();
+      showToast('Materials auto-assigned from part', 'success');
+    } catch (err) {
+      console.error('Auto-assign materials:', err);
+      showToast('Failed to auto-assign materials', 'error');
+    } finally {
+      setSyncingMaterials(false);
+    }
   };
 
   const handleRemoveInventory = async (jobInvId: string) => {
@@ -368,7 +771,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       `}</style>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-background-dark/90 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <button
             onClick={() => {
@@ -386,226 +789,350 @@ const JobDetail: React.FC<JobDetailProps> = ({
           </button>
           <div className="flex-1 text-center">
             <h1 className="text-lg font-bold text-white">
-              {isEditing ? 'Edit Job' : `Job #${job.jobCode}`}
+              {isEditing ? 'Edit Job' : formatJobCode(job.jobCode)}
             </h1>
             {!isEditing && <StatusBadge status={job.status} size="sm" />}
-            {isEditing && <p className="text-xs text-slate-400">Make changes below</p>}
+            {isEditing && <p className="text-[11px] text-slate-400">Edit below</p>}
           </div>
-          {currentUser.isAdmin && (
-            <button
-              onClick={() => (isEditing ? handleSaveEdit() : setIsEditing(true))}
-              disabled={isSubmitting}
-              className={`flex size-10 items-center justify-center ${
-                isEditing
-                  ? 'text-green-400 hover:text-green-300'
-                  : 'text-primary hover:text-primary/80'
-              } ${isSubmitting ? 'opacity-50' : ''}`}
-            >
-              <span className="material-symbols-outlined">{isEditing ? 'check' : 'edit'}</span>
-            </button>
-          )}
-          {!currentUser.isAdmin && <div className="w-10"></div>}
+          <div className="flex items-center gap-2">
+            {currentUser.isAdmin && !isEditing && (
+              <button
+                onClick={() => updateState({ minimalView: !navState.minimalView })}
+                className="flex size-10 items-center justify-center text-slate-400 hover:text-white"
+                title="Toggle minimal view"
+              >
+                <span className="material-symbols-outlined">
+                  {navState.minimalView ? 'view_agenda' : 'view_compact'}
+                </span>
+              </button>
+            )}
+            {currentUser.isAdmin && (
+              <button
+                onClick={() => (isEditing ? handleSaveEdit() : setIsEditing(true))}
+                disabled={isSubmitting}
+                className={`flex size-10 items-center justify-center ${
+                  isEditing
+                    ? 'text-green-400 hover:text-green-300'
+                    : 'text-primary hover:text-primary/80'
+                } ${isSubmitting ? 'opacity-50' : ''}`}
+              >
+                <span className="material-symbols-outlined">{isEditing ? 'check' : 'edit'}</span>
+              </button>
+            )}
+            {!currentUser.isAdmin && <div className="w-10"></div>}
+          </div>
         </div>
       </header>
 
       <main
         className="flex-1 overflow-y-auto pb-24"
-        style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', paddingBottom: !isEditing ? '100px' : '24px' }}
       >
-        {/* EDIT MODE */}
+        {/* EDIT MODE - compact, sharp */}
         {isEditing ? (
-          <div className="space-y-4 p-4">
-            {/* Name */}
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                Job Name *
-              </label>
-              <input
-                type="text"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                placeholder="Enter job name"
-              />
-            </div>
+          <div className="space-y-2 p-3 sm:p-3">
+            {/* Set comparison + Auto-assign in one strip */}
+            {linkedPart && linkedPart.setComposition && Object.keys(linkedPart.setComposition).length > 0 && Object.keys(dashQuantities).length > 0 && (
+              <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-slate-400">Set:</span>
+                    <span className="font-medium text-white">{formatSetComposition(linkedPart.setComposition)}</span>
+                    <span className="text-slate-400">Ordered:</span>
+                    <span className="font-medium text-white">{formatDashSummary(dashQuantities)}</span>
+                  </div>
+                  {(() => {
+                    const { completeSets, percentage } = calculateSetCompletion(dashQuantities, linkedPart.setComposition);
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-sm bg-white/10 overflow-hidden">
+                          <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, percentage)}%` }} />
+                        </div>
+                        <span className="text-xs font-medium text-primary">{completeSets} sets ({percentage}%)</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
 
-            {/* PO Number */}
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                PO Number
-              </label>
-              <input
-                type="text"
-                value={editForm.po}
-                onChange={(e) => setEditForm({ ...editForm, po: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                placeholder="Enter PO number"
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                Status
-              </label>
-              <select
-                value={editForm.status}
-                onChange={(e) => setEditForm({ ...editForm, status: e.target.value as JobStatus })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-              >
-                {ALL_STATUSES.map((s) => (
-                  <option key={s.id} value={s.id} className="bg-[#1a1122]">
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Rush Toggle */}
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-              <span className="font-medium text-white">Rush Job</span>
+            {linkedPart && Object.values(dashQuantities).some((q) => q > 0) && (
               <button
-                onClick={() => setEditForm({ ...editForm, isRush: !editForm.isRush })}
-                className={`h-6 w-12 rounded-full transition-colors ${
-                  editForm.isRush ? 'bg-red-500' : 'bg-white/20'
-                }`}
+                type="button"
+                onClick={handleAutoAssignMaterials}
+                disabled={syncingMaterials}
+                className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
               >
-                <div
-                  className={`h-5 w-5 transform rounded-full bg-white transition-transform ${
-                    editForm.isRush ? 'translate-x-6' : 'translate-x-0.5'
-                  }`}
-                />
+                <span className="material-symbols-outlined text-base">{syncingMaterials ? 'hourglass_empty' : 'inventory_2'}</span>
+                {syncingMaterials ? 'Syncing…' : 'Auto-assign materials from part'}
               </button>
-            </div>
+            )}
 
-            {/* Dates Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={editForm.dueDate}
-                  onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-400">ECD</label>
-                <input
-                  type="date"
-                  value={editForm.ecd}
-                  onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Quantity */}
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                Quantity
-              </label>
-              <input
-                type="text"
-                value={editForm.qty}
-                onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                placeholder="e.g., 100 units"
-              />
-            </div>
-
-            {/* Labor Hours (Expected Time) */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="block text-xs font-bold uppercase text-slate-400">
-                  Labor Hours (expected time)
-                </label>
-                {laborSuggestion && (
-                  <button
-                    type="button"
-                    onClick={() => setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })}
-                    className="text-xs font-medium text-primary hover:text-primary/80"
-                  >
-                    Use {laborSuggestion.toFixed(1)}h
+            {/* Main fields - order: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
+            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Part Number</label>
+                  <input
+                    type="text"
+                    value={editForm.partNumber || ''}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, partNumber: e.target.value }))}
+                    onBlur={(e) => { const v = e.currentTarget.value?.trim(); if (v) loadLinkedPart(v); }}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-mono text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="e.g., SK-F35-0911"
+                  />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Rev</label>
+                  <input type="text" value={editForm.revision} onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="A, B, NC" />
+                </div>
+                <div className="col-span-2 sm:col-span-3 lg:col-span-2">
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Part Name</label>
+                  {linkedPart ? (
+                    <input
+                      type="text"
+                      value={partNameEdit}
+                      onChange={(e) => setPartNameEdit(e.target.value)}
+                      onBlur={savePartName}
+                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                      placeholder="Part name"
+                    />
+                  ) : (
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-500">— Link part above to edit</div>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">EST #</label>
+                  <input type="text" value={editForm.estNumber} onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="EST#" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">RFQ #</label>
+                  <input type="text" value={editForm.rfqNumber} onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="RFQ#" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">PO #</label>
+                  <input type="text" value={editForm.po} onChange={(e) => setEditForm({ ...editForm, po: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="PO" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">INV#</label>
+                  <input type="text" value={editForm.invNumber} onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="INV#" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Due</label>
+                  <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">ECD</label>
+                  <input type="date" value={editForm.ecd} onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Status</label>
+                  <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as JobStatus })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none">
+                    {ALL_STATUSES.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Bin</label>
+                  <div className="flex gap-1">
+                    <input type="text" value={editForm.binLocation} onChange={(e) => setEditForm({ ...editForm, binLocation: e.target.value.toUpperCase() })} className="flex-1 min-w-0 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-mono uppercase text-white focus:border-primary/50 focus:outline-none" placeholder="A4c" maxLength={10} />
+                    <button type="button" onClick={() => setShowBinLocationScanner(true)} className="rounded border border-primary/30 bg-primary/20 p-1.5 text-white hover:bg-primary/30" title="Scan"><span className="material-symbols-outlined text-sm">qr_code_scanner</span></button>
+                  </div>
+                </div>
+                <div className="col-span-2 flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5">
+                  <span className="text-[11px] font-medium text-white">Rush</span>
+                  <button type="button" onClick={() => setEditForm({ ...editForm, isRush: !editForm.isRush })} className={`h-5 w-9 rounded-sm transition-colors ${editForm.isRush ? 'bg-red-500' : 'bg-white/20'}`}>
+                    <div className={`h-4 w-4 transform rounded-sm bg-white transition-transform ${editForm.isRush ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </button>
+                </div>
+                <div className="col-span-2 sm:col-span-3 lg:col-span-4">
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Description</label>
+                  <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="Description..." />
+                </div>
+              </div>
+            </div>
+
+            {/* Variants & quantities - own section below Description */}
+            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Variants & quantities</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
+                  {totalFromDashQuantities(dashQuantities) > 0 ? (
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">{formatDashSummary(dashQuantities)} → Total: {totalFromDashQuantities(dashQuantities)}</div>
+                  ) : (
+                    <input type="text" value={editForm.qty} onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="Qty" />
+                  )}
+                </div>
+                {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-medium text-slate-400">Per variant</p>
+                    {linkedPart.variants.map((variant) => {
+                      const qty = dashQuantities[variant.variantSuffix] ?? dashQuantities[`-${variant.variantSuffix}`] ?? 0;
+                      return (
+                        <div key={variant.id} className="flex items-center gap-2">
+                          <label className="w-28 truncate text-xs text-slate-400">{linkedPart.partNumber}-{variant.variantSuffix}</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={qty}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10) || 0;
+                              setDashQuantities((prev) => ({ ...prev, [variant.variantSuffix]: v }));
+                            }}
+                            className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                value={editForm.laborHours}
-                onChange={(e) => setEditForm({ ...editForm, laborHours: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                placeholder="e.g., 8.5 (for calendar scheduling)"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                Used for calendar timeline calculation. Suggestion from similar jobs shown above.
-              </p>
             </div>
 
-            {/* Bin Location */}
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                Bin Location
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={editForm.binLocation}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, binLocation: e.target.value.toUpperCase() })
-                  }
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-mono uppercase text-white focus:border-primary focus:outline-none"
-                  placeholder="e.g., A4c"
-                  maxLength={10}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBinLocationScanner(true);
-                  }}
-                  className="flex items-center gap-2 rounded-xl border border-primary bg-primary/20 px-4 text-white transition-colors hover:bg-primary/30"
-                  title="Scan QR Code"
-                >
-                  <span className="material-symbols-outlined">qr_code_scanner</span>
-                </button>
-              </div>
-              {editForm.binLocation && (
-                <p className="mt-1 text-xs text-slate-400">
-                  {formatBinLocation(editForm.binLocation)}
-                </p>
+            {/* Labor & Materials intertwined with variants section */}
+            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Labor & materials</h3>
+              {currentUser.isAdmin ? (
+                <>
+                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 mb-3">
+                    <div>
+                      <div className="mb-0.5 flex items-center justify-between">
+                        <label className="text-[11px] text-slate-400">Labor hrs</label>
+                        {laborSuggestion != null && (
+                          <button type="button" onClick={() => setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })} className="text-[10px] text-primary hover:underline">Use {laborSuggestion.toFixed(1)}h</button>
+                        )}
+                      </div>
+                      <input type="number" step="0.1" min="0" value={editForm.laborHours} onChange={(e) => setEditForm({ ...editForm, laborHours: e.target.value })} className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Rate</label>
+                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white">${laborRate}/hr</div>
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Labor $</label>
+                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">${laborCost.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Materials $</label>
+                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">${totalMaterialCost.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">Total ${(laborCost + totalMaterialCost).toFixed(2)}</div>
+                  {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
+                    <div className="mb-3 space-y-0.5">
+                      {laborBreakdownByDash.entries.map(({ suffix, qty, totalHours }) => (
+                        <div key={suffix} className="flex justify-between text-[10px] text-slate-400">{suffix} ×{qty} = {totalHours.toFixed(1)}h</div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="mb-3">
+                  <label className="text-[11px] text-slate-400">Labor hours</label>
+                  <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white">{parseFloat(editForm.laborHours) || 0} h</div>
+                </div>
               )}
+              <div className="border-t border-white/10 pt-2">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white">Materials</span>
+                  <button type="button" onClick={() => setShowAddInventory(true)} className="text-[11px] font-medium text-primary hover:underline">+ Add</button>
+                </div>
+                {!job.inventoryItems?.length ? (
+                  <p className="text-xs text-slate-400">No materials assigned. Add from part or manually.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {job.inventoryItems.map((item) => {
+                      const invItem = inventory.find((i) => i.id === item.inventoryId);
+                      return (
+                        <li
+                          key={item.id}
+                          className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => invItem && onNavigate('inventory-detail', invItem.id)}
+                            className="min-w-0 flex-1 truncate text-left text-xs font-medium text-primary hover:underline"
+                          >
+                            {item.inventoryName || invItem?.name || 'Unknown'}
+                          </button>
+                          <span className="ml-2 text-[10px] text-slate-400">{item.quantity} {item.unit}</span>
+                          <button
+                            type="button"
+                            onClick={() => item.id && onRemoveInventory(job.id, item.id)}
+                            className="ml-2 rounded p-1 text-slate-400 hover:bg-red-500/20 hover:text-red-400"
+                            aria-label="Remove"
+                          >
+                            <span className="material-symbols-outlined text-sm">close</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
 
-            {/* Description */}
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
-                Description
-              </label>
-              <textarea
-                value={editForm.description}
-                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                rows={5}
-                className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
-                placeholder="Enter job description..."
-              />
-            </div>
+            {linkedPart && (
+              <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                <h3 className="mb-1.5 text-xs font-semibold text-white">Part BOM {linkedPart.variants?.length ? `(${linkedPart.partNumber})` : ''}</h3>
+                {(() => {
+                  const materials = selectedVariant?.materials || linkedPart.materials || [];
+                  if (materials.length === 0) {
+                    return <p className="text-xs text-slate-400">No materials defined for this part.</p>;
+                  }
+                  return (
+                    <div className="space-y-1.5">
+                      {materials.map((material) => {
+                        const invItem = inventory.find((i) => i.id === material.inventoryId);
+                        const cost = materialCosts.get(material.inventoryId) || 0;
+                        const materialName = material.inventoryName || invItem?.name || 'Unknown';
+                        return (
+                          <div
+                            key={material.id}
+                            className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {invItem ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigate('inventory-detail', invItem.id)}
+                                  className="truncate text-xs font-medium text-primary hover:underline text-left"
+                                >
+                                  {materialName}
+                                </button>
+                              ) : (
+                                <span className="truncate text-xs font-medium text-white">{materialName}</span>
+                              )}
+                              <span className="text-[10px] text-slate-400 shrink-0">
+                                {material.quantity} {material.unit}
+                              </span>
+                            </div>
+                            {currentUser.isAdmin && cost > 0 && (
+                              <span className="text-xs font-semibold text-white shrink-0">
+                                ${cost.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleCancelEdit}
-                className="flex-1 rounded-xl bg-white/10 py-3 font-bold text-white"
+                className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
-                disabled={isSubmitting || !editForm.name.trim()}
-                className="flex-1 rounded-xl bg-primary py-3 font-bold text-white disabled:opacity-50"
+                disabled={isSubmitting}
+                className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
               </button>
@@ -623,19 +1150,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         Rush
                       </span>
                     )}
-                    <span className="text-xs font-bold text-primary">#{job.jobCode}</span>
-                    {job.po && <span className="text-xs text-slate-400">\u2022 PO: {job.po}</span>}
+                    <span className="text-xs font-bold text-primary">{formatJobCode(job.jobCode)}</span>
                   </div>
-                  <h2 className="text-lg font-bold leading-tight text-white">{job.name}</h2>
+                  <h2 className="text-lg font-bold leading-tight text-white">
+                    {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
+                  </h2>
+                  {getJobDisplaySubline(job) && (
+                    <p className="mt-0.5 text-sm text-slate-400">{getJobDisplaySubline(job)}</p>
+                  )}
                 </div>
               </div>
 
               {/* Timer if clocked in - Compact */}
               {isClockedIn && (
-                <div className="mb-3 rounded-lg border border-green-500/30 bg-green-500/20 p-3">
+                <div className="mb-2 rounded-sm border border-green-500/30 bg-green-500/20 p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
+                      <div className="h-2 w-2 animate-pulse rounded-sm bg-green-500"></div>
                       <span className="text-xs font-medium text-green-400">Active</span>
                     </div>
                     <span className="font-mono text-xl font-bold text-green-400">{timer}</span>
@@ -643,23 +1174,97 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               )}
 
+              {/* Part Number & Dash Quantities */}
+              {job.partNumber && (
+                <div className="mb-2 rounded-sm border border-primary/30 bg-primary/10 p-3">
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Part Number</p>
+                  <p className="mb-2 font-mono text-sm font-bold text-primary">{job.partNumber}</p>
+                  {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
+                      <p className="mb-2 text-sm font-medium text-white">
+                        {formatDashSummary(job.dashQuantities)} → {totalFromDashQuantities(job.dashQuantities)} total
+                      </p>
+                      {linkedPart && linkedPart.setComposition && Object.keys(linkedPart.setComposition).length > 0 && (
+                        <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span className="text-slate-300">Set:</span>
+                            <span className="font-medium text-white">{formatSetComposition(linkedPart.setComposition)}</span>
+                          </div>
+                          {(() => {
+                            const { completeSets, percentage } = calculateSetCompletion(job.dashQuantities, linkedPart.setComposition);
+                            return (
+                              <>
+                                <div className="mb-1 flex items-center justify-between text-xs">
+                                  <span className="text-slate-300">Complete:</span>
+                                  <span className="font-bold text-primary">{completeSets}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1.5 rounded-sm bg-white/10 overflow-hidden">
+                                    <div
+                                      className="h-full bg-primary transition-all"
+                                      style={{ width: `${Math.min(100, percentage)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-medium text-slate-300">{percentage}%</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Reference Numbers - order: EST #, RFQ #, PO #, INV# */}
+              {(job.estNumber || job.rfqNumber || job.po || job.invNumber) && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {job.estNumber && (
+                    <span className="rounded bg-purple-500/20 px-2 py-1 text-xs font-medium text-purple-300">
+                      EST #{job.estNumber}
+                    </span>
+                  )}
+                  {job.rfqNumber && (
+                    <span className="rounded bg-orange-500/20 px-2 py-1 text-xs font-medium text-orange-300">
+                      RFQ #{job.rfqNumber}
+                    </span>
+                  )}
+                  {job.po && (
+                    <span className="rounded bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-300">
+                      PO #{job.po}
+                    </span>
+                  )}
+                  {job.invNumber && (
+                    <span className="rounded bg-green-500/20 px-2 py-1 text-xs font-medium text-green-300">
+                      INV# {job.invNumber}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Info Grid - Compact 2x2 */}
               <div className="mb-3 grid grid-cols-2 gap-2">
-                <div className="rounded-lg bg-white/5 p-2.5">
+                <div className="rounded-sm bg-white/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Due Date</p>
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.dueDate)}</p>
                 </div>
-                <div className="rounded-lg bg-white/5 p-2.5">
+                <div className="rounded-sm bg-white/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Status</p>
                   <StatusBadge status={job.status} size="sm" />
                 </div>
-                <div className="rounded-lg bg-white/5 p-2.5">
+                <div className="rounded-sm bg-white/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">ECD</p>
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.ecd)}</p>
                 </div>
-                <div className="rounded-lg bg-white/5 p-2.5">
+                <div className="rounded-sm bg-white/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Quantity</p>
-                  <p className="text-sm font-bold text-white">{job.qty || 'N/A'}</p>
+                  <p className="text-sm font-bold text-white">
+                    {job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+                      ? `${formatDashSummary(job.dashQuantities)} (${totalFromDashQuantities(job.dashQuantities)})`
+                      : (job.qty || 'N/A')}
+                  </p>
                 </div>
               </div>
 
@@ -667,7 +1272,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {job.binLocation && (
                 <button
                   onClick={() => setShowBinLocationScanner(true)}
-                  className="flex w-full items-center justify-between rounded-lg border border-primary/30 bg-primary/10 p-2.5 transition-colors hover:bg-primary/15"
+                  className="flex w-full items-center justify-between rounded-sm border border-primary/30 bg-primary/10 p-2.5 transition-colors hover:bg-primary/15"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <span className="material-symbols-outlined text-base text-primary">
@@ -689,7 +1294,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {!job.binLocation && currentUser.isAdmin && (
                 <button
                   onClick={() => setShowBinLocationScanner(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center justify-center gap-2 rounded-sm border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-base text-primary">
                     add_location
@@ -701,14 +1306,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Currently Working */}
             {job.workers && job.workers.length > 0 && (
-              <div className="p-4 pt-0">
-                <div className="rounded-xl bg-[#1a1122] p-3">
+              <div className="p-3 pt-0">
+                <div className="rounded-sm bg-[#1a1122] p-3">
                   <p className="mb-2 text-xs text-slate-400">Currently Working:</p>
                   <div className="flex flex-wrap gap-2">
                     {job.workers.map((initials, idx) => (
                       <div
                         key={idx}
-                        className="flex size-8 items-center justify-center rounded-full border-2 border-green-500 bg-green-500/20"
+                        className="flex size-8 items-center justify-center rounded-sm border-2 border-green-500 bg-green-500/20"
                       >
                         <span className="text-xs font-bold text-green-400">{initials}</span>
                       </div>
@@ -727,7 +1332,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </span>
                   Description
                 </h3>
-                <div className="max-h-96 space-y-2 overflow-y-auto rounded-xl bg-[#261a32] p-4 text-sm text-slate-300">
+                <div className="max-h-96 space-y-2 overflow-y-auto rounded-sm bg-[#261a32] p-3 text-sm text-slate-300">
                   {job.description.split('\n').map((line, idx) => {
                     const trimmedLine = line.trim();
                     if (trimmedLine.startsWith('http')) {
@@ -765,7 +1370,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             )}
 
             {/* Checklist Section */}
-            <div className="p-4 pt-0">
+            <div className="p-3 pt-0">
               <ChecklistDisplay
                 jobId={job.id}
                 jobStatus={job.status}
@@ -775,7 +1380,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             {/* Materials / Inventory Section */}
-            <div className="p-4 pt-0">
+            <div className="p-3 pt-0">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-white">
                   <span className="material-symbols-outlined text-lg text-primary">
@@ -795,7 +1400,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
 
               {!job.inventoryItems || job.inventoryItems.length === 0 ? (
-                <div className="rounded-xl bg-[#261a32] p-4 text-center">
+                <div className="rounded-sm bg-[#261a32] p-3 text-center">
                   <span className="material-symbols-outlined mb-2 text-3xl text-slate-500">
                     inventory_2
                   </span>
@@ -822,7 +1427,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     return (
                       <div
                         key={item.id || item.inventoryId}
-                        className="overflow-hidden rounded-xl bg-[#261a32]"
+                        className="overflow-hidden rounded-sm bg-[#261a32]"
                       >
                         <div className="flex items-center justify-between p-3">
                           <button
@@ -831,17 +1436,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                 onNavigate('inventory-detail', invItem.id);
                               }
                             }}
-                            className="-ml-1 flex flex-1 items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-white/5"
+                            className="-ml-1 flex flex-1 items-center gap-3 rounded-sm p-1 text-left transition-colors hover:bg-white/5"
                           >
                             {invItem?.imageUrl ? (
                               <img
                                 src={invItem.imageUrl}
                                 alt={item.inventoryName || 'Material'}
-                                className={`size-10 flex-shrink-0 rounded-lg object-cover ${isLow ? 'ring-2 ring-red-500' : ''}`}
+                                className={`size-10 flex-shrink-0 rounded-sm object-cover ${isLow ? 'ring-2 ring-red-500' : ''}`}
                               />
                             ) : (
                               <div
-                                className={`flex size-10 flex-shrink-0 items-center justify-center rounded-lg ${isLow ? 'bg-red-500/20' : 'bg-white/10'}`}
+                                className={`flex size-10 flex-shrink-0 items-center justify-center rounded-sm ${isLow ? 'bg-red-500/20' : 'bg-white/10'}`}
                               >
                                 <span
                                   className={`material-symbols-outlined ${isLow ? 'text-red-400' : 'text-slate-400'}`}
@@ -852,9 +1457,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             )}
 
                             <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium text-white transition-colors hover:text-primary">
-                                {item.inventoryName || 'Unknown Item'}
-                              </p>
+                              {invItem ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onNavigate('inventory-detail', invItem.id);
+                                  }}
+                                  className="truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline"
+                                >
+                                  {item.inventoryName || invItem.name || 'Unknown Item'}
+                                </button>
+                              ) : (
+                                <p className="truncate font-medium text-white">
+                                  {item.inventoryName || 'Unknown Item'}
+                                </p>
+                              )}
                               <p className="text-xs text-slate-400">
                                 Need:{' '}
                                 {isEditingThis ? (
@@ -941,7 +1558,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Admin Files Section (Admin Only) */}
             {currentUser.isAdmin && (
-              <div className="p-4 pt-0">
+              <div className="p-3 pt-0">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="flex items-center gap-2 text-sm font-bold text-white">
                     <span className="material-symbols-outlined text-lg text-red-400">
@@ -965,7 +1582,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             )}
 
             {/* Attachments Section (Everyone) */}
-            <div className="p-4 pt-0">
+            <div className="p-3 pt-0">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-white">
                   <span className="material-symbols-outlined text-lg text-primary">
@@ -990,16 +1607,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             {/* Comments Section */}
-            <div className="p-4 pt-0">
+            <div className="p-3 pt-0">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
                 <span className="material-symbols-outlined text-lg text-primary">chat</span>
                 Comments ({job.comments?.length || 0})
               </h3>
 
               {/* Add Comment */}
-              <div className="mb-3 rounded-xl bg-[#261a32] p-3">
+              <div className="mb-3 rounded-sm bg-[#261a32] p-3">
                 <div className="flex gap-2">
-                  <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-white">
                     {currentUser.initials}
                   </div>
                   <div className="flex-1">
@@ -1014,7 +1631,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       <button
                         onClick={handleSubmitComment}
                         disabled={!newComment.trim() || isSubmitting}
-                        className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                        className="rounded-sm bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
                       >
                         {isSubmitting ? 'Posting...' : 'Post'}
                       </button>
@@ -1031,9 +1648,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   const isEditingThis = editingCommentId === comment.id;
 
                   return (
-                    <div key={comment.id} className="rounded-xl bg-[#261a32] p-3">
+                    <div key={comment.id} className="rounded-sm bg-[#261a32] p-3">
                       <div className="flex items-start gap-2">
-                        <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-600 text-xs font-bold text-white">
+                        <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-slate-600 text-xs font-bold text-white">
                           {comment.userInitials || 'U'}
                         </div>
                         <div className="flex-1">
@@ -1114,33 +1731,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         )}
       </main>
 
-      {/* Clock In/Out Button - Fixed at bottom, above nav */}
-      {!isEditing && (
-        <div className="fixed bottom-20 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4 md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
-          {isClockedIn ? (
-            <button
-              onClick={onClockOut}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500 px-6 py-3 font-bold text-white shadow-xl transition-all hover:bg-red-600 active:scale-[0.98]"
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span>Clock Out</span>
-            </button>
-          ) : (
-            <button
-              onClick={onClockIn}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-3 font-bold text-white shadow-xl transition-all hover:bg-green-600 active:scale-[0.98]"
-            >
-              <span className="material-symbols-outlined">login</span>
-              <span>Clock In</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Add Inventory Modal */}
       {showAddInventory && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/80 backdrop-blur-sm">
-          <div className="flex max-h-[80vh] w-full flex-col rounded-t-2xl border-t border-white/10 bg-background-dark p-6">
+          <div className="flex max-h-[80vh] w-full flex-col rounded-t-md border-t border-white/10 bg-background-dark p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Add Material</h3>
               <button
@@ -1161,17 +1756,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 placeholder="Search inventory..."
                 value={inventorySearch}
                 onChange={(e) => setInventorySearch(e.target.value)}
-                className="h-12 w-full rounded-lg border border-white/20 bg-white/10 pl-10 pr-4 text-white"
+                className="h-12 w-full rounded-sm border border-white/20 bg-white/10 pl-10 pr-4 text-white"
               />
             </div>
 
             {/* Inventory List */}
-            <div className="mb-4 flex-1 space-y-2 overflow-y-auto">
+            <div className="mb-3 flex-1 space-y-2 overflow-y-auto">
               {filteredInventory.slice(0, 20).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setSelectedInventory(item.id)}
-                  className={`w-full rounded-lg p-3 text-left transition-colors ${
+                  className={`w-full rounded-sm p-3 text-left transition-colors ${
                     selectedInventory === item.id
                       ? 'border border-primary bg-primary/20'
                       : 'bg-white/5 hover:bg-white/10'
@@ -1188,7 +1783,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Quantity & Submit */}
             {selectedInventory && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
                   <label className="text-xs font-bold uppercase text-slate-400">
                     Quantity Needed
@@ -1197,18 +1792,51 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="number"
                     value={inventoryQty}
                     onChange={(e) => setInventoryQty(e.target.value)}
-                    className="mt-1 h-12 w-full rounded-lg border border-white/20 bg-white/10 px-4 text-white"
+                    className="mt-1 h-12 w-full rounded-sm border border-white/20 bg-white/10 px-4 text-white"
                     min="1"
                   />
                 </div>
                 <button
                   onClick={handleAddInventory}
                   disabled={isSubmitting}
-                  className="w-full rounded-xl bg-primary py-4 font-bold text-white disabled:opacity-50"
+                  className="w-full rounded-sm bg-primary py-3 font-bold text-white disabled:opacity-50"
                 >
                   {isSubmitting ? 'Adding...' : 'Add to Job'}
                 </button>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Fixed Bottom Action Bar */}
+      {!isEditing && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background-dark/95 p-3 backdrop-blur-md">
+          <div className="flex gap-3">
+            {isClockedIn ? (
+              <button
+                onClick={onClockOut}
+                className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined mr-2 align-middle">logout</span>
+                Clock Out
+              </button>
+            ) : (
+              <button
+                onClick={onClockIn}
+                className="flex-1 rounded-sm bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined mr-2 align-middle">login</span>
+                Clock In
+              </button>
+            )}
+            {currentUser.isAdmin && (
+              <button
+                onClick={() => setShowAddInventory(true)}
+                className="rounded-sm border border-primary/30 bg-primary/20 px-4 py-3 font-bold text-primary transition-colors hover:bg-primary/30 active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined align-middle">add</span>
+              </button>
             )}
           </div>
         </div>

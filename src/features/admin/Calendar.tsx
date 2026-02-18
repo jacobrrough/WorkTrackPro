@@ -3,6 +3,7 @@ import { Job, ViewState, User, Shift } from '@/core/types';
 import { getStartDateFromDueDateAndHours, getWorkHoursForDate } from '@/lib/workHours';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
+import { getJobDisplayName } from '@/lib/formatJob';
 
 interface CalendarProps {
   jobs: Job[];
@@ -24,8 +25,9 @@ interface JobTimeline {
  * Uses due date and expected labor hours (or recorded shift hours) to calculate timelines.
  * Work schedule: 9h Mon-Thu, 4h Fri.
  */
-const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNavigate, onBack }) => {
+const Calendar: React.FC<CalendarProps> = ({ jobs: allJobs, shifts, currentUser, onNavigate, onBack }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const jobs = useMemo(() => allJobs.filter((j) => j.status !== 'paid'), [allJobs]);
 
   // Get jobs with timelines
   const jobTimelines = useMemo((): JobTimeline[] => {
@@ -146,7 +148,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNaviga
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Back"
               >
                 <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -160,7 +162,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNaviga
           <div className="flex items-center gap-2">
             <button
               onClick={() => changeMonth(-1)}
-              className="flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Previous month"
             >
               <span className="material-symbols-outlined text-xl">chevron_left</span>
@@ -170,7 +172,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNaviga
             </h2>
             <button
               onClick={() => changeMonth(1)}
-              className="flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Next month"
             >
               <span className="material-symbols-outlined text-xl">chevron_right</span>
@@ -223,7 +225,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNaviga
                       key={tl.job.id}
                       onClick={() => onNavigate('job-detail', tl.job.id)}
                       className={`w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-white transition-colors hover:opacity-80 ${getJobColor(tl.job.id)}`}
-                      title={`#${tl.job.jobCode} - ${tl.job.name}`}
+                      title={`#${tl.job.jobCode} - ${getJobDisplayName(tl.job)}`}
                     >
                       {tl.job.isRush && '⚡ '}
                       #{tl.job.jobCode}
@@ -241,7 +243,7 @@ const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNaviga
         </div>
 
         {/* Summary: Upcoming jobs */}
-        <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
           <h3 className="mb-3 text-lg font-bold text-white">Upcoming Jobs</h3>
           {jobTimelines.length === 0 ? (
             <p className="text-sm text-slate-400">No jobs with due dates</p>
@@ -251,18 +253,18 @@ const Calendar: React.FC<CalendarProps> = ({ jobs, shifts, currentUser, onNaviga
                 <button
                   key={tl.job.id}
                   onClick={() => onNavigate('job-detail', tl.job.id)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
                 >
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white">#{tl.job.jobCode}</span>
-                        <span className="text-sm text-slate-300">{tl.job.name}</span>
+                        <span className="text-sm text-slate-300">{getJobDisplayName(tl.job)}</span>
                         {tl.job.isRush && (
                           <span className="text-yellow-400">⚡</span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center gap-4 text-xs text-slate-400">
+                      <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
                         <span>
                           Start: {formatDateOnly(tl.startDate)}
                         </span>

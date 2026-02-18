@@ -16,7 +16,7 @@ const containerStyle: React.CSSProperties = { minHeight: '100vh', background: '#
 
 const SetupRequired: React.FC = () => (
   <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6 text-white" style={containerStyle}>
-    <div className="max-w-lg rounded-xl border border-amber-500/30 bg-slate-900/90 p-8 shadow-xl">
+    <div className="max-w-lg rounded-sm border border-amber-500/30 bg-slate-900/90 p-8 shadow-xl">
       <div className="mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined text-4xl text-amber-400">settings</span>
         <div>
@@ -43,15 +43,17 @@ const SetupRequired: React.FC = () => (
             </p>
           </div>
           <p className="mb-4 text-slate-300">
-            In <strong>Netlify</strong> → Site configuration → Environment variables, set <code className="rounded bg-slate-800 px-1">VITE_SUPABASE_URL</code> to <strong>exactly</strong>:
+            In <strong>Netlify</strong> → Site configuration → Environment variables, set <code className="rounded bg-slate-800 px-1">VITE_SUPABASE_URL</code> to your project URL:
           </p>
-          <p className="mb-4 rounded bg-slate-800 p-3 font-mono text-sm text-green-400">
-            https://bbqudyybacwbubkgktwf.supabase.co
+          <p className="mb-4 rounded bg-slate-800 p-3 font-mono text-sm text-green-400 break-all">
+            https://YOUR_PROJECT_REF.supabase.co
+          </p>
+          <p className="mb-2 text-sm text-slate-400">
+            Replace <code className="rounded bg-slate-800 px-1">YOUR_PROJECT_REF</code> with your project reference from <strong>Supabase Dashboard → Project Settings → API → Project URL</strong>. Use that value exactly (no trailing slash, no quotes).
           </p>
           <ul className="mb-4 list-inside list-disc text-sm text-slate-400">
-            <li>No trailing slash</li>
+            <li>No trailing slash after <code>.co</code></li>
             <li>No spaces or quotes — paste the URL only (Netlify may add quotes; delete them)</li>
-            <li>Copy from Supabase → Project Settings → API → Project URL</li>
           </ul>
           <div className="mb-6 rounded bg-amber-500/10 border border-amber-500/30 p-3">
             <p className="text-sm font-medium text-amber-400 mb-1">⚠️ Critical: After setting env vars, you MUST:</p>

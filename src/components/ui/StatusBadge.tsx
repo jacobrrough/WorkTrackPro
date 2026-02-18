@@ -56,13 +56,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const colorClasses = status ? STATUS_COLORS[status] : category ? CATEGORY_COLORS[category] : '';
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm',
+    sm: 'px-1.5 py-0.5 text-xs',
+    md: 'px-2 py-0.5 text-sm',
   };
 
   return (
     <span
-      className={`inline-flex items-center rounded-lg border font-bold ${colorClasses} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center rounded-sm border font-bold ${colorClasses} ${sizeClasses[size]} ${className}`}
     >
       {displayText}
     </span>

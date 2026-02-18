@@ -19,6 +19,29 @@ export const checklistService = {
     return (data ?? []).map((row) => mapRowToChecklist(row as unknown as Record<string, unknown>));
   },
 
+  /** Fetch checklists for many jobs in one or a few requests. Use this instead of getByJob in a loop. */
+  async getByJobIds(jobIds: string[]): Promise<Record<string, Checklist[]>> {
+    if (jobIds.length === 0) return {};
+    const byJob: Record<string, Checklist[]> = {};
+    for (const id of jobIds) byJob[id] = [];
+    const chunkSize = 80; // avoid PostgREST URL/query limits
+    for (let i = 0; i < jobIds.length; i += chunkSize) {
+      const chunk = jobIds.slice(i, i + chunkSize);
+      const { data, error } = await supabase
+        .from('checklists')
+        .select('*')
+        .in('job_id', chunk);
+      if (error) continue;
+      for (const row of data ?? []) {
+        const jobId = row.job_id as string;
+        if (jobId && byJob[jobId]) {
+          byJob[jobId].push(mapRowToChecklist(row as unknown as Record<string, unknown>));
+        }
+      }
+    }
+    return byJob;
+  },
+
   async getTemplates(): Promise<Checklist[]> {
     const { data, error } = await supabase.from('checklists').select('*').is('job_id', null).order('status');
     if (error) return [];

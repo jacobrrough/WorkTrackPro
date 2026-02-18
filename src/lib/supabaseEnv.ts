@@ -1,7 +1,9 @@
 /**
- * Validates Supabase env vars. Use for guarding app load and for trimming before createClient.
- * Normalizes so Netlify-stored values (e.g. with accidental quotes) still work.
- * Note: Vite bakes these at build time—after changing env vars in Netlify, trigger "Clear cache and deploy".
+ * Single source for Supabase URL and anon key. Values come ONLY from env:
+ *   - Local: .env.local (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+ *   - Netlify: Site configuration → Environment variables (same names)
+ * Validates and normalizes so Netlify-stored values (e.g. with accidental quotes) still work.
+ * Vite bakes these at build time — after changing env vars in Netlify, trigger "Clear cache and deploy".
  */
 
 function normalizeEnvValue(value: string): string {

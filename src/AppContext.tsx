@@ -23,6 +23,7 @@ import {
   calculateAllocated as calcAllocated,
   calculateAvailable as calcAvailable,
 } from './lib/inventoryCalculations';
+import { buildJobNameFromConvention } from './lib/formatJob';
 
 interface AppContextType {
   currentUser: User | null;
@@ -170,6 +171,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const createJob = useCallback(async (data: Partial<Job>): Promise<Job | null> => {
     try {
       const job = await jobService.createJob(data);
+      if (!job) {
+        console.error('Job creation returned null');
+        return null;
+      }
       if (job) {
         setJobs((prev) => [job, ...prev]);
       }
@@ -202,11 +207,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateJobStatus = useCallback(
     async (jobId: string, status: JobStatus): Promise<boolean> => {
       try {
-        // Get the job before status change to access materials
         const job = jobs.find((j) => j.id === jobId);
 
-        setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)));
-        await jobService.updateJobStatus(jobId, status);
+        // When marking as paid, rename job to Part REV per convention
+        if (status === 'paid' && job) {
+          const name = buildJobNameFromConvention({ ...job, status: 'paid' });
+          const updated = await jobService.updateJob(jobId, { status: 'paid', name });
+          if (!updated) {
+            await refreshJobs();
+            return false;
+          }
+          setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)));
+        } else {
+          setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)));
+          await jobService.updateJobStatus(jobId, status);
+        }
 
         // CRITICAL: Material reconciliation on delivery
         if (status === 'delivered' && job && job.expand?.job_inventory) {

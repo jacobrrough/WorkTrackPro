@@ -58,10 +58,10 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
           <button
             key={attachment.id}
             onClick={() => onViewAttachment(attachment)}
-            className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
           >
             {/* Icon */}
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/20">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary/20">
               <span className="material-symbols-outlined text-primary">
                 {getFileIcon(attachment.filename)}
               </span>

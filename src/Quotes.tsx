@@ -3,6 +3,7 @@ import { Job, InventoryItem, User, ViewState, Quote, QuoteLineItem, Shift } from
 import { quoteService } from './services/api/quotes';
 import { useToast } from './Toast';
 import { durationMs } from './lib/timeUtils';
+import { getJobDisplayName } from './lib/formatJob';
 
 interface QuotesProps {
   jobs: Job[];
@@ -71,7 +72,7 @@ const Quotes: React.FC<QuotesProps> = ({
 
       return jobs
         .filter((job) => {
-          const jobName = (job.name || '').toLowerCase();
+          const jobName = (getJobDisplayName(job) || job.name || '').toLowerCase();
           const jobDesc = (job.description || '').toLowerCase();
           const searchText = `${jobName} ${jobDesc}`;
 
@@ -337,7 +338,7 @@ const Quotes: React.FC<QuotesProps> = ({
             {onBack && (
               <button
                 onClick={onBack}
-                className="rounded-full border border-primary/30 bg-primary/20 p-1"
+                className="rounded-sm border border-primary/30 bg-primary/20 p-1"
               >
                 <span className="material-symbols-outlined text-primary">arrow_back</span>
               </button>
@@ -354,7 +355,7 @@ const Quotes: React.FC<QuotesProps> = ({
               setShowSavedQuotes(!showSavedQuotes);
               if (!showSavedQuotes) loadSavedQuotes();
             }}
-            className="bg-surface-dark relative flex size-10 items-center justify-center rounded-full border border-white/5 text-white"
+            className="bg-surface-dark relative flex size-10 items-center justify-center rounded-sm border border-white/5 text-white"
           >
             <span className="material-symbols-outlined">history</span>
           </button>
@@ -370,7 +371,7 @@ const Quotes: React.FC<QuotesProps> = ({
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             placeholder="Enter product name..."
-            className="bg-surface-dark w-full rounded-xl border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none"
+            className="bg-surface-dark w-full rounded-sm border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none"
           />
         </div>
 
@@ -379,11 +380,11 @@ const Quotes: React.FC<QuotesProps> = ({
             <p className="mb-2 text-sm text-white/60">Found {similarJobs.length} similar job(s):</p>
             <div className="space-y-2">
               {similarJobs.slice(0, 5).map((job) => (
-                <div key={job.id} className="bg-surface-dark rounded-lg border border-white/5 p-3">
+                <div key={job.id} className="bg-surface-dark rounded-sm border border-white/5 p-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-bold text-white">
-                        #{job.jobCode} - {job.name}
+                        #{job.jobCode} - {getJobDisplayName(job)}
                       </p>
                       {job.description && (
                         <p className="mt-1 text-xs text-white/60">{job.description}</p>
@@ -405,7 +406,7 @@ const Quotes: React.FC<QuotesProps> = ({
         <button
           onClick={calculateQuote}
           disabled={isCalculating || !productName.trim()}
-          className="mb-6 flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-6 text-white shadow-lg shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mb-6 flex h-14 w-full items-center justify-center gap-3 rounded-sm bg-primary px-6 text-white shadow-lg shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isCalculating ? (
             <>
@@ -425,7 +426,7 @@ const Quotes: React.FC<QuotesProps> = ({
           <div className="mb-6 space-y-6">
             {/* Reference Jobs */}
             {referenceJobs.length > 0 && (
-              <div className="bg-surface-dark rounded-xl border border-white/5 p-4">
+              <div className="bg-surface-dark rounded-sm border border-white/5 p-4">
                 <h3 className="mb-3 font-bold text-white">Reference Jobs</h3>
                 <div className="space-y-2">
                   {referenceJobs.map((job) => (
@@ -435,7 +436,7 @@ const Quotes: React.FC<QuotesProps> = ({
                     >
                       <div>
                         <p className="text-sm font-bold text-white">
-                          #{job.jobCode} - {job.name}
+                          #{job.jobCode} - {getJobDisplayName(job)}
                         </p>
                         <p className="text-xs text-white/60">
                           {calculateJobHours(job.id).toFixed(1)}h •{' '}
@@ -455,7 +456,7 @@ const Quotes: React.FC<QuotesProps> = ({
             )}
 
             {/* Line Items */}
-            <div className="bg-surface-dark rounded-xl border border-white/5 p-4">
+            <div className="bg-surface-dark rounded-sm border border-white/5 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-bold text-white">Materials</h3>
                 <button
@@ -470,7 +471,7 @@ const Quotes: React.FC<QuotesProps> = ({
                 {quoteData.lineItems.map((item, index) => (
                   <div
                     key={index}
-                    className="rounded-lg border border-white/5 bg-background-dark p-3"
+                    className="rounded-sm border border-white/5 bg-background-dark p-3"
                   >
                     <div className="mb-2 grid grid-cols-2 gap-2">
                       <input
@@ -531,7 +532,7 @@ const Quotes: React.FC<QuotesProps> = ({
             </div>
 
             {/* Labor & Costs */}
-            <div className="bg-surface-dark space-y-3 rounded-xl border border-white/5 p-4">
+            <div className="bg-surface-dark space-y-3 rounded-sm border border-white/5 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-white/60">Labor Hours:</span>
                 <input
@@ -602,14 +603,14 @@ const Quotes: React.FC<QuotesProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add notes or description..."
                 rows={3}
-                className="bg-surface-dark w-full resize-none rounded-xl border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none"
+                className="bg-surface-dark w-full resize-none rounded-sm border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none"
               />
             </div>
 
             {/* Save Button */}
             <button
               onClick={saveQuote}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-green-600 px-6 text-white shadow-lg shadow-green-600/25"
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-sm bg-green-600 px-6 text-white shadow-lg shadow-green-600/25"
             >
               <span className="material-symbols-outlined">save</span>
               <span className="text-base font-bold tracking-wide">Save Quote</span>
@@ -620,7 +621,7 @@ const Quotes: React.FC<QuotesProps> = ({
         {/* Saved Quotes Modal */}
         {showSavedQuotes && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm">
-            <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-t-3xl border-t border-white/10 bg-background-dark p-6">
+            <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-t-md border-t border-white/10 bg-background-dark p-4">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Saved Quotes</h3>
                 <button onClick={() => setShowSavedQuotes(false)} className="text-slate-400">
@@ -636,7 +637,7 @@ const Quotes: React.FC<QuotesProps> = ({
                   savedQuotes.map((quote) => (
                     <div
                       key={quote.id}
-                      className="bg-surface-dark rounded-xl border border-white/5 p-4"
+                      className="bg-surface-dark rounded-sm border border-white/5 p-4"
                     >
                       <div className="mb-2 flex items-start justify-between">
                         <div>

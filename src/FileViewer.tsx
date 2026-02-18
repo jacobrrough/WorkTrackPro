@@ -160,7 +160,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
               draggable={false}
             />
             {imageScale === 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 transform rounded-full bg-black/60 px-3 py-2 text-xs text-white">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 transform rounded-sm bg-black/60 px-3 py-2 text-xs text-white">
                 Double tap to zoom
               </div>
             )}
@@ -177,14 +177,14 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
             <div className="flex flex-shrink-0 gap-2 border-t border-white/10 bg-background-dark p-3 sm:gap-3 sm:p-4">
               <button
                 onClick={handleDownload}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/20 px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/30 active:scale-95 sm:py-3 sm:text-base"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-sm bg-primary/20 px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/30 active:scale-95 sm:py-3 sm:text-base"
               >
                 <span className="material-symbols-outlined text-base sm:text-lg">open_in_new</span>
                 <span>Open in Browser</span>
               </button>
               <button
                 onClick={onClose}
-                className="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-95 sm:py-3 sm:text-base"
+                className="rounded-sm bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-95 sm:py-3 sm:text-base"
               >
                 Close
               </button>
@@ -192,7 +192,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
           </div>
         ) : (
           <div className="p-4 text-center">
-            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-white/5 sm:h-32 sm:w-32">
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-sm bg-white/5 sm:h-32 sm:w-32">
               <span className="material-symbols-outlined text-5xl text-white sm:text-6xl">
                 {fileType === 'document' ? 'description' : 'attachment'}
               </span>
@@ -205,7 +205,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
             </p>
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm text-white transition-all hover:bg-primary/90 active:scale-95 sm:text-base"
+              className="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-3 text-sm text-white transition-all hover:bg-primary/90 active:scale-95 sm:text-base"
             >
               <span className="material-symbols-outlined">download</span>
               <span>Download File</span>
@@ -217,7 +217,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
       {/* Delete Confirmation - Mobile Optimized */}
       {showDeleteConfirm && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-card-dark p-4 sm:p-6">
+          <div className="w-full max-w-sm rounded-sm bg-card-dark p-3 sm:p-4">
             <h3 className="mb-2 text-base font-bold text-white sm:text-lg">Delete File?</h3>
             <p className="mb-4 text-sm text-slate-400 sm:mb-6 sm:text-base">
               Are you sure you want to delete "{attachment.filename}"? This cannot be undone.
@@ -225,13 +225,13 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
             <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-lg bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-95 sm:py-3 sm:text-base"
+                className="flex-1 rounded-sm bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-95 sm:py-3 sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-red-600 active:scale-95 sm:py-3 sm:text-base"
+                className="flex-1 rounded-sm bg-red-500 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-red-600 active:scale-95 sm:py-3 sm:text-base"
               >
                 Delete
               </button>

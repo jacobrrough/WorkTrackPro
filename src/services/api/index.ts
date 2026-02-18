@@ -6,6 +6,7 @@ export { shiftService } from './shifts';
 export { shiftEditService } from './shiftEdits';
 export { inventoryService } from './inventory';
 export { inventoryHistoryService } from './inventoryHistory';
+export { partsService } from './parts';
 export { quoteService } from './quotes';
 export { checklistService, checklistHistoryService } from './checklists';
 export { subscriptions } from './subscriptions';

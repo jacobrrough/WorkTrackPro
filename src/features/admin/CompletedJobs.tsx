@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Job, ViewState, User, getStatusDisplayName } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
+import { getJobDisplayName } from '@/lib/formatJob';
 
 interface CompletedJobsProps {
   jobs: Job[];
@@ -39,7 +40,7 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex size-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Back"
               >
                 <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -69,13 +70,13 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
               <button
                 key={job.id}
                 onClick={() => onNavigate('job-detail', job.id)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left transition-colors hover:bg-white/10 active:scale-[0.98]"
+                className="w-full rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10 active:scale-[0.98]"
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="mb-1 flex items-center gap-2">
                       <span className="font-bold text-white">#{job.jobCode}</span>
-                      <span className="text-sm font-medium text-slate-300">{job.name}</span>
+                      <span className="text-sm font-medium text-slate-300">{getJobDisplayName(job)}</span>
                       <span
                         className={`rounded px-2 py-0.5 text-xs font-medium ${
                           job.status === 'paid'

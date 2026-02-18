@@ -367,9 +367,19 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
     setIsSaving(false);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatHistoryDate = (dateString: string | null | undefined) => {
+    if (dateString == null || dateString === '') return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleString();
+    if (Number.isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   const getActionLabel = (action: string) => {
@@ -389,7 +399,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
       <>
         <div className="flex h-full flex-col bg-background-dark">
           {/* Header */}
-          <div className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-4">
+          <div className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button onClick={handleCancelEdit} className="text-white">
@@ -400,7 +410,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="rounded-lg bg-primary px-6 py-2 font-bold text-white disabled:opacity-50"
+                className="rounded-sm bg-primary px-6 py-2 font-bold text-white disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save'}
               </button>
@@ -408,9 +418,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           </div>
 
           {/* Form */}
-          <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <div className="flex-1 space-y-3 overflow-y-auto p-3">
             {/* Basic Info */}
-            <div className="space-y-4 rounded-xl bg-card-dark p-4">
+            <div className="space-y-3 rounded-sm bg-card-dark p-3">
               <h2 className="text-lg font-bold text-white">Basic Information</h2>
 
               <div>
@@ -419,7 +429,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
 
@@ -430,7 +440,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Optional description..."
                   rows={3}
-                  className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full resize-none rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
 
@@ -439,7 +449,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value as InventoryCategory)}
-                  className="w-full cursor-pointer rounded-lg border-2 border-primary/50 bg-background-light px-4 py-3 font-bold text-white hover:border-primary focus:border-primary focus:outline-none"
+                  className="w-full cursor-pointer rounded-sm border-2 border-primary/50 bg-background-light px-4 py-3 font-bold text-white hover:border-primary focus:border-primary focus:outline-none"
                 >
                   <option value="material" className="bg-background-dark text-white">
                     Material
@@ -472,7 +482,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   value={editUnit}
                   onChange={(e) => setEditUnit(e.target.value)}
                   placeholder="e.g., ft, lbs, ea"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
 
@@ -486,13 +496,13 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   value={editPrice || ''}
                   onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
             </div>
 
             {/* Stock */}
-            <div className="space-y-4 rounded-xl bg-card-dark p-4">
+            <div className="space-y-3 rounded-sm bg-card-dark p-3">
               <h2 className="text-lg font-bold text-white">Stock Levels</h2>
 
               <div>
@@ -502,7 +512,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   step="1"
                   value={editInStock}
                   onChange={(e) => setEditInStock(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
                 {editInStock !== item.inStock && (
                   <p className="mt-1 text-xs text-yellow-400">
@@ -523,18 +533,18 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                     value={editReason}
                     onChange={(e) => setEditReason(e.target.value)}
                     placeholder="e.g., Physical count, received shipment, correction"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                   />
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                <div className="rounded-sm border border-white/10 bg-white/5 px-4 py-3">
                   <p className="mb-1 text-xs text-slate-400">Allocated</p>
                   <p className="text-lg font-bold text-yellow-400">{allocated}</p>
                   <p className="text-xs text-slate-500">(auto-calculated)</p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                <div className="rounded-sm border border-white/10 bg-white/5 px-4 py-3">
                   <p className="mb-1 text-xs text-slate-400">Available</p>
                   <p className="text-lg font-bold text-green-400">
                     {Math.max(0, editInStock - allocated)}
@@ -551,7 +561,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   value={editReorderPoint || ''}
                   onChange={(e) => setEditReorderPoint(parseFloat(e.target.value) || 0)}
                   placeholder="0"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
                 <p className="mt-1 text-xs text-slate-500">
                   Alert when available falls below this level
@@ -566,13 +576,13 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   value={editOnOrder || ''}
                   onChange={(e) => setEditOnOrder(parseFloat(e.target.value) || 0)}
                   placeholder="0"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
             </div>
 
             {/* Location & Vendor */}
-            <div className="space-y-4 rounded-xl bg-card-dark p-4">
+            <div className="space-y-3 rounded-sm bg-card-dark p-3">
               <h2 className="text-lg font-bold text-white">Location & Vendor</h2>
 
               <div>
@@ -583,12 +593,12 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                     value={editBarcode}
                     onChange={(e) => setEditBarcode(e.target.value)}
                     placeholder="Scan or enter manually"
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                    className="flex-1 rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                   />
                   <button
                     type="button"
                     onClick={startScan}
-                    className="rounded-lg border border-primary bg-primary/20 px-4 py-3 text-primary transition-colors hover:bg-primary/30"
+                    className="rounded-sm border border-primary bg-primary/20 px-4 py-3 text-primary transition-colors hover:bg-primary/30"
                   >
                     <span className="material-symbols-outlined">qr_code_scanner</span>
                   </button>
@@ -602,7 +612,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   value={editBinLocation}
                   onChange={(e) => setEditBinLocation(e.target.value)}
                   placeholder="e.g., A3, B12"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
 
@@ -612,7 +622,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   type="text"
                   value={editVendor}
                   onChange={(e) => setEditVendor(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
               </div>
             </div>
@@ -621,8 +631,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
         {/* QR Scanner Modal */}
         {isScanning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-            <div className="w-full max-w-md rounded-xl bg-card-dark p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
+            <div className="w-full max-w-md rounded-sm bg-card-dark p-3">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Scan Barcode</h3>
                 <button onClick={stopScan} className="text-white">
@@ -630,7 +640,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 </button>
               </div>
               <div className="relative">
-                <video ref={videoRef} className="w-full rounded-lg" playsInline muted autoPlay />
+                <video ref={videoRef} className="w-full rounded-sm" playsInline muted autoPlay />
                 <canvas ref={canvasRef} className="hidden" />
                 {/* Scanning indicator */}
                 <div className="absolute left-2 top-2 rounded bg-black/50 px-2 py-1 text-xs text-white">
@@ -652,7 +662,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
     <>
       <div className="flex h-full flex-col bg-background-dark">
         {/* Header */}
-        <div className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-4">
+        <div className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -673,7 +683,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
             {isAdmin && (
               <button
                 onClick={handleStartEdit}
-                className="rounded-lg bg-primary px-4 py-2 font-bold text-white"
+                className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
               >
                 Edit
               </button>
@@ -683,34 +693,34 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <div className="flex-1 space-y-3 overflow-y-auto p-3">
           {/* Description */}
           {item.description && (
-            <div className="rounded-xl bg-card-dark p-4">
+            <div className="rounded-sm bg-card-dark p-3">
               <h2 className="mb-2 text-sm font-bold text-white">Description</h2>
               <p className="text-sm leading-relaxed text-slate-300">{item.description}</p>
             </div>
           )}
 
           {/* Stock Status */}
-          <div className="rounded-xl bg-card-dark p-4">
+          <div className="rounded-sm bg-card-dark p-3">
             <h2 className="mb-4 text-lg font-bold text-white">Stock Status</h2>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg bg-white/5 p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">In Stock</p>
                 <p className="text-2xl font-bold text-white">{item.inStock}</p>
               </div>
-              <div className="rounded-lg bg-white/5 p-3">
+              <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">Available</p>
                 <p className="text-2xl font-bold text-green-400">{available}</p>
               </div>
-              <div className="rounded-lg bg-white/5 p-3">
+              <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">Allocated (needed for jobs)</p>
                 <p className="text-2xl font-bold text-yellow-400">{allocated}</p>
                 <p className="text-xs text-slate-500">PO&apos;d / in-production jobs only</p>
               </div>
-              <div className="rounded-lg bg-white/5 p-3">
+              <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">On Order</p>
                 <p className="text-2xl font-bold text-blue-400">{item.onOrder || 0}</p>
               </div>
@@ -718,7 +728,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
             {(item.reorderPoint != null && available <= item.reorderPoint) ||
             (allocated > 0 && available < allocated) ? (
-              <div className="mt-4 space-y-1 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+              <div className="mt-4 space-y-1 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
                 <p className="font-bold text-red-400">Reorder recommended</p>
                 <p className="text-sm text-red-300">
                   {allocated} {item.unit} needed to complete all jobs (committed to PO&apos;d /
@@ -740,7 +750,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           </div>
 
           {/* Details */}
-          <div className="space-y-3 rounded-xl bg-card-dark p-4">
+          <div className="space-y-3 rounded-sm bg-card-dark p-3">
             <h2 className="mb-4 text-lg font-bold text-white">Details</h2>
 
             {item.price && (
@@ -787,7 +797,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           </div>
 
           {/* History */}
-          <div className="rounded-xl bg-card-dark p-4">
+          <div className="rounded-sm bg-card-dark p-3">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Stock History</h2>
               <button
@@ -813,7 +823,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                         <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>
                         <p className="text-sm text-slate-400">{h.reason}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {h.expand?.user?.name || 'System'} • {formatDate(h.created)}
+                          {(h as any).profiles?.name || (h as any).expand?.user?.name || 'System'} • {formatHistoryDate((h as any).created_at ?? (h as any).created)}
                         </p>
                       </div>
                       <div className="ml-3 text-right">
@@ -838,8 +848,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
       {/* QR Scanner Modal */}
       {isScanning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
-          <div className="w-full max-w-md rounded-xl bg-card-dark p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
+          <div className="w-full max-w-md rounded-sm bg-card-dark p-3">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Scan Barcode</h3>
               <button onClick={stopScan} className="text-white">
@@ -847,7 +857,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               </button>
             </div>
             <div className="relative">
-              <video ref={videoRef} className="w-full rounded-lg" playsInline />
+              <video ref={videoRef} className="w-full rounded-sm" playsInline />
               <canvas ref={canvasRef} className="hidden" />
             </div>
             <p className="mt-4 text-center text-sm text-slate-400">Position barcode in view</p>

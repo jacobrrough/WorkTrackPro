@@ -398,7 +398,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
       <main className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
         {/* Filters */}
-        <div className="space-y-4 rounded-xl border border-white/5 bg-card-dark p-4">
+        <div className="space-y-4 rounded-sm border border-white/5 bg-card-dark p-3">
           {currentUser.isAdmin && (
             <div className="flex gap-2">
               <button
@@ -406,7 +406,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setFilter('mine');
                   setSelectedUser(null);
                 }}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+                className={`flex-1 rounded-sm px-4 py-2 text-sm font-bold transition-all ${
                   filter === 'mine' ? 'bg-primary text-white' : 'bg-white/10 text-slate-400'
                 }`}
               >
@@ -418,7 +418,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setSelectedUser(null);
                   setViewMode('users');
                 }}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+                className={`flex-1 rounded-sm px-4 py-2 text-sm font-bold transition-all ${
                   filter === 'all' ? 'bg-primary text-white' : 'bg-white/10 text-slate-400'
                 }`}
               >
@@ -432,7 +432,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <button
                 key={range}
                 onClick={() => setDateRange(range)}
-                className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold uppercase transition-all ${
+                className={`flex-1 rounded-sm px-3 py-2 text-xs font-bold uppercase transition-all ${
                   dateRange === range
                     ? 'border border-primary bg-primary/20 text-primary'
                     : 'bg-white/5 text-slate-400'
@@ -449,7 +449,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
-                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold uppercase transition-all ${
+                  className={`flex-1 rounded-sm px-3 py-2 text-xs font-bold uppercase transition-all ${
                     viewMode === mode
                       ? 'border border-primary bg-primary/20 text-primary'
                       : 'bg-white/5 text-slate-400'
@@ -464,22 +464,22 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-white/5 bg-card-dark p-4">
+          <div className="rounded-sm border border-white/5 bg-card-dark p-3">
             <p className="mb-1 text-xs font-bold uppercase text-slate-400">Total Hours</p>
             <p className="text-2xl font-bold text-white">{totalHours.toFixed(1)}h</p>
           </div>
-          <div className="rounded-xl border border-white/5 bg-card-dark p-4">
+          <div className="rounded-sm border border-white/5 bg-card-dark p-3">
             <p className="mb-1 text-xs font-bold uppercase text-slate-400">Shifts</p>
             <p className="text-2xl font-bold text-white">{completedShifts.length}</p>
           </div>
-          <div className="rounded-xl border border-white/5 bg-card-dark p-4">
+          <div className="rounded-sm border border-white/5 bg-card-dark p-3">
             <p className="mb-1 text-xs font-bold uppercase text-slate-400">Active</p>
             <p className="text-2xl font-bold text-green-400">{activeShifts.length}</p>
           </div>
         </div>
 
         {/* 7-Day Chart */}
-        <div className="rounded-xl border border-white/5 bg-card-dark p-4">
+        <div className="rounded-sm border border-white/5 bg-card-dark p-3">
           <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary">
             Last 7 Days
           </h3>
@@ -510,11 +510,11 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setSelectedUser(userId);
                   setViewMode('shifts');
                 }}
-                className="w-full rounded-xl border border-white/5 bg-card-dark p-4 text-left transition-all hover:border-primary/30"
+                className="w-full rounded-sm border border-white/5 bg-card-dark p-3 text-left transition-all hover:border-primary/30"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary/20 text-sm font-bold text-primary">
                       {getUserInitials(userId)}
                     </div>
                     <div>
@@ -539,7 +539,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
         {/* Hours by Job */}
         {(viewMode === 'jobs' || filter === 'mine') && totalsByJob.length > 0 && (
-          <div className="mb-6 rounded-xl border border-white/5 bg-card-dark p-4">
+          <div className="mb-4 rounded-sm border border-white/5 bg-card-dark p-3">
             <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary">
               Hours by Project
             </h3>
@@ -555,7 +555,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                       </span>
                       <span className="ml-2 text-white">{hours.toFixed(1)}h</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                    <div className="h-2 overflow-hidden rounded-sm bg-slate-800">
                       <div
                         className="h-full bg-primary transition-all duration-500"
                         style={{ width: `${Math.min(100, percentage)}%` }}
@@ -570,19 +570,19 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
         {/* Active Shifts (Admin) */}
         {currentUser.isAdmin && activeShifts.length > 0 && viewMode === 'shifts' && (
-          <div className="mb-6">
+          <div className="mb-4">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-green-400">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-green-500"></span>
+              <span className="h-2 w-2 animate-pulse rounded-sm bg-green-500"></span>
               Currently Working ({activeShifts.length})
             </h3>
             <div className="space-y-2">
               {activeShifts.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center justify-between rounded-xl border border-green-500/20 bg-green-500/10 p-3"
+                  className="flex items-center justify-between rounded-sm border border-green-500/20 bg-green-500/10 p-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20 text-xs font-bold text-green-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-green-500/20 text-xs font-bold text-green-400">
                       {getUserInitials(s.user)}
                     </div>
                     <div>
@@ -622,7 +622,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               {currentUser.isAdmin && onRefreshShifts && (
                 <button
                   onClick={openAddShiftModal}
-                  className="flex shrink-0 items-center gap-2 rounded-lg border border-primary/50 bg-primary/20 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/30"
+                  className="flex shrink-0 items-center gap-2 rounded-sm border border-primary/50 bg-primary/20 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/30"
                 >
                   <span className="material-symbols-outlined text-sm">add</span>
                   Add shift
@@ -641,7 +641,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 completedShifts.map((s) => (
                   <div
                     key={s.id}
-                    className="relative rounded-xl border border-white/5 bg-card-dark p-3"
+                    className="relative rounded-sm border border-white/5 bg-card-dark p-3"
                   >
                     {editingShiftId === s.id ? (
                       <div className="space-y-3">
@@ -720,7 +720,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                         <div className="flex items-start justify-between">
                           <div className="flex min-w-0 flex-1 gap-3">
                             {filter === 'all' && !selectedUser && (
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-primary/20 text-[10px] font-bold text-primary">
                                 {getUserInitials(s.user)}
                               </div>
                             )}
@@ -752,7 +752,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                                 e.stopPropagation();
                                 loadShiftHistory(s.id);
                               }}
-                              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-500/20"
+                              className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-bold text-blue-400 transition-colors hover:bg-blue-500/20"
                             >
                               <span className="material-symbols-outlined text-sm">history</span>
                               History
@@ -762,7 +762,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                                 e.stopPropagation();
                                 handleEditShift(s);
                               }}
-                              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+                              className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
                             >
                               <span className="material-symbols-outlined text-sm">edit</span>
                               Edit
@@ -772,7 +772,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                                 e.stopPropagation();
                                 setShiftToDeleteId(s.id);
                               }}
-                              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 transition-colors hover:bg-red-500/20"
+                              className="flex flex-1 items-center justify-center gap-2 rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 transition-colors hover:bg-red-500/20"
                             >
                               <span className="material-symbols-outlined text-sm">delete</span>
                               Delete
@@ -802,14 +802,14 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       {/* Edit History Modal */}
       {viewingHistoryFor && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3"
           onClick={() => setViewingHistoryFor(null)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-card-dark"
+            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-sm border border-white/10 bg-card-dark"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/10 p-4">
+            <div className="flex items-center justify-between border-b border-white/10 p-3">
               <h3 className="font-bold text-white">Edit History</h3>
               <button
                 onClick={() => setViewingHistoryFor(null)}
@@ -818,13 +818,13 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-4">
+            <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-3">
               {loadingHistory ? (
                 <p className="py-8 text-center text-slate-400">Loading...</p>
               ) : shiftEdits[viewingHistoryFor] && shiftEdits[viewingHistoryFor].length > 0 ? (
                 <div className="space-y-4">
                   {shiftEdits[viewingHistoryFor].map((edit) => (
-                    <div key={edit.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                    <div key={edit.id} className="rounded-sm border border-white/10 bg-white/5 p-3">
                       <div className="mb-3 flex items-start justify-between">
                         <div>
                           <p className="text-sm font-bold text-white">{edit.editedByName}</p>
@@ -834,7 +834,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                         </div>
                       </div>
                       <div className="space-y-2 text-xs">
-                        <div className="flex gap-4">
+                        <div className="flex gap-3">
                           <div className="flex-1">
                             <p className="mb-1 font-bold uppercase text-slate-500">
                               Previous Clock In
@@ -847,7 +847,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                           </div>
                         </div>
                         {(edit.previousClockOut || edit.newClockOut) && (
-                          <div className="flex gap-4">
+                          <div className="flex gap-3">
                             <div className="flex-1">
                               <p className="mb-1 font-bold uppercase text-slate-500">
                                 Previous Clock Out
@@ -889,14 +889,14 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       {/* Add Shift Modal (Admin) */}
       {showAddShift && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3"
           onClick={() => !addingShift && setShowAddShift(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-white/10 bg-card-dark"
+            className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/10 p-4">
+            <div className="flex items-center justify-between border-b border-white/10 p-3">
               <h3 className="font-bold text-white">Add Shift</h3>
               <button
                 onClick={() => !addingShift && setShowAddShift(false)}
@@ -905,7 +905,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 p-3">
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
                   User *
@@ -913,7 +913,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <select
                   value={newShiftData.user}
                   onChange={(e) => setNewShiftData({ ...newShiftData, user: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
                 >
                   <option value="">Select user</option>
                   {users.map((u) => (
@@ -930,7 +930,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <select
                   value={newShiftData.job}
                   onChange={(e) => setNewShiftData({ ...newShiftData, job: e.target.value })}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
                 >
                   <option value="">Select job</option>
                   {jobs.map((j) => (
@@ -950,7 +950,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   onChange={(e) =>
                     setNewShiftData({ ...newShiftData, clockInTime: e.target.value })
                   }
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
                 />
               </div>
               <div>
@@ -963,7 +963,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   onChange={(e) =>
                     setNewShiftData({ ...newShiftData, clockOutTime: e.target.value })
                   }
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
                 />
                 <p className="mt-1 text-xs text-slate-500">
                   Leave empty for an active (open) shift.
@@ -974,7 +974,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <button
                 onClick={() => !addingShift && setShowAddShift(false)}
                 disabled={addingShift}
-                className="flex-1 rounded-lg bg-white/10 py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-sm bg-white/10 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -986,7 +986,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   !newShiftData.job ||
                   !newShiftData.clockInTime.trim()
                 }
-                className="flex-1 rounded-lg bg-primary py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-sm bg-primary py-2 text-sm font-bold text-white disabled:opacity-50"
               >
                 {addingShift ? 'Adding...' : 'Add Shift'}
               </button>

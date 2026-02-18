@@ -277,7 +277,7 @@ const QuickScanButton: React.FC<QuickScanButtonProps> = ({ onScanComplete, onErr
       <button
         onClick={startScan}
         disabled={isScanning}
-        className="fixed bottom-24 right-6 z-40 flex size-14 items-center justify-center rounded-full bg-primary shadow-xl transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50"
+        className="fixed bottom-24 right-6 z-40 flex size-14 items-center justify-center rounded-sm bg-primary shadow-xl transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50"
         title="Scan QR Code or Barcode"
       >
         <span className="material-symbols-outlined text-2xl text-white">
@@ -295,7 +295,7 @@ const QuickScanButton: React.FC<QuickScanButtonProps> = ({ onScanComplete, onErr
             </div>
             <button
               onClick={stopScan}
-              className="flex size-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+              className="flex size-10 items-center justify-center rounded-sm bg-white/10 text-white hover:bg-white/20"
             >
               <span className="material-symbols-outlined">close</span>
             </button>
@@ -315,7 +315,7 @@ const QuickScanButton: React.FC<QuickScanButtonProps> = ({ onScanComplete, onErr
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="relative">
                 {/* Scanning frame */}
-                <div className="relative h-64 w-64 rounded-2xl border-4 border-primary/50">
+                <div className="relative h-64 w-64 rounded-md border-4 border-primary/50">
                   {/* Corner brackets */}
                   <div className="absolute -left-1 -top-1 h-12 w-12 rounded-tl-2xl border-l-4 border-t-4 border-white"></div>
                   <div className="absolute -right-1 -top-1 h-12 w-12 rounded-tr-2xl border-r-4 border-t-4 border-white"></div>
@@ -327,7 +327,7 @@ const QuickScanButton: React.FC<QuickScanButtonProps> = ({ onScanComplete, onErr
 
                   {/* Center target */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="h-8 w-8 rounded-full border-2 border-white opacity-50"></div>
+                    <div className="h-8 w-8 rounded-sm border-2 border-white opacity-50"></div>
                   </div>
                 </div>
               </div>
@@ -337,7 +337,7 @@ const QuickScanButton: React.FC<QuickScanButtonProps> = ({ onScanComplete, onErr
           {/* Instructions */}
           <div className="bg-gradient-to-t from-black to-transparent p-6">
             <div className="space-y-3">
-              <div className="rounded-xl bg-white/10 p-4 backdrop-blur">
+              <div className="rounded-sm bg-white/10 p-4 backdrop-blur">
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-2xl text-primary">qr_code</span>
                   <div className="flex-1">
@@ -350,7 +350,7 @@ const QuickScanButton: React.FC<QuickScanButtonProps> = ({ onScanComplete, onErr
               </div>
 
               {/* Debug info toggle */}
-              <details className="rounded-xl bg-white/5 backdrop-blur">
+              <details className="rounded-sm bg-white/5 backdrop-blur">
                 <summary className="cursor-pointer p-3 text-xs text-slate-400 hover:text-white">
                   Debug Info ({scanAttempts} frames)
                 </summary>

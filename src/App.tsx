@@ -1,542 +1,429 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ViewState, Job, JobStatus } from '@/core/types';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useApp } from './AppContext';
-import { useToast } from './Toast';
-import { LoadingSpinner } from './Loading';
-import { Login, Landing } from '@/features/auth';
-import { Dashboard } from '@/features/dashboard';
-import { JobDetail, KanbanBoard, AdminCreateJob } from '@/features/jobs';
-import { Inventory, NeedsOrdering } from '@/features/inventory';
-import { AdminConsole } from '@/features/admin';
-import CompletedJobs from '@/features/admin/CompletedJobs';
-import Calendar from '@/features/admin/Calendar';
-import { TimeReports, ClockInScreen } from '@/features/time';
-import { Quotes } from '@/features/quotes';
-import { BottomNavigation } from './BottomNavigation';
-import { SkipLink } from './components/SkipLink';
+import { NavigationProvider } from './contexts/NavigationContext';
+import { SettingsProvider } from './contexts/SettingsContext';
+import Login from './Login';
+import Dashboard from './Dashboard';
+import JobList from './JobList';
+import JobDetail from './JobDetail';
+import ClockInScreen from './ClockInScreen';
+import Inventory from './Inventory';
+import AdminConsole from './AdminConsole';
+import KanbanBoard from './KanbanBoard';
+import Parts from './Parts';
+import AdminCreateJob from './AdminCreateJob';
+import Quotes from './Quotes';
+import Calendar from './features/admin/Calendar';
+import TimeReports from './TimeReports';
+import CompletedJobs from './features/admin/CompletedJobs';
+import AdminSettings from './features/admin/AdminSettings';
+import TrelloImport from './TrelloImport';
 import { jobService } from './pocketbase';
-import { getPath, getViewFromPath } from '@/core/routes';
 
-const App: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <NavigationProvider>
+      <SettingsProvider>
+        {children}
+      </SettingsProvider>
+    </NavigationProvider>
+  );
+}
+
+export default function App() {
   const {
     currentUser,
     isLoading,
     authError,
-    users,
+    login,
     jobs,
     shifts,
+    users,
     inventory,
-    login,
-    logout,
-    createJob,
-    updateJobStatus,
-    updateJob,
-    addJobComment,
-    addJobInventory,
-    removeJobInventory,
-    getJobByCode,
-    clockIn,
-    clockOut,
     activeShift,
     activeJob,
-    updateInventoryStock,
-    updateInventoryItem,
-    createInventory,
-    markInventoryOrdered,
-    receiveInventoryOrder,
+    clockIn,
+    clockOut,
+    createJob,
+    updateJob,
+    updateJobStatus,
+    addJobComment,
+    getJobByCode,
+    addJobInventory,
+    removeJobInventory,
+    addAttachment,
+    deleteAttachment,
     refreshJobs,
     refreshShifts,
     calculateAvailable,
     calculateAllocated,
-    addAttachment,
-    deleteAttachment,
+    createInventory,
+    updateInventoryItem,
+    updateInventoryStock,
+    markInventoryOrdered,
+    receiveInventoryOrder,
   } = useApp();
 
-  const { showToast } = useToast();
+  const [view, setView] = useState<string>('dashboard');
+  const [id, setId] = useState<string | undefined>(undefined);
+  const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
 
-  const {
-    view: currentView,
-    jobId: selectedJobId,
-    inventoryId: selectedInventoryId,
-  } = getViewFromPath(location.pathname);
-  const [fullJobDetails, setFullJobDetails] = useState<Job | null>(null);
-  const [loadingJobDetails, setLoadingJobDetails] = useState(false);
-
-  const navigateTo = useCallback(
-    (view: ViewState, id?: string) => {
-      const path = getPath(view, id);
-      // Prevent navigation loops: don't store returnTo if navigating to the same path
-      // Only prevent storing state when going FROM inventory-detail TO job-detail (to prevent loops)
-      // But allow storing state when going FROM job-detail TO inventory-detail (so we can return to job)
-      const isLoopNavigation =
-        path === location.pathname || (currentView === 'inventory-detail' && view === 'job-detail');
-
-      // Store return path unless it would create a loop
-      // Always store when coming from job-detail so we can return to it
-      const state = isLoopNavigation
-        ? undefined
-        : { returnView: currentView, returnTo: location.pathname };
-
-      navigate(path, { state });
-    },
-    [navigate, currentView, location.pathname]
-  );
-
-  const navigateBack = useCallback(() => {
-    // Check location state for return path
-    const state = location.state as { returnTo?: string; returnView?: ViewState } | null;
-
-    if (currentView === 'job-detail') {
-      // Check if we have a return path in state
-      // Don't return to inventory-detail to prevent loops
-      if (state?.returnTo && !state.returnTo.includes('/inventory/')) {
-        navigate(state.returnTo);
-      } else if (state?.returnView && state.returnView !== 'inventory-detail') {
-        navigate(getPath(state.returnView));
-      } else {
-        // Default to jobs board
-        navigate('/jobs');
-      }
-    } else if (currentView === 'inventory-detail') {
-      // Check if we came from a job-detail page
-      if (state?.returnTo && state.returnTo.includes('/jobs/')) {
-        // Return to the job detail page we came from
-        navigate(state.returnTo);
-      } else if (state?.returnTo && !state.returnTo.includes('/inventory/')) {
-        // Return to other non-inventory views
-        navigate(state.returnTo);
-      } else {
-        // Default to inventory list (don't loop back to another inventory item)
-        navigate('/inventory');
-      }
-    } else if (currentView === 'admin-create-job') {
-      // Check if we came from admin-console or board-admin
-      if (state?.returnTo) {
-        navigate(state.returnTo);
-      } else if (state?.returnView === 'board-admin') {
-        navigate('/admin/board');
-      } else if (state?.returnView === 'admin-console') {
-        navigate('/admin');
-      } else {
-        // Try browser back, fallback to jobs
-        if (window.history.length > 1) {
-          navigate(-1);
-        } else {
-          navigate('/jobs');
-        }
-      }
-    } else if (currentView === 'admin-console' || currentView === 'clock-in' || currentView === 'completed-jobs' || currentView === 'calendar') {
-      navigate('/dashboard');
-    } else if (currentView === 'needs-ordering') {
-      navigate('/inventory');
+  const handleNavigate = useCallback((nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
+    setView(nextView);
+    if (nextId === undefined) {
+      setId(undefined);
+    } else if (typeof nextId === 'string') {
+      setId(nextId);
+    } else if (nextId && 'jobId' in nextId && nextId.jobId) {
+      setId(nextId.jobId);
+    } else if (nextId && 'partId' in nextId && nextId.partId) {
+      setId(nextId.partId);
     } else {
-      // Try browser back, fallback to dashboard
-      if (window.history.length > 1) {
-        navigate(-1);
-      } else {
-        navigate('/dashboard');
-      }
+      setId(undefined);
     }
-  }, [currentView, navigate, location.state]);
-
-  const canGoBack =
-    currentView === 'job-detail' ||
-    currentView === 'inventory-detail' ||
-    currentView === 'admin-create-job' ||
-    currentView === 'admin-console' ||
-    currentView === 'quotes' ||
-    currentView === 'completed-jobs' ||
-    currentView === 'calendar' ||
-    currentView === 'clock-in' ||
-    currentView === 'needs-ordering';
-
-  useEffect(() => {
-    if (!isLoading && !currentUser && location.pathname !== '/' && location.pathname !== '/login') {
-      navigate('/login');
-      return;
-    }
-    if (!isLoading && currentUser && location.pathname === '/') {
-      navigate('/dashboard');
-      return;
-    }
-  }, [isLoading, currentUser, location.pathname, navigate]);
-
-  useEffect(() => {
-    if (selectedJobId && currentView === 'job-detail') {
-      setLoadingJobDetails(true);
-      jobService
-        .getJobById(selectedJobId)
-        .then((job) => {
-          if (job) {
-            setFullJobDetails(job);
-          }
-          setLoadingJobDetails(false);
-        })
-        .catch((error) => {
-          console.error('Error loading job details:', error);
-          setLoadingJobDetails(false);
-        });
-    }
-  }, [selectedJobId, currentView]);
+  }, []);
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
-      const success = await login(email, password);
-      if (success) {
-        navigate('/dashboard');
-        showToast('Welcome back!', 'success');
-      }
+      await login(email, password);
     },
-    [login, showToast, navigate]
+    [login]
   );
 
-  const handleLogout = useCallback(() => {
-    logout();
-    navigate('/login');
-    showToast('Logged out successfully', 'info');
-  }, [logout, showToast, navigate]);
-
-  const handleClockIn = useCallback(
-    async (jobId: string) => {
-      const success = await clockIn(jobId);
-      showToast(
-        success ? 'Clocked in successfully' : 'Failed to clock in',
-        success ? 'success' : 'error'
-      );
-      return success;
-    },
-    [clockIn, showToast]
-  );
-
-  const handleClockOut = useCallback(async () => {
-    const success = await clockOut();
-    showToast(
-      success ? 'Clocked out successfully' : 'Failed to clock out',
-      success ? 'success' : 'error'
-    );
-    return success;
-  }, [clockOut, showToast]);
-
-  const handleCreateJob = useCallback(
-    async (data: Partial<Job>) => {
-      const job = await createJob(data);
-      if (job) {
-        showToast(`Job #${data.jobCode} created successfully`, 'success');
-        await refreshJobs(); // Refresh job list to show new job
-        navigateBack();
-      } else {
-        showToast('Failed to create job', 'error');
-      }
-      return job;
-    },
-    [createJob, showToast, navigateBack, refreshJobs]
-  );
-
-  const handleUpdateJobStatus = useCallback(
-    async (jobId: string, status: JobStatus) => {
-      const success = await updateJobStatus(jobId, status);
-      if (!success) showToast('Failed to update job status', 'error');
-      return success;
-    },
-    [updateJobStatus, showToast]
-  );
-
-  const handleDeleteJob = useCallback(
-    async (jobId: string) => {
-      const success = await jobService.deleteJob(jobId);
-      showToast(success ? 'Job deleted' : 'Failed to delete job', success ? 'success' : 'error');
-      if (success) refreshJobs();
-    },
-    [showToast, refreshJobs]
-  );
-
-  const handleClockInByCode = useCallback(
-    async (code: number) => {
+  const onClockInByCode = useCallback(
+    async (code: number): Promise<{ success: boolean; message: string }> => {
       const job = await getJobByCode(code);
-      if (!job) return { success: false, message: 'Job code not found' };
-      if (activeShift)
-        return { success: false, message: 'Please clock out of your current job first' };
-      const success = await clockIn(job.id);
-      if (success) showToast(`Clocked in to Job #${code} - ${job.name}`, 'success');
-      return { success, message: success ? `Clocked in to ${job.name}` : 'Failed to clock in' };
+      if (!job) return { success: false, message: 'Job not found' };
+      const ok = await clockIn(job.id);
+      return ok ? { success: true, message: 'Clocked in' } : { success: false, message: 'Failed to clock in' };
     },
-    [getJobByCode, activeShift, clockIn, showToast]
+    [getJobByCode, clockIn]
   );
 
-  const handleAddJobInventory = useCallback(
-    async (jobId: string, inventoryId: string, quantity: number, unit: string) => {
-      await addJobInventory(jobId, inventoryId, quantity, unit);
-      if (selectedJobId === jobId) {
-        const updatedJob = await jobService.getJobById(jobId);
-        if (updatedJob) setFullJobDetails(updatedJob);
-      }
-    },
-    [addJobInventory, selectedJobId]
-  );
+  if (!currentUser && !isLoading) {
+    return (
+      <Login
+        onLogin={handleLogin}
+        error={authError}
+        isLoading={isLoading}
+      />
+    );
+  }
 
-  const handleRemoveJobInventory = useCallback(
-    async (jobId: string, jobInventoryId: string) => {
-      await removeJobInventory(jobId, jobInventoryId);
-      if (selectedJobId === jobId) {
-        const updatedJob = await jobService.getJobById(jobId);
-        if (updatedJob) setFullJobDetails(updatedJob);
-      }
-    },
-    [removeJobInventory, selectedJobId]
-  );
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background-dark">
+        <p className="text-slate-400">Loading...</p>
+      </div>
+    );
+  }
 
-  const handleAddJobComment = useCallback(
-    async (jobId: string, text: string) => {
-      const comment = await addJobComment(jobId, text);
-      if (comment && selectedJobId === jobId) {
-        // Wait a moment for DB to fully update
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        const updatedJob = await jobService.getJobById(jobId);
-        if (updatedJob) {
-          setFullJobDetails(updatedJob);
-        }
-      }
-      return comment;
-    },
-    [addJobComment, selectedJobId]
-  );
+  const isAdmin = currentUser?.isAdmin ?? false;
 
-  const handleReloadJob = useCallback(async () => {
-    if (selectedJobId) {
-      const updatedJob = await jobService.getJobById(selectedJobId);
-      if (updatedJob) setFullJobDetails(updatedJob);
+  if (view === 'dashboard') {
+    return (
+      <AppShell>
+        <Dashboard onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'job-list') {
+    return (
+      <AppShell>
+        <JobList
+          jobs={jobs}
+          onNavigate={handleNavigate}
+          onClockIn={clockIn}
+          activeJobId={activeJob?.id}
+          shifts={shifts}
+          users={users}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'job-detail' && id) {
+    const job = jobs.find((j) => j.id === id);
+    if (!job) {
+      return (
+        <AppShell>
+          <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4">
+            <p className="text-slate-400">Job not found.</p>
+            <button
+              onClick={() => handleNavigate('dashboard')}
+              className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
+            >
+              Back to Home
+            </button>
+          </div>
+        </AppShell>
+      );
     }
-  }, [selectedJobId]);
+    const isClockedIn = activeShift?.job === job.id;
+    return (
+      <AppShell>
+        <JobDetail
+          job={job}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+          isClockedIn={!!isClockedIn}
+          onClockIn={() => clockIn(job.id)}
+          onClockOut={clockOut}
+          activeShift={activeShift}
+          inventory={inventory}
+          jobs={jobs}
+          shifts={shifts}
+          onAddComment={addJobComment}
+          onAddInventory={addJobInventory}
+          onRemoveInventory={removeJobInventory}
+          onUpdateJob={updateJob}
+          onReloadJob={async () => {
+            const updated = await jobService.getJobById(job.id);
+            if (updated) refreshJobs();
+          }}
+          currentUser={currentUser!}
+          onAddAttachment={addAttachment}
+          onDeleteAttachment={deleteAttachment}
+          calculateAvailable={calculateAvailable}
+        />
+      </AppShell>
+    );
+  }
 
-  const userShifts = useMemo(
-    () => (currentUser ? shifts.filter((s) => s.user === currentUser.id) : []),
-    [shifts, currentUser]
-  );
+  if (view === 'clock-in') {
+    return (
+      <AppShell>
+        <ClockInScreen
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+          onClockInByCode={onClockInByCode}
+          activeShift={activeShift}
+          activeJob={activeJob}
+          onClockOut={clockOut}
+        />
+      </AppShell>
+    );
+  }
 
-  const showFullScreenLoading = isLoading && currentView === 'login';
+  if (view === 'inventory') {
+    return (
+      <AppShell>
+        <Inventory
+          inventory={inventory}
+          onNavigate={handleNavigate}
+          onUpdateStock={updateInventoryStock}
+          onUpdateItem={updateInventoryItem}
+          onCreateItem={createInventory}
+          onMarkOrdered={markInventoryOrdered}
+          onReceiveOrder={receiveInventoryOrder}
+          isAdmin={isAdmin}
+          calculateAvailable={calculateAvailable}
+          calculateAllocated={calculateAllocated}
+          initialItemId={id}
+          onBackFromDetail={() => setId(undefined)}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'inventory-detail' && id) {
+    const item = inventory.find((i) => i.id === id);
+    if (!item) {
+      return (
+        <AppShell>
+          <div className="flex min-h-screen items-center justify-center bg-background-dark p-4">
+            <p className="text-slate-400">Item not found.</p>
+            <button
+              onClick={() => handleNavigate('inventory')}
+              className="mt-3 rounded-sm bg-primary px-4 py-2 font-bold text-white"
+            >
+              Back
+            </button>
+          </div>
+        </AppShell>
+      );
+    }
+    return (
+      <AppShell>
+        <Inventory
+          inventory={inventory}
+          onNavigate={handleNavigate}
+          onUpdateStock={updateInventoryStock}
+          onUpdateItem={updateInventoryItem}
+          onCreateItem={createInventory}
+          onMarkOrdered={markInventoryOrdered}
+          onReceiveOrder={receiveInventoryOrder}
+          isAdmin={isAdmin}
+          calculateAvailable={calculateAvailable}
+          calculateAllocated={calculateAllocated}
+          initialItemId={id}
+          onBackFromDetail={() => handleNavigate('inventory')}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'admin') {
+    return (
+      <AppShell>
+        <AdminConsole
+          jobs={jobs}
+          shifts={shifts}
+          users={users}
+          onNavigate={handleNavigate}
+          onUpdateJobStatus={updateJobStatus}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'board-shop' || view === 'board-admin') {
+    const boardType = view === 'board-admin' ? 'admin' : 'shopFloor';
+    return (
+      <AppShell>
+        <KanbanBoard
+          jobs={jobs}
+          onNavigate={handleNavigate}
+          onCreateJob={() => handleNavigate('create-job')}
+          boardType={boardType}
+          isAdmin={isAdmin}
+          onUpdateJobStatus={updateJobStatus}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'parts' || view === 'part-detail') {
+    return (
+      <AppShell>
+        <Parts
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate(isAdmin ? 'admin' : 'dashboard')}
+          initialPartId={id}
+          isAdmin={isAdmin}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'create-job' && currentUser) {
+    return (
+      <AppShell>
+        <AdminCreateJob
+          onCreate={createJob}
+          onNavigate={handleNavigate}
+          users={users}
+          existingJobCodes={existingJobCodes}
+          currentUser={currentUser}
+          jobs={jobs}
+          shifts={shifts}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'quotes' && currentUser) {
+    return (
+      <AppShell>
+        <Quotes
+          jobs={jobs}
+          inventory={inventory}
+          shifts={shifts}
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'calendar' && currentUser) {
+    return (
+      <AppShell>
+        <Calendar
+          jobs={jobs}
+          shifts={shifts}
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'time-reports' && currentUser) {
+    return (
+      <AppShell>
+        <TimeReports
+          shifts={shifts}
+          users={users}
+          jobs={jobs}
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+          onRefreshShifts={refreshShifts}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'completed-jobs' && currentUser) {
+    return (
+      <AppShell>
+        <CompletedJobs
+          jobs={jobs}
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'admin-settings') {
+    return (
+      <AppShell>
+        <AdminSettings
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'trello-import') {
+    return (
+      <AppShell>
+        <div className="flex min-h-screen flex-col bg-background-dark">
+          <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => handleNavigate('dashboard')}
+              className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 className="text-lg font-bold text-white">Import Trello</h1>
+            <div className="size-10" />
+          </header>
+          <main className="flex-1 overflow-y-auto p-4">
+            <TrelloImport
+              onClose={() => handleNavigate('dashboard')}
+              onImportComplete={() => {
+                refreshJobs();
+                handleNavigate('dashboard');
+              }}
+            />
+          </main>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-full flex-1 flex-col items-center overflow-hidden bg-background-light font-sans dark:bg-background-dark">
-      <SkipLink />
-      {showFullScreenLoading ? (
-        <LoadingSpinner key="loading" fullScreen text="Loading..." />
-      ) : currentUser && currentView === 'board-shop' ? (
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-          <KanbanBoard
-            key="board-shop"
-            jobs={jobs}
-            boardType="shopFloor"
-            onNavigate={navigateTo}
-            onBack={canGoBack ? navigateBack : undefined}
-            onUpdateJobStatus={handleUpdateJobStatus}
-            onCreateJob={() => navigateTo('admin-create-job')}
-            onDeleteJob={handleDeleteJob}
-            isAdmin={currentUser.isAdmin}
-            currentUser={currentUser}
-          />
-        </div>
-      ) : currentUser?.isAdmin && currentView === 'board-admin' ? (
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-          <KanbanBoard
-            key="board-admin"
-            jobs={jobs}
-            boardType="admin"
-            onNavigate={navigateTo}
-            onBack={canGoBack ? navigateBack : undefined}
-            onUpdateJobStatus={handleUpdateJobStatus}
-            onCreateJob={() => navigateTo('admin-create-job')}
-            onDeleteJob={handleDeleteJob}
-            isAdmin={true}
-            currentUser={currentUser}
-          />
-        </div>
-      ) : currentUser && (currentView === 'inventory' || currentView === 'inventory-detail') ? (
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-          <Inventory
-            key="inventory"
-            inventory={inventory}
-            onNavigate={navigateTo}
-            onUpdateStock={updateInventoryStock}
-            onUpdateItem={updateInventoryItem}
-            onCreateItem={createInventory}
-            onMarkOrdered={markInventoryOrdered}
-            onReceiveOrder={receiveInventoryOrder}
-            isAdmin={currentUser.isAdmin}
-            calculateAvailable={calculateAvailable}
-            calculateAllocated={calculateAllocated}
-            initialItemId={selectedInventoryId || undefined}
-            onBackFromDetail={
-              currentView === 'inventory-detail' && canGoBack ? navigateBack : undefined
-            }
-          />
-        </div>
-      ) : currentUser && currentView === 'needs-ordering' ? (
-        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-          <NeedsOrdering
-            key="needs-ordering"
-            inventory={inventory}
-            onNavigate={navigateTo}
-            onBack={canGoBack ? navigateBack : undefined}
-            onMarkOrdered={markInventoryOrdered}
-            onReceiveOrder={receiveInventoryOrder}
-            calculateAvailable={calculateAvailable}
-            calculateAllocated={calculateAllocated}
-          />
-        </div>
-      ) : (
-        <div
-          key="main-shell"
-          className="relative mx-auto flex h-full min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden bg-white shadow-2xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl dark:bg-background-dark"
-        >
-          <main
-            id="main-content"
-            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
-            tabIndex={-1}
-          >
-            {currentView === 'landing' && <Landing />}
-
-            {currentView === 'login' && (
-              <Login onLogin={handleLogin} error={authError} isLoading={isLoading} />
-            )}
-
-            {currentUser && (
-              <>
-                {currentView === 'dashboard' && (
-                  <Dashboard
-                    user={currentUser}
-                    onNavigate={navigateTo}
-                    onLogout={handleLogout}
-                    activeJob={activeJob}
-                    activeShift={activeShift}
-                    recentShifts={userShifts.slice(0, 5)}
-                    jobs={jobs}
-                    inventory={inventory}
-                    onClockOut={handleClockOut}
-                  />
-                )}
-
-                {currentView === 'job-detail' &&
-                  (loadingJobDetails ? (
-                    <LoadingSpinner fullScreen text="Loading job details..." />
-                  ) : fullJobDetails ? (
-                    <JobDetail
-                      job={fullJobDetails}
-                      onNavigate={navigateTo}
-                      onBack={canGoBack ? navigateBack : undefined}
-                      isClockedIn={activeJob?.id === fullJobDetails.id}
-                      onClockIn={() => handleClockIn(fullJobDetails.id)}
-                      onClockOut={handleClockOut}
-                      activeShift={activeShift}
-                      inventory={inventory}
-                      jobs={jobs}
-                      shifts={shifts}
-                      onAddComment={handleAddJobComment}
-                      onAddInventory={handleAddJobInventory}
-                      onRemoveInventory={handleRemoveJobInventory}
-                      onUpdateJob={updateJob}
-                      currentUser={currentUser}
-                      onReloadJob={handleReloadJob}
-                      onAddAttachment={addAttachment}
-                      onDeleteAttachment={deleteAttachment}
-                      calculateAvailable={calculateAvailable}
-                    />
-                  ) : (
-                    <LoadingSpinner fullScreen text="Loading..." />
-                  ))}
-
-                {currentView === 'time-reports' && (
-                  <TimeReports
-                    shifts={shifts}
-                    users={users}
-                    jobs={jobs}
-                    onNavigate={navigateTo}
-                    onBack={canGoBack ? navigateBack : undefined}
-                    currentUser={currentUser}
-                    onRefreshShifts={refreshShifts}
-                  />
-                )}
-
-                {currentView === 'clock-in' && (
-                  <ClockInScreen
-                    onNavigate={navigateTo}
-                    onBack={canGoBack ? navigateBack : undefined}
-                    onClockInByCode={handleClockInByCode}
-                    activeShift={activeShift}
-                    activeJob={activeJob}
-                    onClockOut={handleClockOut}
-                  />
-                )}
-
-                {currentUser.isAdmin && currentView === 'admin-create-job' && (
-                  <AdminCreateJob
-                    onCreate={handleCreateJob}
-                    onNavigate={navigateTo}
-                    users={users}
-                    existingJobCodes={jobs.map((j) => j.jobCode)}
-                    currentUser={currentUser}
-                    jobs={jobs}
-                    shifts={shifts}
-                  />
-                )}
-
-                {currentUser.isAdmin && currentView === 'admin-console' && (
-                  <AdminConsole
-                    jobs={jobs}
-                    shifts={shifts}
-                    onNavigate={navigateTo}
-                    onBack={canGoBack ? navigateBack : undefined}
-                    users={users}
-                    onUpdateJobStatus={handleUpdateJobStatus}
-                  />
-                )}
-
-                {currentUser.isAdmin && currentView === 'quotes' && (
-                  <Quotes
-                    jobs={jobs}
-                    inventory={inventory}
-                    shifts={shifts}
-                    currentUser={currentUser}
-                    onNavigate={navigateTo}
-                    onBack={canGoBack ? navigateBack : undefined}
-                  />
-                )}
-
-                {currentUser.isAdmin && currentView === 'completed-jobs' && (
-                  <CompletedJobs
-                    jobs={jobs}
-                    currentUser={currentUser}
-                    onNavigate={navigateTo}
-                    onBack={canGoBack ? navigateBack : undefined}
-                  />
-                )}
-
-                {currentUser.isAdmin && currentView === 'calendar' && (
-                  <Calendar
-                    jobs={jobs}
-                    shifts={shifts}
-                    currentUser={currentUser}
-                    onNavigate={navigateTo}
-                    onBack={canGoBack ? navigateBack : undefined}
-                  />
-                )}
-              </>
-            )}
-          </main>
-          {/* Bottom Navigation - Show on all authenticated views except login */}
-          {currentUser && currentView !== 'login' && (
-            <BottomNavigation
-              currentView={currentView}
-              onNavigate={navigateTo}
-              isAdmin={currentUser.isAdmin}
-            />
-          )}
-        </div>
-      )}
-    </div>
+    <AppShell>
+      <Dashboard onNavigate={handleNavigate} />
+    </AppShell>
   );
-};
-
-export default App;
+}

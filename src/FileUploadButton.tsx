@@ -67,7 +67,7 @@ const FileUploadButton: React.FC<FileUploadButtonProps> = ({
       <button
         onClick={handleClick}
         disabled={disabled || uploading}
-        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className="material-symbols-outlined text-xl">
           {uploading ? 'hourglass_empty' : 'upload_file'}
