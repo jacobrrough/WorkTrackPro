@@ -4,7 +4,7 @@ import {
   validateBinLocation,
   validateQuantity,
   validateEmail,
-} from '@/core/validation';
+} from './core/validation';
 
 describe('validateJobCode', () => {
   it('accepts valid codes', () => {
@@ -28,12 +28,15 @@ describe('validateBinLocation', () => {
     expect(validateBinLocation('Z99z')).toBeNull();
   });
 
+  it('accepts empty (optional)', () => {
+    expect(validateBinLocation('')).toBeNull();
+  });
+
   it('rejects invalid bin locations', () => {
     expect(validateBinLocation('a4c')).not.toBeNull(); // lowercase rack
     expect(validateBinLocation('A4')).not.toBeNull(); // missing section
     expect(validateBinLocation('A4C')).not.toBeNull(); // uppercase section
     expect(validateBinLocation('4c')).not.toBeNull(); // missing rack
-    expect(validateBinLocation('')).not.toBeNull(); // empty
   });
 });
 
