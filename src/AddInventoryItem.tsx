@@ -73,7 +73,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
         barcode: barcode.trim() || undefined,
         binLocation: binLocation.trim() || undefined,
         vendor: vendor.trim() || undefined,
-        reorderPoint: reorderPoint || undefined,
+        reorderPoint: reorderPoint > 0 ? reorderPoint : undefined,
       });
 
       if (success) {
@@ -217,18 +217,20 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
             label="Reorder Point"
             htmlFor="reorderPoint"
             error={errors.reorderPoint}
-            hint="Alert when stock falls below this level"
+            hint="Alert when available stock falls below this level. Leave empty or set to 0 to disable."
           >
             <input
               id="reorderPoint"
               type="number"
               step="1"
-              value={reorderPoint}
+              min="0"
+              value={reorderPoint > 0 ? reorderPoint : ''}
               onChange={(e) => {
-                setReorderPoint(parseFloat(e.target.value) || 0);
+                const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                setReorderPoint(val);
                 if (errors.reorderPoint) setErrors({ ...errors, reorderPoint: null });
               }}
-              placeholder="0"
+              placeholder="Not set (enter number to enable)"
               className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.reorderPoint}
             />

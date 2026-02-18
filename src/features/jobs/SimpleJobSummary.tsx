@@ -16,6 +16,8 @@ interface SimpleJobSummaryProps {
   activeShift: Shift | null;
   currentUser: User;
   onReloadJob?: () => Promise<void>;
+  /** Part drawing URL — the only file standard users can access; admins fall back to job attachments if missing */
+  partDrawingUrl?: string | null;
 }
 
 /** Get first viewable drawing: non-admin attachment, or first URL in description */
@@ -37,6 +39,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   activeShift,
   currentUser,
   onReloadJob,
+  partDrawingUrl,
 }) => {
   const [timer, setTimer] = useState('00:00:00');
 
@@ -52,7 +55,10 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
     };
   }, [isClockedIn, activeShift]);
 
-  const drawingUrl = getViewDrawingUrl(job);
+  // Standard users: only part drawing. Admins: part drawing or first non-admin job attachment.
+  const drawingUrl =
+    partDrawingUrl ??
+    (currentUser.isAdmin ? getViewDrawingUrl(job) : null);
   const totalQty = totalFromDashQuantities(job.dashQuantities);
 
   const handleBack = () => {

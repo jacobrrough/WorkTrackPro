@@ -2,16 +2,20 @@ import React, { useState } from 'react';
 import { useApp } from './AppContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
+import QRScanner from './components/QRScanner';
+import { useToast } from './Toast';
 
 interface DashboardProps {
   onNavigate: (view: ViewState, id?: string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { currentUser, jobs, logout } = useApp();
+  const { currentUser, jobs, inventory, logout } = useApp();
+  const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin ?? false;
   const { state: navState, updateState } = useNavigation();
   const [searchInput, setSearchInput] = useState(navState.searchTerm);
+  const [showScanner, setShowScanner] = useState(false);
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
@@ -20,6 +24,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     e.preventDefault();
     updateState({ searchTerm: searchInput.trim() });
     onNavigate('board-shop');
+  };
+
+  const handleScanComplete = (scannedData: string) => {
+    setShowScanner(false);
+
+    // Try to match scanned code to inventory or job
+    const inventoryItem = inventory.find((item) => item.id === scannedData || item.barcode === scannedData);
+    const job = jobs.find((j) => j.id === scannedData || j.jobCode.toString() === scannedData);
+
+    if (inventoryItem) {
+      showToast(`Found inventory: ${inventoryItem.name}`, 'success');
+      onNavigate('inventory-detail', inventoryItem.id);
+    } else if (job) {
+      showToast(`Found job: ${job.jobCode}`, 'success');
+      onNavigate('job-detail', job.id);
+    } else {
+      // Check if it's a bin location format
+      const binMatch = /^[A-Z]\d+[a-z]$/.test(scannedData);
+      if (binMatch) {
+        showToast(`Scanned bin location: ${scannedData}`, 'info');
+        // Could navigate to a bin location search view or show items at that bin
+        // For now, just show toast
+      } else {
+        showToast(`Scanned: ${scannedData} (not found)`, 'warning');
+      }
+    }
   };
 
   return (
@@ -97,7 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
           <button
             type="button"
-            onClick={() => onNavigate('clock-in')}
+            onClick={() => setShowScanner(true)}
             className="flex flex-col items-start gap-3 rounded-sm border border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20 p-3 text-left transition-colors active:opacity-90"
           >
             <span className="material-symbols-outlined text-3xl text-amber-500">
@@ -106,7 +136,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div>
               <p className="font-bold text-white">Scan</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                Job code
+                QR Code
               </p>
             </div>
           </button>
@@ -135,20 +165,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <p className="font-bold text-white">Calendar</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
                 Job timeline
-              </p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigate('quotes')}
-            className="flex flex-col items-start gap-3 rounded-sm border border-orange-500/30 bg-gradient-to-br from-orange-600/20 to-amber-600/20 p-3 text-left transition-colors active:opacity-90"
-          >
-            <span className="material-symbols-outlined text-3xl text-orange-500">description</span>
-            <div>
-              <p className="font-bold text-white">Quotes</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                Quotes & RFQ
               </p>
             </div>
           </button>
@@ -197,19 +213,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('completed-jobs')}
-            className="flex flex-col items-start gap-3 rounded-sm border border-teal-500/30 bg-gradient-to-br from-teal-600/20 to-cyan-600/20 p-3 text-left transition-colors active:opacity-90"
-          >
-            <span className="material-symbols-outlined text-3xl text-teal-500">archive</span>
-            <div>
-              <p className="font-bold text-white">Completed Jobs</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                Paid & completed
-              </p>
-            </div>
-          </button>
 
           <button
             type="button"
@@ -240,6 +243,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
       </main>
+
+      {/* QR Scanner Modal */}
+      {showScanner && (
+        <QRScanner
+          scanType="any"
+          onScanComplete={handleScanComplete}
+          onClose={() => setShowScanner(false)}
+          title="Scan QR Code"
+          description="Scan inventory, job, or bin location QR code"
+        />
+      )}
     </div>
   );
 };

@@ -27,28 +27,7 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({ jobs, currentUser, onNavi
   }, [jobs]);
 
   return (
-    <div className="flex h-full flex-col bg-background-dark">
-      {/* Header */}
-      <div className="border-b border-white/10 bg-background-light px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-                aria-label="Back"
-              >
-                <span className="material-symbols-outlined text-xl">arrow_back</span>
-              </button>
-            )}
-            <div>
-              <h1 className="text-xl font-bold text-white">Completed Jobs</h1>
-              <p className="text-xs text-slate-400">Archive of paid and completed projects</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex h-full flex-col">
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {completedJobs.length === 0 ? (

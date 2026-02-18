@@ -14,12 +14,19 @@ export function getInventoryImagePublicUrl(storagePath: string): string {
 }
 
 export async function uploadAttachment(
-  jobId: string,
+  jobId: string | undefined,
+  inventoryId: string | undefined,
+  partId: string | undefined,
   file: File,
   isAdminOnly: boolean
 ): Promise<string | null> {
+  if (!jobId && !inventoryId && !partId) {
+    console.error('One of jobId, inventoryId, or partId must be provided');
+    return null;
+  }
   const ext = file.name.split('.').pop() ?? 'bin';
-  const path = `${jobId}/${crypto.randomUUID()}.${ext}`;
+  const prefix = jobId ? `jobs/${jobId}` : inventoryId ? `inventory/${inventoryId}` : `parts/${partId}`;
+  const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(BUCKET_ATTACHMENTS)
     .upload(path, file, { upsert: false });
@@ -27,9 +34,18 @@ export async function uploadAttachment(
     console.error('Upload attachment failed:', error);
     return null;
   }
+  const insertData: Record<string, unknown> = {
+    filename: file.name,
+    storage_path: path,
+    is_admin_only: isAdminOnly,
+  };
+  if (jobId) insertData.job_id = jobId;
+  if (inventoryId) insertData.inventory_id = inventoryId;
+  if (partId) insertData.part_id = partId;
+
   const { data: row, error: insertErr } = await supabase
     .from('attachments')
-    .insert({ job_id: jobId, filename: file.name, storage_path: path, is_admin_only: isAdminOnly })
+    .insert(insertData)
     .select('id')
     .single();
   if (insertErr) {

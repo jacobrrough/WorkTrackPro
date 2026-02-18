@@ -8,14 +8,13 @@ import JobList from './JobList';
 import JobDetail from './JobDetail';
 import ClockInScreen from './ClockInScreen';
 import Inventory from './Inventory';
-import AdminConsole from './AdminConsole';
 import KanbanBoard from './KanbanBoard';
-import Parts from './Parts';
+import Parts from './features/admin/Parts';
+import PartDetail from './features/admin/PartDetail';
 import AdminCreateJob from './AdminCreateJob';
 import Quotes from './Quotes';
 import Calendar from './features/admin/Calendar';
 import TimeReports from './TimeReports';
-import CompletedJobs from './features/admin/CompletedJobs';
 import AdminSettings from './features/admin/AdminSettings';
 import TrelloImport from './TrelloImport';
 import { jobService } from './pocketbase';
@@ -51,8 +50,11 @@ export default function App() {
     removeJobInventory,
     addAttachment,
     deleteAttachment,
+    addInventoryAttachment,
+    deleteInventoryAttachment,
     refreshJobs,
     refreshShifts,
+    refreshInventory,
     calculateAvailable,
     calculateAllocated,
     createInventory,
@@ -214,6 +216,9 @@ export default function App() {
           onCreateItem={createInventory}
           onMarkOrdered={markInventoryOrdered}
           onReceiveOrder={receiveInventoryOrder}
+          onAddAttachment={addInventoryAttachment}
+          onDeleteAttachment={deleteInventoryAttachment}
+          onReloadInventory={refreshInventory}
           isAdmin={isAdmin}
           calculateAvailable={calculateAvailable}
           calculateAllocated={calculateAllocated}
@@ -261,19 +266,6 @@ export default function App() {
     );
   }
 
-  if (view === 'admin') {
-    return (
-      <AppShell>
-        <AdminConsole
-          jobs={jobs}
-          shifts={shifts}
-          users={users}
-          onNavigate={handleNavigate}
-          onUpdateJobStatus={updateJobStatus}
-        />
-      </AppShell>
-    );
-  }
 
   if (view === 'board-shop' || view === 'board-admin') {
     const boardType = view === 'board-admin' ? 'admin' : 'shopFloor';
@@ -286,19 +278,33 @@ export default function App() {
           boardType={boardType}
           isAdmin={isAdmin}
           onUpdateJobStatus={updateJobStatus}
+          onUpdateJob={updateJob}
         />
       </AppShell>
     );
   }
 
-  if (view === 'parts' || view === 'part-detail') {
+  if (view === 'parts') {
     return (
       <AppShell>
         <Parts
+          jobs={jobs}
+          currentUser={currentUser!}
           onNavigate={handleNavigate}
-          onBack={() => handleNavigate(isAdmin ? 'admin' : 'dashboard')}
-          initialPartId={id}
-          isAdmin={isAdmin}
+          onBack={() => handleNavigate('dashboard')}
+        />
+      </AppShell>
+    );
+  }
+
+  if (view === 'part-detail' && id) {
+    return (
+      <AppShell>
+        <PartDetail
+          partId={id}
+          jobs={jobs}
+          onNavigate={handleNavigate}
+          onNavigateBack={() => handleNavigate('parts')}
         />
       </AppShell>
     );
@@ -365,18 +371,6 @@ export default function App() {
     );
   }
 
-  if (view === 'completed-jobs' && currentUser) {
-    return (
-      <AppShell>
-        <CompletedJobs
-          jobs={jobs}
-          currentUser={currentUser}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-        />
-      </AppShell>
-    );
-  }
 
   if (view === 'admin-settings') {
     return (

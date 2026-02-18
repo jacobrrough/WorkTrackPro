@@ -17,6 +17,8 @@ interface NavigationState {
   activeTab: string;
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
+  /** Parts active tab: 'all' or 'suggestions' */
+  partsActiveTab?: string;
 }
 
 const defaultState: NavigationState = {

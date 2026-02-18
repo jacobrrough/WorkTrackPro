@@ -29,8 +29,9 @@ export function computeRequiredMaterials(
     const variant = part.variants?.find((v) => normalizeSuffix(v.variantSuffix) === normalized);
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
-      if (material.usageType !== 'per_variant') continue;
-      const requiredQty = material.quantity * qty;
+      if (material.usageType === 'per_set') continue;
+      const qtyPerUnit = material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
+      const requiredQty = qtyPerUnit * qty;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';
       if (existing) {
@@ -45,7 +46,8 @@ export function computeRequiredMaterials(
   if (part.materials && totalQty > 0) {
     for (const material of part.materials) {
       if (material.usageType !== 'per_set') continue;
-      const requiredQty = material.quantity * totalQty;
+      const qtyPerSet = material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
+      const requiredQty = qtyPerSet * totalQty;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';
       if (existing) {

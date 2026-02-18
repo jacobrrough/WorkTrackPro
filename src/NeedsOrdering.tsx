@@ -43,7 +43,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
       const available = item.available ?? calculateAvailable(item);
       const allocated = item.allocated ?? calculateAllocated(item.id);
       const shortForJobs = allocated > 0 && available < allocated;
-      const belowReorder = item.reorderPoint != null && available <= item.reorderPoint;
+      const belowReorder = item.reorderPoint != null && item.reorderPoint > 0 && available <= item.reorderPoint;
       const nothingOnOrder = (item.onOrder || 0) === 0;
       if ((item.onOrder || 0) > 0) onOrder.push(item);
       if (nothingOnOrder && (belowReorder || shortForJobs)) needs.push(item);

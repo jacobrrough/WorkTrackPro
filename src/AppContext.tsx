@@ -58,6 +58,8 @@ interface AppContextType {
   receiveInventoryOrder: (id: string, receivedQuantity: number) => Promise<boolean>;
   addAttachment: (jobId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   deleteAttachment: (attachmentId: string) => Promise<boolean>;
+  addInventoryAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
+  deleteInventoryAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   refreshJobs: () => Promise<void>;
   refreshShifts: () => Promise<void>;
   refreshInventory: () => Promise<void>;
@@ -563,6 +565,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [refreshJobs]
   );
 
+  const addInventoryAttachment = useCallback(
+    async (inventoryId: string, file: File, isAdminOnly = false): Promise<boolean> => {
+      try {
+        const success = await inventoryService.addAttachment(inventoryId, file, isAdminOnly);
+        if (success) {
+          await refreshInventory();
+        }
+        return success;
+      } catch (error) {
+        console.error('Add inventory attachment error:', error);
+        return false;
+      }
+    },
+    [refreshInventory]
+  );
+
+  const deleteInventoryAttachment = useCallback(
+    async (attachmentId: string, inventoryId: string): Promise<boolean> => {
+      try {
+        const success = await inventoryService.deleteAttachment(attachmentId, inventoryId);
+        if (success) {
+          await refreshInventory();
+        }
+        return success;
+      } catch (error) {
+        console.error('Delete inventory attachment error:', error);
+        return false;
+      }
+    },
+    [refreshInventory]
+  );
+
   useEffect(() => {
     const initApp = async () => {
       setIsLoading(true);
@@ -725,6 +759,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       receiveInventoryOrder, // ADDED
       addAttachment,
       deleteAttachment,
+      addInventoryAttachment,
+      deleteInventoryAttachment,
       refreshJobs,
       refreshShifts,
       refreshInventory,
@@ -759,6 +795,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       receiveInventoryOrder,
       addAttachment,
       deleteAttachment,
+      addInventoryAttachment,
+      deleteInventoryAttachment,
       refreshJobs,
       refreshShifts,
       refreshInventory,

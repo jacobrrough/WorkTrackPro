@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { InventoryItem, ViewState, getCategoryDisplayName, InventoryCategory } from '@/core/types';
-import { inventoryHistoryService } from './pocketbase';
+import { InventoryItem, ViewState, getCategoryDisplayName, InventoryCategory, Attachment } from '@/core/types';
+import { inventoryHistoryService, inventoryService } from './pocketbase';
 import { useToast } from './Toast';
 import jsQR from 'jsqr';
+import QRScanner from './components/QRScanner';
+import AttachmentsList from './AttachmentsList';
+import FileUploadButton from './FileUploadButton';
+import FileViewer from './FileViewer';
 
 interface InventoryDetailProps {
   item: InventoryItem;
@@ -10,6 +14,9 @@ interface InventoryDetailProps {
   onBack?: () => void;
   onUpdateStock: (id: string, inStock: number, reason?: string) => Promise<void>;
   onUpdateItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
+  onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
+  onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
+  onReloadItem?: () => Promise<void>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
@@ -21,6 +28,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   onBack,
   onUpdateStock,
   onUpdateItem,
+  onAddAttachment,
+  onDeleteAttachment,
+  onReloadItem,
   isAdmin,
   calculateAvailable,
   calculateAllocated,
@@ -30,8 +40,10 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [history, setHistory] = useState<Array<Record<string, unknown>>>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [currentItem, setCurrentItem] = useState<InventoryItem>(item);
+  const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
 
-  // QR Scanner state - ROBUST VERSION
+  // QR Scanner state - ROBUST VERSION (for barcode)
   const [isScanning, setIsScanning] = useState(false);
   const [scanAttempts, setScanAttempts] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,41 +52,129 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const scanningRef = useRef(false);
   const mountedRef = useRef(true);
 
+  // Bin location scanner state
+  const [isScanningBin, setIsScanningBin] = useState(false);
+
   // Edit form state
-  const [editName, setEditName] = useState(item.name);
-  const [editDescription, setEditDescription] = useState(item.description || '');
-  const [editCategory, setEditCategory] = useState(item.category);
-  const [editInStock, setEditInStock] = useState(item.inStock);
-  const [editPrice, setEditPrice] = useState(item.price || 0);
-  const [editUnit, setEditUnit] = useState(item.unit);
-  const [editBarcode, setEditBarcode] = useState(item.barcode || '');
-  const [editBinLocation, setEditBinLocation] = useState(item.binLocation || '');
-  const [editVendor, setEditVendor] = useState(item.vendor || '');
-  const [editReorderPoint, setEditReorderPoint] = useState(item.reorderPoint || 0);
-  const [editOnOrder, setEditOnOrder] = useState(item.onOrder || 0);
+  const [editName, setEditName] = useState(currentItem.name);
+  const [editDescription, setEditDescription] = useState(currentItem.description || '');
+  const [editCategory, setEditCategory] = useState(currentItem.category);
+  const [editInStock, setEditInStock] = useState(currentItem.inStock);
+  const [editPrice, setEditPrice] = useState(currentItem.price || 0);
+  const [editUnit, setEditUnit] = useState(currentItem.unit);
+  const [editBarcode, setEditBarcode] = useState(currentItem.barcode || '');
+  const [editBinLocation, setEditBinLocation] = useState(currentItem.binLocation || '');
+  const [editVendor, setEditVendor] = useState(currentItem.vendor || '');
+  const [editReorderPoint, setEditReorderPoint] = useState(currentItem.reorderPoint || 0);
+  const [editOnOrder, setEditOnOrder] = useState(currentItem.onOrder || 0);
   const [editReason, setEditReason] = useState('');
 
-  const allocated = item.allocated ?? calculateAllocated(item.id);
-  const available = item.available ?? calculateAvailable(item);
+  // Update edit form when currentItem changes
+  useEffect(() => {
+    setEditName(currentItem.name);
+    setEditDescription(currentItem.description || '');
+    setEditCategory(currentItem.category);
+    setEditInStock(currentItem.inStock);
+    setEditPrice(currentItem.price || 0);
+    setEditUnit(currentItem.unit);
+    setEditBarcode(currentItem.barcode || '');
+    setEditBinLocation(currentItem.binLocation || '');
+    setEditVendor(currentItem.vendor || '');
+    setEditReorderPoint(currentItem.reorderPoint || 0);
+    setEditOnOrder(currentItem.onOrder || 0);
+  }, [currentItem]);
 
-  // Load history when viewing
+  const allocated = currentItem.allocated ?? calculateAllocated(currentItem.id);
+  const available = currentItem.available ?? calculateAvailable(currentItem);
+
+  // Update currentItem when item prop changes
+  useEffect(() => {
+    setCurrentItem(item);
+  }, [item]);
+
+  // Load item with attachments and history when viewing
   useEffect(() => {
     if (!isEditing) {
+      loadItemWithAttachments();
       loadHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadHistory is stable
-  }, [item.id, isEditing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadItemWithAttachments and loadHistory are stable
+  }, [currentItem.id, isEditing]);
+
+  const loadItemWithAttachments = async () => {
+    try {
+      const itemWithAttachments = await inventoryService.getInventoryWithAttachments(currentItem.id);
+      if (itemWithAttachments) {
+        setCurrentItem(itemWithAttachments);
+      }
+    } catch (error) {
+      console.error('Failed to load item with attachments:', error);
+    }
+  };
 
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
-      const historyData = await inventoryHistoryService.getHistory(item.id);
+      const historyData = await inventoryHistoryService.getHistory(currentItem.id);
       setHistory(historyData);
     } catch (error) {
       console.error('Failed to load history:', error);
     }
     setLoadingHistory(false);
   };
+
+  // File attachment handlers
+  const handleFileUpload = async (file: File, isAdminOnly = false): Promise<boolean> => {
+    try {
+      const success = await onAddAttachment(currentItem.id, file, isAdminOnly);
+      if (success) {
+        await loadItemWithAttachments();
+        if (onReloadItem) {
+          await onReloadItem();
+        }
+        showToast('File uploaded successfully', 'success');
+      } else {
+        showToast('Failed to upload file', 'error');
+      }
+      return success;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      showToast('Failed to upload file', 'error');
+      return false;
+    }
+  };
+
+  const handleViewAttachment = (attachment: Attachment) => {
+    setViewingAttachment(attachment);
+  };
+
+  const handleCloseViewer = () => {
+    setViewingAttachment(null);
+  };
+
+  const handleDeleteAttachment = async () => {
+    if (!viewingAttachment) return;
+    try {
+      const success = await onDeleteAttachment(viewingAttachment.id, currentItem.id);
+      if (success) {
+        await loadItemWithAttachments();
+        if (onReloadItem) {
+          await onReloadItem();
+        }
+        setViewingAttachment(null);
+        showToast('File deleted successfully', 'success');
+      } else {
+        showToast('Failed to delete file', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting attachment:', error);
+      showToast('Failed to delete file', 'error');
+    }
+  };
+
+  // Filter attachments by type
+  const adminAttachments = (currentItem.attachments || []).filter((a) => a.isAdminOnly);
+  const regularAttachments = (currentItem.attachments || []).filter((a) => !a.isAdminOnly);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -291,17 +391,17 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
   const handleStartEdit = () => {
     // Reset form to current values
-    setEditName(item.name);
-    setEditDescription(item.description || '');
-    setEditCategory(item.category);
-    setEditInStock(item.inStock);
-    setEditPrice(item.price || 0);
-    setEditUnit(item.unit);
-    setEditBarcode(item.barcode || '');
-    setEditBinLocation(item.binLocation || '');
-    setEditVendor(item.vendor || '');
-    setEditReorderPoint(item.reorderPoint || 0);
-    setEditOnOrder(item.onOrder || 0);
+    setEditName(currentItem.name);
+    setEditDescription(currentItem.description || '');
+    setEditCategory(currentItem.category);
+    setEditInStock(currentItem.inStock);
+    setEditPrice(currentItem.price || 0);
+    setEditUnit(currentItem.unit);
+    setEditBarcode(currentItem.barcode || '');
+    setEditBinLocation(currentItem.binLocation || '');
+    setEditVendor(currentItem.vendor || '');
+    setEditReorderPoint(currentItem.reorderPoint || 0);
+    setEditOnOrder(currentItem.onOrder || 0);
     setEditReason('');
     setIsEditing(true);
   };
@@ -323,7 +423,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
       showToast('Unit is required', 'error');
       return;
     }
-    const stockChanged = editInStock !== item.inStock;
+    const stockChanged = editInStock !== currentItem.inStock;
     if (stockChanged && !editReason.trim()) {
       showToast('Please provide a reason for stock change', 'error');
       return;
@@ -331,7 +431,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
     setIsSaving(true);
     try {
-      const updated = await onUpdateItem(item.id, {
+      const updated = await onUpdateItem(currentItem.id, {
         name: editName.trim(),
         description: editDescription.trim() || undefined,
         category: editCategory,
@@ -340,7 +440,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
         barcode: editBarcode.trim() || undefined,
         binLocation: editBinLocation.trim() || undefined,
         vendor: editVendor.trim() || undefined,
-        reorderPoint: editReorderPoint || undefined,
+        reorderPoint: editReorderPoint > 0 ? editReorderPoint : undefined,
         onOrder: editOnOrder || 0,
       });
 
@@ -352,7 +452,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
       // If stock changed, update stock (this creates history)
       if (stockChanged) {
-        await onUpdateStock(item.id, editInStock, editReason.trim());
+        await onUpdateStock(currentItem.id, editInStock, editReason.trim());
       }
 
       setIsEditing(false);
@@ -514,16 +614,16 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   onChange={(e) => setEditInStock(parseFloat(e.target.value) || 0)}
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
-                {editInStock !== item.inStock && (
+                {editInStock !== currentItem.inStock && (
                   <p className="mt-1 text-xs text-yellow-400">
-                    Current: {item.inStock} → New: {editInStock} (
-                    {editInStock > item.inStock ? '+' : ''}
-                    {editInStock - item.inStock})
+                    Current: {currentItem.inStock} → New: {editInStock} (
+                    {editInStock > currentItem.inStock ? '+' : ''}
+                    {editInStock - currentItem.inStock})
                   </p>
                 )}
               </div>
 
-              {editInStock !== item.inStock && (
+              {editInStock !== currentItem.inStock && (
                 <div>
                   <label className="mb-2 block text-sm font-bold text-slate-400">
                     Reason for Change *
@@ -558,13 +658,17 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 <input
                   type="number"
                   step="1"
-                  value={editReorderPoint || ''}
-                  onChange={(e) => setEditReorderPoint(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
+                  min="0"
+                  value={editReorderPoint > 0 ? editReorderPoint : ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                    setEditReorderPoint(val);
+                  }}
+                  placeholder="Not set (enter number to enable)"
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  Alert when available falls below this level
+                  Alert when available stock falls below this level. Leave empty or set to 0 to disable.
                 </p>
               </div>
 
@@ -607,13 +711,23 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-400">Bin Location</label>
-                <input
-                  type="text"
-                  value={editBinLocation}
-                  onChange={(e) => setEditBinLocation(e.target.value)}
-                  placeholder="e.g., A3, B12"
-                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editBinLocation}
+                    onChange={(e) => setEditBinLocation(e.target.value)}
+                    placeholder="e.g., A4c"
+                    className="flex-1 rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsScanningBin(true)}
+                    className="rounded-sm border border-primary bg-primary/20 px-4 py-3 text-primary transition-colors hover:bg-primary/30"
+                    title="Scan bin location QR"
+                  >
+                    <span className="material-symbols-outlined">qr_code_scanner</span>
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -676,8 +790,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 <span className="material-symbols-outlined">close</span>
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-white">{item.name}</h1>
-                <p className="text-sm text-slate-400">{getCategoryDisplayName(item.category)}</p>
+                <h1 className="text-xl font-bold text-white">{currentItem.name}</h1>
+                <p className="text-sm text-slate-400">{getCategoryDisplayName(currentItem.category)}</p>
               </div>
             </div>
             {isAdmin && (
@@ -695,10 +809,10 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
         {/* Content */}
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
           {/* Description */}
-          {item.description && (
+          {currentItem.description && (
             <div className="rounded-sm bg-card-dark p-3">
               <h2 className="mb-2 text-sm font-bold text-white">Description</h2>
-              <p className="text-sm leading-relaxed text-slate-300">{item.description}</p>
+              <p className="text-sm leading-relaxed text-slate-300">{currentItem.description}</p>
             </div>
           )}
 
@@ -709,7 +823,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">In Stock</p>
-                <p className="text-2xl font-bold text-white">{item.inStock}</p>
+                <p className="text-2xl font-bold text-white">{currentItem.inStock}</p>
               </div>
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">Available</p>
@@ -722,27 +836,33 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               </div>
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">On Order</p>
-                <p className="text-2xl font-bold text-blue-400">{item.onOrder || 0}</p>
+                <p className="text-2xl font-bold text-blue-400">{currentItem.onOrder || 0}</p>
               </div>
             </div>
 
-            {(item.reorderPoint != null && available <= item.reorderPoint) ||
+            {(currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint) ||
             (allocated > 0 && available < allocated) ? (
               <div className="mt-4 space-y-1 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
-                <p className="font-bold text-red-400">Reorder recommended</p>
-                <p className="text-sm text-red-300">
-                  {allocated} {item.unit} needed to complete all jobs (committed to PO&apos;d /
-                  in-production jobs).
+                <p className="font-bold text-red-400">
+                  {(currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint) &&
+                  (allocated > 0 && available < allocated)
+                    ? '⚠️ Below reorder point & short for jobs'
+                    : currentItem.reorderPoint != null &&
+                        currentItem.reorderPoint > 0 &&
+                        available <= currentItem.reorderPoint
+                      ? '⚠️ Below reorder point'
+                      : '⚠️ Short for jobs'}
                 </p>
-                {allocated > 0 && available < allocated && (
+                {currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint && (
                   <p className="text-sm font-bold text-red-300">
-                    Short by {allocated - available} {item.unit} — order at least this much to
-                    fulfill current jobs.
+                    Available ({available}) is at or below reorder point ({currentItem.reorderPoint}).
                   </p>
                 )}
-                {item.reorderPoint != null && available <= item.reorderPoint && (
+                {allocated > 0 && available < allocated && (
                   <p className="text-sm text-red-300">
-                    Available ({available}) is at or below reorder point ({item.reorderPoint}).
+                    {allocated} {item.unit} needed to complete all jobs (committed to PO&apos;d /
+                    in-production jobs). Short by {allocated - available} {item.unit} — order at least this much to
+                    fulfill current jobs.
                   </p>
                 )}
               </div>
@@ -767,33 +887,83 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               <p className="font-bold text-white">{item.unit}</p>
             </div>
 
-            {item.barcode && (
+            {currentItem.barcode && (
               <div className="flex justify-between border-b border-white/10 pb-2">
                 <p className="text-sm text-slate-400">Barcode</p>
-                <p className="font-mono text-sm text-white">{item.barcode}</p>
+                <p className="font-mono text-sm text-white">{currentItem.barcode}</p>
               </div>
             )}
 
-            {item.binLocation && (
+            {currentItem.binLocation && (
               <div className="flex justify-between border-b border-white/10 pb-2">
                 <p className="text-sm text-slate-400">Bin Location</p>
-                <p className="font-bold text-white">{item.binLocation}</p>
+                <p className="font-bold text-white">{currentItem.binLocation}</p>
               </div>
             )}
 
-            {item.vendor && (
+            {currentItem.vendor && (
               <div className="flex justify-between border-b border-white/10 pb-2">
                 <p className="text-sm text-slate-400">Vendor</p>
-                <p className="text-white">{item.vendor}</p>
+                <p className="text-white">{currentItem.vendor}</p>
               </div>
             )}
 
-            {item.reorderPoint && (
-              <div className="flex justify-between">
-                <p className="text-sm text-slate-400">Reorder Point</p>
-                <p className="text-white">{item.reorderPoint}</p>
+            <div className="flex justify-between">
+              <p className="text-sm text-slate-400">Reorder Point</p>
+              <p className={`font-bold ${currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint ? 'text-orange-400' : 'text-white'}`}>
+                {currentItem.reorderPoint != null ? currentItem.reorderPoint : 'Not set'}
+              </p>
+            </div>
+          </div>
+
+          {/* Admin Files Section (Admin Only) */}
+          {isAdmin && (
+            <div className="rounded-sm bg-card-dark p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                  <span className="material-symbols-outlined text-lg text-red-400">
+                    admin_panel_settings
+                  </span>
+                  Admin Files ({adminAttachments.length})
+                </h3>
+                <FileUploadButton
+                  onUpload={(file) => handleFileUpload(file, true)}
+                  label="Upload Admin File"
+                />
               </div>
-            )}
+
+              <AttachmentsList
+                attachments={adminAttachments}
+                onViewAttachment={handleViewAttachment}
+                canUpload={true}
+                showUploadButton={false}
+              />
+            </div>
+          )}
+
+          {/* Attachments Section (Everyone) */}
+          <div className="rounded-sm bg-card-dark p-3">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                <span className="material-symbols-outlined text-lg text-primary">
+                  attach_file
+                </span>
+                Attachments ({regularAttachments.length})
+              </h3>
+              {isAdmin && (
+                <FileUploadButton
+                  onUpload={(file) => handleFileUpload(file, false)}
+                  label="Upload File"
+                />
+              )}
+            </div>
+
+            <AttachmentsList
+              attachments={regularAttachments}
+              onViewAttachment={handleViewAttachment}
+              canUpload={isAdmin}
+              showUploadButton={false}
+            />
           </div>
 
           {/* History */}
@@ -864,6 +1034,32 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
             <p className="mt-4 text-center text-sm text-slate-400">Position barcode in view</p>
           </div>
         </div>
+      )}
+
+      {/* Bin Location Scanner */}
+      {isScanningBin && (
+        <QRScanner
+          scanType="bin"
+          onScanComplete={(binLocation) => {
+            setEditBinLocation(binLocation);
+            setIsScanningBin(false);
+            showToast(`Bin location scanned: ${binLocation}`, 'success');
+          }}
+          onClose={() => setIsScanningBin(false)}
+          currentValue={editBinLocation}
+          title="Scan Bin Location"
+          description="Scan QR code on bin location"
+        />
+      )}
+
+      {/* File Viewer Modal */}
+      {viewingAttachment && (
+        <FileViewer
+          attachment={viewingAttachment}
+          onClose={handleCloseViewer}
+          onDelete={handleDeleteAttachment}
+          canDelete={isAdmin}
+        />
       )}
     </>
   );

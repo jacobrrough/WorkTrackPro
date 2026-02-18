@@ -13,6 +13,9 @@ interface InventoryProps {
   onCreateItem: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onMarkOrdered: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
   onReceiveOrder: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
+  onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
+  onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
+  onReloadInventory?: () => Promise<void>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
@@ -30,6 +33,9 @@ const Inventory: React.FC<InventoryProps> = ({
   onCreateItem,
   onMarkOrdered,
   onReceiveOrder,
+  onAddAttachment,
+  onDeleteAttachment,
+  onReloadInventory,
   isAdmin,
   calculateAvailable,
   calculateAllocated,
@@ -111,6 +117,9 @@ const Inventory: React.FC<InventoryProps> = ({
         onBack={onBackFromDetail ?? handleBack}
         onUpdateStock={onUpdateStock}
         onUpdateItem={onUpdateItem}
+        onAddAttachment={onAddAttachment}
+        onDeleteAttachment={onDeleteAttachment}
+        onReloadItem={onReloadInventory}
         isAdmin={isAdmin}
         calculateAvailable={calculateAvailable}
         calculateAllocated={calculateAllocated}
@@ -199,6 +208,7 @@ const Inventory: React.FC<InventoryProps> = ({
             onNavigate={handleNavigateToDetail}
             onBack={() => onNavigate('dashboard')}
             onAddItem={handleAddItem}
+            onUpdateItem={onUpdateItem}
             isAdmin={isAdmin}
             calculateAvailable={calculateAvailable}
           />

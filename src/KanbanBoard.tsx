@@ -11,12 +11,14 @@ import { checklistService } from './pocketbase';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useThrottle } from '@/useThrottle';
+import QRScanner from './components/QRScanner';
 
 interface KanbanBoardProps {
   jobs: Job[];
   boardType: 'shopFloor' | 'admin';
   onNavigate: (view: ViewState, jobId?: string) => void;
   onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
+  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<void>;
   onCreateJob: () => void;
   onDeleteJob?: (jobId: string) => Promise<void>;
   isAdmin: boolean;
@@ -55,6 +57,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   boardType,
   onNavigate,
   onUpdateJobStatus,
+  onUpdateJob,
   onCreateJob,
   onDeleteJob,
   isAdmin,
@@ -72,6 +75,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   >({});
   const [columnMenuOpen, setColumnMenuOpen] = useState<string | null>(null);
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
+  const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
   const { showToast } = useToast();
 
   // Refs for column scroll containers and horizontal board container
@@ -472,6 +476,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         }}
                         className={`relative cursor-pointer rounded-sm border border-white/5 bg-[#2a1f35] p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''}`}
                       >
+                        {/* Scan Bin Location Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setScanningBinForJob(job.id);
+                          }}
+                          className="absolute left-1 top-1 z-10 flex size-7 items-center justify-center rounded border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:bg-primary/40"
+                          title="Scan bin location"
+                        >
+                          <span className="material-symbols-outlined text-base">qr_code_scanner</span>
+                        </button>
+
                         {/* Admin Menu Button */}
                         {isAdmin && (
                           <div className="absolute right-1 top-1 z-10">
@@ -670,6 +686,32 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             // Reload checklist states after update
             loadChecklistStates();
           }}
+        />
+      )}
+
+      {/* Bin Location Scanner */}
+      {scanningBinForJob && (
+        <QRScanner
+          scanType="bin"
+          onScanComplete={async (binLocation) => {
+            if (onUpdateJob) {
+              try {
+                await onUpdateJob(scanningBinForJob, { binLocation });
+                showToast(`Bin location updated: ${binLocation}`, 'success');
+              } catch (err) {
+                showToast('Failed to update bin location', 'error');
+              }
+            } else {
+              // Navigate to job detail where they can save
+              showToast(`Scanned bin: ${binLocation}`, 'info');
+              onNavigate('job-detail', scanningBinForJob);
+            }
+            setScanningBinForJob(null);
+          }}
+          onClose={() => setScanningBinForJob(null)}
+          currentValue={jobs.find((j) => j.id === scanningBinForJob)?.binLocation}
+          title="Scan Bin Location"
+          description="Scan QR code on bin location"
         />
       )}
     </div>

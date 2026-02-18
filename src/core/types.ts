@@ -120,10 +120,12 @@ export interface Comment {
   createdAt: string;
 }
 
-// Attachment
+// Attachment (can be linked to job, inventory item, or part drawing)
 export interface Attachment {
   id: string;
-  jobId: string;
+  jobId?: string;
+  inventoryId?: string;
+  partId?: string;
   filename: string;
   storagePath: string;
   isAdminOnly: boolean;
@@ -198,6 +200,8 @@ export interface InventoryItem {
   barcode?: string;
   binLocation?: string;
   vendor?: string;
+  attachments?: Attachment[];
+  attachmentCount?: number;
 }
 
 // Part
@@ -206,9 +210,19 @@ export interface Part {
   partNumber: string;
   name: string;
   description?: string;
+  pricePerSet?: number;
+  laborHours?: number;
+  /** Part requires CNC cut or 3D print; when true, machine time is included in quote */
+  requiresMachineWork?: boolean;
+  /** Machine time per set (hours), used when requiresMachineWork is true */
+  machineTimeHours?: number;
+  setComposition?: Record<string, number> | null;
   createdAt?: string;
   updatedAt?: string;
   variants?: PartVariant[];
+  materials?: PartMaterial[];
+  /** Single drawing file for this part (only file standard users can access on job cards) */
+  drawingAttachment?: Attachment | null;
 }
 
 export interface PartVariant {
@@ -216,17 +230,24 @@ export interface PartVariant {
   partId: string;
   variantSuffix: string;
   name?: string;
+  pricePerVariant?: number;
+  laborHours?: number;
   createdAt?: string;
   updatedAt?: string;
+  materials?: PartMaterial[];
 }
 
 export interface PartMaterial {
   id: string;
-  partVariantId: string;
+  /** Set for variant-level materials; empty for part-level (per_set) */
+  partVariantId?: string;
+  /** Set for part-level (per_set) materials */
+  partId?: string;
   inventoryId: string;
   inventoryName?: string;
   quantityPerUnit: number;
   unit: string;
+  usageType?: 'per_set' | 'per_variant';
   createdAt?: string;
   updatedAt?: string;
 }

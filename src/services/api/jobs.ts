@@ -20,10 +20,12 @@ type CommentRow = {
 
 type AttachmentRow = {
   id: string;
-  job_id: string;
+  job_id: string | null;
+  inventory_id: string | null;
   filename: string;
   storage_path: string;
   is_admin_only: boolean;
+  created_at?: string;
 };
 
 function mapJobRow(
@@ -67,14 +69,17 @@ function mapJobRow(
     partId: row.part_id as string | undefined,
   };
   if (expand?.attachments?.length) {
-    job.attachments = expand.attachments.map((a) => ({
-      id: a.id,
-      jobId: a.job_id,
-      filename: a.filename,
-      storagePath: a.storage_path,
-      isAdminOnly: a.is_admin_only,
-    }));
-    job.attachmentCount = expand.attachments.length;
+    job.attachments = expand.attachments
+      .filter((a) => a.job_id) // Only include job attachments
+      .map((a) => ({
+        id: a.id,
+        jobId: a.job_id!,
+        filename: a.filename,
+        storagePath: a.storage_path,
+        isAdminOnly: a.is_admin_only,
+        created: a.created_at,
+      }));
+    job.attachmentCount = job.attachments.length;
   }
   if (expand?.comments?.length) {
     job.comments = expand.comments.map((c) => ({
@@ -127,7 +132,7 @@ async function fetchJobExpand(jobId: string): Promise<{
       .order('created_at', { ascending: true }),
     supabase
       .from('attachments')
-      .select('id, job_id, filename, storage_path, is_admin_only')
+      .select('id, job_id, inventory_id, filename, storage_path, is_admin_only, created_at')
       .eq('job_id', jobId),
   ]);
 
@@ -351,7 +356,7 @@ export const jobService = {
   },
 
   async addAttachment(jobId: string, file: File, isAdminOnly: boolean): Promise<boolean> {
-    const id = await uploadAttachment(jobId, file, isAdminOnly);
+    const id = await uploadAttachment(jobId, undefined, undefined, file, isAdminOnly);
     return id != null;
   },
 

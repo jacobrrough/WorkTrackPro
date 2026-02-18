@@ -1,6 +1,6 @@
-import type { InventoryItem } from '../../core/types';
+import type { InventoryItem, Attachment } from '../../core/types';
 import { supabase } from './supabaseClient';
-import { getInventoryImagePublicUrl } from './storage';
+import { getInventoryImagePublicUrl, getAttachmentPublicUrl, uploadAttachment, deleteAttachmentRecord } from './storage';
 
 function mapRowToItem(row: Record<string, unknown>): InventoryItem {
   const imagePath = row.image_path as string | null;
@@ -21,8 +21,19 @@ function mapRowToItem(row: Record<string, unknown>): InventoryItem {
     barcode: row.barcode as string | undefined,
     binLocation: row.bin_location as string | undefined,
     vendor: row.vendor as string | undefined,
+    attachmentCount: (row.attachment_count as number) ?? 0,
   };
 }
+
+type AttachmentRow = {
+  id: string;
+  job_id: string | null;
+  inventory_id: string | null;
+  filename: string;
+  storage_path: string;
+  is_admin_only: boolean;
+  created_at?: string;
+};
 
 export interface PaginatedInventoryResult {
   items: InventoryItem[];
@@ -121,5 +132,70 @@ export const inventoryService = {
       .from('inventory')
       .update({ in_stock: inStock, available: inStock, updated_at: new Date().toISOString() })
       .eq('id', id);
+  },
+
+  /** Get inventory item with attachments */
+  async getInventoryWithAttachments(id: string): Promise<InventoryItem | null> {
+    const { data: item, error } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !item) return null;
+
+    const { data: attachments } = await supabase
+      .from('attachments')
+      .select('id, job_id, inventory_id, filename, storage_path, is_admin_only, created_at')
+      .eq('inventory_id', id);
+
+    const mappedItem = mapRowToItem(item as unknown as Record<string, unknown>);
+    if (attachments && attachments.length > 0) {
+      mappedItem.attachments = attachments.map((a: AttachmentRow) => ({
+        id: a.id,
+        inventoryId: a.inventory_id!,
+        filename: a.filename,
+        storagePath: a.storage_path,
+        isAdminOnly: a.is_admin_only,
+        url: getAttachmentPublicUrl(a.storage_path),
+        created: a.created_at,
+      }));
+      mappedItem.attachmentCount = attachments.length;
+    } else {
+      mappedItem.attachments = [];
+      mappedItem.attachmentCount = 0;
+    }
+    return mappedItem;
+  },
+
+  /** Add attachment to inventory item */
+  async addAttachment(inventoryId: string, file: File, isAdminOnly: boolean): Promise<boolean> {
+    const id = await uploadAttachment(undefined, inventoryId, undefined, file, isAdminOnly);
+    if (!id) return false;
+    // Update attachment count
+    const { count } = await supabase
+      .from('attachments')
+      .select('*', { count: 'exact', head: true })
+      .eq('inventory_id', inventoryId);
+    await supabase
+      .from('inventory')
+      .update({ attachment_count: count ?? 0 })
+      .eq('id', inventoryId);
+    return true;
+  },
+
+  /** Delete attachment from inventory item */
+  async deleteAttachment(attachmentId: string, inventoryId: string): Promise<boolean> {
+    const success = await deleteAttachmentRecord(attachmentId);
+    if (!success) return false;
+    // Update attachment count
+    const { count } = await supabase
+      .from('attachments')
+      .select('*', { count: 'exact', head: true })
+      .eq('inventory_id', inventoryId);
+    await supabase
+      .from('inventory')
+      .update({ attachment_count: count ?? 0 })
+      .eq('id', inventoryId);
+    return true;
   },
 };

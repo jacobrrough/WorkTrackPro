@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Part } from '@/core/types';
+import { Part, Job, User } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
-import { formatSetComposition } from '@/lib/formatJob';
 import { useThrottle } from '@/useThrottle';
 
 const PARTS_VIEW_KEY = '/admin/parts';
 
 interface PartsProps {
-  onNavigate: (view: string, params?: { partId?: string }) => void;
+  jobs: Job[];
+  currentUser: User;
+  onNavigate: (view: string, params?: { partId?: string } | string) => void;
   onNavigateBack: () => void;
 }
 
-const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
-  const [parts, setParts] = useState<(Part & { variantCount: number })[]>([]);
+const Parts: React.FC<PartsProps> = ({ jobs, currentUser, onNavigate, onNavigateBack }) => {
+  const [parts, setParts] = useState<Part[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   const { state, updateState } = useNavigation();
@@ -57,7 +58,7 @@ const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
   const loadParts = async () => {
     try {
       setLoading(true);
-      const data = await partsService.getAllPartsWithMeta();
+      const data = await partsService.getAllParts();
       setParts(data || []);
     } catch (error: any) {
       console.error('Error loading parts:', error);
@@ -137,7 +138,7 @@ const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
           </span>
           <input
             type="text"
-            placeholder="Search by part number, name, or description..."
+            placeholder="Search by part number or name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-sm border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
@@ -145,7 +146,7 @@ const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
         </div>
       </div>
 
-      {/* Parts List */}
+      {/* Parts List - Part Number + Part Name only */}
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
         {filteredParts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -172,50 +173,27 @@ const Parts: React.FC<PartsProps> = ({ onNavigate, onNavigateBack }) => {
           </div>
         ) : (
           <ul className="space-y-0 divide-y divide-white/10">
-            {filteredParts.map((part) => {
-              const setSummary =
-                part.setComposition && Object.keys(part.setComposition).length > 0
-                  ? formatSetComposition(part.setComposition)
-                  : null;
-              return (
-                <li key={part.id}>
-                  <button
-                    type="button"
-                    onClick={() => handlePartClick(part.id)}
-                    className="flex w-full flex-col items-start gap-1 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
-                  >
-                    <div className="flex w-full items-center justify-between gap-3">
-                      <span className="font-mono text-base font-semibold text-white">
-                        {part.partNumber}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        {part.pricePerSet != null && (
-                          <span className="text-sm text-slate-400">
-                            ${Number(part.pricePerSet).toFixed(2)}/set
-                          </span>
-                        )}
-                        <span className="material-symbols-outlined text-slate-500">
-                          chevron_right
-                        </span>
-                      </div>
-                    </div>
-                    {part.name && part.name !== part.partNumber && (
-                      <span className="text-sm text-slate-400">{part.name}</span>
-                    )}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500">
-                      <span>
-                        {part.variantCount} variant{part.variantCount !== 1 ? 's' : ''}
-                      </span>
-                      {setSummary ? (
-                        <span className="text-slate-400">Set: {setSummary}</span>
-                      ) : (
-                        <span>No set defined</span>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
+            {filteredParts.map((part) => (
+              <li key={part.id}>
+                <button
+                  type="button"
+                  onClick={() => handlePartClick(part.id)}
+                  className="flex w-full items-center justify-between gap-3 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                >
+                  <div className="flex min-w-0 flex-col items-start gap-0.5">
+                    <span className="font-mono text-base font-semibold text-white">
+                      {part.partNumber}
+                    </span>
+                    <span className="text-sm text-slate-400">
+                      {part.name || part.partNumber}
+                    </span>
+                  </div>
+                  <span className="material-symbols-outlined shrink-0 text-slate-500">
+                    chevron_right
+                  </span>
+                </button>
+              </li>
+            ))}
           </ul>
         )}
       </div>

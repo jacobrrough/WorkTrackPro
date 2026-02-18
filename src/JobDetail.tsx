@@ -122,6 +122,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   // File viewing state
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
+  /** Part drawing: the only file standard users can access on job cards */
+  const [partDrawing, setPartDrawing] = useState<Attachment | null>(null);
 
   // Bin location state
   const [showBinLocationScanner, setShowBinLocationScanner] = useState(false);
@@ -195,6 +197,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
   useEffect(() => {
     updateState({ lastViewedJobId: job.id });
   }, [job.id, updateState]);
+
+  // Part drawing: only file standard users can access on job cards
+  useEffect(() => {
+    if (!job.partId) {
+      setPartDrawing(null);
+      return;
+    }
+    let cancelled = false;
+    partsService.getPartDrawing(job.partId).then((drawing) => {
+      if (!cancelled) setPartDrawing(drawing);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [job.partId]);
 
   // Calculate labor hours suggestion from similar jobs
   // Auto job name (convention or Job #code) for labor suggestion and display
@@ -1800,6 +1817,30 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
             </div>
 
+            {/* Drawing: part drawing is the only file standard users can access */}
+            <div className="p-3 pt-0">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+                <span className="material-symbols-outlined text-lg text-primary">
+                  picture_as_pdf
+                </span>
+                Drawing
+              </h3>
+              {partDrawing ? (
+                <button
+                  onClick={() => window.open(partDrawing.url, '_blank')}
+                  className="flex w-full min-h-[48px] touch-manipulation items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                >
+                  <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
+                  <span className="truncate font-medium text-white">{partDrawing.filename}</span>
+                  <span className="material-symbols-outlined ml-auto text-slate-400">open_in_new</span>
+                </button>
+              ) : (
+                <p className="py-2 text-sm text-slate-500">
+                  {job.partId ? 'No drawing on file for this part.' : 'No part linked — no drawing.'}
+                </p>
+              )}
+            </div>
+
             {/* Admin Files Section (Admin Only) */}
             {currentUser.isAdmin && (
               <div className="p-3 pt-0">
@@ -1825,30 +1866,30 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
             )}
 
-            {/* Attachments Section (Everyone) */}
-            <div className="p-3 pt-0">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-                  <span className="material-symbols-outlined text-lg text-primary">
-                    attach_file
-                  </span>
-                  Attachments ({regularAttachments.length})
-                </h3>
-                {currentUser.isAdmin && (
+            {/* Job Attachments Section (Admin Only — standard users only see part drawing above) */}
+            {currentUser.isAdmin && (
+              <div className="p-3 pt-0">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                    <span className="material-symbols-outlined text-lg text-primary">
+                      attach_file
+                    </span>
+                    Job Attachments ({regularAttachments.length})
+                  </h3>
                   <FileUploadButton
                     onUpload={(file) => handleFileUpload(file, false)}
                     label="Upload File"
                   />
-                )}
-              </div>
+                </div>
 
-              <AttachmentsList
-                attachments={regularAttachments}
-                onViewAttachment={handleViewAttachment}
-                canUpload={currentUser.isAdmin}
-                showUploadButton={false}
-              />
-            </div>
+                <AttachmentsList
+                  attachments={regularAttachments}
+                  onViewAttachment={handleViewAttachment}
+                  canUpload={true}
+                  showUploadButton={false}
+                />
+              </div>
+            )}
 
             {/* Comments Section */}
             <div className="p-3 pt-0">
