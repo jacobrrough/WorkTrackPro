@@ -182,7 +182,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       const boardFromArray = payload.find((entry) => {
         if (!isRecord(entry)) return false;
         if (Array.isArray(entry.cards) || Array.isArray(entry.lists)) return true;
-        return isRecord(entry.board) && (Array.isArray(entry.board.cards) || Array.isArray(entry.board.lists));
+        return (
+          isRecord(entry.board) &&
+          (Array.isArray(entry.board.cards) || Array.isArray(entry.board.lists))
+        );
       });
       if (!isRecord(boardFromArray)) return null;
       if (
@@ -1090,9 +1093,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           getCustomFieldText(card, cfMap, ['part name']) ||
           '';
         if (!partName) {
-          const partNameLine = description.match(
-            /(?:^|\n)PART\s*NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i
-          );
+          const partNameLine = description.match(/(?:^|\n)PART\s*NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i);
           if (partNameLine?.[1]) partName = partNameLine[1].trim();
         }
         if (!partName) {
@@ -1119,14 +1120,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         const qtyField =
           getDescriptionField(descriptionFieldMap, ['qty', 'quantity']) ||
           getCustomFieldText(card, cfMap, ['qty', 'quantity']);
-        const qtyRaw =
-          (qtyField ||
-            extractRegexCapture(combinedText, [
-              /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i,
-            ]) ||
-            '')
-            .replace(/\s+/g, ' ')
-            .trim();
+        const qtyRaw = (
+          qtyField ||
+          extractRegexCapture(combinedText, [
+            /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i,
+          ]) ||
+          ''
+        )
+          .replace(/\s+/g, ' ')
+          .trim();
         const qty = qtyRaw;
         const dashQuantities = parseDashQuantities(qtyRaw);
 
@@ -1135,7 +1137,11 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           getCustomFieldDate(card, cfMap, ['Delivery Date', 'Due Date', 'Deadline']) ||
           (card.due ? String(card.due).split('T')[0] : undefined);
         if (!dueDate) {
-          const dueField = getDescriptionField(descriptionFieldMap, ['due date', 'due', 'deadline']);
+          const dueField = getDescriptionField(descriptionFieldMap, [
+            'due date',
+            'due',
+            'deadline',
+          ]);
           const dueFromField = dueField ? parseDateTextToISO(dueField) : null;
           const dueFromText = parseDateTextToISO(
             extractRegexCapture(description, [

@@ -562,7 +562,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                   className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white/10 hover:text-white active:bg-white/20"
                                   aria-label="Job menu"
                                 >
-                                  <span className="material-symbols-outlined text-base">more_vert</span>
+                                  <span className="material-symbols-outlined text-base">
+                                    more_vert
+                                  </span>
                                 </button>
 
                                 {menuOpenFor === job.id && (
@@ -581,7 +583,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                       onMouseDown={(e) => e.stopPropagation()}
                                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
                                     >
-                                      <span className="material-symbols-outlined text-base">edit</span>
+                                      <span className="material-symbols-outlined text-base">
+                                        edit
+                                      </span>
                                       Edit
                                     </button>
                                     {job.status === 'waitingForPayment' && (
