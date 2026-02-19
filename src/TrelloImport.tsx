@@ -57,6 +57,20 @@ interface TrelloExport {
   attachments?: TrelloAttachment[];
 }
 
+interface TrelloApiCredentials {
+  key: string;
+  token: string;
+}
+
+type TrelloApiAttachment = {
+  id?: string;
+  idCard?: string;
+  url?: string;
+  name?: string;
+  fileName?: string;
+  isUpload?: boolean;
+};
+
 interface ImportResult {
   success: number;
   failed: number;
@@ -70,6 +84,9 @@ interface ErrorLog {
   error: string;
 }
 
+const DEFAULT_TRELLO_API_KEY = String(import.meta.env.VITE_TRELLO_API_KEY ?? '').trim();
+const DEFAULT_TRELLO_API_TOKEN = String(import.meta.env.VITE_TRELLO_API_TOKEN ?? '').trim();
+
 const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }) => {
   const [boardType, setBoardType] = useState<BoardType>('admin');
   const [trelloData, setTrelloData] = useState<TrelloExport | null>(null);
@@ -81,9 +98,12 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const [errorLog, setErrorLog] = useState<ErrorLog[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showErrorLog, setShowErrorLog] = useState(false);
+  const [trelloApiKey, setTrelloApiKey] = useState(DEFAULT_TRELLO_API_KEY);
+  const [trelloApiToken, setTrelloApiToken] = useState(DEFAULT_TRELLO_API_TOKEN);
   const [selectedCardIds, setSelectedCardIds] = useState<Record<string, boolean>>({});
   const [cardListFilter, setCardListFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const trelloAttachmentApiCacheRef = useRef<Map<string, TrelloAttachment[]>>(new Map());
 
   const MATERIAL_CACHE_KEY = 'worktrack_trello_material_cache';
   const materialMatchCacheRef = useRef<Record<string, string> | null>(null);
@@ -162,16 +182,108 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   };
 
   const mergeCardAttachments = (
-    cardAttachments: TrelloAttachment[] | undefined,
-    boardAttachments: TrelloAttachment[]
+    primaryAttachments: TrelloAttachment[] | undefined,
+    secondaryAttachments: TrelloAttachment[] | undefined
   ): TrelloAttachment[] => {
-    const merged = [...(cardAttachments || []), ...boardAttachments].map(normalizeTrelloAttachment);
+    const merged = [...(primaryAttachments || []), ...(secondaryAttachments || [])].map(
+      normalizeTrelloAttachment
+    );
     const uniqueByIdOrUrl = new Map<string, TrelloAttachment>();
     merged.forEach((att, idx) => {
       const key = att.id || att.url || `${att.name || 'attachment'}-${idx}`;
       if (!uniqueByIdOrUrl.has(key)) uniqueByIdOrUrl.set(key, att);
     });
     return Array.from(uniqueByIdOrUrl.values());
+  };
+
+  const getTrelloCredentials = (): TrelloApiCredentials | null => {
+    const key = trelloApiKey.trim();
+    const token = trelloApiToken.trim();
+    if (!key || !token) return null;
+    return { key, token };
+  };
+
+  const withTrelloAuthParams = (
+    inputUrl: string,
+    credentials: TrelloApiCredentials | null
+  ): string => {
+    if (!credentials) return inputUrl;
+    try {
+      const url = new URL(inputUrl);
+      if (!url.hostname.toLowerCase().endsWith('trello.com')) return inputUrl;
+      if (!url.searchParams.get('key')) url.searchParams.set('key', credentials.key);
+      if (!url.searchParams.get('token')) url.searchParams.set('token', credentials.token);
+      return url.toString();
+    } catch {
+      return inputUrl;
+    }
+  };
+
+  const buildTrelloAttachmentDownloadUrl = (
+    cardId: string,
+    attachment: TrelloAttachment,
+    credentials: TrelloApiCredentials | null
+  ): string => {
+    const rawUrl = (attachment.url || '').trim();
+    if (rawUrl) return withTrelloAuthParams(rawUrl, credentials);
+
+    if (!attachment.id) return '';
+    const fallbackName = encodeURIComponent(
+      (attachment.name || attachment.fileName || 'attachment').trim() || 'attachment'
+    );
+    const apiDownloadUrl = `https://api.trello.com/1/cards/${cardId}/attachments/${attachment.id}/download/${fallbackName}`;
+    return withTrelloAuthParams(apiDownloadUrl, credentials);
+  };
+
+  const fetchCardAttachmentsFromTrelloApi = async (
+    cardId: string,
+    credentials: TrelloApiCredentials
+  ): Promise<TrelloAttachment[]> => {
+    const cached = trelloAttachmentApiCacheRef.current.get(cardId);
+    if (cached) return cached;
+
+    const params = new URLSearchParams({
+      key: credentials.key,
+      token: credentials.token,
+    });
+
+    const response = await fetch(`https://api.trello.com/1/cards/${cardId}/attachments?${params}`);
+    if (!response.ok) {
+      throw new Error(`Trello API attachment lookup failed (${response.status})`);
+    }
+
+    const payload = (await response.json()) as TrelloApiAttachment[] | unknown;
+    const fetched = Array.isArray(payload)
+      ? payload.map((item) =>
+          normalizeTrelloAttachment({
+            id: item.id,
+            idCard: item.idCard || cardId,
+            url: item.url,
+            name: item.name,
+            fileName: item.fileName,
+            isUpload: item.isUpload,
+          })
+        )
+      : [];
+
+    trelloAttachmentApiCacheRef.current.set(cardId, fetched);
+    return fetched;
+  };
+
+  const resolveCardAttachments = async (
+    card: TrelloCard,
+    credentials: TrelloApiCredentials | null
+  ): Promise<TrelloAttachment[]> => {
+    const jsonAttachments = mergeCardAttachments(card.attachments, []);
+    if (!credentials) return jsonAttachments;
+    try {
+      const apiAttachments = await fetchCardAttachmentsFromTrelloApi(card.id, credentials);
+      if (apiAttachments.length === 0) return jsonAttachments;
+      return mergeCardAttachments(jsonAttachments, apiAttachments);
+    } catch (err) {
+      console.warn(`Failed to fetch Trello API attachments for card ${card.id}:`, err);
+      return jsonAttachments;
+    }
   };
 
   /** Pause import and ask user to pick an inventory item for an unmatched material. Returns inventory id or null (skip). */
@@ -450,6 +562,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     setError(null);
     setResult(null);
     setErrorLog([]);
+    trelloAttachmentApiCacheRef.current.clear();
 
     if (!file.name.endsWith('.json')) {
       setError('Please upload a JSON file.');
@@ -669,6 +782,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       console.error('Failed to load inventory:', err);
     }
 
+    const trelloCredentials = getTrelloCredentials();
+    trelloAttachmentApiCacheRef.current.clear();
+
     for (let i = 0; i < cards.length; i++) {
       if (isCancelled) break;
 
@@ -680,8 +796,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         const cardName = sanitizeText(card.name);
         if (!cardName) throw new Error('Empty name');
 
+        const resolvedCardAttachments = await resolveCardAttachments(card, trelloCredentials);
         let description = sanitizeText(card.desc || '');
-        const uploads = card.attachments?.filter((a) => a.isUpload) || [];
+        const uploads = resolvedCardAttachments.filter((a) => a.isUpload);
         if (uploads.length > 0) {
           description +=
             '\n\n--- Attachments ---\n' + uploads.map((a) => `• ${a.name}: ${a.url}`).join('\n');
@@ -931,24 +1048,32 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // File attachments: download from Trello URL and upload to Supabase (default admin-only)
         const fileAttachments =
-          card.attachments?.filter((a) => {
-            const url = a.url?.trim();
-            if (!url) return false;
+          resolvedCardAttachments.filter((a) => {
+            const url = a.url?.trim() || '';
             // Explicit non-upload attachments are usually card/external links, not files.
             if (a.isUpload === false) return false;
             if (url.includes('trello.com/c/')) return false;
-            return true;
+            if (url) return true;
+            return Boolean(a.id && trelloCredentials);
           }) ?? [];
         for (const att of fileAttachments) {
           try {
             setStatus(`Importing attachment ${att.name || 'file'}...`);
-            const url = att.url?.trim();
-            if (!url) throw new Error('Attachment URL missing');
-            const res = await fetch(url);
+            const downloadUrl = buildTrelloAttachmentDownloadUrl(card.id, att, trelloCredentials);
+            if (!downloadUrl) throw new Error('Attachment URL missing');
+            const res = await fetch(downloadUrl);
             if (!res.ok) throw new Error(`Attachment download failed (${res.status})`);
             const blob = await res.blob();
-            const filename =
-              att.name || att.fileName || url.split('?')[0].split('/').pop() || 'attachment';
+            const fromUrl = downloadUrl.split('?')[0].split('/').pop() || '';
+            let decodedFromUrl = fromUrl;
+            if (fromUrl) {
+              try {
+                decodedFromUrl = decodeURIComponent(fromUrl);
+              } catch {
+                decodedFromUrl = fromUrl;
+              }
+            }
+            const filename = att.name || att.fileName || decodedFromUrl || 'attachment';
             const file = new File([blob], filename, {
               type: blob.type || 'application/octet-stream',
             });
@@ -1234,6 +1359,33 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
               className="w-full rounded-sm border border-white/20 bg-white/10 p-3 text-white focus:border-primary focus:outline-none"
             />
+          </div>
+
+          <div className="space-y-2 rounded-sm border border-white/10 bg-white/5 p-3">
+            <p className="text-sm font-medium text-slate-200">
+              Optional Trello API credentials (for attachments missing from JSON)
+            </p>
+            <input
+              type="text"
+              value={trelloApiKey}
+              disabled={isImporting}
+              onChange={(e) => setTrelloApiKey(e.target.value)}
+              placeholder="Trello API key"
+              autoComplete="off"
+              className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+            />
+            <input
+              type="password"
+              value={trelloApiToken}
+              disabled={isImporting}
+              onChange={(e) => setTrelloApiToken(e.target.value)}
+              placeholder="Trello API token"
+              autoComplete="off"
+              className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+            />
+            <p className="text-xs text-slate-400">
+              Leave blank to import only attachments present in the JSON export.
+            </p>
           </div>
 
           {trelloData &&
