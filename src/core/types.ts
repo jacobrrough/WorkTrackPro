@@ -173,6 +173,7 @@ export interface Job {
   estNumber?: string;
   invNumber?: string;
   rfqNumber?: string;
+  owrNumber?: string;
   dashQuantities?: Record<string, number>;
   revision?: string;
   partId?: string;
@@ -212,10 +213,14 @@ export interface Part {
   description?: string;
   pricePerSet?: number;
   laborHours?: number;
-  /** Part requires CNC cut or 3D print; when true, machine time is included in quote */
-  requiresMachineWork?: boolean;
-  /** Machine time per set (hours), used when requiresMachineWork is true */
-  machineTimeHours?: number;
+  /** Part requires CNC cut; when true, CNC time is included in quote */
+  requiresCNC?: boolean;
+  /** CNC time per set (hours), used when requiresCNC is true */
+  cncTimeHours?: number;
+  /** Part requires 3D print; when true, 3D print time is included in quote */
+  requires3DPrint?: boolean;
+  /** 3D printer time per set (hours), used when requires3DPrint is true */
+  printer3DTimeHours?: number;
   setComposition?: Record<string, number> | null;
   createdAt?: string;
   updatedAt?: string;

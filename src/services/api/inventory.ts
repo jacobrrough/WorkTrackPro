@@ -145,7 +145,7 @@ export const inventoryService = {
 
     const { data: attachments } = await supabase
       .from('attachments')
-      .select('id, job_id, inventory_id, filename, storage_path, is_admin_only, created_at')
+      .select('*')
       .eq('inventory_id', id);
 
     const mappedItem = mapRowToItem(item as unknown as Record<string, unknown>);
@@ -169,7 +169,8 @@ export const inventoryService = {
 
   /** Add attachment to inventory item */
   async addAttachment(inventoryId: string, file: File, isAdminOnly: boolean): Promise<boolean> {
-    const id = await uploadAttachment(undefined, inventoryId, undefined, file, isAdminOnly);
+    const result = await uploadAttachment(undefined, inventoryId, undefined, file, isAdminOnly);
+    const id = result.id;
     if (!id) return false;
     // Update attachment count
     const { count } = await supabase

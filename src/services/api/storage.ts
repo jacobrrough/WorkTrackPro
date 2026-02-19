@@ -13,16 +13,19 @@ export function getInventoryImagePublicUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
+export type UploadAttachmentResult = { id: string } | { id: null; error: string };
+
 export async function uploadAttachment(
   jobId: string | undefined,
   inventoryId: string | undefined,
   partId: string | undefined,
   file: File,
   isAdminOnly: boolean
-): Promise<string | null> {
+): Promise<UploadAttachmentResult> {
   if (!jobId && !inventoryId && !partId) {
-    console.error('One of jobId, inventoryId, or partId must be provided');
-    return null;
+    const msg = 'One of jobId, inventoryId, or partId must be provided';
+    console.error(msg);
+    return { id: null, error: msg };
   }
   const ext = file.name.split('.').pop() ?? 'bin';
   const prefix = jobId ? `jobs/${jobId}` : inventoryId ? `inventory/${inventoryId}` : `parts/${partId}`;
@@ -32,7 +35,7 @@ export async function uploadAttachment(
     .upload(path, file, { upsert: false });
   if (error) {
     console.error('Upload attachment failed:', error);
-    return null;
+    return { id: null, error: error.message || 'Storage upload failed' };
   }
   const insertData: Record<string, unknown> = {
     filename: file.name,
@@ -50,9 +53,10 @@ export async function uploadAttachment(
     .single();
   if (insertErr) {
     console.error('Insert attachment record failed:', insertErr);
-    return null;
+    const msg = insertErr.message || 'Could not save attachment record';
+    return { id: null, error: msg };
   }
-  return row.id;
+  return { id: row.id };
 }
 
 export async function deleteAttachmentRecord(attachmentId: string): Promise<boolean> {

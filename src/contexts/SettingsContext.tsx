@@ -12,11 +12,15 @@ const STORAGE_KEY = 'worktrack-admin-settings';
 export interface AdminSettings {
   laborRate: number;
   materialUpcharge: number; // e.g. 1.25 = 25% markup on material cost
+  cncRate: number; // Rate per hour for CNC machine time
+  printer3DRate: number; // Rate per hour for 3D printer time
 }
 
 const defaults: AdminSettings = {
   laborRate: 175,
   materialUpcharge: 1.25,
+  cncRate: 150, // Typically lower than labor rate
+  printer3DRate: 100, // Typically lower than CNC rate
 };
 
 function loadSettings(): AdminSettings {
@@ -27,6 +31,8 @@ function loadSettings(): AdminSettings {
       return {
         laborRate: Number(parsed.laborRate) || defaults.laborRate,
         materialUpcharge: Number(parsed.materialUpcharge) || defaults.materialUpcharge,
+        cncRate: Number(parsed.cncRate) || defaults.cncRate,
+        printer3DRate: Number(parsed.printer3DRate) || defaults.printer3DRate,
       };
     }
   } catch {
@@ -64,6 +70,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (typeof next.laborRate !== 'number' || next.laborRate < 0) next.laborRate = prev.laborRate;
       if (typeof next.materialUpcharge !== 'number' || next.materialUpcharge <= 0)
         next.materialUpcharge = prev.materialUpcharge;
+      if (typeof next.cncRate !== 'number' || next.cncRate < 0) next.cncRate = prev.cncRate;
+      if (typeof next.printer3DRate !== 'number' || next.printer3DRate < 0) next.printer3DRate = prev.printer3DRate;
       return next;
     });
   }, []);

@@ -3,6 +3,9 @@ import React, { useState, useCallback } from 'react';
 export interface AccordionProps {
   title: string;
   defaultExpanded?: boolean;
+  /** When provided with onToggle, controls expanded state from parent (keeps state across parent re-renders). */
+  expanded?: boolean;
+  onToggle?: () => void;
   children: React.ReactNode;
   className?: string;
 }
@@ -10,11 +13,18 @@ export interface AccordionProps {
 const Accordion: React.FC<AccordionProps> = ({
   title,
   defaultExpanded = false,
+  expanded: controlledExpanded,
+  onToggle,
   children,
   className = '',
 }) => {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const toggle = useCallback(() => setExpanded((e) => !e), []);
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const isControlled = controlledExpanded !== undefined && onToggle != null;
+  const expanded = isControlled ? controlledExpanded : internalExpanded;
+  const toggle = useCallback(
+    () => (isControlled ? onToggle() : setInternalExpanded((e) => !e)),
+    [isControlled, onToggle]
+  );
 
   return (
     <div

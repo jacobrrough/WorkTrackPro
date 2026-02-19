@@ -64,6 +64,7 @@ function mapJobRow(
     estNumber: row.est_number as string | undefined,
     invNumber: row.inv_number as string | undefined,
     rfqNumber: row.rfq_number as string | undefined,
+    owrNumber: row.owr_number as string | undefined,
     dashQuantities: row.dash_quantities as Record<string, number> | undefined,
     revision: row.revision as string | undefined,
     partId: row.part_id as string | undefined,
@@ -132,7 +133,7 @@ async function fetchJobExpand(jobId: string): Promise<{
       .order('created_at', { ascending: true }),
     supabase
       .from('attachments')
-      .select('id, job_id, inventory_id, filename, storage_path, is_admin_only, created_at')
+      .select('*')
       .eq('job_id', jobId),
   ]);
 
@@ -215,12 +216,13 @@ export const jobService = {
       est_number: data.estNumber ?? null,
       inv_number: data.invNumber ?? null,
       rfq_number: data.rfqNumber ?? null,
+      owr_number: data.owrNumber ?? null,
       dash_quantities: data.dashQuantities ?? null,
       revision: data.revision ?? null,
       part_id: data.partId ?? null,
     };
     const { data: created, error } = await supabase.from('jobs').insert(row).select('*').single();
-    if (error) return null;
+    if (error) throw new Error(error.message);
     return mapJobRow(created as Record<string, unknown>, {
       job_inventory: [],
       comments: [],
@@ -261,11 +263,30 @@ export const jobService = {
     if (data.isRush !== undefined) row.is_rush = data.isRush;
     if (data.workers !== undefined) row.workers = data.workers;
     if (data.binLocation !== undefined) row.bin_location = data.binLocation;
-    if (data.partNumber !== undefined) row.part_number = data.partNumber;
+    if (data.partNumber !== undefined) {
+      const partNum = data.partNumber?.trim() || null;
+      if (partNum) {
+        const { data: part } = await supabase
+          .from('parts')
+          .select('part_number')
+          .eq('part_number', partNum)
+          .maybeSingle();
+        if (part) {
+          row.part_number = partNum;
+        } else {
+          row.part_number = null;
+          row.part_id = null;
+        }
+      } else {
+        row.part_number = null;
+        row.part_id = null;
+      }
+    }
     if (data.variantSuffix !== undefined) row.variant_suffix = data.variantSuffix;
     if (data.estNumber !== undefined) row.est_number = data.estNumber;
     if (data.invNumber !== undefined) row.inv_number = data.invNumber;
     if (data.rfqNumber !== undefined) row.rfq_number = data.rfqNumber;
+    if (data.owrNumber !== undefined) row.owr_number = data.owrNumber;
     if (data.dashQuantities !== undefined) row.dash_quantities = data.dashQuantities;
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
@@ -356,11 +377,23 @@ export const jobService = {
   },
 
   async addAttachment(jobId: string, file: File, isAdminOnly: boolean): Promise<boolean> {
-    const id = await uploadAttachment(jobId, undefined, undefined, file, isAdminOnly);
+    const result = await uploadAttachment(jobId, undefined, undefined, file, isAdminOnly);
+    const id = result.id;
     return id != null;
   },
 
   async deleteAttachment(attachmentId: string): Promise<boolean> {
     return deleteAttachmentRecord(attachmentId);
+  },
+
+  async updateAttachmentAdminOnly(
+    attachmentId: string,
+    isAdminOnly: boolean
+  ): Promise<boolean> {
+    const { error } = await supabase
+      .from('attachments')
+      .update({ is_admin_only: isAdminOnly })
+      .eq('id', attachmentId);
+    return !error;
   },
 };

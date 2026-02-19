@@ -12,8 +12,10 @@ function mapRowToPart(row: Record<string, unknown>): Part {
     description: row.description as string | undefined,
     pricePerSet: row.price_per_set != null ? Number(row.price_per_set) : undefined,
     laborHours: row.labor_hours != null ? Number(row.labor_hours) : undefined,
-    requiresMachineWork: row.requires_machine_work === true,
-    machineTimeHours: row.machine_time_hours != null ? Number(row.machine_time_hours) : undefined,
+    requiresCNC: row.requires_cnc === true,
+    cncTimeHours: row.cnc_time_hours != null ? Number(row.cnc_time_hours) : undefined,
+    requires3DPrint: row.requires_3d_print === true,
+    printer3DTimeHours: row.printer_3d_time_hours != null ? Number(row.printer_3d_time_hours) : undefined,
     setComposition:
       setComp != null && typeof setComp === 'object' && !Array.isArray(setComp)
         ? (setComp as Record<string, number>)
@@ -191,16 +193,27 @@ export const partsService = {
   },
 
   /** Set part drawing (replaces existing). Part drawing is always visible to standard users. */
-  async addPartDrawing(partId: string, file: File): Promise<boolean> {
-    const existing = await supabase
-      .from('attachments')
-      .select('id')
-      .eq('part_id', partId);
-    for (const row of existing.data ?? []) {
-      await deleteAttachmentRecord((row as { id: string }).id);
+  async addPartDrawing(partId: string, file: File): Promise<{ success: boolean; error?: string }> {
+    try {
+      const existing = await supabase
+        .from('attachments')
+        .select('id')
+        .eq('part_id', partId);
+      if (existing.error) {
+        return { success: false, error: existing.error.message || 'Could not load existing drawing' };
+      }
+      for (const row of existing.data ?? []) {
+        await deleteAttachmentRecord((row as { id: string }).id);
+      }
+      const result = await uploadAttachment(undefined, undefined, partId, file, false);
+      if (result.id == null) {
+        return { success: false, error: result.error || 'Part drawing upload failed' };
+      }
+      return { success: true };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Part drawing upload failed';
+      return { success: false, error: message };
     }
-    const id = await uploadAttachment(undefined, undefined, partId, file, false);
-    return id != null;
   },
 
   /** Remove part drawing by attachment id. */
@@ -216,8 +229,10 @@ export const partsService = {
     };
     if (data.pricePerSet != null) row.price_per_set = data.pricePerSet;
     if (data.laborHours != null) row.labor_hours = data.laborHours;
-    if (data.requiresMachineWork != null) row.requires_machine_work = data.requiresMachineWork;
-    if (data.machineTimeHours != null) row.machine_time_hours = data.machineTimeHours;
+    if (data.requiresCNC != null) row.requires_cnc = data.requiresCNC;
+    if (data.cncTimeHours != null) row.cnc_time_hours = data.cncTimeHours;
+    if (data.requires3DPrint != null) row.requires_3d_print = data.requires3DPrint;
+    if (data.printer3DTimeHours != null) row.printer_3d_time_hours = data.printer3DTimeHours;
     if (data.setComposition != null) row.set_composition = data.setComposition;
     const { data: created, error } = await supabase.from('parts').insert(row).select('*').single();
     if (error) return null;
@@ -231,8 +246,10 @@ export const partsService = {
     if (data.description != null) row.description = data.description;
     if (data.pricePerSet !== undefined) row.price_per_set = data.pricePerSet;
     if (data.laborHours !== undefined) row.labor_hours = data.laborHours;
-    if (data.requiresMachineWork !== undefined) row.requires_machine_work = data.requiresMachineWork;
-    if (data.machineTimeHours !== undefined) row.machine_time_hours = data.machineTimeHours;
+    if (data.requiresCNC !== undefined) row.requires_cnc = data.requiresCNC;
+    if (data.cncTimeHours !== undefined) row.cnc_time_hours = data.cncTimeHours;
+    if (data.requires3DPrint !== undefined) row.requires_3d_print = data.requires3DPrint;
+    if (data.printer3DTimeHours !== undefined) row.printer_3d_time_hours = data.printer3DTimeHours;
     if (data.setComposition !== undefined) row.set_composition = data.setComposition;
     const { data: updated, error } = await supabase
       .from('parts')
@@ -422,19 +439,36 @@ export const partsService = {
     const { variantId, partId, inventoryId, quantity, unit, usageType } = params;
 
     if (usageType === 'per_set' && partId) {
+      // Part-level row: part_id set, no variant. Use quantity_per_unit only (table may not have "quantity" column).
       const row: Record<string, unknown> = {
         part_id: partId,
         inventory_id: inventoryId,
         quantity_per_unit: quantity,
-        quantity,
         unit: unit ?? 'units',
         usage_type: 'per_set',
       };
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('part_materials')
         .insert(row)
         .select('*')
         .single();
+      // If insert fails (e.g. column quantity_per_unit doesn't exist), try with "quantity" for older schema
+      if (error && (error.message?.includes('quantity_per_unit') || error.code === '42703')) {
+        const rowLegacy: Record<string, unknown> = {
+          part_id: partId,
+          inventory_id: inventoryId,
+          quantity,
+          unit: unit ?? 'units',
+          usage_type: 'per_set',
+        };
+        const result = await supabase
+          .from('part_materials')
+          .insert(rowLegacy)
+          .select('*')
+          .single();
+        data = result.data;
+        error = result.error;
+      }
       if (!error && data) {
         return mapRowToPartMaterial(data as unknown as Record<string, unknown>);
       }
@@ -445,7 +479,7 @@ export const partsService = {
           const fallback = await this.addPartMaterial(first.id, inventoryId, quantity, unit);
           if (fallback) return fallback;
         }
-        console.error('Error adding part-level material:', error);
+        console.error('Error adding part-level material:', error.message, error.code, error.details);
         return null;
       }
     }

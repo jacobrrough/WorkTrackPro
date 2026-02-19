@@ -50,6 +50,7 @@ export default function App() {
     removeJobInventory,
     addAttachment,
     deleteAttachment,
+    updateAttachmentAdminOnly,
     addInventoryAttachment,
     deleteInventoryAttachment,
     refreshJobs,
@@ -184,6 +185,7 @@ export default function App() {
           currentUser={currentUser!}
           onAddAttachment={addAttachment}
           onDeleteAttachment={deleteAttachment}
+          onUpdateAttachmentAdminOnly={updateAttachmentAdminOnly}
           calculateAvailable={calculateAvailable}
         />
       </AppShell>
@@ -291,7 +293,7 @@ export default function App() {
           jobs={jobs}
           currentUser={currentUser!}
           onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
+          onNavigateBack={() => handleNavigate('dashboard')}
         />
       </AppShell>
     );

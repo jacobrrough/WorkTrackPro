@@ -1,5 +1,6 @@
 import type { Part, PartVariant, PartMaterial } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
+import { calculateSetCompletion } from '@/lib/formatJob';
 
 /**
  * Normalize variant suffix for matching (e.g. "01" vs "-01").
@@ -11,10 +12,10 @@ function normalizeSuffix(suffix: string): string {
 /**
  * Compute required materials for a job from part definition and dash quantities.
  * Returns a Map keyed by inventoryId with { quantity, unit }.
- * Algorithm: per-variant materials × dash qty, plus part-level per_set × total qty.
+ * Algorithm: per-variant materials × dash qty; part-level per_set × complete sets (or total qty if no set composition).
  */
 export function computeRequiredMaterials(
-  part: Part & { variants?: PartVariant[] },
+  part: Part & { variants?: PartVariant[]; setComposition?: Record<string, number> | null },
   dashQuantities: Record<string, number>
 ): Map<string, { quantity: number; unit: string }> {
   const materialMap = new Map<string, { quantity: number; unit: string }>();
@@ -42,12 +43,19 @@ export function computeRequiredMaterials(
     }
   }
 
-  // Part-level per_set materials × total quantity
-  if (part.materials && totalQty > 0) {
+  // Part-level per_set: use complete sets when setComposition exists, else total quantity
+  const setComposition = part.setComposition && Object.keys(part.setComposition).length > 0
+    ? part.setComposition
+    : null;
+  const perSetMultiplier = setComposition
+    ? calculateSetCompletion(dashQuantities, setComposition).completeSets
+    : totalQty;
+
+  if (part.materials && perSetMultiplier > 0) {
     for (const material of part.materials) {
       if (material.usageType !== 'per_set') continue;
       const qtyPerSet = material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
-      const requiredQty = qtyPerSet * totalQty;
+      const requiredQty = qtyPerSet * perSetMultiplier;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';
       if (existing) {

@@ -58,6 +58,7 @@ interface AppContextType {
   receiveInventoryOrder: (id: string, receivedQuantity: number) => Promise<boolean>;
   addAttachment: (jobId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   deleteAttachment: (attachmentId: string) => Promise<boolean>;
+  updateAttachmentAdminOnly: (attachmentId: string, isAdminOnly: boolean) => Promise<boolean>;
   addInventoryAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   deleteInventoryAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   refreshJobs: () => Promise<void>;
@@ -565,6 +566,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [refreshJobs]
   );
 
+  const updateAttachmentAdminOnly = useCallback(
+    async (attachmentId: string, isAdminOnly: boolean): Promise<boolean> => {
+      try {
+        const success = await jobService.updateAttachmentAdminOnly(attachmentId, isAdminOnly);
+        if (success) {
+          await refreshJobs();
+        }
+        return success;
+      } catch (error) {
+        console.error('Update attachment admin-only error:', error);
+        return false;
+      }
+    },
+    [refreshJobs]
+  );
+
   const addInventoryAttachment = useCallback(
     async (inventoryId: string, file: File, isAdminOnly = false): Promise<boolean> => {
       try {
@@ -759,6 +776,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       receiveInventoryOrder, // ADDED
       addAttachment,
       deleteAttachment,
+      updateAttachmentAdminOnly,
       addInventoryAttachment,
       deleteInventoryAttachment,
       refreshJobs,
@@ -795,6 +813,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       receiveInventoryOrder,
       addAttachment,
       deleteAttachment,
+      updateAttachmentAdminOnly,
       addInventoryAttachment,
       deleteInventoryAttachment,
       refreshJobs,

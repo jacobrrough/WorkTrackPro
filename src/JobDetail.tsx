@@ -38,7 +38,7 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
-import { syncJobInventoryFromPart } from '@/lib/materialFromPart';
+import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/materialFromPart';
 
 interface JobDetailProps {
   job: Job;
@@ -64,6 +64,7 @@ interface JobDetailProps {
   currentUser: User;
   onAddAttachment: (jobId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string) => Promise<boolean>;
+  onUpdateAttachmentAdminOnly?: (attachmentId: string, isAdminOnly: boolean) => Promise<boolean>;
   calculateAvailable: (item: InventoryItem) => number;
 }
 
@@ -104,6 +105,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   currentUser,
   onAddAttachment,
   onDeleteAttachment,
+  onUpdateAttachmentAdminOnly,
   calculateAvailable,
 }) => {
   const [timer, setTimer] = useState('00:00:00');
@@ -118,6 +120,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValue, setMaterialQtyValue] = useState<string>('');
   const [syncingMaterials, setSyncingMaterials] = useState(false);
+  /** True when labor hours were auto-filled from part (show "auto" marker until user edits) */
+  const [laborHoursFromPart, setLaborHoursFromPart] = useState(false);
   const { showToast } = useToast();
 
   // File viewing state
@@ -159,6 +163,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     estNumber: job.estNumber || '',
     invNumber: job.invNumber || '',
     rfqNumber: job.rfqNumber || '',
+    owrNumber: job.owrNumber || '',
   });
 
   // Store current pathname and scrollPositions in refs to avoid dependency issues
@@ -314,6 +319,40 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
   }, [dashQuantities, linkedPart, calculateMaterialCosts]);
 
+  /** Required materials from part × dash quantities (for auto markers and debounced sync) */
+  const requiredMaterialsMap = useMemo(() => {
+    if (!linkedPart || Object.keys(dashQuantities).length === 0) return new Map<string, { quantity: number; unit: string }>();
+    return computeRequiredMaterials(linkedPart, dashQuantities);
+  }, [linkedPart, dashQuantities]);
+
+  /** Whether a job inventory item matches the part-derived requirement (auto-assigned) */
+  const isMaterialAuto = useCallback(
+    (inventoryId: string, quantity: number) => {
+      const req = requiredMaterialsMap.get(inventoryId);
+      return req != null && Math.abs(req.quantity - quantity) < 0.0001;
+    },
+    [requiredMaterialsMap]
+  );
+
+  // Auto-sync materials when dash quantities change (debounced)
+  const syncAfterDashChangeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!linkedPart || !Object.values(dashQuantities).some((q) => q > 0)) return;
+    if (syncAfterDashChangeRef.current) clearTimeout(syncAfterDashChangeRef.current);
+    syncAfterDashChangeRef.current = setTimeout(async () => {
+      syncAfterDashChangeRef.current = null;
+      try {
+        await syncJobInventoryFromPart(job.id, linkedPart, dashQuantities);
+        await onReloadJob?.();
+      } catch (e) {
+        console.error('Auto-sync materials:', e);
+      }
+    }, 1200);
+    return () => {
+      if (syncAfterDashChangeRef.current) clearTimeout(syncAfterDashChangeRef.current);
+    };
+  }, [job.id, linkedPart, dashQuantities, onReloadJob]);
+
   // Load linked part
   const loadLinkedPart = useCallback(
     async (partNumber: string) => {
@@ -410,6 +449,20 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return { entries, totalFromDash };
   }, [linkedPart, dashQuantities]);
 
+  // Auto-fill labor from part × dash quantities when labor is empty (so calculations stay automatic)
+  const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
+  useEffect(() => {
+    if (laborBreakdownTotal <= 0) return;
+    setEditForm((prev) => {
+      const current = parseFloat(prev.laborHours);
+      if (Number.isNaN(current) || current <= 0) {
+        setLaborHoursFromPart(true);
+        return { ...prev, laborHours: laborBreakdownTotal.toFixed(2) };
+      }
+      return prev;
+    });
+  }, [laborBreakdownTotal]);
+
   // Search for part by part number
   const handlePartNumberSearch = useCallback(async () => {
     if (!partNumberSearch.trim()) {
@@ -487,6 +540,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         };
         if (!prev.laborHours && part.laborHours) {
           updates.laborHours = part.laborHours.toString();
+          setLaborHoursFromPart(true);
         }
         return { ...prev, ...updates };
       });
@@ -525,6 +579,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const jobId = job.id;
   const jobPartNumber = job.partNumber || '';
   useEffect(() => {
+    setLaborHoursFromPart(false);
     setEditForm({
       po: job.po || '',
       description: job.description || '',
@@ -541,6 +596,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       estNumber: job.estNumber || '',
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
+      owrNumber: job.owrNumber || '',
     });
     setPartNumberSearch(jobPartNumber);
     if (jobPartNumber) {
@@ -566,6 +622,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     job.estNumber,
     job.invNumber,
     job.rfqNumber,
+    job.owrNumber,
     loadLinkedPart,
   ]);
 
@@ -663,6 +720,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       estNumber,
       invNumber: editForm.invNumber?.trim() || undefined,
       rfqNumber: editForm.rfqNumber?.trim() || undefined,
+      owrNumber: editForm.owrNumber?.trim() || undefined,
       dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
     };
     const nameToSave = getJobNameForSave(
@@ -720,6 +778,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       estNumber: job.estNumber || '',
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
+      owrNumber: job.owrNumber || '',
     });
     setDashQuantities(job.dashQuantities || {});
     setPartNumberSearch(job.partNumber || '');
@@ -783,6 +842,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
       }
     } catch (error) {
       console.error('Error deleting attachment:', error);
+    }
+  };
+
+  const handleToggleAttachmentAdminOnly = async (
+    attachmentId: string,
+    isAdminOnly: boolean
+  ): Promise<void> => {
+    if (!onUpdateAttachmentAdminOnly) return;
+    try {
+      const success = await onUpdateAttachmentAdminOnly(attachmentId, isAdminOnly);
+      if (success && onReloadJob) {
+        await onReloadJob();
+      }
+    } catch (error) {
+      console.error('Error updating attachment admin-only:', error);
     }
   };
 
@@ -1051,6 +1125,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
                 <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">OWR#</label>
+                  <input
+                    type="text"
+                    value={editForm.owrNumber}
+                    onChange={(e) => setEditForm({ ...editForm, owrNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="OWR#"
+                  />
+                </div>
+                <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Due</label>
                   <input
                     type="date"
@@ -1199,7 +1283,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div>
                       <div className="mb-0.5 flex items-center justify-between">
-                        <label className="text-[11px] text-slate-400">Labor hrs</label>
+                        <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                          Labor hrs
+                          {laborHoursFromPart && (
+                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">auto</span>
+                          )}
+                        </label>
                         {laborSuggestion != null && (
                           <button
                             type="button"
@@ -1217,7 +1306,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         step="0.1"
                         min="0"
                         value={editForm.laborHours}
-                        onChange={(e) => setEditForm({ ...editForm, laborHours: e.target.value })}
+                        onChange={(e) => {
+                          setLaborHoursFromPart(false);
+                          setEditForm({ ...editForm, laborHours: e.target.value });
+                        }}
                         className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                         placeholder="0"
                       />
@@ -1289,6 +1381,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           key={item.id}
                           className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
                         >
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
                           <button
                             type="button"
                             onClick={() => invItem && onNavigate('inventory-detail', invItem.id)}
@@ -1299,6 +1392,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           <span className="ml-2 text-[10px] text-slate-400">
                             {item.quantity} {item.unit}
                           </span>
+                          {isMaterialAuto(item.inventoryId, item.quantity) && (
+                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">auto</span>
+                          )}
+                          </div>
                           <button
                             type="button"
                             onClick={() => item.id && onRemoveInventory(job.id, item.id)}
@@ -1389,26 +1486,32 @@ const JobDetail: React.FC<JobDetailProps> = ({
           </div>
         ) : (
           <>
-            {/* Job Header Card - Streamlined */}
+            {/* Job Header Card - Part Number, Part Name, OWR only on top */}
             <div className="bg-gradient-to-br from-[#2a1f35] to-[#1a1122] p-4">
-              <div className="mb-3 flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    {job.isRush && (
-                      <span className="rounded bg-red-500 px-2 py-0.5 text-xs font-bold uppercase text-white">
-                        Rush
-                      </span>
-                    )}
-                    <span className="text-xs font-bold text-primary">
-                      {formatJobCode(job.jobCode)}
-                    </span>
-                  </div>
-                  <h2 className="text-lg font-bold leading-tight text-white">
-                    {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
-                  </h2>
-                  {getJobDisplaySubline(job) && (
-                    <p className="mt-0.5 text-sm text-slate-400">{getJobDisplaySubline(job)}</p>
-                  )}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {job.isRush && (
+                  <span className="rounded bg-red-500 px-2 py-0.5 text-xs font-bold uppercase text-white">
+                    Rush
+                  </span>
+                )}
+                <span className="text-xs font-bold text-primary">
+                  {formatJobCode(job.jobCode)}
+                </span>
+              </div>
+
+              {/* Top line: Part Number | Part Name | OWR# only */}
+              <div className="mb-3 grid grid-cols-1 gap-2 rounded-sm border border-primary/30 bg-primary/10 p-3 sm:grid-cols-3">
+                <div>
+                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">Part Number</p>
+                  <p className="font-mono text-sm font-bold text-primary">{job.partNumber || '—'}</p>
+                </div>
+                <div>
+                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">Part Name</p>
+                  <p className="text-sm font-medium text-white">{linkedPart?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">OWR#</p>
+                  <p className="text-sm font-medium text-white">{job.owrNumber || '—'}</p>
                 </div>
               </div>
 
@@ -1425,19 +1528,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               )}
 
-              {/* Part Number & Dash Quantities */}
-              {job.partNumber && (
-                <div className="mb-2 rounded-sm border border-primary/30 bg-primary/10 p-3">
-                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Part Number</p>
-                  <p className="mb-2 font-mono text-sm font-bold text-primary">{job.partNumber}</p>
-                  {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
-                      <p className="mb-2 text-sm font-medium text-white">
-                        {formatDashSummary(job.dashQuantities)} →{' '}
-                        {totalFromDashQuantities(job.dashQuantities)} total
-                      </p>
-                      {linkedPart &&
+              {/* Dash Quantities (below top line) */}
+              {job.partNumber && job.dashQuantities && Object.keys(job.dashQuantities).length > 0 && (
+                <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
+                  <p className="mb-2 text-sm font-medium text-white">
+                    {formatDashSummary(job.dashQuantities)} →{' '}
+                    {totalFromDashQuantities(job.dashQuantities)} total
+                  </p>
+                  {linkedPart &&
                         linkedPart.setComposition &&
                         Object.keys(linkedPart.setComposition).length > 0 && (
                           <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
@@ -1474,13 +1573,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             })()}
                           </div>
                         )}
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Reference Numbers - order: EST #, RFQ #, PO #, INV# */}
-              {(job.estNumber || job.rfqNumber || job.po || job.invNumber) && (
+              {/* Reference Numbers - order: EST #, RFQ #, PO #, INV#, OWR# */}
+              {(job.estNumber || job.rfqNumber || job.po || job.invNumber || job.owrNumber) && (
                 <div className="mb-3 flex flex-wrap gap-2">
                   {job.estNumber && (
                     <span className="rounded bg-purple-500/20 px-2 py-1 text-xs font-medium text-purple-300">
@@ -1500,6 +1597,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   {job.invNumber && (
                     <span className="rounded bg-green-500/20 px-2 py-1 text-xs font-medium text-green-300">
                       INV# {job.invNumber}
+                    </span>
+                  )}
+                  {job.owrNumber && (
+                    <span className="rounded bg-cyan-500/20 px-2 py-1 text-xs font-medium text-cyan-300">
+                      OWR# {job.owrNumber}
                     </span>
                   )}
                 </div>
@@ -1691,13 +1793,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         className="overflow-hidden rounded-sm bg-[#261a32]"
                       >
                         <div className="flex items-center justify-between p-3">
-                          <button
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={() => {
                               if (invItem) {
                                 onNavigate('inventory-detail', invItem.id);
                               }
                             }}
-                            className="-ml-1 flex flex-1 items-center gap-3 rounded-sm p-1 text-left transition-colors hover:bg-white/5"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                if (invItem) onNavigate('inventory-detail', invItem.id);
+                              }
+                            }}
+                            className="-ml-1 flex flex-1 cursor-pointer items-center gap-3 rounded-sm p-1 text-left transition-colors hover:bg-white/5"
                           >
                             {invItem?.imageUrl ? (
                               <img
@@ -1719,15 +1829,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
                             <div className="min-w-0 flex-1">
                               {invItem ? (
-                                <button
+                                <span
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onNavigate('inventory-detail', invItem.id);
                                   }}
-                                  className="truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      onNavigate('inventory-detail', invItem.id);
+                                    }
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                  className="truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline cursor-pointer"
                                 >
                                   {item.inventoryName || invItem.name || 'Unknown Item'}
-                                </button>
+                                </span>
                               ) : (
                                 <p className="truncate font-medium text-white">
                                   {item.inventoryName || 'Unknown Item'}
@@ -1788,6 +1907,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                   </span>
                                 )}{' '}
                                 {item.unit}
+                                {isMaterialAuto(item.inventoryId, item.quantity) && (
+                                  <span className="ml-1.5 rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">auto</span>
+                                )}
                                 {invItem && (
                                   <span className="ml-2">
                                     • Available: {invItem.available ?? calculateAvailable(invItem)}
@@ -1795,7 +1917,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                 )}
                               </p>
                             </div>
-                          </button>
+                          </div>
 
                           {currentUser.isAdmin && item.id && (
                             <button
@@ -1862,6 +1984,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   onViewAttachment={handleViewAttachment}
                   canUpload={true}
                   showUploadButton={false}
+                  showAdminOnlyToggle={!!onUpdateAttachmentAdminOnly}
+                  onToggleAdminOnly={onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined}
                 />
               </div>
             )}
@@ -1887,6 +2011,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   onViewAttachment={handleViewAttachment}
                   canUpload={true}
                   showUploadButton={false}
+                  showAdminOnlyToggle={!!onUpdateAttachmentAdminOnly}
+                  onToggleAdminOnly={onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined}
                 />
               </div>
             )}

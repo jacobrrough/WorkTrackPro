@@ -6,6 +6,9 @@ interface AttachmentsListProps {
   onViewAttachment: (attachment: Attachment) => void;
   canUpload: boolean;
   showUploadButton?: boolean;
+  /** When true, show an "Admin only" toggle per attachment (admin review) */
+  showAdminOnlyToggle?: boolean;
+  onToggleAdminOnly?: (attachmentId: string, isAdminOnly: boolean) => Promise<void>;
 }
 
 const AttachmentsList: React.FC<AttachmentsListProps> = ({
@@ -13,6 +16,8 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
   onViewAttachment,
   canUpload,
   showUploadButton = true,
+  showAdminOnlyToggle = false,
+  onToggleAdminOnly,
 }) => {
   const getFileIcon = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase();
@@ -55,31 +60,51 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
         </div>
       ) : (
         attachments.map((attachment) => (
-          <button
+          <div
             key={attachment.id}
-            onClick={() => onViewAttachment(attachment)}
-            className="flex w-full items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 transition-colors hover:bg-white/10"
           >
-            {/* Icon */}
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary/20">
-              <span className="material-symbols-outlined text-primary">
-                {getFileIcon(attachment.filename)}
+            <button
+              type="button"
+              onClick={() => onViewAttachment(attachment)}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              {/* Icon */}
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary/20">
+                <span className="material-symbols-outlined text-primary">
+                  {getFileIcon(attachment.filename)}
+                </span>
+              </div>
+
+              {/* File Info */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-white">{attachment.filename}</p>
+                <p className="text-sm text-slate-400">
+                  {formatFileSize(attachment.url ?? '')} • {formatDate(attachment.created ?? '')}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <span className="material-symbols-outlined flex-shrink-0 text-slate-400">
+                chevron_right
               </span>
-            </div>
+            </button>
 
-            {/* File Info */}
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-white">{attachment.filename}</p>
-              <p className="text-sm text-slate-400">
-                {formatFileSize(attachment.url)} • {formatDate(attachment.created)}
-              </p>
-            </div>
-
-            {/* Arrow */}
-            <span className="material-symbols-outlined flex-shrink-0 text-slate-400">
-              chevron_right
-            </span>
-          </button>
+            {showAdminOnlyToggle && onToggleAdminOnly && (
+              <label className="flex flex-shrink-0 items-center gap-2 text-sm text-slate-400">
+                <span className="whitespace-nowrap">Admin only</span>
+                <input
+                  type="checkbox"
+                  checked={attachment.isAdminOnly}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    onToggleAdminOnly(attachment.id, e.target.checked);
+                  }}
+                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary"
+                />
+              </label>
+            )}
+          </div>
         ))
       )}
     </div>

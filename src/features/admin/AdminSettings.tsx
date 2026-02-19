@@ -13,15 +13,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate, onBack }) => 
   const { showToast } = useToast();
   const [laborRate, setLaborRate] = useState(String(settings.laborRate));
   const [materialUpcharge, setMaterialUpcharge] = useState(String(settings.materialUpcharge));
+  const [cncRate, setCncRate] = useState(String(settings.cncRate));
+  const [printer3DRate, setPrinter3DRate] = useState(String(settings.printer3DRate));
 
   useEffect(() => {
     setLaborRate(String(settings.laborRate));
     setMaterialUpcharge(String(settings.materialUpcharge));
-  }, [settings.laborRate, settings.materialUpcharge]);
+    setCncRate(String(settings.cncRate));
+    setPrinter3DRate(String(settings.printer3DRate));
+  }, [settings.laborRate, settings.materialUpcharge, settings.cncRate, settings.printer3DRate]);
 
   const handleSave = () => {
     const lr = parseFloat(laborRate);
     const mu = parseFloat(materialUpcharge);
+    const cr = parseFloat(cncRate);
+    const p3r = parseFloat(printer3DRate);
     if (Number.isNaN(lr) || lr < 0) {
       showToast('Enter a valid labor rate (≥ 0)', 'error');
       return;
@@ -30,7 +36,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate, onBack }) => 
       showToast('Enter a valid material upcharge (> 0)', 'error');
       return;
     }
-    updateSettings({ laborRate: lr, materialUpcharge: mu });
+    if (Number.isNaN(cr) || cr < 0) {
+      showToast('Enter a valid CNC rate (≥ 0)', 'error');
+      return;
+    }
+    if (Number.isNaN(p3r) || p3r < 0) {
+      showToast('Enter a valid 3D printer rate (≥ 0)', 'error');
+      return;
+    }
+    updateSettings({ laborRate: lr, materialUpcharge: mu, cncRate: cr, printer3DRate: p3r });
     showToast('Settings saved', 'success');
   };
 
@@ -47,7 +61,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate, onBack }) => 
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Admin Settings</h1>
-              <p className="text-xs text-slate-400">Labor rate & material upcharge</p>
+              <p className="text-xs text-slate-400">Pricing & machine rates</p>
             </div>
           </div>
         </div>
@@ -93,6 +107,42 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate, onBack }) => 
                 />
                 <p className="mt-1 text-[10px] text-slate-500">
                   Material cost we pay × upcharge = selling price (e.g. 1.25 = 25% markup).
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  CNC rate ($/hr)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={cncRate}
+                  onChange={(e) => setCncRate(e.target.value)}
+                  onBlur={handleSave}
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  placeholder="150"
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Rate per hour for CNC machine time (used in part quotes).
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  3D Printer rate ($/hr)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={printer3DRate}
+                  onChange={(e) => setPrinter3DRate(e.target.value)}
+                  onBlur={handleSave}
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  placeholder="100"
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Rate per hour for 3D printer time (used in part quotes).
                 </p>
               </div>
             </div>
