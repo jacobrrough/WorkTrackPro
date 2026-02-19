@@ -64,6 +64,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     () =>
       part
         ? allJobs.filter((j) => {
+            if (j.partId && j.partId === part.id) return true;
             if (
               j.partNumber &&
               (j.partNumber === part.partNumber ||

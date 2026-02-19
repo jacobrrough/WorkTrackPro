@@ -3,6 +3,12 @@ import { supabase } from './supabaseClient';
 import { getAttachmentPublicUrl } from './storage';
 import { uploadAttachment, deleteAttachmentRecord } from './storage';
 
+type SupabaseErrorLike = {
+  code?: string;
+  message?: string;
+  details?: string;
+};
+
 function mapRowToPart(row: Record<string, unknown>): Part {
   const setComp = row.set_composition;
   return {
@@ -80,6 +86,11 @@ function mapRowToPartMaterial(row: Record<string, unknown>): PartMaterial {
     createdAt: row.created_at as string | undefined,
     updatedAt: row.updated_at as string | undefined,
   };
+}
+
+function isDuplicatePartNumberError(error: SupabaseErrorLike | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === '23505' || /duplicate key value/i.test(error.message ?? '');
 }
 
 export const partsService = {
@@ -252,7 +263,8 @@ export const partsService = {
 
   async updatePart(id: string, data: Partial<Part>): Promise<Part | null> {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (data.partNumber != null) row.part_number = data.partNumber;
+    const nextPartNumber = data.partNumber != null ? data.partNumber.trim() : undefined;
+    if (data.partNumber != null) row.part_number = nextPartNumber;
     if (data.name != null) row.name = data.name;
     if (data.description != null) row.description = data.description;
     if (data.pricePerSet !== undefined) row.price_per_set = data.pricePerSet;
@@ -269,6 +281,57 @@ export const partsService = {
       .select('*')
       .single();
     if (error) {
+      if (nextPartNumber && isDuplicatePartNumberError(error)) {
+        const [{ data: targetPartData }, { data: sourcePartData }] = await Promise.all([
+          supabase
+            .from('parts')
+            .select('id, part_number')
+            .eq('part_number', nextPartNumber)
+            .neq('id', id)
+            .maybeSingle(),
+          supabase.from('parts').select('part_number').eq('id', id).maybeSingle(),
+        ]);
+
+        const targetPart = (targetPartData ?? null) as { id: string; part_number: string } | null;
+        const sourcePartNumber = (sourcePartData as { part_number?: string } | null)?.part_number;
+
+        if (targetPart) {
+          // Treat duplicate-number edit as a merge: relink job cards to the existing master part.
+          const relinkPayload = {
+            part_number: targetPart.part_number,
+            part_id: targetPart.id,
+            updated_at: new Date().toISOString(),
+          };
+
+          const relinkById = await supabase.from('jobs').update(relinkPayload).eq('part_id', id);
+          if (relinkById.error) {
+            console.warn('updatePart merge relink (by part_id) failed:', relinkById.error.message);
+          }
+
+          if (sourcePartNumber && sourcePartNumber !== targetPart.part_number) {
+            const relinkByNumber = await supabase
+              .from('jobs')
+              .update(relinkPayload)
+              .eq('part_number', sourcePartNumber)
+              .is('part_id', null);
+            if (relinkByNumber.error) {
+              console.warn(
+                'updatePart merge relink (by part_number) failed:',
+                relinkByNumber.error.message
+              );
+            }
+          }
+
+          const { data: mergedTargetData } = await supabase
+            .from('parts')
+            .select('*')
+            .eq('id', targetPart.id)
+            .single();
+          if (mergedTargetData) {
+            return mapRowToPart(mergedTargetData as unknown as Record<string, unknown>);
+          }
+        }
+      }
       console.error('updatePart error:', error.message, error.code, error.details);
       return null;
     }

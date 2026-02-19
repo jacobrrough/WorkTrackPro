@@ -2,6 +2,11 @@ import type { Job, JobStatus, Comment } from '../../core/types';
 import { supabase } from './supabaseClient';
 import { uploadAttachment, deleteAttachmentRecord } from './storage';
 
+type SupabaseErrorLike = {
+  code?: string;
+  message?: string;
+};
+
 type JobInventoryRow = {
   id: string;
   job_id: string;
@@ -26,6 +31,11 @@ type AttachmentRow = {
   storage_path: string;
   is_admin_only: boolean;
   created_at?: string;
+};
+
+type PartLookupRow = {
+  id: string;
+  part_number: string;
 };
 
 function mapJobRow(
@@ -116,6 +126,87 @@ function mapJobRow(
   return job;
 }
 
+function isPartsTableUnavailable(error: SupabaseErrorLike | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST205' || error.code === '42P01';
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (value == null) return undefined;
+  const parsed = typeof value === 'number' ? value : parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+async function resolvePartForJob(params: {
+  partNumber: string;
+  fallbackName?: string;
+  fallbackDescription?: string;
+  fallbackLaborHours?: number;
+}): Promise<{ partNumber: string; partId: string | null }> {
+  const normalizedPartNumber = params.partNumber.trim();
+  if (!normalizedPartNumber) return { partNumber: '', partId: null };
+
+  const { data: existingPartData, error: lookupError } = await supabase
+    .from('parts')
+    .select('id, part_number')
+    .eq('part_number', normalizedPartNumber)
+    .maybeSingle();
+  const existingPart = (existingPartData ?? null) as PartLookupRow | null;
+  if (existingPart) {
+    return {
+      partNumber: existingPart.part_number,
+      partId: existingPart.id,
+    };
+  }
+
+  if (lookupError && isPartsTableUnavailable(lookupError)) {
+    // Parts repository may not be migrated yet. Keep text value on job card.
+    return { partNumber: normalizedPartNumber, partId: null };
+  }
+
+  const createRow: Record<string, unknown> = {
+    part_number: normalizedPartNumber,
+    name: params.fallbackName?.trim() || normalizedPartNumber,
+    description: params.fallbackDescription?.trim() || null,
+  };
+  const laborHours = toFiniteNumber(params.fallbackLaborHours);
+  if (laborHours != null) createRow.labor_hours = laborHours;
+
+  const { data: createdPartData, error: createError } = await supabase
+    .from('parts')
+    .insert(createRow)
+    .select('id, part_number')
+    .single();
+  const createdPart = (createdPartData ?? null) as PartLookupRow | null;
+  if (createdPart) {
+    return {
+      partNumber: createdPart.part_number,
+      partId: createdPart.id,
+    };
+  }
+
+  if ((createError as SupabaseErrorLike | null)?.code === '23505') {
+    // Race condition: another request created the same part number first.
+    const { data: conflictPartData } = await supabase
+      .from('parts')
+      .select('id, part_number')
+      .eq('part_number', normalizedPartNumber)
+      .maybeSingle();
+    const conflictPart = (conflictPartData ?? null) as PartLookupRow | null;
+    if (conflictPart) {
+      return {
+        partNumber: conflictPart.part_number,
+        partId: conflictPart.id,
+      };
+    }
+  }
+
+  if (!isPartsTableUnavailable(createError)) {
+    console.warn('resolvePartForJob failed to create part:', createError?.message);
+  }
+  return { partNumber: normalizedPartNumber, partId: null };
+}
+
 async function fetchJobExpand(jobId: string): Promise<{
   job_inventory: JobInventoryRow[];
   comments: (CommentRow & { user_name?: string; user_initials?: string })[];
@@ -191,6 +282,18 @@ export const jobService = {
   async createJob(data: Partial<Job>): Promise<Job | null> {
     const nextCode = await this.getNextJobCode();
     if (nextCode == null) return null;
+
+    const resolvedLaborHours = toFiniteNumber(data.laborHours);
+    const rawPartNumber = data.partNumber?.trim();
+    const resolvedPart =
+      !data.partId && rawPartNumber
+        ? await resolvePartForJob({
+            partNumber: rawPartNumber,
+            fallbackDescription: data.description,
+            fallbackLaborHours: resolvedLaborHours,
+          })
+        : null;
+
     const row = {
       job_code: nextCode,
       po: data.po ?? null,
@@ -199,7 +302,7 @@ export const jobService = {
       description: data.description ?? null,
       ecd: data.ecd ?? null,
       due_date: data.dueDate ?? null,
-      labor_hours: data.laborHours ?? null,
+      labor_hours: resolvedLaborHours ?? null,
       active: data.active ?? true,
       status: data.status ?? 'pending',
       board_type: data.boardType ?? 'shopFloor',
@@ -208,7 +311,7 @@ export const jobService = {
       is_rush: data.isRush ?? false,
       workers: data.workers ?? [],
       bin_location: data.binLocation ?? null,
-      part_number: data.partNumber ?? null,
+      part_number: rawPartNumber ? (resolvedPart?.partNumber ?? rawPartNumber) : null,
       variant_suffix: data.variantSuffix ?? null,
       est_number: data.estNumber ?? null,
       inv_number: data.invNumber ?? null,
@@ -216,7 +319,7 @@ export const jobService = {
       owr_number: data.owrNumber ?? null,
       dash_quantities: data.dashQuantities ?? null,
       revision: data.revision ?? null,
-      part_id: data.partId ?? null,
+      part_id: data.partId ?? resolvedPart?.partId ?? null,
     };
     const { data: created, error } = await supabase.from('jobs').insert(row).select('*').single();
     if (error) throw new Error(error.message);
@@ -263,17 +366,13 @@ export const jobService = {
     if (data.partNumber !== undefined) {
       const partNum = data.partNumber?.trim() || null;
       if (partNum) {
-        const { data: part } = await supabase
-          .from('parts')
-          .select('part_number')
-          .eq('part_number', partNum)
-          .maybeSingle();
-        if (part) {
-          row.part_number = partNum;
-        } else {
-          row.part_number = null;
-          row.part_id = null;
-        }
+        const resolvedPart = await resolvePartForJob({
+          partNumber: partNum,
+          fallbackDescription: data.description,
+          fallbackLaborHours: toFiniteNumber(data.laborHours),
+        });
+        row.part_number = resolvedPart.partNumber;
+        row.part_id = resolvedPart.partId;
       } else {
         row.part_number = null;
         row.part_id = null;
