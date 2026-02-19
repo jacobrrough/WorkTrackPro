@@ -58,28 +58,61 @@ const PartDetail: React.FC<PartDetailProps> = ({
   } | null>(null);
   const [creatingPart, setCreatingPart] = useState(false);
   const [variantsAccordionExpanded, setVariantsAccordionExpanded] = useState(false);
+  const [partInfoDraft, setPartInfoDraft] = useState({
+    partNumber: '',
+    name: '',
+    description: '',
+  });
+  const [savingPartInfo, setSavingPartInfo] = useState(false);
   const { showToast } = useToast();
 
-  const partJobs = useMemo(
-    () =>
-      part
-        ? allJobs.filter((j) => {
-            if (
-              j.partNumber &&
-              (j.partNumber === part.partNumber ||
-                j.partNumber.replace(/-\d+$/, '') === part.partNumber)
-            )
-              return true;
-            if (
-              part.id?.toString().startsWith('job-') &&
-              j.name?.trim().startsWith(part.partNumber)
-            )
-              return true;
-            return false;
-          })
-        : [],
-    [allJobs, part]
-  );
+  const partJobs = useMemo(() => {
+    if (!part) return [];
+
+    const matched = allJobs.filter((j) => {
+      if (
+        j.partNumber &&
+        (j.partNumber === part.partNumber || j.partNumber.replace(/-\d+$/, '') === part.partNumber)
+      ) {
+        return true;
+      }
+      if (part.id.toString().startsWith('job-') && j.name?.trim().startsWith(part.partNumber)) {
+        return true;
+      }
+      return false;
+    });
+
+    const unique = new Map<string, Job>();
+    for (const job of matched) {
+      const key = job.id || `${job.jobCode}-${job.partNumber ?? ''}-${job.name ?? ''}`;
+      if (!unique.has(key)) {
+        unique.set(key, job);
+      }
+    }
+
+    return Array.from(unique.values());
+  }, [allJobs, part]);
+
+  const isPartInfoDirty = useMemo(() => {
+    if (!part) return false;
+    return (
+      partInfoDraft.partNumber !== (part.partNumber ?? '') ||
+      partInfoDraft.name !== (part.name ?? '') ||
+      partInfoDraft.description !== (part.description ?? '')
+    );
+  }, [part, partInfoDraft]);
+
+  useEffect(() => {
+    if (!part) {
+      setPartInfoDraft({ partNumber: '', name: '', description: '' });
+      return;
+    }
+    setPartInfoDraft({
+      partNumber: part.partNumber ?? '',
+      name: part.name ?? '',
+      description: part.description ?? '',
+    });
+  }, [part?.id]);
 
   useEffect(() => {
     if (partId === 'new') {
@@ -346,17 +379,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
     }
   };
 
-  const handleUpdatePart = async (updates: {
-    partNumber?: string;
-    name?: string;
-    description?: string;
-    pricePerSet?: number;
-    laborHours?: number;
-    setComposition?: Record<string, number> | null;
-  }) => {
+  const handleUpdatePart = async (updates: Partial<Part>) => {
     if (!part) return;
     if (isVirtualPart) {
       setPart((prev) => (prev ? { ...prev, ...updates } : null));
+      showToast('Part updated locally. Create in repository to save.', 'success');
       return;
     }
     try {
@@ -385,6 +412,60 @@ const PartDetail: React.FC<PartDetailProps> = ({
       showToast('Failed to update part', 'error');
       console.error('Error updating part:', error);
     }
+  };
+
+  const handleSavePartInfo = async () => {
+    if (!part || savingPartInfo) return;
+
+    const nextPartNumber = partInfoDraft.partNumber.trim();
+    const nextName = partInfoDraft.name.trim();
+    const nextDescription = partInfoDraft.description.trim();
+
+    if (!nextPartNumber) {
+      showToast('Part number is required', 'error');
+      return;
+    }
+    if (!nextName) {
+      showToast('Part name is required', 'error');
+      return;
+    }
+
+    const updates: Partial<Part> = {};
+    if (nextPartNumber !== (part.partNumber ?? '')) {
+      updates.partNumber = nextPartNumber;
+    }
+    if (nextName !== (part.name ?? '')) {
+      updates.name = nextName;
+    }
+    if (nextDescription !== (part.description ?? '')) {
+      updates.description = nextDescription || undefined;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      showToast('No part info changes to save', 'warning');
+      return;
+    }
+
+    setSavingPartInfo(true);
+    try {
+      await handleUpdatePart(updates);
+      setPartInfoDraft({
+        partNumber: nextPartNumber,
+        name: nextName,
+        description: nextDescription,
+      });
+    } finally {
+      setSavingPartInfo(false);
+    }
+  };
+
+  const handleResetPartInfo = () => {
+    if (!part) return;
+    setPartInfoDraft({
+      partNumber: part.partNumber ?? '',
+      name: part.name ?? '',
+      description: part.description ?? '',
+    });
   };
 
   const handleCreateInRepository = async () => {
@@ -439,7 +520,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
   }
 
   return (
-    <div className="flex h-full flex-col bg-slate-950">
+    <div className="flex h-full min-h-0 flex-col bg-slate-950">
       {/* Header: Part Number first, then Part Name */}
       <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
@@ -478,7 +559,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
       )}
 
       {/* Content */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div
+        className="min-h-0 flex-1 space-y-4 touch-pan-y overflow-y-auto px-4 py-6 sm:px-6 lg:px-8"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {/* Section 1: Part Information (always expanded) */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-4">
           <h2 className="mb-4 text-lg font-semibold text-white">Part Information</h2>
@@ -487,43 +571,56 @@ const PartDetail: React.FC<PartDetailProps> = ({
               <label className="mb-1 block text-sm text-slate-400">Part Number</label>
               <input
                 type="text"
-                value={part.partNumber}
-                onChange={(e) => handleUpdatePart({ partNumber: e.target.value })}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== part.partNumber) handleUpdatePart({ partNumber: v });
-                }}
+                value={partInfoDraft.partNumber}
+                onChange={(e) =>
+                  setPartInfoDraft((prev) => ({ ...prev, partNumber: e.target.value }))
+                }
                 className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 font-mono text-white focus:border-primary/50 focus:outline-none"
                 placeholder="e.g. SK-F35-0911"
+                required
               />
             </div>
             <div>
               <label className="mb-1 block text-sm text-slate-400">Part Name (required)</label>
               <input
                 type="text"
-                value={part.name || ''}
-                onChange={(e) => handleUpdatePart({ name: e.target.value || part.partNumber })}
-                onBlur={(e) => {
-                  const v = e.target.value.trim() || part.partNumber;
-                  if (v !== (part.name || '')) handleUpdatePart({ name: v });
-                }}
+                value={partInfoDraft.name}
+                onChange={(e) => setPartInfoDraft((prev) => ({ ...prev, name: e.target.value }))}
                 className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
-                placeholder={part.partNumber}
+                placeholder={partInfoDraft.partNumber || part.partNumber}
+                required
               />
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm text-slate-400">Description</label>
               <textarea
-                value={part.description || ''}
-                onChange={(e) => handleUpdatePart({ description: e.target.value })}
-                onBlur={(e) => {
-                  if (e.target.value !== (part.description || '')) {
-                    handleUpdatePart({ description: e.target.value || undefined });
-                  }
-                }}
+                value={partInfoDraft.description}
+                onChange={(e) =>
+                  setPartInfoDraft((prev) => ({ ...prev, description: e.target.value }))
+                }
                 className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
                 rows={3}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSavePartInfo}
+                  disabled={!isPartInfoDirty || savingPartInfo}
+                  className="min-h-[44px] rounded-sm bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingPartInfo ? 'Saving…' : 'Save Part Info'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetPartInfo}
+                  disabled={!isPartInfoDirty || savingPartInfo}
+                  className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
             {!isVirtualPart && (
               <div className="sm:col-span-2">

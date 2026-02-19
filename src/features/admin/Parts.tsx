@@ -30,6 +30,12 @@ const Parts: React.FC<PartsProps> = ({
     [updateState]
   );
   const listRef = useRef<HTMLDivElement>(null);
+  const scrollPositionsRef = useRef(state.scrollPositions);
+  const hasRestoredScrollRef = useRef(false);
+
+  useEffect(() => {
+    scrollPositionsRef.current = state.scrollPositions;
+  }, [state.scrollPositions]);
 
   useEffect(() => {
     loadParts();
@@ -37,29 +43,32 @@ const Parts: React.FC<PartsProps> = ({
   }, []);
 
   useEffect(() => {
-    const scrollPos = state.scrollPositions[PARTS_VIEW_KEY] ?? 0;
-    if (scrollPos > 0 && listRef.current) {
-      listRef.current.scrollTop = scrollPos;
-    }
-  }, [state.scrollPositions]);
+    if (hasRestoredScrollRef.current) return;
+    hasRestoredScrollRef.current = true;
 
-  const handleScroll = useThrottle(() => {
-    if (listRef.current) {
-      updateState({
-        scrollPositions: {
-          ...state.scrollPositions,
-          [PARTS_VIEW_KEY]: listRef.current.scrollTop,
-        },
+    const scrollPos = scrollPositionsRef.current[PARTS_VIEW_KEY] ?? 0;
+    if (scrollPos > 0 && listRef.current) {
+      requestAnimationFrame(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = scrollPos;
+        }
       });
     }
-  }, 100);
+  }, []);
 
-  useEffect(() => {
+  const handleScroll = useThrottle(() => {
     const el = listRef.current;
     if (!el) return;
-    el.addEventListener('scroll', handleScroll);
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+    const nextScrollTop = el.scrollTop;
+    if ((scrollPositionsRef.current[PARTS_VIEW_KEY] ?? 0) === nextScrollTop) return;
+
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [PARTS_VIEW_KEY]: nextScrollTop,
+      },
+    });
+  }, 150);
 
   const loadParts = async () => {
     try {
@@ -110,7 +119,7 @@ const Parts: React.FC<PartsProps> = ({
   }
 
   return (
-    <div className="flex h-full flex-col bg-slate-950">
+    <div className="flex h-full min-h-0 flex-col bg-slate-950">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
@@ -154,7 +163,12 @@ const Parts: React.FC<PartsProps> = ({
       </div>
 
       {/* Parts List - Part Number + Part Name only */}
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+      <div
+        ref={listRef}
+        onScroll={handleScroll}
+        className="min-h-0 flex-1 touch-pan-y overflow-y-auto px-4 py-4 sm:px-6 lg:px-8"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {filteredParts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <span className="material-symbols-outlined mb-4 text-6xl text-slate-600">
