@@ -55,7 +55,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="flex min-h-screen h-[100dvh] min-h-0 flex-col bg-background-dark">
+    <div className="flex h-[100dvh] min-h-0 min-h-screen flex-col bg-background-dark">
       <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-full bg-primary/20">

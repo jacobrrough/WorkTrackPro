@@ -564,7 +564,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
       {/* Content */}
       <div
-        className="min-h-0 flex-1 space-y-4 touch-pan-y overflow-y-auto px-4 py-6 sm:px-6 lg:px-8"
+        className="min-h-0 flex-1 touch-pan-y space-y-4 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {/* Section 1: Part Information (always expanded) */}

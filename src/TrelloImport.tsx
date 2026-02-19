@@ -483,7 +483,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       });
       const cardsWithAttachments = rawCards.map((card) => ({
         ...card,
-        attachments: mergeCardAttachments(card.attachments, boardAttachmentsByCard.get(card.id) ?? []),
+        attachments: mergeCardAttachments(
+          card.attachments,
+          boardAttachmentsByCard.get(card.id) ?? []
+        ),
       }));
 
       // Normalize: support root-level or nested board (e.g. data.board?.cards)
