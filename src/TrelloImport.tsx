@@ -236,7 +236,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const extractReferenceToken = (value: string | null | undefined): string | undefined => {
     if (!value) return undefined;
     const cleaned = value
-      .replace(/^(?:po|est|rfq|inv|owr|jc)\s*#?\s*[:\-]?\s*/i, '')
+      .replace(/^(?:po|est|rfq|inv|owr|jc)\s*#?\s*[:-]?\s*/i, '')
       .replace(/\s+/g, ' ')
       .trim();
     const token = cleaned.match(/[A-Za-z0-9-]+/);
