@@ -76,9 +76,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Refs for column scroll containers and horizontal board container
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
+  const boardTouchStateRef = useRef({
+    active: false,
+    isHorizontalSwipe: false,
+    startX: 0,
+    startY: 0,
+    startScrollLeft: 0,
+  });
   const scrollPositionsRef = useRef(navState.scrollPositions);
 
-  const canDragCards = boardType === 'shopFloor' || isAdmin;
+  // HTML5 drag-and-drop on touch devices can hijack swipe gestures; keep drag for fine pointers.
+  const supportsFinePointer =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const canDragCards = (boardType === 'shopFloor' || isAdmin) && supportsFinePointer;
   const columns = boardType === 'shopFloor' ? SHOP_FLOOR_COLUMNS : ADMIN_COLUMNS;
   const boardViewKey = `kanban-board-${boardType}`;
   const horizontalScrollKey = `${boardViewKey}-horizontal`;
@@ -146,6 +158,44 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     },
     100
   );
+
+  const handleBoardTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!boardContainerRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    boardTouchStateRef.current.active = true;
+    boardTouchStateRef.current.isHorizontalSwipe = false;
+    boardTouchStateRef.current.startX = touch.clientX;
+    boardTouchStateRef.current.startY = touch.clientY;
+    boardTouchStateRef.current.startScrollLeft = boardContainerRef.current.scrollLeft;
+  };
+
+  const handleBoardTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!boardContainerRef.current || e.touches.length !== 1) return;
+    const touchState = boardTouchStateRef.current;
+    if (!touchState.active) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchState.startX;
+    const deltaY = touch.clientY - touchState.startY;
+
+    if (!touchState.isHorizontalSwipe) {
+      if (Math.abs(deltaX) < 8) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) {
+        touchState.active = false;
+        return;
+      }
+      touchState.isHorizontalSwipe = true;
+    }
+
+    if (e.cancelable) e.preventDefault();
+    boardContainerRef.current.scrollLeft = touchState.startScrollLeft - deltaX;
+    handleHorizontalScroll();
+  };
+
+  const handleBoardTouchEnd = () => {
+    boardTouchStateRef.current.active = false;
+    boardTouchStateRef.current.isHorizontalSwipe = false;
+  };
 
   // Load checklist states for all jobs
   useEffect(() => {
@@ -377,6 +427,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
+        onTouchStart={handleBoardTouchStart}
+        onTouchMove={handleBoardTouchMove}
+        onTouchEnd={handleBoardTouchEnd}
+        onTouchCancel={handleBoardTouchEnd}
         className="flex-1 overflow-x-auto overflow-y-hidden"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
@@ -471,107 +525,116 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         }}
                         className={`relative cursor-pointer rounded-sm border border-white/5 bg-[#2a1f35] p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''}`}
                       >
-                        {/* Scan Bin Location Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setScanningBinForJob(job.id);
-                          }}
-                          className="absolute left-1 top-1 z-10 flex size-7 items-center justify-center rounded border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:bg-primary/40"
-                          title="Scan bin location"
-                        >
-                          <span className="material-symbols-outlined text-base">
-                            qr_code_scanner
-                          </span>
-                        </button>
+                        <div className="mb-1 flex items-start gap-2">
+                          {/* Job identity: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
+                          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                            <span className="text-sm font-bold text-white">
+                              {formatJobCode(job.jobCode)}
+                            </span>
+                            {job.isRush && (
+                              <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                Rush
+                              </span>
+                            )}
+                          </div>
 
-                        {/* Admin Menu Button */}
-                        {isAdmin && (
-                          <div className="absolute right-1 top-1 z-10">
+                          <div className="flex shrink-0 items-center gap-1">
+                            {/* Scan Bin Location Button */}
                             <button
-                              onClick={(e) => handleMenuClick(e, job.id)}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white/10 hover:text-white active:bg-white/20"
-                              aria-label="Job menu"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setScanningBinForJob(job.id);
+                              }}
+                              className="flex size-7 items-center justify-center rounded border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:bg-primary/40"
+                              title="Scan bin location"
                             >
-                              <span className="material-symbols-outlined text-base">more_vert</span>
+                              <span className="material-symbols-outlined text-base">
+                                qr_code_scanner
+                              </span>
                             </button>
 
-                            {menuOpenFor === job.id && (
-                              <div
-                                className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-2xl backdrop-blur-sm"
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                            {/* Admin Menu Button */}
+                            {isAdmin && (
+                              <div className="relative z-10">
                                 <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    setMenuOpenFor(null);
-                                    onNavigate('job-detail', job.id);
-                                  }}
+                                  onClick={(e) => handleMenuClick(e, job.id)}
                                   onMouseDown={(e) => e.stopPropagation()}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                >
-                                  <span className="material-symbols-outlined text-base">edit</span>
-                                  Edit
-                                </button>
-                                {job.status === 'waitingForPayment' && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      setMenuOpenFor(null);
-                                      onUpdateJobStatus(job.id, 'paid');
-                                      showToast('Job marked as Paid and reconciled', 'success');
-                                    }}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
-                                  >
-                                    <span className="material-symbols-outlined text-base">
-                                      payments
-                                    </span>
-                                    Mark as Paid
-                                  </button>
-                                )}
-                                <div className="my-1 border-t border-white/10" />
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    setMenuOpenFor(null);
-                                    setDeleteConfirm(job.id);
-                                  }}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
+                                  className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white/10 hover:text-white active:bg-white/20"
+                                  aria-label="Job menu"
                                 >
                                   <span className="material-symbols-outlined text-base">
-                                    delete
+                                    more_vert
                                   </span>
-                                  Delete
                                 </button>
+
+                                {menuOpenFor === job.id && (
+                                  <div
+                                    className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-2xl backdrop-blur-sm"
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setMenuOpenFor(null);
+                                        onNavigate('job-detail', job.id);
+                                      }}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                    >
+                                      <span className="material-symbols-outlined text-base">
+                                        edit
+                                      </span>
+                                      Edit
+                                    </button>
+                                    {job.status === 'waitingForPayment' && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          setMenuOpenFor(null);
+                                          onUpdateJobStatus(job.id, 'paid');
+                                          showToast('Job marked as Paid and reconciled', 'success');
+                                        }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
+                                      >
+                                        <span className="material-symbols-outlined text-base">
+                                          payments
+                                        </span>
+                                        Mark as Paid
+                                      </button>
+                                    )}
+                                    <div className="my-1 border-t border-white/10" />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setMenuOpenFor(null);
+                                        setDeleteConfirm(job.id);
+                                      }}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
+                                    >
+                                      <span className="material-symbols-outlined text-base">
+                                        delete
+                                      </span>
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
-
-                        {/* Job identity: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
-                        <div className="mb-1 flex flex-wrap items-center gap-1.5 pr-5">
-                          <span className="text-sm font-bold text-white">
-                            {formatJobCode(job.jobCode)}
-                          </span>
-                          {job.isRush && (
-                            <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                              Rush
-                            </span>
-                          )}
                         </div>
-                        <p className="mb-1 pr-5 text-sm font-medium text-slate-300">
+
+                        <p className="mb-1 text-sm font-medium text-slate-300">
                           {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
                         </p>
 
                         {/* Priority 3: ECD / Due date */}
-                        <p className="mb-1.5 pr-5">
+                        <p className="mb-1.5">
                           {(job.ecd || job.dueDate) && (
                             <span
                               className={`rounded px-1.5 py-0.5 text-xs font-medium ${job.dueDate && new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}

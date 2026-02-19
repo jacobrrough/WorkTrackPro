@@ -144,7 +144,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
           <button
             type="button"
             onClick={() => setShowForgotPassword(true)}
-            className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
+            className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
           >
             Forgot password?
           </button>
@@ -174,8 +174,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
       <div className="mt-8 flex items-center gap-1">
         <p className="text-sm text-[#ad93c8]">Don't have an account?</p>
         <button
+          type="button"
           onClick={() => setShowContactAdmin(true)}
-          className="text-sm font-bold text-primary hover:underline"
+          className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-bold text-primary hover:underline"
         >
           Contact Admin
         </button>
@@ -188,12 +189,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-white">Reset Password</h3>
               <button
+                type="button"
                 onClick={() => {
                   setShowForgotPassword(false);
                   setResetSent(false);
                   setResetEmail('');
                 }}
-                className="text-slate-400 transition-colors hover:text-white"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -276,12 +278,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-white">Contact Administrator</h3>
               <button
+                type="button"
                 onClick={() => {
                   setShowContactAdmin(false);
                   setContactSent(false);
                   setContactMessage('');
                 }}
-                className="text-slate-400 transition-colors hover:text-white"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
