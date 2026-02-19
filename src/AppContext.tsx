@@ -59,7 +59,11 @@ interface AppContextType {
   addAttachment: (jobId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   deleteAttachment: (attachmentId: string) => Promise<boolean>;
   updateAttachmentAdminOnly: (attachmentId: string, isAdminOnly: boolean) => Promise<boolean>;
-  addInventoryAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
+  addInventoryAttachment: (
+    inventoryId: string,
+    file: File,
+    isAdminOnly?: boolean
+  ) => Promise<boolean>;
   deleteInventoryAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   refreshJobs: () => Promise<void>;
   refreshShifts: () => Promise<void>;

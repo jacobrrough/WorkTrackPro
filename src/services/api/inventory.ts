@@ -1,6 +1,11 @@
-import type { InventoryItem, Attachment } from '../../core/types';
+import type { InventoryItem } from '../../core/types';
 import { supabase } from './supabaseClient';
-import { getInventoryImagePublicUrl, getAttachmentPublicUrl, uploadAttachment, deleteAttachmentRecord } from './storage';
+import {
+  getInventoryImagePublicUrl,
+  getAttachmentPublicUrl,
+  uploadAttachment,
+  deleteAttachmentRecord,
+} from './storage';
 
 function mapRowToItem(row: Record<string, unknown>): InventoryItem {
   const imagePath = row.image_path as string | null;

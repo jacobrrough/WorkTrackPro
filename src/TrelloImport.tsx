@@ -108,7 +108,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     const s = bracketContent.trim();
     const trelloMatch = s.match(/trello\.com\/c\/[\w-]+\/(\d+-[\w-]+)/i);
     if (trelloMatch) {
-      return trelloMatch[1].replace(/-/g, ' ').replace(/^\d+\s*/, '').trim();
+      return trelloMatch[1]
+        .replace(/-/g, ' ')
+        .replace(/^\d+\s*/, '')
+        .trim();
     }
     return s;
   };
@@ -269,35 +272,37 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           materialName = materialNameFromBracketLink(bracketLinkMatch[2]);
           parsedUnit = undefined;
         } else {
-        const adminBracketMatch = cleaned.match(
-          /^(\d+)\s+(YARDS?|SHEETS?|SHEET|EA|EACH|UNITS?)?\s*\[([^\]]+)\]$/i
-        );
-        if (adminBracketMatch) {
-          qty = parseInt(adminBracketMatch[1], 10);
-          materialName = materialNameFromBracketLink(adminBracketMatch[3]);
-          parsedUnit = adminBracketMatch[2];
-        } else {
-        const qtyUnitName = cleaned.match(/^(\d+)\s+(YARDS?|SHEETS?|SHEET|EA|EACH|UNITS?)\s+(.+)$/i);
-        if (qtyUnitName) {
-          qty = parseInt(qtyUnitName[1], 10);
-          materialName = qtyUnitName[3].trim();
-          parsedUnit = qtyUnitName[2];
-        } else {
-          const qtyPrefix = cleaned.match(/^(\d+)\s*x?\s+(.+)$/i);
-          if (qtyPrefix) {
-            qty = parseInt(qtyPrefix[1], 10);
-            materialName = qtyPrefix[2];
-            parsedUnit = undefined;
+          const adminBracketMatch = cleaned.match(
+            /^(\d+)\s+(YARDS?|SHEETS?|SHEET|EA|EACH|UNITS?)?\s*\[([^\]]+)\]$/i
+          );
+          if (adminBracketMatch) {
+            qty = parseInt(adminBracketMatch[1], 10);
+            materialName = materialNameFromBracketLink(adminBracketMatch[3]);
+            parsedUnit = adminBracketMatch[2];
           } else {
-          const qtySuffix = cleaned.match(/^(.+?)\s+(?:x|Ãƒâ€”|\()(\d+)\)?$/i);
-          if (qtySuffix) {
-            materialName = qtySuffix[1];
-            qty = parseInt(qtySuffix[2], 10);
-            parsedUnit = undefined;
-          } else parsedUnit = undefined;
+            const qtyUnitName = cleaned.match(
+              /^(\d+)\s+(YARDS?|SHEETS?|SHEET|EA|EACH|UNITS?)\s+(.+)$/i
+            );
+            if (qtyUnitName) {
+              qty = parseInt(qtyUnitName[1], 10);
+              materialName = qtyUnitName[3].trim();
+              parsedUnit = qtyUnitName[2];
+            } else {
+              const qtyPrefix = cleaned.match(/^(\d+)\s*x?\s+(.+)$/i);
+              if (qtyPrefix) {
+                qty = parseInt(qtyPrefix[1], 10);
+                materialName = qtyPrefix[2];
+                parsedUnit = undefined;
+              } else {
+                const qtySuffix = cleaned.match(/^(.+?)\s+(?:x|Ãƒâ€”|\()(\d+)\)?$/i);
+                if (qtySuffix) {
+                  materialName = qtySuffix[1];
+                  qty = parseInt(qtySuffix[2], 10);
+                  parsedUnit = undefined;
+                } else parsedUnit = undefined;
+              }
+            }
           }
-        }
-        }
         }
 
         // Clean up material name
@@ -327,9 +332,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
     // Also try to extract materials from inline text if no materials found in lists
     if (materials.length === 0) {
-      const descWithSpacing = normalizeMaterialLineSpacing(
-        normalized.replace(/\n/g, ' ')
-      );
+      const descWithSpacing = normalizeMaterialLineSpacing(normalized.replace(/\n/g, ' '));
       const inlinePatterns = [
         /(?:need|needs|requires?|use|uses?|with)\s+(\d+\.?\d*)\s*[x×]?\s*([A-Za-z][^.!?;,\n]{2,50})/gi,
         /(\d+\.?\d*)\s*[x×]\s*([A-Za-z][^.!?;,\n]{2,50})/gi,
@@ -414,9 +417,16 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       // Normalize: support root-level or nested board (e.g. data.board?.cards)
       const data: TrelloExport = {
         name: (parsed.name as string) ?? (parsed as TrelloExport).name ?? 'Board',
-        cards: (parsed.cards ?? (parsed as { board?: { cards?: TrelloCard[] } }).board?.cards) as TrelloCard[] ?? [],
-        lists: (parsed.lists ?? (parsed as { board?: { lists?: TrelloList[] } }).board?.lists) as TrelloList[] ?? [],
-        customFields: (parsed.customFields ?? (parsed as { board?: { customFields?: CustomField[] } }).board?.customFields) as CustomField[] | undefined,
+        cards:
+          ((parsed.cards ??
+            (parsed as { board?: { cards?: TrelloCard[] } }).board?.cards) as TrelloCard[]) ?? [],
+        lists:
+          ((parsed.lists ??
+            (parsed as { board?: { lists?: TrelloList[] } }).board?.lists) as TrelloList[]) ?? [],
+        customFields: (parsed.customFields ??
+          (parsed as { board?: { customFields?: CustomField[] } }).board?.customFields) as
+          | CustomField[]
+          | undefined,
       };
 
       if (!data.cards || !Array.isArray(data.cards)) {
@@ -469,9 +479,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     options?: { excludeIfNameContains?: string }
   ): number | null => {
     if (!card.customFieldItems) return null;
-    const aliases = Array.isArray(fieldNameOrAliases)
-      ? fieldNameOrAliases
-      : [fieldNameOrAliases];
+    const aliases = Array.isArray(fieldNameOrAliases) ? fieldNameOrAliases : [fieldNameOrAliases];
     const exclude = options?.excludeIfNameContains?.toLowerCase();
 
     try {
@@ -501,11 +509,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const parseUnitFromDescription = (desc: string): string => {
     if (!desc || !desc.trim()) return 'units';
     const lower = desc.toLowerCase().trim();
-    const yardMatch = lower.match(/(?:measured\s+in|unit[s]?\s*[:=]|in)\s*yards?/i) || lower.match(/\byards?\b/);
+    const yardMatch =
+      lower.match(/(?:measured\s+in|unit[s]?\s*[:=]|in)\s*yards?/i) || lower.match(/\byards?\b/);
     if (yardMatch) return 'yards';
-    const sheetMatch = lower.match(/(?:measured\s+in|unit[s]?\s*[:=]|in)\s*sheets?/i) || lower.match(/\bsheets?\b/);
+    const sheetMatch =
+      lower.match(/(?:measured\s+in|unit[s]?\s*[:=]|in)\s*sheets?/i) || lower.match(/\bsheets?\b/);
     if (sheetMatch) return 'sheets';
-    const eachMatch = lower.match(/(?:measured\s+in|unit[s]?\s*[:=]|in)\s*(?:each|ea\b)/i) || lower.match(/\b(?:each|ea)\b/);
+    const eachMatch =
+      lower.match(/(?:measured\s+in|unit[s]?\s*[:=]|in)\s*(?:each|ea\b)/i) ||
+      lower.match(/\b(?:each|ea)\b/);
     if (eachMatch) return 'each';
     const rollMatch = lower.match(/\brolls?\b/);
     if (rollMatch) return 'rolls';
@@ -613,13 +625,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // OWR# (Order/Work Request)
         const owrMatch =
-          description.match(/OWR#?\s*:?\s*(\d+)/i) || cardName.match(/OWR#?\s*:?\s*(\d+)/i) ||
+          description.match(/OWR#?\s*:?\s*(\d+)/i) ||
+          cardName.match(/OWR#?\s*:?\s*(\d+)/i) ||
           description.match(/OWR-(\d+)/i) ||
           description.match(/JC\s*#?\s*:?\s*(\d+)/i);
         const owrNumber = owrMatch ? owrMatch[1] : undefined;
 
         // EST#, RFQ#, INV# from description
-        const estMatch = description.match(/EST\s*#?\s*:?\s*(\d+)/i) || cardName.match(/EST\s*#?\s*(\d+)/i);
+        const estMatch =
+          description.match(/EST\s*#?\s*:?\s*(\d+)/i) || cardName.match(/EST\s*#?\s*(\d+)/i);
         const estNumber = estMatch ? estMatch[1] : undefined;
         const rfqMatch = description.match(/RFQ\s*#?\s*:?\s*(\d+)/i);
         const rfqNumber = rfqMatch ? rfqMatch[1] : undefined;
@@ -628,7 +642,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // Part name: "PART NAME: X" or text between part number and " Rev " (e.g. Tank Entry Land Slide)
         let partName = '';
-        const partNameLine = description.match(/PART\s*NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i) ||
+        const partNameLine =
+          description.match(/PART\s*NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i) ||
           description.match(/(?:^|\n)NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i);
         if (partNameLine) partName = partNameLine[1].trim();
         else if (partNumber) {
@@ -647,8 +662,12 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // Qty: only digits/spaces/commas/dashes/x, stop at EST# or next keyword
         const qtyMatch =
-          cardName.match(/(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i) ||
-          description.match(/(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i);
+          cardName.match(
+            /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i
+          ) ||
+          description.match(
+            /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i
+          );
         const qtyRaw = qtyMatch ? qtyMatch[1].trim() : '';
         const qty = qtyRaw;
 
@@ -727,8 +746,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             if (invNumber) refParts.push(`INV# ${invNumber}`);
             const referenceLine =
               refParts.length > 0 ? `\n\nReference: ${refParts.join(', ')}` : '';
-            const partDescription =
-              (description || '').trim() + referenceLine || undefined;
+            const partDescription = (description || '').trim() + referenceLine || undefined;
 
             if (!existingPart) {
               const created = await partsService.createPart({
@@ -837,9 +855,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         }
 
         // File attachments: download from Trello URL and upload to Supabase (default admin-only)
-        const fileAttachments = card.attachments?.filter(
-          (a) => a.url && !a.url.includes('trello.com/c/')
-        ) ?? [];
+        const fileAttachments =
+          card.attachments?.filter((a) => a.url && !a.url.includes('trello.com/c/')) ?? [];
         for (const att of fileAttachments) {
           try {
             setStatus(`Importing attachment ${att.name || 'file'}...`);
@@ -847,7 +864,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             if (!res.ok) continue;
             const blob = await res.blob();
             const filename = att.name || att.url.split('/').pop() || 'attachment';
-            const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+            const file = new File([blob], filename, {
+              type: blob.type || 'application/octet-stream',
+            });
             await jobService.addAttachment(job.id, file, true);
           } catch {
             // Trello URLs may require auth or CORS; skip on failure
@@ -898,9 +917,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         const inStock = getCustomFieldValue(card, cfMap, 'in stock') ?? 0;
         const availableVal = getCustomFieldValue(card, cfMap, 'available');
         const available = availableVal !== null ? availableVal : inStock;
-        const disposed = getCustomFieldValue(card, cfMap, 'disposed', {
-          excludeIfNameContains: 'add to',
-        }) ?? 0;
+        const disposed =
+          getCustomFieldValue(card, cfMap, 'disposed', {
+            excludeIfNameContains: 'add to',
+          }) ?? 0;
         const price = getCustomFieldValue(card, cfMap, 'price') ?? 0;
 
         const unitFromField = getCustomFieldText(card, cfMap, 'unit');
@@ -1045,7 +1065,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               <button
                 type="button"
                 onClick={handleUnmatchedSkip}
-                className="rounded-sm border border-white/20 bg-white/10 py-2.5 px-4 font-bold text-white transition hover:bg-white/20"
+                className="rounded-sm border border-white/20 bg-white/10 px-4 py-2.5 font-bold text-white transition hover:bg-white/20"
               >
                 Skip
               </button>
@@ -1111,103 +1131,113 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             />
           </div>
 
-          {trelloData && !isImporting && !result && (() => {
-            const openCards = trelloData.cards
-              .filter((c) => !c.closed)
-              .map((c) => ({
-                ...c,
-                listName: trelloData.lists?.find((l) => l.id === c.idList)?.name ?? 'Unknown',
-              }))
-              .filter(
-                (c) =>
-                  !cardListFilter.trim() ||
-                  c.name.toLowerCase().includes(cardListFilter.toLowerCase().trim()) ||
-                  c.listName.toLowerCase().includes(cardListFilter.toLowerCase().trim())
-              )
-              .sort((a, b) => a.listName.localeCompare(b.listName) || a.name.localeCompare(b.name));
-            const totalOpen = trelloData.cards.filter((c) => !c.closed).length;
-            const selectedCount = totalOpen && Object.keys(selectedCardIds).length
-              ? trelloData.cards.filter((c) => !c.closed && selectedCardIds[c.id]).length
-              : totalOpen;
-            return (
-              <div className="space-y-3 rounded-sm border border-white/10 bg-white/5 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-white">{trelloData.name}</p>
-                  <p className="text-sm text-slate-400">
-                    {selectedCount} of {totalOpen} cards selected
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    type="text"
-                    placeholder="Filter by card or list name..."
-                    value={cardListFilter}
-                    onChange={(e) => setCardListFilter(e.target.value)}
-                    className="min-w-0 flex-1 rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedCardIds((prev) => {
-                        const next = { ...prev };
-                        trelloData.cards.filter((c) => !c.closed).forEach((c) => (next[c.id] = true));
-                        return next;
-                      })
-                    }
-                    className="rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/15"
-                  >
-                    Select all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedCardIds((prev) => {
-                        const next = { ...prev };
-                        trelloData.cards.filter((c) => !c.closed).forEach((c) => (next[c.id] = false));
-                        return next;
-                      })
-                    }
-                    className="rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/15"
-                  >
-                    Deselect all
-                  </button>
-                </div>
-                <div className="max-h-64 overflow-y-auto rounded border border-white/10 bg-black/20">
-                  <ul className="divide-y divide-white/10">
-                    {openCards.length === 0 ? (
-                      <li className="px-3 py-4 text-center text-sm text-slate-400">
-                        {cardListFilter.trim() ? 'No cards match the filter.' : 'No open cards.'}
-                      </li>
-                    ) : (
-                      openCards.map((card) => (
-                        <li key={card.id} className="flex items-center gap-3 px-3 py-2">
-                          <input
-                            type="checkbox"
-                            id={`card-${card.id}`}
-                            checked={selectedCardIds[card.id] === true}
-                            onChange={() =>
-                              setSelectedCardIds((prev) => ({
-                                ...prev,
-                                [card.id]: !prev[card.id],
-                              }))
-                            }
-                            className="h-5 w-5 shrink-0 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
-                          />
-                          <label
-                            htmlFor={`card-${card.id}`}
-                            className="min-w-0 flex-1 cursor-pointer text-sm text-white"
-                          >
-                            <span className="font-medium">{card.name}</span>
-                            <span className="ml-2 text-slate-400">— {card.listName}</span>
-                          </label>
+          {trelloData &&
+            !isImporting &&
+            !result &&
+            (() => {
+              const openCards = trelloData.cards
+                .filter((c) => !c.closed)
+                .map((c) => ({
+                  ...c,
+                  listName: trelloData.lists?.find((l) => l.id === c.idList)?.name ?? 'Unknown',
+                }))
+                .filter(
+                  (c) =>
+                    !cardListFilter.trim() ||
+                    c.name.toLowerCase().includes(cardListFilter.toLowerCase().trim()) ||
+                    c.listName.toLowerCase().includes(cardListFilter.toLowerCase().trim())
+                )
+                .sort(
+                  (a, b) => a.listName.localeCompare(b.listName) || a.name.localeCompare(b.name)
+                );
+              const totalOpen = trelloData.cards.filter((c) => !c.closed).length;
+              const selectedCount =
+                totalOpen && Object.keys(selectedCardIds).length
+                  ? trelloData.cards.filter((c) => !c.closed && selectedCardIds[c.id]).length
+                  : totalOpen;
+              return (
+                <div className="space-y-3 rounded-sm border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-white">{trelloData.name}</p>
+                    <p className="text-sm text-slate-400">
+                      {selectedCount} of {totalOpen} cards selected
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      type="text"
+                      placeholder="Filter by card or list name..."
+                      value={cardListFilter}
+                      onChange={(e) => setCardListFilter(e.target.value)}
+                      className="min-w-0 flex-1 rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedCardIds((prev) => {
+                          const next = { ...prev };
+                          trelloData.cards
+                            .filter((c) => !c.closed)
+                            .forEach((c) => (next[c.id] = true));
+                          return next;
+                        })
+                      }
+                      className="rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/15"
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedCardIds((prev) => {
+                          const next = { ...prev };
+                          trelloData.cards
+                            .filter((c) => !c.closed)
+                            .forEach((c) => (next[c.id] = false));
+                          return next;
+                        })
+                      }
+                      className="rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/15"
+                    >
+                      Deselect all
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto rounded border border-white/10 bg-black/20">
+                    <ul className="divide-y divide-white/10">
+                      {openCards.length === 0 ? (
+                        <li className="px-3 py-4 text-center text-sm text-slate-400">
+                          {cardListFilter.trim() ? 'No cards match the filter.' : 'No open cards.'}
                         </li>
-                      ))
-                    )}
-                  </ul>
+                      ) : (
+                        openCards.map((card) => (
+                          <li key={card.id} className="flex items-center gap-3 px-3 py-2">
+                            <input
+                              type="checkbox"
+                              id={`card-${card.id}`}
+                              checked={selectedCardIds[card.id] === true}
+                              onChange={() =>
+                                setSelectedCardIds((prev) => ({
+                                  ...prev,
+                                  [card.id]: !prev[card.id],
+                                }))
+                              }
+                              className="h-5 w-5 shrink-0 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
+                            />
+                            <label
+                              htmlFor={`card-${card.id}`}
+                              className="min-w-0 flex-1 cursor-pointer text-sm text-white"
+                            >
+                              <span className="font-medium">{card.name}</span>
+                              <span className="ml-2 text-slate-400">— {card.listName}</span>
+                            </label>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           {isImporting && (
             <div className="space-y-3">

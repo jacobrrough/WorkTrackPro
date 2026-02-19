@@ -28,7 +28,7 @@ interface JobTimeline {
 const Calendar: React.FC<CalendarProps> = ({
   jobs: allJobs,
   shifts,
-  currentUser,
+  currentUser: _currentUser,
   onNavigate,
   onBack,
 }) => {
@@ -99,7 +99,6 @@ const Calendar: React.FC<CalendarProps> = ({
 
   // Get jobs for a specific date
   const getJobsForDate = (date: Date): JobTimeline[] => {
-    const dateStr = date.toISOString().split('T')[0];
     return jobTimelines.filter((tl) => {
       const start = new Date(tl.startDate);
       const end = new Date(tl.endDate);

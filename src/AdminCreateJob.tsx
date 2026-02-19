@@ -95,7 +95,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     if (formData.jobCode && !formData.estNumber) {
       setFormData((prev) => ({ ...prev, estNumber: `EST-${formData.jobCode}` }));
     }
-  }, [formData.jobCode]);
+  }, [formData.jobCode, formData.estNumber]);
 
   const handlePartSelect = (part: Part, quantities: Record<string, number>) => {
     setSelectedPartNumber(part.partNumber);
@@ -217,7 +217,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         partNumber: selectedPartNumber || undefined,
         revision: formData.revision.trim() || undefined,
         dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
-      } as any);
+      } as Partial<Job>);
 
       if (job) {
         // If part number was selected but not found, create master part

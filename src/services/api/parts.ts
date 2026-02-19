@@ -1,4 +1,4 @@
-import type { Part, PartVariant, PartMaterial, Job, Attachment } from '../../core/types';
+import type { Part, PartVariant, PartMaterial, Attachment } from '../../core/types';
 import { supabase } from './supabaseClient';
 import { getAttachmentPublicUrl } from './storage';
 import { uploadAttachment, deleteAttachmentRecord } from './storage';
@@ -15,7 +15,8 @@ function mapRowToPart(row: Record<string, unknown>): Part {
     requiresCNC: row.requires_cnc === true,
     cncTimeHours: row.cnc_time_hours != null ? Number(row.cnc_time_hours) : undefined,
     requires3DPrint: row.requires_3d_print === true,
-    printer3DTimeHours: row.printer_3d_time_hours != null ? Number(row.printer_3d_time_hours) : undefined,
+    printer3DTimeHours:
+      row.printer_3d_time_hours != null ? Number(row.printer_3d_time_hours) : undefined,
     setComposition:
       setComp != null && typeof setComp === 'object' && !Array.isArray(setComp)
         ? (setComp as Record<string, number>)
@@ -64,7 +65,9 @@ function mapRowToPartMaterial(row: Record<string, unknown>): PartMaterial {
   const partVariantId = (row.part_variant_id ?? row.variant_id) as string | undefined;
   const partId = row.part_id as string | undefined;
   const quantityPerUnit = (row.quantity_per_unit ?? row.quantity) as number | undefined;
-  const usageType = (row.usage_type as 'per_set' | 'per_variant') ?? (partId && !partVariantId ? 'per_set' : 'per_variant');
+  const usageType =
+    (row.usage_type as 'per_set' | 'per_variant') ??
+    (partId && !partVariantId ? 'per_set' : 'per_variant');
   return {
     id: row.id as string,
     ...(partVariantId && { partVariantId }),
@@ -136,27 +139,38 @@ export const partsService = {
     const allMaterials = allMaterialsData ?? [];
 
     // Part-level materials: part_id = id and no variant
-    const partLevelRows = allMaterials.filter((r: any) => {
+    type PartMaterialRow = Record<string, unknown> & {
+      part_id?: string;
+      part_variant_id?: string;
+      variant_id?: string;
+      inventory_id?: string;
+    };
+    const partLevelRows = allMaterials.filter((r: PartMaterialRow) => {
       const partId = r.part_id;
       const variantId = r.part_variant_id ?? r.variant_id;
       return partId === id && !variantId;
     });
-    const variantLevelRows = variantIds.length === 0 ? [] : allMaterials.filter((r: any) => {
-      const variantId = r.part_variant_id ?? r.variant_id;
-      return variantId && variantIds.includes(variantId);
-    });
+    const variantLevelRows =
+      variantIds.length === 0
+        ? []
+        : allMaterials.filter((r: PartMaterialRow) => {
+            const variantId = r.part_variant_id ?? r.variant_id;
+            return variantId && variantIds.includes(variantId);
+          });
 
     const allMatRows = [...partLevelRows, ...variantLevelRows];
     const inventoryIds = [
-      ...new Set(allMatRows.map((r: any) => r.inventory_id)),
+      ...new Set(allMatRows.map((r: PartMaterialRow) => r.inventory_id as string)),
     ];
     const { data: invData } =
       inventoryIds.length > 0
         ? await supabase.from('inventory').select('id, name').in('id', inventoryIds)
         : { data: [] };
-    const invNameMap = new Map((invData ?? []).map((i: any) => [i.id, i.name]));
+    const invNameMap = new Map(
+      (invData ?? []).map((i: { id: string; name?: string }) => [i.id, i.name] as [string, string])
+    );
 
-    part.materials = partLevelRows.map((row: any) => {
+    part.materials = partLevelRows.map((row: PartMaterialRow) => {
       const m = mapRowToPartMaterial(row as unknown as Record<string, unknown>);
       m.inventoryName = invNameMap.get(m.inventoryId) ?? 'Unknown';
       return m;
@@ -164,11 +178,8 @@ export const partsService = {
 
     for (const v of part.variants) {
       v.materials = variantLevelRows
-        .filter(
-          (r: any) =>
-            (r.part_variant_id ?? r.variant_id) === v.id
-        )
-        .map((row: any) => {
+        .filter((r: PartMaterialRow) => (r.part_variant_id ?? r.variant_id) === v.id)
+        .map((row: PartMaterialRow) => {
           const m = mapRowToPartMaterial(row as unknown as Record<string, unknown>);
           m.inventoryName = invNameMap.get(m.inventoryId) ?? 'Unknown';
           return m;
@@ -195,12 +206,12 @@ export const partsService = {
   /** Set part drawing (replaces existing). Part drawing is always visible to standard users. */
   async addPartDrawing(partId: string, file: File): Promise<{ success: boolean; error?: string }> {
     try {
-      const existing = await supabase
-        .from('attachments')
-        .select('id')
-        .eq('part_id', partId);
+      const existing = await supabase.from('attachments').select('id').eq('part_id', partId);
       if (existing.error) {
-        return { success: false, error: existing.error.message || 'Could not load existing drawing' };
+        return {
+          success: false,
+          error: existing.error.message || 'Could not load existing drawing',
+        };
       }
       for (const row of existing.data ?? []) {
         await deleteAttachmentRecord((row as { id: string }).id);
@@ -347,17 +358,13 @@ export const partsService = {
       inventory_id: inventoryId,
       unit: unit ?? 'units',
     };
-    
+
     // Try newer schema first (part_variant_id, quantity_per_unit)
     row.part_variant_id = partVariantId;
     row.quantity_per_unit = quantityPerUnit;
-    
-    let { data, error } = await supabase
-      .from('part_materials')
-      .insert(row)
-      .select('*')
-      .single();
-    
+
+    let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
+
     // If that fails, try older schema (variant_id, quantity)
     if (error && (error.message?.includes('part_variant_id') || error.code === '42703')) {
       row = {
@@ -366,15 +373,11 @@ export const partsService = {
         quantity: quantityPerUnit,
         unit: unit ?? 'units',
       };
-      const result = await supabase
-        .from('part_materials')
-        .insert(row)
-        .select('*')
-        .single();
+      const result = await supabase.from('part_materials').insert(row).select('*').single();
       data = result.data;
       error = result.error;
     }
-    
+
     if (error) {
       console.error('Error adding part material:', error);
       return null;
@@ -387,16 +390,20 @@ export const partsService = {
     let row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.quantityPerUnit != null) row.quantity_per_unit = data.quantityPerUnit;
     if (data.unit != null) row.unit = data.unit;
-    
+
     let { data: updated, error } = await supabase
       .from('part_materials')
       .update(row)
       .eq('id', id)
       .select('*')
       .single();
-    
+
     // If that fails, try older schema (quantity)
-    if (error && data.quantityPerUnit != null && (error.message?.includes('quantity_per_unit') || error.code === '42703')) {
+    if (
+      error &&
+      data.quantityPerUnit != null &&
+      (error.message?.includes('quantity_per_unit') || error.code === '42703')
+    ) {
       row = { updated_at: new Date().toISOString() };
       row.quantity = data.quantityPerUnit;
       if (data.unit != null) row.unit = data.unit;
@@ -409,7 +416,7 @@ export const partsService = {
       updated = result.data;
       error = result.error;
     }
-    
+
     if (error) return null;
     return mapRowToPartMaterial(updated as unknown as Record<string, unknown>);
   },
@@ -447,11 +454,7 @@ export const partsService = {
         unit: unit ?? 'units',
         usage_type: 'per_set',
       };
-      let { data, error } = await supabase
-        .from('part_materials')
-        .insert(row)
-        .select('*')
-        .single();
+      let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
       // If insert fails (e.g. column quantity_per_unit doesn't exist), try with "quantity" for older schema
       if (error && (error.message?.includes('quantity_per_unit') || error.code === '42703')) {
         const rowLegacy: Record<string, unknown> = {
@@ -461,11 +464,7 @@ export const partsService = {
           unit: unit ?? 'units',
           usage_type: 'per_set',
         };
-        const result = await supabase
-          .from('part_materials')
-          .insert(rowLegacy)
-          .select('*')
-          .single();
+        const result = await supabase.from('part_materials').insert(rowLegacy).select('*').single();
         data = result.data;
         error = result.error;
       }
@@ -479,12 +478,19 @@ export const partsService = {
           const fallback = await this.addPartMaterial(first.id, inventoryId, quantity, unit);
           if (fallback) return fallback;
         }
-        console.error('Error adding part-level material:', error.message, error.code, error.details);
+        console.error(
+          'Error adding part-level material:',
+          error.message,
+          error.code,
+          error.details
+        );
         return null;
       }
     }
 
-    const targetVariantId = variantId ?? (partId ? (await this.getPartWithVariants(partId))?.variants?.[0]?.id : undefined);
+    const targetVariantId =
+      variantId ??
+      (partId ? (await this.getPartWithVariants(partId))?.variants?.[0]?.id : undefined);
     if (!targetVariantId) return null;
     return this.addPartMaterial(targetVariantId, inventoryId, quantity, unit);
   },
@@ -515,21 +521,25 @@ export const partsService = {
       // Note: part_id column may not exist if migration hasn't been run yet - handle gracefully
       let query = supabase
         .from('jobs')
-        .select('id, job_code, name, part_number, variant_suffix, description, qty, due_date, status')
+        .select(
+          'id, job_code, name, part_number, variant_suffix, description, qty, due_date, status'
+        )
         .in('status', ['paid', 'projectCompleted'])
         .order('due_date', { ascending: false });
-      
+
       // Try to add part_id filter if column exists
       try {
         // Test if part_id column exists by trying to select it
         const testQuery = supabase.from('jobs').select('part_id').limit(1);
         const testResult = await testQuery;
-        
+
         if (!testResult.error && testResult.data !== null) {
           // Column exists, use it in the filter
           query = supabase
             .from('jobs')
-            .select('id, job_code, name, part_number, variant_suffix, description, qty, due_date, status, part_id')
+            .select(
+              'id, job_code, name, part_number, variant_suffix, description, qty, due_date, status, part_id'
+            )
             .in('status', ['paid', 'projectCompleted'])
             .is('part_id', null)
             .order('due_date', { ascending: false });
@@ -538,96 +548,100 @@ export const partsService = {
         // Column doesn't exist, continue without part_id filter
         // This will show all completed jobs as suggestions (which is fine)
       }
-      
+
       const { data: jobs, error } = await query;
 
       if (error) throw error;
       if (!jobs || jobs.length === 0) return [];
 
-    // Group jobs by potential part number
-    const grouped = new Map<
-      string,
-      {
-        suggestedPartNumber: string;
-        suggestedName: string;
-        jobs: Array<{
-          id: string;
-          jobCode: number;
-          name: string;
-          partNumber?: string;
-          variantSuffix?: string;
-          description?: string;
-          qty?: string;
-          dueDate?: string;
-          status: string;
-        }>;
-      }
-    >();
-
-    for (const job of jobs) {
-      // Extract potential part number from job
-      let suggestedPartNumber = '';
-      let suggestedName = job.name || '';
-
-      if (job.part_number && job.part_number.trim()) {
-        // If job has part_number, use it (remove variant suffix if present)
-        suggestedPartNumber = job.part_number.replace(/-\d+$/, '').trim();
-        suggestedName = job.name || suggestedPartNumber;
-      } else if (job.name) {
-        // Try to extract part number from job name (look for patterns like "ABC-01" or "SK-F35-0911")
-        const nameMatch = job.name.match(/([A-Z0-9]+(?:-[A-Z0-9]+)*)/i);
-        if (nameMatch) {
-          suggestedPartNumber = nameMatch[1].replace(/-\d+$/, '').trim();
-        } else {
-          // Use first part of name as fallback
-          suggestedPartNumber = job.name.split(/[\s-]/)[0].trim();
+      // Group jobs by potential part number
+      const grouped = new Map<
+        string,
+        {
+          suggestedPartNumber: string;
+          suggestedName: string;
+          jobs: Array<{
+            id: string;
+            jobCode: number;
+            name: string;
+            partNumber?: string;
+            variantSuffix?: string;
+            description?: string;
+            qty?: string;
+            dueDate?: string;
+            status: string;
+          }>;
         }
-      } else {
-        // Skip jobs with no name or part number
-        continue;
-      }
+      >();
 
-      if (!suggestedPartNumber) continue;
+      for (const job of jobs) {
+        // Extract potential part number from job
+        let suggestedPartNumber = '';
+        let suggestedName = job.name || '';
 
-      const key = suggestedPartNumber.toUpperCase();
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          suggestedPartNumber: key,
-          suggestedName,
-          jobs: [],
+        if (job.part_number && job.part_number.trim()) {
+          // If job has part_number, use it (remove variant suffix if present)
+          suggestedPartNumber = job.part_number.replace(/-\d+$/, '').trim();
+          suggestedName = job.name || suggestedPartNumber;
+        } else if (job.name) {
+          // Try to extract part number from job name (look for patterns like "ABC-01" or "SK-F35-0911")
+          const nameMatch = job.name.match(/([A-Z0-9]+(?:-[A-Z0-9]+)*)/i);
+          if (nameMatch) {
+            suggestedPartNumber = nameMatch[1].replace(/-\d+$/, '').trim();
+          } else {
+            // Use first part of name as fallback
+            suggestedPartNumber = job.name.split(/[\s-]/)[0].trim();
+          }
+        } else {
+          // Skip jobs with no name or part number
+          continue;
+        }
+
+        if (!suggestedPartNumber) continue;
+
+        const key = suggestedPartNumber.toUpperCase();
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            suggestedPartNumber: key,
+            suggestedName,
+            jobs: [],
+          });
+        }
+
+        const group = grouped.get(key)!;
+        group.jobs.push({
+          id: job.id as string,
+          jobCode: job.job_code as number,
+          name: job.name as string,
+          partNumber: job.part_number as string | undefined,
+          variantSuffix: job.variant_suffix as string | undefined,
+          description: job.description as string | undefined,
+          qty: job.qty as string | undefined,
+          dueDate: job.due_date as string | undefined,
+          status: job.status as string,
         });
+
+        // Update suggested name to most common name in group
+        const names = group.jobs.map((j) => j.name);
+        const mostCommonName = names.reduce(
+          (a, b, _, arr) =>
+            arr.filter((v) => v === a).length >= arr.filter((v) => v === b).length ? a : b,
+          names[0]
+        );
+        group.suggestedName = mostCommonName || group.suggestedName;
       }
-
-      const group = grouped.get(key)!;
-      group.jobs.push({
-        id: job.id as string,
-        jobCode: job.job_code as number,
-        name: job.name as string,
-        partNumber: job.part_number as string | undefined,
-        variantSuffix: job.variant_suffix as string | undefined,
-        description: job.description as string | undefined,
-        qty: job.qty as string | undefined,
-        dueDate: job.due_date as string | undefined,
-        status: job.status as string,
-      });
-
-      // Update suggested name to most common name in group
-      const names = group.jobs.map((j) => j.name);
-      const mostCommonName = names.reduce(
-        (a, b, _, arr) => (arr.filter((v) => v === a).length >= arr.filter((v) => v === b).length ? a : b),
-        names[0]
-      );
-      group.suggestedName = mostCommonName || group.suggestedName;
-    }
 
       // Convert to array and sort by part number
       return Array.from(grouped.values()).sort((a, b) =>
         a.suggestedPartNumber.localeCompare(b.suggestedPartNumber)
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If part_id column doesn't exist or any other error, return empty array
       // This prevents the UI from breaking
-      console.warn('Failed to load job suggestions (part_id column may not exist):', error?.message);
+      console.warn(
+        'Failed to load job suggestions (part_id column may not exist):',
+        error instanceof Error ? error.message : String(error)
+      );
       return [];
     }
   },

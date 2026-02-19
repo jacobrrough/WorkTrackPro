@@ -34,6 +34,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
 
   useEffect(() => {
     loadSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadSuggestions stable, intentional mount-only
   }, []);
 
   const loadSuggestions = async () => {
@@ -41,9 +42,12 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
       setLoading(true);
       const data = await partsService.getJobsWithMissingPartInfo();
       setSuggestions(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading suggestions:', error);
-      showToast(`Failed to load suggestions: ${error?.message || 'Unknown error'}`, 'error');
+      showToast(
+        `Failed to load suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
       setSuggestions([]);
     } finally {
       setLoading(false);
@@ -72,9 +76,12 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
       showToast(`Part "${suggestion.suggestedPartNumber}" created successfully`, 'success');
       // Reload suggestions (this one should disappear)
       await loadSuggestions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating part:', error);
-      showToast(`Failed to create part: ${error?.message || 'Unknown error'}`, 'error');
+      showToast(
+        `Failed to create part: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
     } finally {
       setCreatingPartNumber(null);
     }
@@ -145,7 +152,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                     </div>
                     <p className="text-sm text-white">{suggestion.suggestedName}</p>
                     {suggestion.jobs[0]?.description && (
-                      <p className="mt-1 text-xs text-slate-400 line-clamp-2">
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">
                         {suggestion.jobs[0].description}
                       </p>
                     )}
@@ -185,7 +192,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                             {formatJobCode(job.jobCode)}
                           </span>
                           <span className="text-xs text-slate-400">
-                            {getStatusDisplayName(job.status as any)}
+                            {getStatusDisplayName(job.status)}
                           </span>
                         </div>
                         <p className="text-sm text-slate-300">{job.name}</p>
@@ -196,7 +203,9 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                           </p>
                         )}
                       </div>
-                      <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+                      <span className="material-symbols-outlined text-slate-400">
+                        chevron_right
+                      </span>
                     </button>
                   ))}
                 </div>

@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Part, PartVariant, PartMaterial, InventoryItem, Job, InventoryCategory, getCategoryDisplayName } from '@/core/types';
+import {
+  Part,
+  PartVariant,
+  PartMaterial,
+  InventoryItem,
+  Job,
+  InventoryCategory,
+  getCategoryDisplayName,
+} from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { inventoryService } from '@/services/api/inventory';
 import { useToast } from '@/Toast';
@@ -11,7 +19,6 @@ import {
 } from '@/lib/formatJob';
 import { formatDateOnly } from '@/core/date';
 import { getStatusDisplayName } from '@/core/types';
-import { computeRequiredMaterials } from '@/lib/materialFromPart';
 import Accordion from '@/components/Accordion';
 import MaterialCostDisplay from '@/components/MaterialCostDisplay';
 import QuoteCalculator from '@/components/QuoteCalculator';
@@ -23,14 +30,13 @@ import {
   variantPricesFromSetPrice,
   calculateSetLaborFromVariants,
   variantLaborFromSetComposition,
-  copyVariantMaterialsToOthers,
   distributeSetMaterialToVariants,
 } from '@/lib/partDistribution';
 
 interface PartDetailProps {
   partId: string;
   jobs?: Job[];
-  onNavigate: (view: string, params?: any) => void;
+  onNavigate: (view: string, params?: Record<string, string>) => void;
   onNavigateBack: () => void;
 }
 
@@ -89,6 +95,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       setLoading(false);
       setPart(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPart, loadInventory are stable
   }, [partId]);
 
   const loadPart = async (): Promise<Part | null> => {
@@ -254,25 +261,46 @@ const PartDetail: React.FC<PartDetailProps> = ({
         usageType,
       });
       if (!added) {
-        showToast('Failed to add material. Check that part_materials has part_id column (run migrations).', 'error');
+        showToast(
+          'Failed to add material. Check that part_materials has part_id column (run migrations).',
+          'error'
+        );
         return;
       }
 
       const variants = part.variants ?? [];
-      const setComposition = part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
-      const totalUnitsInSet = setComposition ? Object.values(setComposition).reduce((a, b) => a + b, 0) : 0;
+      const setComposition =
+        part.setComposition && Object.keys(part.setComposition).length > 0
+          ? part.setComposition
+          : null;
+      const totalUnitsInSet = setComposition
+        ? Object.values(setComposition).reduce((a, b) => a + b, 0)
+        : 0;
 
       let copyOrSetMessage = '';
       if (usageType === 'per_set' && variants.length > 0 && setComposition && totalUnitsInSet > 0) {
-        const toDistribute = distributeSetMaterialToVariants(variants, setComposition, inventoryId, quantity, unit);
+        const toDistribute = distributeSetMaterialToVariants(
+          variants,
+          setComposition,
+          inventoryId,
+          quantity,
+          unit
+        );
         for (const { variantId, inventoryId: invId, quantity: qty, unit: u } of toDistribute) {
           try {
-            await partsService.addMaterial({ variantId, inventoryId: invId, quantity: qty, unit: u, usageType: 'per_variant' });
+            await partsService.addMaterial({
+              variantId,
+              inventoryId: invId,
+              quantity: qty,
+              unit: u,
+              usageType: 'per_variant',
+            });
           } catch {
             /* ignore */
           }
         }
-        if (toDistribute.length > 0) copyOrSetMessage = ` and applied to ${toDistribute.length} variant(s)`;
+        if (toDistribute.length > 0)
+          copyOrSetMessage = ` and applied to ${toDistribute.length} variant(s)`;
       } else if (addedToVariantId && usageType === 'per_variant' && variants.length >= 2) {
         const otherVariants = variants.filter((v) => v.id !== addedToVariantId);
         const alreadyHave = (v: { materials?: { inventoryId: string }[] }) =>
@@ -334,10 +362,15 @@ const PartDetail: React.FC<PartDetailProps> = ({
     try {
       let updated = await partsService.updatePart(part.id, updates);
       if (!updated && updates.setComposition !== undefined) {
-        updated = await partsService.updatePart(part.id, { setComposition: updates.setComposition });
+        updated = await partsService.updatePart(part.id, {
+          setComposition: updates.setComposition,
+        });
         if (!updated) {
           setPart((prev) => (prev ? { ...prev, ...updates } : null));
-          showToast('Set composition could not be saved. Run migration to add set_composition to parts table.', 'error');
+          showToast(
+            'Set composition could not be saved. Run migration to add set_composition to parts table.',
+            'error'
+          );
           return;
         }
       }
@@ -445,7 +478,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 space-y-4">
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         {/* Section 1: Part Information (always expanded) */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-4">
           <h2 className="mb-4 text-lg font-semibold text-white">Part Information</h2>
@@ -563,21 +596,24 @@ const PartDetail: React.FC<PartDetailProps> = ({
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-sm text-slate-400">Set Labor Hours</label>
-                  {part.variants && part.variants.length > 0 && part.setComposition && Object.keys(part.setComposition).length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const auto = calculateSetLaborFromVariants(
-                          part.variants ?? [],
-                          part.setComposition ?? {}
-                        );
-                        if (auto != null) handleUpdatePart({ laborHours: auto });
-                      }}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Use Auto
-                    </button>
-                  )}
+                  {part.variants &&
+                    part.variants.length > 0 &&
+                    part.setComposition &&
+                    Object.keys(part.setComposition).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const auto = calculateSetLaborFromVariants(
+                            part.variants ?? [],
+                            part.setComposition ?? {}
+                          );
+                          if (auto != null) handleUpdatePart({ laborHours: auto });
+                        }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Use Auto
+                      </button>
+                    )}
                 </div>
                 <input
                   type="number"
@@ -661,7 +697,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   </label>
                   {part.requires3DPrint && (
                     <div className="flex items-center gap-2">
-                      <label className="text-sm text-slate-400">3D print time (hours per set)</label>
+                      <label className="text-sm text-slate-400">
+                        3D print time (hours per set)
+                      </label>
                       <input
                         type="number"
                         step="0.1"
@@ -705,7 +743,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   />
                 )}
                 {part.materials && part.materials.length > 0 ? (
-                  <MaterialsListWithCost materials={part.materials} inventoryItems={inventoryItems} onUpdate={loadPart} />
+                  <MaterialsListWithCost
+                    materials={part.materials}
+                    inventoryItems={inventoryItems}
+                    onUpdate={loadPart}
+                  />
                 ) : (
                   <p className="text-sm text-slate-500">No materials defined for this part.</p>
                 )}
@@ -714,7 +756,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
               {part.variants && part.variants.length > 0 && (
                 <>
                   <div>
-                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">Set composition</p>
+                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">
+                      Set composition
+                    </p>
                     <SetCompositionEditor
                       part={part}
                       variants={part.variants}
@@ -747,8 +791,16 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       if (price !== undefined) {
                         if (price !== part.pricePerSet) {
                           await handleUpdatePart({ pricePerSet: price });
-                          if (part.variants?.length && part.setComposition && Object.keys(part.setComposition).length > 0) {
-                            const toApply = variantPricesFromSetPrice(price, part.setComposition, part.variants);
+                          if (
+                            part.variants?.length &&
+                            part.setComposition &&
+                            Object.keys(part.setComposition).length > 0
+                          ) {
+                            const toApply = variantPricesFromSetPrice(
+                              price,
+                              part.setComposition,
+                              part.variants
+                            );
                             for (const { variantId, price: p } of toApply) {
                               await partsService.updateVariant(variantId, { pricePerVariant: p });
                             }
@@ -792,23 +844,31 @@ const PartDetail: React.FC<PartDetailProps> = ({
               onRefresh={loadPart}
               showToast={showToast}
             />
-            {showAddMaterial?.variantId && part.variants && (() => {
-              const addToVariant = part.variants.find((v) => v.id === showAddMaterial!.variantId);
-              if (!addToVariant) return null;
-              return (
-                <div key={`add-mat-${addToVariant.id}`} className="mt-4 rounded-sm border border-primary/30 bg-primary/10 p-4">
-                  <p className="mb-3 text-sm text-slate-300">
-                    Adding material to <span className="font-mono text-primary">{part.partNumber}-{addToVariant.variantSuffix}</span>
-                  </p>
-                  <AddMaterialForm
-                    inventoryItems={inventoryItems}
-                    usageType="per_variant"
-                    onSave={handleAddMaterial}
-                    onCancel={() => setShowAddMaterial(null)}
-                  />
-                </div>
-              );
-            })()}
+            {showAddMaterial?.variantId &&
+              part.variants &&
+              (() => {
+                const addToVariant = part.variants.find((v) => v.id === showAddMaterial!.variantId);
+                if (!addToVariant) return null;
+                return (
+                  <div
+                    key={`add-mat-${addToVariant.id}`}
+                    className="mt-4 rounded-sm border border-primary/30 bg-primary/10 p-4"
+                  >
+                    <p className="mb-3 text-sm text-slate-300">
+                      Adding material to{' '}
+                      <span className="font-mono text-primary">
+                        {part.partNumber}-{addToVariant.variantSuffix}
+                      </span>
+                    </p>
+                    <AddMaterialForm
+                      inventoryItems={inventoryItems}
+                      usageType="per_variant"
+                      onSave={handleAddMaterial}
+                      onCancel={() => setShowAddMaterial(null)}
+                    />
+                  </div>
+                );
+              })()}
             {part.variants && part.variants.length > 0 && (
               <div className="mt-4 space-y-4">
                 {part.variants.map((variant) => (
@@ -881,7 +941,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           {formatDateOnly(job.dueDate)}
                         </span>
                       )}
-                      <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+                      <span className="material-symbols-outlined text-slate-400">
+                        chevron_right
+                      </span>
                     </div>
                   </button>
                 ))}
@@ -900,7 +962,7 @@ interface VariantCardProps {
   isEditing: boolean;
   onEdit: () => void;
   onCancel: () => void;
-  onUpdate: (id: string, updates: any) => void;
+  onUpdate: (id: string, updates: Partial<PartVariant>) => void;
   onDelete: (variantId: string, variantSuffix: string) => void;
   onAddMaterial: () => void;
   onMaterialAdded: () => void;
@@ -931,9 +993,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValues, setMaterialQtyValues] = useState<Record<string, string>>({});
 
-  const autoLaborHours = partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
-    ? variantLaborFromSetComposition(variant.variantSuffix, partLaborHours, setComposition)
-    : undefined;
+  const autoLaborHours =
+    partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
+      ? variantLaborFromSetComposition(variant.variantSuffix, partLaborHours, setComposition)
+      : undefined;
 
   const handleSave = () => {
     onUpdate(variant.id, {
@@ -1071,8 +1134,12 @@ const VariantCard: React.FC<VariantCardProps> = ({
               const qty =
                 material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
               const isEditingQty = editingMaterialQty === material.id;
-              const displayQty = isEditingQty ? (materialQtyValues[material.id] ?? qty.toString()) : qty;
-              const ourCost = (inv?.price ?? 0) * (isEditingQty ? parseFloat(materialQtyValues[material.id] || '0') || qty : qty);
+              const displayQty = isEditingQty
+                ? (materialQtyValues[material.id] ?? qty.toString())
+                : qty;
+              const ourCost =
+                (inv?.price ?? 0) *
+                (isEditingQty ? parseFloat(materialQtyValues[material.id] || '0') || qty : qty);
               return (
                 <div
                   key={material.id}
@@ -1090,7 +1157,12 @@ const VariantCard: React.FC<VariantCardProps> = ({
                             step="0.01"
                             min={0}
                             value={materialQtyValues[material.id] ?? qty}
-                            onChange={(e) => setMaterialQtyValues((prev) => ({ ...prev, [material.id]: e.target.value }))}
+                            onChange={(e) =>
+                              setMaterialQtyValues((prev) => ({
+                                ...prev,
+                                [material.id]: e.target.value,
+                              }))
+                            }
                             onBlur={async () => {
                               const value = materialQtyValues[material.id];
                               if (!value) {
@@ -1103,7 +1175,9 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                 return;
                               }
                               try {
-                                const updated = await partsService.updatePartMaterial(material.id, { quantityPerUnit: numValue });
+                                const updated = await partsService.updatePartMaterial(material.id, {
+                                  quantityPerUnit: numValue,
+                                });
                                 if (updated) {
                                   showToast('Quantity updated', 'success');
                                   setEditingMaterialQty(null);
@@ -1141,7 +1215,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
                             type="button"
                             onClick={() => {
                               setEditingMaterialQty(material.id);
-                              setMaterialQtyValues((prev) => ({ ...prev, [material.id]: qty.toString() }));
+                              setMaterialQtyValues((prev) => ({
+                                ...prev,
+                                [material.id]: qty.toString(),
+                              }));
                             }}
                             className="ml-2 text-xs text-primary hover:underline"
                           >
@@ -1227,22 +1304,22 @@ function VariantQuoteMini({
     // Normalize variant suffix (handle both "-01" and "01" formats)
     const norm = (s: string) => s.replace(/^-/, '');
     const variantSuffixNorm = norm(variant.variantSuffix);
-    
+
     // Find this variant's quantity in the set composition
     const variantQtyInSet = Object.entries(setComposition).find(
       ([suffix]) => norm(suffix) === variantSuffixNorm
     )?.[1];
-    
+
     if (!variantQtyInSet || variantQtyInSet <= 0) {
       return undefined;
     }
-    
+
     // Calculate total units in set
     const totalUnitsInSet = Object.values(setComposition).reduce((sum, q) => sum + q, 0);
     if (totalUnitsInSet <= 0) {
       return undefined;
     }
-    
+
     // Per-unit price = set price / total units
     const pricePerUnit = partPricePerSet / totalUnitsInSet;
     // Variant's share = price per unit × variant quantity in set
@@ -1268,7 +1345,10 @@ function VariantQuoteMini({
         setManualVariantPrice(calculatedVariantPrice.toFixed(2));
         setIsManualPrice(true);
         // Auto-save calculated price to variant (only if different from current)
-        if (onVariantPriceChange && Math.abs(calculatedVariantPrice - (variant.pricePerVariant ?? 0)) > 0.01) {
+        if (
+          onVariantPriceChange &&
+          Math.abs(calculatedVariantPrice - (variant.pricePerVariant ?? 0)) > 0.01
+        ) {
           onVariantPriceChange(variant.id, calculatedVariantPrice);
         }
       } else if (variant.pricePerVariant != null) {
@@ -1279,8 +1359,14 @@ function VariantQuoteMini({
         setIsManualPrice(false);
       }
     }
-  }, [calculatedVariantPrice, variant.pricePerVariant, variant.id, hasUserEdited]);
-  
+  }, [
+    calculatedVariantPrice,
+    variant.pricePerVariant,
+    variant.id,
+    hasUserEdited,
+    onVariantPriceChange,
+  ]);
+
   // Notify parent when variant price changes manually (debounced to avoid excessive saves)
   useEffect(() => {
     if (hasUserEdited && onVariantPriceChange) {
@@ -1294,18 +1380,34 @@ function VariantQuoteMini({
           onVariantPriceChange(variant.id, undefined);
         }
       }, 500); // Debounce manual edits
-      
+
       return () => clearTimeout(timeoutId);
     }
-  }, [manualVariantPrice, isManualPrice, hasUserEdited, variant.id, variant.pricePerVariant, onVariantPriceChange]);
+  }, [
+    manualVariantPrice,
+    isManualPrice,
+    hasUserEdited,
+    variant.id,
+    variant.pricePerVariant,
+    onVariantPriceChange,
+  ]);
 
   const result = useMemo(() => {
-    const variantPrice = isManualPrice && manualVariantPrice ? parseFloat(manualVariantPrice) : undefined;
+    const variantPrice =
+      isManualPrice && manualVariantPrice ? parseFloat(manualVariantPrice) : undefined;
     return calculateVariantQuote(partNumber, variant, qty, inventoryItems, {
       laborRate: settings.laborRate,
       manualVariantPrice: variantPrice,
     });
-  }, [partNumber, variant, qty, inventoryItems, settings.laborRate, manualVariantPrice, isManualPrice]);
+  }, [
+    partNumber,
+    variant,
+    qty,
+    inventoryItems,
+    settings.laborRate,
+    manualVariantPrice,
+    isManualPrice,
+  ]);
 
   const AutoBadge = () => (
     <span className="ml-1 rounded bg-primary/20 px-1 py-0.5 text-xs text-primary">auto</span>
@@ -1344,11 +1446,11 @@ function VariantQuoteMini({
                 }
               }}
               className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary/50 focus:outline-none"
-              placeholder={calculatedVariantPrice != null ? calculatedVariantPrice.toFixed(2) : 'Auto'}
+              placeholder={
+                calculatedVariantPrice != null ? calculatedVariantPrice.toFixed(2) : 'Auto'
+              }
             />
-            {calculatedVariantPrice != null && !hasUserEdited && (
-              <AutoBadge />
-            )}
+            {calculatedVariantPrice != null && !hasUserEdited && <AutoBadge />}
             {hasUserEdited && calculatedVariantPrice != null && (
               <button
                 type="button"
@@ -1396,6 +1498,8 @@ interface MaterialsListProps {
   onUpdate: () => void;
 }
 
+// Unused alternate list component; kept for potential future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MaterialsList: React.FC<MaterialsListProps> = ({ materials, onUpdate }) => {
   const { showToast } = useToast();
   const handleDelete = async (id: string) => {
@@ -1403,7 +1507,7 @@ const MaterialsList: React.FC<MaterialsListProps> = ({ materials, onUpdate }) =>
       await partsService.deleteMaterial(id);
       showToast('Material removed', 'success');
       onUpdate();
-    } catch (error) {
+    } catch {
       showToast('Failed to delete material', 'error');
     }
   };
@@ -1458,7 +1562,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
     setQtyValues((prev) => ({ ...prev, [materialId]: value }));
   };
 
-  const handleQtySave = async (materialId: string, material: PartMaterial) => {
+  const handleQtySave = async (materialId: string, _material: PartMaterial) => {
     const value = qtyValues[materialId];
     if (!value) {
       setEditingQty(null);
@@ -1470,7 +1574,9 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
       return;
     }
     try {
-      const updated = await partsService.updatePartMaterial(materialId, { quantityPerUnit: numValue });
+      const updated = await partsService.updatePartMaterial(materialId, {
+        quantityPerUnit: numValue,
+      });
       if (updated) {
         showToast('Quantity updated', 'success');
         setEditingQty(null);
@@ -1478,7 +1584,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
       } else {
         showToast('Failed to update quantity', 'error');
       }
-    } catch (error) {
+    } catch {
       showToast('Failed to update quantity', 'error');
     }
   };
@@ -1488,7 +1594,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
       await partsService.deleteMaterial(id);
       showToast('Material removed', 'success');
       onUpdate();
-    } catch (error) {
+    } catch {
       showToast('Failed to delete material', 'error');
     }
   };
@@ -1499,8 +1605,12 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
         const inv = inventoryItems.find((i) => i.id === material.inventoryId);
         const currentQty = qty(material);
         const isEditing = editingQty === material.id;
-        const displayQty = isEditing ? (qtyValues[material.id] ?? currentQty.toString()) : currentQty;
-        const ourCost = (inv?.price ?? 0) * (isEditing ? parseFloat(qtyValues[material.id] || '0') || currentQty : currentQty);
+        const displayQty = isEditing
+          ? (qtyValues[material.id] ?? currentQty.toString())
+          : currentQty;
+        const ourCost =
+          (inv?.price ?? 0) *
+          (isEditing ? parseFloat(qtyValues[material.id] || '0') || currentQty : currentQty);
         return (
           <div
             key={material.id}
@@ -1614,7 +1724,7 @@ const AddVariantInline: React.FC<AddVariantInlineProps> = ({
 
         for (let i = 1; i <= num; i++) {
           const suffix = i.toString().padStart(2, '0'); // "01", "02", ..., "14"
-          
+
           if (existingSuffixes.includes(suffix)) {
             skipped.push(suffix);
             continue;
@@ -1640,7 +1750,10 @@ const AddVariantInline: React.FC<AddVariantInlineProps> = ({
             'success'
           );
         } else if (skipped.length > 0) {
-          showToast(`All ${skipped.length} variant${skipped.length !== 1 ? 's' : ''} already exist`, 'warning');
+          showToast(
+            `All ${skipped.length} variant${skipped.length !== 1 ? 's' : ''} already exist`,
+            'warning'
+          );
         }
         setInput('');
       } finally {
@@ -1702,11 +1815,20 @@ interface AddMaterialFormProps {
 }
 
 const INVENTORY_CATEGORIES: InventoryCategory[] = [
-  'material', 'foam', 'trimCord', 'printing3d', 'chemicals', 'hardware', 'miscSupplies',
+  'material',
+  'foam',
+  'trimCord',
+  'printing3d',
+  'chemicals',
+  'hardware',
+  'miscSupplies',
 ];
 const CATEGORY_OPTIONS: { value: '' | InventoryCategory; label: string }[] = [
   { value: '', label: 'All types' },
-  ...INVENTORY_CATEGORIES.map((c) => ({ value: c as InventoryCategory, label: getCategoryDisplayName(c) })),
+  ...INVENTORY_CATEGORIES.map((c) => ({
+    value: c as InventoryCategory,
+    label: getCategoryDisplayName(c),
+  })),
 ];
 
 const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
@@ -1841,7 +1963,7 @@ interface SetCompositionEditorProps {
 }
 
 const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
-  part,
+  part: _part,
   variants,
   setComposition,
   onUpdate,
@@ -1918,7 +2040,7 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
                         [variant.variantSuffix]: val,
                       }));
                     }}
-                    className="w-14 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-center text-sm text-white focus:border-primary/50 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-14 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     placeholder="0"
                     aria-label={`Qty for -${variant.variantSuffix}`}
                   />
@@ -1968,7 +2090,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       showToast('Part number is required', 'error');
       return;
     }
-    
+
     // Check if part already exists
     try {
       const existing = await partsService.getPartByNumber(pn);
@@ -1980,7 +2102,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
     } catch (err) {
       console.error('Error checking for existing part:', err);
     }
-    
+
     setSubmitting(true);
     try {
       const created = await partsService.createPart({
@@ -1994,9 +2116,10 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       }
       showToast('Part created. Add variants and set composition.', 'success');
       onCreated(created.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Create part error:', err);
-      const errorMsg = err?.message || err?.toString() || 'Unknown error';
+      const errorMsg =
+        err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unknown error';
       if (errorMsg.includes('duplicate') || errorMsg.includes('unique')) {
         // Try to find and open the existing part
         const existing = await partsService.getPartByNumber(pn);
@@ -2043,7 +2166,9 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-300">Part Name (required)</label>
+            <label className="mb-1 block text-sm font-medium text-slate-300">
+              Part Name (required)
+            </label>
             <input
               type="text"
               value={name}

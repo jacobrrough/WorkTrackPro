@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { InventoryItem, ViewState, getCategoryDisplayName, InventoryCategory, Attachment } from '@/core/types';
+import {
+  InventoryItem,
+  ViewState,
+  getCategoryDisplayName,
+  InventoryCategory,
+  Attachment,
+} from '@/core/types';
 import { inventoryHistoryService, inventoryService } from './pocketbase';
 import { useToast } from './Toast';
 import jsQR from 'jsqr';
@@ -103,7 +109,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
   const loadItemWithAttachments = async () => {
     try {
-      const itemWithAttachments = await inventoryService.getInventoryWithAttachments(currentItem.id);
+      const itemWithAttachments = await inventoryService.getInventoryWithAttachments(
+        currentItem.id
+      );
       if (itemWithAttachments) {
         setCurrentItem(itemWithAttachments);
       }
@@ -668,7 +676,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  Alert when available stock falls below this level. Leave empty or set to 0 to disable.
+                  Alert when available stock falls below this level. Leave empty or set to 0 to
+                  disable.
                 </p>
               </div>
 
@@ -791,7 +800,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               </button>
               <div className="flex-1">
                 <h1 className="text-xl font-bold text-white">{currentItem.name}</h1>
-                <p className="text-sm text-slate-400">{getCategoryDisplayName(currentItem.category)}</p>
+                <p className="text-sm text-slate-400">
+                  {getCategoryDisplayName(currentItem.category)}
+                </p>
               </div>
             </div>
             {isAdmin && (
@@ -840,12 +851,17 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               </div>
             </div>
 
-            {(currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint) ||
+            {(currentItem.reorderPoint != null &&
+              currentItem.reorderPoint > 0 &&
+              available <= currentItem.reorderPoint) ||
             (allocated > 0 && available < allocated) ? (
               <div className="mt-4 space-y-1 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
                 <p className="font-bold text-red-400">
-                  {(currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint) &&
-                  (allocated > 0 && available < allocated)
+                  {currentItem.reorderPoint != null &&
+                  currentItem.reorderPoint > 0 &&
+                  available <= currentItem.reorderPoint &&
+                  allocated > 0 &&
+                  available < allocated
                     ? '⚠️ Below reorder point & short for jobs'
                     : currentItem.reorderPoint != null &&
                         currentItem.reorderPoint > 0 &&
@@ -853,16 +869,19 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                       ? '⚠️ Below reorder point'
                       : '⚠️ Short for jobs'}
                 </p>
-                {currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint && (
-                  <p className="text-sm font-bold text-red-300">
-                    Available ({available}) is at or below reorder point ({currentItem.reorderPoint}).
-                  </p>
-                )}
+                {currentItem.reorderPoint != null &&
+                  currentItem.reorderPoint > 0 &&
+                  available <= currentItem.reorderPoint && (
+                    <p className="text-sm font-bold text-red-300">
+                      Available ({available}) is at or below reorder point (
+                      {currentItem.reorderPoint}).
+                    </p>
+                  )}
                 {allocated > 0 && available < allocated && (
                   <p className="text-sm text-red-300">
                     {allocated} {item.unit} needed to complete all jobs (committed to PO&apos;d /
-                    in-production jobs). Short by {allocated - available} {item.unit} — order at least this much to
-                    fulfill current jobs.
+                    in-production jobs). Short by {allocated - available} {item.unit} — order at
+                    least this much to fulfill current jobs.
                   </p>
                 )}
               </div>
@@ -910,7 +929,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
             <div className="flex justify-between">
               <p className="text-sm text-slate-400">Reorder Point</p>
-              <p className={`font-bold ${currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint ? 'text-orange-400' : 'text-white'}`}>
+              <p
+                className={`font-bold ${currentItem.reorderPoint != null && currentItem.reorderPoint > 0 && available <= currentItem.reorderPoint ? 'text-orange-400' : 'text-white'}`}
+              >
                 {currentItem.reorderPoint != null ? currentItem.reorderPoint : 'Not set'}
               </p>
             </div>
@@ -945,9 +966,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           <div className="rounded-sm bg-card-dark p-3">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-                <span className="material-symbols-outlined text-lg text-primary">
-                  attach_file
-                </span>
+                <span className="material-symbols-outlined text-lg text-primary">attach_file</span>
                 Attachments ({regularAttachments.length})
               </h3>
               {isAdmin && (
@@ -993,8 +1012,19 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                         <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>
                         <p className="text-sm text-slate-400">{h.reason}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {(h as any).profiles?.name || (h as any).expand?.user?.name || 'System'} •{' '}
-                          {formatHistoryDate((h as any).created_at ?? (h as any).created)}
+                          {(
+                            h as {
+                              profiles?: { name?: string };
+                              expand?: { user?: { name?: string } };
+                            }
+                          ).profiles?.name ||
+                            (h as { expand?: { user?: { name?: string } } }).expand?.user?.name ||
+                            'System'}{' '}
+                          •{' '}
+                          {formatHistoryDate(
+                            (h as { created_at?: string; created?: string }).created_at ??
+                              (h as { created?: string }).created
+                          )}
                         </p>
                       </div>
                       <div className="ml-3 text-right">

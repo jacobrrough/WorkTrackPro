@@ -1,4 +1,4 @@
-import type { Part, PartVariant, PartMaterial } from '@/core/types';
+import type { Part, PartVariant } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
 import { calculateSetCompletion } from '@/lib/formatJob';
 
@@ -31,7 +31,8 @@ export function computeRequiredMaterials(
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
       if (material.usageType === 'per_set') continue;
-      const qtyPerUnit = material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
+      const qtyPerUnit =
+        material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
       const requiredQty = qtyPerUnit * qty;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';
@@ -44,9 +45,8 @@ export function computeRequiredMaterials(
   }
 
   // Part-level per_set: use complete sets when setComposition exists, else total quantity
-  const setComposition = part.setComposition && Object.keys(part.setComposition).length > 0
-    ? part.setComposition
-    : null;
+  const setComposition =
+    part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
   const perSetMultiplier = setComposition
     ? calculateSetCompletion(dashQuantities, setComposition).completeSets
     : totalQty;
@@ -54,7 +54,8 @@ export function computeRequiredMaterials(
   if (part.materials && perSetMultiplier > 0) {
     for (const material of part.materials) {
       if (material.usageType !== 'per_set') continue;
-      const qtyPerSet = material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
+      const qtyPerSet =
+        material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
       const requiredQty = qtyPerSet * perSetMultiplier;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';

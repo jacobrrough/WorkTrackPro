@@ -31,9 +31,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   onSetPriceChange,
 }) => {
   const quantity = 1;
-  const [manualSetPrice, setManualSetPrice] = useState<string>(
-    part.pricePerSet?.toString() || ''
-  );
+  const [manualSetPrice, setManualSetPrice] = useState<string>(part.pricePerSet?.toString() || '');
   const [isManualPrice, setIsManualPrice] = useState(!!part.pricePerSet);
   const [hasUserEdited, setHasUserEdited] = useState(false);
 
@@ -44,13 +42,17 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
 
   useEffect(() => {
     if (!hasUserEdited) {
-      const matchesAuto = autoSetPrice != null && part.pricePerSet != null
-        && Math.abs(part.pricePerSet - autoSetPrice) < 0.01;
+      const matchesAuto =
+        autoSetPrice != null &&
+        part.pricePerSet != null &&
+        Math.abs(part.pricePerSet - autoSetPrice) < 0.01;
       if (part.pricePerSet != null && !matchesAuto) {
         setManualSetPrice(part.pricePerSet.toString());
         setIsManualPrice(true);
       } else {
-        setManualSetPrice(autoSetPrice != null ? autoSetPrice.toString() : part.pricePerSet?.toString() ?? '');
+        setManualSetPrice(
+          autoSetPrice != null ? autoSetPrice.toString() : (part.pricePerSet?.toString() ?? '')
+        );
         setIsManualPrice(false);
       }
     }
@@ -78,7 +80,17 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
       markupPercent,
       manualSetPrice: setPrice,
     });
-  }, [part, quantity, inventoryItems, laborRate, cncRate, printer3DRate, markupPercent, manualSetPrice, isManualPrice]);
+  }, [
+    part,
+    quantity,
+    inventoryItems,
+    laborRate,
+    cncRate,
+    printer3DRate,
+    markupPercent,
+    manualSetPrice,
+    isManualPrice,
+  ]);
 
   const AutoBadge = () => (
     <span className="ml-1.5 rounded bg-primary/20 px-1.5 py-0.5 text-xs text-primary">auto</span>
@@ -91,7 +103,11 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     onSetPriceChange?.(undefined);
   };
 
-  const displayValue = isManualPrice ? manualSetPrice : (autoSetPrice != null ? autoSetPrice.toString() : '');
+  const displayValue = isManualPrice
+    ? manualSetPrice
+    : autoSetPrice != null
+      ? autoSetPrice.toString()
+      : '';
 
   return (
     <div className={`rounded-sm border border-primary/30 bg-primary/10 p-4 ${className}`}>
@@ -146,13 +162,17 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           </div>
           {result.cncHours > 0 && (
             <div className="flex justify-between text-slate-300">
-              <span>CNC ({result.cncHours.toFixed(1)} h × ${cncRate}/h)</span>
+              <span>
+                CNC ({result.cncHours.toFixed(1)} h × ${cncRate}/h)
+              </span>
               <span className="text-white">${result.cncCost.toFixed(2)}</span>
             </div>
           )}
           {result.printer3DHours > 0 && (
             <div className="flex justify-between text-slate-300">
-              <span>3D Print ({result.printer3DHours.toFixed(1)} h × ${printer3DRate}/h)</span>
+              <span>
+                3D Print ({result.printer3DHours.toFixed(1)} h × ${printer3DRate}/h)
+              </span>
               <span className="text-white">${result.printer3DCost.toFixed(2)}</span>
             </div>
           )}
@@ -165,9 +185,11 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           </div>
           <div className="flex justify-between text-slate-300">
             <span className="flex items-center">
-              Markup ({result.isReverseCalculated && result.effectiveMarkupPercent != null
+              Markup (
+              {result.isReverseCalculated && result.effectiveMarkupPercent != null
                 ? result.effectiveMarkupPercent.toFixed(1)
-                : result.markupPercent}%)
+                : result.markupPercent}
+              %)
               {result.isReverseCalculated && <AutoBadge />}
             </span>
             <span className="text-white">${result.markupAmount.toFixed(2)}</span>
@@ -181,7 +203,9 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Enter quantity and set labor hours / set composition to see quote.</p>
+        <p className="text-sm text-slate-500">
+          Enter quantity and set labor hours / set composition to see quote.
+        </p>
       )}
     </div>
   );

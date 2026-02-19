@@ -33,7 +33,12 @@ export function variantPricesFromSetPrice(
   setComposition: Record<string, number> | null | undefined,
   variants: PartVariant[]
 ): Array<{ variantId: string; price: number }> {
-  if (setPrice <= 0 || !setComposition || Object.keys(setComposition).length === 0 || !variants?.length) {
+  if (
+    setPrice <= 0 ||
+    !setComposition ||
+    Object.keys(setComposition).length === 0 ||
+    !variants?.length
+  ) {
     return [];
   }
   const totalUnits = Object.values(setComposition).reduce((a, b) => a + b, 0);
@@ -120,7 +125,7 @@ export function variantLaborFromSetComposition(
   const variantQty = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
   const totalUnits = Object.values(setComposition).reduce((a, b) => a + b, 0);
   if (totalUnits <= 0 || variantQty <= 0) return undefined;
-  return Math.round((setLaborHours * variantQty / totalUnits) * 100) / 100;
+  return Math.round(((setLaborHours * variantQty) / totalUnits) * 100) / 100;
 }
 
 /**
@@ -154,7 +159,8 @@ export function copyVariantMaterialsToOthers(
   sourceMaterials: PartMaterial[],
   targetVariants: PartVariant[]
 ): Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> {
-  const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> = [];
+  const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> =
+    [];
   const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 1;
   for (const target of targetVariants) {
     const targetInvIds = new Set((target.materials ?? []).map((m) => m.inventoryId));
@@ -187,7 +193,8 @@ export function distributeSetMaterialToVariants(
     return [];
   }
   const bySuffix = distributeQuantityProportionally(totalQuantity, setComposition);
-  const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> = [];
+  const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> =
+    [];
   for (const v of variants) {
     const suffixNorm = norm(v.variantSuffix);
     const qty = Object.entries(bySuffix).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;

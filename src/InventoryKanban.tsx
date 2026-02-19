@@ -141,7 +141,9 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                       const allocated = item.allocated ?? 0;
                       const shortForJobs = allocated > 0 && available < allocated;
                       const belowReorder =
-                        item.reorderPoint != null && item.reorderPoint > 0 && available <= item.reorderPoint;
+                        item.reorderPoint != null &&
+                        item.reorderPoint > 0 &&
+                        available <= item.reorderPoint;
                       const isLowStock = belowReorder || shortForJobs;
 
                       return (
@@ -176,80 +178,86 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                                   className="flex size-8 items-center justify-center rounded-sm border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:scale-95"
                                   title="Scan bin location"
                                 >
-                                  <span className="material-symbols-outlined text-lg">qr_code_scanner</span>
+                                  <span className="material-symbols-outlined text-lg">
+                                    qr_code_scanner
+                                  </span>
                                 </button>
                               </div>
                             </div>
 
-                          <div className="grid grid-cols-4 gap-3">
-                            <div>
-                              <p className="text-xs text-slate-400">In Stock</p>
-                              <p className="font-bold text-white">{item.inStock}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-400">Available</p>
-                              <p
-                                className={`font-bold ${available > 0 ? 'text-green-400' : 'text-red-400'} ${belowReorder ? 'text-orange-400' : ''}`}
-                              >
-                                {available}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-400">Needed (jobs)</p>
-                              <p className="font-bold text-yellow-400">{allocated}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-400">Unit</p>
-                              <p className="font-bold text-white">{item.unit}</p>
-                            </div>
-                            {item.reorderPoint != null && item.reorderPoint > 0 && (
+                            <div className="grid grid-cols-4 gap-3">
                               <div>
-                                <p className="text-xs text-slate-400">Reorder @</p>
-                                <p className={`font-bold ${belowReorder ? 'text-orange-400' : 'text-slate-400'}`}>
-                                  {item.reorderPoint}
+                                <p className="text-xs text-slate-400">In Stock</p>
+                                <p className="font-bold text-white">{item.inStock}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Available</p>
+                                <p
+                                  className={`font-bold ${available > 0 ? 'text-green-400' : 'text-red-400'} ${belowReorder ? 'text-orange-400' : ''}`}
+                                >
+                                  {available}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Needed (jobs)</p>
+                                <p className="font-bold text-yellow-400">{allocated}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Unit</p>
+                                <p className="font-bold text-white">{item.unit}</p>
+                              </div>
+                              {item.reorderPoint != null && item.reorderPoint > 0 && (
+                                <div>
+                                  <p className="text-xs text-slate-400">Reorder @</p>
+                                  <p
+                                    className={`font-bold ${belowReorder ? 'text-orange-400' : 'text-slate-400'}`}
+                                  >
+                                    {item.reorderPoint}
+                                  </p>
+                                </div>
+                              )}
+                              {item.price && (!item.reorderPoint || item.reorderPoint === 0) && (
+                                <div>
+                                  <p className="text-xs text-slate-400">Price</p>
+                                  <p className="font-bold text-white">${item.price.toFixed(2)}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {item.binLocation && (
+                              <div className="mt-2">
+                                <p className="flex items-center gap-1 text-xs text-slate-400">
+                                  <span className="material-symbols-outlined text-sm">
+                                    location_on
+                                  </span>
+                                  {item.binLocation}
                                 </p>
                               </div>
                             )}
-                            {item.price && (!item.reorderPoint || item.reorderPoint === 0) && (
-                              <div>
-                                <p className="text-xs text-slate-400">Price</p>
-                                <p className="font-bold text-white">${item.price.toFixed(2)}</p>
+
+                            {isLowStock && (
+                              <div className="mt-2 space-y-0.5 rounded border border-red-500/30 bg-red-500/10 px-2 py-1">
+                                <p className="text-xs font-bold text-red-400">
+                                  {belowReorder && shortForJobs
+                                    ? '⚠️ Below reorder point & short for jobs'
+                                    : belowReorder
+                                      ? '⚠️ Below reorder point'
+                                      : '⚠️ Short for jobs'}
+                                </p>
+                                {belowReorder && (
+                                  <p className="text-xs text-red-300">
+                                    Available ({available}) is at or below reorder point (
+                                    {item.reorderPoint}).
+                                  </p>
+                                )}
+                                {shortForJobs && (
+                                  <p className="text-xs text-red-300">
+                                    {allocated} {item.unit} needed for jobs. Need{' '}
+                                    {allocated - available} more.
+                                  </p>
+                                )}
                               </div>
                             )}
-                          </div>
-
-                          {item.binLocation && (
-                            <div className="mt-2">
-                              <p className="flex items-center gap-1 text-xs text-slate-400">
-                                <span className="material-symbols-outlined text-sm">
-                                  location_on
-                                </span>
-                                {item.binLocation}
-                              </p>
-                            </div>
-                          )}
-
-                          {isLowStock && (
-                            <div className="mt-2 space-y-0.5 rounded border border-red-500/30 bg-red-500/10 px-2 py-1">
-                              <p className="text-xs font-bold text-red-400">
-                                {belowReorder && shortForJobs
-                                  ? '⚠️ Below reorder point & short for jobs'
-                                  : belowReorder
-                                    ? '⚠️ Below reorder point'
-                                    : '⚠️ Short for jobs'}
-                              </p>
-                              {belowReorder && (
-                                <p className="text-xs text-red-300">
-                                  Available ({available}) is at or below reorder point ({item.reorderPoint}).
-                                </p>
-                              )}
-                              {shortForJobs && (
-                                <p className="text-xs text-red-300">
-                                  {allocated} {item.unit} needed for jobs. Need {allocated - available} more.
-                                </p>
-                              )}
-                            </div>
-                          )}
                           </button>
                         </div>
                       );
@@ -271,7 +279,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
               try {
                 await onUpdateItem(scanningForItem, { binLocation });
                 showToast(`Bin location updated: ${binLocation}`, 'success');
-              } catch (err) {
+              } catch {
                 showToast('Failed to update bin location', 'error');
               }
             }

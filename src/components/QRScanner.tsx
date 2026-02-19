@@ -28,12 +28,12 @@ const QRScanner: React.FC<QRScannerProps> = ({
   scanType = 'any',
   onScanComplete,
   onClose,
-  currentValue = '',
+  currentValue: _currentValue = '',
   title,
   description,
 }) => {
   const { showToast } = useToast();
-  const [isScanning, setIsScanning] = useState(false);
+  const [, setIsScanning] = useState(false);
   const [scanAttempts, setScanAttempts] = useState(0);
   const [debugInfo, setDebugInfo] = useState('');
 
@@ -413,7 +413,9 @@ const QRScanner: React.FC<QRScannerProps> = ({
               <div className="flex-1">
                 <p className="mb-1 font-bold text-white">Position code in frame</p>
                 <p className="text-sm text-slate-300">{getDescription()}</p>
-                <p className="mt-1 text-xs text-slate-400">Hold steady. Scanner will detect automatically.</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Hold steady. Scanner will detect automatically.
+                </p>
               </div>
             </div>
           </div>

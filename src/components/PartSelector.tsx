@@ -17,8 +17,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   onSelect,
   initialPartNumber = '',
   initialDashQuantities,
-  isAdmin = true,
-  showPrices = false,
+  isAdmin: _isAdmin = true,
+  showPrices: _showPrices = false,
 }) => {
   const { showToast } = useToast();
   const [search, setSearch] = useState(initialPartNumber);
@@ -31,7 +31,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       setSearch(initialPartNumber);
       loadPart(initialPartNumber);
     }
-  }, [initialPartNumber]);
+  }, [initialPartNumber, loadPart]);
 
   const loadPart = useCallback(
     async (partNumber: string) => {

@@ -40,9 +40,7 @@ function materialRequirementsForOneSet(
 
   for (const [suffix, setQty] of Object.entries(setComposition)) {
     if (setQty <= 0) continue;
-    const variant = part.variants?.find(
-      (v) => norm(v.variantSuffix) === norm(suffix)
-    );
+    const variant = part.variants?.find((v) => norm(v.variantSuffix) === norm(suffix));
     if (!variant?.materials) continue;
     for (const mat of variant.materials) {
       if (mat.usageType === 'per_set') continue;
@@ -102,9 +100,8 @@ export function calculatePartQuote(
   const multiplier = options?.materialMultiplier ?? MATERIAL_MARKUP_MULTIPLIER;
   const manualSetPrice = options?.manualSetPrice;
 
-  const setComposition = part.setComposition && Object.keys(part.setComposition).length > 0
-    ? part.setComposition
-    : {};
+  const setComposition =
+    part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : {};
   const requirementsOneSet = materialRequirementsForOneSet(part, setComposition);
   const totalQtyMultiplier = quantity;
 
@@ -123,11 +120,11 @@ export function calculatePartQuote(
   const cncCost = cncHours * cncRate;
   const printer3DHours = part.requires3DPrint ? (part.printer3DTimeHours ?? 0) * quantity : 0;
   const printer3DCost = printer3DHours * printer3DRate;
-  
+
   // Always calculate subtotal from actual costs (materials, labor, machine time)
   // Materials and quantities are NEVER auto-adjusted - they stay fixed
   const subtotal = materialCostCustomer + laborCost + cncCost + printer3DCost;
-  
+
   let markupAmount: number;
   let total: number;
   let effectiveMarkupPercent: number | undefined;
@@ -205,11 +202,11 @@ export function calculateVariantQuote(
   const cncCost = 0;
   const printer3DHours = 0;
   const printer3DCost = 0;
-  
+
   // Always calculate subtotal from actual costs (materials, labor)
   // Materials and quantities are NEVER auto-adjusted - they stay fixed
   const subtotal = materialCostCustomer + laborCost;
-  
+
   let markupAmount: number;
   let total: number;
   let effectiveMarkupPercent: number | undefined;

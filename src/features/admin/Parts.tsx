@@ -14,7 +14,12 @@ interface PartsProps {
   onNavigateBack: () => void;
 }
 
-const Parts: React.FC<PartsProps> = ({ jobs, currentUser, onNavigate, onNavigateBack }) => {
+const Parts: React.FC<PartsProps> = ({
+  jobs: _jobs,
+  currentUser: _currentUser,
+  onNavigate,
+  onNavigateBack,
+}) => {
   const [parts, setParts] = useState<Part[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
@@ -28,6 +33,7 @@ const Parts: React.FC<PartsProps> = ({ jobs, currentUser, onNavigate, onNavigate
 
   useEffect(() => {
     loadParts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadParts stable, intentional mount-only
   }, []);
 
   useEffect(() => {
@@ -60,10 +66,11 @@ const Parts: React.FC<PartsProps> = ({ jobs, currentUser, onNavigate, onNavigate
       setLoading(true);
       const data = await partsService.getAllParts();
       setParts(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading parts:', error);
-      const errorMessage = error?.message || error?.toString() || 'Unknown error';
-      const errorCode = error?.code;
+      const err = error as { message?: string; code?: string };
+      const errorMessage = err?.message || (typeof error === 'string' ? error : 'Unknown error');
+      const errorCode = err?.code;
       if (errorCode === 'PGRST205' || errorCode === '42P01') {
         showToast('Parts table not found. Please run database migrations.', 'error');
       } else {
@@ -184,9 +191,7 @@ const Parts: React.FC<PartsProps> = ({ jobs, currentUser, onNavigate, onNavigate
                     <span className="font-mono text-base font-semibold text-white">
                       {part.partNumber}
                     </span>
-                    <span className="text-sm text-slate-400">
-                      {part.name || part.partNumber}
-                    </span>
+                    <span className="text-sm text-slate-400">{part.name || part.partNumber}</span>
                   </div>
                   <span className="material-symbols-outlined shrink-0 text-slate-500">
                     chevron_right

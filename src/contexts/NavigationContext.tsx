@@ -82,4 +82,5 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook is the primary API
 export const useNavigation = () => useContext(NavigationContext);

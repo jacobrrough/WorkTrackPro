@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { InventoryItem, ViewState, getCategoryDisplayName } from '@/core/types';
 import InventoryKanban from './InventoryKanban';
 import InventoryDetail from './InventoryDetail';

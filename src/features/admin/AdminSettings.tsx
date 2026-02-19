@@ -8,7 +8,7 @@ interface AdminSettingsProps {
   onBack: () => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate, onBack }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, onBack }) => {
   const { settings, updateSettings } = useSettings();
   const { showToast } = useToast();
   const [laborRate, setLaborRate] = useState(String(settings.laborRate));

@@ -30,7 +30,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     setShowScanner(false);
 
     // Try to match scanned code to inventory or job
-    const inventoryItem = inventory.find((item) => item.id === scannedData || item.barcode === scannedData);
+    const inventoryItem = inventory.find(
+      (item) => item.id === scannedData || item.barcode === scannedData
+    );
     const job = jobs.find((j) => j.id === scannedData || j.jobCode.toString() === scannedData);
 
     if (inventoryItem) {
@@ -212,7 +214,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </p>
             </div>
           </button>
-
 
           <button
             type="button"

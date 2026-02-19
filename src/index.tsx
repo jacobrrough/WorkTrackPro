@@ -44,3 +44,16 @@ try {
       '. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify, then redeploy.'
   );
 }
+
+// Register service worker for PWA installability (production only)
+if (
+  typeof navigator !== 'undefined' &&
+  'serviceWorker' in navigator &&
+  (import.meta.env.PROD || window.location.hostname === 'localhost')
+) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Ignore registration errors (e.g. not HTTPS in dev)
+    });
+  });
+}

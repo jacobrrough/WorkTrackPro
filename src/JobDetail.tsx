@@ -15,7 +15,6 @@ import FileViewer from './FileViewer';
 import AttachmentsList from './AttachmentsList';
 import BinLocationScanner from './BinLocationScanner';
 import ChecklistDisplay from './ChecklistDisplay';
-import { formatBinLocation } from '@/core/validation';
 import { formatDateOnly, isoToDateInput, dateInputToISO } from '@/core/date';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { useToast } from './Toast';
@@ -27,10 +26,7 @@ import {
   totalFromDashQuantities,
   formatSetComposition,
   calculateSetCompletion,
-  getJobDisplayName,
-  getJobDisplaySubline,
   getJobNameForSave,
-  formatJobIdentityLine,
 } from './lib/formatJob';
 import { partsService } from './services/api/parts';
 import { Part, PartVariant } from '@/core/types';
@@ -135,7 +131,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
-  const [loadingPart, setLoadingPart] = useState(false);
+  const [, setLoadingPart] = useState(false);
   const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
   const [selectedVariant, setSelectedVariant] = useState<PartVariant | null>(null);
   const [materialCosts, setMaterialCosts] = useState<Map<string, number>>(new Map());
@@ -321,7 +317,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   /** Required materials from part × dash quantities (for auto markers and debounced sync) */
   const requiredMaterialsMap = useMemo(() => {
-    if (!linkedPart || Object.keys(dashQuantities).length === 0) return new Map<string, { quantity: number; unit: string }>();
+    if (!linkedPart || Object.keys(dashQuantities).length === 0)
+      return new Map<string, { quantity: number; unit: string }>();
     return computeRequiredMaterials(linkedPart, dashQuantities);
   }, [linkedPart, dashQuantities]);
 
@@ -463,7 +460,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     });
   }, [laborBreakdownTotal]);
 
-  // Search for part by part number
+  // Search for part by part number (reserved for future part search UI)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handlePartNumberSearch = useCallback(async () => {
     if (!partNumberSearch.trim()) {
       setLinkedPart(null);
@@ -1286,7 +1284,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
                           Labor hrs
                           {laborHoursFromPart && (
-                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">auto</span>
+                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                              auto
+                            </span>
                           )}
                         </label>
                         {laborSuggestion != null && (
@@ -1382,19 +1382,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
                         >
                           <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => invItem && onNavigate('inventory-detail', invItem.id)}
-                            className="min-w-0 flex-1 truncate text-left text-xs font-medium text-primary hover:underline"
-                          >
-                            {item.inventoryName || invItem?.name || 'Unknown'}
-                          </button>
-                          <span className="ml-2 text-[10px] text-slate-400">
-                            {item.quantity} {item.unit}
-                          </span>
-                          {isMaterialAuto(item.inventoryId, item.quantity) && (
-                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">auto</span>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() => invItem && onNavigate('inventory-detail', invItem.id)}
+                              className="min-w-0 flex-1 truncate text-left text-xs font-medium text-primary hover:underline"
+                            >
+                              {item.inventoryName || invItem?.name || 'Unknown'}
+                            </button>
+                            <span className="ml-2 text-[10px] text-slate-400">
+                              {item.quantity} {item.unit}
+                            </span>
+                            {isMaterialAuto(item.inventoryId, item.quantity) && (
+                              <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                auto
+                              </span>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -1494,16 +1496,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     Rush
                   </span>
                 )}
-                <span className="text-xs font-bold text-primary">
-                  {formatJobCode(job.jobCode)}
-                </span>
+                <span className="text-xs font-bold text-primary">{formatJobCode(job.jobCode)}</span>
               </div>
 
               {/* Top line: Part Number | Part Name | OWR# only */}
               <div className="mb-3 grid grid-cols-1 gap-2 rounded-sm border border-primary/30 bg-primary/10 p-3 sm:grid-cols-3">
                 <div>
-                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">Part Number</p>
-                  <p className="font-mono text-sm font-bold text-primary">{job.partNumber || '—'}</p>
+                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                    Part Number
+                  </p>
+                  <p className="font-mono text-sm font-bold text-primary">
+                    {job.partNumber || '—'}
+                  </p>
                 </div>
                 <div>
                   <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">Part Name</p>
@@ -1529,52 +1533,54 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
 
               {/* Dash Quantities (below top line) */}
-              {job.partNumber && job.dashQuantities && Object.keys(job.dashQuantities).length > 0 && (
-                <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
-                  <p className="mb-2 text-sm font-medium text-white">
-                    {formatDashSummary(job.dashQuantities)} →{' '}
-                    {totalFromDashQuantities(job.dashQuantities)} total
-                  </p>
-                  {linkedPart &&
-                        linkedPart.setComposition &&
-                        Object.keys(linkedPart.setComposition).length > 0 && (
-                          <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
-                            <div className="mb-1 flex items-center justify-between text-xs">
-                              <span className="text-slate-300">Set:</span>
-                              <span className="font-medium text-white">
-                                {formatSetComposition(linkedPart.setComposition)}
-                              </span>
-                            </div>
-                            {(() => {
-                              const { completeSets, percentage } = calculateSetCompletion(
-                                job.dashQuantities,
-                                linkedPart.setComposition
-                              );
-                              return (
-                                <>
-                                  <div className="mb-1 flex items-center justify-between text-xs">
-                                    <span className="text-slate-300">Complete:</span>
-                                    <span className="font-bold text-primary">{completeSets}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-1.5 flex-1 overflow-hidden rounded-sm bg-white/10">
-                                      <div
-                                        className="h-full bg-primary transition-all"
-                                        style={{ width: `${Math.min(100, percentage)}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-[10px] font-medium text-slate-300">
-                                      {percentage}%
-                                    </span>
-                                  </div>
-                                </>
-                              );
-                            })()}
+              {job.partNumber &&
+                job.dashQuantities &&
+                Object.keys(job.dashQuantities).length > 0 && (
+                  <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
+                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
+                    <p className="mb-2 text-sm font-medium text-white">
+                      {formatDashSummary(job.dashQuantities)} →{' '}
+                      {totalFromDashQuantities(job.dashQuantities)} total
+                    </p>
+                    {linkedPart &&
+                      linkedPart.setComposition &&
+                      Object.keys(linkedPart.setComposition).length > 0 && (
+                        <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span className="text-slate-300">Set:</span>
+                            <span className="font-medium text-white">
+                              {formatSetComposition(linkedPart.setComposition)}
+                            </span>
                           </div>
-                        )}
-                </div>
-              )}
+                          {(() => {
+                            const { completeSets, percentage } = calculateSetCompletion(
+                              job.dashQuantities,
+                              linkedPart.setComposition
+                            );
+                            return (
+                              <>
+                                <div className="mb-1 flex items-center justify-between text-xs">
+                                  <span className="text-slate-300">Complete:</span>
+                                  <span className="font-bold text-primary">{completeSets}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-1.5 flex-1 overflow-hidden rounded-sm bg-white/10">
+                                    <div
+                                      className="h-full bg-primary transition-all"
+                                      style={{ width: `${Math.min(100, percentage)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-medium text-slate-300">
+                                    {percentage}%
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                  </div>
+                )}
 
               {/* Reference Numbers - order: EST #, RFQ #, PO #, INV#, OWR# */}
               {(job.estNumber || job.rfqNumber || job.po || job.invNumber || job.owrNumber) && (
@@ -1843,7 +1849,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                   }}
                                   role="button"
                                   tabIndex={0}
-                                  className="truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline cursor-pointer"
+                                  className="cursor-pointer truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline"
                                 >
                                   {item.inventoryName || invItem.name || 'Unknown Item'}
                                 </span>
@@ -1908,7 +1914,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                 )}{' '}
                                 {item.unit}
                                 {isMaterialAuto(item.inventoryId, item.quantity) && (
-                                  <span className="ml-1.5 rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">auto</span>
+                                  <span className="ml-1.5 rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                    auto
+                                  </span>
                                 )}
                                 {invItem && (
                                   <span className="ml-2">
@@ -1950,15 +1958,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {partDrawing ? (
                 <button
                   onClick={() => window.open(partDrawing.url, '_blank')}
-                  className="flex w-full min-h-[48px] touch-manipulation items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                  className="flex min-h-[48px] w-full touch-manipulation items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
                   <span className="truncate font-medium text-white">{partDrawing.filename}</span>
-                  <span className="material-symbols-outlined ml-auto text-slate-400">open_in_new</span>
+                  <span className="material-symbols-outlined ml-auto text-slate-400">
+                    open_in_new
+                  </span>
                 </button>
               ) : (
                 <p className="py-2 text-sm text-slate-500">
-                  {job.partId ? 'No drawing on file for this part.' : 'No part linked — no drawing.'}
+                  {job.partId
+                    ? 'No drawing on file for this part.'
+                    : 'No part linked — no drawing.'}
                 </p>
               )}
             </div>
@@ -1985,7 +1997,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   canUpload={true}
                   showUploadButton={false}
                   showAdminOnlyToggle={!!onUpdateAttachmentAdminOnly}
-                  onToggleAdminOnly={onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined}
+                  onToggleAdminOnly={
+                    onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined
+                  }
                 />
               </div>
             )}
@@ -2012,7 +2026,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   canUpload={true}
                   showUploadButton={false}
                   showAdminOnlyToggle={!!onUpdateAttachmentAdminOnly}
-                  onToggleAdminOnly={onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined}
+                  onToggleAdminOnly={
+                    onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined
+                  }
                 />
               </div>
             )}

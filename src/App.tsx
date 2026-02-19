@@ -268,7 +268,6 @@ export default function App() {
     );
   }
 
-
   if (view === 'board-shop' || view === 'board-admin') {
     const boardType = view === 'board-admin' ? 'admin' : 'shopFloor';
     return (
@@ -372,7 +371,6 @@ export default function App() {
       </AppShell>
     );
   }
-
 
   if (view === 'admin-settings') {
     return (

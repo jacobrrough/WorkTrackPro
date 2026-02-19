@@ -56,9 +56,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   }, [isClockedIn, activeShift]);
 
   // Standard users: only part drawing. Admins: part drawing or first non-admin job attachment.
-  const drawingUrl =
-    partDrawingUrl ??
-    (currentUser.isAdmin ? getViewDrawingUrl(job) : null);
+  const drawingUrl = partDrawingUrl ?? (currentUser.isAdmin ? getViewDrawingUrl(job) : null);
   const totalQty = totalFromDashQuantities(job.dashQuantities);
 
   const handleBack = () => {

@@ -14,7 +14,12 @@ interface CompletedJobsProps {
  * Completed Jobs - Archive of paid/completed jobs (read-only).
  * Shows jobs with status 'paid' or 'projectCompleted'.
  */
-const CompletedJobs: React.FC<CompletedJobsProps> = ({ jobs, currentUser, onNavigate, onBack }) => {
+const CompletedJobs: React.FC<CompletedJobsProps> = ({
+  jobs,
+  currentUser: _currentUser,
+  onNavigate,
+  onBack: _onBack,
+}) => {
   const completedJobs = useMemo(() => {
     return jobs
       .filter((job) => job.status === 'paid' || job.status === 'projectCompleted')

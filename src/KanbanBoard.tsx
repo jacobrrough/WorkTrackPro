@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
-import {
-  formatJobCode,
-  formatDashSummary,
-  getJobDisplayName,
-  formatJobIdentityLine,
-} from '@/lib/formatJob';
+import { formatJobCode, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
 import { checklistService } from './pocketbase';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -62,7 +57,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onDeleteJob,
   isAdmin,
   currentUser: _currentUser,
-  inventory = [],
+  inventory: _inventory = [],
 }) => {
   const jobs = excludePaid(allJobs);
   const { state: navState, updateState } = useNavigation();
@@ -485,7 +480,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           className="absolute left-1 top-1 z-10 flex size-7 items-center justify-center rounded border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:bg-primary/40"
                           title="Scan bin location"
                         >
-                          <span className="material-symbols-outlined text-base">qr_code_scanner</span>
+                          <span className="material-symbols-outlined text-base">
+                            qr_code_scanner
+                          </span>
                         </button>
 
                         {/* Admin Menu Button */}
@@ -698,7 +695,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               try {
                 await onUpdateJob(scanningBinForJob, { binLocation });
                 showToast(`Bin location updated: ${binLocation}`, 'success');
-              } catch (err) {
+              } catch {
                 showToast('Failed to update bin location', 'error');
               }
             } else {

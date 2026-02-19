@@ -71,7 +71,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (typeof next.materialUpcharge !== 'number' || next.materialUpcharge <= 0)
         next.materialUpcharge = prev.materialUpcharge;
       if (typeof next.cncRate !== 'number' || next.cncRate < 0) next.cncRate = prev.cncRate;
-      if (typeof next.printer3DRate !== 'number' || next.printer3DRate < 0) next.printer3DRate = prev.printer3DRate;
+      if (typeof next.printer3DRate !== 'number' || next.printer3DRate < 0)
+        next.printer3DRate = prev.printer3DRate;
       return next;
     });
   }, []);
@@ -83,4 +84,5 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook is the primary API
 export const useSettings = () => useContext(SettingsContext);

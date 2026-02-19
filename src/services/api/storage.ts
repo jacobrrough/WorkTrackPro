@@ -28,7 +28,11 @@ export async function uploadAttachment(
     return { id: null, error: msg };
   }
   const ext = file.name.split('.').pop() ?? 'bin';
-  const prefix = jobId ? `jobs/${jobId}` : inventoryId ? `inventory/${inventoryId}` : `parts/${partId}`;
+  const prefix = jobId
+    ? `jobs/${jobId}`
+    : inventoryId
+      ? `inventory/${inventoryId}`
+      : `parts/${partId}`;
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(BUCKET_ATTACHMENTS)

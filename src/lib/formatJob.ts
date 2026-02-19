@@ -12,7 +12,7 @@ export function formatJobCode(jobCode: number | undefined | null): string {
  */
 export function formatDashSummary(
   dashQuantities: Record<string, number> | undefined | null,
-  partNumber?: string
+  _partNumber?: string
 ): string {
   if (!dashQuantities || Object.keys(dashQuantities).length === 0) return '';
   const parts = Object.entries(dashQuantities)

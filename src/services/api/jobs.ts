@@ -131,10 +131,7 @@ async function fetchJobExpand(jobId: string): Promise<{
       .select('id, job_id, user_id, text, created_at')
       .eq('job_id', jobId)
       .order('created_at', { ascending: true }),
-    supabase
-      .from('attachments')
-      .select('*')
-      .eq('job_id', jobId),
+    supabase.from('attachments').select('*').eq('job_id', jobId),
   ]);
 
   const job_inventory = (jiRes.data ?? []) as JobInventoryRow[];
@@ -386,10 +383,7 @@ export const jobService = {
     return deleteAttachmentRecord(attachmentId);
   },
 
-  async updateAttachmentAdminOnly(
-    attachmentId: string,
-    isAdminOnly: boolean
-  ): Promise<boolean> {
+  async updateAttachmentAdminOnly(attachmentId: string, isAdminOnly: boolean): Promise<boolean> {
     const { error } = await supabase
       .from('attachments')
       .update({ is_admin_only: isAdminOnly })
