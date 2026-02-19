@@ -15,12 +15,22 @@ interface CustomField {
   id: string;
   name: string;
   type: string;
+  options?: Array<{
+    id: string;
+    value?: { text?: string };
+  }>;
 }
 
 interface CustomFieldItem {
   id: string;
   idCustomField: string;
-  value: { number?: string | number; text?: string; date?: string };
+  idValue?: string | null;
+  value?: {
+    number?: string | number;
+    text?: string;
+    date?: string;
+    checked?: string | boolean;
+  };
 }
 
 interface TrelloAttachment {
@@ -36,6 +46,7 @@ interface TrelloCard {
   id: string;
   name: string;
   desc: string;
+  originalDesc?: string;
   due: string | null;
   closed: boolean;
   idList: string;
@@ -141,6 +152,129 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+  const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+
+  const resolveTrelloRoot = (payload: unknown): Record<string, unknown> | null => {
+    if (Array.isArray(payload)) {
+      const boardFromArray = payload.find((entry) => {
+        if (!isRecord(entry)) return false;
+        if (Array.isArray(entry.cards) || Array.isArray(entry.lists)) return true;
+        return isRecord(entry.board) && (Array.isArray(entry.board.cards) || Array.isArray(entry.board.lists));
+      });
+      if (!isRecord(boardFromArray)) return null;
+      if (
+        isRecord(boardFromArray.board) &&
+        (Array.isArray(boardFromArray.board.cards) || Array.isArray(boardFromArray.board.lists))
+      ) {
+        return boardFromArray.board;
+      }
+      return boardFromArray;
+    }
+
+    if (!isRecord(payload)) return null;
+    if (Array.isArray(payload.cards) || Array.isArray(payload.lists)) return payload;
+    if (
+      isRecord(payload.board) &&
+      (Array.isArray(payload.board.cards) || Array.isArray(payload.board.lists))
+    ) {
+      return payload.board;
+    }
+    return payload;
+  };
+
+  const normalizeFieldLabel = (label: string): string =>
+    label.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+  const parseDescriptionFieldMap = (description: string): Map<string, string> => {
+    const map = new Map<string, string>();
+    if (!description) return map;
+
+    const lines = description
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    for (const line of lines) {
+      const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9\s/#().&-]{1,50})\s*[:：-]\s*(.+)$/);
+      if (!fieldMatch) continue;
+      const key = normalizeFieldLabel(fieldMatch[1]);
+      const value = fieldMatch[2]?.trim();
+      if (key && value) map.set(key, value);
+    }
+
+    return map;
+  };
+
+  const getDescriptionField = (fieldMap: Map<string, string>, aliases: string[]): string | null => {
+    for (const alias of aliases) {
+      const normalizedAlias = normalizeFieldLabel(alias);
+      const direct = fieldMap.get(normalizedAlias);
+      if (direct) return direct;
+    }
+
+    const normalizedAliases = aliases.map(normalizeFieldLabel).filter(Boolean);
+    for (const [key, value] of fieldMap.entries()) {
+      if (normalizedAliases.some((alias) => key.includes(alias) || alias.includes(key))) {
+        return value;
+      }
+    }
+    return null;
+  };
+
+  const extractRegexCapture = (text: string, patterns: RegExp[]): string | null => {
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      const captured = match?.[1]?.trim();
+      if (captured) return captured;
+    }
+    return null;
+  };
+
+  const extractReferenceToken = (value: string | null | undefined): string | undefined => {
+    if (!value) return undefined;
+    const cleaned = value
+      .replace(/^(?:po|est|rfq|inv|owr|jc)\s*#?\s*[:\-]?\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const token = cleaned.match(/[A-Za-z0-9-]+/);
+    return token?.[0];
+  };
+
+  const extractPartNumberToken = (value: string | null | undefined): string | undefined => {
+    if (!value) return undefined;
+    const skMatch = value.match(/\b(SK-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b/i);
+    if (skMatch?.[1]) return skMatch[1];
+
+    const fallback = value.match(/\b([A-Z0-9]+(?:-[A-Z0-9]+){1,})\b/i);
+    return fallback?.[1];
+  };
+
+  const parseDashQuantities = (qtyRaw: string): Record<string, number> | undefined => {
+    const dashPairs = qtyRaw.matchAll(/(\d+)\s*[xX]\s*(-\d+)/g);
+    const dashArr = [...dashPairs];
+    if (dashArr.length === 0) return undefined;
+
+    const quantities: Record<string, number> = {};
+    for (const match of dashArr) {
+      const suffix = match[2];
+      const qty = parseInt(match[1], 10);
+      if (!suffix || isNaN(qty)) continue;
+      quantities[suffix] = qty;
+    }
+    return Object.keys(quantities).length > 0 ? quantities : undefined;
+  };
+
+  const parseDateTextToISO = (value: string): string | null => {
+    const raw = value.trim();
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    if (isNaN(parsed.getTime())) return null;
+    return parsed.toISOString().split('T')[0] ?? null;
+  };
+
   const normalizeTrelloAttachment = (attachment: TrelloAttachment): TrelloAttachment => {
     const rawName = (attachment.name || attachment.fileName || '').trim();
     if (rawName) return { ...attachment, name: rawName };
@@ -218,19 +352,33 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     }
   }, [isCancelled, unmatchedPrompt]);
 
-  const sanitizeText = (text: string): string => {
+  const sanitizeText = (text: string, options?: { preserveNewlines?: boolean }): string => {
     if (!text) return '';
-    return (
-      text
-        // eslint-disable-next-line no-control-regex -- strip control chars from Trello export
-        .replace(/[\u0000-\u001F\u007F]/g, '')
-        .replace(/•/g, '•')
-        .replace(/ÃƒÂ¢Ã¢â€šÂ¬"/g, 'Ã¢â‚¬â€')
-        .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢/g, "'")
-        .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ/g, '"')
-        .replace(/ÃƒÂ¢Ã¢â€šÂ¬/g, '"')
-        .trim()
-    );
+
+    const preserveNewlines = options?.preserveNewlines === true;
+    let normalized = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      // eslint-disable-next-line no-control-regex -- preserve line breaks for multiline field parsing
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[\u2000-\u200B]/g, ' ')
+      .replace(/ÃƒÂ¢Ã¢â€šÂ¬"/g, '"')
+      .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢/g, "'")
+      .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ/g, '"')
+      .replace(/ÃƒÂ¢Ã¢â€šÂ¬/g, '"');
+
+    if (preserveNewlines) {
+      return normalized
+        .split('\n')
+        .map((line) => line.replace(/\t+/g, ' ').replace(/\s+/g, ' ').trim())
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    }
+
+    normalized = normalized.replace(/\s+/g, ' ');
+    return normalized.trim();
   };
 
   /** Normalize spacing so "10YARDS", "10 YARDSRed", "1/4"WHITE", "10 YARDS[link]" parse correctly. */
@@ -458,21 +606,24 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
     try {
       const text = await file.text();
-      const parsed: Record<string, unknown> = JSON.parse(text);
-      const rawCards =
-        ((parsed.cards ??
-          (parsed as { board?: { cards?: TrelloCard[] } }).board?.cards) as TrelloCard[]) ?? [];
-      const rawLists =
-        ((parsed.lists ??
-          (parsed as { board?: { lists?: TrelloList[] } }).board?.lists) as TrelloList[]) ?? [];
-      const rawCustomFields = (parsed.customFields ??
-        (parsed as { board?: { customFields?: CustomField[] } }).board?.customFields) as
-        | CustomField[]
-        | undefined;
-      const rawBoardAttachments = (parsed.attachments ??
-        (parsed as { board?: { attachments?: TrelloAttachment[] } }).board?.attachments) as
-        | TrelloAttachment[]
-        | undefined;
+      const parsed: unknown = JSON.parse(text);
+      const root = resolveTrelloRoot(parsed);
+      const parsedRecord = isRecord(parsed) ? parsed : null;
+      if (!root) {
+        setError('Invalid Trello export.');
+        return;
+      }
+
+      const rawCards = toArray<TrelloCard>(root.cards);
+      const rawLists = toArray<TrelloList>(root.lists);
+      const rawCustomFields = [
+        ...toArray<CustomField>(root.customFields),
+        ...toArray<CustomField>(parsedRecord?.customFields),
+      ];
+      const rawBoardAttachments = [
+        ...toArray<TrelloAttachment>(root.attachments),
+        ...toArray<TrelloAttachment>(parsedRecord?.attachments),
+      ];
       const boardAttachments = (rawBoardAttachments ?? []).map(normalizeTrelloAttachment);
       const boardAttachmentsByCard = new Map<string, TrelloAttachment[]>();
       boardAttachments.forEach((att) => {
@@ -491,10 +642,13 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
       // Normalize: support root-level or nested board (e.g. data.board?.cards)
       const data: TrelloExport = {
-        name: (parsed.name as string) ?? (parsed as TrelloExport).name ?? 'Board',
+        name:
+          (typeof root.name === 'string' && root.name.trim()) ||
+          (typeof parsedRecord?.name === 'string' && parsedRecord.name.trim()) ||
+          'Board',
         cards: cardsWithAttachments,
         lists: rawLists,
-        customFields: rawCustomFields,
+        customFields: rawCustomFields.length > 0 ? rawCustomFields : undefined,
         attachments: boardAttachments,
       };
 
@@ -541,9 +695,56 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     return 'material';
   };
 
+  const toFiniteNumber = (value: unknown): number | null => {
+    if (value == null) return null;
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+    const normalized = String(value).replace(/,/g, '').trim();
+    if (!normalized) return null;
+    const parsed = parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const getCustomFieldOptionText = (
+    cfMap: Map<string, CustomField>,
+    fieldId: string,
+    optionId: string | null | undefined
+  ): string | null => {
+    if (!optionId) return null;
+    const options = cfMap.get(fieldId)?.options;
+    if (!options || options.length === 0) return null;
+    const option = options.find((entry) => entry.id === optionId);
+    const text = option?.value?.text?.trim();
+    return text || null;
+  };
+
+  const customFieldMatchesAlias = (
+    cfMap: Map<string, CustomField>,
+    item: CustomFieldItem,
+    aliases: string[],
+    exclude?: string
+  ): boolean => {
+    const fieldName = cfMap.get(item.idCustomField)?.name ?? '';
+    if (!fieldName) return false;
+
+    const normalizedFieldName = normalizeFieldLabel(fieldName);
+    if (!normalizedFieldName) return false;
+
+    if (exclude) {
+      const normalizedExclude = normalizeFieldLabel(exclude);
+      if (normalizedExclude && normalizedFieldName.includes(normalizedExclude)) return false;
+    }
+
+    return aliases.some((alias) => {
+      const normalizedAlias = normalizeFieldLabel(alias);
+      return normalizedAlias ? normalizedFieldName.includes(normalizedAlias) : false;
+    });
+  };
+
   const getCustomFieldValue = (
     card: TrelloCard,
-    cfMap: Map<string, string>,
+    cfMap: Map<string, CustomField>,
     fieldNameOrAliases: string | string[],
     options?: { excludeIfNameContains?: string }
   ): number | null => {
@@ -553,20 +754,18 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
     try {
       for (const item of card.customFieldItems) {
-        const cfName = cfMap.get(item.idCustomField)?.toLowerCase() ?? '';
-        if (exclude && cfName.includes(exclude)) continue;
-        const matches = aliases.some((a) => cfName.includes(a.toLowerCase()));
-        if (!matches) continue;
+        if (!customFieldMatchesAlias(cfMap, item, aliases, exclude)) continue;
 
-        const v = item.value;
-        if (v?.number !== undefined && v?.number !== null) {
-          const n = typeof v.number === 'number' ? v.number : parseFloat(String(v.number));
-          if (!isNaN(n)) return n;
-        }
-        if (v?.text) {
-          const n = parseFloat(v.text);
-          if (!isNaN(n)) return n;
-        }
+        const numericFromValue = toFiniteNumber(item.value?.number);
+        if (numericFromValue != null) return numericFromValue;
+
+        const numericFromText = toFiniteNumber(item.value?.text);
+        if (numericFromText != null) return numericFromText;
+
+        const numericFromOption = toFiniteNumber(
+          getCustomFieldOptionText(cfMap, item.idCustomField, item.idValue)
+        );
+        if (numericFromOption != null) return numericFromOption;
       }
     } catch {
       // Ignore errors when parsing custom fields
@@ -609,17 +808,27 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
   const getCustomFieldDate = (
     card: TrelloCard,
-    cfMap: Map<string, string>,
-    fieldName: string
+    cfMap: Map<string, CustomField>,
+    fieldNameOrAliases: string | string[]
   ): string | null => {
     if (!card.customFieldItems) return null;
+    const aliases = Array.isArray(fieldNameOrAliases) ? fieldNameOrAliases : [fieldNameOrAliases];
     try {
       for (const item of card.customFieldItems) {
-        const name = cfMap.get(item.idCustomField)?.toLowerCase() ?? '';
-        if (name.includes(fieldName.toLowerCase()) && item.value?.date) {
-          const d = item.value.date;
-          if (typeof d === 'string') return d.split('T')[0] ?? d;
+        if (!customFieldMatchesAlias(cfMap, item, aliases)) continue;
+
+        if (item.value?.date && typeof item.value.date === 'string') {
+          const dateFromValue = parseDateTextToISO(item.value.date);
+          if (dateFromValue) return dateFromValue;
         }
+
+        const textDate = item.value?.text ? parseDateTextToISO(item.value.text) : null;
+        if (textDate) return textDate;
+
+        const optionDate = parseDateTextToISO(
+          getCustomFieldOptionText(cfMap, item.idCustomField, item.idValue) || ''
+        );
+        if (optionDate) return optionDate;
       }
     } catch {
       // Ignore
@@ -629,16 +838,34 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
   const getCustomFieldText = (
     card: TrelloCard,
-    cfMap: Map<string, string>,
-    fieldName: string
+    cfMap: Map<string, CustomField>,
+    fieldNameOrAliases: string | string[]
   ): string | null => {
     if (!card.customFieldItems) return null;
+    const aliases = Array.isArray(fieldNameOrAliases) ? fieldNameOrAliases : [fieldNameOrAliases];
     try {
       for (const item of card.customFieldItems) {
-        const name = cfMap.get(item.idCustomField)?.toLowerCase() ?? '';
-        if (name.includes(fieldName.toLowerCase()) && item.value?.text) {
-          return String(item.value.text).trim() || null;
+        if (!customFieldMatchesAlias(cfMap, item, aliases)) continue;
+
+        const textValue = item.value?.text ? String(item.value.text).trim() : '';
+        if (textValue) return textValue;
+
+        if (item.value?.number != null) {
+          const numberValue = String(item.value.number).trim();
+          if (numberValue) return numberValue;
         }
+
+        if (item.value?.date) {
+          const dateValue = parseDateTextToISO(String(item.value.date)) || String(item.value.date);
+          if (dateValue) return dateValue;
+        }
+
+        if (item.value?.checked != null) {
+          return String(item.value.checked);
+        }
+
+        const optionText = getCustomFieldOptionText(cfMap, item.idCustomField, item.idValue);
+        if (optionText) return optionText;
       }
     } catch {
       // Ignore
@@ -649,7 +876,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const importJobs = async (
     cards: TrelloCard[],
     listMap: Map<string, string>,
-    cfMap: Map<string, string>
+    cfMap: Map<string, CustomField>
   ): Promise<ImportResult> => {
     const results: ImportResult = {
       success: 0,
@@ -680,105 +907,130 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         const cardName = sanitizeText(card.name);
         if (!cardName) throw new Error('Empty name');
 
-        let description = sanitizeText(card.desc || '');
+        const rawDescription = card.desc || card.originalDesc || '';
+        let description = sanitizeText(rawDescription, { preserveNewlines: true });
+        const descriptionFieldMap = parseDescriptionFieldMap(description);
+        const combinedText = `${cardName}\n${description}`;
+
         const uploads = card.attachments?.filter((a) => a.isUpload) || [];
         if (uploads.length > 0) {
           description +=
             '\n\n--- Attachments ---\n' + uploads.map((a) => `• ${a.name}: ${a.url}`).join('\n');
         }
 
-        // Enhanced parsing from card name and description
-        const poMatch =
-          cardName.match(/PO#?\s*:?\s*(\d+)/i) || description.match(/PO#?\s*:?\s*(\d+)/i);
-        const po = poMatch ? poMatch[1] : '';
+        const poField =
+          getDescriptionField(descriptionFieldMap, ['po', 'po#', 'purchase order']) ||
+          getCustomFieldText(card, cfMap, ['po#', 'purchase order']);
+        const po =
+          extractReferenceToken(
+            poField ||
+              extractRegexCapture(combinedText, [/PO#?\s*:?\s*([A-Za-z0-9-]+)/i, /\bPO-(\d+)\b/i])
+          ) || '';
 
-        // Part number: SK-02P-0120, SK-F35-1719, etc.
-        const partNumberMatch =
-          cardName.match(/(SK-[A-Z0-9]+(?:-[A-Z0-9]+)*)/i) ||
-          description.match(/(SK-[A-Z0-9]+(?:-[A-Z0-9]+)*)/i);
-        const partNumber = partNumberMatch ? partNumberMatch[1] : '';
+        const partNumberField =
+          getDescriptionField(descriptionFieldMap, ['part number', 'part #', 'part no', 'pn']) ||
+          getCustomFieldText(card, cfMap, ['part number', 'part #', 'pn']);
+        const partNumber =
+          extractPartNumberToken(
+            partNumberField ||
+              extractRegexCapture(combinedText, [/\b(SK-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b/i])
+          ) || '';
 
-        // OWR# (Order/Work Request)
-        const owrMatch =
-          description.match(/OWR#?\s*:?\s*(\d+)/i) ||
-          cardName.match(/OWR#?\s*:?\s*(\d+)/i) ||
-          description.match(/OWR-(\d+)/i) ||
-          description.match(/JC\s*#?\s*:?\s*(\d+)/i);
-        const owrNumber = owrMatch ? owrMatch[1] : undefined;
+        const owrField =
+          getDescriptionField(descriptionFieldMap, ['owr', 'job code', 'jc']) ||
+          getCustomFieldText(card, cfMap, ['owr', 'job code', 'jc']);
+        const owrNumber = extractReferenceToken(
+          owrField ||
+            extractRegexCapture(combinedText, [
+              /OWR#?\s*:?\s*([A-Za-z0-9-]+)/i,
+              /OWR-(\d+)/i,
+              /JC\s*#?\s*:?\s*([A-Za-z0-9-]+)/i,
+            ])
+        );
 
-        // EST#, RFQ#, INV# from description
-        const estMatch =
-          description.match(/EST\s*#?\s*:?\s*(\d+)/i) || cardName.match(/EST\s*#?\s*(\d+)/i);
-        const estNumber = estMatch ? estMatch[1] : undefined;
-        const rfqMatch = description.match(/RFQ\s*#?\s*:?\s*(\d+)/i);
-        const rfqNumber = rfqMatch ? rfqMatch[1] : undefined;
-        const invMatch = description.match(/INV\s*#?\s*:?\s*(\d+)/i);
-        const invNumber = invMatch ? invMatch[1] : undefined;
+        const estField =
+          getDescriptionField(descriptionFieldMap, ['est', 'estimate', 'est#']) ||
+          getCustomFieldText(card, cfMap, ['est', 'estimate', 'est#']);
+        const estNumber = extractReferenceToken(
+          estField || extractRegexCapture(combinedText, [/EST\s*#?\s*:?\s*([A-Za-z0-9-]+)/i])
+        );
 
-        // Part name: "PART NAME: X" or text between part number and " Rev " (e.g. Tank Entry Land Slide)
-        let partName = '';
-        const partNameLine =
-          description.match(/PART\s*NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i) ||
-          description.match(/(?:^|\n)NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i);
-        if (partNameLine) partName = partNameLine[1].trim();
-        else if (partNumber) {
+        const rfqField =
+          getDescriptionField(descriptionFieldMap, ['rfq', 'rfq#']) ||
+          getCustomFieldText(card, cfMap, ['rfq', 'rfq#']);
+        const rfqNumber = extractReferenceToken(
+          rfqField || extractRegexCapture(combinedText, [/RFQ\s*#?\s*:?\s*([A-Za-z0-9-]+)/i])
+        );
+
+        const invField =
+          getDescriptionField(descriptionFieldMap, ['inv', 'invoice', 'inv#']) ||
+          getCustomFieldText(card, cfMap, ['inv', 'invoice', 'inv#']);
+        const invNumber = extractReferenceToken(
+          invField || extractRegexCapture(combinedText, [/INV\s*#?\s*:?\s*([A-Za-z0-9-]+)/i])
+        );
+
+        let partName =
+          getDescriptionField(descriptionFieldMap, ['part name']) ||
+          getCustomFieldText(card, cfMap, ['part name']) ||
+          '';
+        if (!partName) {
+          const partNameLine = description.match(
+            /(?:^|\n)PART\s*NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i
+          );
+          if (partNameLine?.[1]) partName = partNameLine[1].trim();
+        }
+        if (!partName) {
+          const nameLine = description.match(/(?:^|\n)NAME\s*[:]?\s*([^\n]+?)(?=\n|$)/i);
+          if (nameLine?.[1]) partName = nameLine[1].trim();
+        }
+        if (!partName && partNumber) {
           const escaped = partNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const afterPart = description.match(
             new RegExp(`${escaped}\\s*([A-Za-z][A-Za-z0-9\\s\\-'"]*?)\\s+Rev\\s+[A-Z0-9]`, 'i')
           );
-          if (afterPart) partName = afterPart[1].trim();
+          if (afterPart?.[1]) partName = afterPart[1].trim();
         }
 
-        // Revision: word boundary so "Rev B" gives B not BQTY
-        const revMatch =
-          description.match(/Rev(?:ision)?\s*[:]?\s*([A-Z0-9]+)\b/i) ||
-          cardName.match(/Rev(?:ision)?\s*[:]?\s*([A-Z0-9]+)\b/i);
-        const revision = revMatch ? revMatch[1].trim() : undefined;
+        const revisionField =
+          getDescriptionField(descriptionFieldMap, ['revision', 'rev']) ||
+          getCustomFieldText(card, cfMap, ['revision', 'rev']);
+        const revisionRaw =
+          revisionField ||
+          extractRegexCapture(combinedText, [/Rev(?:ision)?\s*[:]?\s*([A-Z0-9]+)\b/i]) ||
+          '';
+        const revision = revisionRaw ? revisionRaw.trim().split(/\s+/)[0] : undefined;
 
-        // Qty: only digits/spaces/commas/dashes/x, stop at EST# or next keyword
-        const qtyMatch =
-          cardName.match(
-            /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i
-          ) ||
-          description.match(
-            /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i
-          );
-        const qtyRaw = qtyMatch ? qtyMatch[1].trim() : '';
+        const qtyField =
+          getDescriptionField(descriptionFieldMap, ['qty', 'quantity']) ||
+          getCustomFieldText(card, cfMap, ['qty', 'quantity']);
+        const qtyRaw =
+          (qtyField ||
+            extractRegexCapture(combinedText, [
+              /(?:Qty|Quantity|QTY)[:：]?\s*([\d\s,\-xX]+?)(?=\s*EST#|\s*RFQ#|\s*PO#|\n|$)/i,
+            ]) ||
+            '')
+            .replace(/\s+/g, ' ')
+            .trim();
         const qty = qtyRaw;
-
-        // Dash quantities from "5 X -01, 5 X -02, 5 X -03" -> { "-01": 5, "-02": 5, ... }
-        let dashQuantities: Record<string, number> | undefined;
-        const dashPairs = qtyRaw.matchAll(/(\d+)\s*[xX]\s*(-\d+)/g);
-        const dashArr = [...dashPairs];
-        if (dashArr.length > 0) {
-          dashQuantities = {};
-          for (const m of dashArr) {
-            const suffix = m[2];
-            const num = parseInt(m[1], 10);
-            if (!isNaN(num) && suffix) dashQuantities[suffix] = num;
-          }
-        }
+        const dashQuantities = parseDashQuantities(qtyRaw);
 
         // Due date: from custom field first, then card.due, then description
         let dueDate =
-          getCustomFieldDate(card, cfMap, 'Delivery Date') ||
-          getCustomFieldDate(card, cfMap, 'delivery date') ||
+          getCustomFieldDate(card, cfMap, ['Delivery Date', 'Due Date', 'Deadline']) ||
           (card.due ? String(card.due).split('T')[0] : undefined);
         if (!dueDate) {
-          const dateMatch = description.match(
-            /(?:Due|Due Date|Deadline)[:：]?\s*(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/i
+          const dueField = getDescriptionField(descriptionFieldMap, ['due date', 'due', 'deadline']);
+          const dueFromField = dueField ? parseDateTextToISO(dueField) : null;
+          const dueFromText = parseDateTextToISO(
+            extractRegexCapture(description, [
+              /(?:Due|Due Date|Deadline)[:：]?\s*(\d{4}-\d{2}-\d{2})/i,
+              /(?:Due|Due Date|Deadline)[:：]?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
+            ]) || ''
           );
-          if (dateMatch) {
-            try {
-              const parsed = new Date(dateMatch[1]);
-              if (!isNaN(parsed.getTime())) dueDate = parsed.toISOString().split('T')[0];
-            } catch {
-              // Ignore
-            }
-          }
+          dueDate = dueFromField || dueFromText || undefined;
         }
         const ecd =
-          getCustomFieldDate(card, cfMap, 'ECD') ||
+          getCustomFieldDate(card, cfMap, ['ECD', 'Estimated Completion Date']) ||
           (card.due ? String(card.due).split('T')[0] : undefined) ||
           dueDate;
 
@@ -793,16 +1045,22 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         }
 
         // Extract labor hours from description
-        let laborHours: number | undefined = undefined;
+        let laborHours: number | undefined =
+          getCustomFieldValue(card, cfMap, ['labor hours', 'labor', 'hours', 'time']) ?? undefined;
         const laborMatch = description.match(
           /(?:Labor|Hours|Time)[:：]?\s*(\d+(?:\.\d+)?)\s*(?:h|hours?)?/i
         );
-        if (laborMatch) {
+        if (laborMatch && laborHours == null) {
           laborHours = parseFloat(laborMatch[1]);
         }
 
         // Extract bin location
+        const binField =
+          getDescriptionField(descriptionFieldMap, ['bin', 'bin location']) ||
+          getCustomFieldText(card, cfMap, ['bin', 'bin location']);
+        const binMatchFromField = binField?.match(/([A-Z]\d+[a-z]?)/i);
         const binMatch =
+          binMatchFromField ||
           cardName.match(/\[([A-Z]\d+[a-z]?)\]/i) ||
           description.match(/Bin[:：]?\s*([A-Z]\d+[a-z]?)/i);
         const binLocation = binMatch ? binMatch[1] : undefined;
@@ -888,7 +1146,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // Materials: use description only (qty, unit, name). Linked Trello cards in attachments
         // are the same materials — do not add from links/attachments or we duplicate.
-        const materials = parseMaterials(card.desc || '');
+        const materials = parseMaterials(rawDescription);
         for (const { material, qty, unit: parsedUnit } of materials) {
           let match = findBestMatch(material, inventoryMap);
           if (!match) {
@@ -993,7 +1251,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const importInventory = async (
     cards: TrelloCard[],
     listMap: Map<string, string>,
-    cfMap: Map<string, string>
+    cfMap: Map<string, CustomField>
   ): Promise<ImportResult> => {
     const results: ImportResult = {
       success: 0,
@@ -1080,8 +1338,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       const listMap = new Map<string, string>();
       trelloData.lists.forEach((l) => listMap.set(l.id, l.name));
 
-      const cfMap = new Map<string, string>();
-      trelloData.customFields?.forEach((cf) => cfMap.set(cf.id, cf.name.toLowerCase()));
+      const cfMap = new Map<string, CustomField>();
+      trelloData.customFields?.forEach((cf) => cfMap.set(cf.id, cf));
 
       const openCards = trelloData.cards.filter((c) => !c.closed);
       const cards = openCards.filter((c) => selectedCardIds[c.id] === true);
