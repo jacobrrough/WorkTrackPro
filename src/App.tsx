@@ -1,28 +1,39 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useApp } from './AppContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import Login from './Login';
-import Dashboard from './Dashboard';
-import JobList from './JobList';
-import JobDetail from './JobDetail';
-import ClockInScreen from './ClockInScreen';
-import Inventory from './Inventory';
-import KanbanBoard from './KanbanBoard';
-import Parts from './features/admin/Parts';
-import PartDetail from './features/admin/PartDetail';
-import AdminCreateJob from './AdminCreateJob';
-import Quotes from './Quotes';
-import Calendar from './features/admin/Calendar';
-import TimeReports from './TimeReports';
-import AdminSettings from './features/admin/AdminSettings';
-import TrelloImport from './TrelloImport';
 import { jobService } from './pocketbase';
+
+const Dashboard = lazy(() => import('./Dashboard'));
+const JobList = lazy(() => import('./JobList'));
+const JobDetail = lazy(() => import('./JobDetail'));
+const ClockInScreen = lazy(() => import('./ClockInScreen'));
+const Inventory = lazy(() => import('./Inventory'));
+const KanbanBoard = lazy(() => import('./KanbanBoard'));
+const Parts = lazy(() => import('./features/admin/Parts'));
+const PartDetail = lazy(() => import('./features/admin/PartDetail'));
+const AdminCreateJob = lazy(() => import('./AdminCreateJob'));
+const Quotes = lazy(() => import('./Quotes'));
+const Calendar = lazy(() => import('./features/admin/Calendar'));
+const TimeReports = lazy(() => import('./TimeReports'));
+const AdminSettings = lazy(() => import('./features/admin/AdminSettings'));
+const TrelloImport = lazy(() => import('./TrelloImport'));
+
+function AppViewFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background-dark">
+      <p className="text-slate-400">Loading view...</p>
+    </div>
+  );
+}
 
 function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <NavigationProvider>
-      <SettingsProvider>{children}</SettingsProvider>
+      <SettingsProvider>
+        <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
+      </SettingsProvider>
     </NavigationProvider>
   );
 }

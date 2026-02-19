@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
-import QRScanner from './components/QRScanner';
 import { useToast } from './Toast';
+
+const QRScanner = lazy(() => import('./components/QRScanner'));
 
 interface DashboardProps {
   onNavigate: (view: ViewState, id?: string) => void;
@@ -73,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <button
           type="button"
           onClick={logout}
-          className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
           aria-label="Log out"
         >
           <span className="material-symbols-outlined">logout</span>
@@ -254,13 +255,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* QR Scanner Modal */}
       {showScanner && (
-        <QRScanner
-          scanType="any"
-          onScanComplete={handleScanComplete}
-          onClose={() => setShowScanner(false)}
-          title="Scan QR Code"
-          description="Scan inventory, job, or bin location QR code"
-        />
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+              <p className="text-sm text-slate-200">Opening scanner...</p>
+            </div>
+          }
+        >
+          <QRScanner
+            scanType="any"
+            onScanComplete={handleScanComplete}
+            onClose={() => setShowScanner(false)}
+            title="Scan QR Code"
+            description="Scan inventory, job, or bin location QR code"
+          />
+        </Suspense>
       )}
     </div>
   );
