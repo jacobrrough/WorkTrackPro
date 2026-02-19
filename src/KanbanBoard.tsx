@@ -76,9 +76,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Refs for column scroll containers and horizontal board container
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
+  const boardTouchStateRef = useRef({
+    active: false,
+    isHorizontalSwipe: false,
+    startX: 0,
+    startY: 0,
+    startScrollLeft: 0,
+  });
   const scrollPositionsRef = useRef(navState.scrollPositions);
 
-  const canDragCards = boardType === 'shopFloor' || isAdmin;
+  // HTML5 drag-and-drop on touch devices can hijack swipe gestures; keep drag for fine pointers.
+  const supportsFinePointer =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const canDragCards = (boardType === 'shopFloor' || isAdmin) && supportsFinePointer;
   const columns = boardType === 'shopFloor' ? SHOP_FLOOR_COLUMNS : ADMIN_COLUMNS;
   const boardViewKey = `kanban-board-${boardType}`;
   const horizontalScrollKey = `${boardViewKey}-horizontal`;
@@ -146,6 +158,44 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     },
     100
   );
+
+  const handleBoardTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!boardContainerRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    boardTouchStateRef.current.active = true;
+    boardTouchStateRef.current.isHorizontalSwipe = false;
+    boardTouchStateRef.current.startX = touch.clientX;
+    boardTouchStateRef.current.startY = touch.clientY;
+    boardTouchStateRef.current.startScrollLeft = boardContainerRef.current.scrollLeft;
+  };
+
+  const handleBoardTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!boardContainerRef.current || e.touches.length !== 1) return;
+    const touchState = boardTouchStateRef.current;
+    if (!touchState.active) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchState.startX;
+    const deltaY = touch.clientY - touchState.startY;
+
+    if (!touchState.isHorizontalSwipe) {
+      if (Math.abs(deltaX) < 8) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) {
+        touchState.active = false;
+        return;
+      }
+      touchState.isHorizontalSwipe = true;
+    }
+
+    if (e.cancelable) e.preventDefault();
+    boardContainerRef.current.scrollLeft = touchState.startScrollLeft - deltaX;
+    handleHorizontalScroll();
+  };
+
+  const handleBoardTouchEnd = () => {
+    boardTouchStateRef.current.active = false;
+    boardTouchStateRef.current.isHorizontalSwipe = false;
+  };
 
   // Load checklist states for all jobs
   useEffect(() => {
@@ -377,6 +427,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
+        onTouchStart={handleBoardTouchStart}
+        onTouchMove={handleBoardTouchMove}
+        onTouchEnd={handleBoardTouchEnd}
+        onTouchCancel={handleBoardTouchEnd}
         className="flex-1 overflow-x-auto overflow-y-hidden"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
