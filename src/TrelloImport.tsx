@@ -96,7 +96,7 @@ interface ErrorLog {
 }
 
 const DEFAULT_TRELLO_API_KEY = String(import.meta.env.VITE_TRELLO_API_KEY ?? '').trim();
-const DEFAULT_TRELLO_API_TOKEN = String(import.meta.env.VITE_TRELLO_API_TOKEN ?? '').trim();
+const DEFAULT_TRELLO_API_TOKEN = String(import.meta.env.VITE_TRELLO_TOKEN ?? '').trim();
 
 const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }) => {
   const [boardType, setBoardType] = useState<BoardType>('admin');
@@ -172,6 +172,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+<<<<<<< HEAD
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 

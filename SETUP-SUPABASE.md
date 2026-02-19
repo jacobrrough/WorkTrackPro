@@ -53,6 +53,10 @@ If the **site is still blank** or shows **“Invalid supabase URL”**, the buil
      **Value:** (paste Project URL only; no trailing slash)
    - **Key:** `VITE_SUPABASE_ANON_KEY`  
      **Value:** (paste the **Anon key (Legacy)** from Supabase)
+   - **Key:** `VITE_TRELLO_API_KEY` (optional, for Trello import)  
+     **Value:** your Trello API key from [https://trello.com/app-key](https://trello.com/app-key)
+   - **Key:** `VITE_TRELLO_TOKEN` (optional, for Trello import)  
+     **Value:** your Trello token (generate at [https://trello.com/1/authorize](https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=WorkTrackPro&key=YOUR_API_KEY))
 5. Save.
 6. **Trigger a fresh deploy:** **Deploys** → **Trigger deploy** → **Clear cache and deploy site**. This forces a new build so the live bundle gets the current env values.
 

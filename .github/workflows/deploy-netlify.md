@@ -19,6 +19,8 @@ Netlify auto-deploys when you push to GitHub. No workflow file needed.
    - Add environment variables in Netlify: Site settings → Environment variables:
      - `VITE_SUPABASE_URL` = your Supabase project URL
      - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key
+     - `VITE_TRELLO_API_KEY` = your Trello API key (optional, for Trello import)
+     - `VITE_TRELLO_TOKEN` = your Trello token (optional, for Trello import)
 
 3. **Supabase**
    - Create a project at [supabase.com](https://supabase.com)
