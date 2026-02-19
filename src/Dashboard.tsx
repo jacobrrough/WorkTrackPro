@@ -55,7 +55,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background-dark">
+    <div className="flex min-h-screen h-[100dvh] min-h-0 flex-col bg-background-dark">
       <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-full bg-primary/20">
@@ -80,7 +80,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 pb-8">
+      <main
+        className="min-h-0 flex-1 overflow-y-auto p-4"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          paddingBottom: 'max(6rem, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         <form onSubmit={handleSearchSubmit} className="mb-4">
           <div className="relative">
             <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
