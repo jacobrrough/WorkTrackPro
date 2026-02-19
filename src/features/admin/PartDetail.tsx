@@ -112,6 +112,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       name: part.name ?? '',
       description: part.description ?? '',
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keep draft stable while editing; reset only when switching parts
   }, [part?.id]);
 
   useEffect(() => {
