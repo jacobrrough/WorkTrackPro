@@ -289,7 +289,6 @@ export const jobService = {
       !data.partId && rawPartNumber
         ? await resolvePartForJob({
             partNumber: rawPartNumber,
-            fallbackName: data.name,
             fallbackDescription: data.description,
             fallbackLaborHours: resolvedLaborHours,
           })
@@ -369,7 +368,6 @@ export const jobService = {
       if (partNum) {
         const resolvedPart = await resolvePartForJob({
           partNumber: partNum,
-          fallbackName: data.name,
           fallbackDescription: data.description,
           fallbackLaborHours: toFiniteNumber(data.laborHours),
         });
