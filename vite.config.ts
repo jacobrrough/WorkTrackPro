@@ -13,6 +13,18 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(root, 'src') },
   },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          scanner: ['jsqr'],
+        },
+      },
+    },
+  },
   server: {
     ...(hasHttps && {
       https: {
