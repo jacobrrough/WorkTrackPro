@@ -74,6 +74,17 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function dedupeJobsById(items: Job[]): Job[] {
+  const seen = new Set<string>();
+  const unique: Job[] = [];
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    unique.push(item);
+  }
+  return unique;
+}
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,7 +153,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const dateB = b.dueDate || b.ecd || '9999-12-31';
         return dateA.localeCompare(dateB);
       });
-      setJobs(jobsData);
+      setJobs(dedupeJobsById(jobsData));
     } catch (error) {
       console.error('Failed to refresh jobs:', error);
     }
@@ -183,7 +194,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return null;
       }
       if (job) {
-        setJobs((prev) => [job, ...prev]);
+        setJobs((prev) => dedupeJobsById([job, ...prev]));
       }
       return job;
     } catch (error) {
@@ -698,11 +709,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const unsubJobs = subscriptions.subscribeToJobs((action, record) => {
       if (action === 'create') {
-        setJobs((prev) => [record as Job, ...prev]);
+        setJobs((prev) => dedupeJobsById([record as Job, ...prev]));
         // Refresh inventory to recalculate allocated when new job created
         refreshInventory();
       } else if (action === 'update') {
-        setJobs((prev) => prev.map((j) => (j.id === record.id ? (record as Job) : j)));
+        setJobs((prev) => {
+          const exists = prev.some((j) => j.id === record.id);
+          const next = exists
+            ? prev.map((j) => (j.id === record.id ? (record as Job) : j))
+            : ([record as Job, ...prev] as Job[]);
+          return dedupeJobsById(next);
+        });
         // Refresh inventory when job status changes (affects allocated)
         refreshInventory();
       } else if (action === 'delete') {
