@@ -23,6 +23,15 @@ interface CustomFieldItem {
   value: { number?: string | number; text?: string; date?: string };
 }
 
+interface TrelloAttachment {
+  id?: string;
+  idCard?: string;
+  url?: string;
+  name?: string;
+  fileName?: string;
+  isUpload?: boolean;
+}
+
 interface TrelloCard {
   id: string;
   name: string;
@@ -31,7 +40,7 @@ interface TrelloCard {
   closed: boolean;
   idList: string;
   labels?: Array<{ name: string }>;
-  attachments?: Array<{ url: string; name: string; isUpload?: boolean }>;
+  attachments?: TrelloAttachment[];
   customFieldItems?: CustomFieldItem[];
 }
 
@@ -45,12 +54,15 @@ interface TrelloExport {
   cards: TrelloCard[];
   lists: TrelloList[];
   customFields?: CustomField[];
+  attachments?: TrelloAttachment[];
 }
 
 interface ImportResult {
   success: number;
   failed: number;
   linked: number;
+  attachmentsImported: number;
+  attachmentsFailed: number;
 }
 
 interface ErrorLog {
@@ -128,6 +140,39 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const unmatchedResolverRef = useRef<((inventoryId: string | null) => void) | null>(null);
 
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const normalizeTrelloAttachment = (attachment: TrelloAttachment): TrelloAttachment => {
+    const rawName = (attachment.name || attachment.fileName || '').trim();
+    if (rawName) return { ...attachment, name: rawName };
+
+    const rawUrl = (attachment.url || '').trim();
+    if (rawUrl) {
+      const pathWithoutQuery = rawUrl.split('?')[0] || '';
+      const fromUrl = pathWithoutQuery.split('/').pop();
+      if (fromUrl) {
+        try {
+          return { ...attachment, name: decodeURIComponent(fromUrl) };
+        } catch {
+          return { ...attachment, name: fromUrl };
+        }
+      }
+    }
+
+    return { ...attachment, name: 'attachment' };
+  };
+
+  const mergeCardAttachments = (
+    cardAttachments: TrelloAttachment[] | undefined,
+    boardAttachments: TrelloAttachment[]
+  ): TrelloAttachment[] => {
+    const merged = [...(cardAttachments || []), ...boardAttachments].map(normalizeTrelloAttachment);
+    const uniqueByIdOrUrl = new Map<string, TrelloAttachment>();
+    merged.forEach((att, idx) => {
+      const key = att.id || att.url || `${att.name || 'attachment'}-${idx}`;
+      if (!uniqueByIdOrUrl.has(key)) uniqueByIdOrUrl.set(key, att);
+    });
+    return Array.from(uniqueByIdOrUrl.values());
+  };
 
   /** Pause import and ask user to pick an inventory item for an unmatched material. Returns inventory id or null (skip). */
   const promptForUnmatchedMaterial = (
@@ -414,19 +459,40 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     try {
       const text = await file.text();
       const parsed: Record<string, unknown> = JSON.parse(text);
+      const rawCards =
+        ((parsed.cards ??
+          (parsed as { board?: { cards?: TrelloCard[] } }).board?.cards) as TrelloCard[]) ?? [];
+      const rawLists =
+        ((parsed.lists ??
+          (parsed as { board?: { lists?: TrelloList[] } }).board?.lists) as TrelloList[]) ?? [];
+      const rawCustomFields = (parsed.customFields ??
+        (parsed as { board?: { customFields?: CustomField[] } }).board?.customFields) as
+        | CustomField[]
+        | undefined;
+      const rawBoardAttachments = (parsed.attachments ??
+        (parsed as { board?: { attachments?: TrelloAttachment[] } }).board?.attachments) as
+        | TrelloAttachment[]
+        | undefined;
+      const boardAttachments = (rawBoardAttachments ?? []).map(normalizeTrelloAttachment);
+      const boardAttachmentsByCard = new Map<string, TrelloAttachment[]>();
+      boardAttachments.forEach((att) => {
+        if (!att.idCard) return;
+        const existing = boardAttachmentsByCard.get(att.idCard) ?? [];
+        existing.push(att);
+        boardAttachmentsByCard.set(att.idCard, existing);
+      });
+      const cardsWithAttachments = rawCards.map((card) => ({
+        ...card,
+        attachments: mergeCardAttachments(card.attachments, boardAttachmentsByCard.get(card.id) ?? []),
+      }));
+
       // Normalize: support root-level or nested board (e.g. data.board?.cards)
       const data: TrelloExport = {
         name: (parsed.name as string) ?? (parsed as TrelloExport).name ?? 'Board',
-        cards:
-          ((parsed.cards ??
-            (parsed as { board?: { cards?: TrelloCard[] } }).board?.cards) as TrelloCard[]) ?? [],
-        lists:
-          ((parsed.lists ??
-            (parsed as { board?: { lists?: TrelloList[] } }).board?.lists) as TrelloList[]) ?? [],
-        customFields: (parsed.customFields ??
-          (parsed as { board?: { customFields?: CustomField[] } }).board?.customFields) as
-          | CustomField[]
-          | undefined,
+        cards: cardsWithAttachments,
+        lists: rawLists,
+        customFields: rawCustomFields,
+        attachments: boardAttachments,
       };
 
       if (!data.cards || !Array.isArray(data.cards)) {
@@ -582,7 +648,13 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     listMap: Map<string, string>,
     cfMap: Map<string, string>
   ): Promise<ImportResult> => {
-    const results: ImportResult = { success: 0, failed: 0, linked: 0 };
+    const results: ImportResult = {
+      success: 0,
+      failed: 0,
+      linked: 0,
+      attachmentsImported: 0,
+      attachmentsFailed: 0,
+    };
     const errors: ErrorLog[] = [];
 
     setStatus('Loading inventory...');
@@ -856,20 +928,44 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         // File attachments: download from Trello URL and upload to Supabase (default admin-only)
         const fileAttachments =
-          card.attachments?.filter((a) => a.url && !a.url.includes('trello.com/c/')) ?? [];
+          card.attachments?.filter((a) => {
+            const url = a.url?.trim();
+            if (!url) return false;
+            // Explicit non-upload attachments are usually card/external links, not files.
+            if (a.isUpload === false) return false;
+            if (url.includes('trello.com/c/')) return false;
+            return true;
+          }) ?? [];
         for (const att of fileAttachments) {
           try {
             setStatus(`Importing attachment ${att.name || 'file'}...`);
-            const res = await fetch(att.url, { mode: 'cors' });
-            if (!res.ok) continue;
+            const url = att.url?.trim();
+            if (!url) throw new Error('Attachment URL missing');
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Attachment download failed (${res.status})`);
             const blob = await res.blob();
-            const filename = att.name || att.url.split('/').pop() || 'attachment';
+            const filename =
+              att.name || att.fileName || url.split('?')[0].split('/').pop() || 'attachment';
             const file = new File([blob], filename, {
               type: blob.type || 'application/octet-stream',
             });
-            await jobService.addAttachment(job.id, file, true);
-          } catch {
-            // Trello URLs may require auth or CORS; skip on failure
+            const uploaded = await jobService.addAttachment(job.id, file, true);
+            if (uploaded) {
+              results.attachmentsImported++;
+            } else {
+              results.attachmentsFailed++;
+              errors.push({
+                cardName: `${cardName} / ${filename}`,
+                error: 'Failed to save imported attachment',
+              });
+            }
+          } catch (attachmentErr: unknown) {
+            results.attachmentsFailed++;
+            errors.push({
+              cardName: `${cardName} / ${att.name || 'attachment'}`,
+              error:
+                attachmentErr instanceof Error ? attachmentErr.message : 'Attachment import failed',
+            });
           }
         }
       } catch (err: unknown) {
@@ -896,7 +992,13 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     listMap: Map<string, string>,
     cfMap: Map<string, string>
   ): Promise<ImportResult> => {
-    const results: ImportResult = { success: 0, failed: 0, linked: 0 };
+    const results: ImportResult = {
+      success: 0,
+      failed: 0,
+      linked: 0,
+      attachmentsImported: 0,
+      attachmentsFailed: 0,
+    };
     const errors: ErrorLog[] = [];
 
     for (let i = 0; i < cards.length; i++) {
@@ -1268,6 +1370,18 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 <div className="flex justify-between">
                   <span className="text-blue-400">Materials Linked:</span>
                   <span className="font-bold text-white">{result.linked}</span>
+                </div>
+              )}
+              {boardType !== 'inventory' && (
+                <div className="flex justify-between">
+                  <span className="text-indigo-400">Attachments Imported:</span>
+                  <span className="font-bold text-white">{result.attachmentsImported}</span>
+                </div>
+              )}
+              {boardType !== 'inventory' && result.attachmentsFailed > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-amber-400">Attachment Failures:</span>
+                  <span className="font-bold text-white">{result.attachmentsFailed}</span>
                 </div>
               )}
             </div>
