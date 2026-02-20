@@ -23,9 +23,12 @@ interface PublicHomeProps {
   onEmployeeLogin: () => void;
 }
 
+type SiteConcept = 'industrial' | 'technical' | 'rugged';
+
 const MAX_FILES = 10;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB per file (common portal default)
 const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined)?.trim();
+const LOGO_CANDIDATES = ['/logo.png', '/logo.svg', '/logo'];
 
 const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   const [contactName, setContactName] = useState('');
@@ -37,6 +40,8 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [logoIndex, setLogoIndex] = useState(0);
+  const [siteConcept, setSiteConcept] = useState<SiteConcept>('rugged');
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -186,34 +191,205 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
     }
   };
 
+  const renderHero = () => {
+    if (siteConcept === 'technical') {
+      return (
+        <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#10131d] via-[#121a2b] to-[#1a2140]">
+          <div className="grid gap-0 lg:grid-cols-5">
+            <div className="lg:col-span-3 p-8">
+              <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
+                Technical Manufacturing
+              </p>
+              <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
+                Precision Fabrication for Protection-Critical Applications
+              </h2>
+              <p className="mt-4 max-w-2xl text-slate-200">
+                We design and build protective products using specialized fabrics, engineered foams,
+                and plastics for part preservation, paint protection, and FOD prevention.
+              </p>
+              <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                {[
+                  'Custom foam inlays',
+                  'Protective fabric assemblies',
+                  'Plastic fabricated components',
+                  'FOD prevention systems',
+                  'Precision CNC machining',
+                  '3D printing services',
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="lg:col-span-2 border-t border-white/10 bg-black/25 p-8 lg:border-l lg:border-t-0">
+              <h3 className="text-lg font-semibold text-white">Built For</h3>
+              <ul className="mt-4 space-y-3 text-sm text-slate-200">
+                {[
+                  'Manufacturing environments with strict process controls',
+                  'Programs requiring reliable FOD mitigation',
+                  'Projects needing precision CNC machining',
+                  'Teams moving from prototype to production',
+                  'Programs using 3D printing services for rapid iteration',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-0.5 text-primary">■</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    if (siteConcept === 'rugged') {
+      return (
+        <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#0f0f14] via-[#191321] to-[#2b1838]">
+          <div className="grid gap-0 lg:grid-cols-5">
+            <div className="lg:col-span-3 p-8">
+              <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
+                Shop-Tested Manufacturing
+              </p>
+              <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
+                Tough Protection Products Built for Real Production Floors
+              </h2>
+              <p className="mt-4 max-w-2xl text-slate-200">
+                Rough Cut Manufacturing builds practical, durable protective products that hold up in
+                demanding work. We focus on fabric, foam, and plastic solutions with high emphasis on
+                FOD prevention.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs">
+                {[
+                  'Knee pads',
+                  'Custom inlays',
+                  'Part protection',
+                  'Paint protection',
+                  'FOD controls',
+                  'Precision CNC machining',
+                  '3D printing services',
+                ].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-sm border border-primary/40 bg-primary/10 px-3 py-1 text-slate-100"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="lg:col-span-2 border-t border-white/10 bg-black/30 p-8 lg:border-l lg:border-t-0">
+              <h3 className="text-lg font-semibold text-white">Core Services</h3>
+              <ul className="mt-4 space-y-3 text-sm text-slate-200">
+                {[
+                  'Custom fabricated protective products',
+                  'Foam inlays and package protection',
+                  'Shop-floor safety and ergonomic pads',
+                  'Precision CNC machining',
+                  '3D printing services',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-0.5 text-primary">■</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#121523] via-[#0d1020] to-[#1b1131]">
+        <div className="grid gap-0 lg:grid-cols-5">
+          <div className="lg:col-span-3 p-8">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
+              Precision Manufacturing Partner
+            </p>
+            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
+              Built for Part and Paint Protection in High-Accountability Environments
+            </h2>
+            <p className="mt-4 max-w-2xl text-slate-200">
+              Rough Cut Manufacturing delivers practical protection systems using specialized fabrics,
+              foams, and plastics - including custom foam inlays, knee pads, and FOD-focused
+              production solutions.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2 text-xs">
+              {[
+                'FOD prevention',
+                'Custom foam inlays',
+                'Part protection',
+                'Paint protection',
+                'Precision CNC machining',
+                '3D printing services',
+              ].map(
+                (item) => (
+                  <span
+                    key={item}
+                    className="rounded-sm border border-primary/40 bg-primary/10 px-3 py-1 text-slate-100"
+                  >
+                    {item}
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+          <div className="lg:col-span-2 border-t border-white/10 bg-black/20 p-8 lg:border-l lg:border-t-0">
+            <h3 className="text-lg font-semibold text-white">What We Build</h3>
+            <ul className="mt-4 space-y-3 text-sm text-slate-200">
+              {[
+                'Part and paint protective products',
+                'Custom fabricated fabric, foam, and plastic components',
+                'Knee pads and ergonomic shop-floor protection',
+                'FOD control and prevention-focused products',
+                'Precision CNC machining',
+                '3D printing services',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="mt-0.5 text-primary">■</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background-dark to-[#2b1a3d] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-background-dark/90 backdrop-blur">
+    <div className="min-h-screen bg-[#08090f] text-white">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090f]/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-sm bg-white/95">
-              <img
-                src="/logo"
-                alt="Rough Cut Manufacturing logo"
-                className="h-10 w-10 object-contain"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                }}
-              />
-              <span className="material-symbols-outlined text-primary">
-                precision_manufacturing
-              </span>
+            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-white/95">
+              {logoIndex < LOGO_CANDIDATES.length ? (
+                <img
+                  src={LOGO_CANDIDATES[logoIndex]}
+                  alt="Rough Cut Manufacturing logo"
+                  className="h-12 w-12 object-contain"
+                  onError={() => setLogoIndex((prev) => prev + 1)}
+                />
+              ) : (
+                <span className="material-symbols-outlined text-primary">precision_manufacturing</span>
+              )}
             </div>
             <div>
-              <h1 className="text-lg font-bold">Rough Cut Manufacturing</h1>
-              <p className="text-xs text-slate-300">FOD-first protective part manufacturing</p>
+              <h1 className="text-lg font-bold tracking-wide">Rough Cut Manufacturing</h1>
+              <p className="text-xs uppercase tracking-wider text-slate-300">
+                Fabrication | Foam | Plastics | CNC | 3D Printing | FOD Protection
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onEmployeeLogin}
-            className="min-h-[44px] rounded-sm border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+            className="min-h-[44px] rounded-sm border border-primary/50 bg-primary/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/30"
           >
             Employee Login
           </button>
@@ -221,42 +397,40 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
-        <section className="rounded-sm border border-white/10 bg-black/20 p-6">
-          <h2 className="text-3xl font-bold leading-tight text-white">
-            Specialized Protective Products for Parts, Paint, and Process Integrity
-          </h2>
-          <p className="mt-3 max-w-3xl text-slate-200">
-            We manufacture custom solutions using advanced fabrics, foams, and plastics, with a
-            strong emphasis on FOD protection and prevention for demanding manufacturing
-            environments.
-          </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="rounded-sm border border-white/10 bg-[#0d1018] p-4">
+          <p className="mb-3 text-xs uppercase tracking-[0.2em] text-slate-300">Website Concepts</p>
+          <div className="flex flex-wrap gap-2">
             {[
-              'Part and paint protection systems',
-              'Custom foam inlays and inserts',
-              'Knee pads and ergonomic protection',
-              'FOD-focused process aids',
-              'Prototype to production support',
-              'Document-controlled proposal intake',
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+              { id: 'industrial' as const, label: 'Concept A - Industrial Premium' },
+              { id: 'technical' as const, label: 'Concept B - Clean Technical' },
+              { id: 'rugged' as const, label: 'Concept C - Rugged Practical' },
+            ].map((concept) => (
+              <button
+                key={concept.id}
+                type="button"
+                onClick={() => setSiteConcept(concept.id)}
+                className={`min-h-[42px] rounded-sm border px-3 py-2 text-xs font-semibold transition-colors ${
+                  siteConcept === concept.id
+                    ? 'border-primary/70 bg-primary/20 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+                }`}
               >
-                {item}
-              </div>
+                {concept.label}
+              </button>
             ))}
           </div>
         </section>
 
+        {renderHero()}
+
         <section
           id="submit-proposal"
-          className="rounded-sm border border-primary/30 bg-primary/10 p-6 shadow-lg shadow-primary/10"
+          className="rounded-sm border border-primary/30 bg-[#120f1f] p-6 shadow-lg shadow-primary/10"
         >
-          <h3 className="text-2xl font-bold">Submit a Proposal</h3>
+          <h3 className="text-2xl font-bold">Submit Proposal & Paperwork</h3>
           <p className="mt-2 text-sm text-slate-200">
-            Submit your request and paperwork. It goes directly to our admin board as
-            <span className="font-semibold text-white"> Needs Quote</span>.
+            Complete this form and your request goes straight to our admin quoting board as
+            <span className="font-semibold text-white"> Needs Quote</span> for immediate review.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -266,7 +440,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 <input
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                   required
                 />
               </label>
@@ -276,7 +450,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                   required
                 />
               </label>
@@ -286,7 +460,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                   required
                 />
               </label>
@@ -298,7 +472,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={6}
-                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                 placeholder="Tell us what you need, materials, quantities, FOD requirements, and any timing details."
                 required
               />
@@ -315,7 +489,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 multiple
                 accept="*/*"
                 onChange={handleFileSelection}
-                className="block w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white file:mr-3 file:rounded-sm file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary/30"
+                className="block w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white file:mr-3 file:rounded-sm file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary/30"
               />
             </label>
 
