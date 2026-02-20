@@ -45,15 +45,37 @@ try {
   );
 }
 
-// Register service worker for PWA installability (production only)
-if (
-  typeof navigator !== 'undefined' &&
-  'serviceWorker' in navigator &&
-  (import.meta.env.PROD || window.location.hostname === 'localhost')
-) {
+const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+const isLocalhost = hostname === 'localhost';
+const isNetlifyDeployPreview =
+  hostname.startsWith('deploy-preview-') && hostname.endsWith('.netlify.app');
+const isNetlifyBranchDeploy = hostname.endsWith('.netlify.app') && hostname.includes('--');
+const isVercelPreview = hostname.endsWith('.vercel.app') && hostname.includes('-git-');
+const shouldDisableServiceWorker =
+  isNetlifyDeployPreview || isNetlifyBranchDeploy || isVercelPreview;
+
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Ignore registration errors (e.g. not HTTPS in dev)
-    });
+    if (shouldDisableServiceWorker) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          void registration.unregister();
+        });
+      });
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => {
+            void caches.delete(key);
+          });
+        });
+      }
+      return;
+    }
+
+    if (import.meta.env.PROD || isLocalhost) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Ignore registration errors (e.g. not HTTPS in dev)
+      });
+    }
   });
 }
