@@ -387,14 +387,18 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
     const fromParam = trimmed.match(new RegExp(`[?&#]${kind}=([^&#\\s]+)`, 'i'))?.[1];
     if (fromParam) {
-      return decodeIfNeeded(fromParam).replace(/^['"]|['"]$/g, '').trim();
+      return decodeIfNeeded(fromParam)
+        .replace(/^['"]|['"]$/g, '')
+        .trim();
     }
 
     if (/^https?:\/\//i.test(trimmed) || /[?&#]/.test(trimmed)) {
       return '';
     }
 
-    let cleaned = decodeIfNeeded(trimmed).replace(/^['"]|['"]$/g, '').trim();
+    let cleaned = decodeIfNeeded(trimmed)
+      .replace(/^['"]|['"]$/g, '')
+      .trim();
 
     if (kind === 'token') {
       // Common copy/paste issue: token ends with accidental suffix after '=' (numeric or hex like "...=12345678" or "...=34C06FA0")
@@ -456,7 +460,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
     // Use proxy endpoint for Trello API downloads (bypasses CORS)
     if (!attachment.id || !credentials) return '';
-    const filename = (attachment.name || attachment.fileName || 'attachment').trim() || 'attachment';
+    const filename =
+      (attachment.name || attachment.fileName || 'attachment').trim() || 'attachment';
     const encodedFilename = encodeURIComponent(filename);
     // Use our backend proxy instead of direct Trello API
     const sourceUrl = encodeURIComponent(rawUrl);
@@ -491,18 +496,18 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     });
 
     const url = `https://api.trello.com/1/cards/${cardId}/attachments?${params}`;
-    
+
     if (import.meta.env.DEV) {
-      console.log(`[Trello Debug] Fetching attachments for card ${cardId.substring(0, 8)}...`);
+      console.warn(`[Trello Debug] Fetching attachments for card ${cardId.substring(0, 8)}...`);
     }
 
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       let errorDetails = '';
       try {
@@ -525,11 +530,11 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       } catch {
         // Ignore
       }
-      
+
       if (response.status === 401) {
         throw new Error(
           `Trello attachment access denied (401) for card ${cardId.substring(0, 8)}...${errorDetails}. ` +
-          `This may require a token with 'read,write' scope instead of just 'read'.`
+            `This may require a token with 'read,write' scope instead of just 'read'.`
         );
       }
       throw new Error(`Trello API attachment lookup failed (${response.status})${errorDetails}`);
@@ -562,15 +567,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     options?: { skipApiFetch?: boolean }
   ): Promise<TrelloAttachment[]> => {
     const jsonAttachments = mergeCardAttachments(card.attachments, []);
-    
+
     // If we already have attachments from board API response, skip individual card fetch
     // (This avoids 401 errors when token scope is 'read' but attachments are already included)
     if (options?.skipApiFetch || jsonAttachments.length > 0) {
       return jsonAttachments;
     }
-    
+
     if (!credentials) return jsonAttachments;
-    
+
     try {
       const apiAttachments = await fetchCardAttachmentsFromTrelloApi(card.id, credentials);
       if (apiAttachments.length === 0) return jsonAttachments;
@@ -581,7 +586,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       if (!errorMsg.includes('401')) {
         console.warn(`Failed to fetch Trello API attachments for card ${card.id}:`, err);
       } else if (import.meta.env.DEV) {
-        console.log(`[Trello] Skipping attachment fetch for card ${card.id.substring(0, 8)}... (401 - using attachments from board response instead)`);
+        console.warn(
+          `[Trello] Skipping attachment fetch for card ${card.id.substring(0, 8)}... (401 - using attachments from board response instead)`
+        );
       }
       return jsonAttachments;
     }
@@ -618,7 +625,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     });
     const cardsWithAttachments = rawCards.map((card) => ({
       ...card,
-      attachments: mergeCardAttachments(card.attachments, boardAttachmentsByCard.get(card.id) ?? []),
+      attachments: mergeCardAttachments(
+        card.attachments,
+        boardAttachmentsByCard.get(card.id) ?? []
+      ),
     }));
 
     return {
@@ -661,10 +671,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       fields: 'id,fullName,username',
     });
     const fullUrl = `${baseUrl}?${params.toString()}`;
-    
+
     // Debug logging in development
     if (import.meta.env.DEV) {
-      console.log('[Trello Debug] Making API request:', {
+      console.warn('[Trello Debug] Making API request:', {
         key: credentials.key,
         keyLength: credentials.key.length,
         tokenPrefix: credentials.token.substring(0, 15),
@@ -678,10 +688,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     const identityResponse = await fetch(fullUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
     });
-    
+
     if (!identityResponse.ok) {
       let errorDetails = '';
       let errorJson: unknown = null;
@@ -713,11 +723,11 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       if (identityResponse.status === 401) {
         throw new Error(
           `Trello API returned 401 Unauthorized.${errorDetails}\n\n` +
-          `Troubleshooting steps:\n` +
-          `1. Verify the token was generated using THIS exact API key: ${credentials.key}\n` +
-          `2. Generate a fresh token: https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=WorkTrackPro&key=${credentials.key}\n` +
-          `3. Make sure "Allowed Origins" includes: http://localhost:3000\n` +
-          `4. Check browser console (F12) for detailed error logs`
+            `Troubleshooting steps:\n` +
+            `1. Verify the token was generated using THIS exact API key: ${credentials.key}\n` +
+            `2. Generate a fresh token: https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=WorkTrackPro&key=${credentials.key}\n` +
+            `3. Make sure "Allowed Origins" includes: http://localhost:3000\n` +
+            `4. Check browser console (F12) for detailed error logs`
         );
       }
       throw new Error(`Trello auth check failed (${identityResponse.status})${errorDetails}`);
@@ -774,7 +784,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
     // Show what we're using (for debugging)
     if (import.meta.env.DEV) {
-      console.log('[Trello Validate] Using credentials:', {
+      console.warn('[Trello Validate] Using credentials:', {
         key: `${credentials.key.substring(0, 8)}...${credentials.key.substring(credentials.key.length - 4)}`,
         keyLength: credentials.key.length,
         token: `${credentials.token.substring(0, 10)}...${credentials.token.substring(credentials.token.length - 5)}`,
@@ -798,7 +808,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
       setTrelloValidationMessage(successMessage);
       setStatus(successMessage);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to validate Trello credentials.';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to validate Trello credentials.';
       setError(errorMessage);
       // In dev, also log to console for easier debugging
       if (import.meta.env.DEV) {
@@ -845,7 +856,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         lists: 'open',
         list_fields: 'id,name',
       });
-      const response = await fetch(`https://api.trello.com/1/boards/${boardId}?${params.toString()}`);
+      const response = await fetch(
+        `https://api.trello.com/1/boards/${boardId}?${params.toString()}`
+      );
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error(
@@ -1484,7 +1497,12 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         if (uploads.length > 0) {
           description +=
             '\n\n--- Trello Attachments ---\n' +
-            uploads.map((a) => `• ${a.name || 'attachment'}: ${a.url || 'Trello ID: ' + (a.id || 'unknown')}`).join('\n');
+            uploads
+              .map(
+                (a) =>
+                  `• ${a.name || 'attachment'}: ${a.url || 'Trello ID: ' + (a.id || 'unknown')}`
+              )
+              .join('\n');
         }
 
         const poField =
@@ -1767,19 +1785,24 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         for (const att of fileAttachments) {
           try {
             setStatus(`Importing attachment ${att.name || 'file'}...`);
-            
+
             // Build download URL - use proxy for Trello API endpoints, direct URL for external files
             let downloadUrl = '';
             const rawUrl = (att.url || '').trim();
-            
+
             // If URL exists and is NOT a Trello card/board/API link, use it directly
-            if (rawUrl && !/trello\.com\/[cb]\//i.test(rawUrl) && !rawUrl.includes('/attachments/') && !rawUrl.includes('api.trello.com')) {
+            if (
+              rawUrl &&
+              !/trello\.com\/[cb]\//i.test(rawUrl) &&
+              !rawUrl.includes('/attachments/') &&
+              !rawUrl.includes('api.trello.com')
+            ) {
               downloadUrl = withTrelloAuthParams(rawUrl, trelloCredentials);
             } else if (att.id && trelloCredentials) {
               // Use proxy endpoint for Trello API downloads (bypasses CORS)
               downloadUrl = buildTrelloAttachmentDownloadUrl(card.id, att, trelloCredentials);
             }
-            
+
             if (!downloadUrl) {
               results.attachmentsFailed++;
               errors.push({
@@ -1806,7 +1829,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 continue;
               }
               const errorText = await res.text().catch(() => '');
-              throw new Error(`Attachment download failed (${res.status})${errorText ? ': ' + errorText.substring(0, 100) : ''}`);
+              throw new Error(
+                `Attachment download failed (${res.status})${errorText ? ': ' + errorText.substring(0, 100) : ''}`
+              );
             }
 
             const blob = await res.blob();

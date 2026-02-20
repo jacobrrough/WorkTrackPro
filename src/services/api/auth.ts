@@ -27,8 +27,7 @@ export const authService = {
       session = activeSession;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const isInvalidRefreshToken =
-        /invalid refresh token|refresh token not found/i.test(message);
+      const isInvalidRefreshToken = /invalid refresh token|refresh token not found/i.test(message);
       if (isInvalidRefreshToken) {
         // Local browser token can become stale; clear only local auth state and continue as logged-out.
         await supabase.auth.signOut({ scope: 'local' });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import { formatJobCode, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
@@ -59,7 +59,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   currentUser: _currentUser,
   inventory: _inventory = [],
 }) => {
-  const jobs = excludePaid(allJobs);
+  const jobs = useMemo(() => excludePaid(allJobs), [allJobs]);
   const { state: navState, updateState } = useNavigation();
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -199,7 +199,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   // Stable key so effect only runs when the set of job IDs changes (avoids infinite loop from new jobs array ref each render)
-  const jobIdsKey = jobs.length === 0 ? '' : jobs.map((j) => j.id).sort().join(',');
+  const jobIdsKey =
+    jobs.length === 0
+      ? ''
+      : jobs
+          .map((j) => j.id)
+          .sort()
+          .join(',');
 
   // Load checklist states for all jobs
   useEffect(() => {
@@ -236,7 +242,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [jobIdsKey, checklistRefreshTrigger]);
+  }, [jobIdsKey, checklistRefreshTrigger, jobs]);
 
   const getJobsForColumn = (columnId: JobStatus) => {
     return jobs.filter((job) => {
