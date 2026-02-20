@@ -117,7 +117,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
       : '';
   const isLaborAutoFromTarget = !!(result?.isLaborAutoAdjusted && isManualPrice);
   const laborDisplayValue = isLaborAutoFromTarget
-    ? result?.laborHours?.toFixed(2) ?? laborHoursInput
+    ? (result?.laborHours?.toFixed(2) ?? laborHoursInput)
     : laborHoursInput;
 
   return (
@@ -191,7 +191,9 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           )}
         </div>
         <span className="text-xs text-slate-500">
-          {isManualPrice ? 'Labor auto-adjusted to hit total price' : 'From variant prices × set composition'}
+          {isManualPrice
+            ? 'Labor auto-adjusted to hit total price'
+            : 'From variant prices × set composition'}
         </span>
       </div>
       {result ? (

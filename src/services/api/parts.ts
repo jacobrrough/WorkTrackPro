@@ -309,7 +309,9 @@ export const partsService = {
             return null;
           }
 
-          const linkedJobIds = ((linkedJobsData ?? []) as Array<{ id: string }>).map((job) => job.id);
+          const linkedJobIds = ((linkedJobsData ?? []) as Array<{ id: string }>).map(
+            (job) => job.id
+          );
           if (linkedJobIds.length > 0) {
             const clearResult = await supabase
               .from('jobs')
@@ -435,7 +437,8 @@ export const partsService = {
       return false;
     }
 
-    const sourcePartNumber = (sourcePartData as { part_number?: string } | null)?.part_number ?? null;
+    const sourcePartNumber =
+      (sourcePartData as { part_number?: string } | null)?.part_number ?? null;
     if (sourcePartNumber) {
       const now = new Date().toISOString();
 

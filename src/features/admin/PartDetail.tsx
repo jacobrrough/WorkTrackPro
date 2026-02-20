@@ -77,7 +77,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
       }
       if (
         j.partNumber &&
-        (j.partNumber === part.partNumber || j.partNumber.replace(/-\d{2}$/, '') === part.partNumber)
+        (j.partNumber === part.partNumber ||
+          j.partNumber.replace(/-\d{2}$/, '') === part.partNumber)
       ) {
         return true;
       }
@@ -910,7 +911,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 cncRate={settings.cncRate}
                 printer3DRate={settings.printer3DRate}
                 autoSetLaborHours={
-                  part.variants?.length && part.setComposition && Object.keys(part.setComposition).length > 0
+                  part.variants?.length &&
+                  part.setComposition &&
+                  Object.keys(part.setComposition).length > 0
                     ? calculateSetLaborFromVariants(part.variants, part.setComposition)
                     : undefined
                 }
@@ -1325,7 +1328,9 @@ const VariantCard: React.FC<VariantCardProps> = ({
                               }
                               try {
                                 const nextUnit = (
-                                  materialUnitValues[material.id] ?? material.unit ?? 'units'
+                                  materialUnitValues[material.id] ??
+                                  material.unit ??
+                                  'units'
                                 ).trim();
                                 const updated = await partsService.updatePartMaterial(material.id, {
                                   quantityPerUnit: numValue,
