@@ -4,6 +4,7 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import Login from './Login';
 import { jobService } from './pocketbase';
+import PublicHome from './public/PublicHome';
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const JobList = lazy(() => import('./JobList'));
@@ -116,6 +117,15 @@ export default function App() {
     },
     [getJobByCode, clockIn]
   );
+
+  const isEmployeeAppPath =
+    typeof window !== 'undefined'
+      ? window.location.pathname === '/app' || window.location.pathname.startsWith('/app/')
+      : true;
+
+  if (!isEmployeeAppPath) {
+    return <PublicHome onEmployeeLogin={() => window.location.assign('/app')} />;
+  }
 
   if (!currentUser && !isLoading) {
     return <Login onLogin={handleLogin} error={authError} isLoading={isLoading} />;
