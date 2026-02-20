@@ -196,7 +196,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
       return (
         <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#10131d] via-[#121a2b] to-[#1a2140]">
           <div className="grid gap-0 lg:grid-cols-5">
-            <div className="lg:col-span-3 p-8">
+            <div className="p-8 lg:col-span-3">
               <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
                 Technical Manufacturing
               </p>
@@ -225,7 +225,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 ))}
               </div>
             </div>
-            <div className="lg:col-span-2 border-t border-white/10 bg-black/25 p-8 lg:border-l lg:border-t-0">
+            <div className="border-t border-white/10 bg-black/25 p-8 lg:col-span-2 lg:border-l lg:border-t-0">
               <h3 className="text-lg font-semibold text-white">Built For</h3>
               <ul className="mt-4 space-y-3 text-sm text-slate-200">
                 {[
@@ -251,7 +251,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
       return (
         <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#0f0f14] via-[#191321] to-[#2b1838]">
           <div className="grid gap-0 lg:grid-cols-5">
-            <div className="lg:col-span-3 p-8">
+            <div className="p-8 lg:col-span-3">
               <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
                 Shop-Tested Manufacturing
               </p>
@@ -259,9 +259,9 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 Tough Protection Products Built for Real Production Floors
               </h2>
               <p className="mt-4 max-w-2xl text-slate-200">
-                Rough Cut Manufacturing builds practical, durable protective products that hold up in
-                demanding work. We focus on fabric, foam, and plastic solutions with high emphasis on
-                FOD prevention.
+                Rough Cut Manufacturing builds practical, durable protective products that hold up
+                in demanding work. We focus on fabric, foam, and plastic solutions with high
+                emphasis on FOD prevention.
               </p>
               <div className="mt-6 flex flex-wrap gap-2 text-xs">
                 {[
@@ -282,7 +282,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 ))}
               </div>
             </div>
-            <div className="lg:col-span-2 border-t border-white/10 bg-black/30 p-8 lg:border-l lg:border-t-0">
+            <div className="border-t border-white/10 bg-black/30 p-8 lg:col-span-2 lg:border-l lg:border-t-0">
               <h3 className="text-lg font-semibold text-white">Core Services</h3>
               <ul className="mt-4 space-y-3 text-sm text-slate-200">
                 {[
@@ -307,7 +307,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
     return (
       <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#121523] via-[#0d1020] to-[#1b1131]">
         <div className="grid gap-0 lg:grid-cols-5">
-          <div className="lg:col-span-3 p-8">
+          <div className="p-8 lg:col-span-3">
             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
               Precision Manufacturing Partner
             </p>
@@ -315,9 +315,9 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
               Built for Part and Paint Protection in High-Accountability Environments
             </h2>
             <p className="mt-4 max-w-2xl text-slate-200">
-              Rough Cut Manufacturing delivers practical protection systems using specialized fabrics,
-              foams, and plastics - including custom foam inlays, knee pads, and FOD-focused
-              production solutions.
+              Rough Cut Manufacturing delivers practical protection systems using specialized
+              fabrics, foams, and plastics - including custom foam inlays, knee pads, and
+              FOD-focused production solutions.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-xs">
               {[
@@ -327,19 +327,17 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 'Paint protection',
                 'Precision CNC machining',
                 '3D printing services',
-              ].map(
-                (item) => (
-                  <span
-                    key={item}
-                    className="rounded-sm border border-primary/40 bg-primary/10 px-3 py-1 text-slate-100"
-                  >
-                    {item}
-                  </span>
-                )
-              )}
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-sm border border-primary/40 bg-primary/10 px-3 py-1 text-slate-100"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
           </div>
-          <div className="lg:col-span-2 border-t border-white/10 bg-black/20 p-8 lg:border-l lg:border-t-0">
+          <div className="border-t border-white/10 bg-black/20 p-8 lg:col-span-2 lg:border-l lg:border-t-0">
             <h3 className="text-lg font-semibold text-white">What We Build</h3>
             <ul className="mt-4 space-y-3 text-sm text-slate-200">
               {[
@@ -376,7 +374,9 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                   onError={() => setLogoIndex((prev) => prev + 1)}
                 />
               ) : (
-                <span className="material-symbols-outlined text-primary">precision_manufacturing</span>
+                <span className="material-symbols-outlined text-primary">
+                  precision_manufacturing
+                </span>
               )}
             </div>
             <div>
