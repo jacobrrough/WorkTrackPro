@@ -12,10 +12,13 @@ export interface QuoteCalculatorProps {
   laborRate?: number;
   cncRate?: number;
   printer3DRate?: number;
-  markupPercent?: number;
   className?: string;
   /** Callback when set price changes - parent should save to part. Pass undefined to revert to auto (parent recalculates from variants). */
   onSetPriceChange?: (price: number | undefined) => void;
+  /** Callback when set labor hours change. */
+  onLaborHoursChange?: (laborHours: number | undefined) => void;
+  /** Optional auto-calculated set labor hours from variant composition. */
+  autoSetLaborHours?: number;
 }
 
 const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
@@ -26,14 +29,16 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   laborRate = 175,
   cncRate = 150,
   printer3DRate = 100,
-  markupPercent = 20,
   className = '',
   onSetPriceChange,
+  onLaborHoursChange,
+  autoSetLaborHours,
 }) => {
   const quantity = 1;
   const [manualSetPrice, setManualSetPrice] = useState<string>(part.pricePerSet?.toString() || '');
   const [isManualPrice, setIsManualPrice] = useState(!!part.pricePerSet);
   const [hasUserEdited, setHasUserEdited] = useState(false);
+  const [laborHoursInput, setLaborHoursInput] = useState<string>(part.laborHours?.toString() ?? '');
 
   const autoSetPrice = useMemo(
     () => calculateSetPriceFromVariants(variants ?? [], setComposition ?? {}),
@@ -59,6 +64,10 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   }, [part.pricePerSet, hasUserEdited, autoSetPrice]);
 
   useEffect(() => {
+    setLaborHoursInput(part.laborHours?.toString() ?? '');
+  }, [part.laborHours]);
+
+  useEffect(() => {
     if (hasUserEdited && onSetPriceChange) {
       if (isManualPrice && manualSetPrice) {
         const price = parseFloat(manualSetPrice);
@@ -77,7 +86,6 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
       laborRate,
       cncRate,
       printer3DRate,
-      markupPercent,
       manualSetPrice: setPrice,
     });
   }, [
@@ -87,7 +95,6 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     laborRate,
     cncRate,
     printer3DRate,
-    markupPercent,
     manualSetPrice,
     isManualPrice,
   ]);
@@ -108,10 +115,49 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     : autoSetPrice != null
       ? autoSetPrice.toString()
       : '';
+  const isLaborAutoFromTarget = !!(result?.isLaborAutoAdjusted && isManualPrice);
+  const laborDisplayValue = isLaborAutoFromTarget
+    ? result?.laborHours?.toFixed(2) ?? laborHoursInput
+    : laborHoursInput;
 
   return (
     <div className={`rounded-sm border border-primary/30 bg-primary/10 p-4 ${className}`}>
       <p className="mb-3 text-xs font-bold uppercase text-slate-400">Quote calculator (per set)</p>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="text-sm text-slate-300">Set labor hours</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            step="0.1"
+            min={0}
+            value={laborDisplayValue}
+            onChange={(e) => setLaborHoursInput(e.target.value)}
+            onBlur={() => {
+              if (isLaborAutoFromTarget) return;
+              const nextLabor = laborHoursInput.trim() === '' ? undefined : Number(laborHoursInput);
+              if (nextLabor != null && Number.isNaN(nextLabor)) return;
+              onLaborHoursChange?.(nextLabor);
+            }}
+            readOnly={isLaborAutoFromTarget}
+            className="w-32 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+            placeholder="0.0"
+          />
+          {isLaborAutoFromTarget && <AutoBadge />}
+          {autoSetLaborHours != null && (
+            <button
+              type="button"
+              onClick={() => {
+                const nextAuto = Number(autoSetLaborHours.toFixed(2));
+                setLaborHoursInput(nextAuto.toString());
+                onLaborHoursChange?.(nextAuto);
+              }}
+              className="rounded bg-primary/20 px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/30"
+            >
+              Use Auto
+            </button>
+          )}
+        </div>
+      </div>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <label className="text-sm text-slate-300">Set price</label>
         <div className="flex items-center gap-2">
@@ -145,7 +191,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           )}
         </div>
         <span className="text-xs text-slate-500">
-          {isManualPrice ? 'Total calculated backwards' : 'From variant prices × set composition'}
+          {isManualPrice ? 'Labor auto-adjusted to hit total price' : 'From variant prices × set composition'}
         </span>
       </div>
       {result ? (
@@ -157,6 +203,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           <div className="flex justify-between text-slate-300">
             <span className="flex items-center">
               Labor ({result.laborHours.toFixed(1)} h × ${laborRate}/h)
+              {result.isLaborAutoAdjusted && <AutoBadge />}
             </span>
             <span className="text-white">${result.laborCost.toFixed(2)}</span>
           </div>
@@ -177,28 +224,11 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             </div>
           )}
           <div className="flex justify-between border-t border-white/10 pt-2 text-slate-300">
-            <span className="flex items-center">
-              Subtotal
-              {result.isReverseCalculated && <AutoBadge />}
-            </span>
+            <span>Subtotal</span>
             <span className="text-white">${result.subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-slate-300">
-            <span className="flex items-center">
-              Markup (
-              {result.isReverseCalculated && result.effectiveMarkupPercent != null
-                ? result.effectiveMarkupPercent.toFixed(1)
-                : result.markupPercent}
-              %)
-              {result.isReverseCalculated && <AutoBadge />}
-            </span>
-            <span className="text-white">${result.markupAmount.toFixed(2)}</span>
-          </div>
           <div className="flex justify-between border-t border-primary/30 pt-2 text-base font-semibold text-white">
-            <span className="flex items-center">
-              Total quote
-              {result.isReverseCalculated && <AutoBadge />}
-            </span>
+            <span>Total quote</span>
             <span>${result.total.toFixed(2)}</span>
           </div>
         </div>

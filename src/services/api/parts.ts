@@ -632,7 +632,7 @@ export const partsService = {
 
   async updatePartMaterial(id: string, data: Partial<PartMaterial>): Promise<PartMaterial | null> {
     // Try newer schema first (quantity_per_unit)
-    let row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    let row: Record<string, unknown> = {};
     if (data.quantityPerUnit != null) row.quantity_per_unit = data.quantityPerUnit;
     if (data.unit != null) row.unit = data.unit;
 
@@ -643,14 +643,15 @@ export const partsService = {
       .select('*')
       .single();
 
-    // If that fails, try older schema (quantity)
+    // If that fails, try older schema (quantity) or schema without quantity_per_unit.
     if (
       error &&
-      data.quantityPerUnit != null &&
-      (error.message?.includes('quantity_per_unit') || error.code === '42703')
+      (error.message?.includes('quantity_per_unit') ||
+        error.message?.includes('updated_at') ||
+        error.code === '42703')
     ) {
-      row = { updated_at: new Date().toISOString() };
-      row.quantity = data.quantityPerUnit;
+      row = {};
+      if (data.quantityPerUnit != null) row.quantity = data.quantityPerUnit;
       if (data.unit != null) row.unit = data.unit;
       const result = await supabase
         .from('part_materials')

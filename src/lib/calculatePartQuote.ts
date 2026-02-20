@@ -2,7 +2,6 @@ import type { Part, PartVariant, PartMaterial, InventoryItem } from '@/core/type
 
 const DEFAULT_LABOR_RATE = 175;
 const MATERIAL_MARKUP_MULTIPLIER = 2.25;
-const DEFAULT_MARKUP_PERCENT = 20;
 
 export interface PartQuoteResult {
   materialCostOur: number;
@@ -26,6 +25,8 @@ export interface PartQuoteResult {
   isReverseCalculated?: boolean;
   /** Effective markup percent when reverse calculated (may differ from input markupPercent) */
   effectiveMarkupPercent?: number;
+  /** True when labor hours were auto-adjusted from a manual set total */
+  isLaborAutoAdjusted?: boolean;
 }
 
 /**
@@ -85,7 +86,6 @@ export function calculatePartQuote(
     cncRate?: number;
     /** Rate per hour for 3D printer time */
     printer3DRate?: number;
-    markupPercent?: number;
     materialMultiplier?: number;
     /** Manual set price - when provided, total = manualSetPrice * quantity and calculation works backwards */
     manualSetPrice?: number;
@@ -96,7 +96,6 @@ export function calculatePartQuote(
   const laborRate = options?.laborRate ?? DEFAULT_LABOR_RATE;
   const cncRate = options?.cncRate ?? DEFAULT_LABOR_RATE;
   const printer3DRate = options?.printer3DRate ?? DEFAULT_LABOR_RATE;
-  const markupPercent = options?.markupPercent ?? DEFAULT_MARKUP_PERCENT;
   const multiplier = options?.materialMultiplier ?? MATERIAL_MARKUP_MULTIPLIER;
   const manualSetPrice = options?.manualSetPrice;
 
@@ -114,33 +113,32 @@ export function calculatePartQuote(
   }
 
   const materialCostCustomer = materialCostOur * multiplier;
-  const laborHours = (part.laborHours ?? 0) * quantity;
-  const laborCost = laborHours * laborRate;
+  const baseLaborHours = (part.laborHours ?? 0) * quantity;
   const cncHours = part.requiresCNC ? (part.cncTimeHours ?? 0) * quantity : 0;
   const cncCost = cncHours * cncRate;
   const printer3DHours = part.requires3DPrint ? (part.printer3DTimeHours ?? 0) * quantity : 0;
   const printer3DCost = printer3DHours * printer3DRate;
 
+  let laborHours = baseLaborHours;
+  const isReverseCalculated = manualSetPrice != null && manualSetPrice > 0;
+  let isLaborAutoAdjusted = false;
+  if (isReverseCalculated) {
+    // Reverse calculation for set totals: solve labor hours directly.
+    const targetTotal = manualSetPrice * quantity;
+    const fixedNonLaborSubtotal = materialCostCustomer + cncCost + printer3DCost;
+    const targetLaborCost = Math.max(0, targetTotal - fixedNonLaborSubtotal);
+    laborHours = laborRate > 0 ? targetLaborCost / laborRate : baseLaborHours;
+    isLaborAutoAdjusted = true;
+  }
+  const laborCost = laborHours * laborRate;
+
   // Always calculate subtotal from actual costs (materials, labor, machine time)
   // Materials and quantities are NEVER auto-adjusted - they stay fixed
   const subtotal = materialCostCustomer + laborCost + cncCost + printer3DCost;
 
-  let markupAmount: number;
-  let total: number;
-  let effectiveMarkupPercent: number | undefined;
-  const isReverseCalculated = manualSetPrice != null && manualSetPrice > 0;
-
-  if (isReverseCalculated) {
-    // Reverse calculation: total is set manually, calculate backwards
-    // Materials, labor, and machine time stay fixed - only markup adjusts
-    total = manualSetPrice * quantity;
-    markupAmount = total - subtotal; // Markup is whatever remains after fixed costs
-    effectiveMarkupPercent = subtotal > 0 ? (markupAmount / subtotal) * 100 : markupPercent;
-  } else {
-    // Forward calculation: normal flow
-    markupAmount = subtotal * (markupPercent / 100);
-    total = subtotal + markupAmount;
-  }
+  const markupPercent = 0;
+  const markupAmount = 0;
+  const total = subtotal;
 
   return {
     materialCostOur,
@@ -157,7 +155,8 @@ export function calculatePartQuote(
     total,
     quantity,
     isReverseCalculated,
-    effectiveMarkupPercent,
+    effectiveMarkupPercent: undefined,
+    isLaborAutoAdjusted,
   };
 }
 

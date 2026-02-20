@@ -23,7 +23,7 @@ import Accordion from '@/components/Accordion';
 import MaterialCostDisplay from '@/components/MaterialCostDisplay';
 import QuoteCalculator from '@/components/QuoteCalculator';
 import FileUploadButton from '@/FileUploadButton';
-import { calculateVariantQuote } from '@/lib/calculatePartQuote';
+import { calculatePartQuote, calculateVariantQuote } from '@/lib/calculatePartQuote';
 import { useSettings } from '@/contexts/SettingsContext';
 import {
   calculateSetPriceFromVariants,
@@ -757,46 +757,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
         {!isVirtualPart && (
           <Accordion title="Set Information" defaultExpanded>
             <div className="space-y-4">
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <label className="text-sm text-slate-400">Set Labor Hours</label>
-                  {part.variants &&
-                    part.variants.length > 0 &&
-                    part.setComposition &&
-                    Object.keys(part.setComposition).length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const auto = calculateSetLaborFromVariants(
-                            part.variants ?? [],
-                            part.setComposition ?? {}
-                          );
-                          if (auto != null) handleUpdatePart({ laborHours: auto });
-                        }}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Use Auto
-                      </button>
-                    )}
-                </div>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={part.laborHours ?? ''}
-                  onChange={(e) =>
-                    handleUpdatePart({
-                      laborHours: e.target.value ? Number(e.target.value) : undefined,
-                    })
-                  }
-                  onBlur={(e) => {
-                    const value = e.target.value ? Number(e.target.value) : undefined;
-                    if (value !== part.laborHours) handleUpdatePart({ laborHours: value });
-                  }}
-                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
-                  placeholder="0.0"
-                />
-              </div>
-
               <div className="space-y-3">
                 {/* CNC Toggle */}
                 <div className="flex flex-wrap items-center gap-4">
@@ -918,70 +878,94 @@ const PartDetail: React.FC<PartDetailProps> = ({
               </div>
 
               {part.variants && part.variants.length > 0 && (
-                <>
-                  <div>
-                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">
-                      Set composition
-                    </p>
-                    <SetCompositionEditor
-                      part={part}
-                      variants={part.variants}
-                      setComposition={
-                        part.setComposition &&
-                        typeof part.setComposition === 'object' &&
-                        !Array.isArray(part.setComposition)
-                          ? part.setComposition
-                          : {}
-                      }
-                      onUpdate={(composition) => handleUpdatePart({ setComposition: composition })}
-                    />
-                    {part.setComposition &&
-                      typeof part.setComposition === 'object' &&
-                      Object.keys(part.setComposition).length > 0 && (
-                        <p className="mt-2 text-sm text-white">
-                          One set: {formatSetComposition(part.setComposition)}
-                        </p>
-                      )}
-                  </div>
-                  <QuoteCalculator
+                <div>
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Set composition</p>
+                  <SetCompositionEditor
                     part={part}
-                    inventoryItems={inventoryItems}
                     variants={part.variants}
-                    setComposition={part.setComposition}
-                    laborRate={settings.laborRate}
-                    cncRate={settings.cncRate}
-                    printer3DRate={settings.printer3DRate}
-                    onSetPriceChange={async (price) => {
-                      if (price !== undefined) {
-                        if (price !== part.pricePerSet) {
-                          await handleUpdatePart({ pricePerSet: price });
-                          if (
-                            part.variants?.length &&
-                            part.setComposition &&
-                            Object.keys(part.setComposition).length > 0
-                          ) {
-                            const toApply = variantPricesFromSetPrice(
-                              price,
-                              part.setComposition,
-                              part.variants
-                            );
-                            for (const { variantId, price: p } of toApply) {
-                              await partsService.updateVariant(variantId, { pricePerVariant: p });
-                            }
-                            if (toApply.length > 0) await loadPart();
-                          }
-                        }
-                      } else {
-                        const auto = calculateSetPriceFromVariants(
-                          part.variants ?? [],
-                          part.setComposition ?? {}
-                        );
-                        if (auto != null) handleUpdatePart({ pricePerSet: auto });
-                      }
-                    }}
+                    setComposition={
+                      part.setComposition &&
+                      typeof part.setComposition === 'object' &&
+                      !Array.isArray(part.setComposition)
+                        ? part.setComposition
+                        : {}
+                    }
+                    onUpdate={(composition) => handleUpdatePart({ setComposition: composition })}
                   />
-                </>
+                  {part.setComposition &&
+                    typeof part.setComposition === 'object' &&
+                    Object.keys(part.setComposition).length > 0 && (
+                      <p className="mt-2 text-sm text-white">
+                        One set: {formatSetComposition(part.setComposition)}
+                      </p>
+                    )}
+                </div>
               )}
+              <QuoteCalculator
+                part={part}
+                inventoryItems={inventoryItems}
+                variants={part.variants ?? []}
+                setComposition={part.setComposition}
+                laborRate={settings.laborRate}
+                cncRate={settings.cncRate}
+                printer3DRate={settings.printer3DRate}
+                autoSetLaborHours={
+                  part.variants?.length && part.setComposition && Object.keys(part.setComposition).length > 0
+                    ? calculateSetLaborFromVariants(part.variants, part.setComposition)
+                    : undefined
+                }
+                onLaborHoursChange={async (laborHours) => {
+                  if (Math.abs((part.laborHours ?? 0) - (laborHours ?? 0)) > 0.01) {
+                    await handleUpdatePart({ laborHours });
+                  }
+                }}
+                onSetPriceChange={async (price) => {
+                  if (price !== undefined) {
+                    const updates: Partial<Part> = {};
+                    if (price !== part.pricePerSet) {
+                      updates.pricePerSet = price;
+                    }
+                    const derived = calculatePartQuote(part, 1, inventoryItems, {
+                      laborRate: settings.laborRate,
+                      cncRate: settings.cncRate,
+                      printer3DRate: settings.printer3DRate,
+                      manualSetPrice: price,
+                    });
+                    if (derived?.isLaborAutoAdjusted) {
+                      const nextLaborHours = Number(derived.laborHours.toFixed(2));
+                      if (Math.abs((part.laborHours ?? 0) - nextLaborHours) > 0.01) {
+                        updates.laborHours = nextLaborHours;
+                      }
+                    }
+                    if (Object.keys(updates).length > 0) {
+                      await handleUpdatePart(updates);
+                    }
+                    if (price !== part.pricePerSet) {
+                      if (
+                        part.variants?.length &&
+                        part.setComposition &&
+                        Object.keys(part.setComposition).length > 0
+                      ) {
+                        const toApply = variantPricesFromSetPrice(
+                          price,
+                          part.setComposition,
+                          part.variants
+                        );
+                        for (const { variantId, price: p } of toApply) {
+                          await partsService.updateVariant(variantId, { pricePerVariant: p });
+                        }
+                        if (toApply.length > 0) await loadPart();
+                      }
+                    }
+                  } else {
+                    const auto = calculateSetPriceFromVariants(
+                      part.variants ?? [],
+                      part.setComposition ?? {}
+                    );
+                    if (auto != null) handleUpdatePart({ pricePerSet: auto });
+                  }
+                }}
+              />
             </div>
           </Accordion>
         )}
@@ -1156,6 +1140,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const [laborHours, setLaborHours] = useState(variant.laborHours?.toString() || '');
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValues, setMaterialQtyValues] = useState<Record<string, string>>({});
+  const [materialUnitValues, setMaterialUnitValues] = useState<Record<string, string>>({});
 
   const autoLaborHours =
     partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
@@ -1339,18 +1324,27 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                 return;
                               }
                               try {
+                                const nextUnit = (
+                                  materialUnitValues[material.id] ?? material.unit ?? 'units'
+                                ).trim();
                                 const updated = await partsService.updatePartMaterial(material.id, {
                                   quantityPerUnit: numValue,
+                                  unit: nextUnit || 'units',
                                 });
                                 if (updated) {
-                                  showToast('Quantity updated', 'success');
+                                  showToast('Material updated', 'success');
                                   setEditingMaterialQty(null);
+                                  setMaterialUnitValues((prev) => {
+                                    const next = { ...prev };
+                                    delete next[material.id];
+                                    return next;
+                                  });
                                   onMaterialAdded();
                                 } else {
-                                  showToast('Failed to update quantity', 'error');
+                                  showToast('Failed to update material', 'error');
                                 }
                               } catch {
-                                showToast('Failed to update quantity', 'error');
+                                showToast('Failed to update material', 'error');
                               }
                             }}
                             onKeyDown={(e) => {
@@ -1363,12 +1357,27 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                   delete next[material.id];
                                   return next;
                                 });
+                                setMaterialUnitValues((prev) => {
+                                  const next = { ...prev };
+                                  delete next[material.id];
+                                  return next;
+                                });
                               }
                             }}
                             autoFocus
                             className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
                           />
-                          <span className="text-xs text-slate-400">{material.unit}</span>
+                          <input
+                            type="text"
+                            value={materialUnitValues[material.id] ?? material.unit ?? 'units'}
+                            onChange={(e) =>
+                              setMaterialUnitValues((prev) => ({
+                                ...prev,
+                                [material.id]: e.target.value,
+                              }))
+                            }
+                            className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                          />
                         </>
                       ) : (
                         <>
@@ -1382,6 +1391,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
                               setMaterialQtyValues((prev) => ({
                                 ...prev,
                                 [material.id]: qty.toString(),
+                              }));
+                              setMaterialUnitValues((prev) => ({
+                                ...prev,
+                                [material.id]: material.unit ?? 'units',
                               }));
                             }}
                             className="ml-2 text-xs text-primary hover:underline"
@@ -1719,6 +1732,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
   const { showToast } = useToast();
   const [editingQty, setEditingQty] = useState<string | null>(null);
   const [qtyValues, setQtyValues] = useState<Record<string, string>>({});
+  const [unitValues, setUnitValues] = useState<Record<string, string>>({});
 
   const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 1;
 
@@ -1738,18 +1752,25 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
       return;
     }
     try {
+      const nextUnit = (unitValues[materialId] ?? _material.unit ?? 'units').trim();
       const updated = await partsService.updatePartMaterial(materialId, {
         quantityPerUnit: numValue,
+        unit: nextUnit || 'units',
       });
       if (updated) {
-        showToast('Quantity updated', 'success');
+        showToast('Material updated', 'success');
         setEditingQty(null);
+        setUnitValues((prev) => {
+          const next = { ...prev };
+          delete next[materialId];
+          return next;
+        });
         onUpdate();
       } else {
-        showToast('Failed to update quantity', 'error');
+        showToast('Failed to update material', 'error');
       }
     } catch {
-      showToast('Failed to update quantity', 'error');
+      showToast('Failed to update material', 'error');
     }
   };
 
@@ -1804,12 +1825,24 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                             delete next[material.id];
                             return next;
                           });
+                          setUnitValues((prev) => {
+                            const next = { ...prev };
+                            delete next[material.id];
+                            return next;
+                          });
                         }
                       }}
                       autoFocus
                       className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
                     />
-                    <span className="text-xs text-slate-400">{material.unit}</span>
+                    <input
+                      type="text"
+                      value={unitValues[material.id] ?? material.unit ?? 'units'}
+                      onChange={(e) =>
+                        setUnitValues((prev) => ({ ...prev, [material.id]: e.target.value }))
+                      }
+                      className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                    />
                   </>
                 ) : (
                   <>
@@ -1821,6 +1854,10 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                       onClick={() => {
                         setEditingQty(material.id);
                         setQtyValues((prev) => ({ ...prev, [material.id]: currentQty.toString() }));
+                        setUnitValues((prev) => ({
+                          ...prev,
+                          [material.id]: material.unit ?? 'units',
+                        }));
                       }}
                       className="ml-2 text-xs text-primary hover:underline"
                     >
