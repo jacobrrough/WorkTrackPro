@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
  */
 const Landing: React.FC = () => {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-white">
+    <div className="flex h-screen flex-col overflow-y-auto bg-slate-950 text-white">
       {/* Header: logo left, Employee Login top right */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-white">

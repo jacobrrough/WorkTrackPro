@@ -246,7 +246,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090f] text-white">
+    <div className="h-screen overflow-y-auto bg-[#08090f] text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090f]/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
