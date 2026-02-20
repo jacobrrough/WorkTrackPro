@@ -35,21 +35,51 @@ app.get('/api/trello-attachment/:cardId/:attachmentId/:filename(*)', async (req,
     } catch {
       // leave as-is if already decoded or invalid
     }
+    const authHeader = `OAuth oauth_consumer_key="${key}", oauth_token="${token}"`;
     const encodedFilename = encodeURIComponent(filename);
-    const trelloUrl = `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}/download/${encodedFilename}?key=${encodeURIComponent(key)}&token=${encodeURIComponent(token)}`;
+    const candidates = [
+      `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}/download/${encodedFilename}`,
+    ];
 
-    const trelloResponse = await fetch(trelloUrl, {
-      method: 'GET',
-      headers: { Accept: '*/*' },
-    });
+    // Fetch metadata for canonical URL fallback.
+    try {
+      const metaRes = await fetch(
+        `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}?fields=url`,
+        {
+          method: 'GET',
+          headers: { Accept: 'application/json', Authorization: authHeader },
+        }
+      );
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        if (meta?.url) candidates.push(meta.url);
+      }
+    } catch {
+      // best-effort
+    }
 
-    if (!trelloResponse.ok) {
-      const errorText = await trelloResponse.text();
-      console.error(`Trello API error (${trelloResponse.status}):`, errorText.substring(0, 300));
+    let trelloResponse = null;
+    let lastStatus = 500;
+    let lastError = 'All Trello attachment fetch candidates failed';
+    for (const candidate of candidates) {
+      const response = await fetch(candidate, {
+        method: 'GET',
+        headers: { Accept: '*/*', Authorization: authHeader },
+      });
+      if (response.ok) {
+        trelloResponse = response;
+        break;
+      }
+      lastStatus = response.status;
+      lastError = await response.text();
+    }
+
+    if (!trelloResponse) {
+      console.error(`Trello API error (${lastStatus}):`, String(lastError).substring(0, 300));
       res.setHeader('Content-Type', 'application/json');
-      return res.status(trelloResponse.status).json({
-        error: `Trello API error: ${trelloResponse.status}`,
-        details: errorText.substring(0, 200),
+      return res.status(lastStatus).json({
+        error: `Trello API error: ${lastStatus}`,
+        details: String(lastError).substring(0, 200),
       });
     }
 

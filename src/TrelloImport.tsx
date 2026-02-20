@@ -1656,9 +1656,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         const binLocation = binMatch ? binMatch[1] : undefined;
 
         // Create or update part BEFORE the job so jobs.part_number FK to parts.part_number is satisfied.
-        // jobs.part_number must equal parts.part_number (base only); variant is in dash_quantities.
+        // Only normalize to base part number for real multi-variant jobs.
         let partId: string | undefined;
-        const basePartNumber = partNumber ? partNumber.replace(/-\d+$/, '') : '';
+        const hasDashVariants = Boolean(dashQuantities && Object.keys(dashQuantities).length > 0);
+        // Preserve full part numbers unless this card is explicitly a multi-variant job.
+        const basePartNumber = partNumber
+          ? hasDashVariants
+            ? partNumber.replace(/-\d{2}$/, '')
+            : partNumber
+          : '';
         if (partNumber) {
           try {
             const existingPart = await partsService.getPartByNumber(basePartNumber);

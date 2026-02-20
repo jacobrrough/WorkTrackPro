@@ -474,7 +474,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     try {
       const searchPartNumber = partNumberSearch.trim();
       // Extract base part number (remove variant suffix if present)
-      const basePartNumber = searchPartNumber.replace(/-\d+$/, '');
+      const basePartNumber = searchPartNumber.replace(/-\d{2}$/, '');
 
       let part = await partsService.getPartByNumber(basePartNumber);
 
@@ -823,8 +823,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
   };
 
   const handleViewAttachment = (attachment: Attachment) => {
-    // Open all files in a new tab
-    window.open(attachment.url, '_blank');
+    if (!attachment.url) {
+      showToast('Attachment URL is missing. Try refreshing the job.', 'error');
+      return;
+    }
+    const ext = attachment.filename.split('.').pop()?.toLowerCase() || '';
+    let previewUrl = attachment.url;
+    if (ext === 'pdf') {
+      previewUrl = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(attachment.url)}`;
+    } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+      previewUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(attachment.url)}`;
+    }
+    window.open(previewUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleCloseViewer = () => {

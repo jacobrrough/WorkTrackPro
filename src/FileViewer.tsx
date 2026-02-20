@@ -37,6 +37,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
   };
 
   const handleDownload = () => {
+    if (!attachment.url) return;
     window.open(attachment.url, '_blank');
   };
 

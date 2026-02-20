@@ -1,6 +1,6 @@
 import type { Job, JobStatus, Comment } from '../../core/types';
 import { supabase } from './supabaseClient';
-import { uploadAttachment, deleteAttachmentRecord } from './storage';
+import { uploadAttachment, deleteAttachmentRecord, getAttachmentPublicUrl } from './storage';
 
 type SupabaseErrorLike = {
   code?: string;
@@ -88,6 +88,7 @@ function mapJobRow(
         filename: a.filename,
         storagePath: a.storage_path,
         isAdminOnly: a.is_admin_only,
+        url: getAttachmentPublicUrl(a.storage_path),
         created: a.created_at,
       }));
     job.attachmentCount = job.attachments.length;

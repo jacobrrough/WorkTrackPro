@@ -223,7 +223,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         // If part number was selected but not found, create master part
         if (selectedPartNumber && !job.partNumber) {
           try {
-            const basePartNumber = selectedPartNumber.replace(/-\d+$/, ''); // Remove variant suffix if present
+            const basePartNumber = selectedPartNumber.replace(/-\d{2}$/, ''); // Remove variant suffix if present
             await partsService.createPart({
               partNumber: basePartNumber,
               name: (selectedPart ? partNameEdit.trim() : '') || nameForCreate,

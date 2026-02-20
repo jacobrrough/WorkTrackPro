@@ -64,6 +64,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
     description: '',
   });
   const [savingPartInfo, setSavingPartInfo] = useState(false);
+  const [confirmDeletePart, setConfirmDeletePart] = useState(false);
+  const [deletingPart, setDeletingPart] = useState(false);
   const { showToast } = useToast();
 
   const partJobs = useMemo(() => {
@@ -75,7 +77,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       }
       if (
         j.partNumber &&
-        (j.partNumber === part.partNumber || j.partNumber.replace(/-\d+$/, '') === part.partNumber)
+        (j.partNumber === part.partNumber || j.partNumber.replace(/-\d{2}$/, '') === part.partNumber)
       ) {
         return true;
       }
@@ -151,7 +153,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           (j) =>
             (j.partNumber &&
               (j.partNumber === partNumberFromJob ||
-                j.partNumber.replace(/-\d+$/, '') === partNumberFromJob)) ||
+                j.partNumber.replace(/-\d{2}$/, '') === partNumberFromJob)) ||
             (j.name && j.name.startsWith(partNumberFromJob))
         );
         const latestJob = matchingJobs.sort((a, b) => (b.jobCode ?? 0) - (a.jobCode ?? 0))[0];
@@ -493,6 +495,29 @@ const PartDetail: React.FC<PartDetailProps> = ({
     }
   };
 
+  const handleDeletePart = async () => {
+    if (!part || isVirtualPart || deletingPart) return;
+    setDeletingPart(true);
+    try {
+      const deleted = await partsService.deletePart(part.id);
+      if (!deleted) {
+        showToast(
+          'Failed to delete part. It may still be linked to jobs. Open the part and relink jobs first.',
+          'error'
+        );
+        return;
+      }
+      showToast('Part deleted', 'success');
+      onNavigateBack();
+    } catch (error) {
+      console.error('Error deleting part:', error);
+      showToast('Failed to delete part', 'error');
+    } finally {
+      setDeletingPart(false);
+      setConfirmDeletePart(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -624,6 +649,44 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 >
                   Reset
                 </button>
+                {!isVirtualPart && (
+                  <>
+                    {confirmDeletePart ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleDeletePart}
+                          disabled={deletingPart}
+                          className="min-h-[44px] rounded-sm border border-red-500/40 bg-red-500/20 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingPart ? 'Deleting…' : 'Confirm Delete Part'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeletePart(false)}
+                          disabled={deletingPart}
+                          className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDeletePart(true);
+                          showToast(
+                            'Confirm delete to remove this part and clean stale job links.',
+                            'warning'
+                          );
+                        }}
+                        className="min-h-[44px] rounded-sm border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20"
+                      >
+                        Delete Part
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
             {!isVirtualPart && (

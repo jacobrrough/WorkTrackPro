@@ -93,6 +93,16 @@ function isDuplicatePartNumberError(error: SupabaseErrorLike | null | undefined)
   return error.code === '23505' || /duplicate key value/i.test(error.message ?? '');
 }
 
+function isJobsPartNumberForeignKeyError(error: SupabaseErrorLike | null | undefined): boolean {
+  if (!error) return false;
+  const message = error.message ?? '';
+  const details = error.details ?? '';
+  return (
+    error.code === '23503' &&
+    (message.includes('jobs_part_number_fkey') || details.includes('jobs_part_number_fkey'))
+  );
+}
+
 export const partsService = {
   async getAllParts(): Promise<Part[]> {
     const { data, error } = await supabase.from('parts').select('*').order('part_number');
@@ -281,6 +291,82 @@ export const partsService = {
       .select('*')
       .single();
     if (error) {
+      if (nextPartNumber && isJobsPartNumberForeignKeyError(error)) {
+        const { data: sourcePartData } = await supabase
+          .from('parts')
+          .select('part_number')
+          .eq('id', id)
+          .maybeSingle();
+        const sourcePartNumber = (sourcePartData as { part_number?: string } | null)?.part_number;
+        if (sourcePartNumber && sourcePartNumber !== nextPartNumber) {
+          const { data: linkedJobsData, error: linkedJobsError } = await supabase
+            .from('jobs')
+            .select('id')
+            .eq('part_id', id)
+            .eq('part_number', sourcePartNumber);
+          if (linkedJobsError) {
+            console.error('updatePart relink lookup error:', linkedJobsError.message);
+            return null;
+          }
+
+          const linkedJobIds = ((linkedJobsData ?? []) as Array<{ id: string }>).map((job) => job.id);
+          if (linkedJobIds.length > 0) {
+            const clearResult = await supabase
+              .from('jobs')
+              .update({
+                part_number: null,
+                updated_at: new Date().toISOString(),
+              })
+              .in('id', linkedJobIds);
+            if (clearResult.error) {
+              console.error('updatePart relink clear error:', clearResult.error.message);
+              return null;
+            }
+          }
+
+          const retryResult = await supabase
+            .from('parts')
+            .update(row)
+            .eq('id', id)
+            .select('*')
+            .single();
+
+          if (retryResult.error) {
+            if (linkedJobIds.length > 0) {
+              await supabase
+                .from('jobs')
+                .update({
+                  part_number: sourcePartNumber,
+                  updated_at: new Date().toISOString(),
+                })
+                .in('id', linkedJobIds);
+            }
+            console.error(
+              'updatePart retry error:',
+              retryResult.error.message,
+              retryResult.error.code,
+              retryResult.error.details
+            );
+            return null;
+          }
+
+          if (linkedJobIds.length > 0) {
+            const relinkToNew = await supabase
+              .from('jobs')
+              .update({
+                part_number: nextPartNumber,
+                updated_at: new Date().toISOString(),
+              })
+              .in('id', linkedJobIds);
+            if (relinkToNew.error) {
+              console.warn('updatePart relink to new number warning:', relinkToNew.error.message);
+            }
+          }
+
+          return mapRowToPart(retryResult.data as unknown as Record<string, unknown>);
+        }
+      }
+
       if (nextPartNumber && isDuplicatePartNumberError(error)) {
         const [{ data: targetPartData }, { data: sourcePartData }] = await Promise.all([
           supabase
@@ -339,7 +425,103 @@ export const partsService = {
   },
 
   async deletePart(id: string): Promise<boolean> {
+    const { data: sourcePartData, error: sourcePartError } = await supabase
+      .from('parts')
+      .select('part_number')
+      .eq('id', id)
+      .maybeSingle();
+    if (sourcePartError) {
+      console.error('deletePart lookup error:', sourcePartError.message);
+      return false;
+    }
+
+    const sourcePartNumber = (sourcePartData as { part_number?: string } | null)?.part_number ?? null;
+    if (sourcePartNumber) {
+      const now = new Date().toISOString();
+
+      const clearOwnedLinks = await supabase
+        .from('jobs')
+        .update({
+          part_id: null,
+          part_number: null,
+          updated_at: now,
+        })
+        .eq('part_id', id);
+      if (clearOwnedLinks.error) {
+        console.error('deletePart clear owned links error:', clearOwnedLinks.error.message);
+        return false;
+      }
+
+      const { data: crossLinkedJobRefs, error: crossLinkedJobRefsError } = await supabase
+        .from('jobs')
+        .select('part_id')
+        .eq('part_number', sourcePartNumber)
+        .neq('part_id', id)
+        .not('part_id', 'is', null);
+      if (crossLinkedJobRefsError) {
+        console.error('deletePart cross-link lookup error:', crossLinkedJobRefsError.message);
+        return false;
+      }
+
+      const otherPartIds = [
+        ...new Set(
+          ((crossLinkedJobRefs ?? []) as Array<{ part_id: string | null }>)
+            .map((row) => row.part_id)
+            .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        ),
+      ];
+      if (otherPartIds.length > 0) {
+        const { data: canonicalPartsData, error: canonicalPartsError } = await supabase
+          .from('parts')
+          .select('id, part_number')
+          .in('id', otherPartIds);
+        if (canonicalPartsError) {
+          console.error('deletePart canonical part lookup error:', canonicalPartsError.message);
+          return false;
+        }
+
+        const canonicalPartMap = new Map(
+          ((canonicalPartsData ?? []) as Array<{ id: string; part_number: string }>).map((row) => [
+            row.id,
+            row.part_number,
+          ])
+        );
+
+        for (const partId of otherPartIds) {
+          const canonicalNumber = canonicalPartMap.get(partId);
+          const patchResult = await supabase
+            .from('jobs')
+            .update({
+              part_number: canonicalNumber ?? null,
+              updated_at: now,
+            })
+            .eq('part_number', sourcePartNumber)
+            .eq('part_id', partId);
+          if (patchResult.error) {
+            console.error('deletePart cross-link patch error:', patchResult.error.message);
+            return false;
+          }
+        }
+      }
+
+      const clearUnlinked = await supabase
+        .from('jobs')
+        .update({
+          part_number: null,
+          updated_at: now,
+        })
+        .eq('part_number', sourcePartNumber)
+        .is('part_id', null);
+      if (clearUnlinked.error) {
+        console.error('deletePart clear unlinked references error:', clearUnlinked.error.message);
+        return false;
+      }
+    }
+
     const { error } = await supabase.from('parts').delete().eq('id', id);
+    if (error) {
+      console.error('deletePart error:', error.message, error.code, error.details);
+    }
     return !error;
   },
 
@@ -643,14 +825,14 @@ export const partsService = {
         let suggestedName = job.name || '';
 
         if (job.part_number && job.part_number.trim()) {
-          // If job has part_number, use it (remove variant suffix if present)
-          suggestedPartNumber = job.part_number.replace(/-\d+$/, '').trim();
+          // If job has part_number, only remove explicit 2-digit variant suffixes (e.g. -01, -05).
+          suggestedPartNumber = job.part_number.replace(/-\d{2}$/, '').trim();
           suggestedName = job.name || suggestedPartNumber;
         } else if (job.name) {
           // Try to extract part number from job name (look for patterns like "ABC-01" or "SK-F35-0911")
           const nameMatch = job.name.match(/([A-Z0-9]+(?:-[A-Z0-9]+)*)/i);
           if (nameMatch) {
-            suggestedPartNumber = nameMatch[1].replace(/-\d+$/, '').trim();
+            suggestedPartNumber = nameMatch[1].replace(/-\d{2}$/, '').trim();
           } else {
             // Use first part of name as fallback
             suggestedPartNumber = job.name.split(/[\s-]/)[0].trim();

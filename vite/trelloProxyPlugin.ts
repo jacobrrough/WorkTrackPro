@@ -50,29 +50,45 @@ export function trelloProxyPlugin(): Plugin {
             try {
               const parsed = new URL(target);
               if (!parsed.hostname.toLowerCase().endsWith('trello.com')) return target;
-              if (!parsed.searchParams.get('key')) parsed.searchParams.set('key', key);
-              if (!parsed.searchParams.get('token')) parsed.searchParams.set('token', token);
               return parsed.toString();
             } catch {
               return target;
             }
           };
 
+          const isTrelloHost = (target: string): boolean => {
+            try {
+              return new URL(target).hostname.toLowerCase().endsWith('trello.com');
+            } catch {
+              return false;
+            }
+          };
+
+          const fetchWithTrelloAuth = (target: string): Promise<Response> => {
+            const headers: Record<string, string> = { Accept: '*/*' };
+            if (isTrelloHost(target)) {
+              headers.Authorization = `OAuth oauth_consumer_key="${key}", oauth_token="${token}"`;
+            }
+            return fetch(target, { method: 'GET', headers });
+          };
+
           const candidates: string[] = [];
           if (sourceUrl) candidates.push(withAuth(sourceUrl));
           const encodedFilename = encodeURIComponent(decodedFilename);
           candidates.push(
-            `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}/download/${encodedFilename}?key=${encodeURIComponent(
-              key
-            )}&token=${encodeURIComponent(token)}`
+            `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}/download/${encodedFilename}`
           );
 
           // Metadata lookup fallback: retrieve canonical attachment URL then fetch it.
-          const metadataUrl = `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}?fields=url&key=${encodeURIComponent(
-            key
-          )}&token=${encodeURIComponent(token)}`;
+          const metadataUrl = `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}?fields=url`;
           try {
-            const metaRes = await fetch(metadataUrl, { method: 'GET', headers: { Accept: 'application/json' } });
+            const metaRes = await fetch(metadataUrl, {
+              method: 'GET',
+              headers: {
+                Accept: 'application/json',
+                Authorization: `OAuth oauth_consumer_key="${key}", oauth_token="${token}"`,
+              },
+            });
             if (metaRes.ok) {
               const meta = (await metaRes.json()) as { url?: string };
               if (meta.url) candidates.push(withAuth(meta.url));
@@ -84,7 +100,7 @@ export function trelloProxyPlugin(): Plugin {
           let lastStatus = 500;
           let lastBody = 'All Trello attachment fetch candidates failed';
           for (const candidate of candidates) {
-            const trelloRes = await fetch(candidate, { method: 'GET', headers: { Accept: '*/*' } });
+            const trelloRes = await fetchWithTrelloAuth(candidate);
             if (!trelloRes.ok) {
               lastStatus = trelloRes.status;
               lastBody = await trelloRes.text();
