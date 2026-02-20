@@ -235,6 +235,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return suggestion > 0 ? suggestion : null;
   }, [autoJobName, jobs, shifts]);
 
+  const inventoryById = useMemo(
+    () => new Map(inventory.map((item) => [item.id, item])),
+    [inventory]
+  );
+
   // Calculate material costs from part materials × dashQuantities (live recalculation)
   const calculateMaterialCosts = useCallback(
     (part: Part, variantSuffix?: string) => {
@@ -250,7 +255,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
           );
           if (variant?.materials) {
             for (const material of variant.materials) {
-              const invItem = inventory.find((i) => i.id === material.inventoryId);
+              const invItem = inventoryById.get(material.inventoryId);
               if (invItem && invItem.price) {
                 const requiredQty = material.quantity * qty;
                 const cost = requiredQty * invItem.price * materialUpcharge;
@@ -266,7 +271,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         if (part.materials) {
           for (const material of part.materials) {
             if (material.usageType === 'per_set') {
-              const invItem = inventory.find((i) => i.id === material.inventoryId);
+              const invItem = inventoryById.get(material.inventoryId);
               if (invItem && invItem.price) {
                 const requiredQty = material.quantity * totalQty;
                 const cost = requiredQty * invItem.price * materialUpcharge;
@@ -285,7 +290,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         const materials = variant?.materials || part.materials || [];
 
         for (const material of materials) {
-          const invItem = inventory.find((i) => i.id === material.inventoryId);
+          const invItem = inventoryById.get(material.inventoryId);
           if (invItem && invItem.price) {
             const cost = material.quantity * invItem.price * materialUpcharge;
             costs.set(material.inventoryId, cost);
@@ -295,7 +300,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       // Add manually-assigned job-specific materials (not from part)
       for (const jobMaterial of job.inventoryItems || []) {
-        const invItem = inventory.find((i) => i.id === jobMaterial.inventoryId);
+        const invItem = inventoryById.get(jobMaterial.inventoryId);
         if (invItem && invItem.price) {
           const existingCost = costs.get(jobMaterial.inventoryId) || 0;
           const additionalCost = jobMaterial.quantity * invItem.price * materialUpcharge;
@@ -305,7 +310,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       setMaterialCosts(costs);
     },
-    [inventory, job.inventoryItems, dashQuantities, materialUpcharge]
+    [inventoryById, job.inventoryItems, dashQuantities, materialUpcharge]
   );
 
   // Recalculate materials when dashQuantities change (live update)
@@ -679,7 +684,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   const handleAddInventory = async () => {
     if (!selectedInventory || !inventoryQty) return;
-    const item = inventory.find((i) => i.id === selectedInventory);
+    const item = inventoryById.get(selectedInventory);
     if (!item) return;
 
     setIsSubmitting(true);
@@ -898,14 +903,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return date.toLocaleDateString();
   };
 
-  const filteredInventory = inventory.filter(
-    (i) =>
-      i.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
-      i.barcode?.toLowerCase().includes(inventorySearch.toLowerCase())
+  const filteredInventory = useMemo(
+    () =>
+      inventory.filter(
+        (i) =>
+          i.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+          i.barcode?.toLowerCase().includes(inventorySearch.toLowerCase())
+      ),
+    [inventory, inventorySearch]
   );
 
   const getInventoryItem = (inventoryId: string) => {
-    return inventory.find((i) => i.id === inventoryId);
+    return inventoryById.get(inventoryId);
   };
 
   return (
@@ -1385,7 +1394,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 ) : (
                   <ul className="space-y-1.5">
                     {job.inventoryItems.map((item) => {
-                      const invItem = inventory.find((i) => i.id === item.inventoryId);
+                      const invItem = inventoryById.get(item.inventoryId);
                       return (
                         <li
                           key={item.id}
@@ -1439,7 +1448,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   return (
                     <div className="space-y-1.5">
                       {materials.map((material) => {
-                        const invItem = inventory.find((i) => i.id === material.inventoryId);
+                        const invItem = inventoryById.get(material.inventoryId);
                         const cost = materialCosts.get(material.inventoryId) || 0;
                         const materialName = material.inventoryName || invItem?.name || 'Unknown';
                         return (

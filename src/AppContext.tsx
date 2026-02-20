@@ -761,12 +761,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Single source of truth: inventory with available/allocated computed from jobs (never use DB .available for display)
   const inventoryWithComputed = useMemo(() => {
+    // Precompute allocations in one pass to avoid O(inventory * jobs) scans.
+    const allocatedByInventoryId = new Map<string, number>();
+    for (const job of jobs) {
+      for (const ji of job.inventoryItems ?? []) {
+        allocatedByInventoryId.set(
+          ji.inventoryId,
+          (allocatedByInventoryId.get(ji.inventoryId) ?? 0) + ji.quantity
+        );
+      }
+    }
+
     return inventory.map((item) => ({
       ...item,
-      allocated: calculateAllocated(item.id),
-      available: Math.max(0, item.inStock - calculateAllocated(item.id)),
+      allocated: allocatedByInventoryId.get(item.id) ?? 0,
+      available: Math.max(0, item.inStock - (allocatedByInventoryId.get(item.id) ?? 0)),
     }));
-  }, [inventory, calculateAllocated]);
+  }, [inventory, jobs]);
 
   const contextValue = useMemo<AppContextType>(
     () => ({
