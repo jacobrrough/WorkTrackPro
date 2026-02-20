@@ -68,6 +68,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [checklistStates, setChecklistStates] = useState<
     Record<string, { total: number; completed: number }>
   >({});
+  const [checklistRefreshTrigger, setChecklistRefreshTrigger] = useState(0);
   const [columnMenuOpen, setColumnMenuOpen] = useState<string | null>(null);
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
@@ -197,41 +198,45 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     boardTouchStateRef.current.isHorizontalSwipe = false;
   };
 
+  // Stable key so effect only runs when the set of job IDs changes (avoids infinite loop from new jobs array ref each render)
+  const jobIdsKey = jobs.length === 0 ? '' : jobs.map((j) => j.id).sort().join(',');
+
   // Load checklist states for all jobs
   useEffect(() => {
-    loadChecklistStates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadChecklistStates depends on jobs
-  }, [jobs]);
-
-  const loadChecklistStates = async () => {
     if (jobs.length === 0) {
       setChecklistStates({});
       return;
     }
 
-    const states: Record<string, { total: number; completed: number }> = {};
+    let cancelled = false;
+    const jobIds = jobs.map((j) => j.id);
 
-    try {
-      const jobIds = jobs.map((j) => j.id);
-      const byJob = await checklistService.getByJobIds(jobIds);
-
-      for (const jobId of jobIds) {
-        const list = byJob[jobId] ?? [];
-        for (const checklist of list) {
-          const items = checklist.items ?? [];
-          states[jobId] = {
-            total: items.length,
-            completed: items.filter((i) => i.checked).length,
-          };
-          break; // one status per job for display
+    checklistService
+      .getByJobIds(jobIds)
+      .then((byJob) => {
+        if (cancelled) return;
+        const states: Record<string, { total: number; completed: number }> = {};
+        for (const jobId of jobIds) {
+          const list = byJob[jobId] ?? [];
+          for (const checklist of list) {
+            const items = checklist.items ?? [];
+            states[jobId] = {
+              total: items.length,
+              completed: items.filter((i: { checked?: boolean }) => i.checked).length,
+            };
+            break; // one status per job for display
+          }
         }
-      }
-    } catch (error) {
-      console.error('Failed to load checklists:', error);
-    }
+        setChecklistStates(states);
+      })
+      .catch((error) => {
+        if (!cancelled) console.error('Failed to load checklists:', error);
+      });
 
-    setChecklistStates(states);
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [jobIdsKey, checklistRefreshTrigger]);
 
   const getJobsForColumn = (columnId: JobStatus) => {
     return jobs.filter((job) => {
@@ -743,8 +748,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           onClose={() => setEditingChecklistFor(null)}
           currentUser={_currentUser}
           onChecklistUpdated={() => {
-            // Reload checklist states after update
-            loadChecklistStates();
+            setChecklistRefreshTrigger((t) => t + 1);
           }}
         />
       )}

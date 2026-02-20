@@ -336,7 +336,7 @@ export const jobService = {
       .select('job_code')
       .order('job_code', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     if (error) return 1;
     const max = (data?.job_code as number) ?? 0;
     return max + 1;
@@ -417,7 +417,7 @@ export const jobService = {
       .from('profiles')
       .select('id, name, initials')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     const p = profiles.data as { name?: string; initials?: string } | null;
     return {
       id: row.id,

@@ -19,15 +19,30 @@ function mapProfileToUser(profile: {
 
 export const authService = {
   async checkAuth(): Promise<User | null> {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    let session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] = null;
+    try {
+      const {
+        data: { session: activeSession },
+      } = await supabase.auth.getSession();
+      session = activeSession;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isInvalidRefreshToken =
+        /invalid refresh token|refresh token not found/i.test(message);
+      if (isInvalidRefreshToken) {
+        // Local browser token can become stale; clear only local auth state and continue as logged-out.
+        await supabase.auth.signOut({ scope: 'local' });
+        return null;
+      }
+      throw error;
+    }
+
     if (!session?.user) return null;
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, email, name, initials, is_admin')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
     if (!profile)
       return mapProfileToUser({
         id: session.user.id,
@@ -46,7 +61,7 @@ export const authService = {
       .from('profiles')
       .select('id, email, name, initials, is_admin')
       .eq('id', data.user.id)
-      .single();
+      .maybeSingle();
     if (!profile)
       return mapProfileToUser({
         id: data.user.id,
