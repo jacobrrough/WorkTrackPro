@@ -1,9 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { Job, ViewState, User, Shift } from '@/core/types';
-import { getStartDateFromDueDateAndHours, getWorkHoursForDate } from '@/lib/workHours';
+import {
+  buildWorkAllocationFromDueDate,
+  getStartDateFromDueDateAndHours,
+  getWeeklyCapacityHours,
+  getWeeklyWorkHours,
+  getWorkHoursForDate,
+} from '@/lib/workHours';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
 import { getJobDisplayName } from '@/lib/formatJob';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface CalendarProps {
   jobs: Job[];
@@ -18,12 +25,28 @@ interface JobTimeline {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   hours: number;
+  allocations: Array<{ date: string; scheduledHours: number; capacityHours: number }>;
 }
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateKey = (value: string) => {
+  const datePart = value.split(/[T ]/)[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return datePart;
+  return toDateKey(parsed);
+};
 
 /**
  * Calendar - Admin-only view showing job timelines on a month calendar.
  * Uses due date and expected labor hours (or recorded shift hours) to calculate timelines.
- * Work schedule: 9h Mon-Thu, 4h Fri.
+ * Capacity comes from Admin Settings: employee count + work-week schedule.
  */
 const Calendar: React.FC<CalendarProps> = ({
   jobs: allJobs,
@@ -33,7 +56,23 @@ const Calendar: React.FC<CalendarProps> = ({
   onBack,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const { settings } = useSettings();
   const jobs = useMemo(() => allJobs.filter((j) => j.status !== 'paid'), [allJobs]);
+  const scheduleOptions = useMemo(
+    () => ({
+      employeeCount: settings.employeeCount,
+      workWeekSchedule: settings.workWeekSchedule,
+    }),
+    [settings.employeeCount, settings.workWeekSchedule]
+  );
+  const weeklyHoursPerEmployee = useMemo(
+    () => getWeeklyWorkHours(settings.workWeekSchedule),
+    [settings.workWeekSchedule]
+  );
+  const weeklyCapacityHours = useMemo(
+    () => getWeeklyCapacityHours(settings.employeeCount, settings.workWeekSchedule),
+    [settings.employeeCount, settings.workWeekSchedule]
+  );
 
   // Get jobs with timelines
   const jobTimelines = useMemo((): JobTimeline[] => {
@@ -42,17 +81,19 @@ const Calendar: React.FC<CalendarProps> = ({
       .map((job) => {
         // Use laborHours if set, otherwise calculate from shifts
         const hours = job.laborHours || calculateJobHoursFromShifts(job.id, shifts);
-        const startDate = getStartDateFromDueDateAndHours(job.dueDate!, hours);
+        const allocations = buildWorkAllocationFromDueDate(job.dueDate!, hours, scheduleOptions);
+        const startDate = getStartDateFromDueDateAndHours(job.dueDate!, hours, scheduleOptions);
         return {
           job,
           startDate,
-          endDate: job.dueDate!,
+          endDate: normalizeDateKey(job.dueDate!),
           hours,
+          allocations,
         };
       })
       .filter((tl) => tl.hours > 0)
       .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
-  }, [jobs, shifts]);
+  }, [jobs, shifts, scheduleOptions]);
 
   // Get days in current month
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -99,12 +140,29 @@ const Calendar: React.FC<CalendarProps> = ({
 
   // Get jobs for a specific date
   const getJobsForDate = (date: Date): JobTimeline[] => {
+    const dateKey = toDateKey(date);
     return jobTimelines.filter((tl) => {
-      const start = new Date(tl.startDate);
-      const end = new Date(tl.endDate);
-      return date >= start && date <= end;
+      const hasAllocation = tl.allocations.some((allocation) => allocation.date === dateKey);
+      return hasAllocation || tl.endDate === dateKey;
     });
   };
+
+  const dayLoadMap = useMemo(() => {
+    const loadByDate = new Map<string, { scheduledHours: number; capacityHours: number }>();
+    for (const timeline of jobTimelines) {
+      for (const allocation of timeline.allocations) {
+        const existing = loadByDate.get(allocation.date) ?? {
+          scheduledHours: 0,
+          capacityHours: allocation.capacityHours,
+        };
+        loadByDate.set(allocation.date, {
+          scheduledHours: existing.scheduledHours + allocation.scheduledHours,
+          capacityHours: allocation.capacityHours,
+        });
+      }
+    }
+    return loadByDate;
+  }, [jobTimelines]);
 
   // Generate unique color for job based on ID
   const getJobColor = (jobId: string): string => {
@@ -192,6 +250,15 @@ const Calendar: React.FC<CalendarProps> = ({
 
       {/* Calendar Grid */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-3 text-xs text-slate-300">
+          <p>
+            {settings.employeeCount} employee{settings.employeeCount !== 1 ? 's' : ''} ·{' '}
+            {weeklyHoursPerEmployee.toFixed(1)}h per employee/week
+          </p>
+          <p className="mt-1 font-medium text-primary">
+            Weekly scheduling capacity: {weeklyCapacityHours.toFixed(1)}h
+          </p>
+        </div>
         <div className="grid grid-cols-7 gap-1">
           {/* Week day headers */}
           {weekDays.map((day) => (
@@ -204,7 +271,11 @@ const Calendar: React.FC<CalendarProps> = ({
           {calendarDays.map((dayData, idx) => {
             const jobsForDay = getJobsForDate(dayData.date);
             const isToday = dayData.date.toDateString() === new Date().toDateString();
-            const workHours = getWorkHoursForDate(dayData.date);
+            const dateKey = toDateKey(dayData.date);
+            const workHours = getWorkHoursForDate(dayData.date, scheduleOptions);
+            const dayLoad = dayLoadMap.get(dateKey);
+            const scheduledHours = dayLoad?.scheduledHours ?? 0;
+            const overCapacity = workHours > 0 && scheduledHours > workHours + 0.01;
 
             return (
               <div
@@ -225,6 +296,13 @@ const Calendar: React.FC<CalendarProps> = ({
                     <span className="ml-1 text-[10px] text-slate-500">({workHours}h)</span>
                   )}
                 </div>
+                {workHours > 0 && (
+                  <div
+                    className={`mt-0.5 text-[10px] ${overCapacity ? 'font-bold text-red-400' : 'text-slate-500'}`}
+                  >
+                    {scheduledHours.toFixed(1)}/{workHours.toFixed(1)}h
+                  </div>
+                )}
                 <div className="mt-1 space-y-0.5">
                   {jobsForDay.slice(0, 3).map((tl) => (
                     <button

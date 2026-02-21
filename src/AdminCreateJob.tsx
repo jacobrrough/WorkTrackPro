@@ -116,7 +116,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       revision: formData.revision.trim(),
       estNumber: formData.estNumber.trim(),
       po: formData.po.trim(),
-      status: formData.isRush ? 'rush' : formData.status,
+      status: formData.status,
     },
     formData.jobCode
   );
@@ -186,7 +186,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         revision: formData.revision.trim(),
         estNumber: formData.estNumber.trim(),
         po: formData.po.trim(),
-        status: formData.isRush ? 'rush' : formData.status,
+        status: formData.status,
       },
       formData.jobCode
     );
@@ -204,7 +204,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             : formData.qty.trim() || undefined,
         description: formData.description.trim() || undefined,
         laborHours: formData.laborHours ? parseFloat(formData.laborHours) : undefined,
-        status: formData.isRush ? 'rush' : formData.status,
+        status: formData.status,
         isRush: formData.isRush,
         active: true, // CRITICAL: Set active to true!
         binLocation: formData.binLocation.trim() || undefined,
@@ -574,7 +574,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 text-sm text-white"
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as JobStatus })}
-                disabled={isSubmitting || formData.isRush}
+                disabled={isSubmitting}
               >
                 <option value="toBeQuoted">To Be Quoted</option>
                 <option value="rfqReceived">RFQ Received</option>

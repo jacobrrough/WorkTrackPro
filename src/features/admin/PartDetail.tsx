@@ -549,6 +549,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
     );
   }
 
+  const partDrawings =
+    part.drawingAttachments && part.drawingAttachments.length > 0
+      ? part.drawingAttachments
+      : part.drawingAttachment
+        ? [part.drawingAttachment]
+        : [];
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-950">
       {/* Header: Part Number first, then Part Name */}
@@ -692,43 +699,50 @@ const PartDetail: React.FC<PartDetailProps> = ({
             </div>
             {!isVirtualPart && (
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm text-slate-400">Part Drawing</label>
+                <label className="mb-1 block text-sm text-slate-400">Part Drawings</label>
                 <p className="mb-2 text-xs text-slate-500">
-                  One file per part. This is the only file shop-floor users can access on job cards.
+                  Upload one or more drawing files. Shop-floor users can access these from job cards.
                 </p>
-                {part.drawingAttachment ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <a
-                      href={part.drawingAttachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-[44px] items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
-                    >
-                      <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
-                      {part.drawingAttachment.filename}
-                    </a>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const ok = await partsService.deletePartDrawing(part.drawingAttachment!.id);
-                        if (ok) {
-                          await loadPart();
-                          showToast('Drawing removed');
-                        } else {
-                          showToast('Failed to remove drawing', 'error');
-                        }
-                      }}
-                      className="min-h-[44px] rounded-sm border border-red-500/30 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
-                    >
-                      Remove
-                    </button>
+                {partDrawings.length > 0 ? (
+                  <div className="space-y-2">
+                    {partDrawings.map((drawing) => (
+                      <div key={drawing.id} className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={drawing.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-[44px] items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+                        >
+                          <span className="material-symbols-outlined text-primary">
+                            picture_as_pdf
+                          </span>
+                          {drawing.filename}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await partsService.deletePartDrawing(drawing.id);
+                            if (ok) {
+                              await loadPart();
+                              showToast('Drawing removed', 'success');
+                            } else {
+                              showToast('Failed to remove drawing', 'error');
+                            }
+                          }}
+                          className="min-h-[44px] rounded-sm border border-red-500/30 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                     <FileUploadButton
-                      label="Replace"
+                      label="Upload More Drawings"
+                      multiple
                       onUpload={async (file) => {
                         const result = await partsService.addPartDrawing(part.id, file);
                         if (result.success) {
                           await loadPart();
-                          showToast('Drawing updated');
+                          showToast(`Uploaded "${file.name}"`, 'success');
                           return true;
                         }
                         throw new Error(result.error || 'Upload failed');
@@ -737,12 +751,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   </div>
                 ) : (
                   <FileUploadButton
-                    label="Upload Drawing"
+                    label="Upload Drawings"
+                    multiple
                     onUpload={async (file) => {
                       const result = await partsService.addPartDrawing(part.id, file);
                       if (result.success) {
                         await loadPart();
-                        showToast('Drawing uploaded');
+                        showToast(`Uploaded "${file.name}"`, 'success');
                         return true;
                       }
                       throw new Error(result.error || 'Upload failed');
