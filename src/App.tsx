@@ -1,25 +1,29 @@
-import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from './AppContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import Login from './Login';
 import { jobService } from './pocketbase';
 import PublicHome from './public/PublicHome';
+import { lazyWithRetry } from './lib/lazyWithRetry';
 
-const Dashboard = lazy(() => import('./Dashboard'));
-const JobList = lazy(() => import('./JobList'));
-const JobDetail = lazy(() => import('./JobDetail'));
-const ClockInScreen = lazy(() => import('./ClockInScreen'));
-const Inventory = lazy(() => import('./Inventory'));
-const KanbanBoard = lazy(() => import('./KanbanBoard'));
-const Parts = lazy(() => import('./features/admin/Parts'));
-const PartDetail = lazy(() => import('./features/admin/PartDetail'));
-const AdminCreateJob = lazy(() => import('./AdminCreateJob'));
-const Quotes = lazy(() => import('./Quotes'));
-const Calendar = lazy(() => import('./features/admin/Calendar'));
-const TimeReports = lazy(() => import('./TimeReports'));
-const AdminSettings = lazy(() => import('./features/admin/AdminSettings'));
-const TrelloImport = lazy(() => import('./TrelloImport'));
+const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
+const JobList = lazyWithRetry(() => import('./JobList'), 'JobList');
+const JobDetail = lazyWithRetry(() => import('./JobDetail'), 'JobDetail');
+const ClockInScreen = lazyWithRetry(() => import('./ClockInScreen'), 'ClockInScreen');
+const Inventory = lazyWithRetry(() => import('./Inventory'), 'Inventory');
+const KanbanBoard = lazyWithRetry(() => import('./KanbanBoard'), 'KanbanBoard');
+const Parts = lazyWithRetry(() => import('./features/admin/Parts'), 'Parts');
+const PartDetail = lazyWithRetry(() => import('./features/admin/PartDetail'), 'PartDetail');
+const AdminCreateJob = lazyWithRetry(() => import('./AdminCreateJob'), 'AdminCreateJob');
+const Quotes = lazyWithRetry(() => import('./Quotes'), 'Quotes');
+const Calendar = lazyWithRetry(() => import('./features/admin/Calendar'), 'Calendar');
+const TimeReports = lazyWithRetry(() => import('./TimeReports'), 'TimeReports');
+const AdminSettings = lazyWithRetry(
+  () => import('./features/admin/AdminSettings'),
+  'AdminSettings'
+);
+const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
 
 function AppViewFallback() {
   return (
@@ -79,7 +83,21 @@ export default function App() {
 
   const [view, setView] = useState<string>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
+  const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setShowLoadingHelp(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setShowLoadingHelp(true);
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [isLoading]);
 
   const handleNavigate = useCallback(
     (nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
@@ -134,7 +152,25 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background-dark">
-        <p className="text-slate-400">Loading...</p>
+        <div className="px-4 text-center">
+          <p className="text-slate-400">Loading...</p>
+          {showLoadingHelp && (
+            <div className="mt-3 rounded-sm border border-primary/30 bg-primary/10 p-3 text-left">
+              <p className="text-sm text-slate-200">Startup is taking longer than expected.</p>
+              <p className="mt-1 text-xs text-slate-400">
+                If this persists, refresh to recover from a stale cached bundle or a temporary
+                network issue.
+              </p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-3 rounded-sm bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90"
+              >
+                Retry Loading
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

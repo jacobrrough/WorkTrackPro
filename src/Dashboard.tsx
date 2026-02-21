@@ -1,12 +1,13 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
+import { lazyWithRetry } from './lib/lazyWithRetry';
 
-const QRScanner = lazy(() => import('./components/QRScanner'));
+const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
 
 interface DashboardQuickAction {
   key: string;
@@ -46,6 +47,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [isLunchLoading, setIsLunchLoading] = useState(false);
   const [shiftTimer, setShiftTimer] = useState('00:00:00');
   const [lunchTimer, setLunchTimer] = useState('00:00:00');
+  const shiftClockInTime = activeShift?.clockInTime ?? null;
+  const shiftClockOutTime = activeShift?.clockOutTime ?? null;
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
@@ -99,18 +102,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }, [activeShift?.id]);
 
   useEffect(() => {
-    if (!activeShift) return undefined;
+    if (!shiftClockInTime) {
+      setShiftTimer('00:00:00');
+      return undefined;
+    }
 
     const updateShiftTimer = () => {
-      setShiftTimer(
-        formatDurationHMS(durationMs(activeShift.clockInTime, activeShift.clockOutTime ?? null))
-      );
+      setShiftTimer(formatDurationHMS(durationMs(shiftClockInTime, shiftClockOutTime)));
     };
 
     updateShiftTimer();
     const interval = setInterval(updateShiftTimer, 1000);
     return () => clearInterval(interval);
-  }, [activeShift?.id, activeShift?.clockInTime, activeShift?.clockOutTime]);
+  }, [shiftClockInTime, shiftClockOutTime]);
 
   useEffect(() => {
     const lunchStart = activeShift?.lunchStartTime;

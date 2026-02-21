@@ -10,6 +10,23 @@ import SetupRequired from './SetupRequired';
 import { isSupabaseConfigured } from './lib/supabaseEnv';
 import './index.css';
 
+const PRELOAD_RELOAD_GUARD_KEY = 'worktrack-preload-reload-at';
+const PRELOAD_RELOAD_GUARD_MS = 15_000;
+
+if (typeof window !== 'undefined') {
+  // Recover once when a stale deploy leaves lazy chunks unavailable.
+  window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault();
+    const now = Date.now();
+    const lastReloadAt = Number(sessionStorage.getItem(PRELOAD_RELOAD_GUARD_KEY) ?? '0');
+    if (Number.isFinite(lastReloadAt) && now - lastReloadAt < PRELOAD_RELOAD_GUARD_MS) {
+      return;
+    }
+    sessionStorage.setItem(PRELOAD_RELOAD_GUARD_KEY, String(now));
+    window.location.reload();
+  });
+}
+
 function renderFallback(message: string) {
   const rootEl = document.getElementById('root');
   if (!rootEl) return;
