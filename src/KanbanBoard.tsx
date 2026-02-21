@@ -199,6 +199,54 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     boardTouchStateRef.current.isHorizontalSwipe = false;
   };
 
+  const nudgeBoard = (direction: 'left' | 'right') => {
+    if (!boardContainerRef.current) return;
+    boardContainerRef.current.scrollBy({
+      left: direction === 'left' ? -300 : 300,
+      behavior: 'smooth',
+    });
+    requestAnimationFrame(() => {
+      handleHorizontalScroll();
+    });
+  };
+
+  const handleBoardWheelCapture = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!boardContainerRef.current) return;
+    const board = boardContainerRef.current;
+    const target = e.target as HTMLElement | null;
+    const columnScroller = target?.closest(
+      '[data-kanban-column-scroll="true"]'
+    ) as HTMLDivElement | null;
+
+    const deltaX = e.deltaX;
+    const deltaY = e.deltaY;
+    const hasHorizontalIntent = Math.abs(deltaX) > 0 || e.shiftKey;
+
+    const applyHorizontal = (amount: number) => {
+      if (!Number.isFinite(amount) || Math.abs(amount) < 0.5) return;
+      if (e.cancelable) e.preventDefault();
+      board.scrollLeft += amount;
+      handleHorizontalScroll();
+    };
+
+    // Trackpads and Shift+Wheel usually indicate horizontal intent.
+    if (hasHorizontalIntent) {
+      applyHorizontal(deltaX !== 0 ? deltaX : deltaY);
+      return;
+    }
+
+    // If pointer is over a column that can still scroll vertically, keep native vertical scroll.
+    if (columnScroller) {
+      const maxScrollTop = Math.max(0, columnScroller.scrollHeight - columnScroller.clientHeight);
+      const canScrollDown = deltaY > 0 && columnScroller.scrollTop < maxScrollTop - 1;
+      const canScrollUp = deltaY < 0 && columnScroller.scrollTop > 1;
+      if (canScrollDown || canScrollUp) return;
+    }
+
+    // Otherwise use wheel to move board left/right.
+    applyHorizontal(deltaY);
+  };
+
   // Stable key so effect only runs when the set of job IDs changes (avoids infinite loop from new jobs array ref each render)
   const jobIdsKey =
     jobs.length === 0
@@ -394,6 +442,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => nudgeBoard('left')}
+              className="flex size-8 items-center justify-center rounded-sm bg-white/10 text-white transition-colors hover:bg-white/20"
+              title="Scroll columns left"
+              aria-label="Scroll columns left"
+            >
+              <span className="material-symbols-outlined text-sm">chevron_left</span>
+            </button>
+            <button
+              onClick={() => nudgeBoard('right')}
+              className="flex size-8 items-center justify-center rounded-sm bg-white/10 text-white transition-colors hover:bg-white/20"
+              title="Scroll columns right"
+              aria-label="Scroll columns right"
+            >
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+            </button>
+            <button
               onClick={() => updateState({ minimalView: !navState.minimalView })}
               className="flex items-center gap-1 rounded-sm bg-white/10 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
               title="Toggle minimal view"
@@ -427,12 +491,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
+        onWheelCapture={handleBoardWheelCapture}
         onTouchStartCapture={handleBoardTouchStart}
         onTouchMoveCapture={handleBoardTouchMove}
         onTouchEnd={handleBoardTouchEnd}
         onTouchCancel={handleBoardTouchEnd}
         className="flex-1 touch-pan-x overflow-x-auto overflow-y-hidden"
-        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
       >
         <div className="flex h-full min-w-max gap-2.5 p-3">
           {columns.map((column) => {
@@ -498,6 +563,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   ref={(el) => {
                     columnRefs.current[column.id] = el;
                   }}
+                  data-kanban-column-scroll="true"
                   onScroll={(e) => handleColumnScroll(e, column.id)}
                   className="flex-1 space-y-1.5 overflow-y-auto p-1.5"
                   style={{
