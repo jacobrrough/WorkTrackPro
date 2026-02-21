@@ -181,9 +181,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const deltaY = touch.clientY - touchState.startY;
 
     if (!touchState.isHorizontalSwipe) {
-      if (Math.abs(deltaX) < 8) return;
-      if (Math.abs(deltaX) <= Math.abs(deltaY)) {
-        touchState.active = false;
+      // Wait for a clear horizontal intent; do not cancel early on diagonal starts.
+      if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY) * 0.85) {
         return;
       }
       touchState.isHorizontalSwipe = true;
@@ -427,12 +427,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
-        onTouchStart={handleBoardTouchStart}
-        onTouchMove={handleBoardTouchMove}
+        onTouchStartCapture={handleBoardTouchStart}
+        onTouchMoveCapture={handleBoardTouchMove}
         onTouchEnd={handleBoardTouchEnd}
         onTouchCancel={handleBoardTouchEnd}
-        className="flex-1 overflow-x-auto overflow-y-hidden"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        className="flex-1 touch-pan-x overflow-x-auto overflow-y-hidden"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
       >
         <div className="flex h-full min-w-max gap-2.5 p-3">
           {columns.map((column) => {
@@ -500,7 +500,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   }}
                   onScroll={(e) => handleColumnScroll(e, column.id)}
                   className="flex-1 space-y-1.5 overflow-y-auto p-1.5"
-                  style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+                  style={{
+                    WebkitOverflowScrolling: 'touch',
+                    overscrollBehavior: 'contain',
+                    touchAction: 'pan-y',
+                  }}
                 >
                   {columnJobs.map((job) => {
                     const checklistState = checklistStates[job.id];
