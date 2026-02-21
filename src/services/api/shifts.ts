@@ -18,6 +18,8 @@ function mapRowToShift(
     jobCode,
     clockInTime: row.clock_in_time as string,
     clockOutTime: row.clock_out_time as string | undefined,
+    lunchStartTime: row.lunch_start_time as string | undefined,
+    lunchEndTime: row.lunch_end_time as string | undefined,
     notes: row.notes as string | undefined,
   };
 }
@@ -26,7 +28,9 @@ export const shiftService = {
   async getAllShifts(): Promise<Shift[]> {
     const { data: rows, error } = await supabase
       .from('shifts')
-      .select('id, user_id, job_id, clock_in_time, clock_out_time, notes')
+      .select(
+        'id, user_id, job_id, clock_in_time, clock_out_time, lunch_start_time, lunch_end_time, notes'
+      )
       .order('clock_in_time', { ascending: false });
     if (error) throw error;
     const list = rows ?? [];
@@ -69,6 +73,27 @@ export const shiftService = {
       .from('shifts')
       .update({ clock_out_time: new Date().toISOString() })
       .eq('id', shiftId);
+  },
+
+  async startLunch(shiftId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('shifts')
+      .update({
+        lunch_start_time: new Date().toISOString(),
+        lunch_end_time: null,
+      })
+      .eq('id', shiftId);
+    return !error;
+  },
+
+  async endLunch(shiftId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('shifts')
+      .update({
+        lunch_end_time: new Date().toISOString(),
+      })
+      .eq('id', shiftId);
+    return !error;
   },
 
   async updateShiftTimes(

@@ -44,6 +44,8 @@ interface AppContextType {
   getJobByCode: (code: number) => Promise<Job | null>; // ADDED: Missing function
   clockIn: (jobId: string) => Promise<boolean>;
   clockOut: () => Promise<boolean>; // FIXED: Return boolean
+  startLunch: () => Promise<boolean>;
+  endLunch: () => Promise<boolean>;
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   updateInventoryItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   updateInventoryStock: (id: string, inStock: number, reason?: string) => Promise<void>;
@@ -353,6 +355,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const clockOut = useCallback(async (): Promise<boolean> => {
     if (!activeShift) return false;
     try {
+      if (activeShift.lunchStartTime && !activeShift.lunchEndTime) {
+        await shiftService.endLunch(activeShift.id);
+      }
       await shiftService.clockOut(activeShift.id);
       await refreshShifts();
       await refreshJobs();
@@ -362,6 +367,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return false;
     }
   }, [activeShift, refreshShifts, refreshJobs]);
+
+  const startLunch = useCallback(async (): Promise<boolean> => {
+    if (!activeShift) return false;
+    if (activeShift.lunchStartTime && activeShift.lunchEndTime) return false;
+    if (activeShift.lunchStartTime && !activeShift.lunchEndTime) return true;
+    try {
+      const success = await shiftService.startLunch(activeShift.id);
+      if (success) {
+        await refreshShifts();
+      }
+      return success;
+    } catch (error) {
+      console.error('Start lunch error:', error);
+      return false;
+    }
+  }, [activeShift, refreshShifts]);
+
+  const endLunch = useCallback(async (): Promise<boolean> => {
+    if (!activeShift?.lunchStartTime || activeShift.lunchEndTime) return false;
+    try {
+      const success = await shiftService.endLunch(activeShift.id);
+      if (success) {
+        await refreshShifts();
+      }
+      return success;
+    } catch (error) {
+      console.error('End lunch error:', error);
+      return false;
+    }
+  }, [activeShift, refreshShifts]);
 
   const createInventory = useCallback(
     async (data: Partial<InventoryItem>): Promise<InventoryItem | null> => {
@@ -799,6 +834,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       getJobByCode, // ADDED
       clockIn,
       clockOut,
+      startLunch,
+      endLunch,
       createInventory,
       updateInventoryItem,
       updateInventoryStock,
@@ -836,6 +873,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       getJobByCode,
       clockIn,
       clockOut,
+      startLunch,
+      endLunch,
       createInventory,
       updateInventoryItem,
       updateInventoryStock,

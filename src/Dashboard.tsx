@@ -1,9 +1,10 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
+import { durationMs, formatDurationHMS } from './lib/timeUtils';
 
 const QRScanner = lazy(() => import('./components/QRScanner'));
 
@@ -24,15 +25,23 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { currentUser, jobs, inventory, logout } = useApp();
+  const { currentUser, jobs, inventory, activeShift, activeJob, logout, clockOut, startLunch, endLunch } =
+    useApp();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin ?? false;
   const { state: navState, updateState } = useNavigation();
   const [searchInput, setSearchInput] = useState(navState.searchTerm);
   const [showScanner, setShowScanner] = useState(false);
+  const [isTrackerOpen, setIsTrackerOpen] = useState(false);
+  const [isClockOutLoading, setIsClockOutLoading] = useState(false);
+  const [isLunchLoading, setIsLunchLoading] = useState(false);
+  const [shiftTimer, setShiftTimer] = useState('00:00:00');
+  const [lunchTimer, setLunchTimer] = useState('00:00:00');
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
+  const isOnLunch = Boolean(activeShift?.lunchStartTime && !activeShift?.lunchEndTime);
+  const hasCompletedLunch = Boolean(activeShift?.lunchStartTime && activeShift?.lunchEndTime);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +75,89 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         showToast(`Scanned: ${scannedData} (not found)`, 'warning');
       }
     }
+  };
+
+  useEffect(() => {
+    if (activeShift?.id) {
+      setIsTrackerOpen(true);
+    } else {
+      setIsTrackerOpen(false);
+      setIsClockOutLoading(false);
+      setIsLunchLoading(false);
+      setShiftTimer('00:00:00');
+      setLunchTimer('00:00:00');
+    }
+  }, [activeShift?.id]);
+
+  useEffect(() => {
+    if (!activeShift) return undefined;
+
+    const updateShiftTimer = () => {
+      setShiftTimer(formatDurationHMS(durationMs(activeShift.clockInTime, activeShift.clockOutTime ?? null)));
+    };
+
+    updateShiftTimer();
+    const interval = setInterval(updateShiftTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeShift?.id, activeShift?.clockInTime, activeShift?.clockOutTime]);
+
+  useEffect(() => {
+    const lunchStart = activeShift?.lunchStartTime;
+    if (!lunchStart) {
+      setLunchTimer('00:00:00');
+      return undefined;
+    }
+
+    const updateLunchTimer = () => {
+      setLunchTimer(
+        formatDurationHMS(
+          durationMs(lunchStart, activeShift.lunchEndTime ?? activeShift.clockOutTime ?? null)
+        )
+      );
+    };
+
+    updateLunchTimer();
+
+    if (activeShift.lunchEndTime) {
+      return undefined;
+    }
+
+    const interval = setInterval(updateLunchTimer, 1000);
+    return () => clearInterval(interval);
+  }, [
+    activeShift?.id,
+    activeShift?.lunchStartTime,
+    activeShift?.lunchEndTime,
+    activeShift?.clockOutTime,
+  ]);
+
+  const handleClockOutFromPopup = async () => {
+    setIsClockOutLoading(true);
+    const success = await clockOut();
+    if (success) {
+      showToast('Clocked out successfully', 'success');
+      setIsTrackerOpen(false);
+    } else {
+      showToast('Failed to clock out', 'error');
+    }
+    setIsClockOutLoading(false);
+  };
+
+  const handleLunchToggle = async () => {
+    if (!activeShift) return;
+    if (hasCompletedLunch) {
+      showToast('Lunch has already been completed for this shift', 'info');
+      return;
+    }
+
+    setIsLunchLoading(true);
+    const success = isOnLunch ? await endLunch() : await startLunch();
+    if (success) {
+      showToast(isOnLunch ? 'Clocked out of lunch' : 'Clocked into lunch', 'success');
+    } else {
+      showToast(isOnLunch ? 'Unable to clock out of lunch' : 'Unable to clock into lunch', 'error');
+    }
+    setIsLunchLoading(false);
   };
 
   const quickActionButtonBaseClassName =
@@ -284,6 +376,122 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </ul>
         </section>
       </main>
+
+      {activeShift && !isTrackerOpen && (
+        <button
+          type="button"
+          onClick={() => setIsTrackerOpen(true)}
+          className="fixed bottom-4 right-4 z-40 flex min-h-12 items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
+        >
+          <span aria-hidden="true" className="material-symbols-outlined text-base">
+            schedule
+          </span>
+          Open Time Tracker
+        </button>
+      )}
+
+      {activeShift && isTrackerOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Active time tracker"
+          onClick={() => setIsTrackerOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-sm border border-primary/30 bg-[#1b1324] p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                  Active Shift
+                </p>
+                <p className="text-base font-bold text-white">
+                  {activeJob ? `#${activeJob.jobCode} • ${activeJob.name}` : 'Clocked into job'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTrackerOpen(false)}
+                className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Close time tracker popup"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined">
+                  close
+                </span>
+              </button>
+            </div>
+
+            <div className="rounded-sm border border-white/10 bg-black/20 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Shift Timer</p>
+              <p className="font-mono text-3xl font-bold text-green-400">{shiftTimer}</p>
+              <p className="mt-2 text-xs text-slate-300">
+                {isOnLunch
+                  ? `On lunch • ${lunchTimer}`
+                  : hasCompletedLunch
+                    ? `Lunch completed • ${lunchTimer}`
+                    : 'Currently working'}
+              </p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={handleClockOutFromPopup}
+                disabled={isClockOutLoading}
+                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm bg-red-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-base">
+                  logout
+                </span>
+                {isClockOutLoading ? 'Clocking out...' : 'Clock Out'}
+              </button>
+              <button
+                type="button"
+                onClick={handleLunchToggle}
+                disabled={isLunchLoading || hasCompletedLunch}
+                className={`flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm px-4 py-3 text-sm font-bold text-white transition-colors disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 ${
+                  isOnLunch
+                    ? 'bg-amber-500 hover:bg-amber-600'
+                    : hasCompletedLunch
+                      ? 'bg-slate-700'
+                      : 'bg-primary hover:bg-primary/90'
+                }`}
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-base">
+                  restaurant
+                </span>
+                {isLunchLoading
+                  ? isOnLunch
+                    ? 'Clocking out lunch...'
+                    : 'Clocking in lunch...'
+                  : isOnLunch
+                    ? 'Clock Out Lunch'
+                    : hasCompletedLunch
+                      ? 'Lunch Complete'
+                      : 'Clock In Lunch'}
+              </button>
+            </div>
+
+            {activeJob && (
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigate('job-detail', activeJob.id);
+                  setIsTrackerOpen(false);
+                }}
+                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-sm border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition-colors hover:bg-white/10"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">
+                  work
+                </span>
+                Open Active Job
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* QR Scanner Modal */}
       {showScanner && (
