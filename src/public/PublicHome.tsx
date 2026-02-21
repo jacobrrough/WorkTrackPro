@@ -281,7 +281,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   };
 
   return (
-    <div className="min-h-[100dvh] max-h-[100dvh] overflow-y-auto overscroll-y-contain bg-[#08090f] text-white">
+    <div className="max-h-[100dvh] min-h-[100dvh] overflow-y-auto overscroll-y-contain bg-[#08090f] text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090f]/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
