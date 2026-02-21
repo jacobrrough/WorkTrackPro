@@ -63,13 +63,13 @@ try {
 }
 
 const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-const isLocalhost = hostname === 'localhost';
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 const isNetlifyDeployPreview =
   hostname.startsWith('deploy-preview-') && hostname.endsWith('.netlify.app');
 const isNetlifyBranchDeploy = hostname.endsWith('.netlify.app') && hostname.includes('--');
 const isVercelPreview = hostname.endsWith('.vercel.app') && hostname.includes('-git-');
 const shouldDisableServiceWorker =
-  isNetlifyDeployPreview || isNetlifyBranchDeploy || isVercelPreview;
+  isLocalhost || isNetlifyDeployPreview || isNetlifyBranchDeploy || isVercelPreview;
 
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -82,14 +82,16 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       if ('caches' in window) {
         caches.keys().then((keys) => {
           keys.forEach((key) => {
-            void caches.delete(key);
+            if (key.startsWith('worktrack-pro-')) {
+              void caches.delete(key);
+            }
           });
         });
       }
       return;
     }
 
-    if (import.meta.env.PROD || isLocalhost) {
+    if (import.meta.env.PROD) {
       navigator.serviceWorker.register('/sw.js').catch(() => {
         // Ignore registration errors (e.g. not HTTPS in dev)
       });
