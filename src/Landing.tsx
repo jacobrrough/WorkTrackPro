@@ -33,8 +33,8 @@ const Landing: React.FC = () => {
               Custom manufacturing and fabrication
             </h1>
             <p className="mt-6 text-lg text-slate-400">
-              From concept to finished product. We handle jobs, inventory, and precision work for
-              our clients.
+              From first sketch to finished product. We handle jobs, inventory, and precision work
+              for our clients.
             </p>
           </div>
         </section>
