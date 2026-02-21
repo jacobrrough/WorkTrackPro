@@ -207,36 +207,32 @@ export const partsService = {
         });
     }
 
-    const drawing = await this.getPartDrawing(id);
-    part.drawingAttachment = drawing ?? null;
+    const drawings = await this.getPartDrawings(id);
+    part.drawingAttachments = drawings;
+    part.drawingAttachment = drawings[0] ?? null;
     return part;
   },
 
-  /** Get the part's drawing file (at most one per part; for job cards – only file standard users can access). */
-  async getPartDrawing(partId: string): Promise<Attachment | null> {
+  /** Get all drawing files for this part (visible on job cards). */
+  async getPartDrawings(partId: string): Promise<Attachment[]> {
     const { data, error } = await supabase
       .from('attachments')
       .select('id, part_id, filename, storage_path, is_admin_only, created_at')
       .eq('part_id', partId)
-      .limit(1)
-      .maybeSingle();
-    if (error || !data) return null;
-    return mapAttachmentRow(data as unknown as AttachmentRow);
+      .order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return (data as unknown as AttachmentRow[]).map(mapAttachmentRow);
   },
 
-  /** Set part drawing (replaces existing). Part drawing is always visible to standard users. */
+  /** Get the first part drawing file for backward compatibility. */
+  async getPartDrawing(partId: string): Promise<Attachment | null> {
+    const drawings = await this.getPartDrawings(partId);
+    return drawings[0] ?? null;
+  },
+
+  /** Add a drawing file to a part. Part drawings are always visible to standard users. */
   async addPartDrawing(partId: string, file: File): Promise<{ success: boolean; error?: string }> {
     try {
-      const existing = await supabase.from('attachments').select('id').eq('part_id', partId);
-      if (existing.error) {
-        return {
-          success: false,
-          error: existing.error.message || 'Could not load existing drawing',
-        };
-      }
-      for (const row of existing.data ?? []) {
-        await deleteAttachmentRecord((row as { id: string }).id);
-      }
       const result = await uploadAttachment(undefined, undefined, partId, file, false);
       if (result.id == null) {
         return { success: false, error: result.error || 'Part drawing upload failed' };

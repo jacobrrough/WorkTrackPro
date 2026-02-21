@@ -23,7 +23,6 @@ interface KanbanBoardProps {
 
 const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
-  { id: 'rush', title: 'Rush', color: 'bg-red-600' },
   { id: 'inProgress', title: 'In Progress', color: 'bg-blue-500' },
   { id: 'qualityControl', title: 'Quality Control', color: 'bg-green-500' },
   { id: 'finished', title: 'Finished', color: 'bg-yellow-500' },
@@ -46,6 +45,8 @@ const ADMIN_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
 
 // Jobs with status 'paid' are reconciled and hidden from normal board/list views
 const excludePaid = (jobs: Job[]) => jobs.filter((j) => j.status !== 'paid');
+const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
+  status === 'rush' ? 'pending' : status;
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({
   jobs: allJobs,
@@ -244,25 +245,32 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     };
   }, [jobIdsKey, checklistRefreshTrigger, jobs]);
 
+  const sortColumnJobs = (columnJobs: Job[]) => {
+    return [...columnJobs].sort((a, b) => {
+      if (a.isRush !== b.isRush) {
+        return a.isRush ? -1 : 1;
+      }
+
+      const aTargetDate = a.ecd || a.dueDate;
+      const bTargetDate = b.ecd || b.dueDate;
+      if (aTargetDate && bTargetDate && aTargetDate !== bTargetDate) {
+        return aTargetDate.localeCompare(bTargetDate);
+      }
+      if (aTargetDate && !bTargetDate) return -1;
+      if (!aTargetDate && bTargetDate) return 1;
+      return (a.jobCode ?? 0) - (b.jobCode ?? 0);
+    });
+  };
+
   const getJobsForColumn = (columnId: JobStatus) => {
-    return jobs.filter((job) => {
-      // Rush column - show rush jobs that aren't finished/delivered
-      if (columnId === 'rush') {
-        return job.isRush && job.status !== 'finished' && job.status !== 'delivered';
-      }
-
-      // Shop Floor board
-      if (boardType === 'shopFloor') {
-        return job.status === columnId && !job.isRush;
-      }
-
-      // Admin board - only show admin jobs
-      if (boardType === 'admin') {
-        return job.boardType === 'admin' && job.status === columnId && !job.isRush;
-      }
-
+    const columnJobs = jobs.filter((job) => {
+      const effectiveStatus = normalizeLegacyRushStatus(job.status);
+      if (effectiveStatus !== columnId) return false;
+      if (boardType === 'shopFloor') return true;
+      if (boardType === 'admin') return job.boardType === 'admin';
       return false;
     });
+    return sortColumnJobs(columnJobs);
   };
 
   const handleDragStart = (e: React.DragEvent, job: Job) => {
@@ -289,24 +297,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     e.preventDefault();
     setDragOverColumn(null);
 
-    if (!draggedJob || draggedJob.status === columnId) {
+    if (!draggedJob) {
       setDraggedJob(null);
       return;
     }
-
-    // CRITICAL: Prevent dragging non-rush jobs to Rush column
-    if (columnId === 'rush' && !draggedJob.isRush) {
-      showToast('Cannot move to Rush: open job, enable "Rush Job", then save', 'warning');
-      setDraggedJob(null);
-      return;
-    }
-    if (
-      columnId !== 'rush' &&
-      draggedJob.isRush &&
-      columnId !== 'finished' &&
-      columnId !== 'delivered'
-    ) {
-      showToast('Rush job must stay in Rush column; disable Rush in job edit to move', 'warning');
+    const draggedEffectiveStatus = normalizeLegacyRushStatus(draggedJob.status);
+    if (draggedEffectiveStatus === columnId && draggedJob.status !== 'rush') {
       setDraggedJob(null);
       return;
     }
@@ -317,13 +313,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         ? `Complete checklist first (${checklistState.completed}/${checklistState.total})`
         : 'Complete all checklist items before moving this job';
       showToast(msg, 'warning');
-      setDraggedJob(null);
-      return;
-    }
-
-    // Allow rush jobs to move to finished/delivered
-    if ((columnId === 'finished' || columnId === 'delivered') && draggedJob.isRush) {
-      await onUpdateJobStatus(draggedJob.id, columnId);
       setDraggedJob(null);
       return;
     }

@@ -6,6 +6,7 @@ interface FileUploadButtonProps {
   disabled?: boolean;
   accept?: string;
   isAdminOnly?: boolean;
+  multiple?: boolean;
   label?: string;
 }
 
@@ -14,6 +15,7 @@ const FileUploadButton: React.FC<FileUploadButtonProps> = ({
   disabled = false,
   accept = 'image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv',
   isAdminOnly = false,
+  multiple = false,
   label = 'Upload File',
 }) => {
   const { showToast } = useToast();
@@ -25,31 +27,37 @@ const FileUploadButton: React.FC<FileUploadButtonProps> = ({
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('File too large. Maximum size is 10MB.', 'error');
-      return;
-    }
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
+    const files = multiple ? selectedFiles : [selectedFiles[0]];
 
     setUploading(true);
     try {
-      const success = await onUpload(file, isAdminOnly);
-      if (success) {
-        // Reset input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+      for (const file of files) {
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          showToast(`"${file.name}" is too large (max 10MB).`, 'error');
+          continue;
         }
-      } else {
-        console.error('❌ Upload failed (returned false)');
-        showToast('Upload failed. Please try again.', 'error');
+
+        try {
+          const success = await onUpload(file, isAdminOnly);
+          if (!success) {
+            console.error('❌ Upload failed (returned false):', file.name);
+            showToast(`Upload failed for "${file.name}".`, 'error');
+          }
+        } catch (error) {
+          console.error('❌ Upload error (exception):', error);
+          showToast(
+            error instanceof Error ? error.message : `Upload failed for "${file.name}"`,
+            'error'
+          );
+        }
       }
-    } catch (error) {
-      console.error('❌ Upload error (exception):', error);
-      showToast(error instanceof Error ? error.message : 'Upload failed', 'error');
     } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setUploading(false);
     }
   };
@@ -60,6 +68,7 @@ const FileUploadButton: React.FC<FileUploadButtonProps> = ({
         ref={fileInputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         onChange={handleFileChange}
         className="hidden"
         disabled={disabled || uploading}

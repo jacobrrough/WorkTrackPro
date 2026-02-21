@@ -67,7 +67,6 @@ interface JobDetailProps {
 // All available statuses for editing
 const ALL_STATUSES: { id: JobStatus; label: string }[] = [
   { id: 'pending', label: 'Pending' },
-  { id: 'rush', label: 'Rush' },
   { id: 'inProgress', label: 'In Progress' },
   { id: 'qualityControl', label: 'Quality Control' },
   { id: 'finished', label: 'Finished' },
@@ -81,6 +80,8 @@ const ALL_STATUSES: { id: JobStatus; label: string }[] = [
   { id: 'waitingForPayment', label: 'Waiting For Payment' },
   { id: 'projectCompleted', label: 'Project Completed' },
 ];
+const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
+  status === 'rush' ? 'pending' : status;
 
 const JobDetail: React.FC<JobDetailProps> = ({
   job,
@@ -122,8 +123,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   // File viewing state
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
-  /** Part drawing: the only file standard users can access on job cards */
-  const [partDrawing, setPartDrawing] = useState<Attachment | null>(null);
+  /** Part drawings: files standard users can access on job cards */
+  const [partDrawings, setPartDrawings] = useState<Attachment[]>([]);
 
   // Bin location state
   const [showBinLocationScanner, setShowBinLocationScanner] = useState(false);
@@ -150,7 +151,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     ecd: isoToDateInput(job.ecd),
     qty: job.qty || '',
     laborHours: job.laborHours?.toString() || '',
-    status: job.status,
+    status: normalizeLegacyRushStatus(job.status),
     isRush: job.isRush,
     binLocation: job.binLocation || '',
     partNumber: job.partNumber || '',
@@ -199,16 +200,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
     updateState({ lastViewedJobId: job.id });
   }, [job.id, updateState]);
 
-  // Part drawing: only file standard users can access on job cards
+  // Part drawings: files standard users can access on job cards
   useEffect(() => {
     if (!job.partId) {
-      setPartDrawing(null);
+      setPartDrawings([]);
       return;
     }
     let cancelled = false;
-    partsService.getPartDrawing(job.partId).then((drawing) => {
-      if (!cancelled) setPartDrawing(drawing);
-    });
+    partsService
+      .getPartDrawings(job.partId)
+      .then((drawings) => {
+        if (!cancelled) setPartDrawings(drawings);
+      })
+      .catch(() => {
+        if (!cancelled) setPartDrawings([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -590,7 +596,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
       laborHours: job.laborHours?.toString() || '',
-      status: job.status,
+      status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
       partNumber: jobPartNumber,
@@ -772,7 +778,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
       laborHours: job.laborHours?.toString() || '',
-      status: job.status,
+      status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
       partNumber: job.partNumber || '',
@@ -1966,30 +1972,35 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
             </div>
 
-            {/* Drawing: part drawing is the only file standard users can access */}
+            {/* Drawings: part drawing files are the only files standard users can access */}
             <div className="p-3 pt-0">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
                 <span className="material-symbols-outlined text-lg text-primary">
                   picture_as_pdf
                 </span>
-                Drawing
+                Drawings
               </h3>
-              {partDrawing ? (
-                <button
-                  onClick={() => window.open(partDrawing.url, '_blank')}
-                  className="flex min-h-[48px] w-full touch-manipulation items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
-                >
-                  <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
-                  <span className="truncate font-medium text-white">{partDrawing.filename}</span>
-                  <span className="material-symbols-outlined ml-auto text-slate-400">
-                    open_in_new
-                  </span>
-                </button>
+              {partDrawings.length > 0 ? (
+                <div className="space-y-2">
+                  {partDrawings.map((drawing) => (
+                    <button
+                      key={drawing.id}
+                      onClick={() => window.open(drawing.url, '_blank')}
+                      className="flex min-h-[48px] w-full touch-manipulation items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                    >
+                      <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
+                      <span className="truncate font-medium text-white">{drawing.filename}</span>
+                      <span className="material-symbols-outlined ml-auto text-slate-400">
+                        open_in_new
+                      </span>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <p className="py-2 text-sm text-slate-500">
                   {job.partId
-                    ? 'No drawing on file for this part.'
-                    : 'No part linked — no drawing.'}
+                    ? 'No drawings on file for this part.'
+                    : 'No part linked — no drawings.'}
                 </p>
               )}
             </div>

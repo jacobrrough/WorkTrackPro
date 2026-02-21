@@ -17,6 +17,9 @@ interface JobListProps {
   users: User[];
 }
 
+const normalizeLegacyRushStatus = (status: Job['status']): Job['status'] =>
+  status === 'rush' ? 'pending' : status;
+
 const JobList: React.FC<JobListProps> = ({
   jobs: allJobs,
   onNavigate,
@@ -26,24 +29,34 @@ const JobList: React.FC<JobListProps> = ({
   users,
 }) => {
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'rush' | 'pending' | 'inProgress'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'inProgress'>('all');
   const jobs = allJobs.filter((j) => j.status !== 'paid');
 
-  const filteredJobs = jobs.filter((j) => {
-    const displayName = getJobDisplayName(j);
-    const matchesSearch =
-      (j.name?.toLowerCase() ?? '').includes(search.toLowerCase()) ||
-      (displayName?.toLowerCase() ?? '').includes(search.toLowerCase()) ||
-      (j.jobCode?.toString() ?? '').includes(search) ||
-      j.po?.toLowerCase().includes(search.toLowerCase());
+  const filteredJobs = jobs
+    .filter((j) => {
+      const displayName = getJobDisplayName(j);
+      const matchesSearch =
+        (j.name?.toLowerCase() ?? '').includes(search.toLowerCase()) ||
+        (displayName?.toLowerCase() ?? '').includes(search.toLowerCase()) ||
+        (j.jobCode?.toString() ?? '').includes(search) ||
+        j.po?.toLowerCase().includes(search.toLowerCase());
 
-    let matchesFilter = true;
-    if (filter === 'rush') matchesFilter = j.isRush || j.status === 'rush';
-    else if (filter === 'pending') matchesFilter = j.status === 'pending';
-    else if (filter === 'inProgress') matchesFilter = j.status === 'inProgress';
+      const normalizedStatus = normalizeLegacyRushStatus(j.status);
+      let matchesFilter = true;
+      if (filter === 'pending') matchesFilter = normalizedStatus === 'pending';
+      else if (filter === 'inProgress') matchesFilter = normalizedStatus === 'inProgress';
 
-    return matchesSearch && matchesFilter;
-  });
+      return matchesSearch && matchesFilter;
+    })
+    .sort((a, b) => {
+      if (a.isRush !== b.isRush) return a.isRush ? -1 : 1;
+      const aTarget = a.ecd || a.dueDate;
+      const bTarget = b.ecd || b.dueDate;
+      if (aTarget && bTarget && aTarget !== bTarget) return aTarget.localeCompare(bTarget);
+      if (aTarget && !bTarget) return -1;
+      if (!aTarget && bTarget) return 1;
+      return (a.jobCode ?? 0) - (b.jobCode ?? 0);
+    });
 
   const getActiveUsersForJob = (jobId: string) => {
     const activeShifts = shifts.filter((s) => s.job === jobId && !s.clockOutTime);
@@ -97,36 +110,21 @@ const JobList: React.FC<JobListProps> = ({
           </div>
 
           <div className="no-scrollbar flex gap-2 overflow-x-auto">
-            {(['all', 'rush', 'pending', 'inProgress'] as const).map((f) => (
+            {(['all', 'pending', 'inProgress'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-sm px-3 text-sm font-semibold transition-colors ${
                   filter === f
-                    ? f === 'rush'
-                      ? 'bg-red-500 text-white'
-                      : f === 'pending'
-                        ? 'bg-orange-500 text-white'
-                        : f === 'inProgress'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-primary text-white'
+                    ? f === 'pending'
+                      ? 'bg-orange-500 text-white'
+                      : f === 'inProgress'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-primary text-white'
                     : 'border border-white/5 bg-[#261a32] text-slate-300'
                 }`}
               >
-                {f === 'all' ? (
-                  'All Jobs'
-                ) : f === 'rush' ? (
-                  <>
-                    <span className="material-symbols-outlined align-middle text-sm">
-                      local_fire_department
-                    </span>{' '}
-                    Rush
-                  </>
-                ) : f === 'inProgress' ? (
-                  'In Progress'
-                ) : (
-                  'Pending'
-                )}
+                {f === 'all' ? 'All Jobs' : f === 'inProgress' ? 'In Progress' : 'Pending'}
               </button>
             ))}
           </div>

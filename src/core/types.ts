@@ -226,7 +226,9 @@ export interface Part {
   updatedAt?: string;
   variants?: PartVariant[];
   materials?: PartMaterial[];
-  /** Single drawing file for this part (only file standard users can access on job cards) */
+  /** Drawing files for this part (visible on job cards for standard users) */
+  drawingAttachments?: Attachment[];
+  /** Backward-compat first drawing file for this part */
   drawingAttachment?: Attachment | null;
 }
 
@@ -332,7 +334,6 @@ export interface ShiftEdit {
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
-  { id: 'rush', title: 'Rush', color: 'bg-red-600' },
   { id: 'inProgress', title: 'In Progress', color: 'bg-blue-500' },
   { id: 'qualityControl', title: 'Quality Control', color: 'bg-green-500' },
   { id: 'finished', title: 'Finished', color: 'bg-yellow-500' },

@@ -325,6 +325,7 @@ export default function App() {
         <PartDetail
           partId={id}
           jobs={jobs}
+          shifts={shifts}
           onNavigate={handleNavigate}
           onNavigateBack={() => handleNavigate('parts')}
         />
