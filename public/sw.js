@@ -1,7 +1,7 @@
 /* Minimal service worker for WorkTrack Pro PWA installability.
  * Caches the app shell so the app can be installed and works offline for repeat visits.
  */
-const CACHE_NAME = 'worktrack-pro-v1';
+const CACHE_NAME = 'worktrack-pro-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

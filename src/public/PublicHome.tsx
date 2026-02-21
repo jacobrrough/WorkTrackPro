@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/services/api/supabaseClient';
 
 declare global {
@@ -119,6 +119,38 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
     return uploaded;
   };
 
+  const navigateToSection = useCallback((hashValue: string) => {
+    if (typeof window === 'undefined') return;
+    const sectionId = hashValue.replace(/^#/, '').trim();
+    if (!sectionId) return;
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const handleSectionLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      const href = event.currentTarget.getAttribute('href') ?? '';
+      if (!href.startsWith('#')) return;
+      event.preventDefault();
+      if (window.location.hash !== href) {
+        window.history.pushState(null, '', href);
+      }
+      navigateToSection(href);
+    },
+    [navigateToSection]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash) {
+      window.requestAnimationFrame(() => navigateToSection(window.location.hash));
+    }
+    const onHashChange = () => navigateToSection(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [navigateToSection]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMessage('');
@@ -190,7 +222,10 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
 
   const renderHero = () => {
     return (
-      <section className="overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#0f0f14] via-[#191321] to-[#2b1838]">
+      <section
+        id="services"
+        className="scroll-mt-24 overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#0f0f14] via-[#191321] to-[#2b1838]"
+      >
         <div className="grid gap-0 lg:grid-cols-5">
           <div className="p-8 lg:col-span-3">
             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
@@ -246,7 +281,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   };
 
   return (
-    <div className="h-screen overflow-y-auto bg-[#08090f] text-white">
+    <div className="min-h-[100dvh] max-h-[100dvh] overflow-y-auto overscroll-y-contain bg-[#08090f] text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090f]/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
@@ -271,13 +306,22 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onEmployeeLogin}
-            className="min-h-[44px] rounded-sm border border-primary/50 bg-primary/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/30"
-          >
-            Employee Login
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="#submit-proposal"
+              onClick={handleSectionLinkClick}
+              className="hidden min-h-[44px] items-center rounded-sm border border-white/20 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10 sm:inline-flex"
+            >
+              Submit Proposal
+            </a>
+            <button
+              type="button"
+              onClick={onEmployeeLogin}
+              className="min-h-[44px] rounded-sm border border-primary/50 bg-primary/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/30"
+            >
+              Employee Login
+            </button>
+          </div>
         </div>
       </header>
 
@@ -286,7 +330,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
 
         <section
           id="submit-proposal"
-          className="rounded-sm border border-primary/30 bg-[#120f1f] p-6 shadow-lg shadow-primary/10"
+          className="scroll-mt-24 rounded-sm border border-primary/30 bg-[#120f1f] p-6 shadow-lg shadow-primary/10"
         >
           <h3 className="text-2xl font-bold">Submit Proposal & Paperwork</h3>
           <p className="mt-2 text-sm text-slate-200">
