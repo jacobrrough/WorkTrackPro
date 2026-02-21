@@ -106,6 +106,8 @@ export interface Shift {
   jobCode?: number;
   clockInTime: string;
   clockOutTime?: string;
+  lunchStartTime?: string;
+  lunchEndTime?: string;
   notes?: string;
 }
 
