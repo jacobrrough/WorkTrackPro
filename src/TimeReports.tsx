@@ -22,7 +22,10 @@ function startOfLocalWeek(date: Date): Date {
   return start;
 }
 
-function buildDateRangeWindow(dateRange: DateRange, periodOffset: number): {
+function buildDateRangeWindow(
+  dateRange: DateRange,
+  periodOffset: number
+): {
   start: Date | null;
   end: Date | null;
   label: string;

@@ -25,8 +25,17 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { currentUser, jobs, inventory, activeShift, activeJob, logout, clockOut, startLunch, endLunch } =
-    useApp();
+  const {
+    currentUser,
+    jobs,
+    inventory,
+    activeShift,
+    activeJob,
+    logout,
+    clockOut,
+    startLunch,
+    endLunch,
+  } = useApp();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin ?? false;
   const { state: navState, updateState } = useNavigation();
@@ -93,7 +102,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (!activeShift) return undefined;
 
     const updateShiftTimer = () => {
-      setShiftTimer(formatDurationHMS(durationMs(activeShift.clockInTime, activeShift.clockOutTime ?? null)));
+      setShiftTimer(
+        formatDurationHMS(durationMs(activeShift.clockInTime, activeShift.clockOutTime ?? null))
+      );
     };
 
     updateShiftTimer();
@@ -424,7 +435,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
 
             <div className="rounded-sm border border-white/10 bg-black/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Shift Timer</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Shift Timer
+              </p>
               <p className="font-mono text-3xl font-bold text-green-400">{shiftTimer}</p>
               <p className="mt-2 text-xs text-slate-300">
                 {isOnLunch
