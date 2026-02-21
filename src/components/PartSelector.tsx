@@ -26,13 +26,6 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (initialPartNumber) {
-      setSearch(initialPartNumber);
-      loadPart(initialPartNumber);
-    }
-  }, [initialPartNumber, loadPart]);
-
   const loadPart = useCallback(
     async (partNumber: string) => {
       if (!partNumber.trim()) {
@@ -75,6 +68,13 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     },
     [showToast, initialDashQuantities]
   );
+
+  useEffect(() => {
+    if (initialPartNumber) {
+      setSearch(initialPartNumber);
+      loadPart(initialPartNumber);
+    }
+  }, [initialPartNumber, loadPart]);
 
   const handleSearch = () => {
     loadPart(search);

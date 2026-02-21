@@ -246,6 +246,85 @@ async function fetchJobExpand(jobId: string): Promise<{
   return { job_inventory, comments, attachments };
 }
 
+async function fetchJobsExpandBatch(jobIds: string[]): Promise<
+  Map<
+    string,
+    {
+      job_inventory: JobInventoryRow[];
+      comments: (CommentRow & { user_name?: string; user_initials?: string })[];
+      attachments: AttachmentRow[];
+    }
+  >
+> {
+  const expandByJobId = new Map<
+    string,
+    {
+      job_inventory: JobInventoryRow[];
+      comments: (CommentRow & { user_name?: string; user_initials?: string })[];
+      attachments: AttachmentRow[];
+    }
+  >();
+
+  if (jobIds.length === 0) return expandByJobId;
+
+  for (const jobId of jobIds) {
+    expandByJobId.set(jobId, {
+      job_inventory: [],
+      comments: [],
+      attachments: [],
+    });
+  }
+
+  const [jiRes, comRes, attRes] = await Promise.all([
+    supabase
+      .from('job_inventory')
+      .select('id, job_id, inventory_id, quantity, unit')
+      .in('job_id', jobIds),
+    supabase
+      .from('comments')
+      .select('id, job_id, user_id, text, created_at')
+      .in('job_id', jobIds)
+      .order('created_at', { ascending: true }),
+    supabase.from('attachments').select('*').in('job_id', jobIds),
+  ]);
+
+  const jobInventory = (jiRes.data ?? []) as JobInventoryRow[];
+  const commentsRaw = (comRes.data ?? []) as CommentRow[];
+  const attachments = (attRes.data ?? []) as AttachmentRow[];
+
+  const userIds = [...new Set(commentsRaw.map((c) => c.user_id))];
+  const profiles =
+    userIds.length > 0
+      ? await supabase.from('profiles').select('id, name, initials').in('id', userIds)
+      : { data: [] };
+  const profileMap = new Map(
+    (profiles.data ?? []).map((p: { id: string; name?: string; initials?: string }) => [p.id, p])
+  );
+
+  const comments = commentsRaw.map((c) => {
+    const p = profileMap.get(c.user_id) as { name?: string; initials?: string } | undefined;
+    return { ...c, user_name: p?.name, user_initials: p?.initials };
+  });
+
+  for (const ji of jobInventory) {
+    const target = expandByJobId.get(ji.job_id);
+    if (target) target.job_inventory.push(ji);
+  }
+
+  for (const comment of comments) {
+    const target = expandByJobId.get(comment.job_id);
+    if (target) target.comments.push(comment);
+  }
+
+  for (const attachment of attachments) {
+    if (!attachment.job_id) continue;
+    const target = expandByJobId.get(attachment.job_id);
+    if (target) target.attachments.push(attachment);
+  }
+
+  return expandByJobId;
+}
+
 export const jobService = {
   async getAllJobs(): Promise<Job[]> {
     const { data: rows, error } = await supabase
@@ -254,12 +333,17 @@ export const jobService = {
       .order('created_at', { ascending: false });
     if (error) throw error;
     const list = (rows ?? []) as Record<string, unknown>[];
-    const jobs: Job[] = [];
-    for (const row of list) {
-      const expand = await fetchJobExpand(row.id as string);
-      jobs.push(mapJobRow(row, expand));
-    }
-    return jobs;
+    if (list.length === 0) return [];
+
+    const jobIds = list
+      .map((row) => row.id)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+    const expandByJobId = await fetchJobsExpandBatch(jobIds);
+    return list.map((row) => {
+      const jobId = row.id as string;
+      return mapJobRow(row, expandByJobId.get(jobId));
+    });
   },
 
   async getJobById(jobId: string): Promise<Job | null> {
