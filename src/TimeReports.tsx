@@ -6,6 +6,83 @@ import { shiftService, shiftEditService } from './pocketbase';
 import ConfirmDialog from './ConfirmDialog';
 import { durationMs, formatDurationHours } from './lib/timeUtils';
 
+type DateRange = 'today' | 'week' | 'month' | 'all';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfLocalWeek(date: Date): Date {
+  const start = startOfLocalDay(date);
+  const day = start.getDay();
+  const diffToMonday = (day + 6) % 7;
+  start.setDate(start.getDate() - diffToMonday);
+  return start;
+}
+
+function buildDateRangeWindow(dateRange: DateRange, periodOffset: number): {
+  start: Date | null;
+  end: Date | null;
+  label: string;
+} {
+  const now = new Date();
+
+  if (dateRange === 'all') {
+    return { start: null, end: null, label: 'All time' };
+  }
+
+  if (dateRange === 'today') {
+    const start = startOfLocalDay(now);
+    start.setDate(start.getDate() - periodOffset);
+    const end = new Date(start.getTime() + DAY_MS);
+    return {
+      start,
+      end,
+      label:
+        periodOffset === 0
+          ? 'Today'
+          : start.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }),
+    };
+  }
+
+  if (dateRange === 'week') {
+    const start = startOfLocalWeek(now);
+    start.setDate(start.getDate() - periodOffset * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const endDisplay = new Date(end.getTime() - 1);
+    return {
+      start,
+      end,
+      label: `${start.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })} - ${endDisplay.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })}`,
+    };
+  }
+
+  const start = new Date(now.getFullYear(), now.getMonth() - periodOffset, 1);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  return {
+    start,
+    end,
+    label: start.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    }),
+  };
+}
+
 interface TimeReportsProps {
   shifts: Shift[];
   users: User[];
@@ -27,7 +104,8 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 }) => {
   const { showToast } = useToast();
   const [filter, setFilter] = useState<'all' | 'mine'>('mine');
-  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('week');
+  const [dateRange, setDateRange] = useState<DateRange>('week');
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [viewMode, setViewMode] = useState<'shifts' | 'users' | 'jobs'>('shifts');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
@@ -93,6 +171,11 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   const formatShiftHours = (s: Shift): string =>
     formatDurationHours(durationMs(s.clockInTime, s.clockOutTime));
 
+  const periodWindow = useMemo(
+    () => buildDateRangeWindow(dateRange, periodOffset),
+    [dateRange, periodOffset]
+  );
+
   const filteredShifts = useMemo(() => {
     let result = shifts;
 
@@ -102,23 +185,19 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       result = result.filter((s) => s.user === selectedUser);
     }
 
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    if (dateRange === 'today') {
-      result = result.filter((s) => new Date(s.clockInTime) >= startOfToday);
-    } else if (dateRange === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      result = result.filter((s) => new Date(s.clockInTime) >= weekAgo);
-    } else if (dateRange === 'month') {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      result = result.filter((s) => new Date(s.clockInTime) >= monthAgo);
+    const rangeStart = periodWindow.start;
+    const rangeEnd = periodWindow.end;
+    if (rangeStart && rangeEnd) {
+      result = result.filter((s) => {
+        const shiftStart = new Date(s.clockInTime);
+        return shiftStart >= rangeStart && shiftStart < rangeEnd;
+      });
     }
 
     return result.sort(
       (a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime()
     );
-  }, [shifts, filter, dateRange, currentUser.id, selectedUser]);
+  }, [shifts, filter, periodWindow, currentUser.id, selectedUser]);
 
   const totalsByJob = useMemo(() => {
     const map: Record<string, number> = {};
@@ -152,16 +231,18 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
   const dailyBreakdown = useMemo(() => {
     const days: { date: string; hours: number; shifts: number }[] = [];
-    const now = new Date();
+    const chartEndBase =
+      periodWindow.end !== null ? new Date(periodWindow.end.getTime() - 1) : new Date();
+    const chartEndDay = startOfLocalDay(chartEndBase);
 
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(now);
+      const date = new Date(chartEndDay);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
 
-      const dayShifts = shifts.filter((s) => {
+      const dayShifts = filteredShifts.filter((s) => {
         const shiftDate = new Date(s.clockInTime).toISOString().split('T')[0];
-        return shiftDate === dateStr && (filter === 'all' || s.user === currentUser.id);
+        return shiftDate === dateStr;
       });
 
       const hours = dayShifts.reduce((sum, s) => sum + getHoursAsNumber(s), 0);
@@ -172,7 +253,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       });
     }
     return days;
-  }, [shifts, filter, currentUser.id]);
+  }, [filteredShifts, periodWindow.end]);
 
   const maxDailyHours = Math.max(...dailyBreakdown.map((d) => d.hours), 1);
 
@@ -431,7 +512,10 @@ const TimeReports: React.FC<TimeReportsProps> = ({
             {(['today', 'week', 'month', 'all'] as const).map((range) => (
               <button
                 key={range}
-                onClick={() => setDateRange(range)}
+                onClick={() => {
+                  setDateRange(range);
+                  setPeriodOffset(0);
+                }}
                 className={`flex-1 rounded-sm px-3 py-2 text-xs font-bold uppercase transition-all ${
                   dateRange === range
                     ? 'border border-primary bg-primary/20 text-primary'
@@ -442,6 +526,29 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               </button>
             ))}
           </div>
+
+          {dateRange !== 'all' && (
+            <div className="flex items-center justify-between gap-2 rounded-sm border border-white/10 bg-white/5 p-2">
+              <button
+                onClick={() => setPeriodOffset((prev) => prev + 1)}
+                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-sm border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition-colors hover:bg-white/20"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_left</span>
+                Older
+              </button>
+              <p className="text-center text-xs font-bold uppercase tracking-wide text-primary">
+                {periodWindow.label}
+              </p>
+              <button
+                onClick={() => setPeriodOffset((prev) => Math.max(0, prev - 1))}
+                disabled={periodOffset === 0}
+                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-sm border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Newer
+                <span className="material-symbols-outlined text-sm">chevron_right</span>
+              </button>
+            </div>
+          )}
 
           {filter === 'all' && (
             <div className="flex gap-2">
@@ -481,8 +588,11 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         {/* 7-Day Chart */}
         <div className="rounded-sm border border-white/5 bg-card-dark p-3">
           <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary">
-            Last 7 Days
+            Daily Breakdown
           </h3>
+          <p className="-mt-2 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            {dateRange === 'all' ? 'Recent 7 days' : periodWindow.label}
+          </p>
           <div className="flex h-32 items-end justify-between gap-2">
             {dailyBreakdown.map((day, i) => (
               <div key={i} className="flex flex-1 flex-col items-center gap-2">
@@ -629,9 +739,9 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-3">
               {filteredShifts.length === 0 ? (
-                <div className="col-span-full py-12 text-center">
+                <div className="py-12 text-center">
                   <span className="material-symbols-outlined mb-3 block text-5xl text-slate-600">
                     schedule
                   </span>
