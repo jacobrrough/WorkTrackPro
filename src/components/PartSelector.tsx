@@ -6,6 +6,7 @@ import { formatSetComposition } from '@/lib/formatJob';
 
 interface PartSelectorProps {
   onSelect: (part: Part, dashQuantities: Record<string, number>) => void;
+  onPartNumberResolved?: (partNumber: string, matchedPart: Part | null) => void;
   initialPartNumber?: string;
   /** Pre-fill dash quantities when editing an existing job */
   initialDashQuantities?: Record<string, number>;
@@ -15,6 +16,7 @@ interface PartSelectorProps {
 
 const PartSelector: React.FC<PartSelectorProps> = ({
   onSelect,
+  onPartNumberResolved,
   initialPartNumber = '',
   initialDashQuantities,
   isAdmin: _isAdmin = true,
@@ -28,20 +30,28 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
   const loadPart = useCallback(
     async (partNumber: string) => {
-      if (!partNumber.trim()) {
+      const normalizedPartNumber = partNumber.trim().toUpperCase();
+      if (!normalizedPartNumber) {
         setPart(null);
         setDashQuantities({});
+        onPartNumberResolved?.('', null);
         return;
       }
 
       setLoading(true);
       try {
-        const found = await partsService.getPartByNumber(partNumber.trim());
+        const found = await partsService.getPartByNumber(normalizedPartNumber);
         if (found) {
           const fullPart = await partsService.getPartWithVariants(found.id);
+          if (!fullPart) {
+            setPart(null);
+            setDashQuantities({});
+            onPartNumberResolved?.(normalizedPartNumber, null);
+            return;
+          }
           setPart(fullPart);
 
-          // Initialize: use initialDashQuantities when editing, else 0 per variant
+          // Initialize: use pre-filled edit values when present, omit zero-qty variants
           const initial: Record<string, number> = {};
           fullPart.variants?.forEach((v) => {
             const key = v.variantSuffix;
@@ -50,23 +60,34 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                 initialDashQuantities[`-${key}`] ??
                 initialDashQuantities[key.replace(/^-/, '')])
               : undefined;
-            initial[key] = fromInitial ?? 0;
+            const nextQty = fromInitial ?? 0;
+            if (nextQty > 0) {
+              initial[key] = nextQty;
+            }
           });
           setDashQuantities(initial);
+          onSelect(fullPart, initial);
+          onPartNumberResolved?.(fullPart.partNumber, fullPart);
           showToast(`Found part: ${fullPart.name}`, 'success');
         } else {
           setPart(null);
           setDashQuantities({});
+          onPartNumberResolved?.(normalizedPartNumber, null);
+          showToast(
+            `Part ${normalizedPartNumber} not found. It will be created when you create the job.`,
+            'warning'
+          );
         }
       } catch (error) {
         console.error('Error loading part:', error);
         setPart(null);
         setDashQuantities({});
+        onPartNumberResolved?.(normalizedPartNumber, null);
       } finally {
         setLoading(false);
       }
     },
-    [showToast, initialDashQuantities]
+    [showToast, initialDashQuantities, onPartNumberResolved, onSelect]
   );
 
   useEffect(() => {
@@ -129,7 +150,11 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              const nextValue = e.target.value.toUpperCase();
+              setSearch(nextValue);
+              onPartNumberResolved?.(nextValue.trim(), null);
+            }}
             onBlur={handleSearch}
             placeholder="e.g., SK-F35-0911"
             className="flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
