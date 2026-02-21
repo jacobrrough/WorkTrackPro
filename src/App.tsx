@@ -5,6 +5,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import Login from './Login';
 import { jobService } from './pocketbase';
 import PublicHome from './public/PublicHome';
+import TimeReports from './TimeReports';
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const JobList = lazy(() => import('./JobList'));
@@ -17,7 +18,6 @@ const PartDetail = lazy(() => import('./features/admin/PartDetail'));
 const AdminCreateJob = lazy(() => import('./AdminCreateJob'));
 const Quotes = lazy(() => import('./Quotes'));
 const Calendar = lazy(() => import('./features/admin/Calendar'));
-const TimeReports = lazy(() => import('./TimeReports'));
 const AdminSettings = lazy(() => import('./features/admin/AdminSettings'));
 const TrelloImport = lazy(() => import('./TrelloImport'));
 
