@@ -26,7 +26,7 @@ const WEEK_DAYS: Array<{ day: number; short: string; label: string }> = [
 ];
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, onBack }) => {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, isSyncing } = useSettings();
   const { showToast } = useToast();
   const [laborRate, setLaborRate] = useState(String(settings.laborRate));
   const [materialUpcharge, setMaterialUpcharge] = useState(String(settings.materialUpcharge));
@@ -90,7 +90,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const lr = parseFloat(laborRate);
     const mu = parseFloat(materialUpcharge);
     const cr = parseFloat(cncRate);
@@ -143,7 +143,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       showToast('Enter a valid 3D printer rate (≥ 0)', 'error');
       return;
     }
-    updateSettings({
+    const result = await updateSettings({
       laborRate: lr,
       materialUpcharge: mu,
       cncRate: cr,
@@ -152,7 +152,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       overtimeMultiplier: otMultiplier,
       workWeekSchedule: normalizedSchedule,
     });
-    showToast('Settings saved', 'success');
+    if (result.success) {
+      showToast('Settings saved for organization', 'success');
+      return;
+    }
+    showToast(
+      result.error
+        ? `Failed to save org settings: ${result.error}`
+        : 'Failed to save organization settings',
+      'error'
+    );
   };
 
   return (
@@ -253,9 +262,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
             <button
               onClick={handleSave}
+              disabled={isSyncing}
               className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
             >
-              Save
+              {isSyncing ? 'Saving...' : 'Save'}
             </button>
           </div>
 
@@ -454,9 +464,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
             <button
               onClick={handleSave}
+              disabled={isSyncing}
               className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
             >
-              Save
+              {isSyncing ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>
