@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Job, User, ViewState, JobStatus, BoardType, Shift, Part } from '@/core/types';
 import { dateInputToISO } from '@/core/date';
 import { getLaborSuggestion } from '@/lib/laborSuggestion';
@@ -90,15 +90,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     revision: '',
   });
 
-  // Auto-generate EST# when job code is set
-  useEffect(() => {
-    if (formData.jobCode && !formData.estNumber) {
-      setFormData((prev) => ({ ...prev, estNumber: `EST-${formData.jobCode}` }));
-    }
-  }, [formData.jobCode, formData.estNumber]);
-
   const handlePartSelect = (part: Part, quantities: Record<string, number>) => {
-    setSelectedPartNumber(part.partNumber);
+    setSelectedPartNumber(part.partNumber.trim());
     setSelectedPart(part);
     setPartNameEdit(part.name ?? '');
     setDashQuantities(quantities);
@@ -107,6 +100,16 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       laborHours: part.laborHours?.toString() || prev.laborHours,
       description: part.description || prev.description,
     }));
+  };
+
+  const handlePartNumberResolved = (partNumber: string, matchedPart: Part | null) => {
+    const normalizedPartNumber = partNumber.trim().toUpperCase();
+    setSelectedPartNumber(normalizedPartNumber);
+    if (!matchedPart) {
+      setSelectedPart(null);
+      setPartNameEdit('');
+      setDashQuantities({});
+    }
   };
 
   // Auto name for display and labor suggestion (Part → Part REV → EST # n → PO# n → fallback Job #code)
@@ -179,7 +182,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
 
     setIsSubmitting(true);
 
-    const partNumberForCreate = selectedPartNumber?.trim();
+    const partNumberForCreate =
+      selectedPartNumber?.trim() || selectedPart?.partNumber?.trim() || '';
     const nameForCreate = getJobNameForSave(
       {
         partNumber: partNumberForCreate,
@@ -214,16 +218,16 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         estNumber: formData.estNumber.trim() || undefined,
         invNumber: formData.invNumber.trim() || undefined,
         rfqNumber: formData.rfqNumber.trim() || undefined,
-        partNumber: selectedPartNumber || undefined,
+        partNumber: partNumberForCreate || undefined,
         revision: formData.revision.trim() || undefined,
         dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
       } as Partial<Job>);
 
       if (job) {
         // If part number was selected but not found, create master part
-        if (selectedPartNumber && !job.partNumber) {
+        if (partNumberForCreate && !job.partNumber) {
           try {
-            const basePartNumber = selectedPartNumber.replace(/-\d{2}$/, ''); // Remove variant suffix if present
+            const basePartNumber = partNumberForCreate.replace(/-\d{2}$/, ''); // Remove variant suffix if present
             await partsService.createPart({
               partNumber: basePartNumber,
               name: (selectedPart ? partNameEdit.trim() : '') || nameForCreate,
@@ -345,7 +349,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             </p>
             <PartSelector
               onSelect={handlePartSelect}
-              initialPartNumber={selectedPartNumber}
+              onPartNumberResolved={handlePartNumberResolved}
               isAdmin={currentUser.isAdmin}
               showPrices={currentUser.isAdmin}
             />
