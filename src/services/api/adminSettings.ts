@@ -50,10 +50,7 @@ export const adminSettingsService = {
   async upsertOrganizationSettings(
     settings: OrganizationSettingsRecord
   ): Promise<{ data: OrganizationSettingsRecord | null; error?: string }> {
-    const {
-      data: authData,
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError) {
       return { data: null, error: authError.message || 'Unable to validate current user' };
     }

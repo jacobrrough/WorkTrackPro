@@ -81,7 +81,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
   const updateDaySchedule = (
     day: number,
-    patch: Partial<WorkWeekSchedule[number]> | ((prev: WorkWeekSchedule[number]) => WorkWeekSchedule[number])
+    patch:
+      | Partial<WorkWeekSchedule[number]>
+      | ((prev: WorkWeekSchedule[number]) => WorkWeekSchedule[number])
   ) => {
     setWorkWeekSchedule((prev) => {
       const current = prev[day];
@@ -332,7 +334,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                           </div>
                           <button
                             type="button"
-                            onClick={() => updateDaySchedule(day, { enabled: !daySchedule.enabled })}
+                            onClick={() =>
+                              updateDaySchedule(day, { enabled: !daySchedule.enabled })
+                            }
                             className={`h-6 w-12 rounded-sm transition-colors ${daySchedule.enabled ? 'bg-primary' : 'bg-white/20'}`}
                             aria-label={`${short} enabled`}
                           >
@@ -360,7 +364,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                             <input
                               type="time"
                               value={daySchedule.standardEnd}
-                              onChange={(e) => updateDaySchedule(day, { standardEnd: e.target.value })}
+                              onChange={(e) =>
+                                updateDaySchedule(day, { standardEnd: e.target.value })
+                              }
                               disabled={!daySchedule.enabled}
                               className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                             />
@@ -441,7 +447,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               <div className="rounded-sm border border-primary/30 bg-primary/10 p-3 text-sm">
                 <p className="text-slate-300">
                   Weekly regular hours per employee:{' '}
-                  <span className="font-bold text-white">{regularHoursPerEmployee.toFixed(1)}h</span>
+                  <span className="font-bold text-white">
+                    {regularHoursPerEmployee.toFixed(1)}h
+                  </span>
                 </p>
                 <p className="mt-1 text-slate-300">
                   Weekly possible overtime per employee:{' '}

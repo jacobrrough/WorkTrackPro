@@ -199,7 +199,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
         variant.laborHours != null
           ? variant.laborHours
           : part?.laborHours != null && part.setComposition
-            ? variantLaborFromSetComposition(variant.variantSuffix, part.laborHours, part.setComposition)
+            ? variantLaborFromSetComposition(
+                variant.variantSuffix,
+                part.laborHours,
+                part.setComposition
+              )
             : undefined;
       return {
         variantSuffix: variant.variantSuffix,
@@ -832,7 +836,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-sm text-slate-400">Part Drawings</label>
                 <p className="mb-2 text-xs text-slate-500">
-                  Upload one or more drawing files. Shop-floor users can access these from job cards.
+                  Upload one or more drawing files. Shop-floor users can access these from job
+                  cards.
                 </p>
                 {partDrawings.length > 0 ? (
                   <div className="space-y-2">
@@ -1192,7 +1197,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
         )}
 
         {/* Section 4: Labor Feedback (closed-loop estimation from completed jobs) */}
-        <Accordion title={`Labor Feedback (${laborFeedback.analyzedJobCount})`} defaultExpanded={false}>
+        <Accordion
+          title={`Labor Feedback (${laborFeedback.analyzedJobCount})`}
+          defaultExpanded={false}
+        >
           {laborFeedback.analyzedJobCount === 0 ? (
             <p className="text-sm text-slate-400">
               No completed jobs with recorded labor time yet. Clocked shifts and/or labor hours on
@@ -1206,8 +1214,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   <p className="text-lg font-bold text-white">{laborFeedback.completedJobCount}</p>
                 </div>
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Total actual hours</p>
-                  <p className="text-lg font-bold text-white">{laborFeedback.totalActualHours.toFixed(1)}h</p>
+                  <p className="text-[10px] font-bold uppercase text-slate-400">
+                    Total actual hours
+                  </p>
+                  <p className="text-lg font-bold text-white">
+                    {laborFeedback.totalActualHours.toFixed(1)}h
+                  </p>
                 </div>
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-slate-400">Actual avg / set</p>
@@ -1220,7 +1232,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-slate-400">Estimate / set</p>
                   <p className="text-lg font-bold text-white">
-                    {laborFeedback.estimatePerSet != null ? `${laborFeedback.estimatePerSet.toFixed(2)}h` : '—'}
+                    {laborFeedback.estimatePerSet != null
+                      ? `${laborFeedback.estimatePerSet.toFixed(2)}h`
+                      : '—'}
                   </p>
                   {laborFeedback.variancePerSet != null && (
                     <p
@@ -1244,7 +1258,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         key={row.variantSuffix}
                         className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-black/20 px-3 py-2 text-xs"
                       >
-                        <div className="font-mono font-semibold text-primary">-{row.variantSuffix}</div>
+                        <div className="font-mono font-semibold text-primary">
+                          -{row.variantSuffix}
+                        </div>
                         <div className="text-slate-300">Units: {row.completedUnits.toFixed(1)}</div>
                         <div className="text-slate-300">
                           Actual/unit:{' '}
@@ -1252,7 +1268,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         </div>
                         <div className="text-slate-300">
                           Est/unit:{' '}
-                          {row.estimatedPerUnit != null ? `${row.estimatedPerUnit.toFixed(2)}h` : '—'}
+                          {row.estimatedPerUnit != null
+                            ? `${row.estimatedPerUnit.toFixed(2)}h`
+                            : '—'}
                         </div>
                         {row.variancePerUnit != null && (
                           <div

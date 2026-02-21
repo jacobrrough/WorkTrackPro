@@ -124,13 +124,7 @@ const JobList: React.FC<JobListProps> = ({
                     : 'border border-white/5 bg-[#261a32] text-slate-300'
                 }`}
               >
-                {f === 'all' ? (
-                  'All Jobs'
-                ) : f === 'inProgress' ? (
-                  'In Progress'
-                ) : (
-                  'Pending'
-                )}
+                {f === 'all' ? 'All Jobs' : f === 'inProgress' ? 'In Progress' : 'Pending'}
               </button>
             ))}
           </div>

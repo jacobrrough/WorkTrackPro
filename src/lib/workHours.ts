@@ -230,10 +230,7 @@ function cloneDefaultSchedule(): WorkWeekSchedule {
 export const DEFAULT_WORK_WEEK_SCHEDULE: WorkWeekSchedule = cloneDefaultSchedule();
 
 export function normalizeWorkWeekSchedule(
-  schedule?:
-    | WorkWeekSchedule
-    | Partial<Record<number, Partial<WorkDaySchedule> | number>>
-    | null
+  schedule?: WorkWeekSchedule | Partial<Record<number, Partial<WorkDaySchedule> | number>> | null
 ): WorkWeekSchedule {
   const normalized = cloneDefaultSchedule();
   if (!schedule || typeof schedule !== 'object') return normalized;
@@ -267,12 +264,7 @@ export function normalizeWorkWeekSchedule(
       enabled: typeof value.enabled === 'boolean' ? value.enabled : base.enabled,
       standardStart: sanitizeTime(value.standardStart, base.standardStart),
       standardEnd: sanitizeTime(value.standardEnd, base.standardEnd),
-      unpaidBreakMinutes: clampNumber(
-        value.unpaidBreakMinutes,
-        base.unpaidBreakMinutes,
-        0,
-        720
-      ),
+      unpaidBreakMinutes: clampNumber(value.unpaidBreakMinutes, base.unpaidBreakMinutes, 0, 720),
       overtimeEnabled:
         typeof value.overtimeEnabled === 'boolean' ? value.overtimeEnabled : base.overtimeEnabled,
       overtimeStart: sanitizeTime(value.overtimeStart, base.overtimeStart),
@@ -327,25 +319,22 @@ export function getDailyCapacityForDate(
 
 export function getBaseWorkHoursForDate(
   date: string | Date,
-  schedule?:
-    | WorkWeekSchedule
-    | Partial<Record<number, Partial<WorkDaySchedule> | number>>
-    | null
+  schedule?: WorkWeekSchedule | Partial<Record<number, Partial<WorkDaySchedule> | number>> | null
 ): number {
   const d = toLocalNoonDate(date);
   const normalized = normalizeWorkWeekSchedule(schedule);
   return getDayScheduleHours(normalized[d.getDay()]).regularHoursPerEmployee;
 }
 
-export function getWorkHoursForDate(date: string | Date, options: WorkCapacityOptions = {}): number {
+export function getWorkHoursForDate(
+  date: string | Date,
+  options: WorkCapacityOptions = {}
+): number {
   return getDailyCapacityForDate(date, options).totalCapacityHours;
 }
 
 export function getWeeklyWorkHours(
-  schedule?:
-    | WorkWeekSchedule
-    | Partial<Record<number, Partial<WorkDaySchedule> | number>>
-    | null,
+  schedule?: WorkWeekSchedule | Partial<Record<number, Partial<WorkDaySchedule> | number>> | null,
   options: { includeOvertime?: boolean } = {}
 ): number {
   const normalized = normalizeWorkWeekSchedule(schedule);
@@ -361,10 +350,7 @@ export function getWeeklyWorkHours(
 
 export function getWeeklyCapacityHours(
   employeeCount?: number,
-  schedule?:
-    | WorkWeekSchedule
-    | Partial<Record<number, Partial<WorkDaySchedule> | number>>
-    | null,
+  schedule?: WorkWeekSchedule | Partial<Record<number, Partial<WorkDaySchedule> | number>> | null,
   options: { includeOvertime?: boolean } = {}
 ): number {
   return getWeeklyWorkHours(schedule, options) * normalizeEmployeeCount(employeeCount);
@@ -393,9 +379,7 @@ export function buildWorkAllocationFromDueDate(
       remainingHours -= regularHours;
 
       const overtimeHours =
-        allowOvertime && remainingHours > 0
-          ? Math.min(remainingHours, overtimeCapacityHours)
-          : 0;
+        allowOvertime && remainingHours > 0 ? Math.min(remainingHours, overtimeCapacityHours) : 0;
       remainingHours -= overtimeHours;
 
       const scheduledHours = regularHours + overtimeHours;
@@ -504,7 +488,10 @@ export function buildCapacityAwareBackwardSchedules(
 
     const allocations = allocationsBackward.reverse();
     const scheduledHours = Math.max(0, item.requiredHours - remainingHours);
-    const overtimeHours = allocations.reduce((sum, allocation) => sum + allocation.overtimeHours, 0);
+    const overtimeHours = allocations.reduce(
+      (sum, allocation) => sum + allocation.overtimeHours,
+      0
+    );
 
     results.push({
       id: item.id,
@@ -601,7 +588,8 @@ export function planForwardFromDate(
   }
 
   return {
-    completionDate: remainingHours <= 0 ? allocations[allocations.length - 1]?.date ?? null : null,
+    completionDate:
+      remainingHours <= 0 ? (allocations[allocations.length - 1]?.date ?? null) : null,
     allocations,
     remainingHours: Math.max(0, remainingHours),
     overtimeHours: allocations.reduce((sum, allocation) => sum + allocation.overtimeHours, 0),
