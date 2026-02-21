@@ -497,7 +497,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         onTouchEnd={handleBoardTouchEnd}
         onTouchCancel={handleBoardTouchEnd}
         className="flex-1 touch-pan-x overflow-x-auto overflow-y-hidden"
-        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-x',
+          overscrollBehaviorX: 'contain',
+        }}
       >
         <div className="flex h-full min-w-max gap-2.5 p-3">
           {columns.map((column) => {
