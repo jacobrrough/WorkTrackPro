@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Job, ViewState, User, Shift } from '@/core/types';
 import {
-  buildWorkAllocationFromDueDate,
-  getStartDateFromDueDateAndHours,
+  buildCapacityAwareBackwardSchedules,
+  getDailyCapacityForDate,
   getWeeklyCapacityHours,
   getWeeklyWorkHours,
-  getWorkHoursForDate,
+  planForwardFromDate,
 } from '@/lib/workHours';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
@@ -25,7 +25,15 @@ interface JobTimeline {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   hours: number;
-  allocations: Array<{ date: string; scheduledHours: number; capacityHours: number }>;
+  overtimeHours: number;
+  unscheduledHours: number;
+  allocations: Array<{
+    date: string;
+    scheduledHours: number;
+    regularHours: number;
+    overtimeHours: number;
+    capacityHours: number;
+  }>;
 }
 
 const toDateKey = (date: Date) => {
@@ -45,8 +53,8 @@ const normalizeDateKey = (value: string) => {
 
 /**
  * Calendar - Admin-only view showing job timelines on a month calendar.
- * Uses due date and expected labor hours (or recorded shift hours) to calculate timelines.
- * Capacity comes from Admin Settings: employee count + work-week schedule.
+ * Uses due date + labor hours + employee schedule to create a capacity-aware timeline.
+ * Includes what-if planning for soonest completion and due-date overtime requirements.
  */
 const Calendar: React.FC<CalendarProps> = ({
   jobs: allJobs,
@@ -56,44 +64,100 @@ const Calendar: React.FC<CalendarProps> = ({
   onBack,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [includeOvertimeInSchedule, setIncludeOvertimeInSchedule] = useState(false);
+  const [plannerHours, setPlannerHours] = useState('5');
+  const [plannerDueDate, setPlannerDueDate] = useState('');
+  const [plannerUseOvertime, setPlannerUseOvertime] = useState(true);
   const { settings } = useSettings();
-  const jobs = useMemo(() => allJobs.filter((j) => j.status !== 'paid'), [allJobs]);
-  const scheduleOptions = useMemo(
+  const jobs = useMemo(
+    () =>
+      allJobs.filter(
+        (j) =>
+          j.status !== 'paid' &&
+          j.status !== 'projectCompleted' &&
+          j.status !== 'delivered' &&
+          j.active
+      ),
+    [allJobs]
+  );
+  const baseScheduleOptions = useMemo(
     () => ({
       employeeCount: settings.employeeCount,
       workWeekSchedule: settings.workWeekSchedule,
     }),
     [settings.employeeCount, settings.workWeekSchedule]
   );
-  const weeklyHoursPerEmployee = useMemo(
+  const weeklyRegularHoursPerEmployee = useMemo(
     () => getWeeklyWorkHours(settings.workWeekSchedule),
     [settings.workWeekSchedule]
+  );
+  const weeklyMaxHoursPerEmployee = useMemo(
+    () => getWeeklyWorkHours(settings.workWeekSchedule, { includeOvertime: true }),
+    [settings.workWeekSchedule]
+  );
+  const weeklyOvertimeHoursPerEmployee = useMemo(
+    () => Math.max(0, weeklyMaxHoursPerEmployee - weeklyRegularHoursPerEmployee),
+    [weeklyMaxHoursPerEmployee, weeklyRegularHoursPerEmployee]
   );
   const weeklyCapacityHours = useMemo(
     () => getWeeklyCapacityHours(settings.employeeCount, settings.workWeekSchedule),
     [settings.employeeCount, settings.workWeekSchedule]
   );
+  const weeklyCapacityWithOvertime = useMemo(
+    () =>
+      getWeeklyCapacityHours(settings.employeeCount, settings.workWeekSchedule, {
+        includeOvertime: true,
+      }),
+    [settings.employeeCount, settings.workWeekSchedule]
+  );
 
-  // Get jobs with timelines
-  const jobTimelines = useMemo((): JobTimeline[] => {
-    return jobs
+  const scheduleInputs = useMemo(
+    () =>
+      jobs
       .filter((job) => job.dueDate && job.active)
       .map((job) => {
-        // Use laborHours if set, otherwise calculate from shifts
-        const hours = job.laborHours || calculateJobHoursFromShifts(job.id, shifts);
-        const allocations = buildWorkAllocationFromDueDate(job.dueDate!, hours, scheduleOptions);
-        const startDate = getStartDateFromDueDateAndHours(job.dueDate!, hours, scheduleOptions);
+        const fallbackHours = calculateJobHoursFromShifts(job.id, shifts);
+        const requiredHours = job.laborHours && job.laborHours > 0 ? job.laborHours : fallbackHours;
         return {
-          job,
-          startDate,
-          endDate: normalizeDateKey(job.dueDate!),
-          hours,
-          allocations,
+          id: job.id,
+          dueDate: job.dueDate!,
+          requiredHours,
+          isRush: job.isRush,
         };
       })
-      .filter((tl) => tl.hours > 0)
+      .filter((job) => job.requiredHours > 0),
+    [jobs, shifts]
+  );
+
+  const capacityAwareSchedule = useMemo(
+    () =>
+      buildCapacityAwareBackwardSchedules(scheduleInputs, {
+        ...baseScheduleOptions,
+        includeOvertime: includeOvertimeInSchedule,
+      }),
+    [scheduleInputs, baseScheduleOptions, includeOvertimeInSchedule]
+  );
+
+  const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
+
+  const jobTimelines = useMemo((): JobTimeline[] => {
+    return capacityAwareSchedule.results
+      .map((result) => {
+        const job = jobsById.get(result.id);
+        if (!job) return null;
+        return {
+          job,
+          startDate: result.startDate,
+          endDate: normalizeDateKey(result.dueDate),
+          hours: result.requiredHours,
+          overtimeHours: result.overtimeHours,
+          unscheduledHours: result.unscheduledHours,
+          allocations: result.allocations,
+        } as JobTimeline;
+      })
+      .filter((timeline): timeline is JobTimeline => timeline != null)
       .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
-  }, [jobs, shifts, scheduleOptions]);
+  }, [capacityAwareSchedule.results, jobsById]);
 
   // Get days in current month
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -148,21 +212,38 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const dayLoadMap = useMemo(() => {
-    const loadByDate = new Map<string, { scheduledHours: number; capacityHours: number }>();
-    for (const timeline of jobTimelines) {
-      for (const allocation of timeline.allocations) {
-        const existing = loadByDate.get(allocation.date) ?? {
-          scheduledHours: 0,
-          capacityHours: allocation.capacityHours,
-        };
-        loadByDate.set(allocation.date, {
-          scheduledHours: existing.scheduledHours + allocation.scheduledHours,
-          capacityHours: allocation.capacityHours,
-        });
+    const loadByDate = new Map<
+      string,
+      {
+        scheduledHours: number;
+        regularHours: number;
+        overtimeHours: number;
+        capacityHours: number;
+        regularCapacityHours: number;
+        overtimeCapacityHours: number;
       }
+    >();
+    for (const [date, usage] of Object.entries(capacityAwareSchedule.dayUsage)) {
+      const capacity = getDailyCapacityForDate(date, {
+        ...baseScheduleOptions,
+        includeOvertime: includeOvertimeInSchedule,
+      });
+      const overtimeCapacityHours = includeOvertimeInSchedule ? capacity.overtimeCapacityHours : 0;
+      loadByDate.set(date, {
+        scheduledHours: usage.totalHours,
+        regularHours: usage.regularHours,
+        overtimeHours: usage.overtimeHours,
+        capacityHours: capacity.regularCapacityHours + overtimeCapacityHours,
+        regularCapacityHours: capacity.regularCapacityHours,
+        overtimeCapacityHours,
+      });
     }
     return loadByDate;
-  }, [jobTimelines]);
+  }, [
+    capacityAwareSchedule.dayUsage,
+    baseScheduleOptions,
+    includeOvertimeInSchedule,
+  ]);
 
   // Generate unique color for job based on ID
   const getJobColor = (jobId: string): string => {
@@ -206,6 +287,67 @@ const Calendar: React.FC<CalendarProps> = ({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1));
   };
 
+  const plannerRequiredHours = useMemo(() => {
+    const parsed = parseFloat(plannerHours);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [plannerHours]);
+
+  const todayKey = useMemo(() => toDateKey(new Date()), []);
+
+  const earliestPlan = useMemo(() => {
+    if (plannerRequiredHours <= 0) return null;
+    return planForwardFromDate(
+      plannerRequiredHours,
+      todayKey,
+      {
+        ...baseScheduleOptions,
+        includeOvertime: plannerUseOvertime,
+      },
+      capacityAwareSchedule.dayUsage
+    );
+  }, [plannerRequiredHours, todayKey, baseScheduleOptions, plannerUseOvertime, capacityAwareSchedule.dayUsage]);
+
+  const duePlanWithoutOvertime = useMemo(() => {
+    if (plannerRequiredHours <= 0 || !plannerDueDate) return null;
+    return planForwardFromDate(
+      plannerRequiredHours,
+      todayKey,
+      {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      },
+      capacityAwareSchedule.dayUsage,
+      plannerDueDate
+    );
+  }, [plannerRequiredHours, plannerDueDate, todayKey, baseScheduleOptions, capacityAwareSchedule.dayUsage]);
+
+  const duePlanWithOvertime = useMemo(() => {
+    if (plannerRequiredHours <= 0 || !plannerDueDate) return null;
+    return planForwardFromDate(
+      plannerRequiredHours,
+      todayKey,
+      {
+        ...baseScheduleOptions,
+        includeOvertime: true,
+      },
+      capacityAwareSchedule.dayUsage,
+      plannerDueDate
+    );
+  }, [plannerRequiredHours, plannerDueDate, todayKey, baseScheduleOptions, capacityAwareSchedule.dayUsage]);
+
+  const overtimeNeededForDue = useMemo(() => {
+    if (!duePlanWithoutOvertime) return 0;
+    return Math.max(0, duePlanWithoutOvertime.remainingHours);
+  }, [duePlanWithoutOvertime]);
+
+  const overtimePremiumCost = useMemo(
+    () =>
+      overtimeNeededForDue *
+      settings.laborRate *
+      Math.max(0, settings.overtimeMultiplier - 1),
+    [overtimeNeededForDue, settings.laborRate, settings.overtimeMultiplier]
+  );
+
   return (
     <div className="flex h-full flex-col bg-background-dark">
       {/* Header */}
@@ -227,6 +369,16 @@ const Calendar: React.FC<CalendarProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIncludeOvertimeInSchedule((v) => !v)}
+              className={`rounded-sm px-3 py-2 text-xs font-semibold transition-colors ${
+                includeOvertimeInSchedule
+                  ? 'bg-amber-500/20 text-amber-300'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
+              }`}
+            >
+              {includeOvertimeInSchedule ? 'Using OT Capacity' : 'Regular Capacity Only'}
+            </button>
             <button
               onClick={() => changeMonth(-1)}
               className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
@@ -253,12 +405,118 @@ const Calendar: React.FC<CalendarProps> = ({
         <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-3 text-xs text-slate-300">
           <p>
             {settings.employeeCount} employee{settings.employeeCount !== 1 ? 's' : ''} ·{' '}
-            {weeklyHoursPerEmployee.toFixed(1)}h per employee/week
+            {weeklyRegularHoursPerEmployee.toFixed(1)}h regular/employee/week
+          </p>
+          <p className="mt-1 text-slate-300">
+            Overtime possible/employee/week: {weeklyOvertimeHoursPerEmployee.toFixed(1)}h
           </p>
           <p className="mt-1 font-medium text-primary">
-            Weekly scheduling capacity: {weeklyCapacityHours.toFixed(1)}h
+            Weekly regular capacity: {weeklyCapacityHours.toFixed(1)}h
+          </p>
+          <p className="mt-1 text-amber-300">
+            Weekly max capacity with overtime: {weeklyCapacityWithOvertime.toFixed(1)}h
           </p>
         </div>
+
+        <div className="mb-4 rounded-sm border border-white/10 bg-white/5 p-3">
+          <h3 className="mb-3 text-sm font-bold text-white">What-if Planner</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="text-xs text-slate-400">
+              New job labor hours
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={plannerHours}
+                onChange={(e) => setPlannerHours(e.target.value)}
+                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              Due date (optional)
+              <input
+                type="date"
+                value={plannerDueDate}
+                onChange={(e) => setPlannerDueDate(e.target.value)}
+                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              Soonest-date uses overtime
+              <button
+                type="button"
+                onClick={() => setPlannerUseOvertime((v) => !v)}
+                className={`mt-1 flex h-[42px] w-full items-center justify-center rounded border px-2 text-sm font-medium transition-colors ${
+                  plannerUseOvertime
+                    ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
+                    : 'border-white/10 bg-white/5 text-slate-300'
+                }`}
+              >
+                {plannerUseOvertime ? 'Yes (OT allowed)' : 'No (regular hours only)'}
+              </button>
+            </label>
+          </div>
+          {plannerRequiredHours > 0 && earliestPlan && (
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
+              <p>
+                Soonest completion:{' '}
+                <span className="font-semibold text-white">
+                  {earliestPlan.completionDate ? formatDateOnly(earliestPlan.completionDate) : 'No capacity found'}
+                </span>
+              </p>
+              <p className="mt-1">
+                Scheduled hours: {plannerRequiredHours.toFixed(1)}h
+                {earliestPlan.overtimeHours > 0 && (
+                  <>
+                    {' '}
+                    (
+                    <span className="font-semibold text-amber-300">
+                      {earliestPlan.overtimeHours.toFixed(1)}h overtime
+                    </span>
+                    )
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {plannerRequiredHours > 0 && plannerDueDate && duePlanWithoutOvertime && duePlanWithOvertime && (
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
+              <p>
+                Due-date check ({formatDateOnly(plannerDueDate)}):{' '}
+                {duePlanWithoutOvertime.remainingHours <= 0 ? (
+                  <span className="font-semibold text-green-400">Fits with regular hours</span>
+                ) : (
+                  <span className="font-semibold text-amber-300">
+                    Needs {overtimeNeededForDue.toFixed(1)}h overtime
+                  </span>
+                )}
+              </p>
+              <p className="mt-1">
+                Additional OT labor premium @ {settings.overtimeMultiplier.toFixed(2)}x:{' '}
+                <span className="font-semibold text-amber-300">
+                  ${overtimePremiumCost.toFixed(2)}
+                </span>
+              </p>
+              <p className="mt-1">
+                Total labor with required overtime:{' '}
+                <span className="font-semibold text-white">
+                  $
+                  {(
+                    plannerRequiredHours * settings.laborRate +
+                    overtimePremiumCost
+                  ).toFixed(2)}
+                </span>
+              </p>
+              {duePlanWithOvertime.remainingHours > 0 && (
+                <p className="mt-1 font-semibold text-red-400">
+                  Even with configured overtime, short by {duePlanWithOvertime.remainingHours.toFixed(1)}h.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-7 gap-1">
           {/* Week day headers */}
           {weekDays.map((day) => (
@@ -272,10 +530,16 @@ const Calendar: React.FC<CalendarProps> = ({
             const jobsForDay = getJobsForDate(dayData.date);
             const isToday = dayData.date.toDateString() === new Date().toDateString();
             const dateKey = toDateKey(dayData.date);
-            const workHours = getWorkHoursForDate(dayData.date, scheduleOptions);
             const dayLoad = dayLoadMap.get(dateKey);
+            const dayCapacity = getDailyCapacityForDate(dayData.date, {
+              ...baseScheduleOptions,
+              includeOvertime: includeOvertimeInSchedule,
+            });
+            const overtimeCapacity = includeOvertimeInSchedule ? dayCapacity.overtimeCapacityHours : 0;
+            const totalCapacity = dayCapacity.regularCapacityHours + overtimeCapacity;
             const scheduledHours = dayLoad?.scheduledHours ?? 0;
-            const overCapacity = workHours > 0 && scheduledHours > workHours + 0.01;
+            const overtimeHours = dayLoad?.overtimeHours ?? 0;
+            const overCapacity = totalCapacity > 0 && scheduledHours > totalCapacity + 0.01;
 
             return (
               <div
@@ -292,16 +556,19 @@ const Calendar: React.FC<CalendarProps> = ({
                   }`}
                 >
                   {dayData.date.getDate()}
-                  {workHours > 0 && (
-                    <span className="ml-1 text-[10px] text-slate-500">({workHours}h)</span>
+                  {totalCapacity > 0 && (
+                    <span className="ml-1 text-[10px] text-slate-500">({totalCapacity.toFixed(1)}h)</span>
                   )}
                 </div>
-                {workHours > 0 && (
+                {totalCapacity > 0 && (
                   <div
                     className={`mt-0.5 text-[10px] ${overCapacity ? 'font-bold text-red-400' : 'text-slate-500'}`}
                   >
-                    {scheduledHours.toFixed(1)}/{workHours.toFixed(1)}h
+                    {scheduledHours.toFixed(1)}/{totalCapacity.toFixed(1)}h
                   </div>
+                )}
+                {overtimeHours > 0 && (
+                  <div className="text-[10px] font-medium text-amber-300">OT {overtimeHours.toFixed(1)}h</div>
                 )}
                 <div className="mt-1 space-y-0.5">
                   {jobsForDay.slice(0, 3).map((tl) => (
@@ -347,6 +614,14 @@ const Calendar: React.FC<CalendarProps> = ({
                         <span>Start: {formatDateOnly(tl.startDate)}</span>
                         <span>Due: {formatDateOnly(tl.endDate)}</span>
                         <span>{tl.hours.toFixed(1)}h</span>
+                        {tl.overtimeHours > 0 && (
+                          <span className="text-amber-300">OT {tl.overtimeHours.toFixed(1)}h</span>
+                        )}
+                        {tl.unscheduledHours > 0 && (
+                          <span className="text-red-400">
+                            Short {tl.unscheduledHours.toFixed(1)}h
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span className="material-symbols-outlined text-slate-400">chevron_right</span>

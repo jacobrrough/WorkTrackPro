@@ -6,7 +6,11 @@ import React, {
   useCallback,
   ReactNode,
 } from 'react';
-import { DEFAULT_WORK_WEEK_SCHEDULE, normalizeWorkWeekSchedule } from '@/lib/workHours';
+import {
+  DEFAULT_WORK_WEEK_SCHEDULE,
+  WorkWeekSchedule,
+  normalizeWorkWeekSchedule,
+} from '@/lib/workHours';
 
 const STORAGE_KEY = 'worktrack-admin-settings';
 
@@ -16,7 +20,8 @@ export interface AdminSettings {
   cncRate: number; // Rate per hour for CNC machine time
   printer3DRate: number; // Rate per hour for 3D printer time
   employeeCount: number; // Number of employees available for scheduling
-  workWeekSchedule: Record<number, number>; // Hours per day per employee (0-6 => Sun-Sat)
+  workWeekSchedule: WorkWeekSchedule; // Start/end/break/overtime by day (0-6 => Sun-Sat)
+  overtimeMultiplier: number; // e.g. 1.5 => time-and-a-half
 }
 
 const defaults: AdminSettings = {
@@ -25,7 +30,8 @@ const defaults: AdminSettings = {
   cncRate: 150, // Typically lower than labor rate
   printer3DRate: 100, // Typically lower than CNC rate
   employeeCount: 5,
-  workWeekSchedule: { ...DEFAULT_WORK_WEEK_SCHEDULE },
+  workWeekSchedule: normalizeWorkWeekSchedule(DEFAULT_WORK_WEEK_SCHEDULE),
+  overtimeMultiplier: 1.5,
 };
 
 function loadSettings(): AdminSettings {
@@ -38,6 +44,7 @@ function loadSettings(): AdminSettings {
       const cncRate = Number(parsed.cncRate);
       const printer3DRate = Number(parsed.printer3DRate);
       const employeeCount = Number(parsed.employeeCount);
+      const overtimeMultiplier = Number(parsed.overtimeMultiplier);
       return {
         laborRate: Number.isFinite(laborRate) && laborRate >= 0 ? laborRate : defaults.laborRate,
         materialUpcharge:
@@ -54,6 +61,10 @@ function loadSettings(): AdminSettings {
             ? Math.floor(employeeCount)
             : defaults.employeeCount,
         workWeekSchedule: normalizeWorkWeekSchedule(parsed.workWeekSchedule),
+        overtimeMultiplier:
+          Number.isFinite(overtimeMultiplier) && overtimeMultiplier >= 1
+            ? overtimeMultiplier
+            : defaults.overtimeMultiplier,
       };
     }
   } catch {
@@ -103,12 +114,42 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       } else {
         next.employeeCount = Math.floor(next.employeeCount);
       }
+      if (
+        typeof next.overtimeMultiplier !== 'number' ||
+        !Number.isFinite(next.overtimeMultiplier) ||
+        next.overtimeMultiplier < 1
+      ) {
+        next.overtimeMultiplier = prev.overtimeMultiplier;
+      }
 
-      const mergedSchedule =
-        partial.workWeekSchedule != null
-          ? { ...prev.workWeekSchedule, ...partial.workWeekSchedule }
-          : next.workWeekSchedule;
-      next.workWeekSchedule = normalizeWorkWeekSchedule(mergedSchedule);
+      const schedulePatch = partial.workWeekSchedule as
+        | Record<number, unknown>
+        | undefined
+        | null;
+      const mergedScheduleRaw: Record<number, unknown> = {
+        ...prev.workWeekSchedule,
+      };
+      if (schedulePatch && typeof schedulePatch === 'object') {
+        for (let day = 0; day <= 6; day += 1) {
+          if (schedulePatch[day] === undefined) continue;
+          const incoming = schedulePatch[day];
+          const existing = mergedScheduleRaw[day];
+          if (
+            incoming &&
+            typeof incoming === 'object' &&
+            existing &&
+            typeof existing === 'object'
+          ) {
+            mergedScheduleRaw[day] = { ...(existing as object), ...(incoming as object) };
+          } else {
+            mergedScheduleRaw[day] = incoming;
+          }
+        }
+      } else if (next.workWeekSchedule) {
+        Object.assign(mergedScheduleRaw, next.workWeekSchedule);
+      }
+
+      next.workWeekSchedule = normalizeWorkWeekSchedule(mergedScheduleRaw);
       return next;
     });
   }, []);

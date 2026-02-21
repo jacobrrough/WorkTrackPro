@@ -2,20 +2,27 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState } from '@/core/types';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useToast } from '@/Toast';
+import {
+  WorkWeekSchedule,
+  getDayScheduleHours,
+  getWeeklyCapacityHours,
+  getWeeklyWorkHours,
+  normalizeWorkWeekSchedule,
+} from '@/lib/workHours';
 
 interface AdminSettingsProps {
   onNavigate: (view: ViewState) => void;
   onBack: () => void;
 }
 
-const WEEK_DAYS: Array<{ day: number; label: string }> = [
-  { day: 1, label: 'Mon' },
-  { day: 2, label: 'Tue' },
-  { day: 3, label: 'Wed' },
-  { day: 4, label: 'Thu' },
-  { day: 5, label: 'Fri' },
-  { day: 6, label: 'Sat' },
-  { day: 0, label: 'Sun' },
+const WEEK_DAYS: Array<{ day: number; short: string; label: string }> = [
+  { day: 1, short: 'Mon', label: 'Monday' },
+  { day: 2, short: 'Tue', label: 'Tuesday' },
+  { day: 3, short: 'Wed', label: 'Wednesday' },
+  { day: 4, short: 'Thu', label: 'Thursday' },
+  { day: 5, short: 'Fri', label: 'Friday' },
+  { day: 6, short: 'Sat', label: 'Saturday' },
+  { day: 0, short: 'Sun', label: 'Sunday' },
 ];
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, onBack }) => {
@@ -26,14 +33,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
   const [cncRate, setCncRate] = useState(String(settings.cncRate));
   const [printer3DRate, setPrinter3DRate] = useState(String(settings.printer3DRate));
   const [employeeCount, setEmployeeCount] = useState(String(settings.employeeCount));
-  const [workWeekSchedule, setWorkWeekSchedule] = useState<Record<number, string>>(() =>
-    WEEK_DAYS.reduce(
-      (acc, { day }) => {
-        acc[day] = String(settings.workWeekSchedule?.[day] ?? 0);
-        return acc;
-      },
-      {} as Record<number, string>
-    )
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState(String(settings.overtimeMultiplier));
+  const [workWeekSchedule, setWorkWeekSchedule] = useState<WorkWeekSchedule>(() =>
+    normalizeWorkWeekSchedule(settings.workWeekSchedule)
   );
 
   useEffect(() => {
@@ -42,37 +44,51 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     setCncRate(String(settings.cncRate));
     setPrinter3DRate(String(settings.printer3DRate));
     setEmployeeCount(String(settings.employeeCount));
-    setWorkWeekSchedule(
-      WEEK_DAYS.reduce(
-        (acc, { day }) => {
-          acc[day] = String(settings.workWeekSchedule?.[day] ?? 0);
-          return acc;
-        },
-        {} as Record<number, string>
-      )
-    );
+    setOvertimeMultiplier(String(settings.overtimeMultiplier));
+    setWorkWeekSchedule(normalizeWorkWeekSchedule(settings.workWeekSchedule));
   }, [
     settings.laborRate,
     settings.materialUpcharge,
     settings.cncRate,
     settings.printer3DRate,
     settings.employeeCount,
+    settings.overtimeMultiplier,
     settings.workWeekSchedule,
   ]);
 
-  const weeklyHoursPerEmployee = useMemo(
-    () =>
-      WEEK_DAYS.reduce((sum, { day }) => {
-        const value = parseFloat(workWeekSchedule[day] || '0');
-        return Number.isFinite(value) && value > 0 ? sum + value : sum;
-      }, 0),
+  const regularHoursPerEmployee = useMemo(
+    () => getWeeklyWorkHours(workWeekSchedule),
     [workWeekSchedule]
+  );
+  const maxHoursPerEmployee = useMemo(
+    () => getWeeklyWorkHours(workWeekSchedule, { includeOvertime: true }),
+    [workWeekSchedule]
+  );
+  const overtimeHoursPerEmployee = useMemo(
+    () => Math.max(0, maxHoursPerEmployee - regularHoursPerEmployee),
+    [maxHoursPerEmployee, regularHoursPerEmployee]
   );
   const weeklyCapacity = useMemo(() => {
     const count = parseInt(employeeCount, 10);
-    if (!Number.isFinite(count) || count < 1) return weeklyHoursPerEmployee;
-    return weeklyHoursPerEmployee * count;
-  }, [employeeCount, weeklyHoursPerEmployee]);
+    if (!Number.isFinite(count) || count < 1) return regularHoursPerEmployee;
+    return getWeeklyCapacityHours(count, workWeekSchedule);
+  }, [employeeCount, regularHoursPerEmployee, workWeekSchedule]);
+  const weeklyCapacityWithOt = useMemo(() => {
+    const count = parseInt(employeeCount, 10);
+    if (!Number.isFinite(count) || count < 1) return maxHoursPerEmployee;
+    return getWeeklyCapacityHours(count, workWeekSchedule, { includeOvertime: true });
+  }, [employeeCount, maxHoursPerEmployee, workWeekSchedule]);
+
+  const updateDaySchedule = (
+    day: number,
+    patch: Partial<WorkWeekSchedule[number]> | ((prev: WorkWeekSchedule[number]) => WorkWeekSchedule[number])
+  ) => {
+    setWorkWeekSchedule((prev) => {
+      const current = prev[day];
+      const nextDay = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
+      return { ...prev, [day]: nextDay };
+    });
+  };
 
   const handleSave = () => {
     const lr = parseFloat(laborRate);
@@ -80,20 +96,35 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     const cr = parseFloat(cncRate);
     const p3r = parseFloat(printer3DRate);
     const ec = parseInt(employeeCount, 10);
+    const otMultiplier = parseFloat(overtimeMultiplier);
     if (!Number.isFinite(ec) || ec < 1) {
       showToast('Enter a valid number of employees (≥ 1)', 'error');
       return;
     }
 
-    const parsedSchedule: Record<number, number> = {};
-    for (const { day, label } of WEEK_DAYS) {
-      const value = workWeekSchedule[day] ?? '0';
-      const parsed = value.trim() === '' ? 0 : parseFloat(value);
-      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 24) {
-        showToast(`Enter valid hours for ${label} (0-24)`, 'error');
+    if (!Number.isFinite(otMultiplier) || otMultiplier < 1) {
+      showToast('Enter a valid overtime multiplier (≥ 1.0)', 'error');
+      return;
+    }
+
+    const normalizedSchedule = normalizeWorkWeekSchedule(workWeekSchedule);
+    for (const { day, short } of WEEK_DAYS) {
+      const daySchedule = normalizedSchedule[day];
+      if (!daySchedule.enabled) continue;
+
+      const dayHours = getDayScheduleHours(daySchedule);
+      if (dayHours.standardWindowHours <= 0) {
+        showToast(`${short}: set a valid regular start/end window`, 'error');
         return;
       }
-      parsedSchedule[day] = Number(parsed.toFixed(2));
+      if (daySchedule.unpaidBreakMinutes > dayHours.standardWindowHours * 60) {
+        showToast(`${short}: unpaid break is longer than the regular shift`, 'error');
+        return;
+      }
+      if (daySchedule.overtimeEnabled && dayHours.overtimeHoursPerEmployee <= 0) {
+        showToast(`${short}: set a valid overtime start/end window`, 'error');
+        return;
+      }
     }
 
     if (Number.isNaN(lr) || lr < 0) {
@@ -118,7 +149,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       cncRate: cr,
       printer3DRate: p3r,
       employeeCount: ec,
-      workWeekSchedule: parsedSchedule,
+      overtimeMultiplier: otMultiplier,
+      workWeekSchedule: normalizedSchedule,
     });
     showToast('Settings saved', 'success');
   };
@@ -136,7 +168,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Admin Settings</h1>
-              <p className="text-xs text-slate-400">Pricing, machine rates, and scheduling capacity</p>
+              <p className="text-xs text-slate-400">
+                Pricing, machine rates, and scheduling capacity
+              </p>
             </div>
           </div>
         </div>
@@ -157,7 +191,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={laborRate}
                   onChange={(e) => setLaborRate(e.target.value)}
-                  onBlur={handleSave}
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="175"
                 />
@@ -176,7 +209,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="0.01"
                   value={materialUpcharge}
                   onChange={(e) => setMaterialUpcharge(e.target.value)}
-                  onBlur={handleSave}
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="1.25"
                 />
@@ -194,7 +226,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={cncRate}
                   onChange={(e) => setCncRate(e.target.value)}
-                  onBlur={handleSave}
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="150"
                 />
@@ -212,7 +243,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={printer3DRate}
                   onChange={(e) => setPrinter3DRate(e.target.value)}
-                  onBlur={handleSave}
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="100"
                 />
@@ -251,41 +281,173 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-slate-400">Work week schedule (hours/day)</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {WEEK_DAYS.map(({ day, label }) => (
-                    <label
-                      key={day}
-                      className="rounded-sm border border-white/10 bg-white/5 px-2 py-2 text-xs text-slate-300"
-                    >
-                      <span className="mb-1 block font-medium text-slate-400">{label}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        step="0.5"
-                        value={workWeekSchedule[day] ?? '0'}
-                        onChange={(e) =>
-                          setWorkWeekSchedule((prev) => ({
-                            ...prev,
-                            [day]: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                      />
-                    </label>
-                  ))}
+                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                  Overtime multiplier
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.05"
+                  value={overtimeMultiplier}
+                  onChange={(e) => setOvertimeMultiplier(e.target.value)}
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  placeholder="1.50"
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Used to estimate additional labor cost for overtime hours (e.g., 1.5 = time and a
+                  half).
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-medium text-slate-400">Work week schedule</p>
+                <div className="space-y-3">
+                  {WEEK_DAYS.map(({ day, short, label }) => {
+                    const daySchedule = workWeekSchedule[day];
+                    const dayHours = getDayScheduleHours(daySchedule);
+                    return (
+                      <div
+                        key={day}
+                        className="rounded-sm border border-white/10 bg-white/5 p-3 text-xs text-slate-300"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-white">{label}</p>
+                            <p className="text-[10px] text-slate-500">
+                              {dayHours.regularHoursPerEmployee.toFixed(1)}h regular
+                              {daySchedule.overtimeEnabled &&
+                                dayHours.overtimeHoursPerEmployee > 0 &&
+                                ` + ${dayHours.overtimeHoursPerEmployee.toFixed(1)}h OT`}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => updateDaySchedule(day, { enabled: !daySchedule.enabled })}
+                            className={`h-6 w-12 rounded-sm transition-colors ${daySchedule.enabled ? 'bg-primary' : 'bg-white/20'}`}
+                            aria-label={`${short} enabled`}
+                          >
+                            <span
+                              className={`block h-5 w-5 rounded-sm bg-white transition-transform ${daySchedule.enabled ? 'translate-x-6' : 'translate-x-0.5'}`}
+                            />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <label className="text-[10px] text-slate-400">
+                            Start
+                            <input
+                              type="time"
+                              value={daySchedule.standardStart}
+                              onChange={(e) =>
+                                updateDaySchedule(day, { standardStart: e.target.value })
+                              }
+                              disabled={!daySchedule.enabled}
+                              className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                            />
+                          </label>
+                          <label className="text-[10px] text-slate-400">
+                            End
+                            <input
+                              type="time"
+                              value={daySchedule.standardEnd}
+                              onChange={(e) => updateDaySchedule(day, { standardEnd: e.target.value })}
+                              disabled={!daySchedule.enabled}
+                              className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                            />
+                          </label>
+                          <label className="text-[10px] text-slate-400">
+                            Unpaid break (min)
+                            <input
+                              type="number"
+                              min="0"
+                              max="720"
+                              step="5"
+                              value={daySchedule.unpaidBreakMinutes}
+                              onChange={(e) =>
+                                updateDaySchedule(day, {
+                                  unpaidBreakMinutes: Number(e.target.value || 0),
+                                })
+                              }
+                              disabled={!daySchedule.enabled}
+                              className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="mt-2 rounded border border-white/10 bg-black/20 p-2">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-[10px] font-medium text-slate-300">
+                              Overtime window
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateDaySchedule(day, {
+                                  overtimeEnabled: !daySchedule.overtimeEnabled,
+                                })
+                              }
+                              disabled={!daySchedule.enabled}
+                              className={`h-5 w-10 rounded-sm transition-colors ${daySchedule.overtimeEnabled ? 'bg-amber-500' : 'bg-white/20'} disabled:opacity-40`}
+                              aria-label={`${short} overtime enabled`}
+                            >
+                              <span
+                                className={`block h-4 w-4 rounded-sm bg-white transition-transform ${daySchedule.overtimeEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+                              />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <label className="text-[10px] text-slate-400">
+                              OT Start
+                              <input
+                                type="time"
+                                value={daySchedule.overtimeStart}
+                                onChange={(e) =>
+                                  updateDaySchedule(day, { overtimeStart: e.target.value })
+                                }
+                                disabled={!daySchedule.enabled || !daySchedule.overtimeEnabled}
+                                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                              />
+                            </label>
+                            <label className="text-[10px] text-slate-400">
+                              OT End
+                              <input
+                                type="time"
+                                value={daySchedule.overtimeEnd}
+                                onChange={(e) =>
+                                  updateDaySchedule(day, { overtimeEnd: e.target.value })
+                                }
+                                disabled={!daySchedule.enabled || !daySchedule.overtimeEnabled}
+                                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="rounded-sm border border-primary/30 bg-primary/10 p-3 text-sm">
                 <p className="text-slate-300">
-                  Weekly hours per employee:{' '}
-                  <span className="font-bold text-white">{weeklyHoursPerEmployee.toFixed(1)}h</span>
+                  Weekly regular hours per employee:{' '}
+                  <span className="font-bold text-white">{regularHoursPerEmployee.toFixed(1)}h</span>
                 </p>
                 <p className="mt-1 text-slate-300">
-                  Total weekly shop capacity:{' '}
+                  Weekly possible overtime per employee:{' '}
+                  <span className="font-bold text-amber-300">
+                    {overtimeHoursPerEmployee.toFixed(1)}h
+                  </span>
+                </p>
+                <p className="mt-1 text-slate-300">
+                  Weekly regular shop capacity:{' '}
                   <span className="font-bold text-primary">{weeklyCapacity.toFixed(1)}h</span>
+                </p>
+                <p className="mt-1 text-slate-300">
+                  Weekly max capacity with overtime:{' '}
+                  <span className="font-bold text-amber-300">
+                    {weeklyCapacityWithOt.toFixed(1)}h
+                  </span>
                 </p>
               </div>
             </div>

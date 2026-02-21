@@ -5,6 +5,7 @@ import {
   PartMaterial,
   InventoryItem,
   Job,
+  Shift,
   InventoryCategory,
   getCategoryDisplayName,
 } from '@/core/types';
@@ -16,6 +17,7 @@ import {
   formatJobCode,
   formatDashSummary,
   getJobDisplayName,
+  totalFromDashQuantities,
 } from '@/lib/formatJob';
 import { formatDateOnly } from '@/core/date';
 import { getStatusDisplayName } from '@/core/types';
@@ -32,10 +34,12 @@ import {
   variantLaborFromSetComposition,
   distributeSetMaterialToVariants,
 } from '@/lib/partDistribution';
+import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 
 interface PartDetailProps {
   partId: string;
   jobs?: Job[];
+  shifts?: Shift[];
   onNavigate: (view: string, params?: Record<string, string>) => void;
   onNavigateBack: () => void;
 }
@@ -43,6 +47,7 @@ interface PartDetailProps {
 const PartDetail: React.FC<PartDetailProps> = ({
   partId,
   jobs: allJobs = [],
+  shifts = [],
   onNavigate,
   onNavigateBack,
 }) => {
@@ -98,6 +103,132 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
     return Array.from(unique.values());
   }, [allJobs, part]);
+
+  const laborFeedback = useMemo(() => {
+    const completedStatuses = new Set(['finished', 'delivered', 'projectCompleted', 'paid']);
+    const completedJobs = partJobs.filter((job) => completedStatuses.has(job.status));
+
+    const estimatePerSet = part?.laborHours;
+
+    const parseJobSetCount = (job: Job): number => {
+      const dashTotal = totalFromDashQuantities(job.dashQuantities);
+      if (dashTotal > 0) return dashTotal;
+      const qty = parseFloat((job.qty ?? '').trim());
+      return Number.isFinite(qty) && qty > 0 ? qty : 0;
+    };
+
+    const resolveActualHours = (job: Job): number => {
+      const shiftHours = calculateJobHoursFromShifts(job.id, shifts);
+      if (shiftHours > 0) return shiftHours;
+      if (job.laborHours && job.laborHours > 0) return job.laborHours;
+      return 0;
+    };
+
+    const jobRows = completedJobs
+      .map((job) => {
+        const actualHours = resolveActualHours(job);
+        const setCount = parseJobSetCount(job);
+        if (actualHours <= 0 || setCount <= 0) return null;
+        const estimatedTotalHours = estimatePerSet != null ? estimatePerSet * setCount : undefined;
+        return {
+          jobId: job.id,
+          jobCode: job.jobCode,
+          actualHours,
+          setCount,
+          actualPerSet: actualHours / setCount,
+          estimatedTotalHours,
+          varianceHours:
+            estimatedTotalHours != null ? actualHours - estimatedTotalHours : undefined,
+        };
+      })
+      .filter(
+        (
+          row
+        ): row is {
+          jobId: string;
+          jobCode: number;
+          actualHours: number;
+          setCount: number;
+          actualPerSet: number;
+          estimatedTotalHours?: number;
+          varianceHours?: number;
+        } => row != null
+      );
+
+    const totalActualHours = jobRows.reduce((sum, row) => sum + row.actualHours, 0);
+    const totalSets = jobRows.reduce((sum, row) => sum + row.setCount, 0);
+    const averageActualPerSet = totalSets > 0 ? totalActualHours / totalSets : undefined;
+
+    const variantStats = new Map<string, { hours: number; units: number }>();
+    const normalizeSuffix = (suffix: string) => suffix.replace(/^-/, '');
+
+    for (const job of completedJobs) {
+      const actualHours = resolveActualHours(job);
+      if (actualHours <= 0) continue;
+
+      const dashEntries = Object.entries(job.dashQuantities ?? {}).filter(([, qty]) => qty > 0);
+      if (dashEntries.length > 0) {
+        const totalDashQty = dashEntries.reduce((sum, [, qty]) => sum + qty, 0);
+        if (totalDashQty > 0) {
+          for (const [suffixRaw, qty] of dashEntries) {
+            const suffix = normalizeSuffix(suffixRaw);
+            const current = variantStats.get(suffix) ?? { hours: 0, units: 0 };
+            current.units += qty;
+            current.hours += actualHours * (qty / totalDashQty);
+            variantStats.set(suffix, current);
+          }
+          continue;
+        }
+      }
+
+      if (job.variantSuffix) {
+        const suffix = normalizeSuffix(job.variantSuffix);
+        const setCount = parseJobSetCount(job) || 1;
+        const current = variantStats.get(suffix) ?? { hours: 0, units: 0 };
+        current.units += setCount;
+        current.hours += actualHours;
+        variantStats.set(suffix, current);
+      }
+    }
+
+    const variantRows = (part?.variants ?? []).map((variant) => {
+      const suffix = normalizeSuffix(variant.variantSuffix);
+      const stat = variantStats.get(suffix) ?? { hours: 0, units: 0 };
+      const actualPerUnit = stat.units > 0 ? stat.hours / stat.units : undefined;
+      const estimatedPerUnit =
+        variant.laborHours != null
+          ? variant.laborHours
+          : part?.laborHours != null && part.setComposition
+            ? variantLaborFromSetComposition(variant.variantSuffix, part.laborHours, part.setComposition)
+            : undefined;
+      return {
+        variantSuffix: variant.variantSuffix,
+        actualHours: stat.hours,
+        completedUnits: stat.units,
+        actualPerUnit,
+        estimatedPerUnit,
+        variancePerUnit:
+          actualPerUnit != null && estimatedPerUnit != null
+            ? actualPerUnit - estimatedPerUnit
+            : undefined,
+      };
+    });
+
+    return {
+      completedJobCount: completedJobs.length,
+      analyzedJobCount: jobRows.length,
+      totalActualHours,
+      totalSets,
+      estimatePerSet,
+      averageActualPerSet,
+      variancePerSet:
+        averageActualPerSet != null && estimatePerSet != null
+          ? averageActualPerSet - estimatePerSet
+          : undefined,
+      jobRows,
+      variantRows,
+    };
+  }, [part, partJobs, shifts]);
 
   const isPartInfoDirty = useMemo(() => {
     if (!part) return false;
@@ -1060,7 +1191,108 @@ const PartDetail: React.FC<PartDetailProps> = ({
           </Accordion>
         )}
 
-        {/* Section 4: Past Jobs (accordion) */}
+        {/* Section 4: Labor Feedback (closed-loop estimation from completed jobs) */}
+        <Accordion title={`Labor Feedback (${laborFeedback.analyzedJobCount})`} defaultExpanded={false}>
+          {laborFeedback.analyzedJobCount === 0 ? (
+            <p className="text-sm text-slate-400">
+              No completed jobs with recorded labor time yet. Clocked shifts and/or labor hours on
+              completed jobs will appear here.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Completed jobs</p>
+                  <p className="text-lg font-bold text-white">{laborFeedback.completedJobCount}</p>
+                </div>
+                <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Total actual hours</p>
+                  <p className="text-lg font-bold text-white">{laborFeedback.totalActualHours.toFixed(1)}h</p>
+                </div>
+                <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Actual avg / set</p>
+                  <p className="text-lg font-bold text-white">
+                    {laborFeedback.averageActualPerSet != null
+                      ? `${laborFeedback.averageActualPerSet.toFixed(2)}h`
+                      : '—'}
+                  </p>
+                </div>
+                <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">Estimate / set</p>
+                  <p className="text-lg font-bold text-white">
+                    {laborFeedback.estimatePerSet != null ? `${laborFeedback.estimatePerSet.toFixed(2)}h` : '—'}
+                  </p>
+                  {laborFeedback.variancePerSet != null && (
+                    <p
+                      className={`mt-1 text-xs font-medium ${laborFeedback.variancePerSet > 0 ? 'text-red-300' : 'text-green-300'}`}
+                    >
+                      {laborFeedback.variancePerSet > 0 ? '+' : ''}
+                      {laborFeedback.variancePerSet.toFixed(2)}h
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {laborFeedback.variantRows.length > 0 && (
+                <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="mb-2 text-xs font-bold uppercase text-slate-400">
+                    Dash labor performance
+                  </p>
+                  <div className="space-y-2">
+                    {laborFeedback.variantRows.map((row) => (
+                      <div
+                        key={row.variantSuffix}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-black/20 px-3 py-2 text-xs"
+                      >
+                        <div className="font-mono font-semibold text-primary">-{row.variantSuffix}</div>
+                        <div className="text-slate-300">Units: {row.completedUnits.toFixed(1)}</div>
+                        <div className="text-slate-300">
+                          Actual/unit:{' '}
+                          {row.actualPerUnit != null ? `${row.actualPerUnit.toFixed(2)}h` : '—'}
+                        </div>
+                        <div className="text-slate-300">
+                          Est/unit:{' '}
+                          {row.estimatedPerUnit != null ? `${row.estimatedPerUnit.toFixed(2)}h` : '—'}
+                        </div>
+                        {row.variancePerUnit != null && (
+                          <div
+                            className={`font-semibold ${row.variancePerUnit > 0 ? 'text-red-300' : 'text-green-300'}`}
+                          >
+                            {row.variancePerUnit > 0 ? '+' : ''}
+                            {row.variancePerUnit.toFixed(2)}h
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+                <p className="mb-2 text-xs font-bold uppercase text-slate-400">
+                  Recent completed jobs feeding estimates
+                </p>
+                <div className="space-y-1.5">
+                  {laborFeedback.jobRows.slice(0, 8).map((row) => (
+                    <button
+                      key={row.jobId}
+                      type="button"
+                      onClick={() => onNavigate('job-detail', { jobId: row.jobId })}
+                      className="flex w-full items-center justify-between rounded border border-white/10 bg-black/20 px-3 py-2 text-left text-xs transition-colors hover:border-primary/30 hover:bg-black/30"
+                    >
+                      <span className="font-semibold text-white">{formatJobCode(row.jobCode)}</span>
+                      <span className="text-slate-300">{row.actualHours.toFixed(1)}h</span>
+                      <span className="text-slate-300">{row.setCount.toFixed(1)} sets</span>
+                      <span className="text-slate-300">{row.actualPerSet.toFixed(2)}h/set</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </Accordion>
+
+        {/* Section 5: Past Jobs (accordion) */}
         <Accordion title={`Past Jobs (${partJobs.length})`} defaultExpanded={false}>
           {partJobs.length === 0 ? (
             <p className="text-sm text-slate-400">No jobs match this part number.</p>
