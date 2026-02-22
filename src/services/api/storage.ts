@@ -2,9 +2,30 @@ import { supabase } from './supabaseClient';
 
 const BUCKET_ATTACHMENTS = 'attachments';
 const BUCKET_INVENTORY = 'inventory-images';
+const BUCKET_CUSTOMER_PROPOSALS = 'customer-proposals';
+
+function isAbsoluteUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+function resolveAttachmentStorageLocation(storagePath: string): { bucket: string; objectPath: string } {
+  const normalized = storagePath.trim();
+  if (normalized.startsWith(`${BUCKET_CUSTOMER_PROPOSALS}/`)) {
+    return {
+      bucket: BUCKET_CUSTOMER_PROPOSALS,
+      objectPath: normalized.slice(BUCKET_CUSTOMER_PROPOSALS.length + 1),
+    };
+  }
+  return { bucket: BUCKET_ATTACHMENTS, objectPath: normalized };
+}
 
 export function getAttachmentPublicUrl(storagePath: string): string {
-  const { data } = supabase.storage.from(BUCKET_ATTACHMENTS).getPublicUrl(storagePath);
+  const normalized = String(storagePath ?? '').trim();
+  if (!normalized) return '';
+  if (isAbsoluteUrl(normalized)) return normalized;
+  const { bucket, objectPath } = resolveAttachmentStorageLocation(normalized);
+  if (!objectPath) return '';
+  const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
   return data.publicUrl;
 }
 
@@ -69,8 +90,12 @@ export async function deleteAttachmentRecord(attachmentId: string): Promise<bool
     .select('storage_path')
     .eq('id', attachmentId)
     .single();
-  if (att?.storage_path) {
-    await supabase.storage.from(BUCKET_ATTACHMENTS).remove([att.storage_path]);
+  const rawStoragePath = typeof att?.storage_path === 'string' ? att.storage_path.trim() : '';
+  if (rawStoragePath && !isAbsoluteUrl(rawStoragePath)) {
+    const { bucket, objectPath } = resolveAttachmentStorageLocation(rawStoragePath);
+    if (objectPath) {
+      await supabase.storage.from(bucket).remove([objectPath]);
+    }
   }
   const { error } = await supabase.from('attachments').delete().eq('id', attachmentId);
   return !error;

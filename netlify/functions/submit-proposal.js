@@ -122,13 +122,7 @@ export async function handler(event) {
       .maybeSingle();
     const nextJobCode = (latestJob?.job_code ?? 0) + 1;
 
-    const fileLines = files
-      .filter((f) => f && typeof f === 'object')
-      .map((f) => {
-        const filename = sanitizeText(f.filename);
-        const url = sanitizeText(f.publicUrl);
-        return url ? `- ${filename}: ${url}` : `- ${filename}`;
-      });
+    const uploadedFiles = files.filter((f) => f && typeof f === 'object');
 
     const descriptionWithContact = [
       'Customer Proposal Submitted via roughcutmfg.com',
@@ -140,8 +134,9 @@ export async function handler(event) {
       'Proposal Details:',
       description,
       '',
-      fileLines.length > 0 ? 'Submitted Paperwork:' : null,
-      ...fileLines,
+      uploadedFiles.length > 0
+        ? `Submitted Paperwork: ${uploadedFiles.length} file(s) attached in Job Attachments.`
+        : null,
     ]
       .filter(Boolean)
       .join('\n');
@@ -182,8 +177,8 @@ export async function handler(event) {
       .select('id')
       .single();
 
-    if (!proposalError && proposalRow && files.length > 0) {
-      const rows = files.map((f) => ({
+    if (!proposalError && proposalRow && uploadedFiles.length > 0) {
+      const rows = uploadedFiles.map((f) => ({
         proposal_id: proposalRow.id,
         filename: sanitizeText(f.filename),
         storage_path: sanitizeText(f.storagePath),
@@ -192,6 +187,30 @@ export async function handler(event) {
         public_url: sanitizeText(f.publicUrl) || null,
       }));
       await supabase.from('customer_proposal_files').insert(rows);
+    }
+
+    if (uploadedFiles.length > 0) {
+      const attachmentRows = uploadedFiles
+        .map((f) => {
+          const filename = sanitizeText(f.filename);
+          const storagePath = sanitizeText(f.storagePath);
+          if (!filename || !storagePath) return null;
+          return {
+            job_id: insertedJob.id,
+            filename,
+            // Prefix bucket so app can render/delete from correct storage bucket.
+            storage_path: `customer-proposals/${storagePath}`,
+            is_admin_only: false,
+          };
+        })
+        .filter(Boolean);
+
+      if (attachmentRows.length > 0) {
+        const { error: attachmentError } = await supabase.from('attachments').insert(attachmentRows);
+        if (attachmentError) {
+          console.error('Failed to attach proposal files to job:', attachmentError);
+        }
+      }
     }
 
     const adminEmail = process.env.PROPOSAL_ADMIN_EMAIL;
