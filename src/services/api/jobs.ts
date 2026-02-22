@@ -491,6 +491,56 @@ export const jobService = {
     return !error;
   },
 
+  async deleteJob(jobId: string): Promise<boolean> {
+    try {
+      // Remove attachment records via helper so storage files are deleted too.
+      const { data: attachments, error: attachmentLookupError } = await supabase
+        .from('attachments')
+        .select('id')
+        .eq('job_id', jobId);
+      if (attachmentLookupError) {
+        console.error('Delete job failed to fetch attachments:', attachmentLookupError);
+        return false;
+      }
+
+      for (const attachment of (attachments ?? []) as { id: string }[]) {
+        const success = await deleteAttachmentRecord(attachment.id);
+        if (!success) {
+          console.error('Delete job failed to remove attachment:', attachment.id);
+          return false;
+        }
+      }
+
+      // Keep inventory history audit rows but detach this job reference.
+      const { error: historyError } = await supabase
+        .from('inventory_history')
+        .update({ related_job_id: null })
+        .eq('related_job_id', jobId);
+      if (historyError) {
+        console.error('Delete job failed to detach inventory history:', historyError);
+        return false;
+      }
+
+      // Shifts use a non-cascading FK to jobs in the base schema.
+      const { error: shiftDeleteError } = await supabase.from('shifts').delete().eq('job_id', jobId);
+      if (shiftDeleteError) {
+        console.error('Delete job failed to remove shifts:', shiftDeleteError);
+        return false;
+      }
+
+      const { error: jobDeleteError } = await supabase.from('jobs').delete().eq('id', jobId);
+      if (jobDeleteError) {
+        console.error('Delete job failed:', jobDeleteError);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Delete job error:', error);
+      return false;
+    }
+  },
+
   async addComment(jobId: string, text: string, userId: string): Promise<Comment | null> {
     const { data: row, error } = await supabase
       .from('comments')

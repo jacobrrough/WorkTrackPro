@@ -15,7 +15,7 @@ interface KanbanBoardProps {
   onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
   onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<void>;
   onCreateJob: () => void;
-  onDeleteJob?: (jobId: string) => Promise<void>;
+  onDeleteJob?: (jobId: string) => Promise<boolean>;
   isAdmin: boolean;
   currentUser: User;
   inventory?: InventoryItem[];
@@ -66,6 +66,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isDeletingJob, setIsDeletingJob] = useState(false);
   const [checklistStates, setChecklistStates] = useState<
     Record<string, { total: number; completed: number }>
   >({});
@@ -94,6 +95,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const canDragCards = (boardType === 'shopFloor' || isAdmin) && supportsFinePointer;
   const columns = boardType === 'shopFloor' ? SHOP_FLOOR_COLUMNS : ADMIN_COLUMNS;
+  const isMinimalView = navState.minimalView;
   const boardViewKey = `kanban-board-${boardType}`;
   const horizontalScrollKey = `${boardViewKey}-horizontal`;
 
@@ -393,9 +395,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   const handleDelete = async () => {
-    if (deleteConfirm && onDeleteJob) {
-      await onDeleteJob(deleteConfirm);
-      setDeleteConfirm(null);
+    if (!deleteConfirm || !onDeleteJob || isDeletingJob) return;
+
+    setIsDeletingJob(true);
+    try {
+      const success = await onDeleteJob(deleteConfirm);
+      if (success) {
+        showToast('Job deleted', 'success');
+        setDeleteConfirm(null);
+      } else {
+        showToast('Failed to delete job', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+      showToast('Failed to delete job', 'error');
+    } finally {
+      setIsDeletingJob(false);
     }
   };
 
@@ -511,7 +526,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return (
               <div
                 key={column.id}
-                className={`flex w-64 flex-col rounded-sm border bg-black/20 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex ${isMinimalView ? 'w-52' : 'w-64'} flex-col rounded-sm border bg-black/20 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);
@@ -569,7 +584,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   }}
                   data-kanban-column-scroll="true"
                   onScroll={(e) => handleColumnScroll(e, column.id)}
-                  className="flex-1 space-y-1.5 overflow-y-auto p-1.5"
+                  className={`flex-1 overflow-y-auto ${isMinimalView ? 'space-y-1 p-1' : 'space-y-1.5 p-1.5'}`}
                   style={{
                     WebkitOverflowScrolling: 'touch',
                     overscrollBehavior: 'contain',
@@ -597,7 +612,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           }
                           onNavigate('job-detail', job.id);
                         }}
-                        className={`relative cursor-pointer rounded-sm border border-white/5 bg-[#2a1f35] p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''}`}
+                        className={`relative cursor-pointer rounded-sm border border-white/5 bg-[#2a1f35] transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${isMinimalView ? 'p-2' : 'p-2.5'} ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''}`}
                       >
                         <div className="mb-1 flex items-start gap-2">
                           {/* Job identity: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
@@ -703,61 +718,63 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           </div>
                         </div>
 
-                        <p className="mb-1 text-sm font-medium text-slate-300">
-                          {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
-                        </p>
+                        {!isMinimalView && (
+                          <p className="mb-1 text-sm font-medium text-slate-300">
+                            {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
+                          </p>
+                        )}
 
-                        {/* Priority 3: ECD / Due date */}
-                        <p className="mb-1.5">
-                          {(job.ecd || job.dueDate) && (
+                        {(job.ecd || job.dueDate) && (
+                          <p className={isMinimalView ? 'mb-0.5' : 'mb-1.5'}>
                             <span
-                              className={`rounded px-1.5 py-0.5 text-xs font-medium ${job.dueDate && new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
+                              className={`rounded px-1.5 py-0.5 font-medium ${isMinimalView ? 'text-[10px]' : 'text-xs'} ${job.dueDate && new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
                             >
                               {formatDateOnly(job.ecd || job.dueDate).replace(/, \d{4}/, '')}
                             </span>
-                          )}
-                        </p>
+                          </p>
+                        )}
 
-                        {/* Footer - checklist / comment / attachment counts */}
-                        <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
-                          <div className="flex items-center gap-1">
-                            {hasChecklist && (
-                              <span
-                                className={`flex items-center gap-0.5 text-[9px] ${checklistComplete ? 'text-green-400' : 'text-slate-400'}`}
-                              >
+                        {!isMinimalView && (
+                          <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
+                            <div className="flex items-center gap-1">
+                              {hasChecklist && (
                                 <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '11px' }}
+                                  className={`flex items-center gap-0.5 text-[9px] ${checklistComplete ? 'text-green-400' : 'text-slate-400'}`}
                                 >
-                                  checklist
+                                  <span
+                                    className="material-symbols-outlined"
+                                    style={{ fontSize: '11px' }}
+                                  >
+                                    checklist
+                                  </span>
+                                  {checklistState.completed}/{checklistState.total}
                                 </span>
-                                {checklistState.completed}/{checklistState.total}
-                              </span>
-                            )}
-                            {job.commentCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '11px' }}
-                                >
-                                  comment
+                              )}
+                              {job.commentCount > 0 && (
+                                <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
+                                  <span
+                                    className="material-symbols-outlined"
+                                    style={{ fontSize: '11px' }}
+                                  >
+                                    comment
+                                  </span>
+                                  {job.commentCount}
                                 </span>
-                                {job.commentCount}
-                              </span>
-                            )}
-                            {job.attachmentCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '11px' }}
-                                >
-                                  attach_file
+                              )}
+                              {job.attachmentCount > 0 && (
+                                <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
+                                  <span
+                                    className="material-symbols-outlined"
+                                    style={{ fontSize: '11px' }}
+                                  >
+                                    attach_file
+                                  </span>
+                                  {job.attachmentCount}
                                 </span>
-                                {job.attachmentCount}
-                              </span>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -792,7 +809,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   e.stopPropagation();
                   setDeleteConfirm(null);
                 }}
-                className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20 active:scale-[0.98]"
+                disabled={isDeletingJob}
+                className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -801,9 +819,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   e.stopPropagation();
                   handleDelete();
                 }}
-                className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
+                disabled={isDeletingJob}
+                className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Delete
+                {isDeletingJob ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
