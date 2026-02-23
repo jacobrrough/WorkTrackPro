@@ -32,6 +32,7 @@ import { partsService } from './services/api/parts';
 import { Part, PartVariant } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
 import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/materialFromPart';
@@ -105,6 +106,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
   onUpdateAttachmentAdminOnly,
   calculateAvailable,
 }) => {
+  const clockInCtx = useClockIn();
+  const handleClockIn = useCallback(() => {
+    if (clockInCtx?.clockIn) {
+      clockInCtx.clockIn(job.id);
+      return;
+    }
+    onClockIn();
+  }, [clockInCtx, job.id, onClockIn]);
+
   const [timer, setTimer] = useState('00:00:00');
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -2279,7 +2289,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </button>
             ) : (
               <button
-                onClick={onClockIn}
+                onClick={handleClockIn}
                 className="flex-1 rounded-sm bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined mr-2 align-middle">login</span>

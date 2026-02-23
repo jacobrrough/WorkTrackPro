@@ -24,6 +24,13 @@ export interface AdminSettings {
   employeeCount: number; // Number of employees available for scheduling
   workWeekSchedule: WorkWeekSchedule; // Start/end/break/overtime by day (0-6 => Sun-Sat)
   overtimeMultiplier: number; // e.g. 1.5 => time-and-a-half
+  /** When true, clock-in (and optionally login) requires device location within site radius */
+  requireOnSite: boolean;
+  siteLat: number | null;
+  siteLng: number | null;
+  siteRadiusMeters: number | null;
+  /** When true and requireOnSite is true, block app access until user is on site */
+  enforceOnSiteAtLogin: boolean;
 }
 
 export interface UpdateSettingsResult {
@@ -34,11 +41,16 @@ export interface UpdateSettingsResult {
 const defaults: AdminSettings = {
   laborRate: 175,
   materialUpcharge: 1.25,
-  cncRate: 150, // Typically lower than labor rate
-  printer3DRate: 100, // Typically lower than CNC rate
+  cncRate: 150,
+  printer3DRate: 100,
   employeeCount: 5,
   workWeekSchedule: normalizeWorkWeekSchedule(DEFAULT_WORK_WEEK_SCHEDULE),
   overtimeMultiplier: 1.5,
+  requireOnSite: false,
+  siteLat: null,
+  siteLng: null,
+  siteRadiusMeters: null,
+  enforceOnSiteAtLogin: false,
 };
 
 function loadSettings(): AdminSettings {
@@ -72,6 +84,11 @@ function loadSettings(): AdminSettings {
           Number.isFinite(overtimeMultiplier) && overtimeMultiplier >= 1
             ? overtimeMultiplier
             : defaults.overtimeMultiplier,
+        requireOnSite: Boolean(parsed.requireOnSite),
+        siteLat: parsed.siteLat != null && Number.isFinite(Number(parsed.siteLat)) ? Number(parsed.siteLat) : null,
+        siteLng: parsed.siteLng != null && Number.isFinite(Number(parsed.siteLng)) ? Number(parsed.siteLng) : null,
+        siteRadiusMeters: parsed.siteRadiusMeters != null && Number.isFinite(Number(parsed.siteRadiusMeters)) ? Number(parsed.siteRadiusMeters) : null,
+        enforceOnSiteAtLogin: Boolean(parsed.enforceOnSiteAtLogin),
       };
     }
   } catch {
@@ -131,6 +148,13 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
     Object.assign(mergedScheduleRaw, next.workWeekSchedule);
   }
   next.workWeekSchedule = normalizeWorkWeekSchedule(mergedScheduleRaw);
+
+  if (typeof next.requireOnSite !== 'boolean') next.requireOnSite = base.requireOnSite;
+  if (partial.siteLat !== undefined) next.siteLat = partial.siteLat != null && Number.isFinite(Number(partial.siteLat)) ? Number(partial.siteLat) : null;
+  if (partial.siteLng !== undefined) next.siteLng = partial.siteLng != null && Number.isFinite(Number(partial.siteLng)) ? Number(partial.siteLng) : null;
+  if (partial.siteRadiusMeters !== undefined) next.siteRadiusMeters = partial.siteRadiusMeters != null && Number.isFinite(Number(partial.siteRadiusMeters)) ? Number(partial.siteRadiusMeters) : null;
+  if (typeof next.enforceOnSiteAtLogin !== 'boolean') next.enforceOnSiteAtLogin = base.enforceOnSiteAtLogin;
+
   return next;
 }
 
@@ -169,6 +193,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             employeeCount: shared.employeeCount,
             overtimeMultiplier: shared.overtimeMultiplier,
             workWeekSchedule: shared.workWeekSchedule as WorkWeekSchedule,
+            requireOnSite: shared.requireOnSite,
+            siteLat: shared.siteLat,
+            siteLng: shared.siteLng,
+            siteRadiusMeters: shared.siteRadiusMeters,
+            enforceOnSiteAtLogin: shared.enforceOnSiteAtLogin,
           })
         );
       }
@@ -196,6 +225,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       employeeCount: optimistic.employeeCount,
       overtimeMultiplier: optimistic.overtimeMultiplier,
       workWeekSchedule: optimistic.workWeekSchedule as Record<number, unknown>,
+      requireOnSite: optimistic.requireOnSite,
+      siteLat: optimistic.siteLat,
+      siteLng: optimistic.siteLng,
+      siteRadiusMeters: optimistic.siteRadiusMeters,
+      enforceOnSiteAtLogin: optimistic.enforceOnSiteAtLogin,
     });
 
     setIsSyncing(false);
@@ -214,6 +248,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           employeeCount: data.employeeCount,
           overtimeMultiplier: data.overtimeMultiplier,
           workWeekSchedule: data.workWeekSchedule as WorkWeekSchedule,
+          requireOnSite: data.requireOnSite,
+          siteLat: data.siteLat,
+          siteLng: data.siteLng,
+          siteRadiusMeters: data.siteRadiusMeters,
+          enforceOnSiteAtLogin: data.enforceOnSiteAtLogin,
         })
       );
     }

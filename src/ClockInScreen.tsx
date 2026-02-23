@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ViewState, Shift, Job } from '@/core/types';
+import { useClockIn } from '@/contexts/ClockInContext';
 
 interface ClockInScreenProps {
   onNavigate: (view: ViewState) => void;
@@ -18,6 +19,11 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   activeJob,
   onClockOut,
 }) => {
+  const clockInCtx = useClockIn();
+  const effectiveOnClockInByCode = useCallback(
+    (code: number) => (clockInCtx?.onClockInByCode ?? onClockInByCode)(code),
+    [clockInCtx, onClockInByCode]
+  );
   const [jobCode, setJobCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -52,7 +58,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
       return;
     }
 
-    const res = await onClockInByCode(code);
+    const res = await effectiveOnClockInByCode(code);
     setResult(res);
     setIsLoading(false);
     if (res.success) {

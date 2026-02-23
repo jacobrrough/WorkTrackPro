@@ -9,6 +9,7 @@ import {
   getWeeklyWorkHours,
   normalizeWorkWeekSchedule,
 } from '@/lib/workHours';
+import { getCurrentPosition } from '@/lib/geoUtils';
 
 interface AdminSettingsProps {
   onNavigate: (view: ViewState) => void;
@@ -37,6 +38,20 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
   const [workWeekSchedule, setWorkWeekSchedule] = useState<WorkWeekSchedule>(() =>
     normalizeWorkWeekSchedule(settings.workWeekSchedule)
   );
+  const [requireOnSite, setRequireOnSite] = useState(settings.requireOnSite);
+  const [siteLat, setSiteLat] = useState(
+    settings.siteLat != null ? String(settings.siteLat) : ''
+  );
+  const [siteLng, setSiteLng] = useState(
+    settings.siteLng != null ? String(settings.siteLng) : ''
+  );
+  const [siteRadiusMeters, setSiteRadiusMeters] = useState(
+    settings.siteRadiusMeters != null ? String(settings.siteRadiusMeters) : '200'
+  );
+  const [enforceOnSiteAtLogin, setEnforceOnSiteAtLogin] = useState(
+    settings.enforceOnSiteAtLogin
+  );
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   useEffect(() => {
     setLaborRate(String(settings.laborRate));
@@ -54,7 +69,41 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     settings.employeeCount,
     settings.overtimeMultiplier,
     settings.workWeekSchedule,
+    settings.requireOnSite,
+    settings.siteLat,
+    settings.siteLng,
+    settings.siteRadiusMeters,
+    settings.enforceOnSiteAtLogin,
   ]);
+
+  useEffect(() => {
+    setRequireOnSite(settings.requireOnSite);
+    setSiteLat(settings.siteLat != null ? String(settings.siteLat) : '');
+    setSiteLng(settings.siteLng != null ? String(settings.siteLng) : '');
+    setSiteRadiusMeters(
+      settings.siteRadiusMeters != null ? String(settings.siteRadiusMeters) : '200'
+    );
+    setEnforceOnSiteAtLogin(settings.enforceOnSiteAtLogin);
+  }, [settings.requireOnSite, settings.siteLat, settings.siteLng, settings.siteRadiusMeters, settings.enforceOnSiteAtLogin]);
+
+  const handleUseMyLocation = async () => {
+    setIsGettingLocation(true);
+    const result = await getCurrentPosition({ timeoutMs: 12_000 });
+    setIsGettingLocation(false);
+    if (result.ok) {
+      setSiteLat(result.position.latitude.toFixed(6));
+      setSiteLng(result.position.longitude.toFixed(6));
+      showToast('Location set. Adjust radius if needed.', 'success');
+    } else {
+      const msg =
+        result.error === 'permission_denied'
+          ? 'Location permission denied. Allow location in browser to set site.'
+          : result.error === 'timeout'
+            ? 'Location timed out. Try again.'
+            : 'Could not get location.';
+      showToast(msg, 'error');
+    }
+  };
 
   const regularHoursPerEmployee = useMemo(
     () => getWeeklyWorkHours(workWeekSchedule),
@@ -145,6 +194,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       showToast('Enter a valid 3D printer rate (≥ 0)', 'error');
       return;
     }
+    const radiusNum = siteRadiusMeters.trim() ? parseFloat(siteRadiusMeters) : null;
+    if (requireOnSite && (siteLat.trim() === '' || siteLng.trim() === '')) {
+      showToast('Set site location (or use "Use my location") when requiring on-site check', 'error');
+      return;
+    }
+    if (requireOnSite && (radiusNum == null || !Number.isFinite(radiusNum) || radiusNum < 10)) {
+      showToast('Set a valid on-site radius (at least 10 meters)', 'error');
+      return;
+    }
+
     const result = await updateSettings({
       laborRate: lr,
       materialUpcharge: mu,
@@ -153,6 +212,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       employeeCount: ec,
       overtimeMultiplier: otMultiplier,
       workWeekSchedule: normalizedSchedule,
+      requireOnSite: requireOnSite,
+      siteLat: siteLat.trim() && Number.isFinite(parseFloat(siteLat)) ? parseFloat(siteLat) : null,
+      siteLng: siteLng.trim() && Number.isFinite(parseFloat(siteLng)) ? parseFloat(siteLng) : null,
+      siteRadiusMeters: radiusNum != null && Number.isFinite(radiusNum) && radiusNum >= 10 ? radiusNum : null,
+      enforceOnSiteAtLogin: enforceOnSiteAtLogin,
     });
     if (result.success) {
       showToast('Settings saved for organization', 'success');
@@ -470,6 +534,99 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               </div>
             </div>
 
+            <button
+              onClick={handleSave}
+              disabled={isSyncing}
+              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+            >
+              {isSyncing ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+
+          <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+            <h2 className="mb-4 text-sm font-semibold text-white">On-site check</h2>
+            <p className="mb-4 text-xs text-slate-400">
+              Require employees to be within a radius of your site when clocking in (and optionally when logging in). Uses device location; HTTPS and location permission required.
+            </p>
+            <div className="space-y-4">
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={requireOnSite}
+                  onChange={(e) => setRequireOnSite(e.target.checked)}
+                  className="size-5 rounded border-white/20 bg-white/5"
+                />
+                <span className="text-sm text-white">Require on-site to clock in</span>
+              </label>
+              {requireOnSite && (
+                <>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex-1">
+                      <label className="mb-1 block text-xs font-medium text-slate-400">Latitude</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={siteLat}
+                        onChange={(e) => setSiteLat(e.target.value)}
+                        placeholder="e.g. 40.7128"
+                        className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="mb-1 block text-xs font-medium text-slate-400">Longitude</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={siteLng}
+                        onChange={(e) => setSiteLng(e.target.value)}
+                        placeholder="e.g. -74.0060"
+                        className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseMyLocation}
+                    disabled={isGettingLocation}
+                    className="flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-primary/50 bg-primary/20 px-4 py-2 text-sm font-medium text-primary"
+                  >
+                    {isGettingLocation ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Getting location...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-lg">my_location</span>
+                        Use my location
+                      </>
+                    )}
+                  </button>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-400">Radius (meters)</label>
+                    <input
+                      type="number"
+                      min="10"
+                      step="10"
+                      value={siteRadiusMeters}
+                      onChange={(e) => setSiteRadiusMeters(e.target.value)}
+                      className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                      placeholder="200"
+                    />
+                    <p className="mt-1 text-[10px] text-slate-500">Minimum 10 m. Employees must be within this distance to clock in.</p>
+                  </div>
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={enforceOnSiteAtLogin}
+                      onChange={(e) => setEnforceOnSiteAtLogin(e.target.checked)}
+                      className="size-5 rounded border-white/20 bg-white/5"
+                    />
+                    <span className="text-sm text-white">Also require on-site at login (block app until on site)</span>
+                  </label>
+                </>
+              )}
+            </div>
             <button
               onClick={handleSave}
               disabled={isSyncing}

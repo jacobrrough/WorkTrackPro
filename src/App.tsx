@@ -2,6 +2,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'reac
 import { useApp } from './AppContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { ClockInProvider } from './contexts/ClockInContext';
 import Login from './Login';
 import { jobService } from './pocketbase';
 import PublicHome from './public/PublicHome';
@@ -37,7 +38,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <NavigationProvider>
       <SettingsProvider>
-        <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
+        <ClockInProvider>
+          <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
+        </ClockInProvider>
       </SettingsProvider>
     </NavigationProvider>
   );

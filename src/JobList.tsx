@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Job, ViewState, User, Shift, getStatusDisplayName } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import {
@@ -7,6 +7,7 @@ import {
   getJobDisplayName,
   formatJobIdentityLine,
 } from '@/lib/formatJob';
+import { useClockIn } from '@/contexts/ClockInContext';
 
 interface JobListProps {
   jobs: Job[];
@@ -28,6 +29,17 @@ const JobList: React.FC<JobListProps> = ({
   shifts,
   users,
 }) => {
+  const clockInCtx = useClockIn();
+  const handleClockIn = useCallback(
+    (jobId: string) => {
+      if (clockInCtx?.clockIn) {
+        clockInCtx.clockIn(jobId);
+        return;
+      }
+      onClockIn(jobId);
+    },
+    [clockInCtx, onClockIn]
+  );
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'inProgress'>('all');
   const jobs = allJobs.filter((j) => j.status !== 'paid');
@@ -250,7 +262,7 @@ const JobList: React.FC<JobListProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onClockIn(job.id);
+                          handleClockIn(job.id);
                         }}
                         className="rounded-sm bg-primary px-4 py-1.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
                       >
