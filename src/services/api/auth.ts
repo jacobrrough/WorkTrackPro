@@ -75,4 +75,59 @@ export const authService = {
   logout(): void {
     supabase.auth.signOut();
   },
+
+  /**
+   * Sign up a new user. If email confirmation is disabled in Supabase, returns the user and they are logged in.
+   * If email confirmation is required, returns { user: null, needsEmailConfirmation: true }.
+   */
+  async signUp(
+    email: string,
+    password: string,
+    options?: { name?: string }
+  ): Promise<{ user: User | null; needsEmailConfirmation: boolean }> {
+    const name = options?.name?.trim() || undefined;
+    const initials = name
+      ? name
+          .split(/\s+/)
+          .map((s) => s[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2)
+      : undefined;
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name: name || undefined, initials: initials || undefined },
+      },
+    });
+    if (error) throw error;
+    const needsEmailConfirmation = !data.session && !!data.user;
+    if (data.session?.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, email, name, initials, is_admin')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      const user = profile
+        ? mapProfileToUser(profile)
+        : mapProfileToUser({
+            id: data.user.id,
+            email: data.user.email ?? null,
+            name: data.user.user_metadata?.name ?? name ?? null,
+            initials: data.user.user_metadata?.initials ?? initials ?? null,
+            is_admin: false,
+          });
+      return { user, needsEmailConfirmation: false };
+    }
+    return { user: null, needsEmailConfirmation };
+  },
+
+  /** Send a password reset email. Does not throw if email is unknown (security). */
+  async resetPasswordForEmail(email: string): Promise<void> {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/app`,
+    });
+    if (error) throw error;
+  },
 };

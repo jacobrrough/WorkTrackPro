@@ -49,6 +49,8 @@ export default function App() {
     isLoading,
     authError,
     login,
+    signUp,
+    resetPasswordForEmail,
     jobs,
     shifts,
     users,
@@ -124,6 +126,13 @@ export default function App() {
     [login]
   );
 
+  const handleSignUp = useCallback(
+    async (email: string, password: string, options?: { name?: string }) => {
+      return signUp(email, password, options);
+    },
+    [signUp]
+  );
+
   const onClockInByCode = useCallback(
     async (code: number): Promise<{ success: boolean; message: string }> => {
       const job = await getJobByCode(code);
@@ -146,7 +155,15 @@ export default function App() {
   }
 
   if (!currentUser && !isLoading) {
-    return <Login onLogin={handleLogin} error={authError} isLoading={isLoading} />;
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        onResetPassword={resetPasswordForEmail}
+        error={authError}
+        isLoading={isLoading}
+      />
+    );
   }
 
   if (isLoading) {

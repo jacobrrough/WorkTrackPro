@@ -1,32 +1,63 @@
 import React, { useState } from 'react';
 
+type SignUpResult = boolean | 'needs_email_confirmation';
+
 interface LoginProps {
   onLogin: (email: string, password: string) => Promise<void>;
+  onSignUp?: (
+    email: string,
+    password: string,
+    options?: { name?: string }
+  ) => Promise<SignUpResult>;
+  onResetPassword?: (email: string) => Promise<void>;
   error?: string | null;
   isLoading?: boolean;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error, isLoading }) => {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [logoError, setLogoError] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [signUpSuccessMessage, setSignUpSuccessMessage] = useState<string | null>(null);
   const [contactMessage, setContactMessage] = useState('');
   const [contactSent, setContactSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === 'signup') {
+      if (!onSignUp) return;
+      if (password !== confirmPassword) return;
+      setSignUpSuccessMessage(null);
+      const result = await onSignUp(email, password, { name: name.trim() || undefined });
+      if (result === 'needs_email_confirmation') {
+        setSignUpSuccessMessage('Check your email to confirm your account, then log in.');
+      }
+      return;
+    }
     await onLogin(email, password);
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Password reset needs to be configured in PocketBase
-    // For now, show a message directing users to contact admin
-    setResetSent(true);
+    if (!onResetPassword) {
+      setResetSent(true);
+      return;
+    }
+    setResetError(null);
+    try {
+      await onResetPassword(resetEmail);
+      setResetSent(true);
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Failed to send reset email');
+    }
   };
 
   const handleContactAdmin = async (e: React.FormEvent) => {
@@ -68,11 +99,54 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
         action="#"
         className="w-full max-w-[400px] rounded-md border border-[#4d3465] bg-background-dark/50 p-4 shadow-xl backdrop-blur-sm"
         autoComplete="on"
-        aria-label="Login form"
+        aria-label={mode === 'login' ? 'Login form' : 'Sign up form'}
       >
-        {error && (
-          <div className="mb-4 rounded-sm border border-red-500/30 bg-red-500/20 p-3">
-            <p className="text-center text-sm text-red-400">{error}</p>
+        {(error || signUpSuccessMessage) && (
+          <div
+            className={`mb-4 rounded-sm border p-3 ${
+              signUpSuccessMessage
+                ? 'border-primary/30 bg-primary/20'
+                : 'border-red-500/30 bg-red-500/20'
+            }`}
+          >
+            <p
+              className={`text-center text-sm ${
+                signUpSuccessMessage ? 'text-slate-200' : 'text-red-400'
+              }`}
+            >
+              {signUpSuccessMessage ?? error}
+            </p>
+          </div>
+        )}
+
+        {mode === 'signup' && (
+          <div className="mb-4 flex w-full flex-col">
+            <label
+              className="ml-1 pb-2 text-sm font-medium leading-normal text-white"
+              htmlFor="signup-name"
+            >
+              Full Name (optional)
+            </label>
+            <div className="relative">
+              <span
+                className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-[#ad93c8]"
+                aria-hidden
+              >
+                person
+              </span>
+              <input
+                id="signup-name"
+                name="name"
+                type="text"
+                className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] pl-12 pr-4 text-base font-normal text-white placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+                placeholder="Jane Smith"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isLoading}
+                autoComplete="name"
+                aria-label="Full name"
+              />
+            </div>
           </div>
         )}
 
@@ -115,7 +189,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
             className="ml-1 pb-2 text-sm font-medium leading-normal text-white"
             htmlFor="login-password"
           >
-            Password
+            Password{mode === 'signup' ? ' (min 6 characters)' : ''}
           </label>
           <div className="relative">
             <span
@@ -133,36 +207,80 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={mode === 'signup' ? 6 : undefined}
               disabled={isLoading}
-              autoComplete="current-password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               aria-label="Password"
             />
           </div>
         </div>
 
-        <div className="mb-8 flex w-full justify-end">
-          <button
-            type="button"
-            onClick={() => setShowForgotPassword(true)}
-            className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            Forgot password?
-          </button>
-        </div>
+        {mode === 'signup' && (
+          <div className="mb-4 flex w-full flex-col">
+            <label
+              className="ml-1 pb-2 text-sm font-medium leading-normal text-white"
+              htmlFor="signup-confirm-password"
+            >
+              Confirm Password
+            </label>
+            <div className="relative">
+              <span
+                className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-[#ad93c8]"
+                aria-hidden
+              >
+                lock
+              </span>
+              <input
+                id="signup-confirm-password"
+                name="confirmPassword"
+                type="password"
+                className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] pl-12 pr-4 text-base font-normal text-white placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                disabled={isLoading}
+                autoComplete="new-password"
+                aria-label="Confirm password"
+              />
+            </div>
+            {password && confirmPassword && password !== confirmPassword && (
+              <p className="mt-1 text-sm text-red-400">Passwords do not match</p>
+            )}
+          </div>
+        )}
+
+        {mode === 'login' && (
+          <div className="mb-8 flex w-full justify-end">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
+
+        {mode === 'signup' && <div className="mb-8" />}
 
         <button
           type="submit"
           className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            (mode === 'signup' && (password !== confirmPassword || password.length < 6))
+          }
         >
           {isLoading ? (
             <>
               <div className="h-5 w-5 animate-spin rounded-sm border-2 border-white border-t-transparent"></div>
-              <span>Logging in...</span>
+              <span>{mode === 'login' ? 'Logging in...' : 'Creating account...'}</span>
             </>
           ) : (
             <>
-              <span>Login</span>
+              <span>{mode === 'login' ? 'Login' : 'Create account'}</span>
               <span className="material-symbols-outlined text-xl">arrow_forward</span>
             </>
           )}
@@ -171,15 +289,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
         <p className="mt-6 text-center text-xs text-[#ad93c8]/60">Connected to Supabase</p>
       </form>
 
-      <div className="mt-8 flex items-center gap-1">
-        <p className="text-sm text-[#ad93c8]">Don't have an account?</p>
-        <button
-          type="button"
-          onClick={() => setShowContactAdmin(true)}
-          className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-bold text-primary hover:underline"
-        >
-          Contact Admin
-        </button>
+      <div className="mt-8 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-1">
+          <p className="text-sm text-[#ad93c8]">
+            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === 'login' ? 'signup' : 'login');
+              setSignUpSuccessMessage(null);
+            }}
+            className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-bold text-primary hover:underline"
+          >
+            {mode === 'login' ? 'Sign up' : 'Log in'}
+          </button>
+        </div>
+        {mode === 'login' && (
+          <button
+            type="button"
+            onClick={() => setShowContactAdmin(true)}
+            className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-xs text-[#ad93c8] hover:text-primary"
+          >
+            Contact Admin
+          </button>
+        )}
       </div>
 
       {/* Forgot Password Modal */}
@@ -193,6 +327,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
                 onClick={() => {
                   setShowForgotPassword(false);
                   setResetSent(false);
+                  setResetError(null);
                   setResetEmail('');
                 }}
                 className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
@@ -204,20 +339,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
             {resetSent ? (
               <div className="py-8 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-sm bg-primary/20">
-                  <span className="material-symbols-outlined text-3xl text-primary">info</span>
+                  <span className="material-symbols-outlined text-3xl text-primary">mail</span>
                 </div>
-                <h4 className="mb-2 text-lg font-bold text-white">Password Reset</h4>
+                <h4 className="mb-2 text-lg font-bold text-white">Check your email</h4>
                 <p className="mb-4 text-sm text-slate-400">
-                  Password reset is managed by your administrator.
-                </p>
-                <p className="text-sm text-slate-400">
-                  Please contact your admin to reset your password, or use the "Contact Admin"
-                  button on the login screen.
+                  {onResetPassword
+                    ? "If an account exists for that email, we've sent a link to reset your password."
+                    : 'Password reset is managed by your administrator. Please contact your admin or use "Contact Admin" on the login screen.'}
                 </p>
                 <button
                   onClick={() => {
                     setShowForgotPassword(false);
                     setResetSent(false);
+                    setResetError(null);
                     setResetEmail('');
                   }}
                   className="mt-6 rounded-sm bg-white/10 px-6 py-3 font-medium text-white transition-colors hover:bg-white/20"
@@ -227,8 +361,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, error, isLoading }) => {
               </div>
             ) : (
               <form onSubmit={handleForgotPassword} method="post" action="#" autoComplete="on">
+                {resetError && (
+                  <div className="mb-4 rounded-sm border border-red-500/30 bg-red-500/20 p-3">
+                    <p className="text-center text-sm text-red-400">{resetError}</p>
+                  </div>
+                )}
                 <p className="mb-4 text-sm text-slate-400">
-                  Enter your email address and we'll send you instructions to reset your password.
+                  Enter your email address and we'll send you a link to reset your password.
                 </p>
                 <div className="mb-4 flex flex-col">
                   <label className="pb-2 text-sm font-medium text-white" htmlFor="reset-email">

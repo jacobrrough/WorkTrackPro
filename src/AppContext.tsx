@@ -36,6 +36,12 @@ interface AppContextType {
   activeShift: Shift | null;
   activeJob: Job | null;
   login: (email: string, password: string) => Promise<boolean>;
+  signUp: (
+    email: string,
+    password: string,
+    options?: { name?: string }
+  ) => Promise<boolean | 'needs_email_confirmation'>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
   logout: () => void;
   createJob: (data: Partial<Job>) => Promise<Job | null>;
   updateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
@@ -125,6 +131,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      options?: { name?: string }
+    ): Promise<boolean | 'needs_email_confirmation'> => {
+      setAuthError(null);
+      setIsLoading(true);
+      try {
+        const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
+        if (user) {
+          setCurrentUser(user);
+          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+          return true;
+        }
+        return needsEmailConfirmation ? 'needs_email_confirmation' : false;
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
+        setAuthError(errorMessage);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    []
+  );
+
+  const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
+    setAuthError(null);
+    await authService.resetPasswordForEmail(email);
   }, []);
 
   const logout = useCallback(() => {
@@ -826,6 +865,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       activeShift,
       activeJob,
       login,
+      signUp,
+      resetPasswordForEmail,
       logout,
       createJob,
       updateJob,
@@ -865,6 +906,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       activeShift,
       activeJob,
       login,
+      signUp,
+      resetPasswordForEmail,
       logout,
       createJob,
       updateJob,
