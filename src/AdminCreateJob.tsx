@@ -98,7 +98,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     setFormData((prev) => ({
       ...prev,
       laborHours: part.laborHours?.toString() || prev.laborHours,
-      description: part.description || prev.description,
+      // Only auto-fill from part when description is still empty.
+      description: prev.description.trim() ? prev.description : part.description || '',
     }));
   };
 
@@ -620,7 +621,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               className="min-h-[80px] w-full resize-none rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
               placeholder="Enter job requirements, notes, or instructions..."
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
               disabled={isSubmitting}
             />
           </div>

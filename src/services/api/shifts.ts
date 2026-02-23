@@ -1,6 +1,16 @@
 import type { Shift } from '../../core/types';
 import { supabase } from './supabaseClient';
 
+const SHIFTS_SELECT_WITH_LUNCH =
+  'id, user_id, job_id, clock_in_time, clock_out_time, lunch_start_time, lunch_end_time, notes';
+const SHIFTS_SELECT_BASE = 'id, user_id, job_id, clock_in_time, clock_out_time, notes';
+
+function isMissingLunchColumnsError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === '42703') return true;
+  return /lunch_start_time|lunch_end_time/i.test(error.message ?? '');
+}
+
 function mapRowToShift(
   row: Record<string, unknown>,
   userName?: string,
@@ -26,14 +36,25 @@ function mapRowToShift(
 
 export const shiftService = {
   async getAllShifts(): Promise<Shift[]> {
-    const { data: rows, error } = await supabase
+    const withLunch = await supabase
       .from('shifts')
-      .select(
-        'id, user_id, job_id, clock_in_time, clock_out_time, lunch_start_time, lunch_end_time, notes'
-      )
+      .select(SHIFTS_SELECT_WITH_LUNCH)
       .order('clock_in_time', { ascending: false });
-    if (error) throw error;
-    const list = rows ?? [];
+
+    let list = withLunch.data ?? [];
+    if (withLunch.error) {
+      if (!isMissingLunchColumnsError(withLunch.error)) {
+        throw withLunch.error;
+      }
+      // Backward compatibility for databases that haven't run lunch-tracking migration yet.
+      const fallback = await supabase
+        .from('shifts')
+        .select(SHIFTS_SELECT_BASE)
+        .order('clock_in_time', { ascending: false });
+      if (fallback.error) throw fallback.error;
+      list = fallback.data ?? [];
+    }
+
     const userIds = [...new Set(list.map((r) => r.user_id))];
     const jobIds = [...new Set(list.map((r) => r.job_id))];
     const [profilesRes, jobsRes] = await Promise.all([
@@ -65,7 +86,11 @@ export const shiftService = {
       user_id: userId,
       clock_in_time: new Date().toISOString(),
     });
-    return !error;
+    if (error) {
+      console.error('Shift clockIn failed:', error);
+      return false;
+    }
+    return true;
   },
 
   async clockOut(shiftId: string): Promise<void> {
