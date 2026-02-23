@@ -332,6 +332,9 @@ export default function App() {
           onCreateItem={createInventory}
           onMarkOrdered={markInventoryOrdered}
           onReceiveOrder={receiveInventoryOrder}
+          onAddAttachment={addInventoryAttachment}
+          onDeleteAttachment={deleteInventoryAttachment}
+          onReloadInventory={refreshInventory}
           isAdmin={isAdmin}
           calculateAvailable={calculateAvailable}
           calculateAllocated={calculateAllocated}
