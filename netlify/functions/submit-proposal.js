@@ -7,7 +7,15 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-const requiredEnv = ['VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'TURNSTILE_SECRET_KEY'];
+const requiredEnv = [
+  'VITE_SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'TURNSTILE_SECRET_KEY',
+  'RESEND_API_KEY',
+  'PROPOSAL_ADMIN_EMAIL',
+  'PROPOSAL_FROM_EMAIL_ADMIN',
+  'PROPOSAL_FROM_EMAIL_CUSTOMER',
+];
 
 function validateEnv() {
   for (const key of requiredEnv) {
@@ -39,12 +47,12 @@ function sanitizeText(input) {
   return String(input ?? '').trim();
 }
 
-async function sendResendEmail({ to, subject, html }) {
+async function sendResendEmail({ from, to, subject, html }) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.PROPOSAL_FROM_EMAIL;
-  if (!apiKey || !from) return;
+  if (!apiKey) return { ok: false, error: 'Missing RESEND_API_KEY' };
+  if (!from) return { ok: false, error: 'Missing email From address' };
 
-  await fetch('https://api.resend.com/emails', {
+  const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -57,6 +65,12 @@ async function sendResendEmail({ to, subject, html }) {
       html,
     }),
   });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    return { ok: false, error: `Resend error: ${response.status} ${body}`.trim() };
+  }
+  return { ok: true };
 }
 
 export async function handler(event) {
@@ -195,9 +209,13 @@ export async function handler(event) {
     }
 
     const adminEmail = process.env.PROPOSAL_ADMIN_EMAIL;
+    const fromAdmin = process.env.PROPOSAL_FROM_EMAIL_ADMIN;
+    const fromCustomer = process.env.PROPOSAL_FROM_EMAIL_CUSTOMER;
     const appUrl = process.env.APP_PUBLIC_URL || 'https://roughcutmfg.com/app';
+    const warnings = [];
     if (adminEmail) {
-      await sendResendEmail({
+      const sent = await sendResendEmail({
+        from: fromAdmin,
         to: adminEmail,
         subject: `New Proposal - ${contactName}`,
         html: `
@@ -210,9 +228,14 @@ export async function handler(event) {
           <p><a href="${appUrl}">Open Employee App</a></p>
         `,
       });
+      if (!sent.ok) {
+        console.error('Admin proposal email failed:', sent.error);
+        warnings.push('admin_email_failed');
+      }
     }
 
-    await sendResendEmail({
+    const customerSent = await sendResendEmail({
+      from: fromCustomer,
       to: email,
       subject: 'Proposal received - Rough Cut Manufacturing',
       html: `
@@ -223,11 +246,19 @@ export async function handler(event) {
         <p>- Rough Cut Manufacturing</p>
       `,
     });
+    if (!customerSent.ok) {
+      console.error('Customer proposal email failed:', customerSent.error);
+      warnings.push('customer_email_failed');
+    }
 
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ ok: true, jobCode: insertedJob.job_code }),
+      body: JSON.stringify({
+        ok: true,
+        jobCode: insertedJob.job_code,
+        warnings: warnings.length ? warnings : undefined,
+      }),
     };
   } catch (error) {
     return {
