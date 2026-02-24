@@ -195,14 +195,25 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
       const payload = (await response.json().catch(() => null)) as {
         error?: string;
         message?: string;
+        warnings?: string[];
+        warningDetails?: string[];
       } | null;
       if (!response.ok) {
         throw new Error(payload?.error || payload?.message || 'Failed to submit proposal.');
       }
 
-      setSuccessMessage(
-        'Proposal submitted. Our team will review it and move it into quoting right away.'
-      );
+      const emailWarnings = payload?.warnings ?? [];
+      const warningDetails = payload?.warningDetails ?? [];
+      if (emailWarnings.length > 0) {
+        const detailsText = warningDetails.length > 0 ? ` ${warningDetails.join(' ')}` : '';
+        setSuccessMessage(
+          `Proposal submitted and routed to quoting, but email notifications failed.${detailsText}`
+        );
+      } else {
+        setSuccessMessage(
+          'Proposal submitted. Our team will review it and move it into quoting right away.'
+        );
+      }
       setContactName('');
       setEmail('');
       setPhone('');

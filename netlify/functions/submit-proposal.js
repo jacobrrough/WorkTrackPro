@@ -72,6 +72,70 @@ function sanitizeText(input) {
   return String(input ?? '').trim();
 }
 
+function sanitizeFileName(input) {
+  const base = sanitizeText(input);
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return cleaned.length > 0 ? cleaned : 'file.bin';
+}
+
+function normalizeResendError(rawError) {
+  const text = sanitizeText(rawError);
+  if (!text) return 'Email delivery failed.';
+  return text.replace(/^Resend error:\s*/i, '').trim();
+}
+
+async function attachProposalFilesToAdminJob({ supabase, jobId, files }) {
+  const warnings = [];
+  if (!jobId || !Array.isArray(files) || files.length === 0) return warnings;
+
+  for (const [idx, file] of files.entries()) {
+    const storagePath = sanitizeText(file?.storagePath);
+    const filename = sanitizeText(file?.filename) || `proposal-file-${idx + 1}`;
+    const contentType = sanitizeText(file?.contentType) || 'application/octet-stream';
+    if (!storagePath) {
+      warnings.push('proposal_file_missing_storage_path');
+      continue;
+    }
+
+    const { data: downloadedFile, error: downloadError } = await supabase.storage
+      .from('customer-proposals')
+      .download(storagePath);
+    if (downloadError || !downloadedFile) {
+      console.error('Proposal file download failed:', downloadError?.message || storagePath);
+      warnings.push('proposal_file_download_failed');
+      continue;
+    }
+
+    const safeName = sanitizeFileName(filename);
+    const attachmentPath = `jobs/${jobId}/proposal-${Date.now()}-${idx}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(attachmentPath, downloadedFile, {
+        upsert: false,
+        contentType,
+      });
+    if (uploadError) {
+      console.error('Proposal file attach upload failed:', uploadError.message);
+      warnings.push('proposal_file_attach_upload_failed');
+      continue;
+    }
+
+    const { error: attachmentError } = await supabase.from('attachments').insert({
+      job_id: jobId,
+      filename,
+      storage_path: attachmentPath,
+      // Customer-submitted paperwork should show in Admin Files section.
+      is_admin_only: true,
+    });
+    if (attachmentError) {
+      console.error('Proposal file attachment row insert failed:', attachmentError.message);
+      warnings.push('proposal_file_attachment_insert_failed');
+    }
+  }
+
+  return warnings;
+}
+
 async function sendResendEmail({ from, to, subject, html }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, error: 'Missing RESEND_API_KEY' };
@@ -149,9 +213,13 @@ export async function handler(event) {
       };
     }
 
-    const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = createClient(
+      process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
+    );
 
     const { data: latestJob } = await supabase
       .from('jobs')
@@ -236,6 +304,17 @@ export async function handler(event) {
     const { adminEmail, fromAdmin, fromCustomer } = resolveProposalEmailConfig();
     const appUrl = process.env.APP_PUBLIC_URL || 'https://roughcutmfg.com/app';
     const warnings = [];
+    const warningDetails = [];
+
+    const attachmentWarnings = await attachProposalFilesToAdminJob({
+      supabase,
+      jobId: insertedJob.id,
+      files,
+    });
+    if (attachmentWarnings.length > 0) {
+      warnings.push(...attachmentWarnings);
+    }
+
     if (adminEmail) {
       const sent = await sendResendEmail({
         from: fromAdmin,
@@ -254,6 +333,7 @@ export async function handler(event) {
       if (!sent.ok) {
         console.error('Admin proposal email failed:', sent.error);
         warnings.push('admin_email_failed');
+        warningDetails.push(`Admin email failed: ${normalizeResendError(sent.error)}`);
       }
     }
 
@@ -272,6 +352,7 @@ export async function handler(event) {
     if (!customerSent.ok) {
       console.error('Customer proposal email failed:', customerSent.error);
       warnings.push('customer_email_failed');
+      warningDetails.push(`Customer email failed: ${normalizeResendError(customerSent.error)}`);
     }
 
     return {
@@ -281,6 +362,7 @@ export async function handler(event) {
         ok: true,
         jobCode: insertedJob.job_code,
         warnings: warnings.length ? warnings : undefined,
+        warningDetails: warningDetails.length ? warningDetails : undefined,
       }),
     };
   } catch (error) {
