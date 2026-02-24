@@ -39,11 +39,27 @@ export const authService = {
     }
 
     if (!session?.user) return null;
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, name, initials, is_admin, is_approved')
       .eq('id', session.user.id)
       .maybeSingle();
+    if (profileError) {
+      // Backwards compatibility: if migration hasn't been applied yet, don't block login.
+      const msg = profileError.message ?? '';
+      const missingApprovalColumn = /column .*is_approved.* does not exist/i.test(msg);
+      if (missingApprovalColumn) {
+        return mapProfileToUser({
+          id: session.user.id,
+          email: session.user.email ?? null,
+          name: session.user.user_metadata?.name ?? null,
+          initials: session.user.user_metadata?.initials ?? null,
+          is_admin: false,
+          is_approved: true,
+        });
+      }
+      throw profileError;
+    }
     if (!profile)
       return mapProfileToUser({
         id: session.user.id,
@@ -51,6 +67,9 @@ export const authService = {
         name: session.user.user_metadata?.name ?? null,
         initials: session.user.user_metadata?.initials ?? null,
         is_admin: false,
+        // If profile row is missing, treat as unapproved so the UI shows the approval gate
+        // instead of rendering empty lists due to RLS.
+        is_approved: false,
       });
     return mapProfileToUser(profile);
   },
@@ -58,11 +77,26 @@ export const authService = {
   async login(email: string, password: string): Promise<User> {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, email, name, initials, is_admin, is_approved')
       .eq('id', data.user.id)
       .maybeSingle();
+    if (profileError) {
+      const msg = profileError.message ?? '';
+      const missingApprovalColumn = /column .*is_approved.* does not exist/i.test(msg);
+      if (missingApprovalColumn) {
+        return mapProfileToUser({
+          id: data.user.id,
+          email: data.user.email ?? null,
+          name: data.user.user_metadata?.name ?? null,
+          initials: data.user.user_metadata?.initials ?? null,
+          is_admin: false,
+          is_approved: true,
+        });
+      }
+      throw profileError;
+    }
     if (!profile)
       return mapProfileToUser({
         id: data.user.id,
@@ -70,6 +104,7 @@ export const authService = {
         name: data.user.user_metadata?.name ?? null,
         initials: data.user.user_metadata?.initials ?? null,
         is_admin: false,
+        is_approved: false,
       });
     return mapProfileToUser(profile);
   },
@@ -106,11 +141,27 @@ export const authService = {
     if (error) throw error;
     const needsEmailConfirmation = !data.session && !!data.user;
     if (data.session?.user) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, name, initials, is_admin, is_approved')
         .eq('id', data.user.id)
         .maybeSingle();
+      if (profileError) {
+        const msg = profileError.message ?? '';
+        const missingApprovalColumn = /column .*is_approved.* does not exist/i.test(msg);
+        if (missingApprovalColumn) {
+          const user = mapProfileToUser({
+            id: data.user.id,
+            email: data.user.email ?? null,
+            name: data.user.user_metadata?.name ?? name ?? null,
+            initials: data.user.user_metadata?.initials ?? initials ?? null,
+            is_admin: false,
+            is_approved: true,
+          });
+          return { user, needsEmailConfirmation: false };
+        }
+        throw profileError;
+      }
       const user = profile
         ? mapProfileToUser(profile)
         : mapProfileToUser({
@@ -119,6 +170,7 @@ export const authService = {
             name: data.user.user_metadata?.name ?? name ?? null,
             initials: data.user.user_metadata?.initials ?? initials ?? null,
             is_admin: false,
+            is_approved: false,
           });
       return { user, needsEmailConfirmation: false };
     }
