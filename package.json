@@ -9,6 +9,7 @@
     "trello-proxy": "node server/trelloProxy.js",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node server/static-serve.js",
     "serve": "node server/server.js",
     "generate-cert": "node scripts/generate-cert.cjs",
     "lint": "eslint src --ext .ts,.tsx",
