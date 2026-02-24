@@ -10,9 +10,9 @@ WorkTrack Pro is a job, inventory & time-tracking SaaS for manufacturing. Single
 
 The app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` (gitignored). These are injected as Cursor Cloud secrets.
 
-**Important gotcha:** The `VITE_SUPABASE_URL` secret is currently stored with the key name duplicated in the value (i.e., the value is `VITE_SUPABASE_URL=https://...` instead of just `https://...`). The update script strips this prefix automatically when generating `.env.local`. If the secret is corrected in the future, the `sed` strip is harmless (no-op on a value that doesn't start with the prefix).
+The update script writes these from the injected shell env vars into `.env.local`. A `sed` strip removes any accidental `VITE_SUPABASE_URL=` prefix in the value (safe no-op if the secret is already correctly formatted).
 
-Shell environment variables override `.env.local` in Vite's env resolution. The update script unsets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the shell and writes corrected values to `.env.local` so Vite picks them up cleanly.
+**Vite env priority:** Shell environment variables override `.env.local`. The update script unsets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the shell after writing `.env.local` so Vite reads the file values.
 
 ### Running the dev server
 
@@ -20,11 +20,9 @@ Shell environment variables override `.env.local` in Vite's env resolution. The 
 npm run dev          # Vite dev server on http://localhost:3000
 ```
 
-Before starting, ensure no stale env vars override `.env.local`:
+### Authentication
 
-```bash
-unset VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY
-```
+Test login credentials are available as `TEST_LOGIN_USERNAME` and `TEST_LOGIN_PASSWORD` secrets. Note: the Supabase instance has email confirmation enabled, so new accounts created via sign-up won't be able to log in until confirmed. To bypass this for test accounts, a `SUPABASE_SERVICE_ROLE_KEY` is needed (not currently configured).
 
 ### Key commands
 
