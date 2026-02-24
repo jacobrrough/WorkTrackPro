@@ -14,12 +14,7 @@ export interface GeoPosition {
 /**
  * Haversine distance in meters between two lat/lng points.
  */
-export function distanceMeters(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number
-): number {
+export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6_371_000; // Earth radius in meters
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
@@ -75,11 +70,7 @@ export function getCurrentPosition(options?: {
       },
       (err) => {
         const error =
-          err.code === 1
-            ? 'permission_denied'
-            : err.code === 3
-              ? 'timeout'
-              : 'unavailable';
+          err.code === 1 ? 'permission_denied' : err.code === 3 ? 'timeout' : 'unavailable';
         resolve({ ok: false, error });
       },
       { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: maxAgeMs }
@@ -97,7 +88,10 @@ export async function checkOnSite(options: {
   radiusMeters: number;
 }): Promise<
   | { allowed: true }
-  | { allowed: false; reason: 'unsupported' | 'permission_denied' | 'timeout' | 'unavailable' | 'outside_geofence' }
+  | {
+      allowed: false;
+      reason: 'unsupported' | 'permission_denied' | 'timeout' | 'unavailable' | 'outside_geofence';
+    }
 > {
   const { siteLat, siteLng, radiusMeters } = options;
   const result = await getCurrentPosition({ timeoutMs: 12_000 });

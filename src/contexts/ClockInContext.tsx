@@ -71,9 +71,5 @@ export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) =>
     children
   );
 
-  return (
-    <ClockInContext.Provider value={value}>
-      {content}
-    </ClockInContext.Provider>
-  );
-}
+  return <ClockInContext.Provider value={value}>{content}</ClockInContext.Provider>;
+};

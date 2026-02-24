@@ -85,9 +85,18 @@ function loadSettings(): AdminSettings {
             ? overtimeMultiplier
             : defaults.overtimeMultiplier,
         requireOnSite: Boolean(parsed.requireOnSite),
-        siteLat: parsed.siteLat != null && Number.isFinite(Number(parsed.siteLat)) ? Number(parsed.siteLat) : null,
-        siteLng: parsed.siteLng != null && Number.isFinite(Number(parsed.siteLng)) ? Number(parsed.siteLng) : null,
-        siteRadiusMeters: parsed.siteRadiusMeters != null && Number.isFinite(Number(parsed.siteRadiusMeters)) ? Number(parsed.siteRadiusMeters) : null,
+        siteLat:
+          parsed.siteLat != null && Number.isFinite(Number(parsed.siteLat))
+            ? Number(parsed.siteLat)
+            : null,
+        siteLng:
+          parsed.siteLng != null && Number.isFinite(Number(parsed.siteLng))
+            ? Number(parsed.siteLng)
+            : null,
+        siteRadiusMeters:
+          parsed.siteRadiusMeters != null && Number.isFinite(Number(parsed.siteRadiusMeters))
+            ? Number(parsed.siteRadiusMeters)
+            : null,
         enforceOnSiteAtLogin: Boolean(parsed.enforceOnSiteAtLogin),
       };
     }
@@ -150,10 +159,23 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
   next.workWeekSchedule = normalizeWorkWeekSchedule(mergedScheduleRaw);
 
   if (typeof next.requireOnSite !== 'boolean') next.requireOnSite = base.requireOnSite;
-  if (partial.siteLat !== undefined) next.siteLat = partial.siteLat != null && Number.isFinite(Number(partial.siteLat)) ? Number(partial.siteLat) : null;
-  if (partial.siteLng !== undefined) next.siteLng = partial.siteLng != null && Number.isFinite(Number(partial.siteLng)) ? Number(partial.siteLng) : null;
-  if (partial.siteRadiusMeters !== undefined) next.siteRadiusMeters = partial.siteRadiusMeters != null && Number.isFinite(Number(partial.siteRadiusMeters)) ? Number(partial.siteRadiusMeters) : null;
-  if (typeof next.enforceOnSiteAtLogin !== 'boolean') next.enforceOnSiteAtLogin = base.enforceOnSiteAtLogin;
+  if (partial.siteLat !== undefined)
+    next.siteLat =
+      partial.siteLat != null && Number.isFinite(Number(partial.siteLat))
+        ? Number(partial.siteLat)
+        : null;
+  if (partial.siteLng !== undefined)
+    next.siteLng =
+      partial.siteLng != null && Number.isFinite(Number(partial.siteLng))
+        ? Number(partial.siteLng)
+        : null;
+  if (partial.siteRadiusMeters !== undefined)
+    next.siteRadiusMeters =
+      partial.siteRadiusMeters != null && Number.isFinite(Number(partial.siteRadiusMeters))
+        ? Number(partial.siteRadiusMeters)
+        : null;
+  if (typeof next.enforceOnSiteAtLogin !== 'boolean')
+    next.enforceOnSiteAtLogin = base.enforceOnSiteAtLogin;
 
   return next;
 }

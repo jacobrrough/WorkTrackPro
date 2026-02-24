@@ -54,6 +54,7 @@ export default function App() {
     login,
     signUp,
     resetPasswordForEmail,
+    logout,
     jobs,
     shifts,
     users,
@@ -190,6 +191,27 @@ export default function App() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (currentUser && currentUser.isApproved === false) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark px-4">
+        <div className="w-full max-w-sm rounded-lg border border-white/10 bg-white/5 p-6 text-center">
+          <span className="material-symbols-outlined text-4xl text-primary">shield_lock</span>
+          <h2 className="mt-4 text-lg font-bold text-white">Pending approval</h2>
+          <p className="mt-2 text-sm text-slate-300">
+            Your account has been created, but an admin still needs to approve access.
+          </p>
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-6 min-h-[44px] w-full touch-manipulation rounded-sm bg-primary px-4 py-3 font-bold text-white hover:bg-primary/90"
+          >
+            Log out
+          </button>
         </div>
       </div>
     );
@@ -454,6 +476,13 @@ export default function App() {
   }
 
   if (view === 'admin-settings') {
+    if (!isAdmin) {
+      return (
+        <AppShell>
+          <Dashboard onNavigate={handleNavigate} />
+        </AppShell>
+      );
+    }
     return (
       <AppShell>
         <AdminSettings onNavigate={handleNavigate} onBack={() => handleNavigate('dashboard')} />

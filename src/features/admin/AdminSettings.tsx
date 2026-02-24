@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState } from '@/core/types';
+import { useApp } from '@/AppContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useToast } from '@/Toast';
 import {
@@ -10,6 +11,7 @@ import {
   normalizeWorkWeekSchedule,
 } from '@/lib/workHours';
 import { getCurrentPosition } from '@/lib/geoUtils';
+import { userService } from '@/services/api/users';
 
 interface AdminSettingsProps {
   onNavigate: (view: ViewState) => void;
@@ -27,8 +29,10 @@ const WEEK_DAYS: Array<{ day: number; short: string; label: string }> = [
 ];
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, onBack }) => {
+  const { currentUser, users, refreshUsers } = useApp();
   const { settings, updateSettings, isSyncing } = useSettings();
   const { showToast } = useToast();
+  const isAdmin = currentUser?.isAdmin === true;
   const [laborRate, setLaborRate] = useState(String(settings.laborRate));
   const [materialUpcharge, setMaterialUpcharge] = useState(String(settings.materialUpcharge));
   const [cncRate, setCncRate] = useState(String(settings.cncRate));
@@ -39,19 +43,19 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     normalizeWorkWeekSchedule(settings.workWeekSchedule)
   );
   const [requireOnSite, setRequireOnSite] = useState(settings.requireOnSite);
-  const [siteLat, setSiteLat] = useState(
-    settings.siteLat != null ? String(settings.siteLat) : ''
-  );
-  const [siteLng, setSiteLng] = useState(
-    settings.siteLng != null ? String(settings.siteLng) : ''
-  );
+  const [siteLat, setSiteLat] = useState(settings.siteLat != null ? String(settings.siteLat) : '');
+  const [siteLng, setSiteLng] = useState(settings.siteLng != null ? String(settings.siteLng) : '');
   const [siteRadiusMeters, setSiteRadiusMeters] = useState(
     settings.siteRadiusMeters != null ? String(settings.siteRadiusMeters) : '200'
   );
-  const [enforceOnSiteAtLogin, setEnforceOnSiteAtLogin] = useState(
-    settings.enforceOnSiteAtLogin
-  );
+  const [enforceOnSiteAtLogin, setEnforceOnSiteAtLogin] = useState(settings.enforceOnSiteAtLogin);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void refreshUsers();
+  }, [isAdmin, refreshUsers]);
 
   useEffect(() => {
     setLaborRate(String(settings.laborRate));
@@ -84,7 +88,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       settings.siteRadiusMeters != null ? String(settings.siteRadiusMeters) : '200'
     );
     setEnforceOnSiteAtLogin(settings.enforceOnSiteAtLogin);
-  }, [settings.requireOnSite, settings.siteLat, settings.siteLng, settings.siteRadiusMeters, settings.enforceOnSiteAtLogin]);
+  }, [
+    settings.requireOnSite,
+    settings.siteLat,
+    settings.siteLng,
+    settings.siteRadiusMeters,
+    settings.enforceOnSiteAtLogin,
+  ]);
 
   const handleUseMyLocation = async () => {
     setIsGettingLocation(true);
@@ -142,6 +152,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
   };
 
   const handleSave = async () => {
+    if (!isAdmin) {
+      showToast('Admin access required', 'error');
+      return;
+    }
     const lr = parseFloat(laborRate);
     const mu = parseFloat(materialUpcharge);
     const cr = parseFloat(cncRate);
@@ -196,7 +210,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     }
     const radiusNum = siteRadiusMeters.trim() ? parseFloat(siteRadiusMeters) : null;
     if (requireOnSite && (siteLat.trim() === '' || siteLng.trim() === '')) {
-      showToast('Set site location (or use "Use my location") when requiring on-site check', 'error');
+      showToast(
+        'Set site location (or use "Use my location") when requiring on-site check',
+        'error'
+      );
       return;
     }
     if (requireOnSite && (radiusNum == null || !Number.isFinite(radiusNum) || radiusNum < 10)) {
@@ -215,7 +232,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       requireOnSite: requireOnSite,
       siteLat: siteLat.trim() && Number.isFinite(parseFloat(siteLat)) ? parseFloat(siteLat) : null,
       siteLng: siteLng.trim() && Number.isFinite(parseFloat(siteLng)) ? parseFloat(siteLng) : null,
-      siteRadiusMeters: radiusNum != null && Number.isFinite(radiusNum) && radiusNum >= 10 ? radiusNum : null,
+      siteRadiusMeters:
+        radiusNum != null && Number.isFinite(radiusNum) && radiusNum >= 10 ? radiusNum : null,
       enforceOnSiteAtLogin: enforceOnSiteAtLogin,
     });
     if (result.success) {
@@ -228,6 +246,54 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
         : 'Failed to save organization settings',
       'error'
     );
+  };
+
+  const pendingUsers = useMemo(() => (users ?? []).filter((u) => u.isApproved === false), [users]);
+  const approvedUsers = useMemo(() => (users ?? []).filter((u) => u.isApproved !== false), [users]);
+
+  const handleApprove = async (userId: string, makeAdmin: boolean) => {
+    if (!isAdmin || !currentUser?.id) {
+      showToast('Admin access required', 'error');
+      return;
+    }
+    setBusyUserId(userId);
+    try {
+      await userService.updateUser(userId, {
+        isApproved: true,
+        approvedAt: new Date().toISOString(),
+        approvedBy: currentUser.id,
+        isAdmin: makeAdmin ? true : undefined,
+      });
+      showToast(makeAdmin ? 'User approved as admin' : 'User approved', 'success');
+      await refreshUsers();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to approve user';
+      showToast(msg, 'error');
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleToggleAdmin = async (userId: string, nextIsAdmin: boolean) => {
+    if (!isAdmin) {
+      showToast('Admin access required', 'error');
+      return;
+    }
+    if (currentUser?.id === userId) {
+      showToast("Can't change your own admin role here", 'warning');
+      return;
+    }
+    setBusyUserId(userId);
+    try {
+      await userService.updateUser(userId, { isAdmin: nextIsAdmin });
+      showToast(nextIsAdmin ? 'User set as admin' : 'Admin removed', 'success');
+      await refreshUsers();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to update user role';
+      showToast(msg, 'error');
+    } finally {
+      setBusyUserId(null);
+    }
   };
 
   return (
@@ -253,6 +319,97 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-md space-y-6">
+          {isAdmin && (
+            <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">Users</h2>
+                  <p className="text-[10px] text-slate-500">
+                    Approve new users and set admin access.
+                  </p>
+                </div>
+                {pendingUsers.length > 0 && (
+                  <span className="rounded-full bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-300">
+                    {pendingUsers.length} pending
+                  </span>
+                )}
+              </div>
+
+              {pendingUsers.length === 0 && (
+                <p className="text-sm text-slate-400">No users pending approval.</p>
+              )}
+
+              {pendingUsers.length > 0 && (
+                <div className="space-y-3">
+                  {pendingUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">
+                            {u.name || u.email || 'User'}
+                          </p>
+                          <p className="truncate text-xs text-slate-300">{u.email}</p>
+                        </div>
+                        <span className="rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300">
+                          Pending
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={busyUserId === u.id}
+                          onClick={() => handleApprove(u.id, false)}
+                          className="min-h-[44px] touch-manipulation rounded-sm bg-primary px-3 py-3 text-sm font-bold text-white disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyUserId === u.id}
+                          onClick={() => handleApprove(u.id, true)}
+                          className="min-h-[44px] touch-manipulation rounded-sm border border-white/10 bg-white/5 px-3 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-60"
+                        >
+                          Approve + Admin
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {approvedUsers.length > 0 && (
+                <div className="mt-5 space-y-2">
+                  <h3 className="text-xs font-semibold text-slate-300">Approved</h3>
+                  {approvedUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between gap-3 rounded-sm border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {u.name || u.email || 'User'}
+                        </p>
+                        <p className="truncate text-xs text-slate-400">{u.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busyUserId === u.id || currentUser?.id === u.id}
+                        onClick={() => handleToggleAdmin(u.id, !u.isAdmin)}
+                        className="min-h-[44px] touch-manipulation rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                      >
+                        {u.isAdmin ? 'Remove admin' : 'Make admin'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="rounded-sm border border-white/10 bg-white/5 p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">Pricing</h2>
             <div className="space-y-4">
@@ -546,7 +703,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           <div className="rounded-sm border border-white/10 bg-white/5 p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">On-site check</h2>
             <p className="mb-4 text-xs text-slate-400">
-              Require employees to be within a radius of your site when clocking in (and optionally when logging in). Uses device location; HTTPS and location permission required.
+              Require employees to be within a radius of your site when clocking in (and optionally
+              when logging in). Uses device location; HTTPS and location permission required.
             </p>
             <div className="space-y-4">
               <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
@@ -562,7 +720,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                 <>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div className="flex-1">
-                      <label className="mb-1 block text-xs font-medium text-slate-400">Latitude</label>
+                      <label className="mb-1 block text-xs font-medium text-slate-400">
+                        Latitude
+                      </label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -573,7 +733,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="mb-1 block text-xs font-medium text-slate-400">Longitude</label>
+                      <label className="mb-1 block text-xs font-medium text-slate-400">
+                        Longitude
+                      </label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -603,7 +765,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     )}
                   </button>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-400">Radius (meters)</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-400">
+                      Radius (meters)
+                    </label>
                     <input
                       type="number"
                       min="10"
@@ -613,7 +777,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                       placeholder="200"
                     />
-                    <p className="mt-1 text-[10px] text-slate-500">Minimum 10 m. Employees must be within this distance to clock in.</p>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Minimum 10 m. Employees must be within this distance to clock in.
+                    </p>
                   </div>
                   <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
                     <input
@@ -622,7 +788,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       onChange={(e) => setEnforceOnSiteAtLogin(e.target.checked)}
                       className="size-5 rounded border-white/20 bg-white/5"
                     />
-                    <span className="text-sm text-white">Also require on-site at login (block app until on site)</span>
+                    <span className="text-sm text-white">
+                      Also require on-site at login (block app until on site)
+                    </span>
                   </label>
                 </>
               )}

@@ -273,8 +273,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       .getByJobIds(jobIds)
       .then(async (byJob) => {
         if (cancelled) return;
-        const states: Record<string, { total: number; completed: number; completedByName?: string }> =
-          {};
+        const states: Record<
+          string,
+          { total: number; completed: number; completedByName?: string }
+        > = {};
         for (const jobId of jobIds) {
           const list = byJob[jobId] ?? [];
           const job = jobs.find((j) => j.id === jobId);
@@ -299,7 +301,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               .filter((i) => !!i.checked && !!i.checkedAt)
               .sort(
                 (a, b) =>
-                  new Date(b.checkedAt as string).getTime() - new Date(a.checkedAt as string).getTime()
+                  new Date(b.checkedAt as string).getTime() -
+                  new Date(a.checkedAt as string).getTime()
               )[0];
             completedByName = latestChecked?.checkedByName;
           }

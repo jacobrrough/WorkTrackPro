@@ -78,6 +78,7 @@ interface AppContextType {
   deleteInventoryAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   refreshJobs: () => Promise<void>;
   refreshShifts: () => Promise<void>;
+  refreshUsers: () => Promise<void>;
   refreshInventory: () => Promise<void>;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
@@ -165,8 +166,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const user = await authService.login(email, password);
         setCurrentUser(user);
 
-        // Load all data after successful login
-        await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+        // Load data only when approved; pending users should see the approval gate.
+        if (user.isApproved !== false) {
+          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+        }
 
         return true;
       } catch (error: unknown) {
@@ -192,7 +195,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
         if (user) {
           setCurrentUser(user);
-          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+          if (user.isApproved !== false) {
+            await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+          }
           return true;
         }
         return needsEmailConfirmation ? 'needs_email_confirmation' : false;
@@ -913,6 +918,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteInventoryAttachment,
       refreshJobs,
       refreshShifts,
+      refreshUsers,
       refreshInventory,
       calculateAvailable,
       calculateAllocated,
@@ -955,6 +961,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteInventoryAttachment,
       refreshJobs,
       refreshShifts,
+      refreshUsers,
       refreshInventory,
       calculateAvailable,
       calculateAllocated,

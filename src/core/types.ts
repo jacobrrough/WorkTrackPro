@@ -93,6 +93,7 @@ export interface User {
   name?: string;
   initials?: string;
   isAdmin: boolean;
+  isApproved?: boolean;
 }
 
 // Shift

@@ -42,9 +42,14 @@ function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecor
     overtimeMultiplier: Number(row.overtime_multiplier),
     workWeekSchedule: row.work_week_schedule ?? {},
     requireOnSite: Boolean(row.require_on_site),
-    siteLat: row.site_lat != null && Number.isFinite(Number(row.site_lat)) ? Number(row.site_lat) : null,
-    siteLng: row.site_lng != null && Number.isFinite(Number(row.site_lng)) ? Number(row.site_lng) : null,
-    siteRadiusMeters: row.site_radius_meters != null && Number.isFinite(Number(row.site_radius_meters)) ? Number(row.site_radius_meters) : null,
+    siteLat:
+      row.site_lat != null && Number.isFinite(Number(row.site_lat)) ? Number(row.site_lat) : null,
+    siteLng:
+      row.site_lng != null && Number.isFinite(Number(row.site_lng)) ? Number(row.site_lng) : null,
+    siteRadiusMeters:
+      row.site_radius_meters != null && Number.isFinite(Number(row.site_radius_meters))
+        ? Number(row.site_radius_meters)
+        : null,
     enforceOnSiteAtLogin: Boolean(row.enforce_on_site_at_login),
   };
 }

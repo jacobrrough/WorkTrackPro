@@ -7,6 +7,7 @@ function mapProfileToUser(profile: {
   name: string | null;
   initials: string | null;
   is_admin: boolean;
+  is_approved?: boolean;
 }): User {
   return {
     id: profile.id,
@@ -14,6 +15,7 @@ function mapProfileToUser(profile: {
     name: profile.name ?? undefined,
     initials: profile.initials ?? undefined,
     isAdmin: profile.is_admin,
+    isApproved: profile.is_approved ?? true,
   };
 }
 
@@ -39,7 +41,7 @@ export const authService = {
     if (!session?.user) return null;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, email, name, initials, is_admin')
+      .select('id, email, name, initials, is_admin, is_approved')
       .eq('id', session.user.id)
       .maybeSingle();
     if (!profile)
@@ -58,7 +60,7 @@ export const authService = {
     if (error) throw error;
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, email, name, initials, is_admin')
+      .select('id, email, name, initials, is_admin, is_approved')
       .eq('id', data.user.id)
       .maybeSingle();
     if (!profile)
@@ -106,7 +108,7 @@ export const authService = {
     if (data.session?.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, email, name, initials, is_admin')
+        .select('id, email, name, initials, is_admin, is_approved')
         .eq('id', data.user.id)
         .maybeSingle();
       const user = profile
