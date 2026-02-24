@@ -15,7 +15,8 @@ interface KanbanBoardProps {
   onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
   onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<void>;
   onCreateJob: () => void;
-  onDeleteJob?: (jobId: string) => Promise<void>;
+  onDeleteJob?: (jobId: string) => Promise<boolean>;
+  onDeleteAttachment?: (attachmentId: string) => Promise<boolean>;
   isAdmin: boolean;
   currentUser: User;
   inventory?: InventoryItem[];
@@ -69,6 +70,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [filesForJob, setFilesForJob] = useState<string | null>(null);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
   const [checklistStates, setChecklistStates] = useState<
     Record<string, { total: number; completed: number; completedByName?: string }>
   >({});
@@ -76,6 +79,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [columnMenuOpen, setColumnMenuOpen] = useState<string | null>(null);
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
+  const [horizontalProgress, setHorizontalProgress] = useState(0);
+  const [isSliderDragging, setIsSliderDragging] = useState(false);
   const { showToast } = useToast();
 
   // Refs for column scroll containers and horizontal board container
@@ -132,10 +137,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Throttled horizontal scroll handler for board container
   const handleHorizontalScroll = useThrottle(() => {
     if (!boardContainerRef.current) return;
+    const board = boardContainerRef.current;
+    const maxScroll = Math.max(1, board.scrollWidth - board.clientWidth);
+    const progress = Math.max(0, Math.min(100, (board.scrollLeft / maxScroll) * 100));
+    setHorizontalProgress(progress);
     updateState({
       scrollPositions: {
         ...scrollPositionsRef.current,
-        [horizontalScrollKey]: boardContainerRef.current.scrollLeft,
+        [horizontalScrollKey]: board.scrollLeft,
       },
     });
   }, 100);
@@ -157,15 +166,38 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     100
   );
 
-  const nudgeBoard = (direction: 'left' | 'right') => {
-    if (!boardContainerRef.current) return;
-    boardContainerRef.current.scrollBy({
-      left: direction === 'left' ? -300 : 300,
-      behavior: 'smooth',
-    });
-    requestAnimationFrame(() => {
+  const getSnappedScrollLeft = (rawScrollLeft: number): number => {
+    const board = boardContainerRef.current;
+    if (!board) return rawScrollLeft;
+    const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
+    const columnsInDom = Array.from(
+      board.querySelectorAll<HTMLElement>('[data-kanban-column-root="true"]')
+    );
+    if (columnsInDom.length < 2) {
+      return Math.max(0, Math.min(maxScroll, rawScrollLeft));
+    }
+    const step = Math.max(1, columnsInDom[1].offsetLeft - columnsInDom[0].offsetLeft);
+    const snapped = Math.round(rawScrollLeft / step) * step;
+    return Math.max(0, Math.min(maxScroll, snapped));
+  };
+
+  const applyHorizontalProgress = (progress: number) => {
+    const board = boardContainerRef.current;
+    if (!board) return;
+    const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
+    const clamped = Math.max(0, Math.min(100, progress));
+    board.scrollLeft = (clamped / 100) * maxScroll;
+    handleHorizontalScroll();
+  };
+
+  const snapBoardAfterSliderRelease = () => {
+    const board = boardContainerRef.current;
+    if (!board) return;
+    const snappedLeft = getSnappedScrollLeft(board.scrollLeft);
+    board.scrollTo({ left: snappedLeft, behavior: 'smooth' });
+    window.setTimeout(() => {
       handleHorizontalScroll();
-    });
+    }, 120);
   };
 
   const handleBoardWheelCapture = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -379,8 +411,35 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const handleDelete = async () => {
     if (deleteConfirm && onDeleteJob) {
-      await onDeleteJob(deleteConfirm);
+      const ok = await onDeleteJob(deleteConfirm);
+      if (ok) {
+        showToast('Job deleted', 'success');
+      } else {
+        showToast('Failed to delete job', 'error');
+      }
       setDeleteConfirm(null);
+      setMenuOpenFor(null);
+    }
+  };
+
+  const handleDeleteJobAttachment = async (attachmentId: string) => {
+    if (!onDeleteAttachment) {
+      showToast('File deletion is not wired yet', 'error');
+      return;
+    }
+    setDeletingAttachmentId(attachmentId);
+    try {
+      const ok = await onDeleteAttachment(attachmentId);
+      if (ok) {
+        showToast('File deleted', 'success');
+      } else {
+        showToast('Failed to delete file', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete attachment from card:', error);
+      showToast('Failed to delete file', 'error');
+    } finally {
+      setDeletingAttachmentId(null);
     }
   };
 
@@ -427,31 +486,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => nudgeBoard('left')}
-              className="flex size-8 items-center justify-center rounded-sm bg-white/10 text-white transition-colors hover:bg-white/20"
-              title="Scroll columns left"
-              aria-label="Scroll columns left"
-            >
-              <span className="material-symbols-outlined text-sm">chevron_left</span>
-            </button>
-            <button
-              onClick={() => nudgeBoard('right')}
-              className="flex size-8 items-center justify-center rounded-sm bg-white/10 text-white transition-colors hover:bg-white/20"
-              title="Scroll columns right"
-              aria-label="Scroll columns right"
-            >
-              <span className="material-symbols-outlined text-sm">chevron_right</span>
-            </button>
-            <button
-              onClick={() => updateState({ minimalView: !navState.minimalView })}
-              className="flex items-center gap-1 rounded-sm bg-white/10 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
-              title="Toggle minimal view"
-            >
-              <span className="material-symbols-outlined text-sm">
-                {navState.minimalView ? 'view_agenda' : 'view_compact'}
-              </span>
-            </button>
             {isAdmin && (
               <button
                 onClick={() => onNavigate(boardType === 'shopFloor' ? 'board-admin' : 'board-shop')}
@@ -493,6 +527,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             return (
               <div
                 key={column.id}
+                data-kanban-column-root="true"
                 className={`flex w-64 flex-col rounded-sm border bg-black/20 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -647,6 +682,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                       </span>
                                       Edit
                                     </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setMenuOpenFor(null);
+                                        setFilesForJob(job.id);
+                                      }}
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                    >
+                                      <span className="material-symbols-outlined text-base">
+                                        attach_file
+                                      </span>
+                                      Files
+                                    </button>
                                     {job.status === 'waitingForPayment' && (
                                       <button
                                         onClick={(e) => {
@@ -758,6 +808,42 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
+      {/* Bottom horizontal slider for precise board navigation */}
+      <div className="flex-shrink-0 border-t border-white/10 bg-background-dark/95 px-3 py-2">
+        <div className="mx-auto max-w-3xl">
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-slate-400">
+            Board scroll
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={0.1}
+            value={horizontalProgress}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              setHorizontalProgress(next);
+              applyHorizontalProgress(next);
+            }}
+            onMouseDown={() => setIsSliderDragging(true)}
+            onMouseUp={() => {
+              setIsSliderDragging(false);
+              snapBoardAfterSliderRelease();
+            }}
+            onTouchStart={() => setIsSliderDragging(true)}
+            onTouchEnd={() => {
+              setIsSliderDragging(false);
+              snapBoardAfterSliderRelease();
+            }}
+            className="h-7 w-full cursor-grab touch-manipulation accent-primary active:cursor-grabbing"
+            aria-label="Drag to scroll kanban columns"
+          />
+          <p className="mt-1 text-[10px] text-slate-500">
+            Drag for precise control. {isSliderDragging ? 'Release to snap to nearest column.' : ''}
+          </p>
+        </div>
+      </div>
+
       {/* Delete Confirmation */}
       {deleteConfirm && (
         <div
@@ -795,6 +881,72 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Card Files Modal */}
+      {filesForJob && (
+        <div
+          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setFilesForJob(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="files-dialog-title"
+        >
+          <div className="w-full max-w-md rounded-sm border border-white/10 bg-[#1a1122] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <h3 id="files-dialog-title" className="text-base font-bold text-white">
+                Job Files
+              </h3>
+              <button
+                onClick={() => setFilesForJob(null)}
+                className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+                aria-label="Close files"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto p-3">
+              {(jobs.find((j) => j.id === filesForJob)?.attachments ?? []).length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-400">No files on this job.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(jobs.find((j) => j.id === filesForJob)?.attachments ?? []).map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="flex items-center justify-between gap-2 rounded-sm border border-white/10 bg-white/5 p-2.5"
+                    >
+                      <div className="min-w-0">
+                        <a
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate text-sm text-primary hover:underline"
+                        >
+                          {attachment.filename}
+                        </a>
+                        <p className="text-[10px] text-slate-500">
+                          {attachment.isAdminOnly ? 'Admin file' : 'Standard file'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={deletingAttachmentId === attachment.id}
+                        onClick={() => handleDeleteJobAttachment(attachment.id)}
+                        className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
+                        aria-label={`Delete ${attachment.filename}`}
+                        title="Delete file"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

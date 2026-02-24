@@ -491,6 +491,11 @@ export const jobService = {
     return !error;
   },
 
+  async deleteJob(jobId: string): Promise<boolean> {
+    const { error } = await supabase.from('jobs').delete().eq('id', jobId);
+    return !error;
+  },
+
   async addComment(jobId: string, text: string, userId: string): Promise<Comment | null> {
     const { data: row, error } = await supabase
       .from('comments')

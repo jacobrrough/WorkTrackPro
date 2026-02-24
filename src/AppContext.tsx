@@ -47,6 +47,7 @@ interface AppContextType {
   logout: () => void;
   createJob: (data: Partial<Job>) => Promise<Job | null>;
   updateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
+  deleteJob: (jobId: string) => Promise<boolean>;
   updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>; // FIXED: Return boolean
   advanceJobToNextStatus: (jobId: string, currentStatus: JobStatus) => Promise<boolean>;
   addJobComment: (jobId: string, text: string) => Promise<Comment | null>; // FIXED: Renamed and return Comment
@@ -270,6 +271,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return null;
     }
   }, []);
+
+  const deleteJob = useCallback(
+    async (jobId: string): Promise<boolean> => {
+      try {
+        const deleted = await jobService.deleteJob(jobId);
+        if (!deleted) return false;
+        setJobs((prev) => prev.filter((j) => j.id !== jobId));
+        await refreshJobs();
+        await refreshInventory();
+        await refreshShifts();
+        return true;
+      } catch (error) {
+        console.error('Delete job error:', error);
+        return false;
+      }
+    },
+    [refreshInventory, refreshJobs, refreshShifts]
+  );
 
   // FIXED: Now returns boolean for success/failure
   const updateJobStatus = useCallback(
@@ -900,6 +919,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       logout,
       createJob,
       updateJob,
+      deleteJob,
       updateJobStatus,
       advanceJobToNextStatus,
       addJobComment, // FIXED: Renamed from addComment
@@ -943,6 +963,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       logout,
       createJob,
       updateJob,
+      deleteJob,
       updateJobStatus,
       advanceJobToNextStatus,
       addJobComment,

@@ -65,6 +65,7 @@ export default function App() {
     clockOut,
     createJob,
     updateJob,
+    deleteJob,
     updateJobStatus,
     addJobComment,
     getJobByCode,
@@ -398,6 +399,8 @@ export default function App() {
           jobs={jobs}
           onNavigate={handleNavigate}
           onCreateJob={() => handleNavigate('create-job')}
+          onDeleteJob={deleteJob}
+          onDeleteAttachment={deleteAttachment}
           boardType={boardType}
           isAdmin={isAdmin}
           onUpdateJobStatus={updateJobStatus}
