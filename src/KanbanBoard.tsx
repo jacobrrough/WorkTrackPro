@@ -30,15 +30,18 @@ const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'onHold', title: 'On Hold', color: 'bg-gray-500' },
 ];
 
+// Admin board: sales pipeline columns first, then shop floor columns, then payment — so admins see full flow.
 const ADMIN_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'toBeQuoted', title: 'To Be Quoted', color: 'bg-red-500' },
   { id: 'quoted', title: 'Quoted', color: 'bg-orange-400' },
   { id: 'rfqReceived', title: 'RFQ Received', color: 'bg-orange-500' },
   { id: 'rfqSent', title: 'RFQ Sent', color: 'bg-yellow-500' },
   { id: 'pod', title: "PO'd", color: 'bg-green-500' },
-  { id: 'pending', title: 'Pending', color: 'bg-blue-500' },
-  { id: 'onHold', title: 'ON HOLD', color: 'bg-red-600' },
-  { id: 'finished', title: 'Finished', color: 'bg-emerald-500' },
+  { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
+  { id: 'inProgress', title: 'In Progress', color: 'bg-blue-500' },
+  { id: 'qualityControl', title: 'Quality Control', color: 'bg-green-500' },
+  { id: 'onHold', title: 'On Hold', color: 'bg-gray-500' },
+  { id: 'finished', title: 'Finished', color: 'bg-yellow-500' },
   { id: 'delivered', title: 'Delivered', color: 'bg-cyan-500' },
   { id: 'waitingForPayment', title: 'Waiting For Payment', color: 'bg-amber-500' },
 ];
@@ -314,9 +317,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const columnJobs = jobs.filter((job) => {
       const effectiveStatus = normalizeLegacyRushStatus(job.status);
       if (effectiveStatus !== columnId) return false;
-      if (boardType === 'shopFloor') return true;
-      if (boardType === 'admin') return job.boardType === 'admin';
-      return false;
+      // Shop floor and admin board both show all jobs in the same columns (admin sees full progress).
+      return true;
     });
     return sortColumnJobs(columnJobs);
   };
