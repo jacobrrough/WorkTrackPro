@@ -115,79 +115,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return jobs.find((j) => j.id === activeShift.job) || null;
   }, [activeShift, jobs]);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    setAuthError(null);
-    setIsLoading(true);
-    try {
-      const user = await authService.login(email, password);
-      setCurrentUser(user);
-
-      // Load all data after successful login
-      await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
-
-      return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      setAuthError(errorMessage);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      options?: { name?: string }
-    ): Promise<boolean | 'needs_email_confirmation'> => {
-      setAuthError(null);
-      setIsLoading(true);
-      try {
-        const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
-        if (user) {
-          setCurrentUser(user);
-          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
-          return true;
-        }
-        return needsEmailConfirmation ? 'needs_email_confirmation' : false;
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
-        setAuthError(errorMessage);
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    []
-  );
-
-  const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
-    setAuthError(null);
-    await authService.resetPasswordForEmail(email);
-  }, []);
-
-  const logout = useCallback(() => {
-    authService.logout();
-    setCurrentUser(null);
-    setJobs([]);
-    setShifts([]);
-    setUsers([]);
-    setInventory([]);
-  }, []);
-
-  const calculateAllocated = useCallback(
-    (inventoryId: string): number => calcAllocated(inventoryId, jobs),
-    [jobs]
-  );
-
-  const calculateAvailable = useCallback(
-    (item: InventoryItem): number => calcAvailable(item, calcAllocated(item.id, jobs)),
-    [jobs]
-  );
-
   const refreshJobs = useCallback(async () => {
     try {
       const jobsData = await jobService.getAllJobs();
@@ -229,6 +156,80 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Failed to refresh users:', error);
     }
   }, []);
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      setAuthError(null);
+      setIsLoading(true);
+      try {
+        const user = await authService.login(email, password);
+        setCurrentUser(user);
+
+        // Load all data after successful login
+        await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+
+        return true;
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Login failed';
+        setAuthError(errorMessage);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshInventory, refreshJobs, refreshShifts, refreshUsers]
+  );
+
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      options?: { name?: string }
+    ): Promise<boolean | 'needs_email_confirmation'> => {
+      setAuthError(null);
+      setIsLoading(true);
+      try {
+        const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
+        if (user) {
+          setCurrentUser(user);
+          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+          return true;
+        }
+        return needsEmailConfirmation ? 'needs_email_confirmation' : false;
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
+        setAuthError(errorMessage);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshInventory, refreshJobs, refreshShifts, refreshUsers]
+  );
+
+  const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
+    setAuthError(null);
+    await authService.resetPasswordForEmail(email);
+  }, []);
+
+  const logout = useCallback(() => {
+    authService.logout();
+    setCurrentUser(null);
+    setJobs([]);
+    setShifts([]);
+    setUsers([]);
+    setInventory([]);
+  }, []);
+
+  const calculateAllocated = useCallback(
+    (inventoryId: string): number => calcAllocated(inventoryId, jobs),
+    [jobs]
+  );
+
+  const calculateAvailable = useCallback(
+    (item: InventoryItem): number => calcAvailable(item, calcAllocated(item.id, jobs)),
+    [jobs]
+  );
 
   const createJob = useCallback(async (data: Partial<Job>): Promise<Job | null> => {
     try {

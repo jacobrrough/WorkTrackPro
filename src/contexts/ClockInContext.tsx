@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- exports hook + provider for this context */
 import React, { createContext, useContext, useCallback } from 'react';
 import { useApp } from '@/AppContext';
 import { useClockInWithOnSiteCheck } from '@/hooks/useClockInWithOnSiteCheck';
@@ -23,9 +24,7 @@ interface ClockInProviderProps {
  * Provides on-site-checked clockIn and onClockInByCode, and optionally gates content with OnSiteGate when enforceOnSiteAtLogin.
  * Must be used inside SettingsProvider and AppContext (AppShell).
  */
-/**
- * On-site gate (enforce at login) applies only to standard users. Admins can use the app from anywhere.
- */
+// On-site gate (enforce at login) applies only to standard users. Admins can use the app from anywhere.
 export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) => {
   const { getJobByCode, logout, currentUser } = useApp();
   const wrappedClockIn = useClockInWithOnSiteCheck();

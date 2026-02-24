@@ -12,10 +12,10 @@ export function useClockInWithOnSiteCheck(): (jobId: string) => Promise<boolean>
   const { clockIn, currentUser } = useApp();
   const { settings } = useSettings();
   const { showToast } = useToast();
+  const { requireOnSite, siteLat, siteLng, siteRadiusMeters } = settings;
 
   return useCallback(
     async (jobId: string): Promise<boolean> => {
-      const { requireOnSite, siteLat, siteLng, siteRadiusMeters } = settings;
       const skipCheck = currentUser?.isAdmin === true;
       if (
         !skipCheck &&
@@ -45,6 +45,6 @@ export function useClockInWithOnSiteCheck(): (jobId: string) => Promise<boolean>
       }
       return clockIn(jobId);
     },
-    [clockIn, currentUser?.isAdmin, settings.requireOnSite, settings.siteLat, settings.siteLng, settings.siteRadiusMeters, showToast]
+    [clockIn, currentUser?.isAdmin, requireOnSite, siteLat, siteLng, siteRadiusMeters, showToast]
   );
 }
