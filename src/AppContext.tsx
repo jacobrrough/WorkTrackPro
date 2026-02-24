@@ -736,7 +736,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const user = await authService.checkAuth();
         if (user) {
           setCurrentUser(user);
-          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+          // Avoid slow loads / RLS spam for users pending approval.
+          // They should see the approval gate immediately.
+          if (user.isApproved !== false) {
+            await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
+          }
         }
       } catch (error) {
         console.error('App initialization error:', error);
