@@ -89,6 +89,11 @@ export default function App() {
 
   const [view, setView] = useState<string>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
+  const [returnViews, setReturnViews] = useState<Record<string, string>>({
+    'job-detail': 'dashboard',
+    'inventory-detail': 'inventory',
+    'part-detail': 'parts',
+  });
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
 
@@ -107,6 +112,13 @@ export default function App() {
 
   const handleNavigate = useCallback(
     (nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
+      if (
+        nextView === 'job-detail' ||
+        nextView === 'inventory-detail' ||
+        nextView === 'part-detail'
+      ) {
+        setReturnViews((prev) => ({ ...prev, [nextView]: view }));
+      }
       setView(nextView);
       if (nextId === undefined) {
         setId(undefined);
@@ -120,7 +132,15 @@ export default function App() {
         setId(undefined);
       }
     },
-    []
+    [view]
+  );
+
+  const navigateBackFrom = useCallback(
+    (detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: string) => {
+      const next = returnViews[detailView] ?? fallback;
+      handleNavigate(next);
+    },
+    [handleNavigate, returnViews]
   );
 
   const handleLogin = useCallback(
@@ -265,7 +285,7 @@ export default function App() {
         <JobDetail
           job={job}
           onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
+          onBack={() => navigateBackFrom('job-detail', 'dashboard')}
           isClockedIn={!!isClockedIn}
           onClockIn={() => clockIn(job.id)}
           onClockOut={clockOut}

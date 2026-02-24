@@ -81,13 +81,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Refs for column scroll containers and horizontal board container
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
-  const boardTouchStateRef = useRef({
-    active: false,
-    isHorizontalSwipe: false,
-    startX: 0,
-    startY: 0,
-    startScrollLeft: 0,
-  });
   const scrollPositionsRef = useRef(navState.scrollPositions);
 
   // HTML5 drag-and-drop on touch devices can hijack swipe gestures; keep drag for fine pointers.
@@ -163,44 +156,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     },
     100
   );
-
-  const handleBoardTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!boardContainerRef.current || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    boardTouchStateRef.current.active = true;
-    boardTouchStateRef.current.isHorizontalSwipe = false;
-    boardTouchStateRef.current.startX = touch.clientX;
-    boardTouchStateRef.current.startY = touch.clientY;
-    boardTouchStateRef.current.startScrollLeft = boardContainerRef.current.scrollLeft;
-  };
-
-  const handleBoardTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!boardContainerRef.current || e.touches.length !== 1) return;
-    const touchState = boardTouchStateRef.current;
-    if (!touchState.active) return;
-
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchState.startX;
-    const deltaY = touch.clientY - touchState.startY;
-
-    if (!touchState.isHorizontalSwipe) {
-      // Wait for a clear horizontal intent; do not cancel early on diagonal starts.
-      if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return;
-      if (Math.abs(deltaX) <= Math.abs(deltaY) * 0.85) {
-        return;
-      }
-      touchState.isHorizontalSwipe = true;
-    }
-
-    if (e.cancelable) e.preventDefault();
-    boardContainerRef.current.scrollLeft = touchState.startScrollLeft - deltaX;
-    handleHorizontalScroll();
-  };
-
-  const handleBoardTouchEnd = () => {
-    boardTouchStateRef.current.active = false;
-    boardTouchStateRef.current.isHorizontalSwipe = false;
-  };
 
   const nudgeBoard = (direction: 'left' | 'right') => {
     if (!boardContainerRef.current) return;
@@ -523,10 +478,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
         onWheelCapture={handleBoardWheelCapture}
-        onTouchStartCapture={handleBoardTouchStart}
-        onTouchMoveCapture={handleBoardTouchMove}
-        onTouchEnd={handleBoardTouchEnd}
-        onTouchCancel={handleBoardTouchEnd}
         className="flex-1 touch-pan-x overflow-x-auto overflow-y-hidden"
         style={{
           WebkitOverflowScrolling: 'touch',
