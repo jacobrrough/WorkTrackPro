@@ -34,26 +34,10 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
       const allChecklists = await checklistService.getByJob(jobId);
       let matchingChecklist = allChecklists.find((c) => c.status === jobStatus);
 
+      // Always ensure checklist exists for current column/status.
+      // If no template exists, service creates fallback checklist with one "MOVE" item.
       if (!matchingChecklist) {
-        const templates = await checklistService.getTemplates();
-        const template = templates.find((c) => c.status === jobStatus);
-        if (template) {
-          try {
-            const newRecord = await checklistService.create({
-              job_id: jobId,
-              status: jobStatus,
-              items: template.items ?? [],
-            });
-            if (newRecord) matchingChecklist = newRecord;
-            else matchingChecklist = template;
-          } catch (createError: unknown) {
-            console.warn(
-              'Could not create checklist (may need admin), using template:',
-              createError
-            );
-            matchingChecklist = template;
-          }
-        }
+        matchingChecklist = await checklistService.ensureJobChecklistForStatus(jobId, jobStatus);
       }
 
       if (matchingChecklist && allChecklists.length > 0 && currentUser.isAdmin) {

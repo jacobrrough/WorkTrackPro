@@ -45,7 +45,10 @@ export const checklistService = {
       .select('*')
       .is('job_id', null)
       .order('status');
-    if (error) return [];
+    if (error) {
+      console.error('checklistService.getTemplates failed:', error.message);
+      return [];
+    }
     return (data ?? []).map((row) => mapRowToChecklist(row as unknown as Record<string, unknown>));
   },
 
@@ -58,6 +61,35 @@ export const checklistService = {
       .maybeSingle();
     if (error || !data) return null;
     return mapRowToChecklist(data as unknown as Record<string, unknown>);
+  },
+
+  /**
+   * Ensure a job has a checklist for a specific status.
+   * - Reuses existing checklist when present
+   * - Clones template checklist items when available
+   * - Falls back to a default single-item checklist
+   */
+  async ensureJobChecklistForStatus(jobId: string, status: JobStatus): Promise<Checklist | null> {
+    const existing = await this.getByJobAndStatus(jobId, status);
+    if (existing) return existing;
+
+    const templates = await this.getTemplates();
+    const template = templates.find((c) => c.status === status);
+    const templateItems = template?.items ?? [];
+    const items =
+      templateItems.length > 0
+        ? templateItems.map((item) => ({
+            id: item.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            text: item.text,
+            checked: false,
+          }))
+        : [{ id: `item_${Date.now()}`, text: 'MOVE', checked: false }];
+
+    return this.create({
+      job_id: jobId,
+      status,
+      items,
+    });
   },
 
   async getFullList(filter?: { jobId?: string | null; status?: string }): Promise<Checklist[]> {
@@ -80,7 +112,10 @@ export const checklistService = {
       .insert({ job_id: data.job_id || null, status: data.status, items: data.items })
       .select('*')
       .single();
-    if (error) return null;
+    if (error) {
+      console.error('checklistService.create failed:', error.message);
+      return null;
+    }
     return mapRowToChecklist(created as unknown as Record<string, unknown>);
   },
 

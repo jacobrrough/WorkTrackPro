@@ -17,6 +17,7 @@ import {
   shiftService,
   inventoryService,
   inventoryHistoryService,
+  checklistService,
   subscriptions,
 } from './pocketbase';
 import {
@@ -24,6 +25,7 @@ import {
   calculateAvailable as calcAvailable,
 } from './lib/inventoryCalculations';
 import { buildJobNameFromConvention } from './lib/formatJob';
+import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
 
 interface AppContextType {
   currentUser: User | null;
@@ -46,6 +48,7 @@ interface AppContextType {
   createJob: (data: Partial<Job>) => Promise<Job | null>;
   updateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
   updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>; // FIXED: Return boolean
+  advanceJobToNextStatus: (jobId: string, currentStatus: JobStatus) => Promise<boolean>;
   addJobComment: (jobId: string, text: string) => Promise<Comment | null>; // FIXED: Renamed and return Comment
   getJobByCode: (code: number) => Promise<Job | null>; // ADDED: Missing function
   clockIn: (jobId: string) => Promise<boolean>;
@@ -282,6 +285,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           await jobService.updateJobStatus(jobId, status);
         }
 
+        // Ensure checklist is ready for the destination status.
+        // This keeps checklist provisioning aligned with card column entry.
+        if (status !== 'paid' && status !== 'projectCompleted') {
+          await checklistService.ensureJobChecklistForStatus(jobId, status);
+        }
+
         // CRITICAL: Material reconciliation on delivery
         if (status === 'delivered' && job && job.expand?.job_inventory) {
           for (const ji of job.expand.job_inventory) {
@@ -337,6 +346,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       calculateAvailable,
       calculateAllocated,
     ]
+  );
+
+  const advanceJobToNextStatus = useCallback(
+    async (jobId: string, currentStatus: JobStatus): Promise<boolean> => {
+      // On Hold is intentionally excluded from auto-flow.
+      if (currentStatus === 'onHold' || !isAutoFlowStatus(currentStatus)) return false;
+      const next = getNextWorkflowStatus(currentStatus);
+      if (!next) return false;
+      return updateJobStatus(jobId, next);
+    },
+    [updateJobStatus]
   );
 
   // FIXED: Renamed to addJobComment and returns Comment
@@ -871,6 +891,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createJob,
       updateJob,
       updateJobStatus,
+      advanceJobToNextStatus,
       addJobComment, // FIXED: Renamed from addComment
       getJobByCode, // ADDED
       clockIn,
@@ -912,6 +933,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createJob,
       updateJob,
       updateJobStatus,
+      advanceJobToNextStatus,
       addJobComment,
       getJobByCode,
       clockIn,

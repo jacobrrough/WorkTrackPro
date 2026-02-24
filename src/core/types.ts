@@ -266,6 +266,9 @@ export interface ChecklistItem {
   id: string;
   text: string;
   checked: boolean;
+  checkedBy?: string;
+  checkedByName?: string;
+  checkedAt?: string;
 }
 
 export interface Checklist {

@@ -36,6 +36,7 @@ import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
 import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/materialFromPart';
+import { useApp } from '@/AppContext';
 
 interface JobDetailProps {
   job: Job;
@@ -107,6 +108,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   calculateAvailable,
 }) => {
   const clockInCtx = useClockIn();
+  const { advanceJobToNextStatus } = useApp();
   const handleClockIn = useCallback(() => {
     if (clockInCtx?.clockIn) {
       clockInCtx.clockIn(job.id);
@@ -114,6 +116,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
     onClockIn();
   }, [clockInCtx, job.id, onClockIn]);
+  const handleChecklistComplete = useCallback(async () => {
+    await advanceJobToNextStatus(job.id, job.status);
+  }, [advanceJobToNextStatus, job.id, job.status]);
 
   const [timer, setTimer] = useState('00:00:00');
   const [newComment, setNewComment] = useState('');
@@ -1780,6 +1785,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 jobStatus={job.status}
                 currentUser={currentUser}
                 compact={false}
+                onChecklistComplete={handleChecklistComplete}
               />
             </div>
 

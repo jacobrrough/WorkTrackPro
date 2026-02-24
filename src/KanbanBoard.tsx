@@ -70,7 +70,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [checklistStates, setChecklistStates] = useState<
-    Record<string, { total: number; completed: number }>
+    Record<string, { total: number; completed: number; completedByName?: string }>
   >({});
   const [checklistRefreshTrigger, setChecklistRefreshTrigger] = useState(0);
   const [columnMenuOpen, setColumnMenuOpen] = useState<string | null>(null);
@@ -271,19 +271,44 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     checklistService
       .getByJobIds(jobIds)
-      .then((byJob) => {
+      .then(async (byJob) => {
         if (cancelled) return;
-        const states: Record<string, { total: number; completed: number }> = {};
+        const states: Record<string, { total: number; completed: number; completedByName?: string }> =
+          {};
         for (const jobId of jobIds) {
           const list = byJob[jobId] ?? [];
-          for (const checklist of list) {
-            const items = checklist.items ?? [];
-            states[jobId] = {
-              total: items.length,
-              completed: items.filter((i: { checked?: boolean }) => i.checked).length,
-            };
-            break; // one status per job for display
+          const job = jobs.find((j) => j.id === jobId);
+          const jobStatus = job ? normalizeLegacyRushStatus(job.status) : null;
+          if (!jobStatus) continue;
+
+          let checklist = list.find((c) => c.status === jobStatus) ?? null;
+
+          // Auto-provision missing checklist for this column/status.
+          if (!checklist) {
+            checklist = await checklistService.ensureJobChecklistForStatus(jobId, jobStatus);
           }
+          if (!checklist) continue;
+
+          const items = checklist.items ?? [];
+          const completed = items.filter((i: { checked?: boolean }) => i.checked).length;
+          const allComplete = items.length > 0 && completed === items.length;
+
+          let completedByName: string | undefined;
+          if (allComplete) {
+            const latestChecked = [...items]
+              .filter((i) => !!i.checked && !!i.checkedAt)
+              .sort(
+                (a, b) =>
+                  new Date(b.checkedAt as string).getTime() - new Date(a.checkedAt as string).getTime()
+              )[0];
+            completedByName = latestChecked?.checkedByName;
+          }
+
+          states[jobId] = {
+            total: items.length,
+            completed,
+            completedByName,
+          };
         }
         setChecklistStates(states);
       })
@@ -409,6 +434,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         // Don't close if clicking inside a menu or menu button
         if (
           target.closest('[aria-label="Job menu"]') ||
+          target.closest('[data-column-menu="true"]') ||
           target.closest('.z-\\[100\\]') ||
           target.closest('[role="dialog"]')
         ) {
@@ -546,7 +572,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       </button>
 
                       {columnMenuOpen === column.id && (
-                        <div className="absolute right-0 top-8 z-50 min-w-[180px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-xl">
+                        <div
+                          data-column-menu="true"
+                          className="absolute right-0 top-8 z-50 min-w-[180px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-xl"
+                        >
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -734,6 +763,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                   checklist
                                 </span>
                                 {checklistState.completed}/{checklistState.total}
+                                {checklistComplete && checklistState.completedByName && (
+                                  <span className="ml-1 truncate text-[8px] text-green-300">
+                                    by {checklistState.completedByName}
+                                  </span>
+                                )}
                               </span>
                             )}
                             {job.commentCount > 0 && (

@@ -5,6 +5,7 @@ import { formatJobCode, formatDashSummary, totalFromDashQuantities } from '@/lib
 import { durationMs, formatDurationHMS } from '@/lib/timeUtils';
 import ChecklistDisplay from '@/ChecklistDisplay';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { useApp } from '@/AppContext';
 
 interface SimpleJobSummaryProps {
   job: Job;
@@ -42,6 +43,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   partDrawingUrl,
 }) => {
   const [timer, setTimer] = useState('00:00:00');
+  const { advanceJobToNextStatus } = useApp();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -62,6 +64,11 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   const handleBack = () => {
     if (onBack) onBack();
     else onNavigate('board-shop');
+  };
+
+  const handleChecklistComplete = async () => {
+    await advanceJobToNextStatus(job.id, job.status);
+    await onReloadJob?.();
   };
 
   return (
@@ -135,7 +142,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
             jobStatus={job.status}
             currentUser={currentUser}
             compact={false}
-            onChecklistComplete={onReloadJob}
+            onChecklistComplete={handleChecklistComplete}
           />
         </div>
 
