@@ -52,7 +52,9 @@ These are used by your Netlify site and the `submit-proposal` function.
    | Variable | Value | Notes |
    |----------|--------|--------|
    | `RESEND_API_KEY` | `re_xxxxxxxx...` | Your Resend API key from step 3. |
-   | `PROPOSAL_FROM_EMAIL` | `Your Name <no-reply@yourdomain.com>` | Must be an address on your **verified** domain. Example: `Rough Cut Manufacturing <no-reply@roughcutmfg.com>`. |
+   | `PROPOSAL_FROM_EMAIL_ADMIN` | `Your Name <quotes@yourdomain.com>` | Used for admin notification emails; must be on your verified domain. |
+   | `PROPOSAL_FROM_EMAIL_CUSTOMER` | `Your Name <general@yourdomain.com>` | Used for customer confirmation emails; must be on your verified domain. |
+   | `PROPOSAL_FROM_EMAIL` | `Your Name <no-reply@yourdomain.com>` | Optional backward-compatible fallback if the two vars above are not set yet. |
 
 4. Add or confirm the rest of your app’s variables (from `.env.example`), including:
    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
@@ -60,7 +62,7 @@ These are used by your Netlify site and the `submit-proposal` function.
    - `PROPOSAL_ADMIN_EMAIL`, `APP_PUBLIC_URL`
    - Trello vars if you use Trello import
 
-5. **Scopes**: For `RESEND_API_KEY` and `PROPOSAL_FROM_EMAIL`, make sure they’re available to **Functions** (and **Build** if you ever need them at build time). In Netlify you can set “Scopes” to **All** or include **Functions**.
+5. **Scopes**: For `RESEND_API_KEY`, `PROPOSAL_FROM_EMAIL_ADMIN`, and `PROPOSAL_FROM_EMAIL_CUSTOMER`, make sure they’re available to **Functions** (and **Build** if you ever need them at build time). In Netlify you can set “Scopes” to **All** or include **Functions**.
 6. **Save** and trigger a new deploy (or wait for the next one) so the function gets the new vars.
 
 After this, the proposal form that uses the `submit-proposal` Netlify function will send email via Resend.
@@ -78,7 +80,7 @@ So that **sign-up confirmation** and **password reset** emails go through Resend
 
    | Field | Value |
    |--------|--------|
-   | **Sender email** | An address on your verified domain, e.g. `no-reply@roughcutmfg.com` (can match `PROPOSAL_FROM_EMAIL` or use a dedicated one like `auth@roughcutmfg.com`). |
+   | **Sender email** | An address on your verified domain, e.g. `no-reply@roughcutmfg.com` (can match `PROPOSAL_FROM_EMAIL_CUSTOMER`/`PROPOSAL_FROM_EMAIL_ADMIN` or use a dedicated one like `auth@roughcutmfg.com`). |
    | **Sender name** | e.g. `WorkTrack Pro` or your app name. |
    | **Host** | `smtp.resend.com` |
    | **Port** | `465` |
@@ -94,7 +96,7 @@ Supabase will now send all auth-related emails (confirm signup, reset password, 
 ## 6. Optional: local development
 
 - Copy `.env.example` to `.env.local`.
-- Set `RESEND_API_KEY` and `PROPOSAL_FROM_EMAIL` in `.env.local` so the proposal flow works locally (e.g. when running Netlify Dev or calling the function locally).
+- Set `RESEND_API_KEY`, `PROPOSAL_FROM_EMAIL_ADMIN`, and `PROPOSAL_FROM_EMAIL_CUSTOMER` in `.env.local` so the proposal flow works locally (e.g. when running Netlify Dev or calling the function locally).
 - Supabase SMTP is global per project; once set in the dashboard, it applies to all environments (local and production).
 
 ---
@@ -104,7 +106,7 @@ Supabase will now send all auth-related emails (confirm signup, reset password, 
 - [ ] Resend account created
 - [ ] Domain verified in Resend (DNS records added and verified)
 - [ ] Resend API key created and copied
-- [ ] Netlify: `RESEND_API_KEY` and `PROPOSAL_FROM_EMAIL` set (and other vars from `.env.example`)
+- [ ] Netlify: `RESEND_API_KEY`, `PROPOSAL_FROM_EMAIL_ADMIN`, and `PROPOSAL_FROM_EMAIL_CUSTOMER` set (and other vars from `.env.example`)
 - [ ] Netlify: New deploy so functions get the new env
 - [ ] Supabase: Custom SMTP enabled with Resend host/port/username/password and sender email/name
 - [ ] Test: Submit a proposal on the live site and confirm email is received
@@ -114,6 +116,6 @@ Supabase will now send all auth-related emails (confirm signup, reset password, 
 
 ## Troubleshooting
 
-- **Proposal emails not sending**: Check Netlify function logs (Netlify → **Functions** → `submit-proposal`). Ensure `RESEND_API_KEY` and `PROPOSAL_FROM_EMAIL` are set and that the from address uses a verified domain.
+- **Proposal emails not sending**: Check Netlify function logs (Netlify → **Functions** → `submit-proposal`). Ensure `RESEND_API_KEY`, `PROPOSAL_FROM_EMAIL_ADMIN`, and `PROPOSAL_FROM_EMAIL_CUSTOMER` are set and that from addresses use a verified domain.
 - **Auth emails not sending**: In Supabase, **Authentication** → **Users** or **Logs** for errors. Confirm SMTP settings, and that the sender email uses a verified domain in Resend.
 - **“Domain not verified”**: Wait for DNS propagation (up to 24–48 hours in rare cases) and re-verify in Resend.

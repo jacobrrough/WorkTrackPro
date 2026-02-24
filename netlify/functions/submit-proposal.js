@@ -7,22 +7,47 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-const requiredEnv = [
+const requiredBaseEnv = [
   'VITE_SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'TURNSTILE_SECRET_KEY',
   'RESEND_API_KEY',
-  'PROPOSAL_ADMIN_EMAIL',
-  'PROPOSAL_FROM_EMAIL_ADMIN',
-  'PROPOSAL_FROM_EMAIL_CUSTOMER',
 ];
 
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+  }
+  return '';
+}
+
+function resolveProposalEmailConfig() {
+  const adminEmail = firstNonEmpty(process.env.PROPOSAL_ADMIN_EMAIL);
+  // Backward compatible: old deployments may only have PROPOSAL_FROM_EMAIL set.
+  const fromAdmin = firstNonEmpty(
+    process.env.PROPOSAL_FROM_EMAIL_ADMIN,
+    process.env.PROPOSAL_FROM_EMAIL,
+    process.env.RESEND_FROM_EMAIL,
+    process.env.RESEND_FROM
+  );
+  const fromCustomer = firstNonEmpty(
+    process.env.PROPOSAL_FROM_EMAIL_CUSTOMER,
+    process.env.PROPOSAL_FROM_EMAIL,
+    fromAdmin
+  );
+  return { adminEmail, fromAdmin, fromCustomer };
+}
+
 function validateEnv() {
-  for (const key of requiredEnv) {
+  for (const key of requiredBaseEnv) {
     if (!process.env[key] || process.env[key].trim().length === 0) {
       return key;
     }
   }
+  const { adminEmail, fromAdmin, fromCustomer } = resolveProposalEmailConfig();
+  if (!adminEmail) return 'PROPOSAL_ADMIN_EMAIL';
+  if (!fromAdmin) return 'PROPOSAL_FROM_EMAIL_ADMIN (or PROPOSAL_FROM_EMAIL)';
+  if (!fromCustomer) return 'PROPOSAL_FROM_EMAIL_CUSTOMER (or PROPOSAL_FROM_EMAIL)';
   return null;
 }
 
@@ -208,9 +233,7 @@ export async function handler(event) {
       await supabase.from('customer_proposal_files').insert(rows);
     }
 
-    const adminEmail = process.env.PROPOSAL_ADMIN_EMAIL;
-    const fromAdmin = process.env.PROPOSAL_FROM_EMAIL_ADMIN;
-    const fromCustomer = process.env.PROPOSAL_FROM_EMAIL_CUSTOMER;
+    const { adminEmail, fromAdmin, fromCustomer } = resolveProposalEmailConfig();
     const appUrl = process.env.APP_PUBLIC_URL || 'https://roughcutmfg.com/app';
     const warnings = [];
     if (adminEmail) {
