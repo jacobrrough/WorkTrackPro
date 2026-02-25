@@ -414,7 +414,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 {boardType === 'shopFloor' ? 'Shop Floor' : 'Admin'}
               </h1>
               <p className="text-[10px] text-slate-400">
-                {activeSearchTerm ? `${filteredJobs.length} of ${jobs.length} jobs` : `${jobs.length} jobs`}
+                {activeSearchTerm
+                  ? `${filteredJobs.length} of ${jobs.length} jobs`
+                  : `${jobs.length} jobs`}
               </p>
             </div>
           </div>

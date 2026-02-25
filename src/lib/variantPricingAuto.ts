@@ -1,6 +1,9 @@
 import type { PartVariant } from '@/core/types';
 
-const normalizeSuffix = (suffix: string): string => String(suffix ?? '').replace(/^-/, '').trim();
+const normalizeSuffix = (suffix: string): string =>
+  String(suffix ?? '')
+    .replace(/^-/, '')
+    .trim();
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
@@ -10,10 +13,7 @@ const unitsInComposition = (composition: Record<string, number>): number =>
     return Number.isFinite(qty) && qty > 0 ? sum + qty : sum;
   }, 0);
 
-const qtyInSetForVariant = (
-  composition: Record<string, number>,
-  variantSuffix: string
-): number => {
+const qtyInSetForVariant = (composition: Record<string, number>, variantSuffix: string): number => {
   const target = normalizeSuffix(variantSuffix);
   for (const [rawSuffix, rawQty] of Object.entries(composition)) {
     if (normalizeSuffix(rawSuffix) !== target) continue;

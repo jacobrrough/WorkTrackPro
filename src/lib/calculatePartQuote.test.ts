@@ -15,7 +15,9 @@ const makeInventory = (id: string, price: number): InventoryItem =>
     updatedAt: new Date().toISOString(),
   }) as InventoryItem;
 
-const makeVariant = (): PartVariant & { materials: Array<{ inventoryId: string; quantityPerUnit: number }> } =>
+const makeVariant = (): PartVariant & {
+  materials: Array<{ inventoryId: string; quantityPerUnit: number }>;
+} =>
   ({
     id: 'variant-1',
     partId: 'part-1',

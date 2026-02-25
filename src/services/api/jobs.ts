@@ -428,7 +428,11 @@ export const jobService = {
       revision: data.revision ?? null,
       part_id: data.partId ?? resolvedPart?.partId ?? null,
     };
-    const { data: created, error, strippedColumns } = await runMutationWithSchemaFallback({
+    const {
+      data: created,
+      error,
+      strippedColumns,
+    } = await runMutationWithSchemaFallback({
       tableName: 'jobs',
       initialPayload: row,
       mutate: async (payload) => {
@@ -521,7 +525,11 @@ export const jobService = {
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
     row.updated_at = new Date().toISOString();
-    const { data: updated, error, strippedColumns } = await runMutationWithSchemaFallback({
+    const {
+      data: updated,
+      error,
+      strippedColumns,
+    } = await runMutationWithSchemaFallback({
       tableName: 'jobs',
       initialPayload: row,
       mutate: async (payload) => {

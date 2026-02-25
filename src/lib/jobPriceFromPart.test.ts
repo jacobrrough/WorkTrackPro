@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Part, PartVariant } from '@/core/types';
 import { calculateJobPriceFromPart, deriveSetCountFromDashQuantities } from './jobPriceFromPart';
 
-const makeVariant = (
-  id: string,
-  suffix: string,
-  pricePerVariant?: number
-): PartVariant => ({
+const makeVariant = (id: string, suffix: string, pricePerVariant?: number): PartVariant => ({
   id,
   partId: 'part-1',
   variantSuffix: suffix,

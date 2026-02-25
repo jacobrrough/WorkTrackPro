@@ -71,10 +71,7 @@ describe('runMutationWithSchemaFallback', () => {
 
     expect(result.error).toBeNull();
     expect(result.data).toEqual({ id: 'job-1' });
-    expect(result.strippedColumns).toEqual([
-      'allocation_source',
-      'allocation_source_updated_at',
-    ]);
+    expect(result.strippedColumns).toEqual(['allocation_source', 'allocation_source_updated_at']);
     expect(seenPayloads).toHaveLength(3);
   });
 

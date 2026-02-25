@@ -54,7 +54,8 @@ export function deriveSetCountFromDashQuantities(
 ): number | null {
   const normalizedDash = normalizeDashQuantities(dashQuantities);
   const dashKeys = Object.keys(normalizedDash);
-  if (!setComposition || Object.keys(setComposition).length === 0 || dashKeys.length === 0) return null;
+  if (!setComposition || Object.keys(setComposition).length === 0 || dashKeys.length === 0)
+    return null;
 
   let ratio: number | null = null;
 
@@ -114,7 +115,8 @@ export function calculateJobPriceFromPart(
     return {
       totalPrice: round2(total),
       source: 'variant_prices',
-      setCount: deriveSetCountFromDashQuantities(effectiveSetComposition, normalizedDash) ?? undefined,
+      setCount:
+        deriveSetCountFromDashQuantities(effectiveSetComposition, normalizedDash) ?? undefined,
       missingVariantPrices: [],
     };
   }

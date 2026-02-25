@@ -33,7 +33,10 @@ export function getMissingColumnFromSchemaError(
   const postgrestMatch = message.match(postgrestPattern);
   if (postgrestMatch?.[1]) return postgrestMatch[1];
 
-  const postgresPattern = new RegExp(`column "([^"]+)" of relation "${tableName}" does not exist`, 'i');
+  const postgresPattern = new RegExp(
+    `column "([^"]+)" of relation "${tableName}" does not exist`,
+    'i'
+  );
   const postgresMatch = message.match(postgresPattern);
   if (postgresMatch?.[1]) return postgresMatch[1];
 

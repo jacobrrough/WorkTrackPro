@@ -203,7 +203,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             subtitle: 'Open last viewed',
             icon: 'history',
             iconClassName: 'text-violet-400',
-            cardClassName: 'border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-purple-700/20',
+            cardClassName:
+              'border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-purple-700/20',
             ariaLabel: 'Open last viewed job',
             onClick: () => onNavigate('job-detail', resumeJobId),
           } satisfies DashboardQuickAction,

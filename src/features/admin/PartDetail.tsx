@@ -442,7 +442,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
       const targetSetLabor = nextSetLaborHours ?? updated.laborHours;
       let laborVariantsChanged = false;
       if (targetSetLabor != null && targetSetLabor > 0) {
-        const expectedVariantLabor = calculateVariantLaborTargets(variants, composition, targetSetLabor);
+        const expectedVariantLabor = calculateVariantLaborTargets(
+          variants,
+          composition,
+          targetSetLabor
+        );
         const variantById = new Map(variants.map((variant) => [variant.id, variant]));
         for (const target of expectedVariantLabor) {
           const current = variantById.get(target.variantId);
@@ -1240,8 +1244,14 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
                     let variantsUpdated = false;
                     if (variants.length > 0 && Object.keys(composition).length > 0) {
-                      const priceTargets = variantPricesFromSetPrice(roundedPrice, composition, variants);
-                      const priceByVariantId = new Map(priceTargets.map((entry) => [entry.variantId, entry.price]));
+                      const priceTargets = variantPricesFromSetPrice(
+                        roundedPrice,
+                        composition,
+                        variants
+                      );
+                      const priceByVariantId = new Map(
+                        priceTargets.map((entry) => [entry.variantId, entry.price])
+                      );
                       const laborByVariantId = new Map(
                         (targetSetLaborHours != null
                           ? calculateVariantLaborTargets(variants, composition, targetSetLaborHours)
