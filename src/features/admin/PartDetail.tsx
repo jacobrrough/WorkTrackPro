@@ -1182,7 +1182,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       part.variants ?? [],
                       part.setComposition ?? {}
                     );
-                    if (auto != null) handleUpdatePart({ pricePerSet: auto });
+                    if (auto != null) await handleUpdatePart({ pricePerSet: auto });
                   }
                 }}
               />
