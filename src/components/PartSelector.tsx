@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Part, PartVariant } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
-import { formatSetComposition } from '@/lib/formatJob';
+import { formatDashSummary, formatSetComposition } from '@/lib/formatJob';
+import { deriveSetCountFromDashQuantities } from '@/lib/jobPriceFromPart';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 
 interface PartSelectorProps {
@@ -29,7 +30,26 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(
     normalizeDashQuantities(initialDashQuantities ?? {})
   );
+  const [quantityMode, setQuantityMode] = useState<'sets' | 'variants'>('variants');
+  const [setCount, setSetCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  const buildDashQuantitiesFromSetCount = useCallback(
+    (targetPart: Part & { variants?: PartVariant[] }, count: number): Record<string, number> => {
+      if (!targetPart.variants?.length || !targetPart.setComposition) return {};
+      const normalizedCount = Math.max(0, Math.floor(count));
+      if (normalizedCount <= 0) return {};
+      const fromSets: Record<string, number> = {};
+      targetPart.variants.forEach((variant) => {
+        const perSetQty = getDashQuantity(targetPart.setComposition, variant.variantSuffix);
+        if (perSetQty > 0) {
+          fromSets[toDashSuffix(variant.variantSuffix)] = perSetQty * normalizedCount;
+        }
+      });
+      return normalizeDashQuantities(fromSets);
+    },
+    []
+  );
 
   const loadPart = useCallback(
     async (partNumber: string) => {
@@ -37,6 +57,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       if (!normalizedPartNumber) {
         setPart(null);
         setDashQuantities({});
+        setQuantityMode('variants');
+        setSetCount(0);
         onPartNumberResolved?.('', null);
         return;
       }
@@ -49,6 +71,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           if (!fullPart) {
             setPart(null);
             setDashQuantities({});
+            setQuantityMode('variants');
+            setSetCount(0);
             onPartNumberResolved?.(normalizedPartNumber, null);
             return;
           }
@@ -67,12 +91,30 @@ const PartSelector: React.FC<PartSelectorProps> = ({
             }
           });
           setDashQuantities(initial);
+          const hasSetComposition = !!(
+            fullPart.setComposition && Object.keys(fullPart.setComposition).length > 0
+          );
+          if (hasSetComposition) {
+            const derivedSets = deriveSetCountFromDashQuantities(fullPart.setComposition, initial);
+            if (derivedSets != null && derivedSets > 0) {
+              setQuantityMode('sets');
+              setSetCount(Math.floor(derivedSets));
+            } else {
+              setQuantityMode('variants');
+              setSetCount(0);
+            }
+          } else {
+            setQuantityMode('variants');
+            setSetCount(0);
+          }
           onSelect(fullPart, initial);
           onPartNumberResolved?.(fullPart.partNumber, fullPart);
           showToast(`Found part: ${fullPart.name}`, 'success');
         } else {
           setPart(null);
           setDashQuantities({});
+          setQuantityMode('variants');
+          setSetCount(0);
           onPartNumberResolved?.(normalizedPartNumber, null);
           showToast(
             `Part ${normalizedPartNumber} not found. It will be created when you create the job.`,
@@ -83,6 +125,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
         console.error('Error loading part:', error);
         setPart(null);
         setDashQuantities({});
+        setQuantityMode('variants');
+        setSetCount(0);
         onPartNumberResolved?.(normalizedPartNumber, null);
       } finally {
         setLoading(false);
@@ -113,8 +157,38 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     setDashQuantities(newQuantities);
     // Auto-update parent when quantities change (live update)
     if (part) {
+      const derivedSets = deriveSetCountFromDashQuantities(part.setComposition, newQuantities);
+      setSetCount(derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0);
       onSelect(part, newQuantities);
     }
+  };
+
+  const handleSetCountChange = (value: number) => {
+    if (!part) return;
+    const normalizedCount = Math.max(0, Math.floor(value));
+    setSetCount(normalizedCount);
+    const newQuantities = buildDashQuantitiesFromSetCount(part, normalizedCount);
+    setDashQuantities(newQuantities);
+    onSelect(part, newQuantities);
+  };
+
+  const handleQuantityModeChange = (nextMode: 'sets' | 'variants') => {
+    if (!part) return;
+    const hasSetComposition = !!(
+      part.setComposition && Object.keys(part.setComposition).length > 0
+    );
+    if (!hasSetComposition) {
+      setQuantityMode('variants');
+      return;
+    }
+    if (nextMode === 'sets') {
+      const derivedSets = deriveSetCountFromDashQuantities(part.setComposition, dashQuantities);
+      const nextSetCount = derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 1;
+      setQuantityMode('sets');
+      handleSetCountChange(nextSetCount);
+      return;
+    }
+    setQuantityMode('variants');
   };
 
   const handleAutoAssign = () => {
@@ -125,16 +199,9 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
   const handleFillFullSet = () => {
     if (!part?.variants?.length) return;
-    const setComp =
-      part.setComposition && Object.keys(part.setComposition).length > 0
-        ? part.setComposition
-        : null;
-    const newQuantities: Record<string, number> = {};
-    part.variants.forEach((v) => {
-      const key = toDashSuffix(v.variantSuffix);
-      const qty = getDashQuantity(setComp, key) || 1;
-      newQuantities[key] = qty;
-    });
+    const newQuantities = buildDashQuantitiesFromSetCount(part, 1);
+    setQuantityMode('sets');
+    setSetCount(1);
     setDashQuantities(newQuantities);
     onSelect(part, newQuantities);
     showToast('Filled with one full set', 'success');
@@ -177,49 +244,97 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       {part && part.variants && part.variants.length > 0 && (
         <div className="mb-3">
           {hasSetComposition && (
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-1.5">
-              <span className="text-xs text-slate-400">One set:</span>
-              <span className="text-xs font-medium text-white">
-                {formatSetComposition(part.setComposition)}
-              </span>
+            <div className="mb-2 space-y-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-400">One set:</span>
+                <span className="text-xs font-medium text-white">
+                  {formatSetComposition(part.setComposition)}
+                </span>
+              </div>
+              <div className="inline-flex rounded-sm border border-primary/30 bg-background-dark p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleQuantityModeChange('sets')}
+                  className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                    quantityMode === 'sets'
+                      ? 'bg-primary text-white'
+                      : 'text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  By sets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuantityModeChange('variants')}
+                  className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                    quantityMode === 'variants'
+                      ? 'bg-primary text-white'
+                      : 'text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  By variant
+                </button>
+              </div>
+            </div>
+          )}
+          {quantityMode === 'sets' && hasSetComposition ? (
+            <div className="space-y-2 rounded-sm border border-white/10 bg-background-dark/40 p-2.5">
+              <label className="block text-xs font-medium text-slate-300">Number of sets</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={setCount}
+                onChange={(e) => handleSetCountChange(parseInt(e.target.value) || 0)}
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                placeholder="0"
+              />
+              {totalQuantity > 0 && (
+                <p className="text-[11px] text-slate-400">
+                  Auto dash quantities: {formatDashSummary(dashQuantities)}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleFillFullSet}
                 className="rounded border border-primary/30 bg-primary/20 px-2 py-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/30"
               >
-                Fill full set
+                Set to one full set
               </button>
             </div>
+          ) : (
+            <>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-300">Dash Quantities</label>
+                {totalQuantity > 0 && (
+                  <span className="text-[10px] text-slate-400">Total: {totalQuantity}</span>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {part.variants.map((variant) => {
+                  const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
+                  return (
+                    <div key={variant.id} className="flex items-center gap-2">
+                      <label className="w-24 text-xs text-slate-400">
+                        {part.partNumber}-{variant.variantSuffix}:
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={qty}
+                        onChange={(e) =>
+                          handleQuantityChange(variant.variantSuffix, parseInt(e.target.value) || 0)
+                        }
+                        className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        placeholder="0"
+                      />
+                      <span className="text-[10px] text-slate-500">units</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
-          <div className="mb-1 flex items-center justify-between">
-            <label className="text-xs font-medium text-slate-300">Dash Quantities</label>
-            {totalQuantity > 0 && (
-              <span className="text-[10px] text-slate-400">Total: {totalQuantity}</span>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            {part.variants.map((variant) => {
-              const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
-              return (
-                <div key={variant.id} className="flex items-center gap-2">
-                  <label className="w-24 text-xs text-slate-400">
-                    {part.partNumber}-{variant.variantSuffix}:
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={qty}
-                    onChange={(e) =>
-                      handleQuantityChange(variant.variantSuffix, parseInt(e.target.value) || 0)
-                    }
-                    className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                    placeholder="0"
-                  />
-                  <span className="text-[10px] text-slate-500">units</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
