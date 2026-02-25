@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Job, InventoryItem, User, ViewState, Quote, QuoteLineItem, Shift } from '@/core/types';
 import { quoteService } from './services/api/quotes';
 import { useToast } from './Toast';
-import { durationMs } from './lib/timeUtils';
+import { getWorkedShiftMs } from './lib/lunchUtils';
 import { getJobDisplayName } from './lib/formatJob';
 
 interface QuotesProps {
@@ -89,7 +89,7 @@ const Quotes: React.FC<QuotesProps> = ({
     (jobId: string): number => {
       const jobShifts = shifts.filter((s) => s.job === jobId && s.clockOutTime);
       return jobShifts.reduce((total, shift) => {
-        return total + durationMs(shift.clockInTime, shift.clockOutTime) / 3600000;
+        return total + getWorkedShiftMs(shift) / 3600000;
       }, 0);
     },
     [shifts]

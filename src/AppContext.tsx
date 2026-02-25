@@ -26,6 +26,7 @@ import {
 } from './lib/inventoryCalculations';
 import { buildJobNameFromConvention } from './lib/formatJob';
 import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
+import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 
 interface AppContextType {
   currentUser: User | null;
@@ -447,7 +448,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!activeShift) return false;
     try {
       if (activeShift.lunchStartTime && !activeShift.lunchEndTime) {
-        await shiftService.endLunch(activeShift.id);
+        const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
+        await shiftService.endLunch(activeShift.id, totalBreakMinutes);
       }
       await shiftService.clockOut(activeShift.id);
       await refreshShifts();
@@ -461,8 +463,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const startLunch = useCallback(async (): Promise<boolean> => {
     if (!activeShift) return false;
-    if (activeShift.lunchStartTime && activeShift.lunchEndTime) return false;
     if (activeShift.lunchStartTime && !activeShift.lunchEndTime) return true;
+    if (getRemainingBreakMs(activeShift) <= 0) return false;
     try {
       const success = await shiftService.startLunch(activeShift.id);
       if (success) {
@@ -478,7 +480,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const endLunch = useCallback(async (): Promise<boolean> => {
     if (!activeShift?.lunchStartTime || activeShift.lunchEndTime) return false;
     try {
-      const success = await shiftService.endLunch(activeShift.id);
+      const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
+      const success = await shiftService.endLunch(activeShift.id, totalBreakMinutes);
       if (success) {
         await refreshShifts();
       }
