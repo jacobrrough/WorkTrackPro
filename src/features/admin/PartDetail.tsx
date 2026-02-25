@@ -442,9 +442,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       const targetSetLabor = nextSetLaborHours ?? updated.laborHours;
       let laborVariantsChanged = false;
       const shouldPushLabor =
-        targetSetLabor != null &&
-        targetSetLabor > 0 &&
-        updates.laborHours !== undefined;
+        targetSetLabor != null && targetSetLabor > 0 && updates.laborHours !== undefined;
       if (shouldPushLabor) {
         const expectedVariantLabor = calculateVariantLaborTargets(
           variants,
@@ -1720,7 +1718,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           </div>
         )}
         {variant.materials && variant.materials.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {variant.materials.map((material) => {
               const inv = inventoryItems.find((i) => i.id === material.inventoryId);
               const qty =
@@ -1738,7 +1736,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
                   className="flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3"
                 >
                   <div className="min-h-0 flex-1">
-                    <p className="truncate text-sm text-white" title={material.inventoryName || inv?.name || 'Unknown'}>
+                    <p
+                      className="truncate text-sm text-white"
+                      title={material.inventoryName || inv?.name || 'Unknown'}
+                    >
                       {material.inventoryName || inv?.name || 'Unknown'}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -1940,7 +1941,9 @@ function VariantQuoteMini({
   useEffect(() => {
     if (!hasUserEditedLabor) {
       setLaborHoursInput(
-        variant.laborHours != null ? variant.laborHours.toString() : (autoLaborHours?.toString() ?? '')
+        variant.laborHours != null
+          ? variant.laborHours.toString()
+          : (autoLaborHours?.toString() ?? '')
       );
     }
   }, [variant.laborHours, autoLaborHours, hasUserEditedLabor]);
@@ -1963,9 +1966,7 @@ function VariantQuoteMini({
   const result = useMemo(() => {
     const variantWithEffectiveLabor = { ...variant, laborHours: effectiveLaborHours };
     const manualPrice =
-      hasUserEditedTotal && totalInput.trim()
-        ? parseFloat(totalInput)
-        : undefined;
+      hasUserEditedTotal && totalInput.trim() ? parseFloat(totalInput) : undefined;
     return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
       laborRate: settings.laborRate,
       manualVariantPrice: Number.isFinite(manualPrice) ? manualPrice : undefined,
@@ -2012,8 +2013,14 @@ function VariantQuoteMini({
     <span className="ml-1 rounded bg-primary/20 px-1 py-0.5 text-xs text-primary">auto</span>
   );
 
-  const displayLaborHours = hasUserEditedLabor ? laborHoursInput : (effectiveLaborHours?.toString() ?? '');
-  const displayTotal = hasUserEditedTotal ? totalInput : (result != null ? result.total.toFixed(2) : '');
+  const displayLaborHours = hasUserEditedLabor
+    ? laborHoursInput
+    : (effectiveLaborHours?.toString() ?? '');
+  const displayTotal = hasUserEditedTotal
+    ? totalInput
+    : result != null
+      ? result.total.toFixed(2)
+      : '';
 
   return (
     <div className="rounded border border-primary/20 bg-primary/5 p-3">
@@ -2232,7 +2239,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
       {materials.map((material) => {
         const inv = inventoryItems.find((i) => i.id === material.inventoryId);
         const currentQty = qty(material);
@@ -2249,7 +2256,10 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
             className="flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3"
           >
             <div className="min-h-0 flex-1">
-              <p className="truncate text-sm font-medium text-white" title={material.inventoryName || inv?.name || 'Unknown'}>
+              <p
+                className="truncate text-sm font-medium text-white"
+                title={material.inventoryName || inv?.name || 'Unknown'}
+              >
                 {material.inventoryName || inv?.name || 'Unknown'}
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

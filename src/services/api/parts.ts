@@ -732,7 +732,12 @@ export const partsService = {
         usage_type: 'per_set',
       };
       let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
-      if (error && (error.code === '42703' || error.code === '400' || /quantity_per_unit|usage_type|column.*does not exist/i.test(error.message ?? ''))) {
+      if (
+        error &&
+        (error.code === '42703' ||
+          error.code === '400' ||
+          /quantity_per_unit|usage_type|column.*does not exist/i.test(error.message ?? ''))
+      ) {
         const rowLegacy: Record<string, unknown> = {
           part_id: partId,
           inventory_id: inventoryId,
@@ -751,7 +756,11 @@ export const partsService = {
           quantity,
           unit: unit ?? 'units',
         };
-        const result = await supabase.from('part_materials').insert(rowMinimal).select('*').single();
+        const result = await supabase
+          .from('part_materials')
+          .insert(rowMinimal)
+          .select('*')
+          .single();
         data = result.data;
         error = result.error;
       }
