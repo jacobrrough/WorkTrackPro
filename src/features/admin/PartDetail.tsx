@@ -527,13 +527,16 @@ const PartDetail: React.FC<PartDetailProps> = ({
     if (!setComposition || Object.keys(setComposition).length === 0) return;
 
     const normalizeSuffix = (suffix: string) => String(suffix ?? '').replace(/^-/, '');
-    const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 0;
+    const qty = (m: PartMaterial) =>
+      m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 0;
 
     const qtyBySuffix = new Map<string, number>();
     let preferredUnit = '';
 
     for (const variant of part.variants ?? []) {
-      const materialMatches = (variant.materials ?? []).filter((m) => m.inventoryId === inventoryId);
+      const materialMatches = (variant.materials ?? []).filter(
+        (m) => m.inventoryId === inventoryId
+      );
       if (materialMatches.length === 0) continue;
       const suffixKey = normalizeSuffix(variant.variantSuffix);
       const variantQty = materialMatches.reduce((sum, m) => sum + qty(m), 0);
