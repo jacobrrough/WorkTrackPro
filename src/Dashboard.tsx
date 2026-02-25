@@ -5,7 +5,12 @@ import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
-import { MAX_BREAK_MINUTES, getRemainingBreakMs, getTotalBreakMs, getWorkedShiftMs } from './lib/lunchUtils';
+import {
+  MAX_BREAK_MINUTES,
+  getRemainingBreakMs,
+  getTotalBreakMs,
+  getWorkedShiftMs,
+} from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
