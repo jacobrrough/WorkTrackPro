@@ -105,6 +105,7 @@ export interface Shift {
   clockOutTime?: string;
   lunchStartTime?: string;
   lunchEndTime?: string;
+  lunchMinutesUsed?: number;
   notes?: string;
 }
 

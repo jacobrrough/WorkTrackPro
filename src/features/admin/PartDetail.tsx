@@ -1284,8 +1284,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     }
                     if (variantsUpdated) await loadPart();
                   } else {
-                    const auto = calculateSetPriceFromVariants(variants, composition);
-                    if (auto != null) handleUpdatePart({ pricePerSet: auto });
+                    const auto = calculateSetPriceFromVariants(
+                      part.variants ?? [],
+                      part.setComposition ?? {}
+                    );
+                    if (auto != null) await handleUpdatePart({ pricePerSet: auto });
                   }
                 }}
               />

@@ -5,6 +5,7 @@ import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
+import { MAX_BREAK_MINUTES, getRemainingBreakMs, getTotalBreakMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
@@ -58,6 +59,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     navState.lastViewedJobId && jobs.some((job) => job.id === navState.lastViewedJobId)
       ? navState.lastViewedJobId
       : null;
+  const remainingBreakMs = activeShift
+    ? getRemainingBreakMs(activeShift)
+    : MAX_BREAK_MINUTES * 60 * 1000;
+  const breakLimitReached = remainingBreakMs <= 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,23 +128,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }, [shiftClockInTime, shiftClockOutTime]);
 
   useEffect(() => {
-    const lunchStart = activeShift?.lunchStartTime;
-    if (!lunchStart) {
+    if (!activeShift) {
       setLunchTimer('00:00:00');
       return undefined;
     }
 
     const updateLunchTimer = () => {
-      setLunchTimer(
-        formatDurationHMS(
-          durationMs(lunchStart, activeShift.lunchEndTime ?? activeShift.clockOutTime ?? null)
-        )
-      );
+      setLunchTimer(formatDurationHMS(getTotalBreakMs(activeShift)));
     };
 
     updateLunchTimer();
 
-    if (activeShift.lunchEndTime) {
+    if (!isOnLunch) {
       return undefined;
     }
 
@@ -149,7 +149,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     activeShift?.id,
     activeShift?.lunchStartTime,
     activeShift?.lunchEndTime,
+    activeShift?.lunchMinutesUsed,
     activeShift?.clockOutTime,
+    isOnLunch,
   ]);
 
   const handleClockOutFromPopup = async () => {
@@ -166,8 +168,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const handleLunchToggle = async () => {
     if (!activeShift) return;
-    if (hasCompletedLunch) {
-      showToast('Lunch has already been completed for this shift', 'info');
+    if (!isOnLunch && breakLimitReached) {
+      showToast('Break limit reached (60 minutes total).', 'info');
       return;
     }
 
@@ -478,10 +480,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <p className="font-mono text-3xl font-bold text-green-400">{shiftTimer}</p>
               <p className="mt-2 text-xs text-slate-300">
                 {isOnLunch
-                  ? `On lunch • ${lunchTimer}`
-                  : hasCompletedLunch
-                    ? `Lunch completed • ${lunchTimer}`
-                    : 'Currently working'}
+                  ? `On break • ${lunchTimer}`
+                  : breakLimitReached
+                    ? `Break limit reached • ${lunchTimer}`
+                    : `Break used • ${lunchTimer} of 01:00:00`}
               </p>
             </div>
 
@@ -500,11 +502,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={handleLunchToggle}
-                disabled={isLunchLoading || hasCompletedLunch}
+                disabled={isLunchLoading || (!isOnLunch && breakLimitReached)}
                 className={`flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm px-4 py-3 text-sm font-bold text-white transition-colors disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 ${
                   isOnLunch
                     ? 'bg-amber-500 hover:bg-amber-600'
-                    : hasCompletedLunch
+                    : breakLimitReached
                       ? 'bg-slate-700'
                       : 'bg-primary hover:bg-primary/90'
                 }`}
@@ -517,10 +519,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     ? 'Clocking out lunch...'
                     : 'Clocking in lunch...'
                   : isOnLunch
-                    ? 'Clock Out Lunch'
-                    : hasCompletedLunch
-                      ? 'Lunch Complete'
-                      : 'Clock In Lunch'}
+                    ? 'Clock Out Break'
+                    : breakLimitReached
+                      ? 'Break Maxed'
+                      : 'Clock In Break'}
               </button>
             </div>
 

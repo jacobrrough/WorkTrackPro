@@ -44,6 +44,7 @@ function mapShiftRow(row: Record<string, unknown>): Shift {
     clockOutTime: row.clock_out_time as string | undefined,
     lunchStartTime: row.lunch_start_time as string | undefined,
     lunchEndTime: row.lunch_end_time as string | undefined,
+    lunchMinutesUsed: row.lunch_minutes_used as number | undefined,
     notes: row.notes as string | undefined,
   };
 }

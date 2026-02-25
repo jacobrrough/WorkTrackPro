@@ -2,13 +2,13 @@ import type { Shift } from '../../core/types';
 import { supabase } from './supabaseClient';
 
 const SHIFTS_SELECT_WITH_LUNCH =
-  'id, user_id, job_id, clock_in_time, clock_out_time, lunch_start_time, lunch_end_time, notes';
+  'id, user_id, job_id, clock_in_time, clock_out_time, lunch_start_time, lunch_end_time, lunch_minutes_used, notes';
 const SHIFTS_SELECT_BASE = 'id, user_id, job_id, clock_in_time, clock_out_time, notes';
 
 function isMissingLunchColumnsError(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   if (error.code === '42703') return true;
-  return /lunch_start_time|lunch_end_time/i.test(error.message ?? '');
+  return /lunch_start_time|lunch_end_time|lunch_minutes_used/i.test(error.message ?? '');
 }
 
 function mapRowToShift(
@@ -30,6 +30,7 @@ function mapRowToShift(
     clockOutTime: row.clock_out_time as string | undefined,
     lunchStartTime: row.lunch_start_time as string | undefined,
     lunchEndTime: row.lunch_end_time as string | undefined,
+    lunchMinutesUsed: row.lunch_minutes_used as number | undefined,
     notes: row.notes as string | undefined,
   };
 }
@@ -111,13 +112,16 @@ export const shiftService = {
     return !error;
   },
 
-  async endLunch(shiftId: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('shifts')
-      .update({
-        lunch_end_time: new Date().toISOString(),
-      })
-      .eq('id', shiftId);
+  async endLunch(shiftId: string, lunchMinutesUsed?: number): Promise<boolean> {
+    const row: Record<string, unknown> = {
+      lunch_start_time: null,
+      lunch_end_time: new Date().toISOString(),
+    };
+    if (typeof lunchMinutesUsed === 'number' && Number.isFinite(lunchMinutesUsed)) {
+      row.lunch_minutes_used = Math.max(0, Math.floor(lunchMinutesUsed));
+    }
+
+    const { error } = await supabase.from('shifts').update(row).eq('id', shiftId);
     return !error;
   },
 

@@ -4,7 +4,8 @@ import { Shift, User, Job, ViewState, ShiftEdit } from '@/core/types';
 import { useToast } from './Toast';
 import { shiftService, shiftEditService } from './pocketbase';
 import ConfirmDialog from './ConfirmDialog';
-import { durationMs, formatDurationHours } from './lib/timeUtils';
+import { formatDurationHours } from './lib/timeUtils';
+import { getWorkedShiftMs } from './lib/lunchUtils';
 
 type DateRange = 'today' | 'week' | 'month' | 'all';
 
@@ -168,11 +169,11 @@ const TimeReports: React.FC<TimeReportsProps> = ({
     );
   };
 
-  const getHoursAsNumber = (s: Shift): number =>
-    durationMs(s.clockInTime, s.clockOutTime) / 3600000;
+  const getWorkedDurationMs = (s: Shift): number => getWorkedShiftMs(s);
 
-  const formatShiftHours = (s: Shift): string =>
-    formatDurationHours(durationMs(s.clockInTime, s.clockOutTime));
+  const getHoursAsNumber = (s: Shift): number => getWorkedDurationMs(s) / 3600000;
+
+  const formatShiftHours = (s: Shift): string => formatDurationHours(getWorkedDurationMs(s));
 
   const periodWindow = useMemo(
     () => buildDateRangeWindow(dateRange, periodOffset),

@@ -4,7 +4,7 @@
  */
 
 import { Job } from '@/core/types';
-import { durationMs } from './timeUtils';
+import { getWorkedShiftMs } from './lunchUtils';
 
 /**
  * Find similar jobs by part number (base) or name/description word match.
@@ -39,11 +39,18 @@ export function findSimilarJobs(searchTerm: string, jobs: Job[]): Job[] {
  */
 export function calculateJobHoursFromShifts(
   jobId: string,
-  shifts: Array<{ job: string; clockInTime: string; clockOutTime?: string }>
+  shifts: Array<{
+    job: string;
+    clockInTime: string;
+    clockOutTime?: string;
+    lunchStartTime?: string;
+    lunchEndTime?: string;
+    lunchMinutesUsed?: number;
+  }>
 ): number {
   const jobShifts = shifts.filter((s) => s.job === jobId && s.clockOutTime);
   return jobShifts.reduce((total, shift) => {
-    return total + durationMs(shift.clockInTime, shift.clockOutTime!) / 3600000;
+    return total + getWorkedShiftMs(shift) / 3600000;
   }, 0);
 }
 
@@ -59,7 +66,14 @@ export function calculateJobHoursFromShifts(
 export function getLaborSuggestion(
   searchTerm: string,
   jobs: Job[],
-  shifts: Array<{ job: string; clockInTime: string; clockOutTime?: string }>
+  shifts: Array<{
+    job: string;
+    clockInTime: string;
+    clockOutTime?: string;
+    lunchStartTime?: string;
+    lunchEndTime?: string;
+    lunchMinutesUsed?: number;
+  }>
 ): number {
   const similarJobs = findSimilarJobs(searchTerm, jobs);
   if (similarJobs.length === 0) return 0;
