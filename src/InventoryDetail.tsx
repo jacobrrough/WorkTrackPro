@@ -892,7 +892,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           <div className="space-y-3 rounded-sm bg-card-dark p-3">
             <h2 className="mb-4 text-lg font-bold text-white">Details</h2>
 
-            {item.price && (
+            {isAdmin && item.price && (
               <div className="flex justify-between border-b border-white/10 pb-2">
                 <p className="text-sm text-slate-400">Price Per Unit</p>
                 <p className="font-bold text-white">

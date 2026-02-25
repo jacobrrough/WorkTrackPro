@@ -264,7 +264,9 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                                   </p>
                                 </div>
                               )}
-                              {item.price && (!item.reorderPoint || item.reorderPoint === 0) && (
+                              {isAdmin &&
+                                item.price &&
+                                (!item.reorderPoint || item.reorderPoint === 0) && (
                                 <div>
                                   <p className="text-xs text-slate-400">Price</p>
                                   <p className="font-bold text-white">${item.price.toFixed(2)}</p>

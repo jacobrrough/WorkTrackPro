@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import { formatJobCode, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
+import { matchesJobSearch } from '@/lib/jobSearch';
 import { checklistService } from './pocketbase';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -66,6 +67,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 }) => {
   const jobs = useMemo(() => excludePaid(allJobs), [allJobs]);
   const { state: navState, updateState } = useNavigation();
+  const activeSearchTerm = navState.searchTerm.trim();
+  const normalizedSearchTerm = activeSearchTerm.toLowerCase();
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
@@ -95,6 +98,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const columns = boardType === 'shopFloor' ? SHOP_FLOOR_COLUMNS : ADMIN_COLUMNS;
   const boardViewKey = `kanban-board-${boardType}`;
   const horizontalScrollKey = `${boardViewKey}-horizontal`;
+  const filteredJobs = useMemo(
+    () => jobs.filter((job) => matchesJobSearch(job, normalizedSearchTerm)),
+    [jobs, normalizedSearchTerm]
+  );
 
   // Update scroll positions ref when navState changes
   useEffect(() => {
@@ -253,7 +260,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   const getJobsForColumn = (columnId: JobStatus) => {
-    const columnJobs = jobs.filter((job) => {
+    const columnJobs = filteredJobs.filter((job) => {
       const effectiveStatus = normalizeLegacyRushStatus(job.status);
       if (effectiveStatus !== columnId) return false;
       // Shop floor and admin board both show all jobs in the same columns (admin sees full progress).
@@ -406,7 +413,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <h1 className="text-base font-bold text-white">
                 {boardType === 'shopFloor' ? 'Shop Floor' : 'Admin'}
               </h1>
-              <p className="text-[10px] text-slate-400">{jobs.length} jobs</p>
+              <p className="text-[10px] text-slate-400">
+                {activeSearchTerm ? `${filteredJobs.length} of ${jobs.length} jobs` : `${jobs.length} jobs`}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -429,6 +438,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             )}
           </div>
         </div>
+        {activeSearchTerm && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-sm border border-primary/30 bg-primary/10 px-2 py-1.5">
+            <p className="truncate text-[11px] text-primary">Search: “{activeSearchTerm}”</p>
+            <button
+              type="button"
+              onClick={() => updateState({ searchTerm: '' })}
+              className="touch-manipulation rounded-sm border border-primary/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary transition-colors hover:bg-primary/20"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Board: mobile = one column at a time, swipe L/R; desktop = multi-column, vertical scroll only */}

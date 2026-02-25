@@ -54,12 +54,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
   const isOnLunch = Boolean(activeShift?.lunchStartTime && !activeShift?.lunchEndTime);
   const hasCompletedLunch = Boolean(activeShift?.lunchStartTime && activeShift?.lunchEndTime);
+  const resumeJobId =
+    navState.lastViewedJobId && jobs.some((job) => job.id === navState.lastViewedJobId)
+      ? navState.lastViewedJobId
+      : null;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateState({ searchTerm: searchInput.trim() });
     onNavigate('board-shop');
   };
+
+  useEffect(() => {
+    setSearchInput(navState.searchTerm);
+  }, [navState.searchTerm]);
 
   const handleScanComplete = (scannedData: string) => {
     setShowScanner(false);
@@ -187,6 +195,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       ariaLabel: 'Open shop floor board',
       onClick: () => onNavigate('board-shop'),
     },
+    ...(resumeJobId
+      ? [
+          {
+            key: 'resume-job',
+            title: 'Resume Job',
+            subtitle: 'Open last viewed',
+            icon: 'history',
+            iconClassName: 'text-violet-400',
+            cardClassName: 'border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-purple-700/20',
+            ariaLabel: 'Open last viewed job',
+            onClick: () => onNavigate('job-detail', resumeJobId),
+          } satisfies DashboardQuickAction,
+        ]
+      : []),
     {
       key: 'inventory',
       title: 'Inventory',
@@ -237,6 +259,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cardClassName: 'border-emerald-500/30 bg-gradient-to-br from-emerald-600/20 to-teal-600/20',
       ariaLabel: 'Open parts repository',
       onClick: () => onNavigate('parts'),
+      adminOnly: true,
+    },
+    {
+      key: 'quotes',
+      title: 'Quotes',
+      subtitle: 'Pricing & estimates',
+      icon: 'request_quote',
+      iconClassName: 'text-fuchsia-400',
+      cardClassName: 'border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-600/20 to-purple-700/20',
+      ariaLabel: 'Open quotes',
+      onClick: () => onNavigate('quotes'),
+      adminOnly: true,
     },
     {
       key: 'board-admin',
