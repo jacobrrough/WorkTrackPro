@@ -521,6 +521,69 @@ const PartDetail: React.FC<PartDetailProps> = ({
     }
   };
 
+  const syncSetMaterialFromVariants = async (inventoryId: string) => {
+    if (!part) return;
+    const setComposition = part.setComposition;
+    if (!setComposition || Object.keys(setComposition).length === 0) return;
+
+    const normalizeSuffix = (suffix: string) => String(suffix ?? '').replace(/^-/, '');
+    const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 0;
+
+    const qtyBySuffix = new Map<string, number>();
+    let preferredUnit = '';
+
+    for (const variant of part.variants ?? []) {
+      const materialMatches = (variant.materials ?? []).filter((m) => m.inventoryId === inventoryId);
+      if (materialMatches.length === 0) continue;
+      const suffixKey = normalizeSuffix(variant.variantSuffix);
+      const variantQty = materialMatches.reduce((sum, m) => sum + qty(m), 0);
+      if (variantQty > 0) {
+        qtyBySuffix.set(suffixKey, variantQty);
+      }
+      if (materialMatches[0]?.unit) preferredUnit = materialMatches[0].unit;
+    }
+
+    const totalPerSet = Object.entries(setComposition).reduce((sum, [suffix, qtyInSet]) => {
+      const variantQty = qtyBySuffix.get(normalizeSuffix(suffix)) ?? 0;
+      return sum + variantQty * Math.max(0, Number(qtyInSet) || 0);
+    }, 0);
+
+    const existingPerSetRows = (part.materials ?? []).filter(
+      (m) => m.usageType === 'per_set' && m.inventoryId === inventoryId
+    );
+
+    if (existingPerSetRows.length > 0 && !preferredUnit) {
+      preferredUnit = existingPerSetRows[0].unit ?? 'units';
+    }
+
+    if (totalPerSet <= 0) {
+      for (const row of existingPerSetRows) {
+        await partsService.deleteMaterial(row.id);
+      }
+      return;
+    }
+
+    if (existingPerSetRows.length > 0) {
+      const [first, ...dupes] = existingPerSetRows;
+      await partsService.updatePartMaterial(first.id, {
+        quantityPerUnit: totalPerSet,
+        unit: preferredUnit || 'units',
+      });
+      for (const dup of dupes) {
+        await partsService.deleteMaterial(dup.id);
+      }
+      return;
+    }
+
+    await partsService.addMaterial({
+      partId: part.id,
+      inventoryId,
+      quantity: totalPerSet,
+      unit: preferredUnit || 'units',
+      usageType: 'per_set',
+    });
+  };
+
   const handleUpdatePart = async (updates: Partial<Part>) => {
     if (!part) return;
     if (isVirtualPart) {
@@ -1186,6 +1249,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     onDelete={handleDeleteVariant}
                     onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
                     onMaterialAdded={loadPart}
+                    onVariantMaterialChanged={syncSetMaterialFromVariants}
                     partPricePerSet={part.pricePerSet}
                     partLaborHours={part.laborHours}
                     setComposition={part.setComposition}
@@ -1382,6 +1446,7 @@ interface VariantCardProps {
   onDelete: (variantId: string, variantSuffix: string) => void;
   onAddMaterial: () => void;
   onMaterialAdded: () => void;
+  onVariantMaterialChanged: (inventoryId: string) => Promise<void>;
   partPricePerSet?: number;
   partLaborHours?: number;
   setComposition?: Record<string, number> | null;
@@ -1398,6 +1463,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   onDelete,
   onAddMaterial,
   onMaterialAdded,
+  onVariantMaterialChanged,
   partPricePerSet,
   partLaborHours,
   setComposition,
@@ -1602,6 +1668,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                   unit: nextUnit || 'units',
                                 });
                                 if (updated) {
+                                  await onVariantMaterialChanged(material.inventoryId);
                                   showToast('Material updated', 'success');
                                   setEditingMaterialQty(null);
                                   setMaterialUnitValues((prev) => {
@@ -1683,6 +1750,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                     onClick={async () => {
                       try {
                         await partsService.deleteMaterial(material.id);
+                        await onVariantMaterialChanged(material.inventoryId);
                         showToast('Material removed', 'success');
                         onMaterialAdded();
                       } catch {

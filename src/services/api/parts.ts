@@ -657,7 +657,7 @@ export const partsService = {
       .update(row)
       .eq('id', id)
       .select('*')
-      .single();
+      .maybeSingle();
 
     // If that fails, try older schema (quantity) or schema without quantity_per_unit.
     if (
@@ -674,12 +674,23 @@ export const partsService = {
         .update(row)
         .eq('id', id)
         .select('*')
-        .single();
+        .maybeSingle();
       updated = result.data;
       error = result.error;
     }
 
     if (error) return null;
+    if (!updated) {
+      // Some RLS/policy combinations allow update but not returning row payload.
+      // Return a minimal material object so callers can treat the mutation as successful.
+      return {
+        id,
+        inventoryId: data.inventoryId ?? '',
+        quantityPerUnit: data.quantityPerUnit ?? 1,
+        unit: data.unit ?? 'units',
+        usageType: data.usageType ?? 'per_variant',
+      };
+    }
     return mapRowToPartMaterial(updated as unknown as Record<string, unknown>);
   },
 
