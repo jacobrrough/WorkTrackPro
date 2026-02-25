@@ -85,7 +85,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     description: '',
     status: 'pending' as JobStatus,
     binLocation: '',
+    estNumber: '',
     invNumber: '',
+    rfqNumber: '',
     revision: '',
   });
 
@@ -117,6 +119,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     {
       partNumber: selectedPartNumber?.trim(),
       revision: formData.revision.trim(),
+      estNumber: formData.estNumber.trim(),
       po: formData.po.trim(),
       status: formData.status,
     },
@@ -192,6 +195,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       {
         partNumber: partNumberForCreate,
         revision: formData.revision.trim(),
+        estNumber: formData.estNumber.trim(),
         po: formData.po.trim(),
         status: formData.status,
       },
@@ -218,7 +222,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         createdBy: currentUser.id, // ADDED: Track who created the job
         boardType: 'admin' as BoardType,
         assignedUsers: [],
+        estNumber: formData.estNumber.trim() || undefined,
         invNumber: formData.invNumber.trim() || undefined,
+        rfqNumber: formData.rfqNumber.trim() || undefined,
         partNumber: partNumberForCreate || undefined,
         revision: formData.revision.trim() || undefined,
         dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
@@ -390,7 +396,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
 
           <div>
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
-              Part Number · Rev · Part Name · Qty · PO # · INV#
+              Part Number · Rev · Part Name · Qty · EST # · RFQ # · PO # · INV#
             </p>
             <div className="space-y-3">
               <div className="flex flex-col">
@@ -458,6 +464,26 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                     disabled={isSubmitting}
                   />
                 )}
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">EST #</label>
+                <input
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                  placeholder="Enter EST number"
+                  value={formData.estNumber}
+                  onChange={(e) => setFormData({ ...formData, estNumber: e.target.value })}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">RFQ #</label>
+                <input
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                  placeholder="Enter RFQ number"
+                  value={formData.rfqNumber}
+                  onChange={(e) => setFormData({ ...formData, rfqNumber: e.target.value })}
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-slate-300">PO #</label>
