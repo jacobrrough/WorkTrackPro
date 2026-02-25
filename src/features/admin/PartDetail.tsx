@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Part,
   PartVariant,
@@ -278,9 +278,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPart, loadInventory are stable
   }, [partId]);
 
-  const loadPart = async (): Promise<Part | null> => {
+  const loadPart = async (silent = false): Promise<Part | null> => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setIsVirtualPart(false);
       const partNumberFromJob = partId.startsWith('job-') ? partId.slice(4) : null;
       if (partNumberFromJob) {
@@ -331,7 +331,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       setPart(null);
       return null;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -380,7 +380,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       await partsService.updateVariant(variantId, updates);
       showToast('Variant updated successfully', 'success');
       setEditingVariant(null);
-      let updated = await loadPart();
+      let updated = await loadPart(true);
       if (!updated || updates.pricePerVariant === undefined || !updated.variants?.length) return;
 
       const composition = buildEffectiveSetComposition(updated.variants, updated.setComposition);
@@ -392,7 +392,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       }
 
       if (seededPrices.length > 0) {
-        updated = (await loadPart()) ?? updated;
+        updated = (await loadPart(true)) ?? updated;
       }
 
       const variants = updated.variants ?? [];
@@ -441,7 +441,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
       const targetSetLabor = nextSetLaborHours ?? updated.laborHours;
       let laborVariantsChanged = false;
-      if (targetSetLabor != null && targetSetLabor > 0) {
+      const shouldPushLabor =
+        targetSetLabor != null &&
+        targetSetLabor > 0 &&
+        updates.laborHours !== undefined;
+      if (shouldPushLabor) {
         const expectedVariantLabor = calculateVariantLaborTargets(
           variants,
           composition,
@@ -458,7 +462,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       }
 
       if (seededPrices.length > 0 || Object.keys(partUpdates).length > 0 || laborVariantsChanged) {
-        await loadPart();
+        await loadPart(true);
       }
     } catch (error) {
       showToast('Failed to update variant', 'error');
@@ -588,7 +592,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
       setShowAddMaterial(null);
       showToast(`Material added successfully${copyOrSetMessage}`, 'success');
-      await loadPart();
+      await loadPart(true);
     } catch (error) {
       showToast('Failed to add material', 'error');
       console.error('Error adding material:', error);
@@ -872,13 +876,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
       {/* Content */}
       <div
-        className="min-h-0 flex-1 touch-pan-y space-y-4 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8"
+        className="min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto px-3 py-4 sm:px-4 md:px-6 lg:px-6"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {/* Section 1: Part Information (always expanded) */}
-        <div className="rounded-sm border border-white/10 bg-white/5 p-4">
-          <h2 className="mb-4 text-lg font-semibold text-white">Part Information</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-sm border border-white/10 bg-white/5 p-3 sm:p-4">
+          <h2 className="mb-3 text-base font-semibold text-white sm:text-lg">Part Information</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm text-slate-400">Part Number</label>
               <input
@@ -903,7 +907,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 required
               />
             </div>
-            <div className="sm:col-span-2">
+            <div className="lg:col-span-2">
               <label className="mb-1 block text-sm text-slate-400">Description</label>
               <textarea
                 value={partInfoDraft.description}
@@ -911,16 +915,16 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   setPartInfoDraft((prev) => ({ ...prev, description: e.target.value }))
                 }
                 className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
-                rows={3}
+                rows={2}
               />
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-3">
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={handleSavePartInfo}
                   disabled={!isPartInfoDirty || savingPartInfo}
-                  className="min-h-[44px] rounded-sm bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[44px] rounded-sm bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {savingPartInfo ? 'Saving…' : 'Save Part Info'}
                 </button>
@@ -928,7 +932,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   type="button"
                   onClick={handleResetPartInfo}
                   disabled={!isPartInfoDirty || savingPartInfo}
-                  className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Reset
                 </button>
@@ -1047,11 +1051,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
         {/* Section 2: Set Information (accordion) - labor, price, materials, set composition, quote */}
         {!isVirtualPart && (
-          <Accordion title="Set Information" defaultExpanded>
-            <div className="space-y-4">
-              <div className="space-y-3">
+          <Accordion title="Set Information" defaultExpanded={false}>
+            <div className="space-y-3">
+              <div className="space-y-2">
                 {/* CNC Toggle */}
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
@@ -1094,7 +1098,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 </div>
 
                 {/* 3D Printer Toggle */}
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
@@ -1162,7 +1166,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   <MaterialsListWithCost
                     materials={part.materials}
                     inventoryItems={inventoryItems}
-                    onUpdate={loadPart}
+                    onUpdate={() => loadPart(true)}
                   />
                 ) : (
                   <p className="text-sm text-slate-500">No materials defined for this part.</p>
@@ -1315,36 +1319,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
             <AddVariantInline
               existingSuffixes={part.variants?.map((v) => v.variantSuffix) || []}
               onAdd={handleAddVariant}
-              onRefresh={loadPart}
+              onRefresh={() => loadPart(true)}
               showToast={showToast}
             />
-            {showAddMaterial?.variantId &&
-              part.variants &&
-              (() => {
-                const addToVariant = part.variants.find((v) => v.id === showAddMaterial!.variantId);
-                if (!addToVariant) return null;
-                return (
-                  <div
-                    key={`add-mat-${addToVariant.id}`}
-                    className="mt-4 rounded-sm border border-primary/30 bg-primary/10 p-4"
-                  >
-                    <p className="mb-3 text-sm text-slate-300">
-                      Adding material to{' '}
-                      <span className="font-mono text-primary">
-                        {part.partNumber}-{addToVariant.variantSuffix}
-                      </span>
-                    </p>
-                    <AddMaterialForm
-                      inventoryItems={inventoryItems}
-                      usageType="per_variant"
-                      onSave={handleAddMaterial}
-                      onCancel={() => setShowAddMaterial(null)}
-                    />
-                  </div>
-                );
-              })()}
             {part.variants && part.variants.length > 0 && (
-              <div className="mt-4 space-y-4">
+              <div className="mt-3 space-y-3">
                 {part.variants.map((variant) => (
                   <VariantCard
                     key={variant.id}
@@ -1357,11 +1336,16 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     onUpdate={handleUpdateVariant}
                     onDelete={handleDeleteVariant}
                     onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
-                    onMaterialAdded={loadPart}
+                    onMaterialAdded={() => loadPart(true)}
                     onVariantMaterialChanged={syncSetMaterialFromVariants}
                     partPricePerSet={part.pricePerSet}
                     partLaborHours={part.laborHours}
                     setComposition={part.setComposition}
+                    isAddingMaterial={showAddMaterial?.variantId === variant.id}
+                    onAddMaterialCancel={() => setShowAddMaterial(null)}
+                    onAddMaterialSave={(id, qty, unit) =>
+                      handleAddMaterial(id, qty, unit, 'per_variant')
+                    }
                   />
                 ))}
               </div>
@@ -1559,6 +1543,9 @@ interface VariantCardProps {
   partPricePerSet?: number;
   partLaborHours?: number;
   setComposition?: Record<string, number> | null;
+  isAddingMaterial?: boolean;
+  onAddMaterialCancel?: () => void;
+  onAddMaterialSave?: (inventoryId: string, quantity: number, unit: string) => void;
 }
 
 const VariantCard: React.FC<VariantCardProps> = ({
@@ -1576,6 +1563,9 @@ const VariantCard: React.FC<VariantCardProps> = ({
   partPricePerSet,
   partLaborHours,
   setComposition,
+  isAddingMaterial,
+  onAddMaterialCancel,
+  onAddMaterialSave,
 }) => {
   const { showToast } = useToast();
   const [name, setName] = useState(variant.name || '');
@@ -1606,7 +1596,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   };
 
   return (
-    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+    <div className="rounded-sm border border-white/10 bg-white/5 p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <span className="font-mono font-semibold text-primary">
@@ -1719,8 +1709,18 @@ const VariantCard: React.FC<VariantCardProps> = ({
             Add Material
           </button>
         </div>
+        {isAddingMaterial && onAddMaterialCancel && onAddMaterialSave && (
+          <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-3">
+            <AddMaterialForm
+              inventoryItems={inventoryItems}
+              usageType="per_variant"
+              onSave={(id, qty, unit) => onAddMaterialSave(id, qty, unit)}
+              onCancel={onAddMaterialCancel}
+            />
+          </div>
+        )}
         {variant.materials && variant.materials.length > 0 ? (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {variant.materials.map((material) => {
               const inv = inventoryItems.find((i) => i.id === material.inventoryId);
               const qty =
@@ -1735,13 +1735,13 @@ const VariantCard: React.FC<VariantCardProps> = ({
               return (
                 <div
                   key={material.id}
-                  className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2"
+                  className="flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3"
                 >
-                  <div className="flex-1">
-                    <span className="text-sm text-white">
+                  <div className="min-h-0 flex-1">
+                    <p className="truncate text-sm text-white" title={material.inventoryName || inv?.name || 'Unknown'}>
                       {material.inventoryName || inv?.name || 'Unknown'}
-                    </span>
-                    <div className="mt-1 flex items-center gap-2">
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       {isEditingQty ? (
                         <>
                           <input
@@ -1811,7 +1811,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                               }
                             }}
                             autoFocus
-                            className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                            className="w-16 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
                           />
                           <input
                             type="text"
@@ -1822,7 +1822,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                 [material.id]: e.target.value,
                               }))
                             }
-                            className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                            className="w-14 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
                           />
                         </>
                       ) : (
@@ -1843,7 +1843,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                 [material.id]: material.unit ?? 'units',
                               }));
                             }}
-                            className="ml-2 text-xs text-primary hover:underline"
+                            className="text-xs text-primary hover:underline"
                           >
                             Edit
                           </button>
@@ -1866,10 +1866,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
                         showToast('Failed to delete material', 'error');
                       }
                     }}
-                    className="text-red-400 hover:text-red-300"
+                    className="mt-2 flex shrink-0 items-center justify-center self-start rounded border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
                     aria-label="Remove material"
                   >
-                    <span className="material-symbols-outlined text-lg">delete</span>
+                    <span className="material-symbols-outlined text-base">delete</span>
                   </button>
                 </div>
               );
@@ -1880,18 +1880,20 @@ const VariantCard: React.FC<VariantCardProps> = ({
         )}
       </div>
 
-      {/* Per-variant quote */}
+      {/* Per-variant quote: quick reference with editable labor hours and total */}
       <div className="mt-3 border-t border-white/10 pt-3">
         <VariantQuoteMini
           partNumber={partNumber}
           variant={variant}
           inventoryItems={inventoryItems}
           partPricePerSet={partPricePerSet}
+          partLaborHours={partLaborHours}
           setComposition={setComposition}
           onVariantPriceChange={(variantId, price) => {
-            if (variantId === variant.id) {
-              onUpdate(variantId, { pricePerVariant: price });
-            }
+            if (variantId === variant.id) onUpdate(variantId, { pricePerVariant: price });
+          }}
+          onVariantLaborChange={(variantId, laborHours) => {
+            if (variantId === variant.id) onUpdate(variantId, { laborHours });
           }}
         />
       </div>
@@ -1904,212 +1906,213 @@ function VariantQuoteMini({
   variant,
   inventoryItems,
   partPricePerSet,
+  partLaborHours,
   setComposition,
   onVariantPriceChange,
+  onVariantLaborChange,
 }: {
   partNumber: string;
   variant: PartVariant & { materials?: PartMaterial[] };
   inventoryItems: InventoryItem[];
   partPricePerSet?: number;
+  partLaborHours?: number;
   setComposition?: Record<string, number> | null;
   onVariantPriceChange?: (variantId: string, price: number | undefined) => void;
+  onVariantLaborChange?: (variantId: string, laborHours: number | undefined) => void;
 }) {
   const { settings } = useSettings();
-  const [qty, setQty] = useState(1);
-  const [manualVariantPrice, setManualVariantPrice] = useState<string>('');
-  const [isManualPrice, setIsManualPrice] = useState(false);
-  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const autoLaborHours =
+    partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
+      ? variantLaborFromSetComposition(variant.variantSuffix, partLaborHours, setComposition)
+      : undefined;
+  const effectiveLaborHours = variant.laborHours ?? autoLaborHours ?? 0;
 
-  // Calculate variant's share of set price based on set composition
-  const calculatedVariantPrice = useMemo(() => {
-    if (!partPricePerSet || !setComposition || Object.keys(setComposition).length === 0) {
-      return undefined;
-    }
-    // Normalize variant suffix (handle both "-01" and "01" formats)
-    const norm = (s: string) => s.replace(/^-/, '');
-    const variantSuffixNorm = norm(variant.variantSuffix);
+  const [laborHoursInput, setLaborHoursInput] = useState(
+    variant.laborHours != null ? variant.laborHours.toString() : (autoLaborHours?.toString() ?? '')
+  );
+  const [totalInput, setTotalInput] = useState(
+    variant.pricePerVariant != null ? variant.pricePerVariant.toString() : ''
+  );
+  const [hasUserEditedLabor, setHasUserEditedLabor] = useState(false);
+  const [hasUserEditedTotal, setHasUserEditedTotal] = useState(false);
+  const lastSentTotalRef = useRef<number | null>(null);
 
-    // Find this variant's quantity in the set composition
-    const variantQtyInSet = Object.entries(setComposition).find(
-      ([suffix]) => norm(suffix) === variantSuffixNorm
-    )?.[1];
-
-    if (!variantQtyInSet || variantQtyInSet <= 0) {
-      return undefined;
-    }
-
-    // Calculate total units in set
-    const totalUnitsInSet = Object.values(setComposition).reduce((sum, q) => sum + q, 0);
-    if (totalUnitsInSet <= 0) {
-      return undefined;
-    }
-
-    // Per-unit price = set price / total units
-    const pricePerUnit = partPricePerSet / totalUnitsInSet;
-    // Variant's share = price per unit × variant quantity in set
-    return pricePerUnit * variantQtyInSet;
-  }, [partPricePerSet, setComposition, variant.variantSuffix]);
-
-  const revertToAuto = () => {
-    setHasUserEdited(false);
-    setIsManualPrice(false);
-    if (calculatedVariantPrice != null) {
-      setManualVariantPrice(calculatedVariantPrice.toFixed(2));
-      onVariantPriceChange?.(variant.id, calculatedVariantPrice);
-    } else {
-      setManualVariantPrice('');
-      onVariantPriceChange?.(variant.id, undefined);
-    }
-  };
-
-  // Initialize manualVariantPrice from calculated price or variant's own pricePerVariant
   useEffect(() => {
-    if (!hasUserEdited) {
-      if (variant.pricePerVariant != null) {
-        setManualVariantPrice(variant.pricePerVariant.toString());
-        setIsManualPrice(true);
-      } else if (calculatedVariantPrice != null) {
-        // Show auto suggestion from set share, but do not persist unless user chooses it.
-        setManualVariantPrice(calculatedVariantPrice.toFixed(2));
-        setIsManualPrice(false);
-      } else {
-        setManualVariantPrice('');
-        setIsManualPrice(false);
-      }
+    if (!hasUserEditedLabor) {
+      setLaborHoursInput(
+        variant.laborHours != null ? variant.laborHours.toString() : (autoLaborHours?.toString() ?? '')
+      );
     }
-  }, [
-    calculatedVariantPrice,
-    variant.pricePerVariant,
-    variant.id,
-    hasUserEdited,
-    onVariantPriceChange,
-  ]);
+  }, [variant.laborHours, autoLaborHours, hasUserEditedLabor]);
 
-  // Notify parent when variant price changes manually (debounced to avoid excessive saves)
   useEffect(() => {
-    if (hasUserEdited && onVariantPriceChange) {
-      const timeoutId = setTimeout(() => {
-        if (isManualPrice && manualVariantPrice) {
-          const price = parseFloat(manualVariantPrice);
-          if (!Number.isNaN(price) && Math.abs(price - (variant.pricePerVariant ?? 0)) > 0.01) {
-            onVariantPriceChange(variant.id, price);
-          }
-        } else if (!isManualPrice && variant.pricePerVariant != null) {
-          onVariantPriceChange(variant.id, undefined);
-        }
-      }, 500); // Debounce manual edits
-
-      return () => clearTimeout(timeoutId);
+    if (!hasUserEditedTotal) {
+      setTotalInput(variant.pricePerVariant != null ? variant.pricePerVariant.toString() : '');
+      lastSentTotalRef.current = null;
+    } else if (
+      variant.pricePerVariant != null &&
+      lastSentTotalRef.current != null &&
+      Math.abs(variant.pricePerVariant - lastSentTotalRef.current) < 0.01
+    ) {
+      setTotalInput(variant.pricePerVariant.toString());
+      setHasUserEditedTotal(false);
+      lastSentTotalRef.current = null;
     }
-  }, [
-    manualVariantPrice,
-    isManualPrice,
-    hasUserEdited,
-    variant.id,
-    variant.pricePerVariant,
-    onVariantPriceChange,
-  ]);
+  }, [variant.pricePerVariant, hasUserEditedTotal]);
 
   const result = useMemo(() => {
-    const variantPrice =
-      isManualPrice && manualVariantPrice ? parseFloat(manualVariantPrice) : undefined;
-    return calculateVariantQuote(partNumber, variant, qty, inventoryItems, {
+    const variantWithEffectiveLabor = { ...variant, laborHours: effectiveLaborHours };
+    const manualPrice =
+      hasUserEditedTotal && totalInput.trim()
+        ? parseFloat(totalInput)
+        : undefined;
+    return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
       laborRate: settings.laborRate,
-      manualVariantPrice: variantPrice,
+      manualVariantPrice: Number.isFinite(manualPrice) ? manualPrice : undefined,
     });
   }, [
     partNumber,
     variant,
-    qty,
+    effectiveLaborHours,
     inventoryItems,
     settings.laborRate,
-    manualVariantPrice,
-    isManualPrice,
+    totalInput,
+    hasUserEditedTotal,
   ]);
+
+  const isLaborAuto = variant.laborHours == null && autoLaborHours != null;
+  const isTotalAuto = variant.pricePerVariant == null && !hasUserEditedTotal && result != null;
+
+  const handleLaborHoursBlur = () => {
+    const val = laborHoursInput.trim() === '' ? undefined : parseFloat(laborHoursInput);
+    if (val !== undefined && !Number.isNaN(val) && val >= 0) {
+      if (Math.abs((variant.laborHours ?? 0) - val) > 0.001) {
+        onVariantLaborChange?.(variant.id, val);
+      }
+    } else {
+      onVariantLaborChange?.(variant.id, undefined);
+    }
+    setHasUserEditedLabor(false);
+  };
+
+  const handleTotalBlur = () => {
+    const val = totalInput.trim() === '' ? undefined : parseFloat(totalInput);
+    if (val !== undefined && !Number.isNaN(val) && val >= 0) {
+      if (Math.abs((variant.pricePerVariant ?? 0) - val) > 0.01) {
+        lastSentTotalRef.current = val;
+        onVariantPriceChange?.(variant.id, val);
+      }
+    } else {
+      lastSentTotalRef.current = null;
+      onVariantPriceChange?.(variant.id, undefined);
+    }
+  };
 
   const AutoBadge = () => (
     <span className="ml-1 rounded bg-primary/20 px-1 py-0.5 text-xs text-primary">auto</span>
   );
 
+  const displayLaborHours = hasUserEditedLabor ? laborHoursInput : (effectiveLaborHours?.toString() ?? '');
+  const displayTotal = hasUserEditedTotal ? totalInput : (result != null ? result.total.toFixed(2) : '');
+
   return (
     <div className="rounded border border-primary/20 bg-primary/5 p-3">
-      <p className="mb-2 text-xs font-bold uppercase text-slate-400">Quote (variant)</p>
-      <div className="mb-2 space-y-2">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400">Qty</label>
-          <input
-            type="number"
-            min={1}
-            value={qty}
-            onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400">Price per unit</label>
-          <div className="flex items-center gap-1">
+      <p className="mb-2 text-xs font-bold uppercase text-slate-400">Quick reference</p>
+      {result ? (
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center justify-between gap-2 text-slate-300">
+            <span>Material</span>
+            <span className="text-white">${result.materialCostCustomer.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center text-slate-300">
+              Labor hours
+              {isLaborAuto && <AutoBadge />}
+            </span>
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              value={displayLaborHours}
+              onChange={(e) => {
+                setLaborHoursInput(e.target.value);
+                setHasUserEditedLabor(true);
+              }}
+              onBlur={handleLaborHoursBlur}
+              className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              placeholder={autoLaborHours?.toString() ?? '0'}
+            />
+          </div>
+          <div className="flex items-center justify-between text-slate-300">
+            <span className="flex items-center">
+              Labor
+              {(isLaborAuto || result.isLaborAutoAdjusted) && <AutoBadge />}
+            </span>
+            <span className="text-white">${result.laborCost.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t border-primary/30 pt-2">
+            <span className="flex items-center font-medium text-white">
+              Total
+              {isTotalAuto && <AutoBadge />}
+            </span>
             <input
               type="number"
               step="0.01"
               min={0}
-              value={manualVariantPrice}
+              value={displayTotal}
               onChange={(e) => {
-                setManualVariantPrice(e.target.value);
-                setHasUserEdited(true);
-                setIsManualPrice(e.target.value.trim() !== '');
+                setTotalInput(e.target.value);
+                setHasUserEditedTotal(true);
               }}
-              onBlur={() => {
-                if (manualVariantPrice.trim() === '') {
-                  setIsManualPrice(false);
-                }
-              }}
-              className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary/50 focus:outline-none"
-              placeholder={
-                calculatedVariantPrice != null ? calculatedVariantPrice.toFixed(2) : 'Auto'
-              }
+              onBlur={handleTotalBlur}
+              className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-right font-medium text-white focus:border-primary/50 focus:outline-none"
+              placeholder={result.total.toFixed(2)}
             />
-            {calculatedVariantPrice != null && !hasUserEdited && !isManualPrice && <AutoBadge />}
-            {hasUserEdited && calculatedVariantPrice != null && (
-              <button
-                type="button"
-                onClick={revertToAuto}
-                className="rounded bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/30"
-              >
-                Use Auto
-              </button>
-            )}
           </div>
         </div>
-      </div>
-      {result ? (
-        <div className="space-y-0.5 text-xs">
-          <div className="flex justify-between text-slate-300">
+      ) : (
+        <div className="space-y-2 text-xs text-slate-500">
+          <div className="flex justify-between">
             <span>Material</span>
-            <span className="text-white">${result.materialCostCustomer.toFixed(2)}</span>
+            <span>—</span>
           </div>
-          <div className="flex justify-between text-slate-300">
+          <div className="flex items-center justify-between gap-2">
             <span className="flex items-center">
-              Labor
-              {result.isLaborAutoAdjusted && <AutoBadge />}
+              Labor hours
+              {isLaborAuto && <AutoBadge />}
             </span>
-            <span className="text-white">${result.laborCost.toFixed(2)}</span>
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              value={displayLaborHours}
+              onChange={(e) => {
+                setLaborHoursInput(e.target.value);
+                setHasUserEditedLabor(true);
+              }}
+              onBlur={handleLaborHoursBlur}
+              className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              placeholder={autoLaborHours?.toString() ?? '0'}
+            />
           </div>
-          <div className="flex justify-between border-t border-white/10 pt-1 text-slate-300">
-            <span className="flex items-center">
-              Subtotal
-              {result.isReverseCalculated && <AutoBadge />}
-            </span>
-            <span className="text-white">${result.subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between border-t border-primary/30 pt-1 font-medium text-white">
-            <span className="flex items-center">
-              Total
-              {result.isReverseCalculated && <AutoBadge />}
-            </span>
-            <span>${result.total.toFixed(2)}</span>
+          <div className="flex items-center justify-between gap-2 border-t border-primary/30 pt-2">
+            <span className="font-medium text-white">Total</span>
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              value={displayTotal}
+              onChange={(e) => {
+                setTotalInput(e.target.value);
+                setHasUserEditedTotal(true);
+              }}
+              onBlur={handleTotalBlur}
+              className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-right font-medium text-white focus:border-primary/50 focus:outline-none"
+              placeholder="0"
+            />
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -2229,7 +2232,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
       {materials.map((material) => {
         const inv = inventoryItems.find((i) => i.id === material.inventoryId);
         const currentQty = qty(material);
@@ -2243,13 +2246,13 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
         return (
           <div
             key={material.id}
-            className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2"
+            className="flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3"
           >
-            <div className="flex-1">
-              <span className="text-sm font-medium text-white">
+            <div className="min-h-0 flex-1">
+              <p className="truncate text-sm font-medium text-white" title={material.inventoryName || inv?.name || 'Unknown'}>
                 {material.inventoryName || inv?.name || 'Unknown'}
-              </span>
-              <div className="mt-1 flex items-center gap-2">
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {isEditing ? (
                   <>
                     <input
@@ -2277,7 +2280,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                         }
                       }}
                       autoFocus
-                      className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                      className="w-16 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
                     />
                     <input
                       type="text"
@@ -2285,7 +2288,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                       onChange={(e) =>
                         setUnitValues((prev) => ({ ...prev, [material.id]: e.target.value }))
                       }
-                      className="w-20 rounded border border-primary/50 bg-white/5 px-2 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                      className="w-14 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
                     />
                   </>
                 ) : (
@@ -2303,7 +2306,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                           [material.id]: material.unit ?? 'units',
                         }));
                       }}
-                      className="ml-2 text-xs text-primary hover:underline"
+                      className="text-xs text-primary hover:underline"
                     >
                       Edit
                     </button>
@@ -2317,10 +2320,10 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
             <button
               type="button"
               onClick={() => handleDelete(material.id)}
-              className="text-red-400 hover:text-red-300"
+              className="mt-2 flex shrink-0 items-center justify-center self-start rounded border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
               aria-label="Remove material"
             >
-              <span className="material-symbols-outlined text-lg">delete</span>
+              <span className="material-symbols-outlined text-base">delete</span>
             </button>
           </div>
         );

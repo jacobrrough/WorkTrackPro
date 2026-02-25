@@ -17,6 +17,7 @@ import BinLocationScanner from './BinLocationScanner';
 import ChecklistDisplay from './ChecklistDisplay';
 import { formatDateOnly, isoToDateInput, dateInputToISO } from '@/core/date';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
+import { getWorkedShiftMs } from './lib/lunchUtils';
 import { useToast } from './Toast';
 import { StatusBadge } from './components/ui/StatusBadge';
 import { getLaborSuggestion } from './lib/laborSuggestion';
@@ -844,7 +845,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     let interval: ReturnType<typeof setInterval> | undefined;
     if (isClockedIn && activeShift) {
       interval = setInterval(() => {
-        setTimer(formatDurationHMS(durationMs(activeShift.clockInTime, null)));
+        setTimer(formatDurationHMS(getWorkedShiftMs(activeShift)));
       }, 1000);
     }
     return () => {

@@ -614,25 +614,29 @@ export const partsService = {
     quantityPerUnit: number,
     unit?: string
   ): Promise<PartMaterial | null> {
-    // Try part_variant_id first (newer schema), fall back to variant_id (older schema)
-    let row: Record<string, unknown> = {
-      inventory_id: inventoryId,
-      unit: unit ?? 'units',
-    };
-
+    const u = unit ?? 'units';
     // Try newer schema first (part_variant_id, quantity_per_unit)
-    row.part_variant_id = partVariantId;
-    row.quantity_per_unit = quantityPerUnit;
+    let row: Record<string, unknown> = {
+      part_variant_id: partVariantId,
+      inventory_id: inventoryId,
+      quantity_per_unit: quantityPerUnit,
+      unit: u,
+    };
 
     let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
 
-    // If that fails, try older schema (variant_id, quantity)
-    if (error && (error.message?.includes('part_variant_id') || error.code === '42703')) {
+    // Retry with legacy schema (variant_id, quantity) on unknown column or 400
+    const isSchemaError =
+      error &&
+      (error.code === '42703' ||
+        error.code === '400' ||
+        /part_variant_id|quantity_per_unit|column.*does not exist/i.test(error.message ?? ''));
+    if (isSchemaError) {
       row = {
         variant_id: partVariantId,
         inventory_id: inventoryId,
         quantity: quantityPerUnit,
-        unit: unit ?? 'units',
+        unit: u,
       };
       const result = await supabase.from('part_materials').insert(row).select('*').single();
       data = result.data;
@@ -643,7 +647,7 @@ export const partsService = {
       console.error('Error adding part material:', error);
       return null;
     }
-    return mapRowToPartMaterial(data as unknown as Record<string, unknown>);
+    return data ? mapRowToPartMaterial(data as unknown as Record<string, unknown>) : null;
   },
 
   async updatePartMaterial(id: string, data: Partial<PartMaterial>): Promise<PartMaterial | null> {
@@ -719,7 +723,7 @@ export const partsService = {
     const { variantId, partId, inventoryId, quantity, unit, usageType } = params;
 
     if (usageType === 'per_set' && partId) {
-      // Part-level row: part_id set, no variant. Use quantity_per_unit only (table may not have "quantity" column).
+      // Part-level row: part_id set, no variant. Try quantity_per_unit first, then quantity (legacy).
       const row: Record<string, unknown> = {
         part_id: partId,
         inventory_id: inventoryId,
@@ -728,8 +732,7 @@ export const partsService = {
         usage_type: 'per_set',
       };
       let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
-      // If insert fails (e.g. column quantity_per_unit doesn't exist), try with "quantity" for older schema
-      if (error && (error.message?.includes('quantity_per_unit') || error.code === '42703')) {
+      if (error && (error.code === '42703' || error.code === '400' || /quantity_per_unit|usage_type|column.*does not exist/i.test(error.message ?? ''))) {
         const rowLegacy: Record<string, unknown> = {
           part_id: partId,
           inventory_id: inventoryId,
@@ -738,6 +741,17 @@ export const partsService = {
           usage_type: 'per_set',
         };
         const result = await supabase.from('part_materials').insert(rowLegacy).select('*').single();
+        data = result.data;
+        error = result.error;
+      }
+      if (error && (error.code === '42703' || error.code === '400')) {
+        const rowMinimal: Record<string, unknown> = {
+          part_id: partId,
+          inventory_id: inventoryId,
+          quantity,
+          unit: unit ?? 'units',
+        };
+        const result = await supabase.from('part_materials').insert(rowMinimal).select('*').single();
         data = result.data;
         error = result.error;
       }
