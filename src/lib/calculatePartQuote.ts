@@ -1,5 +1,5 @@
 import type { Part, PartVariant, PartMaterial, InventoryItem } from '@/core/types';
-import { quantityPerUnit } from '@/lib/variantMath';
+import { quantityPerUnit } from './variantMath';
 
 const DEFAULT_LABOR_RATE = 175;
 const MATERIAL_MARKUP_MULTIPLIER = 2.25;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PartVariant } from '@/core/types';
-import { calculateSetPriceFromVariants } from '@/lib/partDistribution';
+import { calculateSetPriceFromVariants } from './partDistribution';
 import {
   buildEffectiveSetComposition,
   seedMissingVariantPrices,
