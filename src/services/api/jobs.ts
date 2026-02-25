@@ -1,6 +1,7 @@
 import type { Job, JobStatus, Comment } from '../../core/types';
 import { supabase } from './supabaseClient';
 import { uploadAttachment, deleteAttachmentRecord, getAttachmentPublicUrl } from './storage';
+import { runMutationWithSchemaFallback } from './schemaCompat';
 
 type SupabaseErrorLike = {
   code?: string;
@@ -427,8 +428,27 @@ export const jobService = {
       revision: data.revision ?? null,
       part_id: data.partId ?? resolvedPart?.partId ?? null,
     };
-    const { data: created, error } = await supabase.from('jobs').insert(row).select('*').single();
+    const { data: created, error, strippedColumns } = await runMutationWithSchemaFallback({
+      tableName: 'jobs',
+      initialPayload: row,
+      mutate: async (payload) => {
+        const { data: rowData, error: rowError } = await supabase
+          .from('jobs')
+          .insert(payload)
+          .select('*')
+          .single();
+        return {
+          data: (rowData as Record<string, unknown> | null) ?? null,
+          error: (rowError as SupabaseErrorLike | null) ?? null,
+        };
+      },
+    });
     if (error) throw new Error(error.message);
+    if (strippedColumns.length > 0) {
+      console.warn(
+        `jobs.createJob: omitted unsupported columns for this schema: ${strippedColumns.join(', ')}`
+      );
+    }
     return mapJobRow(created as Record<string, unknown>, {
       job_inventory: [],
       comments: [],
@@ -501,13 +521,28 @@ export const jobService = {
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
     row.updated_at = new Date().toISOString();
-    const { data: updated, error } = await supabase
-      .from('jobs')
-      .update(row)
-      .eq('id', jobId)
-      .select('*')
-      .single();
+    const { data: updated, error, strippedColumns } = await runMutationWithSchemaFallback({
+      tableName: 'jobs',
+      initialPayload: row,
+      mutate: async (payload) => {
+        const { data: rowData, error: rowError } = await supabase
+          .from('jobs')
+          .update(payload)
+          .eq('id', jobId)
+          .select('*')
+          .single();
+        return {
+          data: (rowData as Record<string, unknown> | null) ?? null,
+          error: (rowError as SupabaseErrorLike | null) ?? null,
+        };
+      },
+    });
     if (error) return null;
+    if (strippedColumns.length > 0) {
+      console.warn(
+        `jobs.updateJob: omitted unsupported columns for this schema: ${strippedColumns.join(', ')}`
+      );
+    }
     const expand = await fetchJobExpand(jobId);
     return mapJobRow(updated as Record<string, unknown>, expand);
   },

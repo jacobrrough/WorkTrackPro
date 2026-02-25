@@ -266,11 +266,11 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         onNavigate('board-admin');
       } else {
         // Creation returned null - something failed
-        console.error('Ã¢ÂÅ’ Job creation returned null');
+        console.error('Job creation returned null');
         setError('Failed to create job. The server did not return a job record. Please try again.');
       }
     } catch (error: unknown) {
-      console.error('Ã¢ÂÅ’ Error creating job:', error);
+      console.error('Error creating job:', error);
 
       // Parse error message
       let errorMessage = 'Failed to create job. ';
