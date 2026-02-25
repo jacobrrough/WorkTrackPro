@@ -599,7 +599,10 @@ export const partsService = {
       .eq('id', id)
       .select('*')
       .single();
-    if (error) return null;
+    if (error) {
+      console.error('updateVariant failed:', error.message, error.code, { id, row });
+      return null;
+    }
     return mapRowToVariant(updated as unknown as Record<string, unknown>);
   },
 

@@ -89,7 +89,9 @@ export default function App() {
 
   const [view, setView] = useState<string>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
-  const [returnViews, setReturnViews] = useState<Record<string, string>>({
+  const [returnViews, setReturnViews] = useState<
+    Record<string, string | { view: string; id?: string }>
+  >({
     'job-detail': 'dashboard',
     'inventory-detail': 'inventory',
     'part-detail': 'parts',
@@ -117,7 +119,10 @@ export default function App() {
         nextView === 'inventory-detail' ||
         nextView === 'part-detail'
       ) {
-        setReturnViews((prev) => ({ ...prev, [nextView]: view }));
+        setReturnViews((prev) => ({
+          ...prev,
+          [nextView]: id !== undefined ? { view, id } : view,
+        }));
       }
       setView(nextView);
       if (nextId === undefined) {
@@ -132,13 +137,17 @@ export default function App() {
         setId(undefined);
       }
     },
-    [view]
+    [view, id]
   );
 
   const navigateBackFrom = useCallback(
     (detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: string) => {
       const next = returnViews[detailView] ?? fallback;
-      handleNavigate(next);
+      if (typeof next === 'object' && next != null && 'view' in next) {
+        handleNavigate(next.view, next.id);
+      } else {
+        handleNavigate(typeof next === 'string' ? next : fallback);
+      }
     },
     [handleNavigate, returnViews]
   );
@@ -339,12 +348,15 @@ export default function App() {
   if (view === 'inventory-detail' && id) {
     const item = inventory.find((i) => i.id === id);
     if (!item) {
+      const returnTo = returnViews['inventory-detail'];
+      const backView = typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
+      const backId = typeof returnTo === 'object' && returnTo?.id != null ? returnTo.id : undefined;
       return (
         <AppShell>
           <div className="flex min-h-screen items-center justify-center bg-background-dark p-4">
             <p className="text-slate-400">Item not found.</p>
             <button
-              onClick={() => handleNavigate('inventory')}
+              onClick={() => handleNavigate(backView, backId)}
               className="mt-3 rounded-sm bg-primary px-4 py-2 font-bold text-white"
             >
               Back
@@ -353,6 +365,9 @@ export default function App() {
         </AppShell>
       );
     }
+    const returnTo = returnViews['inventory-detail'];
+    const backView = typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
+    const backId = typeof returnTo === 'object' && returnTo?.id != null ? returnTo.id : undefined;
     return (
       <AppShell>
         <Inventory
@@ -370,7 +385,7 @@ export default function App() {
           calculateAvailable={calculateAvailable}
           calculateAllocated={calculateAllocated}
           initialItemId={id}
-          onBackFromDetail={() => handleNavigate('inventory')}
+          onBackFromDetail={() => handleNavigate(backView, backId)}
         />
       </AppShell>
     );

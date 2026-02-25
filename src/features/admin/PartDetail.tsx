@@ -67,7 +67,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
     variantId?: string;
   } | null>(null);
   const [creatingPart, setCreatingPart] = useState(false);
-  const [variantsAccordionExpanded, setVariantsAccordionExpanded] = useState(false);
   const [partInfoDraft, setPartInfoDraft] = useState({
     partNumber: '',
     name: '',
@@ -377,7 +376,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
     updates: { name?: string; pricePerVariant?: number; laborHours?: number }
   ) => {
     try {
-      await partsService.updateVariant(variantId, updates);
+      const saved = await partsService.updateVariant(variantId, updates);
+      if (!saved) {
+        showToast('Failed to save variant. Check your connection or permissions.', 'error');
+        await loadPart(true);
+        return;
+      }
       showToast('Variant updated successfully', 'success');
       setEditingVariant(null);
       let updated = await loadPart(true);
@@ -441,6 +445,36 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
       const targetSetLabor = nextSetLaborHours ?? updated.laborHours;
       let laborVariantsChanged = false;
+
+      // When user edits a variant's total (price), recalc that variant's labor from the new total
+      // so Labor hours / Labor auto stay in sync (reverse calculation).
+      if (updates.pricePerVariant != null && Number.isFinite(updates.pricePerVariant)) {
+        const editedVariant = variants.find((v) => v.id === variantId);
+        if (editedVariant && updated.partNumber) {
+          const variantQuote = calculateVariantQuote(
+            updated.partNumber,
+            { ...editedVariant, pricePerVariant: updates.pricePerVariant },
+            1,
+            inventoryItems,
+            {
+              laborRate: settings.laborRate,
+              manualVariantPrice: updates.pricePerVariant,
+            }
+          );
+          if (
+            variantQuote?.isLaborAutoAdjusted &&
+            Number.isFinite(variantQuote.laborHours) &&
+            variantQuote.laborHours >= 0
+          ) {
+            const roundedLabor = Number(variantQuote.laborHours.toFixed(2));
+            if (Math.abs((editedVariant.laborHours ?? 0) - roundedLabor) > 0.01) {
+              await partsService.updateVariant(variantId, { laborHours: roundedLabor });
+              laborVariantsChanged = true;
+            }
+          }
+        }
+      }
+
       const shouldPushLabor =
         targetSetLabor != null && targetSetLabor > 0 && updates.laborHours !== undefined;
       if (shouldPushLabor) {
@@ -451,6 +485,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         );
         const variantById = new Map(variants.map((variant) => [variant.id, variant]));
         for (const target of expectedVariantLabor) {
+          if (target.variantId === variantId) continue; // keep edited variant's own labor
           const current = variantById.get(target.variantId);
           if (!current) continue;
           if (Math.abs((current.laborHours ?? 0) - target.laborHours) <= 0.01) continue;
@@ -498,7 +533,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
     inventoryId: string,
     quantity: number,
     unit: string,
-    usageType: 'per_set' | 'per_variant'
+    usageType: 'per_set' | 'per_variant',
+    addToAllVariants?: boolean
   ) => {
     if (!part) return;
     const addedToVariantId = showAddMaterial?.variantId;
@@ -552,7 +588,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
         }
         if (toDistribute.length > 0)
           copyOrSetMessage = ` and applied to ${toDistribute.length} variant(s)`;
-      } else if (addedToVariantId && usageType === 'per_variant' && variants.length >= 2) {
+      } else if (
+        addedToVariantId &&
+        usageType === 'per_variant' &&
+        variants.length >= 2 &&
+        addToAllVariants !== false
+      ) {
         const otherVariants = variants.filter((v) => v.id !== addedToVariantId);
         const alreadyHave = (v: { materials?: { inventoryId: string }[] }) =>
           (v.materials ?? []).some((m) => m.inventoryId === inventoryId);
@@ -1165,6 +1206,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     materials={part.materials}
                     inventoryItems={inventoryItems}
                     onUpdate={() => loadPart(true)}
+                    onNavigate={onNavigate}
                   />
                 ) : (
                   <p className="text-sm text-slate-500">No materials defined for this part.</p>
@@ -1260,12 +1302,26 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           : []
                         ).map((entry) => [entry.variantId, entry.laborHours])
                       );
+                      const currentSetDerivedPrices = variantPricesFromSetPrice(
+                        part.pricePerSet ?? 0,
+                        composition,
+                        variants
+                      );
+                      const currentDerivedByVariantId = new Map(
+                        currentSetDerivedPrices.map((e) => [e.variantId, e.price])
+                      );
 
                       for (const variant of variants) {
                         const variantUpdates: Partial<PartVariant> = {};
                         const nextPrice = priceByVariantId.get(variant.id);
+                        const currentDerived = currentDerivedByVariantId.get(variant.id);
+                        const matchesCurrentSetDerived =
+                          currentDerived != null &&
+                          variant.pricePerVariant != null &&
+                          Math.abs(variant.pricePerVariant - currentDerived) < 0.01;
                         if (
                           nextPrice != null &&
+                          matchesCurrentSetDerived &&
                           Math.abs((variant.pricePerVariant ?? 0) - nextPrice) > 0.01
                         ) {
                           variantUpdates.pricePerVariant = nextPrice;
@@ -1298,57 +1354,64 @@ const PartDetail: React.FC<PartDetailProps> = ({
           </Accordion>
         )}
 
-        {/* Section 3: Variants / Dash Numbers (accordion) */}
+        {/* Section 3: Variants / Dash Numbers — each variant has its own dropdown */}
         {!isVirtualPart && (
-          <Accordion
-            title={`Variants / Dash Numbers (${part.variants?.length ?? 0})`}
-            defaultExpanded={false}
-            expanded={variantsAccordionExpanded}
-            onToggle={() => setVariantsAccordionExpanded((e) => !e)}
-          >
-            {(part.variants?.length ?? 0) === 0 ? (
-              <p className="text-sm text-slate-400">No variants — part number is the only SKU.</p>
-            ) : (
-              <p className="mb-3 text-xs text-slate-400">
-                {part.variants?.length} dash number{(part.variants?.length ?? 0) !== 1 ? 's' : ''}:{' '}
-                {part.variants?.map((v) => `-${v.variantSuffix}`).join(', ')}
-              </p>
-            )}
-            <AddVariantInline
-              existingSuffixes={part.variants?.map((v) => v.variantSuffix) || []}
-              onAdd={handleAddVariant}
-              onRefresh={() => loadPart(true)}
-              showToast={showToast}
-            />
+          <div className="space-y-3">
+            <div className="rounded-sm border border-white/10 bg-white/5 px-4 py-3">
+              <h3 className="text-sm font-semibold text-white">
+                Variants / Dash Numbers ({part.variants?.length ?? 0})
+              </h3>
+              {(part.variants?.length ?? 0) === 0 ? (
+                <p className="mt-2 text-sm text-slate-400">No variants — part number is the only SKU.</p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">
+                  {part.variants?.length} dash number{(part.variants?.length ?? 0) !== 1 ? 's' : ''}:{' '}
+                  {part.variants?.map((v) => `-${v.variantSuffix}`).join(', ')}
+                </p>
+              )}
+              <AddVariantInline
+                existingSuffixes={part.variants?.map((v) => v.variantSuffix) || []}
+                onAdd={handleAddVariant}
+                onRefresh={() => loadPart(true)}
+                showToast={showToast}
+              />
+            </div>
             {part.variants && part.variants.length > 0 && (
-              <div className="mt-3 space-y-3">
+              <div className="space-y-2">
                 {part.variants.map((variant) => (
-                  <VariantCard
+                  <Accordion
                     key={variant.id}
-                    variant={variant}
-                    partNumber={part.partNumber}
-                    inventoryItems={inventoryItems}
-                    isEditing={editingVariant === variant.id}
-                    onEdit={() => setEditingVariant(variant.id)}
-                    onCancel={() => setEditingVariant(null)}
-                    onUpdate={handleUpdateVariant}
-                    onDelete={handleDeleteVariant}
-                    onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
-                    onMaterialAdded={() => loadPart(true)}
-                    onVariantMaterialChanged={syncSetMaterialFromVariants}
-                    partPricePerSet={part.pricePerSet}
-                    partLaborHours={part.laborHours}
-                    setComposition={part.setComposition}
-                    isAddingMaterial={showAddMaterial?.variantId === variant.id}
-                    onAddMaterialCancel={() => setShowAddMaterial(null)}
-                    onAddMaterialSave={(id, qty, unit) =>
-                      handleAddMaterial(id, qty, unit, 'per_variant')
-                    }
-                  />
+                    title={`${part.partNumber}-${variant.variantSuffix}${variant.name ? ` — ${variant.name}` : ''}`}
+                    defaultExpanded={false}
+                  >
+                    <VariantCard
+                      variant={variant}
+                      allVariants={part.variants ?? []}
+                      partNumber={part.partNumber}
+                      inventoryItems={inventoryItems}
+                      onNavigate={onNavigate}
+                      isEditing={editingVariant === variant.id}
+                      onEdit={() => setEditingVariant(variant.id)}
+                      onCancel={() => setEditingVariant(null)}
+                      onUpdate={handleUpdateVariant}
+                      onDelete={handleDeleteVariant}
+                      onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
+                      onMaterialAdded={() => loadPart(true)}
+                      onVariantMaterialChanged={syncSetMaterialFromVariants}
+                      partPricePerSet={part.pricePerSet}
+                      partLaborHours={part.laborHours}
+                      setComposition={part.setComposition}
+                      isAddingMaterial={showAddMaterial?.variantId === variant.id}
+                      onAddMaterialCancel={() => setShowAddMaterial(null)}
+                      onAddMaterialSave={(id, qty, unit, addToAllVariants) =>
+                        handleAddMaterial(id, qty, unit, 'per_variant', addToAllVariants)
+                      }
+                    />
+                  </Accordion>
                 ))}
               </div>
             )}
-          </Accordion>
+          </div>
         )}
 
         {/* Section 4: Labor Feedback (closed-loop estimation from completed jobs) */}
@@ -1529,7 +1592,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
 interface VariantCardProps {
   variant: PartVariant;
   partNumber: string;
+  allVariants?: PartVariant[];
   inventoryItems: InventoryItem[];
+  onNavigate?: (view: string, id?: string) => void;
   isEditing: boolean;
   onEdit: () => void;
   onCancel: () => void;
@@ -1543,13 +1608,20 @@ interface VariantCardProps {
   setComposition?: Record<string, number> | null;
   isAddingMaterial?: boolean;
   onAddMaterialCancel?: () => void;
-  onAddMaterialSave?: (inventoryId: string, quantity: number, unit: string) => void;
+  onAddMaterialSave?: (
+    inventoryId: string,
+    quantity: number,
+    unit: string,
+    addToAllVariants?: boolean
+  ) => void;
 }
 
 const VariantCard: React.FC<VariantCardProps> = ({
   variant,
   partNumber,
+  allVariants = [],
   inventoryItems,
+  onNavigate,
   isEditing,
   onEdit,
   onCancel,
@@ -1572,6 +1644,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValues, setMaterialQtyValues] = useState<Record<string, string>>({});
   const [materialUnitValues, setMaterialUnitValues] = useState<Record<string, string>>({});
+  const [addMaterialToAllVariants, setAddMaterialToAllVariants] = useState(true);
 
   const autoLaborHours =
     partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
@@ -1709,10 +1782,26 @@ const VariantCard: React.FC<VariantCardProps> = ({
         </div>
         {isAddingMaterial && onAddMaterialCancel && onAddMaterialSave && (
           <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-3">
+            {allVariants.length >= 2 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-400">Add material to:</span>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={addMaterialToAllVariants}
+                    onChange={(e) => setAddMaterialToAllVariants(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/30 bg-white/10 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-white">
+                    {addMaterialToAllVariants ? 'All variants' : 'This variant only'}
+                  </span>
+                </label>
+              </div>
+            )}
             <AddMaterialForm
               inventoryItems={inventoryItems}
               usageType="per_variant"
-              onSave={(id, qty, unit) => onAddMaterialSave(id, qty, unit)}
+              onSave={(id, qty, unit) => onAddMaterialSave(id, qty, unit, addMaterialToAllVariants)}
               onCancel={onAddMaterialCancel}
             />
           </div>
@@ -1733,7 +1822,16 @@ const VariantCard: React.FC<VariantCardProps> = ({
               return (
                 <div
                   key={material.id}
-                  className="flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onNavigate?.('inventory-detail', material.inventoryId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onNavigate?.('inventory-detail', material.inventoryId);
+                    }
+                  }}
+                  className="flex min-h-[7rem] cursor-pointer flex-col rounded border border-white/10 bg-white/5 p-3 transition-colors hover:border-primary/30 hover:bg-white/10"
                 >
                   <div className="min-h-0 flex-1">
                     <p
@@ -1742,7 +1840,11 @@ const VariantCard: React.FC<VariantCardProps> = ({
                     >
                       {material.inventoryName || inv?.name || 'Unknown'}
                     </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="mt-1 inline-block text-xs text-primary">View inventory →</span>
+                    <div
+                      className="mt-1.5 flex flex-wrap items-center gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {isEditingQty ? (
                         <>
                           <input
@@ -1851,21 +1953,24 @@ const VariantCard: React.FC<VariantCardProps> = ({
                         </>
                       )}
                     </div>
-                    <div className="mt-1">
+                    <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                       <MaterialCostDisplay ourCost={ourCost} />
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        await partsService.deleteMaterial(material.id);
-                        await onVariantMaterialChanged(material.inventoryId);
-                        showToast('Material removed', 'success');
-                        onMaterialAdded();
-                      } catch {
-                        showToast('Failed to delete material', 'error');
-                      }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      (async () => {
+                        try {
+                          await partsService.deleteMaterial(material.id);
+                          await onVariantMaterialChanged(material.inventoryId);
+                          showToast('Material removed', 'success');
+                          onMaterialAdded();
+                        } catch {
+                          showToast('Failed to delete material', 'error');
+                        }
+                      })();
                     }}
                     className="mt-2 flex shrink-0 items-center justify-center self-start rounded border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
                     aria-label="Remove material"
@@ -1886,6 +1991,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
         <VariantQuoteMini
           partNumber={partNumber}
           variant={variant}
+          allVariants={allVariants}
           inventoryItems={inventoryItems}
           partPricePerSet={partPricePerSet}
           partLaborHours={partLaborHours}
@@ -1905,6 +2011,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
 function VariantQuoteMini({
   partNumber,
   variant,
+  allVariants = [],
   inventoryItems,
   partPricePerSet,
   partLaborHours,
@@ -1914,6 +2021,7 @@ function VariantQuoteMini({
 }: {
   partNumber: string;
   variant: PartVariant & { materials?: PartMaterial[] };
+  allVariants?: PartVariant[];
   inventoryItems: InventoryItem[];
   partPricePerSet?: number;
   partLaborHours?: number;
@@ -1964,7 +2072,14 @@ function VariantQuoteMini({
   }, [variant.pricePerVariant, hasUserEditedTotal]);
 
   const result = useMemo(() => {
-    const variantWithEffectiveLabor = { ...variant, laborHours: effectiveLaborHours };
+    const laborHoursForQuote =
+      hasUserEditedLabor && laborHoursInput.trim() !== ''
+        ? (() => {
+            const p = parseFloat(laborHoursInput);
+            return Number.isFinite(p) && p >= 0 ? p : effectiveLaborHours;
+          })()
+        : effectiveLaborHours;
+    const variantWithEffectiveLabor = { ...variant, laborHours: laborHoursForQuote };
     const manualPrice =
       hasUserEditedTotal && totalInput.trim() ? parseFloat(totalInput) : undefined;
     return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
@@ -1979,10 +2094,30 @@ function VariantQuoteMini({
     settings.laborRate,
     totalInput,
     hasUserEditedTotal,
+    laborHoursInput,
+    hasUserEditedLabor,
   ]);
 
   const isLaborAuto = variant.laborHours == null && autoLaborHours != null;
-  const isTotalAuto = variant.pricePerVariant == null && !hasUserEditedTotal && result != null;
+  const derivedPricesFromSet =
+    partPricePerSet != null &&
+    partPricePerSet > 0 &&
+    setComposition &&
+    Object.keys(setComposition).length > 0 &&
+    allVariants.length > 0
+      ? variantPricesFromSetPrice(partPricePerSet, setComposition, allVariants)
+      : [];
+  const derivedTotalForThisVariant = derivedPricesFromSet.find(
+    (p) => p.variantId === variant.id
+  )?.price;
+  const totalMatchesSetDerived =
+    derivedTotalForThisVariant != null &&
+    variant.pricePerVariant != null &&
+    Math.abs(variant.pricePerVariant - derivedTotalForThisVariant) < 0.01;
+  const isTotalAuto =
+    !hasUserEditedTotal &&
+    result != null &&
+    (variant.pricePerVariant == null || totalMatchesSetDerived);
 
   const handleLaborHoursBlur = () => {
     const val = laborHoursInput.trim() === '' ? undefined : parseFloat(laborHoursInput);
@@ -1999,10 +2134,10 @@ function VariantQuoteMini({
   const handleTotalBlur = () => {
     const val = totalInput.trim() === '' ? undefined : parseFloat(totalInput);
     if (val !== undefined && !Number.isNaN(val) && val >= 0) {
-      if (Math.abs((variant.pricePerVariant ?? 0) - val) > 0.01) {
-        lastSentTotalRef.current = val;
-        onVariantPriceChange?.(variant.id, val);
-      }
+      const normalized = Number(val.toFixed(2));
+      lastSentTotalRef.current = normalized;
+      setTotalInput(normalized.toFixed(2)); // normalize display e.g. 0875 -> 875.00
+      onVariantPriceChange?.(variant.id, normalized);
     } else {
       lastSentTotalRef.current = null;
       onVariantPriceChange?.(variant.id, undefined);
@@ -2013,9 +2148,23 @@ function VariantQuoteMini({
     <span className="ml-1 rounded bg-primary/20 px-1 py-0.5 text-xs text-primary">auto</span>
   );
 
+  const useLaborAuto = () => {
+    setHasUserEditedLabor(false);
+    onVariantLaborChange?.(variant.id, undefined);
+  };
+  const useTotalAuto = () => {
+    setHasUserEditedTotal(false);
+    lastSentTotalRef.current = null;
+    onVariantPriceChange?.(variant.id, undefined);
+  };
+  const switchLaborToManual = () => setHasUserEditedLabor(true);
+  const switchTotalToManual = () => setHasUserEditedTotal(true);
+
   const displayLaborHours = hasUserEditedLabor
     ? laborHoursInput
-    : (effectiveLaborHours?.toString() ?? '');
+    : result?.isLaborAutoAdjusted === true
+      ? result.laborHours.toFixed(2)
+      : (effectiveLaborHours?.toString() ?? '');
   const displayTotal = hasUserEditedTotal
     ? totalInput
     : result != null
@@ -2035,6 +2184,23 @@ function VariantQuoteMini({
             <span className="flex items-center text-slate-300">
               Labor hours
               {isLaborAuto && <AutoBadge />}
+              {isLaborAuto ? (
+                <button
+                  type="button"
+                  onClick={switchLaborToManual}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Manual
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={useLaborAuto}
+                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                >
+                  Use auto
+                </button>
+              )}
             </span>
             <input
               type="number"
@@ -2061,6 +2227,23 @@ function VariantQuoteMini({
             <span className="flex items-center font-medium text-white">
               Total
               {isTotalAuto && <AutoBadge />}
+              {isTotalAuto ? (
+                <button
+                  type="button"
+                  onClick={switchTotalToManual}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Manual
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={useTotalAuto}
+                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                >
+                  Use auto
+                </button>
+              )}
             </span>
             <input
               type="number"
@@ -2087,6 +2270,23 @@ function VariantQuoteMini({
             <span className="flex items-center">
               Labor hours
               {isLaborAuto && <AutoBadge />}
+              {isLaborAuto ? (
+                <button
+                  type="button"
+                  onClick={switchLaborToManual}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Manual
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={useLaborAuto}
+                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                >
+                  Use auto
+                </button>
+              )}
             </span>
             <input
               type="number"
@@ -2103,7 +2303,26 @@ function VariantQuoteMini({
             />
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-primary/30 pt-2">
-            <span className="font-medium text-white">Total</span>
+            <span className="font-medium text-white">
+              Total
+              {isTotalAuto ? (
+                <button
+                  type="button"
+                  onClick={switchTotalToManual}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Manual
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={useTotalAuto}
+                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                >
+                  Use auto
+                </button>
+              )}
+            </span>
             <input
               type="number"
               step="0.01"
@@ -2176,12 +2395,14 @@ interface MaterialsListWithCostProps {
   materials: PartMaterial[];
   inventoryItems: InventoryItem[];
   onUpdate: () => void;
+  onNavigate?: (view: string, id?: string) => void;
 }
 
 const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
   materials,
   inventoryItems,
   onUpdate,
+  onNavigate,
 }) => {
   const { showToast } = useToast();
   const [editingQty, setEditingQty] = useState<string | null>(null);
@@ -2253,7 +2474,24 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
         return (
           <div
             key={material.id}
-            className="flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3"
+            role={onNavigate ? 'button' : undefined}
+            tabIndex={onNavigate ? 0 : undefined}
+            onClick={
+              onNavigate
+                ? () => onNavigate('inventory-detail', material.inventoryId)
+                : undefined
+            }
+            onKeyDown={
+              onNavigate
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onNavigate('inventory-detail', material.inventoryId);
+                    }
+                  }
+                : undefined
+            }
+            className={`flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3 ${onNavigate ? 'cursor-pointer transition-colors hover:border-primary/30 hover:bg-white/10' : ''}`}
           >
             <div className="min-h-0 flex-1">
               <p
@@ -2262,7 +2500,13 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
               >
                 {material.inventoryName || inv?.name || 'Unknown'}
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {onNavigate && (
+                <span className="mt-1 inline-block text-xs text-primary">View inventory →</span>
+              )}
+              <div
+                className="mt-1.5 flex flex-wrap items-center gap-1.5"
+                onClick={(e) => onNavigate && e.stopPropagation()}
+              >
                 {isEditing ? (
                   <>
                     <input
@@ -2323,13 +2567,16 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                   </>
                 )}
               </div>
-              <div className="mt-1">
+              <div className="mt-1" onClick={(e) => onNavigate && e.stopPropagation()}>
                 <MaterialCostDisplay ourCost={ourCost} />
               </div>
             </div>
             <button
               type="button"
-              onClick={() => handleDelete(material.id)}
+              onClick={(e) => {
+                if (onNavigate) e.stopPropagation();
+                handleDelete(material.id);
+              }}
               className="mt-2 flex shrink-0 items-center justify-center self-start rounded border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
               aria-label="Remove material"
             >
