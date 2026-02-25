@@ -56,7 +56,7 @@ const Parts: React.FC<PartsProps> = ({
         listRef.current.scrollTop = scrollPos;
       }
     });
-  }, [loading, filteredParts.length]);
+  }, [loading, parts.length]);
 
   const handleScroll = useThrottle(() => {
     const el = listRef.current;

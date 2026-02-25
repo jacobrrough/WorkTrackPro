@@ -1,6 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { InventoryItem, InventoryCategory } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
+import { useThrottle } from '@/useThrottle';
 import QRScanner from './components/QRScanner';
 import { useToast } from './Toast';
 
@@ -25,6 +26,8 @@ const CATEGORIES: { id: InventoryCategory; label: string }[] = [
   { id: 'miscSupplies', label: 'Misc Supplies' },
 ];
 
+const INVENTORY_VIEW_KEY = '/inventory';
+
 const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   inventory,
   searchActive = false,
@@ -38,6 +41,13 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   const { showToast } = useToast();
   const [scanningForItem, setScanningForItem] = useState<string | null>(null);
   const { state: navState, updateState } = useNavigation();
+  const listRef = useRef<HTMLDivElement>(null);
+  const scrollPositionsRef = useRef(navState.scrollPositions);
+  const hasRestoredScrollRef = useRef(false);
+
+  useEffect(() => {
+    scrollPositionsRef.current = navState.scrollPositions;
+  }, [navState.scrollPositions]);
 
   // Use navigation context for expanded categories, fallback to local state
   const expandedCategories = useMemo(() => {
@@ -70,6 +80,44 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
       updateState({ expandedCategories: withItems });
     }
   }, [searchActive, categorizedInventory, updateState]);
+
+  useEffect(() => {
+    if (hasRestoredScrollRef.current) return;
+    hasRestoredScrollRef.current = true;
+
+    const savedScroll = scrollPositionsRef.current[INVENTORY_VIEW_KEY] ?? 0;
+    if (savedScroll > 0 && listRef.current) {
+      requestAnimationFrame(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = savedScroll;
+        }
+      });
+    }
+  }, []);
+
+  const handleScroll = useThrottle(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const nextScrollTop = el.scrollTop;
+    if ((scrollPositionsRef.current[INVENTORY_VIEW_KEY] ?? 0) === nextScrollTop) return;
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [INVENTORY_VIEW_KEY]: nextScrollTop,
+      },
+    });
+  }, 150);
+
+  const navigateToItemDetail = (itemId: string) => {
+    const currentScroll = listRef.current?.scrollTop ?? 0;
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [INVENTORY_VIEW_KEY]: currentScroll,
+      },
+    });
+    onNavigate(itemId);
+  };
 
   const collapseAll = () => updateState({ expandedCategories: [] });
   const expandAll = () => updateState({ expandedCategories: CATEGORIES.map((c) => c.id) });
@@ -105,7 +153,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
         {CATEGORIES.map((category) => {
           const items = categorizedInventory[category.id] || [];
           const isExpanded = expandedCategories.has(category.id);
@@ -152,7 +200,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                           className="w-full rounded-sm border border-white/10 bg-card-dark p-3"
                         >
                           <button
-                            onClick={() => onNavigate(item.id)}
+                            onClick={() => navigateToItemDetail(item.id)}
                             className="w-full text-left transition-colors hover:bg-card-dark/80"
                           >
                             <div className="mb-3 flex items-start justify-between">
