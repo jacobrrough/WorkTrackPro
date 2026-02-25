@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Job, ViewState, Shift, User } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import { formatJobCode, formatDashSummary, totalFromDashQuantities } from '@/lib/formatJob';
-import { durationMs, formatDurationHMS } from '@/lib/timeUtils';
+import { formatDurationHMS } from '@/lib/timeUtils';
+import { getWorkedShiftMs } from '@/lib/lunchUtils';
 import ChecklistDisplay from '@/ChecklistDisplay';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useApp } from '@/AppContext';
@@ -49,7 +50,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
     let interval: ReturnType<typeof setInterval> | undefined;
     if (isClockedIn && activeShift) {
       interval = setInterval(() => {
-        setTimer(formatDurationHMS(durationMs(activeShift.clockInTime, null)));
+        setTimer(formatDurationHMS(getWorkedShiftMs(activeShift)));
       }, 1000);
     }
     return () => {
