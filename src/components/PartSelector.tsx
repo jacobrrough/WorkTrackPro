@@ -58,7 +58,9 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           const initial: Record<string, number> = {};
           fullPart.variants?.forEach((v) => {
             const key = toDashSuffix(v.variantSuffix);
-            const fromInitial = initialDashQuantities ? getDashQuantity(initialDashQuantities, key) : undefined;
+            const fromInitial = initialDashQuantities
+              ? getDashQuantity(initialDashQuantities, key)
+              : undefined;
             const nextQty = fromInitial ?? 0;
             if (nextQty > 0) {
               initial[key] = nextQty;

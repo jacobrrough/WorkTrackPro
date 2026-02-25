@@ -99,7 +99,7 @@ export function getJobFieldsInOrder(job: {
       ? formatDashSummary(job.dashQuantities)
       : variantQtyTotal > 0
         ? String(variantQtyTotal)
-      : (job.qty ?? '').trim();
+        : (job.qty ?? '').trim();
   const entries: { label: string; value: string }[] = [];
   for (const { key, label } of JOB_FIELD_ORDER) {
     let value = '';

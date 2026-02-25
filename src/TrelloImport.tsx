@@ -1555,7 +1555,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             'invoice #',
             'invoice number',
             'inv number',
-          ]) || getCustomFieldText(card, cfMap, ['inv#', 'invoice #', 'invoice number', 'inv number']);
+          ]) ||
+          getCustomFieldText(card, cfMap, ['inv#', 'invoice #', 'invoice number', 'inv number']);
         const invNumber = extractReferenceToken(
           invField || extractRegexCapture(combinedText, [/INV\s*#?\s*:?\s*([A-Za-z0-9-]+)/i])
         );

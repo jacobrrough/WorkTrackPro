@@ -1,7 +1,11 @@
 import type { Part, PartVariant } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
 import { calculateSetCompletion } from '@/lib/formatJob';
-import { normalizeVariantSuffix, normalizeDashQuantities, quantityPerUnit } from '@/lib/variantMath';
+import {
+  normalizeVariantSuffix,
+  normalizeDashQuantities,
+  quantityPerUnit,
+} from '@/lib/variantMath';
 
 /**
  * Compute required materials for a job from part definition and dash quantities.
@@ -28,7 +32,9 @@ export function computeRequiredMaterials(
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
       if (material.usageType === 'per_set') continue;
-      const qtyPerUnit = quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number });
+      const qtyPerUnit = quantityPerUnit(
+        material as { quantityPerUnit?: number; quantity?: number }
+      );
       const requiredQty = qtyPerUnit * qty;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';
@@ -50,7 +56,9 @@ export function computeRequiredMaterials(
   if (part.materials && perSetMultiplier > 0) {
     for (const material of part.materials) {
       if (material.usageType !== 'per_set') continue;
-      const qtyPerSet = quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number });
+      const qtyPerSet = quantityPerUnit(
+        material as { quantityPerUnit?: number; quantity?: number }
+      );
       const requiredQty = qtyPerSet * perSetMultiplier;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';

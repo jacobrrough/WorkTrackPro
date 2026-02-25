@@ -344,14 +344,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
         // For each dash quantity, get variant materials and multiply
         for (const [suffix, qty] of Object.entries(dashQuantities)) {
           if (qty <= 0) continue;
-          const variant = part.variants.find((v) => toDashSuffix(v.variantSuffix) === toDashSuffix(suffix));
+          const variant = part.variants.find(
+            (v) => toDashSuffix(v.variantSuffix) === toDashSuffix(suffix)
+          );
           if (variant?.materials) {
             for (const material of variant.materials) {
               const invItem = inventoryById.get(material.inventoryId);
               if (invItem && invItem.price) {
-                const requiredQty = quantityPerUnit(
-                  material as { quantityPerUnit?: number; quantity?: number }
-                ) * qty;
+                const requiredQty =
+                  quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number }) *
+                  qty;
                 const cost = requiredQty * invItem.price * materialUpcharge;
                 const existing = costs.get(material.inventoryId) || 0;
                 costs.set(material.inventoryId, existing + cost);
@@ -367,9 +369,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
             if (material.usageType === 'per_set') {
               const invItem = inventoryById.get(material.inventoryId);
               if (invItem && invItem.price) {
-                const requiredQty = quantityPerUnit(
-                  material as { quantityPerUnit?: number; quantity?: number }
-                ) * totalQty;
+                const requiredQty =
+                  quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number }) *
+                  totalQty;
                 const cost = requiredQty * invItem.price * materialUpcharge;
                 const existing = costs.get(material.inventoryId) || 0;
                 costs.set(material.inventoryId, existing + cost);
@@ -381,7 +383,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
         // Fallback: single variant or part-level materials
         const variant =
           variantSuffix && part.variants
-            ? part.variants.find((v) => toDashSuffix(v.variantSuffix) === toDashSuffix(variantSuffix))
+            ? part.variants.find(
+                (v) => toDashSuffix(v.variantSuffix) === toDashSuffix(variantSuffix)
+              )
             : null;
         const materials = variant?.materials || part.materials || [];
 
@@ -578,17 +582,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
   const persistedLaborBreakdown = useMemo(
     () =>
-      variantAllocation.entries.reduce<Record<string, { qty: number; hoursPerUnit: number; totalHours: number }>>(
-        (acc, entry) => {
-          acc[entry.suffix] = {
-            qty: entry.qty,
-            hoursPerUnit: entry.laborHoursPerUnit,
-            totalHours: entry.laborHoursTotal,
-          };
-          return acc;
-        },
-        {}
-      ),
+      variantAllocation.entries.reduce<
+        Record<string, { qty: number; hoursPerUnit: number; totalHours: number }>
+      >((acc, entry) => {
+        acc[entry.suffix] = {
+          qty: entry.qty,
+          hoursPerUnit: entry.laborHoursPerUnit,
+          totalHours: entry.laborHoursTotal,
+        };
+        return acc;
+      }, {}),
     [variantAllocation.entries]
   );
 
@@ -790,7 +793,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       qty: job.qty || '',
       laborHours: job.laborHours?.toString() || '',
       cncHours: machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '',
-      printer3DHours: machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
+      printer3DHours:
+        machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
       status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
@@ -987,7 +991,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       qty: job.qty || '',
       laborHours: job.laborHours?.toString() || '',
       cncHours: machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '',
-      printer3DHours: machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
+      printer3DHours:
+        machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
       status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
@@ -1070,7 +1075,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
     if (!linkedPart?.variants?.length) return;
     setAllocationSource('variant');
     const laborNext: Record<string, number> = {};
-    const machineNext: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
+    const machineNext: Record<
+      string,
+      { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
+    > = {};
     linkedPart.variants.forEach((variant) => {
       const key = toDashSuffix(variant.variantSuffix);
       laborNext[key] = variant.laborHours ?? linkedPart.laborHours ?? 0;
@@ -1620,7 +1628,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
                   {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 ? (
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
-                      {formatDashSummary(dashQuantities)} → Total: {totalFromDashQuantities(dashQuantities)}
+                      {formatDashSummary(dashQuantities)} → Total:{' '}
+                      {totalFromDashQuantities(dashQuantities)}
                     </div>
                   ) : totalFromDashQuantities(dashQuantities) > 0 ? (
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
@@ -1655,7 +1664,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             type="number"
                             min={0}
                             value={qty}
-                            onChange={(e) => handleDashQuantityChange(variant.variantSuffix, e.target.value)}
+                            onChange={(e) =>
+                              handleDashQuantityChange(variant.variantSuffix, e.target.value)
+                            }
                             className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                           />
                           {currentUser.isAdmin && (
@@ -1821,13 +1832,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <div className="mb-3 space-y-0.5">
                       {laborBreakdownByDash.entries.map(
                         ({ suffix, qty, totalHours, cncHoursTotal, printer3DHoursTotal }) => (
-                        <div
-                          key={suffix}
-                          className="flex justify-between text-[10px] text-slate-400"
-                        >
-                          {suffix} ×{qty} = L {totalHours.toFixed(1)}h / CNC{' '}
-                          {cncHoursTotal.toFixed(1)}h / 3D {printer3DHoursTotal.toFixed(1)}h
-                        </div>
+                          <div
+                            key={suffix}
+                            className="flex justify-between text-[10px] text-slate-400"
+                          >
+                            {suffix} ×{qty} = L {totalHours.toFixed(1)}h / CNC{' '}
+                            {cncHoursTotal.toFixed(1)}h / 3D {printer3DHoursTotal.toFixed(1)}h
+                          </div>
                         )
                       )}
                     </div>

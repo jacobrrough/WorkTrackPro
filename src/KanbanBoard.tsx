@@ -435,7 +435,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
-        className="flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory touch-pan-x md:snap-none"
+        className="flex-1 touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden md:snap-none"
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x',
@@ -451,7 +451,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <div
                 key={column.id}
                 data-kanban-column-root="true"
-                className={`flex w-[calc(100vw-1.5rem)] min-w-[calc(100vw-1.5rem)] shrink-0 flex-col snap-start rounded-sm border bg-black/20 md:w-64 md:min-w-64 max-md:[scroll-snap-stop:always] ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex w-[calc(100vw-1.5rem)] min-w-[calc(100vw-1.5rem)] shrink-0 snap-start flex-col rounded-sm border bg-black/20 max-md:[scroll-snap-stop:always] md:w-64 md:min-w-64 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);

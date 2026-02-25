@@ -77,8 +77,16 @@ export function computeVariantBreakdown(params: {
   } = params;
   const normalizedDash = normalizeDashQuantities(params.dashQuantities);
 
-  const distributedLabor = distributeTotalPerUnit(totalLaborHours, normalizedDash, part?.setComposition);
-  const distributedCnc = distributeTotalPerUnit(totalCncHours, normalizedDash, part?.setComposition);
+  const distributedLabor = distributeTotalPerUnit(
+    totalLaborHours,
+    normalizedDash,
+    part?.setComposition
+  );
+  const distributedCnc = distributeTotalPerUnit(
+    totalCncHours,
+    normalizedDash,
+    part?.setComposition
+  );
   const distributedPrinter = distributeTotalPerUnit(
     totalPrinter3DHours,
     normalizedDash,
@@ -97,16 +105,16 @@ export function computeVariantBreakdown(params: {
 
     const laborHoursPerUnit =
       source === 'variant'
-        ? laborOverridePerUnit[suffixKey] ?? laborFromPart
-        : distributedLabor[suffixKey] ?? laborFromPart;
+        ? (laborOverridePerUnit[suffixKey] ?? laborFromPart)
+        : (distributedLabor[suffixKey] ?? laborFromPart);
     const cncHoursPerUnit =
       source === 'variant'
-        ? machineOverridePerUnit[suffixKey]?.cncHoursPerUnit ?? cncFromPart
-        : distributedCnc[suffixKey] ?? cncFromPart;
+        ? (machineOverridePerUnit[suffixKey]?.cncHoursPerUnit ?? cncFromPart)
+        : (distributedCnc[suffixKey] ?? cncFromPart);
     const printer3DHoursPerUnit =
       source === 'variant'
-        ? machineOverridePerUnit[suffixKey]?.printer3DHoursPerUnit ?? printerFromPart
-        : distributedPrinter[suffixKey] ?? printerFromPart;
+        ? (machineOverridePerUnit[suffixKey]?.printer3DHoursPerUnit ?? printerFromPart)
+        : (distributedPrinter[suffixKey] ?? printerFromPart);
 
     entries.push({
       suffix: suffixKey,
