@@ -1952,19 +1952,13 @@ function VariantQuoteMini({
   // Initialize manualVariantPrice from calculated price or variant's own pricePerVariant
   useEffect(() => {
     if (!hasUserEdited) {
-      if (calculatedVariantPrice != null) {
-        setManualVariantPrice(calculatedVariantPrice.toFixed(2));
-        setIsManualPrice(true);
-        // Auto-save calculated price to variant (only if different from current)
-        if (
-          onVariantPriceChange &&
-          Math.abs(calculatedVariantPrice - (variant.pricePerVariant ?? 0)) > 0.01
-        ) {
-          onVariantPriceChange(variant.id, calculatedVariantPrice);
-        }
-      } else if (variant.pricePerVariant != null) {
+      if (variant.pricePerVariant != null) {
         setManualVariantPrice(variant.pricePerVariant.toString());
         setIsManualPrice(true);
+      } else if (calculatedVariantPrice != null) {
+        // Show auto suggestion from set share, but do not persist unless user chooses it.
+        setManualVariantPrice(calculatedVariantPrice.toFixed(2));
+        setIsManualPrice(false);
       } else {
         setManualVariantPrice('');
         setIsManualPrice(false);
@@ -2061,7 +2055,7 @@ function VariantQuoteMini({
                 calculatedVariantPrice != null ? calculatedVariantPrice.toFixed(2) : 'Auto'
               }
             />
-            {calculatedVariantPrice != null && !hasUserEdited && <AutoBadge />}
+            {calculatedVariantPrice != null && !hasUserEdited && !isManualPrice && <AutoBadge />}
             {hasUserEdited && calculatedVariantPrice != null && (
               <button
                 type="button"
