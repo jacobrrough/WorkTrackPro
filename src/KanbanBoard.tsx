@@ -440,7 +440,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
         {activeSearchTerm && (
           <div className="mt-2 flex items-center justify-between gap-2 rounded-sm border border-primary/30 bg-primary/10 px-2 py-1.5">
-            <p className="truncate text-[11px] text-primary">Search: “{activeSearchTerm}”</p>
+            <p className="truncate text-[11px] text-primary">Search: "{activeSearchTerm}"</p>
             <button
               type="button"
               onClick={() => updateState({ searchTerm: '' })}

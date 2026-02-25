@@ -26,6 +26,7 @@ import {
 } from './lib/inventoryCalculations';
 import { buildJobNameFromConvention } from './lib/formatJob';
 import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
+import { stripInventoryFinancials } from '@/lib/priceVisibility';
 
 interface AppContextType {
   currentUser: User | null;
@@ -911,8 +912,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Defense in depth: never expose inventory pricing to non-admin UI consumers.
   const inventoryForRole = useMemo(() => {
-    if (currentUser?.isAdmin) return inventoryWithComputed;
-    return inventoryWithComputed.map((item) => ({ ...item, price: undefined }));
+    return stripInventoryFinancials(inventoryWithComputed, currentUser?.isAdmin === true);
   }, [inventoryWithComputed, currentUser?.isAdmin]);
 
   const contextValue = useMemo<AppContextType>(

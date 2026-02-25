@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { InventoryItem, InventoryCategory } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useThrottle } from '@/useThrottle';
+import { shouldShowInventoryKanbanPrice } from '@/lib/priceVisibility';
 import QRScanner from './components/QRScanner';
 import { useToast } from './Toast';
 
@@ -264,9 +265,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                                   </p>
                                 </div>
                               )}
-                              {isAdmin &&
-                                item.price &&
-                                (!item.reorderPoint || item.reorderPoint === 0) && (
+                              {shouldShowInventoryKanbanPrice(item, isAdmin) && (
                                 <div>
                                   <p className="text-xs text-slate-400">Price</p>
                                   <p className="font-bold text-white">${item.price.toFixed(2)}</p>
