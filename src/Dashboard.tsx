@@ -90,9 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   useEffect(() => {
-    if (activeShift?.id) {
-      setIsTrackerOpen(true);
-    } else {
+    if (!activeShift?.id) {
       setIsTrackerOpen(false);
       setIsClockOutLoading(false);
       setIsLunchLoading(false);

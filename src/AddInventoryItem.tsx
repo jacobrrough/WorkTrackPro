@@ -145,14 +145,29 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
               value={category}
               onChange={(e) => setCategory(e.target.value as InventoryCategory)}
               className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              style={{ colorScheme: 'dark' }}
             >
-              <option value="material">Material</option>
-              <option value="foam">Foam</option>
-              <option value="trimCord">Trim Cord</option>
-              <option value="printing3d">3D Printing</option>
-              <option value="chemicals">Chemicals</option>
-              <option value="hardware">Hardware</option>
-              <option value="miscSupplies">Misc Supplies</option>
+              <option value="material" className="bg-background-dark text-white">
+                Material
+              </option>
+              <option value="foam" className="bg-background-dark text-white">
+                Foam
+              </option>
+              <option value="trimCord" className="bg-background-dark text-white">
+                Trim Cord
+              </option>
+              <option value="printing3d" className="bg-background-dark text-white">
+                3D Printing
+              </option>
+              <option value="chemicals" className="bg-background-dark text-white">
+                Chemicals
+              </option>
+              <option value="hardware" className="bg-background-dark text-white">
+                Hardware
+              </option>
+              <option value="miscSupplies" className="bg-background-dark text-white">
+                Misc Supplies
+              </option>
             </select>
           </FormField>
 

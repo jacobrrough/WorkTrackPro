@@ -32,6 +32,16 @@ body {
   flex-direction: column;
 }
 
+select,
+option {
+  color-scheme: dark;
+}
+
+option {
+  background-color: #1b1324;
+  color: #ffffff;
+}
+
 @layer utilities {
   .material-symbols-outlined {
     font-variation-settings:

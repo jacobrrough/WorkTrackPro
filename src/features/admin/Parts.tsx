@@ -43,18 +43,20 @@ const Parts: React.FC<PartsProps> = ({
   }, []);
 
   useEffect(() => {
-    if (hasRestoredScrollRef.current) return;
-    hasRestoredScrollRef.current = true;
-
+    if (loading || hasRestoredScrollRef.current) return;
     const scrollPos = scrollPositionsRef.current[PARTS_VIEW_KEY] ?? 0;
-    if (scrollPos > 0 && listRef.current) {
-      requestAnimationFrame(() => {
-        if (listRef.current) {
-          listRef.current.scrollTop = scrollPos;
-        }
-      });
+    if (scrollPos <= 0 || !listRef.current) {
+      hasRestoredScrollRef.current = true;
+      return;
     }
-  }, []);
+
+    hasRestoredScrollRef.current = true;
+    requestAnimationFrame(() => {
+      if (listRef.current) {
+        listRef.current.scrollTop = scrollPos;
+      }
+    });
+  }, [loading, filteredParts.length]);
 
   const handleScroll = useThrottle(() => {
     const el = listRef.current;
@@ -103,6 +105,13 @@ const Parts: React.FC<PartsProps> = ({
   }, [parts, searchQuery]);
 
   const handlePartClick = (partId: string) => {
+    const currentScroll = listRef.current?.scrollTop ?? 0;
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [PARTS_VIEW_KEY]: currentScroll,
+      },
+    });
     onNavigate('part-detail', { partId });
   };
 
