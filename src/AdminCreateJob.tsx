@@ -1,5 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Job, User, ViewState, JobStatus, BoardType, Shift, Part, getStatusDisplayName } from '@/core/types';
+import {
+  Job,
+  User,
+  ViewState,
+  JobStatus,
+  BoardType,
+  Shift,
+  Part,
+  getStatusDisplayName,
+} from '@/core/types';
 import { dateInputToISO } from '@/core/date';
 import { getLaborSuggestion } from '@/lib/laborSuggestion';
 import {

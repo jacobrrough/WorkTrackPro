@@ -1362,11 +1362,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 Variants / Dash Numbers ({part.variants?.length ?? 0})
               </h3>
               {(part.variants?.length ?? 0) === 0 ? (
-                <p className="mt-2 text-sm text-slate-400">No variants — part number is the only SKU.</p>
+                <p className="mt-2 text-sm text-slate-400">
+                  No variants — part number is the only SKU.
+                </p>
               ) : (
                 <p className="mt-1 text-xs text-slate-400">
-                  {part.variants?.length} dash number{(part.variants?.length ?? 0) !== 1 ? 's' : ''}:{' '}
-                  {part.variants?.map((v) => `-${v.variantSuffix}`).join(', ')}
+                  {part.variants?.length} dash number{(part.variants?.length ?? 0) !== 1 ? 's' : ''}
+                  : {part.variants?.map((v) => `-${v.variantSuffix}`).join(', ')}
                 </p>
               )}
               <AddVariantInline
@@ -2477,9 +2479,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
             role={onNavigate ? 'button' : undefined}
             tabIndex={onNavigate ? 0 : undefined}
             onClick={
-              onNavigate
-                ? () => onNavigate('inventory-detail', material.inventoryId)
-                : undefined
+              onNavigate ? () => onNavigate('inventory-detail', material.inventoryId) : undefined
             }
             onKeyDown={
               onNavigate

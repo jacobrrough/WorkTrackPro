@@ -349,7 +349,8 @@ export default function App() {
     const item = inventory.find((i) => i.id === id);
     if (!item) {
       const returnTo = returnViews['inventory-detail'];
-      const backView = typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
+      const backView =
+        typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
       const backId = typeof returnTo === 'object' && returnTo?.id != null ? returnTo.id : undefined;
       return (
         <AppShell>
@@ -366,7 +367,8 @@ export default function App() {
       );
     }
     const returnTo = returnViews['inventory-detail'];
-    const backView = typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
+    const backView =
+      typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
     const backId = typeof returnTo === 'object' && returnTo?.id != null ? returnTo.id : undefined;
     return (
       <AppShell>
