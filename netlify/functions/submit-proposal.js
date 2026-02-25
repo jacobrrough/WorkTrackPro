@@ -177,6 +177,30 @@ async function sendResendEmail({ from, to, subject, html, text, replyTo }) {
   return { ok: true, id: messageId, status: response.status };
 }
 
+async function getResendEmailLastEvent(emailId) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || !emailId) return null;
+
+  try {
+    const response = await fetch(`https://api.resend.com/emails/${emailId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => ({}));
+    const lastEvent = sanitizeText(payload?.last_event).toLowerCase();
+    return lastEvent || null;
+  } catch {
+    return null;
+  }
+}
+
+function isTerminalEmailFailure(lastEvent) {
+  return ['bounced', 'failed', 'suppressed', 'complained', 'canceled'].includes(lastEvent);
+}
+
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true }) };
@@ -367,7 +391,12 @@ export async function handler(event) {
         warnings.push('admin_email_failed');
         warningDetails.push(`Admin email failed: ${normalizeResendError(sent.error)}`);
       } else {
-        emailQueue.admin = { id: sent.id, status: sent.status };
+        const lastEvent = await getResendEmailLastEvent(sent.id);
+        emailQueue.admin = { id: sent.id, status: sent.status, lastEvent };
+        if (isTerminalEmailFailure(lastEvent)) {
+          warnings.push('admin_email_failed');
+          warningDetails.push(`Admin email failed after queue: ${lastEvent}`);
+        }
       }
     }
 
@@ -395,7 +424,12 @@ export async function handler(event) {
       warnings.push('customer_email_failed');
       warningDetails.push(`Customer email failed: ${normalizeResendError(customerSent.error)}`);
     } else {
-      emailQueue.customer = { id: customerSent.id, status: customerSent.status };
+      const lastEvent = await getResendEmailLastEvent(customerSent.id);
+      emailQueue.customer = { id: customerSent.id, status: customerSent.status, lastEvent };
+      if (isTerminalEmailFailure(lastEvent)) {
+        warnings.push('customer_email_failed');
+        warningDetails.push(`Customer email failed after queue: ${lastEvent}`);
+      }
     }
 
     return {

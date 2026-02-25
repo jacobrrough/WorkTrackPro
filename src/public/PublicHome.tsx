@@ -198,8 +198,8 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
         warnings?: string[];
         warningDetails?: string[];
         emailQueue?: {
-          admin?: { id: string; status: number } | null;
-          customer?: { id: string; status: number } | null;
+          admin?: { id: string; status: number; lastEvent?: string | null } | null;
+          customer?: { id: string; status: number; lastEvent?: string | null } | null;
         };
       } | null;
       if (!response.ok) {
@@ -208,6 +208,15 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
 
       const emailWarnings = payload?.warnings ?? [];
       const warningDetails = payload?.warningDetails ?? [];
+      const customerLastEvent = payload?.emailQueue?.customer?.lastEvent ?? null;
+      const customerFailed =
+        customerLastEvent != null &&
+        ['bounced', 'failed', 'suppressed', 'complained', 'canceled'].includes(
+          customerLastEvent.toLowerCase()
+        );
+      if (customerFailed && !emailWarnings.includes('customer_email_failed')) {
+        emailWarnings.push('customer_email_failed');
+      }
       const queuedAdmin = payload?.emailQueue?.admin?.id ? 'admin' : null;
       const queuedCustomer = payload?.emailQueue?.customer?.id ? 'customer' : null;
       const queuedTargets = [queuedAdmin, queuedCustomer].filter(Boolean);
