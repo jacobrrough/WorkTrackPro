@@ -178,6 +178,22 @@ export interface Job {
   rfqNumber?: string;
   owrNumber?: string;
   dashQuantities?: Record<string, number>;
+  laborBreakdownByVariant?: Record<
+    string,
+    { qty: number; hoursPerUnit: number; totalHours: number }
+  >;
+  machineBreakdownByVariant?: Record<
+    string,
+    {
+      qty: number;
+      cncHoursPerUnit: number;
+      cncHoursTotal: number;
+      printer3DHoursPerUnit: number;
+      printer3DHoursTotal: number;
+    }
+  >;
+  allocationSource?: 'variant' | 'total';
+  allocationSourceUpdatedAt?: string;
   revision?: string;
   partId?: string;
   expand?: {
@@ -242,6 +258,10 @@ export interface PartVariant {
   name?: string;
   pricePerVariant?: number;
   laborHours?: number;
+  requiresCNC?: boolean;
+  cncTimeHours?: number;
+  requires3DPrint?: boolean;
+  printer3DTimeHours?: number;
   createdAt?: string;
   updatedAt?: string;
   materials?: PartMaterial[];

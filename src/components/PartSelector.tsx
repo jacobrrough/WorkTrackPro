@@ -3,6 +3,7 @@ import { Part, PartVariant } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import { formatSetComposition } from '@/lib/formatJob';
+import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 
 interface PartSelectorProps {
   onSelect: (part: Part, dashQuantities: Record<string, number>) => void;
@@ -25,7 +26,9 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const { showToast } = useToast();
   const [search, setSearch] = useState(initialPartNumber);
   const [part, setPart] = useState<(Part & { variants?: PartVariant[] }) | null>(null);
-  const [dashQuantities, setDashQuantities] = useState<Record<string, number>>({});
+  const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(
+    normalizeDashQuantities(initialDashQuantities ?? {})
+  );
   const [loading, setLoading] = useState(false);
 
   const loadPart = useCallback(
@@ -54,12 +57,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           // Initialize: use pre-filled edit values when present, omit zero-qty variants
           const initial: Record<string, number> = {};
           fullPart.variants?.forEach((v) => {
-            const key = v.variantSuffix;
-            const fromInitial = initialDashQuantities
-              ? (initialDashQuantities[key] ??
-                initialDashQuantities[`-${key}`] ??
-                initialDashQuantities[key.replace(/^-/, '')])
-              : undefined;
+            const key = toDashSuffix(v.variantSuffix);
+            const fromInitial = initialDashQuantities ? getDashQuantity(initialDashQuantities, key) : undefined;
             const nextQty = fromInitial ?? 0;
             if (nextQty > 0) {
               initial[key] = nextQty;
@@ -102,11 +101,12 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   };
 
   const handleQuantityChange = (suffix: string, qty: number) => {
-    const newQuantities = { ...dashQuantities };
+    const key = toDashSuffix(suffix);
+    const newQuantities = { ...normalizeDashQuantities(dashQuantities) };
     if (qty > 0) {
-      newQuantities[suffix] = Math.max(0, qty);
+      newQuantities[key] = Math.max(0, qty);
     } else {
-      delete newQuantities[suffix];
+      delete newQuantities[key];
     }
     setDashQuantities(newQuantities);
     // Auto-update parent when quantities change (live update)
@@ -129,8 +129,9 @@ const PartSelector: React.FC<PartSelectorProps> = ({
         : null;
     const newQuantities: Record<string, number> = {};
     part.variants.forEach((v) => {
-      const qty = setComp?.[v.variantSuffix] ?? setComp?.[v.variantSuffix.replace(/^-/, '')] ?? 1;
-      newQuantities[v.variantSuffix] = qty;
+      const key = toDashSuffix(v.variantSuffix);
+      const qty = getDashQuantity(setComp, key) || 1;
+      newQuantities[key] = qty;
     });
     setDashQuantities(newQuantities);
     onSelect(part, newQuantities);
@@ -196,7 +197,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           </div>
           <div className="space-y-1.5">
             {part.variants.map((variant) => {
-              const qty = dashQuantities[variant.variantSuffix] || 0;
+              const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
               return (
                 <div key={variant.id} className="flex items-center gap-2">
                   <label className="w-24 text-xs text-slate-400">

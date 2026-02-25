@@ -197,6 +197,10 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
         message?: string;
         warnings?: string[];
         warningDetails?: string[];
+        emailQueue?: {
+          admin?: { id: string; status: number } | null;
+          customer?: { id: string; status: number } | null;
+        };
       } | null;
       if (!response.ok) {
         throw new Error(payload?.error || payload?.message || 'Failed to submit proposal.');
@@ -204,14 +208,19 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
 
       const emailWarnings = payload?.warnings ?? [];
       const warningDetails = payload?.warningDetails ?? [];
+      const queuedAdmin = payload?.emailQueue?.admin?.id ? 'admin' : null;
+      const queuedCustomer = payload?.emailQueue?.customer?.id ? 'customer' : null;
+      const queuedTargets = [queuedAdmin, queuedCustomer].filter(Boolean);
       if (emailWarnings.length > 0) {
         const detailsText = warningDetails.length > 0 ? ` ${warningDetails.join(' ')}` : '';
         setSuccessMessage(
-          `Proposal submitted and routed to quoting, but email notifications failed.${detailsText}`
+          `Proposal submitted and routed to quoting, but one or more email notifications failed.${detailsText}`
         );
       } else {
         setSuccessMessage(
-          'Proposal submitted. Our team will review it and move it into quoting right away.'
+          queuedTargets.length > 0
+            ? `Proposal submitted and email notification queued (${queuedTargets.join(' + ')}).`
+            : 'Proposal submitted and routed to quoting.'
         );
       }
       setContactName('');

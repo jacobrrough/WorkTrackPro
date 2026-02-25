@@ -76,6 +76,23 @@ function mapJobRow(
     rfqNumber: row.rfq_number as string | undefined,
     owrNumber: row.owr_number as string | undefined,
     dashQuantities: row.dash_quantities as Record<string, number> | undefined,
+    laborBreakdownByVariant: row.labor_breakdown_by_variant as
+      | Record<string, { qty: number; hoursPerUnit: number; totalHours: number }>
+      | undefined,
+    machineBreakdownByVariant: row.machine_breakdown_by_variant as
+      | Record<
+          string,
+          {
+            qty: number;
+            cncHoursPerUnit: number;
+            cncHoursTotal: number;
+            printer3DHoursPerUnit: number;
+            printer3DHoursTotal: number;
+          }
+        >
+      | undefined,
+    allocationSource: row.allocation_source as 'variant' | 'total' | undefined,
+    allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,
     partId: row.part_id as string | undefined,
   };
@@ -403,6 +420,10 @@ export const jobService = {
       rfq_number: data.rfqNumber ?? null,
       owr_number: data.owrNumber ?? null,
       dash_quantities: data.dashQuantities ?? null,
+      labor_breakdown_by_variant: data.laborBreakdownByVariant ?? null,
+      machine_breakdown_by_variant: data.machineBreakdownByVariant ?? null,
+      allocation_source: data.allocationSource ?? null,
+      allocation_source_updated_at: data.allocationSource ? new Date().toISOString() : null,
       revision: data.revision ?? null,
       part_id: data.partId ?? resolvedPart?.partId ?? null,
     };
@@ -469,6 +490,14 @@ export const jobService = {
     if (data.rfqNumber !== undefined) row.rfq_number = data.rfqNumber;
     if (data.owrNumber !== undefined) row.owr_number = data.owrNumber;
     if (data.dashQuantities !== undefined) row.dash_quantities = data.dashQuantities;
+    if (data.laborBreakdownByVariant !== undefined)
+      row.labor_breakdown_by_variant = data.laborBreakdownByVariant;
+    if (data.machineBreakdownByVariant !== undefined)
+      row.machine_breakdown_by_variant = data.machineBreakdownByVariant;
+    if (data.allocationSource !== undefined) {
+      row.allocation_source = data.allocationSource;
+      row.allocation_source_updated_at = new Date().toISOString();
+    }
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
     row.updated_at = new Date().toISOString();
@@ -573,10 +602,15 @@ export const jobService = {
   },
 
   async updateAttachmentAdminOnly(attachmentId: string, isAdminOnly: boolean): Promise<boolean> {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('attachments')
       .update({ is_admin_only: isAdminOnly })
-      .eq('id', attachmentId);
-    return !error;
+      .eq('id', attachmentId)
+      .select('id, is_admin_only')
+      .maybeSingle();
+    if (error) return false;
+    // RLS-denied or missing row can return no error + no row updated.
+    if (!data) return false;
+    return data.is_admin_only === isAdminOnly;
   },
 };

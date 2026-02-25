@@ -136,7 +136,7 @@ async function attachProposalFilesToAdminJob({ supabase, jobId, files }) {
   return warnings;
 }
 
-async function sendResendEmail({ from, to, subject, html }) {
+async function sendResendEmail({ from, to, subject, html, text, replyTo }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, error: 'Missing RESEND_API_KEY' };
   if (!from) return { ok: false, error: 'Missing email From address' };
@@ -152,14 +152,29 @@ async function sendResendEmail({ from, to, subject, html }) {
       to: [to],
       subject,
       html,
+      text,
+      ...(replyTo ? { reply_to: [replyTo] } : {}),
     }),
   });
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    return { ok: false, error: `Resend error: ${response.status} ${body}`.trim() };
+    return {
+      ok: false,
+      error: `Resend error: ${response.status} ${body}`.trim(),
+      status: response.status,
+    };
   }
-  return { ok: true };
+  const payload = await response.json().catch(() => ({}));
+  const messageId = typeof payload?.id === 'string' ? payload.id : '';
+  if (!messageId) {
+    return {
+      ok: false,
+      error: 'Resend accepted request but did not return an email id.',
+      status: response.status,
+    };
+  }
+  return { ok: true, id: messageId, status: response.status };
 }
 
 export async function handler(event) {
@@ -305,6 +320,10 @@ export async function handler(event) {
     const appUrl = process.env.APP_PUBLIC_URL || 'https://roughcutmfg.com/app';
     const warnings = [];
     const warningDetails = [];
+    const emailQueue = {
+      admin: null,
+      customer: null,
+    };
 
     const attachmentWarnings = await attachProposalFilesToAdminJob({
       supabase,
@@ -329,11 +348,26 @@ export async function handler(event) {
           <p><strong>Admin Job Code:</strong> ${insertedJob.job_code}</p>
           <p><a href="${appUrl}">Open Employee App</a></p>
         `,
+        text: [
+          'New Customer Proposal',
+          `Contact: ${contactName}`,
+          `Email: ${email}`,
+          `Phone: ${phone}`,
+          '',
+          'Description:',
+          description,
+          '',
+          `Admin Job Code: ${insertedJob.job_code}`,
+          `Open Employee App: ${appUrl}`,
+        ].join('\n'),
+        replyTo: email,
       });
       if (!sent.ok) {
         console.error('Admin proposal email failed:', sent.error);
         warnings.push('admin_email_failed');
         warningDetails.push(`Admin email failed: ${normalizeResendError(sent.error)}`);
+      } else {
+        emailQueue.admin = { id: sent.id, status: sent.status };
       }
     }
 
@@ -348,11 +382,20 @@ export async function handler(event) {
         <p>Our team will contact you soon with next steps.</p>
         <p>- Rough Cut Manufacturing</p>
       `,
+      text: [
+        'Thanks for your proposal',
+        `Hi ${contactName},`,
+        'We received your proposal and routed it to our quoting board.',
+        'Our team will contact you soon with next steps.',
+        '- Rough Cut Manufacturing',
+      ].join('\n'),
     });
     if (!customerSent.ok) {
       console.error('Customer proposal email failed:', customerSent.error);
       warnings.push('customer_email_failed');
       warningDetails.push(`Customer email failed: ${normalizeResendError(customerSent.error)}`);
+    } else {
+      emailQueue.customer = { id: customerSent.id, status: customerSent.status };
     }
 
     return {
@@ -361,6 +404,7 @@ export async function handler(event) {
       body: JSON.stringify({
         ok: true,
         jobCode: insertedJob.job_code,
+        emailQueue,
         warnings: warnings.length ? warnings : undefined,
         warningDetails: warningDetails.length ? warningDetails : undefined,
       }),

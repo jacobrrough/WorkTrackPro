@@ -27,6 +27,7 @@ import {
   formatSetComposition,
   calculateSetCompletion,
   getJobNameForSave,
+  sanitizeReferenceValue,
 } from './lib/formatJob';
 import { partsService } from './services/api/parts';
 import { Part, PartVariant } from '@/core/types';
@@ -37,6 +38,13 @@ import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
 import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/materialFromPart';
 import { useApp } from '@/AppContext';
+import { computeVariantBreakdown } from '@/lib/variantAllocation';
+import {
+  getDashQuantity,
+  normalizeDashQuantities,
+  quantityPerUnit,
+  toDashSuffix,
+} from '@/lib/variantMath';
 
 interface JobDetailProps {
   job: Job;
@@ -85,6 +93,18 @@ const ALL_STATUSES: { id: JobStatus; label: string }[] = [
 const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
   status === 'rush' ? 'pending' : status;
 
+function getMachineTotalsFromJob(job: Job): { cncHours: number; printer3DHours: number } {
+  const entries = Object.values(job.machineBreakdownByVariant ?? {});
+  return entries.reduce(
+    (acc, entry) => {
+      acc.cncHours += Number(entry.cncHoursTotal) || 0;
+      acc.printer3DHours += Number(entry.printer3DHoursTotal) || 0;
+      return acc;
+    },
+    { cncHours: 0, printer3DHours: 0 }
+  );
+}
+
 const JobDetail: React.FC<JobDetailProps> = ({
   job,
   onNavigate,
@@ -132,9 +152,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValue, setMaterialQtyValue] = useState<string>('');
   const [syncingMaterials, setSyncingMaterials] = useState(false);
+  const [attachmentAdminOverrides, setAttachmentAdminOverrides] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [pendingAttachmentToggleCount, setPendingAttachmentToggleCount] = useState(0);
+  const pendingAttachmentTogglesRef = useRef<Set<Promise<void>>>(new Set());
   /** True when labor hours were auto-filled from part (show "auto" marker until user edits) */
   const [laborHoursFromPart, setLaborHoursFromPart] = useState(false);
   const { showToast } = useToast();
+  const onReloadJobRef = useRef(onReloadJob);
+
+  useEffect(() => {
+    onReloadJobRef.current = onReloadJob;
+  }, [onReloadJob]);
 
   // File viewing state
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
@@ -154,11 +184,36 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const { settings } = useSettings();
   const laborRate = settings.laborRate;
   const materialUpcharge = settings.materialUpcharge;
+  const cncRate = settings.cncRate;
+  const printer3DRate = settings.printer3DRate;
   const location = useLocation();
   const { state: navState, updateState } = useNavigation();
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(
-    job.dashQuantities || {}
+    normalizeDashQuantities(job.dashQuantities || {})
   );
+  const [allocationSource, setAllocationSource] = useState<'variant' | 'total'>(
+    job.allocationSource ?? 'variant'
+  );
+  const [laborPerUnitOverrides, setLaborPerUnitOverrides] = useState<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    for (const [suffix, entry] of Object.entries(job.laborBreakdownByVariant ?? {})) {
+      out[toDashSuffix(suffix)] = Number(entry.hoursPerUnit) || 0;
+    }
+    return out;
+  });
+  const [machinePerUnitOverrides, setMachinePerUnitOverrides] = useState<
+    Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }>
+  >(() => {
+    const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
+    for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
+      out[toDashSuffix(suffix)] = {
+        cncHoursPerUnit: Number(entry.cncHoursPerUnit) || 0,
+        printer3DHoursPerUnit: Number(entry.printer3DHoursPerUnit) || 0,
+      };
+    }
+    return out;
+  });
+  const machineTotals = useMemo(() => getMachineTotalsFromJob(job), [job]);
   const [editForm, setEditForm] = useState({
     po: job.po || '',
     description: job.description || '',
@@ -166,6 +221,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     ecd: isoToDateInput(job.ecd),
     qty: job.qty || '',
     laborHours: job.laborHours?.toString() || '',
+    cncHours: machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '',
+    printer3DHours: machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
     status: normalizeLegacyRushStatus(job.status),
     isRush: job.isRush,
     binLocation: job.binLocation || '',
@@ -215,6 +272,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
     updateState({ lastViewedJobId: job.id });
   }, [job.id, updateState]);
 
+  // Allow Kanban "Edit" action to open detail directly in edit mode.
+  useEffect(() => {
+    if (!currentUser.isAdmin) return;
+    const key = 'wtp-open-job-edit';
+    const shouldAutoEdit = localStorage.getItem(key);
+    if (shouldAutoEdit && shouldAutoEdit === job.id) {
+      setIsEditing(true);
+      localStorage.removeItem(key);
+    }
+  }, [job.id, currentUser.isAdmin]);
+
   // Part drawings: files standard users can access on job cards
   useEffect(() => {
     if (!job.partId) {
@@ -234,6 +302,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
       cancelled = true;
     };
   }, [job.partId]);
+
+  // Reset local attachment overrides when switching jobs.
+  useEffect(() => {
+    setAttachmentAdminOverrides({});
+  }, [job.id]);
 
   // Calculate labor hours suggestion from similar jobs
   // Auto job name (convention or Job #code) for labor suggestion and display
@@ -271,14 +344,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
         // For each dash quantity, get variant materials and multiply
         for (const [suffix, qty] of Object.entries(dashQuantities)) {
           if (qty <= 0) continue;
-          const variant = part.variants.find(
-            (v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, '')
-          );
+          const variant = part.variants.find((v) => toDashSuffix(v.variantSuffix) === toDashSuffix(suffix));
           if (variant?.materials) {
             for (const material of variant.materials) {
               const invItem = inventoryById.get(material.inventoryId);
               if (invItem && invItem.price) {
-                const requiredQty = material.quantity * qty;
+                const requiredQty = quantityPerUnit(
+                  material as { quantityPerUnit?: number; quantity?: number }
+                ) * qty;
                 const cost = requiredQty * invItem.price * materialUpcharge;
                 const existing = costs.get(material.inventoryId) || 0;
                 costs.set(material.inventoryId, existing + cost);
@@ -294,7 +367,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
             if (material.usageType === 'per_set') {
               const invItem = inventoryById.get(material.inventoryId);
               if (invItem && invItem.price) {
-                const requiredQty = material.quantity * totalQty;
+                const requiredQty = quantityPerUnit(
+                  material as { quantityPerUnit?: number; quantity?: number }
+                ) * totalQty;
                 const cost = requiredQty * invItem.price * materialUpcharge;
                 const existing = costs.get(material.inventoryId) || 0;
                 costs.set(material.inventoryId, existing + cost);
@@ -306,14 +381,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
         // Fallback: single variant or part-level materials
         const variant =
           variantSuffix && part.variants
-            ? part.variants.find((v) => v.variantSuffix === variantSuffix)
+            ? part.variants.find((v) => toDashSuffix(v.variantSuffix) === toDashSuffix(variantSuffix))
             : null;
         const materials = variant?.materials || part.materials || [];
 
         for (const material of materials) {
           const invItem = inventoryById.get(material.inventoryId);
           if (invItem && invItem.price) {
-            const cost = material.quantity * invItem.price * materialUpcharge;
+            const cost =
+              quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number }) *
+              invItem.price *
+              materialUpcharge;
             costs.set(material.inventoryId, cost);
           }
         }
@@ -343,9 +421,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   /** Required materials from part × dash quantities (for auto markers and debounced sync) */
   const requiredMaterialsMap = useMemo(() => {
-    if (!linkedPart || Object.keys(dashQuantities).length === 0)
+    const normalizedDash = normalizeDashQuantities(dashQuantities);
+    if (!linkedPart || Object.keys(normalizedDash).length === 0)
       return new Map<string, { quantity: number; unit: string }>();
-    return computeRequiredMaterials(linkedPart, dashQuantities);
+    return computeRequiredMaterials(linkedPart, normalizedDash);
   }, [linkedPart, dashQuantities]);
 
   /** Whether a job inventory item matches the part-derived requirement (auto-assigned) */
@@ -359,14 +438,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   // Auto-sync materials when dash quantities change (debounced)
   const syncAfterDashChangeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncRequestIdRef = useRef(0);
   useEffect(() => {
-    if (!linkedPart || !Object.values(dashQuantities).some((q) => q > 0)) return;
+    const normalizedDash = normalizeDashQuantities(dashQuantities);
+    if (!linkedPart || !Object.values(normalizedDash).some((q) => q > 0)) return;
     if (syncAfterDashChangeRef.current) clearTimeout(syncAfterDashChangeRef.current);
+    const requestId = ++syncRequestIdRef.current;
     syncAfterDashChangeRef.current = setTimeout(async () => {
       syncAfterDashChangeRef.current = null;
       try {
-        await syncJobInventoryFromPart(job.id, linkedPart, dashQuantities);
-        await onReloadJob?.();
+        await syncJobInventoryFromPart(job.id, linkedPart, normalizedDash);
+        if (requestId === syncRequestIdRef.current) {
+          await onReloadJobRef.current?.();
+        }
       } catch (e) {
         console.error('Auto-sync materials:', e);
       }
@@ -374,7 +458,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return () => {
       if (syncAfterDashChangeRef.current) clearTimeout(syncAfterDashChangeRef.current);
     };
-  }, [job.id, linkedPart, dashQuantities, onReloadJob]);
+  }, [job.id, linkedPart, dashQuantities]);
 
   // Load linked part
   const loadLinkedPart = useCallback(
@@ -388,6 +472,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         const part = await partsService.getPartByNumber(partNumber);
         if (part) {
           const partWithVariants = await partsService.getPartWithVariants(part.id);
+          if (!partWithVariants) {
+            setLinkedPart(null);
+            setSelectedVariant(null);
+            return;
+          }
           setLinkedPart(partWithVariants);
           // Set selected variant if job has one
           if (job.variantSuffix && partWithVariants.variants) {
@@ -395,20 +484,22 @@ const JobDetail: React.FC<JobDetailProps> = ({
               (v) => v.variantSuffix === job.variantSuffix
             );
             setSelectedVariant(variant || null);
+          } else {
+            setSelectedVariant(null);
           }
-          // Calculate material costs
-          calculateMaterialCosts(partWithVariants, job.variantSuffix);
         } else {
           setLinkedPart(null);
+          setSelectedVariant(null);
         }
       } catch (error) {
         console.error('Error loading part:', error);
         setLinkedPart(null);
+        setSelectedVariant(null);
       } finally {
         setLoadingPart(false);
       }
     },
-    [job.variantSuffix, calculateMaterialCosts]
+    [job.variantSuffix]
   );
 
   // Load linked part when part number changes
@@ -448,43 +539,111 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return hours * laborRate;
   }, [editForm.laborHours, laborRate]);
 
-  // Per-dash labor breakdown when we have linked part with variants and dash quantities
+  const variantAllocation = useMemo(
+    () =>
+      computeVariantBreakdown({
+        part: linkedPart,
+        dashQuantities,
+        source: allocationSource,
+        totalLaborHours: parseFloat(editForm.laborHours) || 0,
+        totalCncHours: parseFloat(editForm.cncHours) || 0,
+        totalPrinter3DHours: parseFloat(editForm.printer3DHours) || 0,
+        laborOverridePerUnit: laborPerUnitOverrides,
+        machineOverridePerUnit: machinePerUnitOverrides,
+      }),
+    [
+      linkedPart,
+      dashQuantities,
+      allocationSource,
+      editForm.laborHours,
+      editForm.cncHours,
+      editForm.printer3DHours,
+      laborPerUnitOverrides,
+      machinePerUnitOverrides,
+    ]
+  );
+
+  // Per-dash breakdown across labor + machine hours
   const laborBreakdownByDash = useMemo(() => {
-    if (!linkedPart || !linkedPart.variants?.length) return null;
-    const entries: { suffix: string; qty: number; hoursPerUnit: number; totalHours: number }[] = [];
-    let totalFromDash = 0;
-    for (const [suffix, qty] of Object.entries(dashQuantities)) {
-      if (qty <= 0) continue;
-      const variant = linkedPart.variants.find(
-        (v) => v.variantSuffix === suffix || v.variantSuffix === suffix.replace(/^-/, '')
-      );
-      const hoursPerUnit = variant?.laborHours ?? linkedPart.laborHours ?? 0;
-      const totalHours = hoursPerUnit * qty;
-      totalFromDash += totalHours;
-      entries.push({
-        suffix: suffix.startsWith('-') ? suffix : `-${suffix}`,
-        qty,
-        hoursPerUnit,
-        totalHours,
-      });
-    }
-    if (entries.length === 0) return null;
-    return { entries, totalFromDash };
-  }, [linkedPart, dashQuantities]);
+    if (variantAllocation.entries.length === 0) return null;
+    return {
+      entries: variantAllocation.entries,
+      totalFromDash: variantAllocation.totals.laborHours,
+      totalCncFromDash: variantAllocation.totals.cncHours,
+      totalPrinter3DFromDash: variantAllocation.totals.printer3DHours,
+    };
+  }, [variantAllocation]);
 
   // Auto-fill labor from part × dash quantities when labor is empty (so calculations stay automatic)
   const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
+  const persistedLaborBreakdown = useMemo(
+    () =>
+      variantAllocation.entries.reduce<Record<string, { qty: number; hoursPerUnit: number; totalHours: number }>>(
+        (acc, entry) => {
+          acc[entry.suffix] = {
+            qty: entry.qty,
+            hoursPerUnit: entry.laborHoursPerUnit,
+            totalHours: entry.laborHoursTotal,
+          };
+          return acc;
+        },
+        {}
+      ),
+    [variantAllocation.entries]
+  );
+
+  const persistedMachineBreakdown = useMemo(
+    () =>
+      variantAllocation.entries.reduce<
+        Record<
+          string,
+          {
+            qty: number;
+            cncHoursPerUnit: number;
+            cncHoursTotal: number;
+            printer3DHoursPerUnit: number;
+            printer3DHoursTotal: number;
+          }
+        >
+      >((acc, entry) => {
+        acc[entry.suffix] = {
+          qty: entry.qty,
+          cncHoursPerUnit: entry.cncHoursPerUnit,
+          cncHoursTotal: entry.cncHoursTotal,
+          printer3DHoursPerUnit: entry.printer3DHoursPerUnit,
+          printer3DHoursTotal: entry.printer3DHoursTotal,
+        };
+        return acc;
+      }, {}),
+    [variantAllocation.entries]
+  );
   useEffect(() => {
-    if (laborBreakdownTotal <= 0) return;
+    if (laborBreakdownTotal <= 0 || allocationSource !== 'variant') return;
     setEditForm((prev) => {
-      const current = parseFloat(prev.laborHours);
-      if (Number.isNaN(current) || current <= 0) {
-        setLaborHoursFromPart(true);
-        return { ...prev, laborHours: laborBreakdownTotal.toFixed(2) };
+      const nextLabor = laborBreakdownTotal.toFixed(2);
+      const nextCnc = variantAllocation.totals.cncHours.toFixed(2);
+      const nextPrinter3D = variantAllocation.totals.printer3DHours.toFixed(2);
+      if (
+        prev.laborHours === nextLabor &&
+        prev.cncHours === nextCnc &&
+        prev.printer3DHours === nextPrinter3D
+      ) {
+        return prev;
       }
-      return prev;
+      setLaborHoursFromPart(true);
+      return {
+        ...prev,
+        laborHours: nextLabor,
+        cncHours: nextCnc,
+        printer3DHours: nextPrinter3D,
+      };
     });
-  }, [laborBreakdownTotal]);
+  }, [
+    laborBreakdownTotal,
+    allocationSource,
+    variantAllocation.totals.cncHours,
+    variantAllocation.totals.printer3DHours,
+  ]);
 
   // Search for part by part number (reserved for future part search UI)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -604,6 +763,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const jobPartNumber = job.partNumber || '';
   useEffect(() => {
     setLaborHoursFromPart(false);
+    setAllocationSource(job.allocationSource ?? 'variant');
+    setDashQuantities(normalizeDashQuantities(job.dashQuantities || {}));
+    setLaborPerUnitOverrides(() => {
+      const out: Record<string, number> = {};
+      for (const [suffix, entry] of Object.entries(job.laborBreakdownByVariant ?? {})) {
+        out[toDashSuffix(suffix)] = Number(entry.hoursPerUnit) || 0;
+      }
+      return out;
+    });
+    setMachinePerUnitOverrides(() => {
+      const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
+      for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
+        out[toDashSuffix(suffix)] = {
+          cncHoursPerUnit: Number(entry.cncHoursPerUnit) || 0,
+          printer3DHoursPerUnit: Number(entry.printer3DHoursPerUnit) || 0,
+        };
+      }
+      return out;
+    });
     setEditForm({
       po: job.po || '',
       description: job.description || '',
@@ -611,6 +789,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
       laborHours: job.laborHours?.toString() || '',
+      cncHours: machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '',
+      printer3DHours: machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
       status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
@@ -647,6 +827,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
     job.invNumber,
     job.rfqNumber,
     job.owrNumber,
+    job.allocationSource,
+    job.dashQuantities,
+    job.laborBreakdownByVariant,
+    job.machineBreakdownByVariant,
+    machineTotals.cncHours,
+    machineTotals.printer3DHours,
     loadLinkedPart,
   ]);
 
@@ -726,6 +912,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const revision = editForm.revision?.trim() || undefined;
     const estNumber = editForm.estNumber?.trim() || undefined;
     const po = editForm.po?.trim() || undefined;
+    const normalizedDashQuantities = normalizeDashQuantities(dashQuantities);
     const payload = {
       partNumber,
       revision,
@@ -745,7 +932,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: editForm.invNumber?.trim() || undefined,
       rfqNumber: editForm.rfqNumber?.trim() || undefined,
       owrNumber: editForm.owrNumber?.trim() || undefined,
-      dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
+      dashQuantities:
+        Object.keys(normalizedDashQuantities).length > 0 ? normalizedDashQuantities : undefined,
+      laborBreakdownByVariant:
+        Object.keys(persistedLaborBreakdown).length > 0 ? persistedLaborBreakdown : undefined,
+      machineBreakdownByVariant:
+        Object.keys(persistedMachineBreakdown).length > 0 ? persistedMachineBreakdown : undefined,
+      allocationSource,
     };
     const nameToSave = getJobNameForSave(
       { ...job, ...editForm, partNumber, revision, estNumber, po, status: editForm.status },
@@ -761,9 +954,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       if (updated) {
         showToast('Job updated successfully', 'success');
-        if (linkedPart && Object.values(dashQuantities).some((q) => q > 0)) {
+        if (linkedPart && Object.values(normalizedDashQuantities).some((q) => q > 0)) {
           try {
-            await syncJobInventoryFromPart(job.id, linkedPart, dashQuantities);
+            await syncJobInventoryFromPart(job.id, linkedPart, normalizedDashQuantities);
             await onReloadJob?.();
           } catch (syncErr) {
             console.error('Material sync after save:', syncErr);
@@ -793,6 +986,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
       laborHours: job.laborHours?.toString() || '',
+      cncHours: machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '',
+      printer3DHours: machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
       status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
@@ -804,17 +999,36 @@ const JobDetail: React.FC<JobDetailProps> = ({
       rfqNumber: job.rfqNumber || '',
       owrNumber: job.owrNumber || '',
     });
-    setDashQuantities(job.dashQuantities || {});
+    setDashQuantities(normalizeDashQuantities(job.dashQuantities || {}));
+    setAllocationSource(job.allocationSource ?? 'variant');
+    setLaborPerUnitOverrides(() => {
+      const out: Record<string, number> = {};
+      for (const [suffix, entry] of Object.entries(job.laborBreakdownByVariant ?? {})) {
+        out[toDashSuffix(suffix)] = Number(entry.hoursPerUnit) || 0;
+      }
+      return out;
+    });
+    setMachinePerUnitOverrides(() => {
+      const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
+      for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
+        out[toDashSuffix(suffix)] = {
+          cncHoursPerUnit: Number(entry.cncHoursPerUnit) || 0,
+          printer3DHoursPerUnit: Number(entry.printer3DHoursPerUnit) || 0,
+        };
+      }
+      return out;
+    });
     setPartNumberSearch(job.partNumber || '');
     setSelectedVariant(null);
     setIsEditing(false);
   };
 
   const handleAutoAssignMaterials = async () => {
-    if (!linkedPart || !Object.values(dashQuantities).some((q) => q > 0)) return;
+    const normalizedDash = normalizeDashQuantities(dashQuantities);
+    if (!linkedPart || !Object.values(normalizedDash).some((q) => q > 0)) return;
     setSyncingMaterials(true);
     try {
-      await syncJobInventoryFromPart(job.id, linkedPart, dashQuantities);
+      await syncJobInventoryFromPart(job.id, linkedPart, normalizedDash);
       await onReloadJob?.();
       showToast('Materials auto-assigned from part', 'success');
     } catch (err) {
@@ -824,6 +1038,77 @@ const JobDetail: React.FC<JobDetailProps> = ({
       setSyncingMaterials(false);
     }
   };
+
+  const handleDashQuantityChange = useCallback((variantSuffix: string, rawValue: string) => {
+    const qty = Math.max(0, parseInt(rawValue, 10) || 0);
+    const key = toDashSuffix(variantSuffix);
+    setDashQuantities((prev) => {
+      const next = { ...normalizeDashQuantities(prev) };
+      if (qty <= 0) {
+        delete next[key];
+      } else {
+        next[key] = qty;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleFillFullSet = useCallback(() => {
+    if (!linkedPart?.variants?.length) return;
+    const setComp = linkedPart.setComposition ?? {};
+    const next: Record<string, number> = {};
+    linkedPart.variants.forEach((variant) => {
+      const key = toDashSuffix(variant.variantSuffix);
+      const qty = getDashQuantity(setComp, key) || 1;
+      next[key] = qty;
+    });
+    setDashQuantities(next);
+    showToast('Filled with one full set', 'success');
+  }, [linkedPart, showToast]);
+
+  const handleApplyFromPart = useCallback(() => {
+    if (!linkedPart?.variants?.length) return;
+    setAllocationSource('variant');
+    const laborNext: Record<string, number> = {};
+    const machineNext: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
+    linkedPart.variants.forEach((variant) => {
+      const key = toDashSuffix(variant.variantSuffix);
+      laborNext[key] = variant.laborHours ?? linkedPart.laborHours ?? 0;
+      machineNext[key] = {
+        cncHoursPerUnit: variant.requiresCNC ? (variant.cncTimeHours ?? 0) : 0,
+        printer3DHoursPerUnit: variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) : 0,
+      };
+    });
+    setLaborPerUnitOverrides(laborNext);
+    setMachinePerUnitOverrides(machineNext);
+    setLaborHoursFromPart(true);
+    showToast('Applied labor/machine/material logic from part', 'success');
+  }, [linkedPart, showToast]);
+
+  const handleVariantHoursChange = useCallback(
+    (
+      suffix: string,
+      field: 'laborHoursPerUnit' | 'cncHoursPerUnit' | 'printer3DHoursPerUnit',
+      value: string
+    ) => {
+      const key = toDashSuffix(suffix);
+      const nextValue = Math.max(0, parseFloat(value) || 0);
+      setAllocationSource('variant');
+      setLaborHoursFromPart(false);
+      if (field === 'laborHoursPerUnit') {
+        setLaborPerUnitOverrides((prev) => ({ ...prev, [key]: nextValue }));
+        return;
+      }
+      setMachinePerUnitOverrides((prev) => ({
+        ...prev,
+        [key]: {
+          ...(prev[key] ?? {}),
+          [field]: nextValue,
+        },
+      }));
+    },
+    []
+  );
 
   const handleRemoveInventory = async (jobInvId: string) => {
     if (!jobInvId) return;
@@ -884,15 +1169,56 @@ const JobDetail: React.FC<JobDetailProps> = ({
     isAdminOnly: boolean
   ): Promise<void> => {
     if (!onUpdateAttachmentAdminOnly) return;
-    try {
-      const success = await onUpdateAttachmentAdminOnly(attachmentId, isAdminOnly);
-      if (success && onReloadJob) {
-        await onReloadJob();
+    const previous = attachmentAdminOverrides[attachmentId];
+    setAttachmentAdminOverrides((prev) => ({ ...prev, [attachmentId]: isAdminOnly }));
+    setPendingAttachmentToggleCount((prev) => prev + 1);
+
+    const operation = (async () => {
+      try {
+        const success = await onUpdateAttachmentAdminOnly(attachmentId, isAdminOnly);
+        if (success && onReloadJob) {
+          await onReloadJob();
+          showToast(
+            isAdminOnly ? 'Moved file to Admin Files' : 'Moved file to Job Attachments',
+            'success'
+          );
+        } else if (!success) {
+          setAttachmentAdminOverrides((prev) => {
+            if (previous === undefined) {
+              const next = { ...prev };
+              delete next[attachmentId];
+              return next;
+            }
+            return { ...prev, [attachmentId]: previous };
+          });
+          showToast('Failed to update Admin-only setting', 'error');
+        }
+      } catch (error) {
+        console.error('Error updating attachment admin-only:', error);
+        setAttachmentAdminOverrides((prev) => {
+          if (previous === undefined) {
+            const next = { ...prev };
+            delete next[attachmentId];
+            return next;
+          }
+          return { ...prev, [attachmentId]: previous };
+        });
+        showToast('Failed to update Admin-only setting', 'error');
+      } finally {
+        pendingAttachmentTogglesRef.current.delete(operation);
+        setPendingAttachmentToggleCount((prev) => Math.max(0, prev - 1));
       }
-    } catch (error) {
-      console.error('Error updating attachment admin-only:', error);
-    }
+    })();
+
+    pendingAttachmentTogglesRef.current.add(operation);
+    await operation;
   };
+
+  const waitForPendingAttachmentToggles = useCallback(async (): Promise<void> => {
+    if (pendingAttachmentTogglesRef.current.size === 0) return;
+    showToast('Saving file visibility change...', 'info');
+    await Promise.allSettled(Array.from(pendingAttachmentTogglesRef.current));
+  }, [showToast]);
 
   // Bin location handlers
   const handleBinLocationUpdate = async (location: string) => {
@@ -911,8 +1237,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
   };
 
   // Filter attachments by type
-  const adminAttachments = (job.attachments || []).filter((a) => a.isAdminOnly);
-  const regularAttachments = (job.attachments || []).filter((a) => !a.isAdminOnly);
+  const effectiveAttachments = (job.attachments || []).map((attachment) => {
+    const override = attachmentAdminOverrides[attachment.id];
+    return override === undefined ? attachment : { ...attachment, isAdminOnly: override };
+  });
+  const adminAttachments = effectiveAttachments.filter((a) => a.isAdminOnly);
+  const regularAttachments = effectiveAttachments.filter((a) => !a.isAdminOnly);
 
   const formatCommentTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -937,6 +1267,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const getInventoryItem = (inventoryId: string) => {
     return inventoryById.get(inventoryId);
   };
+  const displayInvNumber = sanitizeReferenceValue(job.invNumber);
 
   return (
     <div className="flex min-h-screen flex-col bg-background-dark text-white">
@@ -961,7 +1292,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       <header className="sticky top-0 z-50 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => {
+            onClick={async () => {
+              await waitForPendingAttachmentToggles();
               if (isEditing) {
                 handleCancelEdit();
               } else if (onBack) {
@@ -970,7 +1302,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 onNavigate('dashboard');
               }
             }}
-            className="flex size-10 items-center justify-center text-slate-400 hover:text-white"
+            disabled={pendingAttachmentToggleCount > 0}
+            className="flex size-10 items-center justify-center text-slate-400 hover:text-white disabled:opacity-50"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -1063,17 +1396,40 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
 
             {linkedPart && Object.values(dashQuantities).some((q) => q > 0) && (
-              <button
-                type="button"
-                onClick={handleAutoAssignMaterials}
-                disabled={syncingMaterials}
-                className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-base">
-                  {syncingMaterials ? 'hourglass_empty' : 'inventory_2'}
-                </span>
-                {syncingMaterials ? 'Syncing…' : 'Auto-assign materials from part'}
-              </button>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-slate-400">
+                    Source: <span className="font-semibold text-primary">{allocationSource}</span>
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleFillFullSet}
+                      className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
+                    >
+                      Fill full set
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApplyFromPart}
+                      className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
+                    >
+                      Apply from part
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoAssignMaterials}
+                  disabled={syncingMaterials}
+                  className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {syncingMaterials ? 'hourglass_empty' : 'inventory_2'}
+                  </span>
+                  {syncingMaterials ? 'Syncing…' : 'Auto-assign materials from part'}
+                </button>
+              </div>
             )}
 
             {/* Main fields - order: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
@@ -1200,7 +1556,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                   >
                     {ALL_STATUSES.map((s) => (
-                      <option key={s.id} value={s.id}>
+                      <option key={s.id} value={s.id} className="bg-[#1f1b2e] text-white">
                         {s.label}
                       </option>
                     ))}
@@ -1262,7 +1618,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <div className="space-y-3">
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
-                  {totalFromDashQuantities(dashQuantities) > 0 ? (
+                  {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 ? (
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
+                      {formatDashSummary(dashQuantities)} → Total: {totalFromDashQuantities(dashQuantities)}
+                    </div>
+                  ) : totalFromDashQuantities(dashQuantities) > 0 ? (
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
                       {formatDashSummary(dashQuantities)} → Total:{' '}
                       {totalFromDashQuantities(dashQuantities)}
@@ -1281,10 +1641,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <div className="space-y-1.5">
                     <p className="text-[11px] font-medium text-slate-400">Per variant</p>
                     {linkedPart.variants.map((variant) => {
-                      const qty =
-                        dashQuantities[variant.variantSuffix] ??
-                        dashQuantities[`-${variant.variantSuffix}`] ??
-                        0;
+                      const variantKey = toDashSuffix(variant.variantSuffix);
+                      const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
+                      const breakdownEntry = laborBreakdownByDash?.entries.find(
+                        (entry) => entry.suffix === variantKey
+                      );
                       return (
                         <div key={variant.id} className="flex items-center gap-2">
                           <label className="w-28 truncate text-xs text-slate-400">
@@ -1294,15 +1655,58 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             type="number"
                             min={0}
                             value={qty}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10) || 0;
-                              setDashQuantities((prev) => ({
-                                ...prev,
-                                [variant.variantSuffix]: v,
-                              }));
-                            }}
+                            onChange={(e) => handleDashQuantityChange(variant.variantSuffix, e.target.value)}
                             className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                           />
+                          {currentUser.isAdmin && (
+                            <>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min={0}
+                                value={breakdownEntry?.laborHoursPerUnit ?? 0}
+                                onChange={(e) =>
+                                  handleVariantHoursChange(
+                                    variant.variantSuffix,
+                                    'laborHoursPerUnit',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px] text-white focus:border-primary/50 focus:outline-none"
+                                title="Labor hrs per unit"
+                              />
+                              <input
+                                type="number"
+                                step="0.1"
+                                min={0}
+                                value={breakdownEntry?.cncHoursPerUnit ?? 0}
+                                onChange={(e) =>
+                                  handleVariantHoursChange(
+                                    variant.variantSuffix,
+                                    'cncHoursPerUnit',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px] text-white focus:border-primary/50 focus:outline-none"
+                                title="CNC hrs per unit"
+                              />
+                              <input
+                                type="number"
+                                step="0.1"
+                                min={0}
+                                value={breakdownEntry?.printer3DHoursPerUnit ?? 0}
+                                onChange={(e) =>
+                                  handleVariantHoursChange(
+                                    variant.variantSuffix,
+                                    'printer3DHoursPerUnit',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px] text-white focus:border-primary/50 focus:outline-none"
+                                title="3D hrs per unit"
+                              />
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -1318,7 +1722,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </h3>
               {currentUser.isAdmin ? (
                 <>
-                  <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                     <div>
                       <div className="mb-0.5 flex items-center justify-between">
                         <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
@@ -1347,6 +1751,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         min="0"
                         value={editForm.laborHours}
                         onChange={(e) => {
+                          setAllocationSource('total');
                           setLaborHoursFromPart(false);
                           setEditForm({ ...editForm, laborHours: e.target.value });
                         }}
@@ -1367,6 +1772,36 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       </div>
                     </div>
                     <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">CNC hrs</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={editForm.cncHours}
+                        onChange={(e) => {
+                          setAllocationSource('total');
+                          setEditForm({ ...editForm, cncHours: e.target.value });
+                        }}
+                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">3D hrs</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={editForm.printer3DHours}
+                        onChange={(e) => {
+                          setAllocationSource('total');
+                          setEditForm({ ...editForm, printer3DHours: e.target.value });
+                        }}
+                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
                       <label className="mb-0.5 block text-[11px] text-slate-400">Materials $</label>
                       <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
                         ${totalMaterialCost.toFixed(2)}
@@ -1374,18 +1809,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     </div>
                   </div>
                   <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                    Total ${(laborCost + totalMaterialCost).toFixed(2)}
+                    Total $
+                    {(
+                      laborCost +
+                      totalMaterialCost +
+                      (parseFloat(editForm.cncHours) || 0) * cncRate +
+                      (parseFloat(editForm.printer3DHours) || 0) * printer3DRate
+                    ).toFixed(2)}
                   </div>
                   {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
                     <div className="mb-3 space-y-0.5">
-                      {laborBreakdownByDash.entries.map(({ suffix, qty, totalHours }) => (
+                      {laborBreakdownByDash.entries.map(
+                        ({ suffix, qty, totalHours, cncHoursTotal, printer3DHoursTotal }) => (
                         <div
                           key={suffix}
                           className="flex justify-between text-[10px] text-slate-400"
                         >
-                          {suffix} ×{qty} = {totalHours.toFixed(1)}h
+                          {suffix} ×{qty} = L {totalHours.toFixed(1)}h / CNC{' '}
+                          {cncHoursTotal.toFixed(1)}h / 3D {printer3DHoursTotal.toFixed(1)}h
                         </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   )}
                 </>
@@ -1492,7 +1936,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                 </span>
                               )}
                               <span className="shrink-0 text-[10px] text-slate-400">
-                                {material.quantity} {material.unit}
+                                {quantityPerUnit(
+                                  material as { quantityPerUnit?: number; quantity?: number }
+                                )}{' '}
+                                {material.unit}
                               </span>
                             </div>
                             {currentUser.isAdmin && cost > 0 && (
@@ -1640,9 +2087,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       PO #{job.po}
                     </span>
                   )}
-                  {job.invNumber && (
+                  {displayInvNumber && (
                     <span className="rounded bg-green-500/20 px-2 py-1 text-xs font-medium text-green-300">
-                      INV# {job.invNumber}
+                      INV# {displayInvNumber}
                     </span>
                   )}
                   {job.owrNumber && (

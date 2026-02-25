@@ -79,8 +79,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [columnMenuOpen, setColumnMenuOpen] = useState<string | null>(null);
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
-  const [horizontalProgress, setHorizontalProgress] = useState(0);
-  const [isSliderDragging, setIsSliderDragging] = useState(false);
   const { showToast } = useToast();
 
   // Refs for column scroll containers and horizontal board container
@@ -134,13 +132,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     // Intentionally exclude navState.scrollPositions so we only restore on mount/board switch, not on every scroll save
   }, [boardViewKey, horizontalScrollKey, columns]);
 
-  // Throttled horizontal scroll handler for board container
+  // Throttled horizontal scroll handler for board container (persist position only; no drag bar)
   const handleHorizontalScroll = useThrottle(() => {
     if (!boardContainerRef.current) return;
     const board = boardContainerRef.current;
-    const maxScroll = Math.max(1, board.scrollWidth - board.clientWidth);
-    const progress = Math.max(0, Math.min(100, (board.scrollLeft / maxScroll) * 100));
-    setHorizontalProgress(progress);
     updateState({
       scrollPositions: {
         ...scrollPositionsRef.current,
@@ -165,77 +160,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     },
     100
   );
-
-  const getSnappedScrollLeft = (rawScrollLeft: number): number => {
-    const board = boardContainerRef.current;
-    if (!board) return rawScrollLeft;
-    const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
-    const columnsInDom = Array.from(
-      board.querySelectorAll<HTMLElement>('[data-kanban-column-root="true"]')
-    );
-    if (columnsInDom.length < 2) {
-      return Math.max(0, Math.min(maxScroll, rawScrollLeft));
-    }
-    const step = Math.max(1, columnsInDom[1].offsetLeft - columnsInDom[0].offsetLeft);
-    const snapped = Math.round(rawScrollLeft / step) * step;
-    return Math.max(0, Math.min(maxScroll, snapped));
-  };
-
-  const applyHorizontalProgress = (progress: number) => {
-    const board = boardContainerRef.current;
-    if (!board) return;
-    const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
-    const clamped = Math.max(0, Math.min(100, progress));
-    board.scrollLeft = (clamped / 100) * maxScroll;
-    handleHorizontalScroll();
-  };
-
-  const snapBoardAfterSliderRelease = () => {
-    const board = boardContainerRef.current;
-    if (!board) return;
-    const snappedLeft = getSnappedScrollLeft(board.scrollLeft);
-    board.scrollTo({ left: snappedLeft, behavior: 'smooth' });
-    window.setTimeout(() => {
-      handleHorizontalScroll();
-    }, 120);
-  };
-
-  const handleBoardWheelCapture = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!boardContainerRef.current) return;
-    const board = boardContainerRef.current;
-    const target = e.target as HTMLElement | null;
-    const columnScroller = target?.closest(
-      '[data-kanban-column-scroll="true"]'
-    ) as HTMLDivElement | null;
-
-    const deltaX = e.deltaX;
-    const deltaY = e.deltaY;
-    const hasHorizontalIntent = Math.abs(deltaX) > 0 || e.shiftKey;
-
-    const applyHorizontal = (amount: number) => {
-      if (!Number.isFinite(amount) || Math.abs(amount) < 0.5) return;
-      if (e.cancelable) e.preventDefault();
-      board.scrollLeft += amount;
-      handleHorizontalScroll();
-    };
-
-    // Trackpads and Shift+Wheel usually indicate horizontal intent.
-    if (hasHorizontalIntent) {
-      applyHorizontal(deltaX !== 0 ? deltaX : deltaY);
-      return;
-    }
-
-    // If pointer is over a column that can still scroll vertically, keep native vertical scroll.
-    if (columnScroller) {
-      const maxScrollTop = Math.max(0, columnScroller.scrollHeight - columnScroller.clientHeight);
-      const canScrollDown = deltaY > 0 && columnScroller.scrollTop < maxScrollTop - 1;
-      const canScrollUp = deltaY < 0 && columnScroller.scrollTop > 1;
-      if (canScrollDown || canScrollUp) return;
-    }
-
-    // Otherwise use wheel to move board left/right.
-    applyHorizontal(deltaY);
-  };
 
   // Stable key so effect only runs when the set of job IDs changes (avoids infinite loop from new jobs array ref each render)
   const jobIdsKey =
@@ -507,19 +431,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </header>
 
-      {/* Board */}
+      {/* Board: mobile = one column at a time, swipe L/R; desktop = multi-column, vertical scroll only */}
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
-        onWheelCapture={handleBoardWheelCapture}
-        className="flex-1 touch-pan-x overflow-x-auto overflow-y-hidden"
+        className="flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory touch-pan-x md:snap-none"
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x',
           overscrollBehaviorX: 'contain',
         }}
       >
-        <div className="flex h-full min-w-max gap-2.5 p-3">
+        <div className="flex h-full min-w-max gap-2.5 p-3 md:min-w-max">
           {columns.map((column) => {
             const columnJobs = getJobsForColumn(column.id);
             const isOver = dragOverColumn === column.id;
@@ -528,7 +451,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <div
                 key={column.id}
                 data-kanban-column-root="true"
-                className={`flex w-64 flex-col rounded-sm border bg-black/20 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex w-[calc(100vw-1.5rem)] min-w-[calc(100vw-1.5rem)] shrink-0 flex-col snap-start rounded-sm border bg-black/20 md:w-64 md:min-w-64 max-md:[scroll-snap-stop:always] ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);
@@ -672,6 +595,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                         e.stopPropagation();
                                         e.preventDefault();
                                         setMenuOpenFor(null);
+                                        localStorage.setItem('wtp-open-job-edit', job.id);
                                         onNavigate('job-detail', job.id);
                                       }}
                                       onMouseDown={(e) => e.stopPropagation()}
@@ -805,42 +729,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Bottom horizontal slider for precise board navigation */}
-      <div className="flex-shrink-0 border-t border-white/10 bg-background-dark/95 px-3 py-2">
-        <div className="mx-auto max-w-3xl">
-          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-slate-400">
-            Board scroll
-          </label>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={0.1}
-            value={horizontalProgress}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setHorizontalProgress(next);
-              applyHorizontalProgress(next);
-            }}
-            onMouseDown={() => setIsSliderDragging(true)}
-            onMouseUp={() => {
-              setIsSliderDragging(false);
-              snapBoardAfterSliderRelease();
-            }}
-            onTouchStart={() => setIsSliderDragging(true)}
-            onTouchEnd={() => {
-              setIsSliderDragging(false);
-              snapBoardAfterSliderRelease();
-            }}
-            className="h-7 w-full cursor-grab touch-manipulation accent-primary active:cursor-grabbing"
-            aria-label="Drag to scroll kanban columns"
-          />
-          <p className="mt-1 text-[10px] text-slate-500">
-            Drag for precise control. {isSliderDragging ? 'Release to snap to nearest column.' : ''}
-          </p>
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+import { getDashQuantity } from '@/lib/variantMath';
+
 /**
  * Format job code for display (e.g. 1234 → "#1234").
  */
@@ -64,6 +66,15 @@ export const JOB_FIELD_ORDER = [
 
 export type JobFieldKey = (typeof JOB_FIELD_ORDER)[number]['key'];
 
+export function sanitizeReferenceValue(value: string | undefined | null): string {
+  const cleaned = (value ?? '').trim();
+  if (!cleaned) return '';
+  const lowered = cleaned.toLowerCase();
+  // These often come from status-like parser noise, not actual reference IDs.
+  if (lowered === 'converted' || lowered === 'erted' || lowered === 'inverted') return '';
+  return cleaned;
+}
+
 /**
  * Returns job identity fields in standard order for display. Only includes entries with a value.
  */
@@ -77,10 +88,17 @@ export function getJobFieldsInOrder(job: {
   po?: string;
   invNumber?: string;
   dashQuantities?: Record<string, number>;
+  laborBreakdownByVariant?: Record<string, { qty: number }>;
 }): { label: string; value: string }[] {
+  const variantQtyTotal = Object.values(job.laborBreakdownByVariant ?? {}).reduce(
+    (sum, entry) => sum + (Number(entry.qty) || 0),
+    0
+  );
   const qtyDisplay =
     job.dashQuantities && Object.keys(job.dashQuantities).length > 0
       ? formatDashSummary(job.dashQuantities)
+      : variantQtyTotal > 0
+        ? String(variantQtyTotal)
       : (job.qty ?? '').trim();
   const entries: { label: string; value: string }[] = [];
   for (const { key, label } of JOB_FIELD_ORDER) {
@@ -92,7 +110,7 @@ export function getJobFieldsInOrder(job: {
     else if (key === 'estNumber') value = (job.estNumber ?? '').trim();
     else if (key === 'rfqNumber') value = (job.rfqNumber ?? '').trim();
     else if (key === 'po') value = (job.po ?? '').trim();
-    else if (key === 'invNumber') value = (job.invNumber ?? '').trim();
+    else if (key === 'invNumber') value = sanitizeReferenceValue(job.invNumber);
     if (value) entries.push({ label, value });
   }
   return entries;
@@ -230,11 +248,7 @@ export function calculateSetCompletion(
   let minSets = Infinity;
   for (const [suffix, requiredPerSet] of Object.entries(setComposition)) {
     if (requiredPerSet <= 0) continue;
-    const ordered =
-      dashQuantities[suffix] ||
-      dashQuantities[`-${suffix}`] ||
-      dashQuantities[suffix.replace(/^-/, '')] ||
-      0;
+    const ordered = getDashQuantity(dashQuantities, suffix);
     const setsPossible = Math.floor(ordered / requiredPerSet);
     minSets = Math.min(minSets, setsPossible);
   }

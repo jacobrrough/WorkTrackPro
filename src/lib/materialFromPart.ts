@@ -1,13 +1,7 @@
 import type { Part, PartVariant } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
 import { calculateSetCompletion } from '@/lib/formatJob';
-
-/**
- * Normalize variant suffix for matching (e.g. "01" vs "-01").
- */
-function normalizeSuffix(suffix: string): string {
-  return suffix.replace(/^-/, '');
-}
+import { normalizeVariantSuffix, normalizeDashQuantities, quantityPerUnit } from '@/lib/variantMath';
 
 /**
  * Compute required materials for a job from part definition and dash quantities.
@@ -19,20 +13,22 @@ export function computeRequiredMaterials(
   dashQuantities: Record<string, number>
 ): Map<string, { quantity: number; unit: string }> {
   const materialMap = new Map<string, { quantity: number; unit: string }>();
+  const normalizedDash = normalizeDashQuantities(dashQuantities);
 
-  const totalQty = Object.values(dashQuantities).reduce((sum, q) => sum + q, 0);
+  const totalQty = Object.values(normalizedDash).reduce((sum, q) => sum + q, 0);
   if (totalQty <= 0) return materialMap;
 
   // Per-variant materials × dash quantity
-  for (const [suffix, qty] of Object.entries(dashQuantities)) {
+  for (const [suffix, qty] of Object.entries(normalizedDash)) {
     if (qty <= 0) continue;
-    const normalized = normalizeSuffix(suffix);
-    const variant = part.variants?.find((v) => normalizeSuffix(v.variantSuffix) === normalized);
+    const normalized = normalizeVariantSuffix(suffix);
+    const variant = part.variants?.find(
+      (v) => normalizeVariantSuffix(v.variantSuffix) === normalized
+    );
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
       if (material.usageType === 'per_set') continue;
-      const qtyPerUnit =
-        material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
+      const qtyPerUnit = quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number });
       const requiredQty = qtyPerUnit * qty;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';
@@ -48,14 +44,13 @@ export function computeRequiredMaterials(
   const setComposition =
     part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
   const perSetMultiplier = setComposition
-    ? calculateSetCompletion(dashQuantities, setComposition).completeSets
+    ? calculateSetCompletion(normalizedDash, setComposition).completeSets
     : totalQty;
 
   if (part.materials && perSetMultiplier > 0) {
     for (const material of part.materials) {
       if (material.usageType !== 'per_set') continue;
-      const qtyPerSet =
-        material.quantityPerUnit ?? (material as { quantity?: number }).quantity ?? 1;
+      const qtyPerSet = quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number });
       const requiredQty = qtyPerSet * perSetMultiplier;
       const existing = materialMap.get(material.inventoryId);
       const unit = material.unit || 'units';

@@ -1,4 +1,5 @@
 import type { Part, PartVariant, PartMaterial, InventoryItem } from '@/core/types';
+import { quantityPerUnit } from '@/lib/variantMath';
 
 const DEFAULT_LABOR_RATE = 175;
 const MATERIAL_MARKUP_MULTIPLIER = 2.25;
@@ -45,7 +46,7 @@ function materialRequirementsForOneSet(
     if (!variant?.materials) continue;
     for (const mat of variant.materials) {
       if (mat.usageType === 'per_set') continue;
-      const qty = (mat.quantityPerUnit ?? (mat as { quantity?: number }).quantity ?? 1) * setQty;
+      const qty = quantityPerUnit(mat as { quantityPerUnit?: number; quantity?: number }) * setQty;
       const unit = mat.unit ?? 'units';
       const existing = map.get(mat.inventoryId);
       if (existing) {
@@ -59,7 +60,7 @@ function materialRequirementsForOneSet(
   if (part.materials) {
     for (const mat of part.materials) {
       if (mat.usageType !== 'per_set') continue;
-      const qtyPerSet = mat.quantityPerUnit ?? (mat as { quantity?: number }).quantity ?? 1;
+      const qtyPerSet = quantityPerUnit(mat as { quantityPerUnit?: number; quantity?: number });
       const unit = mat.unit ?? 'units';
       const existing = map.get(mat.inventoryId);
       if (existing) {
@@ -170,6 +171,8 @@ export function calculateVariantQuote(
   inventoryItems: InventoryItem[],
   options?: {
     laborRate?: number;
+    cncRate?: number;
+    printer3DRate?: number;
     materialMultiplier?: number;
     /** Manual variant price - when provided, total = manualVariantPrice * quantity and calculation works backwards */
     manualVariantPrice?: number;
@@ -180,6 +183,8 @@ export function calculateVariantQuote(
   if (quantity <= 0) return null;
 
   const laborRate = options?.laborRate ?? DEFAULT_LABOR_RATE;
+  const cncRate = options?.cncRate ?? DEFAULT_LABOR_RATE;
+  const printer3DRate = options?.printer3DRate ?? DEFAULT_LABOR_RATE;
   const multiplier = options?.materialMultiplier ?? MATERIAL_MARKUP_MULTIPLIER;
   const markupPercent = options?.markupPercent ?? 0; // Variants typically don't have markup
   const manualVariantPrice = options?.manualVariantPrice;
@@ -188,7 +193,7 @@ export function calculateVariantQuote(
   const priceById = new Map(inventoryItems.map((i) => [i.id, i.price ?? 0]));
 
   for (const mat of variant.materials ?? []) {
-    const qtyPerUnit = mat.quantityPerUnit ?? (mat as { quantity?: number }).quantity ?? 1;
+    const qtyPerUnit = quantityPerUnit(mat as { quantityPerUnit?: number; quantity?: number });
     const totalQty = qtyPerUnit * quantity;
     const price = priceById.get(mat.inventoryId) ?? 0;
     materialCostOur += totalQty * price;
@@ -197,14 +202,14 @@ export function calculateVariantQuote(
   const materialCostCustomer = materialCostOur * multiplier;
   const laborHours = (variant.laborHours ?? 0) * quantity;
   const laborCost = laborHours * laborRate;
-  const cncHours = 0; // Machine time is part-level only
-  const cncCost = 0;
-  const printer3DHours = 0;
-  const printer3DCost = 0;
+  const cncHours = variant.requiresCNC ? (variant.cncTimeHours ?? 0) * quantity : 0;
+  const cncCost = cncHours * cncRate;
+  const printer3DHours = variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) * quantity : 0;
+  const printer3DCost = printer3DHours * printer3DRate;
 
   // Always calculate subtotal from actual costs (materials, labor)
   // Materials and quantities are NEVER auto-adjusted - they stay fixed
-  const subtotal = materialCostCustomer + laborCost;
+  const subtotal = materialCostCustomer + laborCost + cncCost + printer3DCost;
 
   let markupAmount: number;
   let total: number;

@@ -40,6 +40,11 @@ function mapRowToVariant(row: Record<string, unknown>): PartVariant {
     name: row.name as string | undefined,
     pricePerVariant: row.price_per_variant != null ? Number(row.price_per_variant) : undefined,
     laborHours: row.labor_hours != null ? Number(row.labor_hours) : undefined,
+    requiresCNC: row.requires_cnc === true,
+    cncTimeHours: row.cnc_time_hours != null ? Number(row.cnc_time_hours) : undefined,
+    requires3DPrint: row.requires_3d_print === true,
+    printer3DTimeHours:
+      row.printer_3d_time_hours != null ? Number(row.printer_3d_time_hours) : undefined,
     createdAt: row.created_at as string | undefined,
     updatedAt: row.updated_at as string | undefined,
   };
@@ -549,6 +554,10 @@ export const partsService = {
       name?: string;
       pricePerVariant?: number;
       laborHours?: number;
+      requiresCNC?: boolean;
+      cncTimeHours?: number;
+      requires3DPrint?: boolean;
+      printer3DTimeHours?: number;
     }
   ): Promise<PartVariant | null> {
     const row: Record<string, unknown> = {
@@ -558,6 +567,10 @@ export const partsService = {
     };
     if (data.pricePerVariant != null) row.price_per_variant = data.pricePerVariant;
     if (data.laborHours != null) row.labor_hours = data.laborHours;
+    if (data.requiresCNC != null) row.requires_cnc = data.requiresCNC;
+    if (data.cncTimeHours != null) row.cnc_time_hours = data.cncTimeHours;
+    if (data.requires3DPrint != null) row.requires_3d_print = data.requires3DPrint;
+    if (data.printer3DTimeHours != null) row.printer_3d_time_hours = data.printer3DTimeHours;
     const { data: created, error } = await supabase
       .from('part_variants')
       .insert(row)
@@ -576,6 +589,10 @@ export const partsService = {
     if (data.name != null) row.name = data.name;
     if (data.pricePerVariant !== undefined) row.price_per_variant = data.pricePerVariant;
     if (data.laborHours !== undefined) row.labor_hours = data.laborHours;
+    if (data.requiresCNC !== undefined) row.requires_cnc = data.requiresCNC;
+    if (data.cncTimeHours !== undefined) row.cnc_time_hours = data.cncTimeHours;
+    if (data.requires3DPrint !== undefined) row.requires_3d_print = data.requires3DPrint;
+    if (data.printer3DTimeHours !== undefined) row.printer_3d_time_hours = data.printer3DTimeHours;
     const { data: updated, error } = await supabase
       .from('part_variants')
       .update(row)
