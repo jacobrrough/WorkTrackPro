@@ -200,12 +200,24 @@ export function calculateVariantQuote(
   }
 
   const materialCostCustomer = materialCostOur * multiplier;
-  const laborHours = (variant.laborHours ?? 0) * quantity;
-  const laborCost = laborHours * laborRate;
+  const baseLaborHours = (variant.laborHours ?? 0) * quantity;
   const cncHours = variant.requiresCNC ? (variant.cncTimeHours ?? 0) * quantity : 0;
   const cncCost = cncHours * cncRate;
   const printer3DHours = variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) * quantity : 0;
   const printer3DCost = printer3DHours * printer3DRate;
+  const isReverseCalculated = manualVariantPrice != null && manualVariantPrice > 0;
+  let laborHours = baseLaborHours;
+  let isLaborAutoAdjusted = false;
+
+  if (isReverseCalculated) {
+    // Reverse calculation for variant totals: solve labor to hit manual target.
+    const targetTotal = manualVariantPrice * quantity;
+    const fixedNonLaborSubtotal = materialCostCustomer + cncCost + printer3DCost;
+    const targetLaborCost = Math.max(0, targetTotal - fixedNonLaborSubtotal);
+    laborHours = laborRate > 0 ? targetLaborCost / laborRate : baseLaborHours;
+    isLaborAutoAdjusted = true;
+  }
+  const laborCost = laborHours * laborRate;
 
   // Always calculate subtotal from actual costs (materials, labor)
   // Materials and quantities are NEVER auto-adjusted - they stay fixed
@@ -214,13 +226,11 @@ export function calculateVariantQuote(
   let markupAmount: number;
   let total: number;
   let effectiveMarkupPercent: number | undefined;
-  const isReverseCalculated = manualVariantPrice != null && manualVariantPrice > 0;
 
   if (isReverseCalculated) {
-    // Reverse calculation: total is set manually, calculate backwards
-    // Materials and labor stay fixed - only markup adjusts
+    // Keep total anchored to the manual variant target.
     total = manualVariantPrice * quantity;
-    markupAmount = total - subtotal; // Markup is whatever remains after fixed costs
+    markupAmount = total - subtotal;
     effectiveMarkupPercent = subtotal > 0 ? (markupAmount / subtotal) * 100 : markupPercent;
   } else {
     // Forward calculation: normal flow
@@ -244,5 +254,6 @@ export function calculateVariantQuote(
     quantity,
     isReverseCalculated,
     effectiveMarkupPercent,
+    isLaborAutoAdjusted,
   };
 }

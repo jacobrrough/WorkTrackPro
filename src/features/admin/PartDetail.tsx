@@ -34,6 +34,11 @@ import {
   variantLaborFromSetComposition,
   distributeSetMaterialToVariants,
 } from '@/lib/partDistribution';
+import {
+  buildEffectiveSetComposition,
+  seedMissingVariantPrices,
+  calculateVariantLaborTargets,
+} from '@/lib/variantPricingAuto';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 
 interface PartDetailProps {
@@ -375,16 +380,81 @@ const PartDetail: React.FC<PartDetailProps> = ({
       await partsService.updateVariant(variantId, updates);
       showToast('Variant updated successfully', 'success');
       setEditingVariant(null);
-      const updated = await loadPart();
-      if (updated && updates.pricePerVariant !== undefined && updated.variants?.length) {
-        const composition =
-          updated.setComposition && Object.keys(updated.setComposition).length > 0
-            ? updated.setComposition
-            : Object.fromEntries((updated.variants ?? []).map((v) => [v.variantSuffix, 1]));
-        const newSetPrice = calculateSetPriceFromVariants(updated.variants, composition);
-        if (newSetPrice != null) {
-          await handleUpdatePart({ pricePerSet: newSetPrice });
+      let updated = await loadPart();
+      if (!updated || updates.pricePerVariant === undefined || !updated.variants?.length) return;
+
+      const composition = buildEffectiveSetComposition(updated.variants, updated.setComposition);
+
+      // Seed missing variant prices from the first entered/edited variant price.
+      const seededPrices = seedMissingVariantPrices(updated.variants, variantId);
+      for (const seed of seededPrices) {
+        await partsService.updateVariant(seed.variantId, { pricePerVariant: seed.price });
+      }
+
+      if (seededPrices.length > 0) {
+        updated = (await loadPart()) ?? updated;
+      }
+
+      const variants = updated.variants ?? [];
+      if (!variants.length) return;
+
+      const newSetPrice = calculateSetPriceFromVariants(variants, composition);
+      if (newSetPrice == null) return;
+
+      const roundedSetPrice = Number(newSetPrice.toFixed(2));
+      const derivedSetQuote = calculatePartQuote(
+        { ...updated, pricePerSet: roundedSetPrice, variants },
+        1,
+        inventoryItems,
+        {
+          laborRate: settings.laborRate,
+          cncRate: settings.cncRate,
+          printer3DRate: settings.printer3DRate,
+          manualSetPrice: roundedSetPrice,
         }
+      );
+      const nextSetLaborHours = derivedSetQuote?.isLaborAutoAdjusted
+        ? Number(derivedSetQuote.laborHours.toFixed(2))
+        : undefined;
+
+      const partUpdates: Partial<Part> = {};
+      if (Math.abs((updated.pricePerSet ?? 0) - roundedSetPrice) > 0.01) {
+        partUpdates.pricePerSet = roundedSetPrice;
+      }
+      if (
+        nextSetLaborHours != null &&
+        Math.abs((updated.laborHours ?? 0) - nextSetLaborHours) > 0.01
+      ) {
+        partUpdates.laborHours = nextSetLaborHours;
+      }
+
+      if (Object.keys(partUpdates).length > 0) {
+        const savedPart = await partsService.updatePart(updated.id, partUpdates);
+        if (savedPart) {
+          setPart((prev) => (prev ? { ...prev, ...savedPart } : prev));
+          updated = { ...updated, ...savedPart };
+        } else {
+          setPart((prev) => (prev ? { ...prev, ...partUpdates } : prev));
+          updated = { ...updated, ...partUpdates };
+        }
+      }
+
+      const targetSetLabor = nextSetLaborHours ?? updated.laborHours;
+      let laborVariantsChanged = false;
+      if (targetSetLabor != null && targetSetLabor > 0) {
+        const expectedVariantLabor = calculateVariantLaborTargets(variants, composition, targetSetLabor);
+        const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+        for (const target of expectedVariantLabor) {
+          const current = variantById.get(target.variantId);
+          if (!current) continue;
+          if (Math.abs((current.laborHours ?? 0) - target.laborHours) <= 0.01) continue;
+          await partsService.updateVariant(target.variantId, { laborHours: target.laborHours });
+          laborVariantsChanged = true;
+        }
+      }
+
+      if (seededPrices.length > 0 || Object.keys(partUpdates).length > 0 || laborVariantsChanged) {
+        await loadPart();
       }
     } catch (error) {
       showToast('Failed to update variant', 'error');
@@ -1140,48 +1210,71 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   }
                 }}
                 onSetPriceChange={async (price) => {
+                  const variants = part.variants ?? [];
+                  const composition = buildEffectiveSetComposition(variants, part.setComposition);
+
                   if (price !== undefined) {
+                    const roundedPrice = Number(price.toFixed(2));
                     const updates: Partial<Part> = {};
-                    if (price !== part.pricePerSet) {
-                      updates.pricePerSet = price;
+                    if (Math.abs((part.pricePerSet ?? 0) - roundedPrice) > 0.01) {
+                      updates.pricePerSet = roundedPrice;
                     }
+                    let targetSetLaborHours: number | undefined;
                     const derived = calculatePartQuote(part, 1, inventoryItems, {
                       laborRate: settings.laborRate,
                       cncRate: settings.cncRate,
                       printer3DRate: settings.printer3DRate,
-                      manualSetPrice: price,
+                      manualSetPrice: roundedPrice,
                     });
                     if (derived?.isLaborAutoAdjusted) {
-                      const nextLaborHours = Number(derived.laborHours.toFixed(2));
-                      if (Math.abs((part.laborHours ?? 0) - nextLaborHours) > 0.01) {
-                        updates.laborHours = nextLaborHours;
+                      targetSetLaborHours = Number(derived.laborHours.toFixed(2));
+                      if (Math.abs((part.laborHours ?? 0) - targetSetLaborHours) > 0.01) {
+                        updates.laborHours = targetSetLaborHours;
                       }
+                    } else if (part.laborHours != null) {
+                      targetSetLaborHours = part.laborHours;
                     }
                     if (Object.keys(updates).length > 0) {
                       await handleUpdatePart(updates);
                     }
-                    if (price !== part.pricePerSet) {
-                      if (
-                        part.variants?.length &&
-                        part.setComposition &&
-                        Object.keys(part.setComposition).length > 0
-                      ) {
-                        const toApply = variantPricesFromSetPrice(
-                          price,
-                          part.setComposition,
-                          part.variants
-                        );
-                        for (const { variantId, price: p } of toApply) {
-                          await partsService.updateVariant(variantId, { pricePerVariant: p });
+
+                    let variantsUpdated = false;
+                    if (variants.length > 0 && Object.keys(composition).length > 0) {
+                      const priceTargets = variantPricesFromSetPrice(roundedPrice, composition, variants);
+                      const priceByVariantId = new Map(priceTargets.map((entry) => [entry.variantId, entry.price]));
+                      const laborByVariantId = new Map(
+                        (targetSetLaborHours != null
+                          ? calculateVariantLaborTargets(variants, composition, targetSetLaborHours)
+                          : []
+                        ).map((entry) => [entry.variantId, entry.laborHours])
+                      );
+
+                      for (const variant of variants) {
+                        const variantUpdates: Partial<PartVariant> = {};
+                        const nextPrice = priceByVariantId.get(variant.id);
+                        if (
+                          nextPrice != null &&
+                          Math.abs((variant.pricePerVariant ?? 0) - nextPrice) > 0.01
+                        ) {
+                          variantUpdates.pricePerVariant = nextPrice;
                         }
-                        if (toApply.length > 0) await loadPart();
+                        const nextLabor = laborByVariantId.get(variant.id);
+                        if (
+                          nextLabor != null &&
+                          Math.abs((variant.laborHours ?? 0) - nextLabor) > 0.01
+                        ) {
+                          variantUpdates.laborHours = nextLabor;
+                        }
+
+                        if (Object.keys(variantUpdates).length > 0) {
+                          await partsService.updateVariant(variant.id, variantUpdates);
+                          variantsUpdated = true;
+                        }
                       }
                     }
+                    if (variantsUpdated) await loadPart();
                   } else {
-                    const auto = calculateSetPriceFromVariants(
-                      part.variants ?? [],
-                      part.setComposition ?? {}
-                    );
+                    const auto = calculateSetPriceFromVariants(variants, composition);
                     if (auto != null) handleUpdatePart({ pricePerSet: auto });
                   }
                 }}
@@ -1988,7 +2081,10 @@ function VariantQuoteMini({
             <span className="text-white">${result.materialCostCustomer.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-slate-300">
-            <span>Labor</span>
+            <span className="flex items-center">
+              Labor
+              {result.isLaborAutoAdjusted && <AutoBadge />}
+            </span>
             <span className="text-white">${result.laborCost.toFixed(2)}</span>
           </div>
           <div className="flex justify-between border-t border-white/10 pt-1 text-slate-300">
