@@ -1,5 +1,10 @@
 import type { Part, PartVariant } from '@/core/types';
-import { getDashQuantity, normalizeDashQuantities, normalizeVariantSuffix } from './variantMath';
+import {
+  getDashQuantity,
+  normalizeDashQuantities,
+  normalizeVariantSuffix,
+  toDashSuffix,
+} from './variantMath';
 
 export type PriceSource = 'variant_prices' | 'set_price' | 'derived_set_price';
 
@@ -27,6 +32,20 @@ function compositionQtyForSuffix(
     }
   }
   return 0;
+}
+
+function buildEffectiveSetComposition(
+  part: Part & { variants?: PartVariant[] }
+): Record<string, number> | null {
+  if (part.setComposition && Object.keys(part.setComposition).length > 0) {
+    return part.setComposition;
+  }
+  if (!part.variants?.length) return null;
+  const fallback: Record<string, number> = {};
+  for (const variant of part.variants) {
+    fallback[toDashSuffix(variant.variantSuffix)] = 1;
+  }
+  return fallback;
 }
 
 export function deriveSetCountFromDashQuantities(
@@ -71,6 +90,7 @@ export function calculateJobPriceFromPart(
   const selectedDashKeys = Object.keys(normalizedDash);
   if (selectedDashKeys.length === 0) return null;
 
+  const effectiveSetComposition = buildEffectiveSetComposition(part);
   const selectedVariants =
     part.variants
       ?.map((variant) => ({
@@ -94,14 +114,14 @@ export function calculateJobPriceFromPart(
     return {
       totalPrice: round2(total),
       source: 'variant_prices',
-      setCount: deriveSetCountFromDashQuantities(part.setComposition, normalizedDash) ?? undefined,
+      setCount: deriveSetCountFromDashQuantities(effectiveSetComposition, normalizedDash) ?? undefined,
       missingVariantPrices: [],
     };
   }
 
   if (part.pricePerSet == null) return null;
 
-  const exactSetCount = deriveSetCountFromDashQuantities(part.setComposition, normalizedDash);
+  const exactSetCount = deriveSetCountFromDashQuantities(effectiveSetComposition, normalizedDash);
   if (exactSetCount != null) {
     return {
       totalPrice: round2(exactSetCount * part.pricePerSet),
@@ -112,8 +132,8 @@ export function calculateJobPriceFromPart(
   }
 
   // Fallback: derive per-variant prices from set composition share.
-  if (part.setComposition && Object.keys(part.setComposition).length > 0) {
-    const totalUnitsPerSet = Object.values(part.setComposition).reduce((sum, rawQty) => {
+  if (effectiveSetComposition && Object.keys(effectiveSetComposition).length > 0) {
+    const totalUnitsPerSet = Object.values(effectiveSetComposition).reduce((sum, rawQty) => {
       const qty = Number(rawQty);
       return Number.isFinite(qty) && qty > 0 ? sum + qty : sum;
     }, 0);
@@ -126,7 +146,7 @@ export function calculateJobPriceFromPart(
         derivedTotal += quantity * variant.pricePerVariant;
         continue;
       }
-      const qtyInSet = compositionQtyForSuffix(part.setComposition, variant.variantSuffix);
+      const qtyInSet = compositionQtyForSuffix(effectiveSetComposition, variant.variantSuffix);
       if (qtyInSet <= 0) return null;
       const derivedVariantPrice = part.pricePerSet * (qtyInSet / totalUnitsPerSet);
       derivedTotal += quantity * derivedVariantPrice;

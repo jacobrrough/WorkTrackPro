@@ -34,21 +34,37 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const [setCount, setSetCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  const getEffectiveSetComposition = useCallback(
+    (targetPart: Part & { variants?: PartVariant[] }): Record<string, number> | null => {
+      if (targetPart.setComposition && Object.keys(targetPart.setComposition).length > 0) {
+        return targetPart.setComposition;
+      }
+      if (!targetPart.variants?.length) return null;
+      const fallback: Record<string, number> = {};
+      targetPart.variants.forEach((variant) => {
+        fallback[toDashSuffix(variant.variantSuffix)] = 1;
+      });
+      return fallback;
+    },
+    []
+  );
+
   const buildDashQuantitiesFromSetCount = useCallback(
     (targetPart: Part & { variants?: PartVariant[] }, count: number): Record<string, number> => {
-      if (!targetPart.variants?.length || !targetPart.setComposition) return {};
+      const effectiveSetComposition = getEffectiveSetComposition(targetPart);
+      if (!targetPart.variants?.length || !effectiveSetComposition) return {};
       const normalizedCount = Math.max(0, Math.floor(count));
       if (normalizedCount <= 0) return {};
       const fromSets: Record<string, number> = {};
       targetPart.variants.forEach((variant) => {
-        const perSetQty = getDashQuantity(targetPart.setComposition, variant.variantSuffix);
+        const perSetQty = getDashQuantity(effectiveSetComposition, variant.variantSuffix);
         if (perSetQty > 0) {
           fromSets[toDashSuffix(variant.variantSuffix)] = perSetQty * normalizedCount;
         }
       });
       return normalizeDashQuantities(fromSets);
     },
-    []
+    [getEffectiveSetComposition]
   );
 
   const loadPart = useCallback(
@@ -91,18 +107,11 @@ const PartSelector: React.FC<PartSelectorProps> = ({
             }
           });
           setDashQuantities(initial);
-          const hasSetComposition = !!(
-            fullPart.setComposition && Object.keys(fullPart.setComposition).length > 0
-          );
-          if (hasSetComposition) {
-            const derivedSets = deriveSetCountFromDashQuantities(fullPart.setComposition, initial);
-            if (derivedSets != null && derivedSets > 0) {
-              setQuantityMode('sets');
-              setSetCount(Math.floor(derivedSets));
-            } else {
-              setQuantityMode('variants');
-              setSetCount(0);
-            }
+          const effectiveSetComposition = getEffectiveSetComposition(fullPart);
+          if (effectiveSetComposition) {
+            const derivedSets = deriveSetCountFromDashQuantities(effectiveSetComposition, initial);
+            setQuantityMode('sets');
+            setSetCount(derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0);
           } else {
             setQuantityMode('variants');
             setSetCount(0);
@@ -132,7 +141,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
         setLoading(false);
       }
     },
-    [showToast, initialDashQuantities, onPartNumberResolved, onSelect]
+    [showToast, initialDashQuantities, onPartNumberResolved, onSelect, getEffectiveSetComposition]
   );
 
   useEffect(() => {
@@ -157,7 +166,10 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     setDashQuantities(newQuantities);
     // Auto-update parent when quantities change (live update)
     if (part) {
-      const derivedSets = deriveSetCountFromDashQuantities(part.setComposition, newQuantities);
+      const derivedSets = deriveSetCountFromDashQuantities(
+        getEffectiveSetComposition(part),
+        newQuantities
+      );
       setSetCount(derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0);
       onSelect(part, newQuantities);
     }
@@ -174,15 +186,13 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
   const handleQuantityModeChange = (nextMode: 'sets' | 'variants') => {
     if (!part) return;
-    const hasSetComposition = !!(
-      part.setComposition && Object.keys(part.setComposition).length > 0
-    );
-    if (!hasSetComposition) {
+    const effectiveSetComposition = getEffectiveSetComposition(part);
+    if (!effectiveSetComposition) {
       setQuantityMode('variants');
       return;
     }
     if (nextMode === 'sets') {
-      const derivedSets = deriveSetCountFromDashQuantities(part.setComposition, dashQuantities);
+      const derivedSets = deriveSetCountFromDashQuantities(effectiveSetComposition, dashQuantities);
       const nextSetCount = derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 1;
       setQuantityMode('sets');
       handleSetCountChange(nextSetCount);
@@ -208,7 +218,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   };
 
   const totalQuantity = Object.values(dashQuantities).reduce((sum, qty) => sum + qty, 0);
-  const hasSetComposition = part?.setComposition && Object.keys(part.setComposition).length > 0;
+  const effectiveSetComposition = part ? getEffectiveSetComposition(part) : null;
+  const hasSetMode = !!effectiveSetComposition;
 
   return (
     <div className="rounded-sm border border-white/10 bg-white/5 p-4">
@@ -243,12 +254,12 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
       {part && part.variants && part.variants.length > 0 && (
         <div className="mb-3">
-          {hasSetComposition && (
+          {hasSetMode && (
             <div className="mb-2 space-y-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-slate-400">One set:</span>
                 <span className="text-xs font-medium text-white">
-                  {formatSetComposition(part.setComposition)}
+                  {formatSetComposition(effectiveSetComposition)}
                 </span>
               </div>
               <div className="inline-flex rounded-sm border border-primary/30 bg-background-dark p-0.5">
@@ -277,7 +288,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
               </div>
             </div>
           )}
-          {quantityMode === 'sets' && hasSetComposition ? (
+          {quantityMode === 'sets' && hasSetMode ? (
             <div className="space-y-2 rounded-sm border border-white/10 bg-background-dark/40 p-2.5">
               <label className="block text-xs font-medium text-slate-300">Number of sets</label>
               <input

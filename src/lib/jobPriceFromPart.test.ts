@@ -77,4 +77,17 @@ describe('calculateJobPriceFromPart', () => {
     expect(result?.totalPrice).toBe(140);
     expect(result?.missingVariantPrices).toContain('-02');
   });
+
+  it('uses implicit one-per-variant set composition when none is defined', () => {
+    const part = makePart({
+      setComposition: null,
+      variants: [makeVariant('v1', '01'), makeVariant('v2', '02')],
+      pricePerSet: 80,
+    });
+    const result = calculateJobPriceFromPart(part, { '-01': 2, '-02': 2 });
+    expect(result).not.toBeNull();
+    expect(result?.source).toBe('set_price');
+    expect(result?.setCount).toBe(2);
+    expect(result?.totalPrice).toBe(160);
+  });
 });
