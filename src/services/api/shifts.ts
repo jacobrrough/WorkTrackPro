@@ -121,10 +121,7 @@ export const shiftService = {
       row.lunch_minutes_used = Math.max(0, Math.floor(lunchMinutesUsed));
     }
 
-    const { error } = await supabase
-      .from('shifts')
-      .update(row)
-      .eq('id', shiftId);
+    const { error } = await supabase.from('shifts').update(row).eq('id', shiftId);
     return !error;
   },
 

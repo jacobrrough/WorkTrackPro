@@ -54,7 +54,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
   const isOnLunch = Boolean(activeShift?.lunchStartTime && !activeShift?.lunchEndTime);
-  const remainingBreakMs = activeShift ? getRemainingBreakMs(activeShift) : MAX_BREAK_MINUTES * 60 * 1000;
+  const remainingBreakMs = activeShift
+    ? getRemainingBreakMs(activeShift)
+    : MAX_BREAK_MINUTES * 60 * 1000;
   const breakLimitReached = remainingBreakMs <= 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {

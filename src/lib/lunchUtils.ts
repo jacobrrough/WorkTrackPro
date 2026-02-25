@@ -16,7 +16,9 @@ function parseIsoMs(value?: string): number | null {
  * Uses persisted lunch_minutes_used when available, and falls back to legacy
  * single-window lunch_start_time/lunch_end_time for backward compatibility.
  */
-export function getLoggedBreakMs(shift: Pick<Shift, 'lunchMinutesUsed' | 'lunchStartTime' | 'lunchEndTime'>): number {
+export function getLoggedBreakMs(
+  shift: Pick<Shift, 'lunchMinutesUsed' | 'lunchStartTime' | 'lunchEndTime'>
+): number {
   const fromMinutesField =
     typeof shift.lunchMinutesUsed === 'number' && Number.isFinite(shift.lunchMinutesUsed)
       ? Math.max(0, shift.lunchMinutesUsed) * 60 * 1000

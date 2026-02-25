@@ -173,8 +173,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
   const getHoursAsNumber = (s: Shift): number => getWorkedDurationMs(s) / 3600000;
 
-  const formatShiftHours = (s: Shift): string =>
-    formatDurationHours(getWorkedDurationMs(s));
+  const formatShiftHours = (s: Shift): string => formatDurationHours(getWorkedDurationMs(s));
 
   const periodWindow = useMemo(
     () => buildDateRangeWindow(dateRange, periodOffset),
