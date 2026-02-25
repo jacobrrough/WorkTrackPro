@@ -117,8 +117,15 @@ export const shiftService = {
       lunch_start_time: null,
       lunch_end_time: new Date().toISOString(),
     };
-    if (typeof lunchMinutesUsed === 'number' && Number.isFinite(lunchMinutesUsed)) {
-      row.lunch_minutes_used = Math.max(0, Math.floor(lunchMinutesUsed));
+    const raw = lunchMinutesUsed;
+    const minutes =
+      typeof raw === 'number' && Number.isFinite(raw)
+        ? raw
+        : typeof raw === 'string'
+          ? Number(raw)
+          : NaN;
+    if (Number.isFinite(minutes) && minutes >= 0) {
+      row.lunch_minutes_used = Math.max(0, Math.round(minutes));
     }
 
     const { error } = await supabase.from('shifts').update(row).eq('id', shiftId);

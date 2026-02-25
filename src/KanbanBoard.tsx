@@ -32,13 +32,14 @@ const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'onHold', title: 'On Hold', color: 'bg-gray-500' },
 ];
 
-// Admin board: sales pipeline columns first, then shop floor columns, then payment — so admins see full flow.
+// Admin board: full pipeline — quoting, shop, and completion. All statuses available.
 const ADMIN_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'toBeQuoted', title: 'To Be Quoted', color: 'bg-red-500' },
   { id: 'quoted', title: 'Quoted', color: 'bg-orange-400' },
   { id: 'rfqReceived', title: 'RFQ Received', color: 'bg-orange-500' },
   { id: 'rfqSent', title: 'RFQ Sent', color: 'bg-yellow-500' },
   { id: 'pod', title: "PO'd", color: 'bg-green-500' },
+  { id: 'rush', title: 'Rush', color: 'bg-red-600' },
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
   { id: 'inProgress', title: 'In Progress', color: 'bg-blue-500' },
   { id: 'qualityControl', title: 'Quality Control', color: 'bg-green-500' },
@@ -46,6 +47,7 @@ const ADMIN_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'finished', title: 'Finished', color: 'bg-yellow-500' },
   { id: 'delivered', title: 'Delivered', color: 'bg-cyan-500' },
   { id: 'waitingForPayment', title: 'Waiting For Payment', color: 'bg-amber-500' },
+  { id: 'projectCompleted', title: 'Project Completed', color: 'bg-emerald-600' },
 ];
 
 // Jobs with status 'paid' are reconciled and hidden from normal board/list views

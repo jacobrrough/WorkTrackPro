@@ -134,7 +134,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     updateShiftTimer();
     const interval = setInterval(updateShiftTimer, 1000);
     return () => clearInterval(interval);
-  }, [activeShift, shiftClockInTime, shiftClockOutTime]);
+  }, [
+    activeShift,
+    activeShift?.lunchStartTime,
+    activeShift?.lunchEndTime,
+    activeShift?.lunchMinutesUsed,
+    shiftClockInTime,
+    shiftClockOutTime,
+  ]);
 
   useEffect(() => {
     if (!activeShift) {

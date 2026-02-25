@@ -407,7 +407,7 @@ export const jobService = {
       due_date: data.dueDate ?? null,
       labor_hours: resolvedLaborHours ?? null,
       active: data.active ?? true,
-      status: data.status ?? 'pending',
+      status: data.status ?? 'toBeQuoted',
       board_type: data.boardType ?? 'shopFloor',
       created_by: data.createdBy ?? null,
       assigned_users: data.assignedUsers ?? [],

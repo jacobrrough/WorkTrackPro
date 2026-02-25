@@ -13,18 +13,23 @@ function parseIsoMs(value?: string): number | null {
 
 /**
  * Returns completed break time in ms.
- * Uses persisted lunch_minutes_used when available, and falls back to legacy
+ * Uses persisted lunch_minutes_used when available (including 0), and falls back to legacy
  * single-window lunch_start_time/lunch_end_time for backward compatibility.
+ * Coerces lunchMinutesUsed from string (e.g. from API) so break time is never lost.
  */
 export function getLoggedBreakMs(
   shift: Pick<Shift, 'lunchMinutesUsed' | 'lunchStartTime' | 'lunchEndTime'>
 ): number {
-  const fromMinutesField =
-    typeof shift.lunchMinutesUsed === 'number' && Number.isFinite(shift.lunchMinutesUsed)
-      ? Math.max(0, shift.lunchMinutesUsed) * 60 * 1000
-      : 0;
-
-  if (fromMinutesField > 0) return fromMinutesField;
+  const raw = shift.lunchMinutesUsed;
+  const num =
+    typeof raw === 'number' && Number.isFinite(raw)
+      ? raw
+      : typeof raw === 'string'
+        ? Number(raw)
+        : NaN;
+  if (Number.isFinite(num) && num >= 0) {
+    return Math.max(0, num) * 60 * 1000;
+  }
 
   const legacyStartMs = parseIsoMs(shift.lunchStartTime);
   const legacyEndMs = parseIsoMs(shift.lunchEndTime);
@@ -58,8 +63,9 @@ export function getRemainingBreakMs(
   return Math.max(0, MAX_BREAK_MS - getBreakAllowanceUsedMs(shift));
 }
 
+/** Round break duration to whole minutes (rounds so actual time used is tracked). */
 export function toBreakMinutes(totalBreakMs: number): number {
-  return Math.max(0, Math.floor(totalBreakMs / 60000));
+  return Math.max(0, Math.round(totalBreakMs / 60000));
 }
 
 export function getWorkedShiftMs(

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Job, User, ViewState, JobStatus, BoardType, Shift, Part } from '@/core/types';
+import { Job, User, ViewState, JobStatus, BoardType, Shift, Part, getStatusDisplayName } from '@/core/types';
 import { dateInputToISO } from '@/core/date';
 import { getLaborSuggestion } from '@/lib/laborSuggestion';
 import {
@@ -48,6 +48,24 @@ interface AdminCreateJobProps {
   shifts: Shift[];
 }
 
+// Same order as admin Kanban columns so initial status matches board.
+const ADMIN_INITIAL_STATUS_OPTIONS: JobStatus[] = [
+  'toBeQuoted',
+  'quoted',
+  'rfqReceived',
+  'rfqSent',
+  'pod',
+  'rush',
+  'pending',
+  'inProgress',
+  'qualityControl',
+  'onHold',
+  'finished',
+  'delivered',
+  'waitingForPayment',
+  'projectCompleted',
+];
+
 const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   onCreate,
   onNavigate,
@@ -83,7 +101,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     laborHours: '',
     isRush: false,
     description: '',
-    status: 'pending' as JobStatus,
+    status: 'toBeQuoted' as JobStatus,
     binLocation: '',
     estNumber: '',
     invNumber: '',
@@ -619,11 +637,11 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as JobStatus })}
                 disabled={isSubmitting}
               >
-                <option value="pending">Pending (Shop)</option>
-                <option value="pod">PO'd</option>
-                <option value="inProgress">In Progress</option>
-                <option value="qualityControl">Quality Control</option>
-                <option value="onHold">On Hold</option>
+                {ADMIN_INITIAL_STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status}>
+                    {getStatusDisplayName(status)}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

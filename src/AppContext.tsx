@@ -466,29 +466,86 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!activeShift) return false;
     if (activeShift.lunchStartTime && !activeShift.lunchEndTime) return true;
     if (getRemainingBreakMs(activeShift) <= 0) return false;
+    const shiftId = activeShift.id;
+    const nowIso = new Date().toISOString();
+    setShifts((prev) =>
+      prev.map((s) =>
+        s.id === shiftId ? { ...s, lunchStartTime: nowIso, lunchEndTime: undefined } : s
+      )
+    );
     try {
-      const success = await shiftService.startLunch(activeShift.id);
-      if (success) {
-        await refreshShifts();
+      const success = await shiftService.startLunch(shiftId);
+      if (!success) {
+        setShifts((prev) =>
+          prev.map((s) =>
+            s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
+          )
+        );
+        return false;
       }
-      return success;
+      await refreshShifts();
+      return true;
     } catch (error) {
       console.error('Start lunch error:', error);
+      setShifts((prev) =>
+        prev.map((s) =>
+          s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
+        )
+      );
       return false;
     }
   }, [activeShift, refreshShifts]);
 
   const endLunch = useCallback(async (): Promise<boolean> => {
     if (!activeShift?.lunchStartTime || activeShift.lunchEndTime) return false;
+    const shiftId = activeShift.id;
+    const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
+    const nowIso = new Date().toISOString();
+    setShifts((prev) =>
+      prev.map((s) =>
+        s.id === shiftId
+          ? {
+              ...s,
+              lunchStartTime: undefined,
+              lunchEndTime: nowIso,
+              lunchMinutesUsed: totalBreakMinutes,
+            }
+          : s
+      )
+    );
     try {
-      const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
-      const success = await shiftService.endLunch(activeShift.id, totalBreakMinutes);
-      if (success) {
-        await refreshShifts();
+      const success = await shiftService.endLunch(shiftId, totalBreakMinutes);
+      if (!success) {
+        setShifts((prev) =>
+          prev.map((s) =>
+            s.id === shiftId
+              ? {
+                  ...s,
+                  lunchStartTime: activeShift.lunchStartTime,
+                  lunchEndTime: undefined,
+                  lunchMinutesUsed: activeShift.lunchMinutesUsed,
+                }
+              : s
+          )
+        );
+        return false;
       }
-      return success;
+      await refreshShifts();
+      return true;
     } catch (error) {
       console.error('End lunch error:', error);
+      setShifts((prev) =>
+        prev.map((s) =>
+          s.id === shiftId
+            ? {
+                ...s,
+                lunchStartTime: activeShift.lunchStartTime,
+                lunchEndTime: undefined,
+                lunchMinutesUsed: activeShift.lunchMinutesUsed,
+              }
+            : s
+        )
+      );
       return false;
     }
   }, [activeShift, refreshShifts]);
