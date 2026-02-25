@@ -65,12 +65,10 @@ export function getCategoryDisplayName(category: InventoryCategory): string {
 // View state (app navigation)
 export type ViewState =
   | 'dashboard'
-  | 'job-list'
   | 'job-detail'
   | 'clock-in'
   | 'inventory'
   | 'inventory-detail'
-  | 'admin'
   | 'board-shop'
   | 'board-admin'
   | 'parts'
@@ -78,10 +76,8 @@ export type ViewState =
   | 'create-job'
   | 'quotes'
   | 'time-reports'
-  | 'completed-jobs'
   | 'calendar'
   | 'admin-settings'
-  | 'needs-ordering'
   | 'trello-import';
 
 export type BoardType = 'shopFloor' | 'admin';

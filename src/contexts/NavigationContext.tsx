@@ -9,26 +9,23 @@ import React, {
 
 interface NavigationState {
   searchTerm: string;
-  filters: string[];
   expandedCategories: string[];
   scrollPositions: Record<string, number>;
   lastViewedJobId: string | null;
   minimalView: boolean;
-  activeTab: string;
+  /** Inventory list search (view-scoped). */
+  inventorySearchTerm: string;
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
-  /** Parts active tab: 'all' or 'suggestions' */
-  partsActiveTab?: string;
 }
 
 const defaultState: NavigationState = {
   searchTerm: '',
-  filters: [],
   expandedCategories: [],
   scrollPositions: {},
   lastViewedJobId: null,
   minimalView: false,
-  activeTab: 'details',
+  inventorySearchTerm: '',
   partsSearchTerm: '',
 };
 

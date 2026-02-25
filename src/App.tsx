@@ -9,7 +9,6 @@ import PublicHome from './public/PublicHome';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
 const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
-const JobList = lazyWithRetry(() => import('./JobList'), 'JobList');
 const JobDetail = lazyWithRetry(() => import('./JobDetail'), 'JobDetail');
 const ClockInScreen = lazyWithRetry(() => import('./ClockInScreen'), 'ClockInScreen');
 const Inventory = lazyWithRetry(() => import('./Inventory'), 'Inventory');
@@ -239,28 +238,14 @@ export default function App() {
   }
 
   const isAdmin = currentUser?.isAdmin ?? false;
+  const renderDashboard = () => (
+    <AppShell>
+      <Dashboard onNavigate={handleNavigate} />
+    </AppShell>
+  );
 
   if (view === 'dashboard') {
-    return (
-      <AppShell>
-        <Dashboard onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'job-list') {
-    return (
-      <AppShell>
-        <JobList
-          jobs={jobs}
-          onNavigate={handleNavigate}
-          onClockIn={clockIn}
-          activeJobId={activeJob?.id}
-          shifts={shifts}
-          users={users}
-        />
-      </AppShell>
-    );
+    return renderDashboard();
   }
 
   if (view === 'job-detail' && id) {
@@ -392,7 +377,7 @@ export default function App() {
   }
 
   if (view === 'board-shop' || view === 'board-admin') {
-    const boardType = view === 'board-admin' ? 'admin' : 'shopFloor';
+    const boardType = view === 'board-admin' && isAdmin ? 'admin' : 'shopFloor';
     return (
       <AppShell>
         <KanbanBoard
@@ -411,6 +396,9 @@ export default function App() {
   }
 
   if (view === 'parts') {
+    if (!isAdmin) {
+      return renderDashboard();
+    }
     return (
       <AppShell>
         <Parts
@@ -424,6 +412,9 @@ export default function App() {
   }
 
   if (view === 'part-detail' && id) {
+    if (!isAdmin) {
+      return renderDashboard();
+    }
     return (
       <AppShell>
         <PartDetail
@@ -438,6 +429,9 @@ export default function App() {
   }
 
   if (view === 'create-job' && currentUser) {
+    if (!isAdmin) {
+      return renderDashboard();
+    }
     return (
       <AppShell>
         <AdminCreateJob
@@ -454,6 +448,9 @@ export default function App() {
   }
 
   if (view === 'quotes' && currentUser) {
+    if (!isAdmin) {
+      return renderDashboard();
+    }
     return (
       <AppShell>
         <Quotes
@@ -483,6 +480,9 @@ export default function App() {
   }
 
   if (view === 'time-reports' && currentUser) {
+    if (!isAdmin) {
+      return renderDashboard();
+    }
     return (
       <AppShell>
         <TimeReports
@@ -500,11 +500,7 @@ export default function App() {
 
   if (view === 'admin-settings') {
     if (!isAdmin) {
-      return (
-        <AppShell>
-          <Dashboard onNavigate={handleNavigate} />
-        </AppShell>
-      );
+      return renderDashboard();
     }
     return (
       <AppShell>
@@ -514,6 +510,9 @@ export default function App() {
   }
 
   if (view === 'trello-import') {
+    if (!isAdmin) {
+      return renderDashboard();
+    }
     return (
       <AppShell>
         <div className="flex min-h-screen flex-col bg-background-dark">

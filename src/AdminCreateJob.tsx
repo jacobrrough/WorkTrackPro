@@ -8,6 +8,7 @@ import {
   totalFromDashQuantities,
   getJobNameForSave,
 } from '@/lib/formatJob';
+import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
@@ -82,7 +83,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     laborHours: '',
     isRush: false,
     description: '',
-    status: 'toBeQuoted' as JobStatus,
+    status: 'pending' as JobStatus,
     binLocation: '',
     estNumber: '',
     invNumber: '',
@@ -123,6 +124,11 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       status: formData.status,
     },
     formData.jobCode
+  );
+
+  const autoPriceFromPart = useMemo(
+    () => (selectedPart ? calculateJobPriceFromPart(selectedPart, dashQuantities) : null),
+    [selectedPart, dashQuantities]
   );
 
   // Calculate labor hours suggestion from similar jobs (using auto name)
@@ -266,11 +272,11 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         onNavigate('board-admin');
       } else {
         // Creation returned null - something failed
-        console.error('Ã¢ÂÅ’ Job creation returned null');
+        console.error('Job creation returned null');
         setError('Failed to create job. The server did not return a job record. Please try again.');
       }
     } catch (error: unknown) {
-      console.error('Ã¢ÂÅ’ Error creating job:', error);
+      console.error('Error creating job:', error);
 
       // Parse error message
       let errorMessage = 'Failed to create job. ';
@@ -499,6 +505,38 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   disabled={isSubmitting}
                 />
               </div>
+              {selectedPart && (
+                <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary">
+                    Auto Price (Master Part)
+                  </p>
+                  {autoPriceFromPart ? (
+                    <div className="mt-1 space-y-0.5">
+                      <p className="text-lg font-bold text-white">
+                        ${autoPriceFromPart.totalPrice.toFixed(2)}
+                      </p>
+                      <p className="text-[11px] text-slate-300">
+                        {autoPriceFromPart.source === 'set_price'
+                          ? `Calculated from set price${autoPriceFromPart.setCount != null ? ` (${autoPriceFromPart.setCount} sets)` : ''}`
+                          : autoPriceFromPart.source === 'variant_prices'
+                            ? 'Calculated from variant prices'
+                            : 'Calculated from set price distribution'}
+                      </p>
+                      {autoPriceFromPart.missingVariantPrices.length > 0 && (
+                        <p className="text-[10px] text-slate-400">
+                          Missing variant prices:{' '}
+                          {autoPriceFromPart.missingVariantPrices.join(', ')} (using set-price
+                          fallback)
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Add set/variant quantities and ensure master part pricing is configured.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -581,11 +619,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as JobStatus })}
                 disabled={isSubmitting}
               >
-                <option value="toBeQuoted">To Be Quoted</option>
-                <option value="rfqReceived">RFQ Received</option>
-                <option value="rfqSent">RFQ Sent</option>
-                <option value="pod">PO'd</option>
                 <option value="pending">Pending (Shop)</option>
+                <option value="pod">PO'd</option>
                 <option value="inProgress">In Progress</option>
                 <option value="qualityControl">Quality Control</option>
                 <option value="onHold">On Hold</option>

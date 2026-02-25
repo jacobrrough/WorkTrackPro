@@ -1176,6 +1176,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
     attachmentId: string,
     isAdminOnly: boolean
   ): Promise<void> => {
+    if (!currentUser.isAdmin) {
+      showToast('Only admins can change file visibility', 'error');
+      return;
+    }
     if (!onUpdateAttachmentAdminOnly) return;
     const previous = attachmentAdminOverrides[attachmentId];
     setAttachmentAdminOverrides((prev) => ({ ...prev, [attachmentId]: isAdminOnly }));
@@ -1347,7 +1351,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <span className="material-symbols-outlined">{isEditing ? 'check' : 'edit'}</span>
               </button>
             )}
-            {!currentUser.isAdmin && <div className="w-10"></div>}
+            {!currentUser.isAdmin && (
+              <div className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                View Only
+              </div>
+            )}
           </div>
         </div>
       </header>

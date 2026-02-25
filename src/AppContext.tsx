@@ -26,6 +26,7 @@ import {
 } from './lib/inventoryCalculations';
 import { buildJobNameFromConvention } from './lib/formatJob';
 import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
+import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 
 interface AppContextType {
@@ -912,6 +913,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   }, [inventory, jobs]);
 
+  // Defense in depth: never expose inventory pricing to non-admin UI consumers.
+  const inventoryForRole = useMemo(() => {
+    return stripInventoryFinancials(inventoryWithComputed, currentUser?.isAdmin === true);
+  }, [inventoryWithComputed, currentUser?.isAdmin]);
+
   const contextValue = useMemo<AppContextType>(
     () => ({
       currentUser,
@@ -920,7 +926,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       jobs,
       shifts,
       users,
-      inventory: inventoryWithComputed,
+      inventory: inventoryForRole,
       activeShift,
       activeJob,
       login,
@@ -964,7 +970,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       jobs,
       shifts,
       users,
-      inventoryWithComputed,
+      inventoryForRole,
       activeShift,
       activeJob,
       login,

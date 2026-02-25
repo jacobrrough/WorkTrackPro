@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { InventoryItem, ViewState, getCategoryDisplayName } from '@/core/types';
+import { useNavigation } from '@/contexts/NavigationContext';
 import InventoryKanban from './InventoryKanban';
 import InventoryDetail from './InventoryDetail';
 import AddInventoryItem from './AddInventoryItem';
 import NeedsOrdering from './NeedsOrdering';
+import { useToast } from './Toast';
 
 interface InventoryProps {
   inventory: InventoryItem[];
@@ -42,10 +44,12 @@ const Inventory: React.FC<InventoryProps> = ({
   initialItemId,
   onBackFromDetail,
 }) => {
+  const { showToast } = useToast();
+  const { state: navState, updateState } = useNavigation();
   // Local state only for internal views (add, ordering)
   // Detail view is handled via URL routing (initialItemId prop)
   const [view, setView] = useState<InventoryView>('kanban');
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchQuery = navState.inventorySearchTerm ?? '';
 
   const filteredInventory = useMemo(() => {
     if (!searchQuery.trim()) return inventory;
@@ -91,10 +95,19 @@ const Inventory: React.FC<InventoryProps> = ({
   };
 
   const handleAddItem = () => {
+    if (!isAdmin) {
+      showToast('Only admins can add inventory items', 'error');
+      return;
+    }
     setView('add');
   };
 
   const handleAddComplete = async (data: Partial<InventoryItem>) => {
+    if (!isAdmin) {
+      showToast('Only admins can add inventory items', 'error');
+      setView('kanban');
+      return false;
+    }
     const newItem = await onCreateItem(data);
     if (newItem) {
       setView('kanban');
@@ -174,7 +187,7 @@ const Inventory: React.FC<InventoryProps> = ({
               <input
                 type="search"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => updateState({ inventorySearchTerm: e.target.value })}
                 placeholder="Search by name, category, bin, barcode, vendor..."
                 className="w-full rounded-sm border border-white/10 bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 aria-label="Search inventory"
@@ -182,7 +195,7 @@ const Inventory: React.FC<InventoryProps> = ({
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => updateState({ inventorySearchTerm: '' })}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   aria-label="Clear search"
                 >

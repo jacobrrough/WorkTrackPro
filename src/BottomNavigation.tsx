@@ -9,7 +9,7 @@ interface BottomNavigationProps {
 /** Persistent bottom tab bar for shop floor: Home | Jobs | Clock In | Stock */
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate }) => {
   const isHome = currentView === 'dashboard';
-  const isJobs = currentView === 'job-list' || currentView === 'board-shop';
+  const isJobs = currentView === 'board-shop';
   const isClockIn = currentView === 'clock-in';
   const isStock = currentView === 'inventory' || currentView === 'inventory-detail';
 
