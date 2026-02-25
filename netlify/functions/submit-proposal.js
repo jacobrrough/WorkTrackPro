@@ -84,6 +84,34 @@ function normalizeResendError(rawError) {
   return text.replace(/^Resend error:\s*/i, '').trim();
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryDelayMs(response, attempt) {
+  const retryAfter = sanitizeText(response.headers.get('retry-after'));
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.max(250, Math.ceil(seconds * 1000));
+    }
+
+    const retryAt = Date.parse(retryAfter);
+    if (Number.isFinite(retryAt)) {
+      return Math.max(250, retryAt - Date.now());
+    }
+  }
+
+  const resetSeconds = Number(response.headers.get('x-ratelimit-reset'));
+  if (Number.isFinite(resetSeconds) && resetSeconds >= 0) {
+    // Resend reset header is seconds-until-reset for rate-limit windows.
+    return Math.max(250, Math.ceil(resetSeconds * 1000));
+  }
+
+  // Fallback jittered backoff to stay under 2 req/sec limit.
+  return 600 + attempt * 350;
+}
+
 async function attachProposalFilesToAdminJob({ supabase, jobId, files }) {
   const warnings = [];
   if (!jobId || !Array.isArray(files) || files.length === 0) return warnings;
@@ -141,40 +169,53 @@ async function sendResendEmail({ from, to, subject, html, text, replyTo }) {
   if (!apiKey) return { ok: false, error: 'Missing RESEND_API_KEY' };
   if (!from) return { ok: false, error: 'Missing email From address' };
 
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      html,
-      text,
-      ...(replyTo ? { reply_to: [replyTo] } : {}),
-    }),
-  });
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        html,
+        text,
+        ...(replyTo ? { reply_to: [replyTo] } : {}),
+      }),
+    });
 
-  if (!response.ok) {
+    if (response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      const messageId = typeof payload?.id === 'string' ? payload.id : '';
+      if (!messageId) {
+        return {
+          ok: false,
+          error: 'Resend accepted request but did not return an email id.',
+          status: response.status,
+        };
+      }
+      return { ok: true, id: messageId, status: response.status };
+    }
+
     const body = await response.text().catch(() => '');
-    return {
-      ok: false,
-      error: `Resend error: ${response.status} ${body}`.trim(),
-      status: response.status,
-    };
+    const isRateLimited = response.status === 429;
+    const canRetry = isRateLimited && attempt < maxAttempts;
+    if (!canRetry) {
+      return {
+        ok: false,
+        error: `Resend error: ${response.status} ${body}`.trim(),
+        status: response.status,
+      };
+    }
+
+    const delayMs = parseRetryDelayMs(response, attempt);
+    await sleep(delayMs);
   }
-  const payload = await response.json().catch(() => ({}));
-  const messageId = typeof payload?.id === 'string' ? payload.id : '';
-  if (!messageId) {
-    return {
-      ok: false,
-      error: 'Resend accepted request but did not return an email id.',
-      status: response.status,
-    };
-  }
-  return { ok: true, id: messageId, status: response.status };
+
+  return { ok: false, error: 'Email retry attempts exhausted.' };
 }
 
 async function getResendEmailLastEvent(emailId) {
@@ -399,6 +440,9 @@ export async function handler(event) {
         }
       }
     }
+
+    // Small stagger to reduce burst rate-limit hits when sending back-to-back emails.
+    await sleep(600);
 
     const customerSent = await sendResendEmail({
       from: fromCustomer,

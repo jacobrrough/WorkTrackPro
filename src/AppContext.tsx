@@ -424,7 +424,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const success = await shiftService.clockIn(jobId, currentUser.id);
         if (success) {
           await refreshShifts();
-          await refreshJobs();
+          const job = jobs.find((j) => j.id === jobId);
+          const shouldMoveToInProgress = job?.status === 'pending' || job?.status === 'rush';
+
+          if (shouldMoveToInProgress) {
+            await updateJobStatus(jobId, 'inProgress');
+          } else {
+            await refreshJobs();
+          }
         }
         return success;
       } catch (error) {
@@ -432,7 +439,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
     },
-    [currentUser, refreshShifts, refreshJobs]
+    [currentUser, refreshShifts, refreshJobs, jobs, updateJobStatus]
   );
 
   // FIXED: Now returns boolean for success/failure
