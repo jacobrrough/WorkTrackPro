@@ -22,7 +22,11 @@ npm run dev          # Vite dev server on http://localhost:3000
 
 ### Authentication
 
-Test login credentials are available as `TEST_LOGIN_USERNAME` and `TEST_LOGIN_PASSWORD` secrets. Note: the Supabase instance has email confirmation enabled, so new accounts created via sign-up won't be able to log in until confirmed. To bypass this for test accounts, a `SUPABASE_SERVICE_ROLE_KEY` is needed (not currently configured).
+Test login credentials are available as `TEST_LOGIN_USERNAME` and `TEST_LOGIN_PASSWORD` secrets. The test account is already confirmed and approved as admin.
+
+The Supabase instance has email confirmation enabled. If the test account ever needs to be re-created or a new test account is needed, use the `SUPABASE_SERVICE_ROLE_KEY` secret with the admin API to:
+1. Confirm email: `PUT /auth/v1/admin/users/{id}` with `{"email_confirm": true}`
+2. Approve + grant admin: `PATCH /rest/v1/profiles?id=eq.{id}` with `{"is_approved": true, "is_admin": true}`
 
 ### Key commands
 
