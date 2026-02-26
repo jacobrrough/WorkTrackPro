@@ -833,16 +833,33 @@ const JobDetail: React.FC<JobDetailProps> = ({
       }
       return out;
     });
-    setEditForm({
+    const jobHasNoLaborReset =
+      (job.laborHours == null || job.laborHours === 0) &&
+      (!job.laborBreakdownByVariant ||
+        Object.values(job.laborBreakdownByVariant).every(
+          (e) => !Number(e?.hoursPerUnit) || e.hoursPerUnit === 0
+        ));
+    setEditForm((prev) => ({
+      ...prev,
       po: job.po || '',
       description: job.description || '',
       dueDate: isoToDateInput(job.dueDate),
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
-      laborHours: job.laborHours?.toString() || '',
-      cncHours: machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '',
-      printer3DHours:
-        machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '',
+      laborHours: jobHasNoLaborReset
+        ? prev.laborHours || job.laborHours?.toString() || ''
+        : job.laborHours?.toString() || '',
+      cncHours: jobHasNoLaborReset
+        ? prev.cncHours || (machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '')
+        : machineTotals.cncHours > 0
+          ? machineTotals.cncHours.toFixed(2)
+          : '',
+      printer3DHours: jobHasNoLaborReset
+        ? prev.printer3DHours ||
+          (machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '')
+        : machineTotals.printer3DHours > 0
+          ? machineTotals.printer3DHours.toFixed(2)
+          : '',
       status: normalizeLegacyRushStatus(job.status),
       isRush: job.isRush,
       binLocation: job.binLocation || '',
@@ -853,7 +870,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
       owrNumber: job.owrNumber || '',
-    });
+    }));
     setPartNumberSearch(jobPartNumber);
     if (jobPartNumber) {
       loadLinkedPart(jobPartNumber);

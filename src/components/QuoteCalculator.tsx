@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Part, PartVariant, InventoryItem } from '@/core/types';
 import { calculatePartQuote } from '@/lib/calculatePartQuote';
 import { calculateSetPriceFromVariants } from '@/lib/partDistribution';
@@ -39,6 +39,8 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   const [isManualPrice, setIsManualPrice] = useState(!!part.pricePerSet);
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const [laborHoursInput, setLaborHoursInput] = useState<string>(part.laborHours?.toString() ?? '');
+  const onSetPriceChangeRef = useRef(onSetPriceChange);
+  onSetPriceChangeRef.current = onSetPriceChange;
 
   const autoSetPrice = useMemo(
     () => calculateSetPriceFromVariants(variants ?? [], setComposition ?? {}),
@@ -68,17 +70,17 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   }, [part.laborHours]);
 
   useEffect(() => {
-    if (hasUserEdited && onSetPriceChange) {
+    if (hasUserEdited && onSetPriceChangeRef.current) {
       if (isManualPrice && manualSetPrice) {
         const price = parseFloat(manualSetPrice);
         if (!Number.isNaN(price)) {
-          onSetPriceChange(price);
+          onSetPriceChangeRef.current(price);
         }
       } else {
-        onSetPriceChange(undefined);
+        onSetPriceChangeRef.current(undefined);
       }
     }
-  }, [manualSetPrice, isManualPrice, hasUserEdited, onSetPriceChange]);
+  }, [manualSetPrice, isManualPrice, hasUserEdited]);
 
   const result = useMemo(() => {
     const setPrice = isManualPrice && manualSetPrice ? parseFloat(manualSetPrice) : undefined;
