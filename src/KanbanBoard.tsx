@@ -276,21 +276,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const checkChecklistComplete = async (jobId: string): Promise<boolean> => {
-    try {
-      const records = await checklistService.getByJob(jobId);
-      if (records.length === 0) return true; // No checklist = allow move
-      const checklist = records[0];
-      const items = checklist.items || [];
-      if (items.length === 0) return true; // Empty checklist = allow move
-      const allComplete = items.every((item: { checked?: boolean }) => item.checked);
-      return allComplete;
-    } catch (error) {
-      console.error('Failed to check checklist:', error);
-      return true; // On error, allow move
-    }
-  };
-
   const handleDrop = async (e: React.DragEvent, columnId: JobStatus) => {
     e.preventDefault();
     setDragOverColumn(null);
@@ -304,18 +289,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       setDraggedJob(null);
       return;
     }
-    const checklistComplete = await checkChecklistComplete(draggedJob.id);
-    if (!checklistComplete) {
-      const checklistState = checklistStates[draggedJob.id];
-      const msg = checklistState
-        ? `Complete checklist first (${checklistState.completed}/${checklistState.total})`
-        : 'Complete all checklist items before moving this job';
-      showToast(msg, 'warning');
-      setDraggedJob(null);
-      return;
-    }
 
-    // Normal status change
+    // Drag-and-drop always allows moving the card; checklist is not required.
     await onUpdateJobStatus(draggedJob.id, columnId);
 
     // BOARD SYNC LOGIC: Sync is handled by backend; these branches reserved for future client-side side effects.
@@ -824,42 +799,58 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto p-3">
-              {(jobs.find((j) => j.id === filesForJob)?.attachments ?? []).length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-400">No files on this job.</p>
-              ) : (
-                <div className="space-y-2">
-                  {(jobs.find((j) => j.id === filesForJob)?.attachments ?? []).map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      className="flex items-center justify-between gap-2 rounded-sm border border-white/10 bg-white/5 p-2.5"
-                    >
-                      <div className="min-w-0">
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="truncate text-sm text-primary hover:underline"
-                        >
-                          {attachment.filename}
-                        </a>
-                        <p className="text-[10px] text-slate-500">
-                          {attachment.isAdminOnly ? 'Admin file' : 'Standard file'}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={deletingAttachmentId === attachment.id}
-                        onClick={() => handleDeleteJobAttachment(attachment.id)}
-                        className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
-                        aria-label={`Delete ${attachment.filename}`}
-                        title="Delete file"
+              {(() => {
+                const job = jobs.find((j) => j.id === filesForJob);
+                const allAttachments = job?.attachments ?? [];
+                const visibleAttachments = isAdmin
+                  ? allAttachments
+                  : allAttachments.filter((a) => !a.isAdminOnly);
+                if (visibleAttachments.length === 0) {
+                  return (
+                    <p className="py-8 text-center text-sm text-slate-400">
+                      {allAttachments.length === 0
+                        ? 'No files on this job.'
+                        : 'No files you can view. (Other files are admin-only.)'}
+                    </p>
+                  );
+                }
+                return (
+                  <div className="space-y-2">
+                    {visibleAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center justify-between gap-2 rounded-sm border border-white/10 bg-white/5 p-2.5"
                       >
-                        <span className="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        <div className="min-w-0">
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="truncate text-sm text-primary hover:underline"
+                          >
+                            {attachment.filename}
+                          </a>
+                          <p className="text-[10px] text-slate-500">
+                            {attachment.isAdminOnly ? 'Admin file' : 'Standard file'}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            disabled={deletingAttachmentId === attachment.id}
+                            onClick={() => handleDeleteJobAttachment(attachment.id)}
+                            className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
+                            aria-label={`Delete ${attachment.filename}`}
+                            title="Delete file"
+                          >
+                            <span className="material-symbols-outlined">delete</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

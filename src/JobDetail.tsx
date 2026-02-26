@@ -623,10 +623,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
   );
   useEffect(() => {
     if (laborBreakdownTotal <= 0 || allocationSource !== 'variant') return;
+    const totals = variantAllocation.totals;
     setEditForm((prev) => {
       const nextLabor = laborBreakdownTotal.toFixed(2);
-      const nextCnc = variantAllocation.totals.cncHours.toFixed(2);
-      const nextPrinter3D = variantAllocation.totals.printer3DHours.toFixed(2);
+      const nextCnc = (totals?.cncHours ?? 0).toFixed(2);
+      const nextPrinter3D = (totals?.printer3DHours ?? 0).toFixed(2);
       if (
         prev.laborHours === nextLabor &&
         prev.cncHours === nextCnc &&
@@ -645,8 +646,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [
     laborBreakdownTotal,
     allocationSource,
-    variantAllocation.totals.cncHours,
-    variantAllocation.totals.printer3DHours,
+    variantAllocation.totals?.cncHours,
+    variantAllocation.totals?.printer3DHours,
   ]);
 
   // Search for part by part number (reserved for future part search UI)
@@ -1840,13 +1841,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
                     <div className="mb-3 space-y-0.5">
                       {laborBreakdownByDash.entries.map(
-                        ({ suffix, qty, totalHours, cncHoursTotal, printer3DHoursTotal }) => (
+                        ({ suffix, qty, laborHoursTotal, cncHoursTotal, printer3DHoursTotal }) => (
                           <div
                             key={suffix}
                             className="flex justify-between text-[10px] text-slate-400"
                           >
-                            {suffix} ×{qty} = L {totalHours.toFixed(1)}h / CNC{' '}
-                            {cncHoursTotal.toFixed(1)}h / 3D {printer3DHoursTotal.toFixed(1)}h
+                            {suffix} ×{qty} = L {(laborHoursTotal ?? 0).toFixed(1)}h / CNC{' '}
+                            {(cncHoursTotal ?? 0).toFixed(1)}h / 3D{' '}
+                            {(printer3DHoursTotal ?? 0).toFixed(1)}h
                           </div>
                         )
                       )}
@@ -2517,34 +2519,36 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
             )}
 
-            {/* Job Attachments Section (Admin Only — standard users only see part drawing above) */}
-            {currentUser.isAdmin && (
-              <div className="p-3 pt-0">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-                    <span className="material-symbols-outlined text-lg text-primary">
-                      attach_file
-                    </span>
-                    Job Attachments ({regularAttachments.length})
-                  </h3>
+            {/* Job Attachments Section (visible to all; upload/toggle for admins only) */}
+            <div className="p-3 pt-0">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                  <span className="material-symbols-outlined text-lg text-primary">
+                    attach_file
+                  </span>
+                  Job Attachments ({regularAttachments.length})
+                </h3>
+                {currentUser.isAdmin && (
                   <FileUploadButton
                     onUpload={(file) => handleFileUpload(file, false)}
                     label="Upload File"
                   />
-                </div>
-
-                <AttachmentsList
-                  attachments={regularAttachments}
-                  onViewAttachment={handleViewAttachment}
-                  canUpload={true}
-                  showUploadButton={false}
-                  showAdminOnlyToggle={!!onUpdateAttachmentAdminOnly}
-                  onToggleAdminOnly={
-                    onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined
-                  }
-                />
+                )}
               </div>
-            )}
+
+              <AttachmentsList
+                attachments={regularAttachments}
+                onViewAttachment={handleViewAttachment}
+                canUpload={currentUser.isAdmin}
+                showUploadButton={false}
+                showAdminOnlyToggle={currentUser.isAdmin && !!onUpdateAttachmentAdminOnly}
+                onToggleAdminOnly={
+                  currentUser.isAdmin && onUpdateAttachmentAdminOnly
+                    ? handleToggleAttachmentAdminOnly
+                    : undefined
+                }
+              />
+            </div>
 
             {/* Comments Section */}
             <div className="p-3 pt-0">
