@@ -87,12 +87,20 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   }, [manualSetPrice, isManualPrice, hasUserEdited]);
 
   const result = useMemo(() => {
-    const setPrice = isManualPrice && manualSetPrice ? parseFloat(manualSetPrice) : undefined;
+    const manualParsed = manualSetPrice.trim() ? parseFloat(manualSetPrice) : undefined;
+    const effectiveSetPrice =
+      isManualPrice && manualParsed != null && Number.isFinite(manualParsed) && manualParsed > 0
+        ? manualParsed
+        : autoSetPrice != null && Number.isFinite(autoSetPrice) && autoSetPrice > 0
+          ? autoSetPrice
+          : part.pricePerSet != null && Number.isFinite(part.pricePerSet) && part.pricePerSet > 0
+            ? part.pricePerSet
+            : undefined;
     return calculatePartQuote(part, quantity, inventoryItems, {
       laborRate,
       cncRate,
       printer3DRate,
-      manualSetPrice: setPrice,
+      manualSetPrice: effectiveSetPrice,
     });
   }, [
     part,
@@ -103,6 +111,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     printer3DRate,
     manualSetPrice,
     isManualPrice,
+    autoSetPrice,
   ]);
 
   const AutoBadge = () => (
@@ -121,7 +130,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     : autoSetPrice != null
       ? autoSetPrice.toString()
       : '';
-  const isLaborAutoFromTarget = !!(result?.isLaborAutoAdjusted && isManualPrice);
+  const isLaborAutoFromTarget = !!result?.isLaborAutoAdjusted;
   const laborDisplayValue = isLaborAutoFromTarget
     ? (result?.laborHours?.toFixed(2) ?? laborHoursInput)
     : laborHoursInput;

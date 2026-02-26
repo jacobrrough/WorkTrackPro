@@ -67,6 +67,12 @@ interface AppContextType {
     quantity: number,
     unit: string
   ) => Promise<void>;
+  allocateInventoryToJob: (
+    jobId: string,
+    inventoryId: string,
+    quantity: number,
+    notes?: string
+  ) => Promise<boolean>;
   removeJobInventory: (jobId: string, jobInventoryId: string) => Promise<void>;
   markInventoryOrdered: (id: string, quantity: number) => Promise<boolean>;
   receiveInventoryOrder: (id: string, receivedQuantity: number) => Promise<boolean>;
@@ -671,6 +677,63 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [inventory, calculateAvailable, refreshJobs, refreshInventory]
   );
 
+  const allocateInventoryToJob = useCallback(
+    async (
+      jobId: string,
+      inventoryId: string,
+      quantity: number,
+      notes?: string
+    ): Promise<boolean> => {
+      try {
+        const item = inventory.find((inv) => inv.id === inventoryId);
+        const job = jobs.find((j) => j.id === jobId);
+        if (!item || !job || quantity <= 0) return false;
+
+        const previousAvailable = calculateAvailable(item);
+        const currentAllocated = calculateAllocated(inventoryId);
+        const nextAllocated = currentAllocated + quantity;
+        const newAvailable = Math.max(0, item.inStock - nextAllocated);
+
+        const ok = await jobService.addJobInventory(jobId, inventoryId, quantity, item.unit || 'units');
+        if (!ok) return false;
+
+        if (currentUser) {
+          await inventoryHistoryService.createHistory({
+            inventory: inventoryId,
+            user: currentUser.id,
+            action: 'allocated_to_job',
+            reason:
+              notes?.trim() ||
+              `Allocated ${quantity} ${item.unit} to Job #${job.jobCode}`,
+            previousInStock: item.inStock,
+            newInStock: item.inStock,
+            previousAvailable,
+            newAvailable,
+            changeAmount: 0,
+            relatedJob: jobId,
+            relatedPO: job.po,
+          });
+        }
+
+        await refreshJobs();
+        await refreshInventory();
+        return true;
+      } catch (error) {
+        console.error('Allocate inventory to job error:', error);
+        return false;
+      }
+    },
+    [
+      inventory,
+      jobs,
+      currentUser,
+      calculateAvailable,
+      calculateAllocated,
+      refreshJobs,
+      refreshInventory,
+    ]
+  );
+
   const removeJobInventory = useCallback(
     async (jobId: string, jobInventoryId: string): Promise<void> => {
       try {
@@ -1023,6 +1086,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateInventoryItem,
       updateInventoryStock,
       addJobInventory,
+      allocateInventoryToJob,
       removeJobInventory,
       markInventoryOrdered, // ADDED
       receiveInventoryOrder, // ADDED
@@ -1068,6 +1132,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateInventoryItem,
       updateInventoryStock,
       addJobInventory,
+      allocateInventoryToJob,
       removeJobInventory,
       markInventoryOrdered,
       receiveInventoryOrder,

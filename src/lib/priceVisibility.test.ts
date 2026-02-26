@@ -4,6 +4,9 @@ import {
   shouldShowInventoryKanbanPrice,
   shouldShowInventoryDetailPrice,
   stripInventoryFinancials,
+  canViewJobFinancials,
+  shouldComputeJobFinancials,
+  canViewPartFinancials,
 } from './priceVisibility';
 
 const mockInventory = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
@@ -44,5 +47,17 @@ describe('price visibility', () => {
     const items = [mockInventory()];
     const preserved = stripInventoryFinancials(items, true);
     expect(preserved[0].price).toBe(12.5);
+  });
+
+  it('uses centralized job financial guardrails', () => {
+    expect(canViewJobFinancials(true)).toBe(true);
+    expect(canViewJobFinancials(false)).toBe(false);
+    expect(shouldComputeJobFinancials(true)).toBe(true);
+    expect(shouldComputeJobFinancials(false)).toBe(false);
+  });
+
+  it('uses centralized part financial guardrails', () => {
+    expect(canViewPartFinancials(true)).toBe(true);
+    expect(canViewPartFinancials(false)).toBe(false);
   });
 });

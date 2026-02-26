@@ -15,3 +15,15 @@ export function stripInventoryFinancials(
   if (isAdmin) return items;
   return items.map((item) => ({ ...item, price: undefined }));
 }
+
+export function canViewJobFinancials(isAdmin: boolean): boolean {
+  return isAdmin;
+}
+
+export function shouldComputeJobFinancials(isAdmin: boolean): boolean {
+  return canViewJobFinancials(isAdmin);
+}
+
+export function canViewPartFinancials(isAdmin: boolean): boolean {
+  return isAdmin;
+}

@@ -12,12 +12,12 @@ import {
 import { partsService } from '@/services/api/parts';
 import { inventoryService } from '@/services/api/inventory';
 import { useToast } from '@/Toast';
+import { useApp } from '@/AppContext';
 import {
   formatSetComposition,
   formatJobCode,
   formatDashSummary,
   getJobDisplayName,
-  totalFromDashQuantities,
 } from '@/lib/formatJob';
 import { formatDateOnly } from '@/core/date';
 import { getStatusDisplayName } from '@/core/types';
@@ -42,7 +42,8 @@ import {
   calculateVariantLaborTargets,
   calculateVariantCncTargets,
 } from '@/lib/variantPricingAuto';
-import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
+import { usePartJobs, usePartLaborFeedback } from '@/features/admin/hooks/usePartLaborFeedback';
+import { canViewPartFinancials } from '@/lib/priceVisibility';
 
 interface PartDetailProps {
   partId: string;
@@ -59,6 +60,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
   onNavigate,
   onNavigateBack,
 }) => {
+  const { currentUser } = useApp();
   const { settings } = useSettings();
   const [part, setPart] = useState<Part | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,166 +86,20 @@ const PartDetail: React.FC<PartDetailProps> = ({
   // null means user explicitly reverted that variant to auto (no manual total).
   const manualVariantPriceOverridesRef = useRef<Record<string, number | null>>({});
 
-  const partJobs = useMemo(() => {
-    if (!part) return [];
+  const partJobs = usePartJobs(part, allJobs);
 
-    const matched = allJobs.filter((j) => {
-      if (j.partId && j.partId === part.id) {
-        return true;
-      }
-      if (
-        j.partNumber &&
-        (j.partNumber === part.partNumber ||
-          j.partNumber.replace(/-\d{2}$/, '') === part.partNumber)
-      ) {
-        return true;
-      }
-      if (part.id.toString().startsWith('job-') && j.name?.trim().startsWith(part.partNumber)) {
-        return true;
-      }
-      return false;
-    });
-
-    const unique = new Map<string, Job>();
-    for (const job of matched) {
-      const key = job.id || `${job.jobCode}-${job.partNumber ?? ''}-${job.name ?? ''}`;
-      if (!unique.has(key)) {
-        unique.set(key, job);
-      }
-    }
-
-    return Array.from(unique.values());
-  }, [allJobs, part]);
-
-  const laborFeedback = useMemo(() => {
-    const completedStatuses = new Set(['finished', 'delivered', 'projectCompleted', 'paid']);
-    const completedJobs = partJobs.filter((job) => completedStatuses.has(job.status));
-
-    const estimatePerSet = part?.laborHours;
-
-    const parseJobSetCount = (job: Job): number => {
-      const dashTotal = totalFromDashQuantities(job.dashQuantities);
-      if (dashTotal > 0) return dashTotal;
-      const qty = parseFloat((job.qty ?? '').trim());
-      return Number.isFinite(qty) && qty > 0 ? qty : 0;
-    };
-
-    const resolveActualHours = (job: Job): number => {
-      const shiftHours = calculateJobHoursFromShifts(job.id, shifts);
-      if (shiftHours > 0) return shiftHours;
-      if (job.laborHours && job.laborHours > 0) return job.laborHours;
-      return 0;
-    };
-
-    const jobRows = completedJobs
-      .map((job) => {
-        const actualHours = resolveActualHours(job);
-        const setCount = parseJobSetCount(job);
-        if (actualHours <= 0 || setCount <= 0) return null;
-        const estimatedTotalHours = estimatePerSet != null ? estimatePerSet * setCount : undefined;
-        return {
-          jobId: job.id,
-          jobCode: job.jobCode,
-          actualHours,
-          setCount,
-          actualPerSet: actualHours / setCount,
-          estimatedTotalHours,
-          varianceHours:
-            estimatedTotalHours != null ? actualHours - estimatedTotalHours : undefined,
-        };
+  const notifyPartUpdated = (partRef?: Part | null) => {
+    const source = partRef ?? part;
+    if (!source || typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('parts:updated', {
+        detail: { partId: source.id, partNumber: source.partNumber, updatedAt: Date.now() },
       })
-      .filter(
-        (
-          row
-        ): row is {
-          jobId: string;
-          jobCode: number;
-          actualHours: number;
-          setCount: number;
-          actualPerSet: number;
-          estimatedTotalHours?: number;
-          varianceHours?: number;
-        } => row != null
-      );
+    );
+  };
 
-    const totalActualHours = jobRows.reduce((sum, row) => sum + row.actualHours, 0);
-    const totalSets = jobRows.reduce((sum, row) => sum + row.setCount, 0);
-    const averageActualPerSet = totalSets > 0 ? totalActualHours / totalSets : undefined;
-
-    const variantStats = new Map<string, { hours: number; units: number }>();
-    const normalizeSuffix = (suffix: string) => suffix.replace(/^-/, '');
-
-    for (const job of completedJobs) {
-      const actualHours = resolveActualHours(job);
-      if (actualHours <= 0) continue;
-
-      const dashEntries = Object.entries(job.dashQuantities ?? {}).filter(([, qty]) => qty > 0);
-      if (dashEntries.length > 0) {
-        const totalDashQty = dashEntries.reduce((sum, [, qty]) => sum + qty, 0);
-        if (totalDashQty > 0) {
-          for (const [suffixRaw, qty] of dashEntries) {
-            const suffix = normalizeSuffix(suffixRaw);
-            const current = variantStats.get(suffix) ?? { hours: 0, units: 0 };
-            current.units += qty;
-            current.hours += actualHours * (qty / totalDashQty);
-            variantStats.set(suffix, current);
-          }
-          continue;
-        }
-      }
-
-      if (job.variantSuffix) {
-        const suffix = normalizeSuffix(job.variantSuffix);
-        const setCount = parseJobSetCount(job) || 1;
-        const current = variantStats.get(suffix) ?? { hours: 0, units: 0 };
-        current.units += setCount;
-        current.hours += actualHours;
-        variantStats.set(suffix, current);
-      }
-    }
-
-    const variantRows = (part?.variants ?? []).map((variant) => {
-      const suffix = normalizeSuffix(variant.variantSuffix);
-      const stat = variantStats.get(suffix) ?? { hours: 0, units: 0 };
-      const actualPerUnit = stat.units > 0 ? stat.hours / stat.units : undefined;
-      const estimatedPerUnit =
-        variant.laborHours != null
-          ? variant.laborHours
-          : part?.laborHours != null && part.setComposition
-            ? variantLaborFromSetComposition(
-                variant.variantSuffix,
-                part.laborHours,
-                part.setComposition
-              )
-            : undefined;
-      return {
-        variantSuffix: variant.variantSuffix,
-        actualHours: stat.hours,
-        completedUnits: stat.units,
-        actualPerUnit,
-        estimatedPerUnit,
-        variancePerUnit:
-          actualPerUnit != null && estimatedPerUnit != null
-            ? actualPerUnit - estimatedPerUnit
-            : undefined,
-      };
-    });
-
-    return {
-      completedJobCount: completedJobs.length,
-      analyzedJobCount: jobRows.length,
-      totalActualHours,
-      totalSets,
-      estimatePerSet,
-      averageActualPerSet,
-      variancePerSet:
-        averageActualPerSet != null && estimatePerSet != null
-          ? averageActualPerSet - estimatePerSet
-          : undefined,
-      jobRows,
-      variantRows,
-    };
-  }, [part, partJobs, shifts]);
+  const laborFeedback = usePartLaborFeedback(part, partJobs, shifts);
+  const canViewFinancials = canViewPartFinancials(!!currentUser?.isAdmin);
 
   const isPartInfoDirty = useMemo(() => {
     if (!part) return false;
@@ -394,6 +250,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       if (!skipRefresh) {
         showToast('Variant added', 'success');
         loadPart();
+        notifyPartUpdated();
       }
     } catch (error) {
       if (!skipRefresh) {
@@ -440,6 +297,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             }
           : prev
       );
+      notifyPartUpdated();
       let updated = await loadPart(true);
       if (!updated || updates.pricePerVariant === undefined || !updated.variants?.length) return;
 
@@ -504,9 +362,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
         if (savedPart) {
           setPart((prev) => (prev ? { ...prev, ...savedPart } : prev));
           updated = { ...updated, ...savedPart };
+          notifyPartUpdated(savedPart);
         } else {
           setPart((prev) => (prev ? { ...prev, ...partUpdates } : prev));
           updated = { ...updated, ...partUpdates };
+          notifyPartUpdated();
         }
       }
 
@@ -593,6 +453,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
       if (seededPrices.length > 0 || Object.keys(partUpdates).length > 0 || laborVariantsChanged) {
         await loadPart(true);
+        notifyPartUpdated();
       }
     } catch (error) {
       showToast('Failed to update variant', 'error');
@@ -620,6 +481,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       }
       showToast('Variant deleted', 'success');
       loadPart();
+      notifyPartUpdated();
     } catch (error) {
       showToast('Failed to delete variant', 'error');
       console.error('Error deleting variant:', error);
@@ -670,21 +532,38 @@ const PartDetail: React.FC<PartDetailProps> = ({
           quantity,
           unit
         );
+        let appliedCount = 0;
         for (const { variantId, inventoryId: invId, quantity: qty, unit: u } of toDistribute) {
           try {
-            await partsService.addMaterial({
-              variantId,
-              inventoryId: invId,
-              quantity: qty,
-              unit: u,
-              usageType: 'per_variant',
-            });
+            const variant = variants.find((v) => v.id === variantId);
+            const existing = (variant?.materials ?? []).find((m) => m.inventoryId === invId);
+            let applied = false;
+
+            if (existing?.id) {
+              const updated = await partsService.updatePartMaterial(existing.id, {
+                quantityPerUnit: qty,
+                unit: u,
+              });
+              applied = !!updated;
+            } else {
+              const created = await partsService.addMaterial({
+                variantId,
+                inventoryId: invId,
+                quantity: qty,
+                unit: u,
+                usageType: 'per_variant',
+              });
+              applied = !!created;
+            }
+
+            if (applied) appliedCount++;
           } catch {
             /* ignore */
           }
         }
-        if (toDistribute.length > 0)
-          copyOrSetMessage = ` and applied to ${toDistribute.length} variant(s)`;
+        if (appliedCount > 0) {
+          copyOrSetMessage = ` and applied to ${appliedCount} variant(s)`;
+        }
       } else if (
         addedToVariantId &&
         usageType === 'per_variant' &&
@@ -826,6 +705,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       if (updated) {
         setPart((prev) => (prev ? { ...prev, ...updated } : null));
         showToast('Part updated successfully', 'success');
+        notifyPartUpdated(updated);
       } else {
         setPart((prev) => (prev ? { ...prev, ...updates } : null));
         showToast('Part updated (save may be partial)', 'warning');
@@ -979,7 +859,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           <div className="flex items-center gap-4">
             <button
               onClick={onNavigateBack}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
               aria-label="Go back"
             >
               <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -1285,7 +1165,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAddMaterial({ partId: part.id })}
-                    className="text-xs text-primary hover:underline"
+                    className="min-h-[44px] rounded-sm px-2 text-xs text-primary hover:bg-primary/10 hover:underline"
                   >
                     Add Material
                   </button>
@@ -1304,6 +1184,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     inventoryItems={inventoryItems}
                     onUpdate={() => loadPart(true)}
                     onNavigate={onNavigate}
+                    showFinancials={canViewFinancials}
                   />
                 ) : (
                   <p className="text-sm text-slate-500">No materials defined for this part.</p>
@@ -1334,7 +1215,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     )}
                 </div>
               )}
-              <QuoteCalculator
+              {canViewFinancials && (
+                <QuoteCalculator
                 part={part}
                 inventoryItems={inventoryItems}
                 variants={part.variants ?? []}
@@ -1452,7 +1334,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     if (auto != null) await handleUpdatePart({ pricePerSet: auto });
                   }
                 }}
-              />
+                />
+              )}
             </div>
           </Accordion>
         )}
@@ -1503,6 +1386,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
                       onMaterialAdded={() => loadPart(true)}
                       onVariantMaterialChanged={syncSetMaterialFromVariants}
+                      showFinancials={canViewFinancials}
                       partLaborHours={part.laborHours}
                       partCncHours={part.requiresCNC ? part.cncTimeHours : undefined}
                       setComposition={part.setComposition}
@@ -1708,6 +1592,7 @@ interface VariantCardProps {
   onAddMaterial: () => void;
   onMaterialAdded: () => void;
   onVariantMaterialChanged: (inventoryId: string) => Promise<void>;
+  showFinancials: boolean;
   partLaborHours?: number;
   partCncHours?: number;
   setComposition?: Record<string, number> | null;
@@ -1735,6 +1620,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   onAddMaterial,
   onMaterialAdded,
   onVariantMaterialChanged,
+  showFinancials,
   partLaborHours,
   partCncHours,
   setComposition,
@@ -1785,7 +1671,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const handleSave = () => {
     onUpdate(variant.id, {
       name: name || undefined,
-      pricePerVariant: price ? Number(price) : undefined,
+      ...(showFinancials ? { pricePerVariant: price ? Number(price) : undefined } : {}),
       laborHours: laborHours ? Number(laborHours) : undefined,
       cncTimeHours: cncHours ? Number(cncHours) : undefined,
       requiresCNC: cncHours ? true : variant.requiresCNC,
@@ -1828,11 +1714,11 @@ const VariantCard: React.FC<VariantCardProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleSave}
-              className="rounded bg-primary px-3 py-1 text-sm text-white"
+              className="min-h-[44px] rounded bg-primary px-3 py-1 text-sm text-white"
             >
               Save
             </button>
-            <button onClick={onCancel} className="rounded bg-white/10 px-3 py-1 text-sm text-white">
+            <button onClick={onCancel} className="min-h-[44px] rounded bg-white/10 px-3 py-1 text-sm text-white">
               Cancel
             </button>
             <button
@@ -1846,7 +1732,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <button onClick={onEdit} className="text-sm text-primary hover:underline">
+            <button onClick={onEdit} className="min-h-[44px] rounded-sm px-2 text-sm text-primary hover:bg-primary/10 hover:underline">
               Edit
             </button>
             <button
@@ -1863,17 +1749,19 @@ const VariantCard: React.FC<VariantCardProps> = ({
 
       {isEditing && (
         <div className="mb-3 grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs text-slate-400">Price</label>
-            <input
-              type="number"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
-              placeholder="0.00"
-            />
-          </div>
+          {showFinancials && (
+            <div>
+              <label className="mb-1 block text-xs text-slate-400">Price</label>
+              <input
+                type="number"
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
+                placeholder="0.00"
+              />
+            </div>
+          )}
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="text-xs text-slate-400">Labor Hours</label>
@@ -1926,7 +1814,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
 
       {!isEditing && (
         <div className="mb-3 flex gap-4 text-xs text-slate-400">
-          {variant.pricePerVariant !== undefined && (
+          {showFinancials && variant.pricePerVariant !== undefined && (
             <span>${variant.pricePerVariant.toFixed(2)}/variant</span>
           )}
           {variant.laborHours !== undefined && <span>{variant.laborHours}h</span>}
@@ -1942,7 +1830,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           <button
             type="button"
             onClick={onAddMaterial}
-            className="text-xs text-primary hover:underline"
+            className="min-h-[44px] rounded-sm px-2 text-xs text-primary hover:bg-primary/10 hover:underline"
           >
             Add Material
           </button>
@@ -2120,9 +2008,11 @@ const VariantCard: React.FC<VariantCardProps> = ({
                         </>
                       )}
                     </div>
-                    <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-                      <MaterialCostDisplay ourCost={ourCost} />
-                    </div>
+                    {showFinancials && (
+                      <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                        <MaterialCostDisplay ourCost={ourCost} />
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -2154,29 +2044,31 @@ const VariantCard: React.FC<VariantCardProps> = ({
       </div>
 
       {/* Per-variant quote: quick reference with editable labor hours and total */}
-      <div className="mt-3 border-t border-white/10 pt-3">
-        <VariantQuoteMini
-          partNumber={partNumber}
-          variant={variant}
-          inventoryItems={inventoryItems}
-          partLaborHours={partLaborHours}
-          partCncHours={partCncHours}
-          setComposition={setComposition}
-          onVariantPriceChange={(variantId, price) => {
-            if (variantId === variant.id) onUpdate(variantId, { pricePerVariant: price });
-          }}
-          onVariantLaborChange={(variantId, laborHours) => {
-            if (variantId === variant.id) onUpdate(variantId, { laborHours });
-          }}
-          onVariantCncChange={(variantId, cncTimeHours) => {
-            if (variantId === variant.id)
-              onUpdate(variantId, {
-                requiresCNC: cncTimeHours != null && cncTimeHours > 0,
-                cncTimeHours: cncTimeHours ?? undefined,
-              });
-          }}
-        />
-      </div>
+      {showFinancials && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <VariantQuoteMini
+            partNumber={partNumber}
+            variant={variant}
+            inventoryItems={inventoryItems}
+            partLaborHours={partLaborHours}
+            partCncHours={partCncHours}
+            setComposition={setComposition}
+            onVariantPriceChange={(variantId, price) => {
+              if (variantId === variant.id) onUpdate(variantId, { pricePerVariant: price });
+            }}
+            onVariantLaborChange={(variantId, laborHours) => {
+              if (variantId === variant.id) onUpdate(variantId, { laborHours });
+            }}
+            onVariantCncChange={(variantId, cncTimeHours) => {
+              if (variantId === variant.id)
+                onUpdate(variantId, {
+                  requiresCNC: cncTimeHours != null && cncTimeHours > 0,
+                  cncTimeHours: cncTimeHours ?? undefined,
+                });
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -2654,6 +2546,7 @@ interface MaterialsListWithCostProps {
   inventoryItems: InventoryItem[];
   onUpdate: () => void;
   onNavigate?: (view: string, id?: string) => void;
+  showFinancials?: boolean;
 }
 
 const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
@@ -2661,6 +2554,7 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
   inventoryItems,
   onUpdate,
   onNavigate,
+  showFinancials = true,
 }) => {
   const { showToast } = useToast();
   const [editingQty, setEditingQty] = useState<string | null>(null);
@@ -2823,9 +2717,11 @@ const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
                   </>
                 )}
               </div>
-              <div className="mt-1" onClick={(e) => onNavigate && e.stopPropagation()}>
-                <MaterialCostDisplay ourCost={ourCost} />
-              </div>
+              {showFinancials && (
+                <div className="mt-1" onClick={(e) => onNavigate && e.stopPropagation()}>
+                  <MaterialCostDisplay ourCost={ourCost} />
+                </div>
+              )}
             </div>
             <button
               type="button"

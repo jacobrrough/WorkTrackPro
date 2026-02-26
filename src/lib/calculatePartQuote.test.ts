@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { InventoryItem, PartVariant } from '@/core/types';
-import { calculateVariantQuote } from './calculatePartQuote';
+import type { InventoryItem, Part, PartVariant } from '@/core/types';
+import { calculatePartQuote, calculateVariantQuote } from './calculatePartQuote';
 
 const makeInventory = (id: string, price: number): InventoryItem =>
   ({
@@ -41,5 +41,31 @@ describe('calculateVariantQuote', () => {
     // material customer = (2 * 5) * 2.25 = 22.5, target labor cost = 177.5, at 100/hr => 1.775h
     expect(result?.laborHours).toBeCloseTo(1.775, 3);
     expect(result?.total).toBeCloseTo(200, 3);
+  });
+});
+
+describe('calculatePartQuote', () => {
+  it('treats manual set price as the final total', () => {
+    const part = {
+      id: 'part-1',
+      partNumber: 'P-100',
+      name: 'Part 100',
+      laborHours: 1,
+      requiresCNC: false,
+      requires3DPrint: false,
+      materials: [{ id: 'm-1', inventoryId: 'inv-1', quantityPerUnit: 2, unit: 'ea', usageType: 'per_set' }],
+      variants: [],
+      setComposition: {},
+    } as unknown as Part;
+    const inventory = [makeInventory('inv-1', 5)];
+
+    const result = calculatePartQuote(part, 1, inventory, {
+      laborRate: 175,
+      manualSetPrice: 9300,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.isReverseCalculated).toBe(true);
+    expect(result?.total).toBeCloseTo(9300, 2);
   });
 });

@@ -219,7 +219,9 @@ export function copyVariantMaterialsToOthers(
 }
 
 /**
- * Distribute a set-level material quantity to all variants proportionally (by set composition).
+ * Distribute a set-level material quantity to all variants as an even per-unit value.
+ * Each variant in the set gets the same quantityPerUnit, and setComposition is used only
+ * to determine which variants are included (qtyInSet > 0) and the total unit count.
  * Returns list of { variantId, inventoryId, quantity, unit } to add to each variant.
  */
 export function distributeSetMaterialToVariants(
@@ -232,17 +234,24 @@ export function distributeSetMaterialToVariants(
   if (!variants?.length || !setComposition || Object.keys(setComposition).length === 0) {
     return [];
   }
-  const bySuffix = distributeQuantityProportionally(totalQuantity, setComposition);
+  const totalUnits = Object.values(setComposition).reduce((sum, rawQty) => {
+    const qty = Number(rawQty);
+    return Number.isFinite(qty) && qty > 0 ? sum + qty : sum;
+  }, 0);
+  if (totalUnits <= 0 || totalQuantity <= 0) return [];
+
+  const quantityPerUnit = Math.round((totalQuantity / totalUnits) * 1000) / 1000;
   const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> =
     [];
   for (const v of variants) {
     const suffixNorm = norm(v.variantSuffix);
-    const qty = Object.entries(bySuffix).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
-    if (qty > 0) {
+    const qtyInSet =
+      Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
+    if (qtyInSet > 0) {
       toAdd.push({
         variantId: v.id,
         inventoryId,
-        quantity: qty,
+        quantity: quantityPerUnit,
         unit: unit || 'units',
       });
     }

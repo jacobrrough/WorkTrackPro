@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   InventoryItem,
   ViewState,
   getCategoryDisplayName,
   InventoryCategory,
   Attachment,
+  Job,
 } from '@/core/types';
 import { inventoryHistoryService, inventoryService } from './pocketbase';
 import { useToast } from './Toast';
@@ -27,6 +28,7 @@ interface InventoryDetailProps {
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
+  jobs?: Job[];
 }
 
 const InventoryDetail: React.FC<InventoryDetailProps> = ({
@@ -41,6 +43,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   isAdmin,
   calculateAvailable,
   calculateAllocated,
+  jobs = [],
 }) => {
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -93,6 +96,23 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
   const allocated = currentItem.allocated ?? calculateAllocated(currentItem.id);
   const available = currentItem.available ?? calculateAvailable(currentItem);
+  const minStock = currentItem.reorderPoint ?? 0;
+  const minStockPercent = minStock > 0 ? Math.min(200, (available / minStock) * 100) : 100;
+  const reorderCostEstimate =
+    shouldShowInventoryDetailPrice(item, isAdmin) && minStock > 0
+      ? minStock * (item.price ?? 0)
+      : null;
+  const linkedJobs = useMemo(() => {
+    const entries: Array<{ job: Job; quantity: number; jobInventoryId: string }> = [];
+    for (const job of jobs) {
+      for (const ji of job.inventoryItems ?? []) {
+        if (ji.inventoryId === currentItem.id) {
+          entries.push({ job, quantity: ji.quantity, jobInventoryId: ji.id });
+        }
+      }
+    }
+    return entries;
+  }, [jobs, currentItem.id]);
 
   // Update currentItem when item prop changes
   useEffect(() => {
@@ -828,9 +848,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
             </div>
           )}
 
-          {/* Stock Status */}
+          {/* Stock Overview */}
           <div className="rounded-sm bg-card-dark p-3">
-            <h2 className="mb-4 text-lg font-bold text-white">Stock Status</h2>
+            <h2 className="mb-4 text-lg font-bold text-white">Stock Overview</h2>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-sm bg-white/5 p-3">
@@ -851,6 +871,23 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 <p className="text-2xl font-bold text-blue-400">{currentItem.onOrder || 0}</p>
               </div>
             </div>
+
+            {minStock > 0 && (
+              <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-300">Min Stock Coverage</span>
+                  <span className="text-slate-400">
+                    {available} / {minStock}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className={`h-full ${available <= 0 ? 'bg-red-500' : available < minStock ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.max(5, Math.min(minStockPercent, 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             {(currentItem.reorderPoint != null &&
               currentItem.reorderPoint > 0 &&
@@ -889,23 +926,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
             ) : null}
           </div>
 
-          {/* Details */}
+          {/* Location & Barcode */}
           <div className="space-y-3 rounded-sm bg-card-dark p-3">
-            <h2 className="mb-4 text-lg font-bold text-white">Details</h2>
-
-            {shouldShowInventoryDetailPrice(item, isAdmin) && (
-              <div className="flex justify-between border-b border-white/10 pb-2">
-                <p className="text-sm text-slate-400">Price Per Unit</p>
-                <p className="font-bold text-white">
-                  ${item.price.toFixed(2)} / {item.unit}
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-between border-b border-white/10 pb-2">
-              <p className="text-sm text-slate-400">Unit</p>
-              <p className="font-bold text-white">{item.unit}</p>
-            </div>
+            <h2 className="mb-4 text-lg font-bold text-white">Location & Barcode</h2>
 
             {currentItem.barcode && (
               <div className="flex justify-between border-b border-white/10 pb-2">
@@ -921,10 +944,46 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               </div>
             )}
 
+            <div className="flex justify-between border-b border-white/10 pb-2">
+              <p className="text-sm text-slate-400">Unit</p>
+              <p className="font-bold text-white">{item.unit}</p>
+            </div>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={startScan}
+                className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
+              >
+                Scan Barcode
+              </button>
+            )}
+          </div>
+
+          {/* Supplier & Pricing */}
+          <div className="space-y-3 rounded-sm bg-card-dark p-3">
+            <h2 className="mb-4 text-lg font-bold text-white">Supplier & Pricing</h2>
+
             {currentItem.vendor && (
               <div className="flex justify-between border-b border-white/10 pb-2">
                 <p className="text-sm text-slate-400">Vendor</p>
                 <p className="text-white">{currentItem.vendor}</p>
+              </div>
+            )}
+
+            {shouldShowInventoryDetailPrice(item, isAdmin) && (
+              <div className="flex justify-between border-b border-white/10 pb-2">
+                <p className="text-sm text-slate-400">Unit Price</p>
+                <p className="font-bold text-white">
+                  ${item.price.toFixed(2)} / {item.unit}
+                </p>
+              </div>
+            )}
+
+            {reorderCostEstimate != null && (
+              <div className="flex justify-between border-b border-white/10 pb-2">
+                <p className="text-sm text-slate-400">Reorder Cost Estimate</p>
+                <p className="font-bold text-white">${reorderCostEstimate.toFixed(2)}</p>
               </div>
             )}
 
@@ -936,6 +995,33 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 {currentItem.reorderPoint != null ? currentItem.reorderPoint : 'Not set'}
               </p>
             </div>
+          </div>
+
+          {/* Linked Jobs */}
+          <div className="rounded-sm bg-card-dark p-3">
+            <h2 className="mb-3 text-lg font-bold text-white">Linked Jobs</h2>
+            {linkedJobs.length === 0 ? (
+              <p className="text-sm text-slate-400">No active job allocations for this part.</p>
+            ) : (
+              <div className="space-y-2">
+                {linkedJobs.map(({ job, quantity, jobInventoryId }) => (
+                  <button
+                    type="button"
+                    key={jobInventoryId}
+                    onClick={() => onNavigate('job-detail', job.id)}
+                    className="flex w-full items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
+                  >
+                    <div>
+                      <p className="font-bold text-white">Job #{job.jobCode}</p>
+                      <p className="text-xs text-slate-400">{job.name}</p>
+                    </div>
+                    <p className="text-sm font-bold text-yellow-300">
+                      {quantity} {currentItem.unit}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Admin Files Section (Admin Only) */}

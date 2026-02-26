@@ -68,6 +68,7 @@ export default function App() {
     addJobComment,
     getJobByCode,
     addJobInventory,
+    allocateInventoryToJob,
     removeJobInventory,
     addAttachment,
     deleteAttachment,
@@ -325,6 +326,7 @@ export default function App() {
       <AppShell>
         <Inventory
           inventory={inventory}
+          jobs={jobs}
           onNavigate={handleNavigate}
           onUpdateStock={updateInventoryStock}
           onUpdateItem={updateInventoryItem}
@@ -337,6 +339,7 @@ export default function App() {
           isAdmin={isAdmin}
           calculateAvailable={calculateAvailable}
           calculateAllocated={calculateAllocated}
+          onAllocateToJob={allocateInventoryToJob}
           initialItemId={id}
           onBackFromDetail={() => setId(undefined)}
         />
@@ -373,6 +376,7 @@ export default function App() {
       <AppShell>
         <Inventory
           inventory={inventory}
+          jobs={jobs}
           onNavigate={handleNavigate}
           onUpdateStock={updateInventoryStock}
           onUpdateItem={updateInventoryItem}
@@ -385,6 +389,7 @@ export default function App() {
           isAdmin={isAdmin}
           calculateAvailable={calculateAvailable}
           calculateAllocated={calculateAllocated}
+          onAllocateToJob={allocateInventoryToJob}
           initialItemId={id}
           onBackFromDetail={() => handleNavigate(backView, backId)}
         />

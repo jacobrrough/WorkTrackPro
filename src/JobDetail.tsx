@@ -16,7 +16,7 @@ import AttachmentsList from './AttachmentsList';
 import BinLocationScanner from './BinLocationScanner';
 import ChecklistDisplay from './ChecklistDisplay';
 import { formatDateOnly, isoToDateInput, dateInputToISO } from '@/core/date';
-import { durationMs, formatDurationHMS } from './lib/timeUtils';
+import { formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { useToast } from './Toast';
 import { StatusBadge } from './components/ui/StatusBadge';
@@ -37,15 +37,21 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
-import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/materialFromPart';
+import { syncJobInventoryFromPart } from '@/lib/materialFromPart';
 import { useApp } from '@/AppContext';
-import { computeVariantBreakdown } from '@/lib/variantAllocation';
 import {
   getDashQuantity,
   normalizeDashQuantities,
   quantityPerUnit,
   toDashSuffix,
 } from '@/lib/variantMath';
+import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
+import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
+import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
+import { useMaterialCosts } from '@/features/jobs/hooks/useMaterialCosts';
+import { useVariantBreakdown } from '@/features/jobs/hooks/useVariantBreakdown';
+import JobComments from '@/features/jobs/components/JobComments';
+import JobInventory from '@/features/jobs/components/JobInventory';
 
 interface JobDetailProps {
   job: Job;
@@ -146,12 +152,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
-  const [showAddInventory, setShowAddInventory] = useState(false);
-  const [selectedInventory, setSelectedInventory] = useState<string>('');
-  const [inventoryQty, setInventoryQty] = useState('1');
-  const [inventorySearch, setInventorySearch] = useState('');
-  const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
-  const [materialQtyValue, setMaterialQtyValue] = useState<string>('');
   const [syncingMaterials, setSyncingMaterials] = useState(false);
   const [attachmentAdminOverrides, setAttachmentAdminOverrides] = useState<Record<string, boolean>>(
     {}
@@ -161,12 +161,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   /** True when labor hours were auto-filled from part (show "auto" marker until user edits) */
   const [laborHoursFromPart, setLaborHoursFromPart] = useState(false);
   const { showToast } = useToast();
-  const onReloadJobRef = useRef(onReloadJob);
-
-  useEffect(() => {
-    onReloadJobRef.current = onReloadJob;
-  }, [onReloadJob]);
-
+  const canViewFinancials = canViewJobFinancials(currentUser.isAdmin);
   // File viewing state
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
   /** Part drawings: files standard users can access on job cards */
@@ -181,7 +176,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [, setLoadingPart] = useState(false);
   const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
   const [selectedVariant, setSelectedVariant] = useState<PartVariant | null>(null);
-  const [materialCosts, setMaterialCosts] = useState<Map<string, number>>(new Map());
   const { settings } = useSettings();
   const laborRate = settings.laborRate;
   const materialUpcharge = settings.materialUpcharge;
@@ -335,135 +329,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [inventory]
   );
 
-  // Calculate material costs from part materials × dashQuantities (live recalculation)
-  const calculateMaterialCosts = useCallback(
-    (part: Part, variantSuffix?: string) => {
-      const costs = new Map<string, number>();
+  const selectedVariantSuffix = selectedVariant?.variantSuffix || editForm.variantSuffix;
+  const materialCosts = useMaterialCosts({
+    linkedPart,
+    selectedVariantSuffix,
+    dashQuantities,
+    inventoryById,
+    jobInventoryItems: job.inventoryItems || [],
+    materialUpcharge,
+    isAdmin: shouldComputeJobFinancials(currentUser.isAdmin),
+  });
 
-      // If we have dashQuantities, calculate from variants × quantities
-      if (dashQuantities && Object.keys(dashQuantities).length > 0 && part.variants) {
-        // For each dash quantity, get variant materials and multiply
-        for (const [suffix, qty] of Object.entries(dashQuantities)) {
-          if (qty <= 0) continue;
-          const variant = part.variants.find(
-            (v) => toDashSuffix(v.variantSuffix) === toDashSuffix(suffix)
-          );
-          if (variant?.materials) {
-            for (const material of variant.materials) {
-              const invItem = inventoryById.get(material.inventoryId);
-              if (invItem && invItem.price) {
-                const requiredQty =
-                  quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number }) *
-                  qty;
-                const cost = requiredQty * invItem.price * materialUpcharge;
-                const existing = costs.get(material.inventoryId) || 0;
-                costs.set(material.inventoryId, existing + cost);
-              }
-            }
-          }
-        }
-
-        // Also add part-level per_set materials (multiply by total quantity)
-        const totalQty = totalFromDashQuantities(dashQuantities);
-        if (part.materials) {
-          for (const material of part.materials) {
-            if (material.usageType === 'per_set') {
-              const invItem = inventoryById.get(material.inventoryId);
-              if (invItem && invItem.price) {
-                const requiredQty =
-                  quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number }) *
-                  totalQty;
-                const cost = requiredQty * invItem.price * materialUpcharge;
-                const existing = costs.get(material.inventoryId) || 0;
-                costs.set(material.inventoryId, existing + cost);
-              }
-            }
-          }
-        }
-      } else {
-        // Fallback: single variant or part-level materials
-        const variant =
-          variantSuffix && part.variants
-            ? part.variants.find(
-                (v) => toDashSuffix(v.variantSuffix) === toDashSuffix(variantSuffix)
-              )
-            : null;
-        const materials = variant?.materials || part.materials || [];
-
-        for (const material of materials) {
-          const invItem = inventoryById.get(material.inventoryId);
-          if (invItem && invItem.price) {
-            const cost =
-              quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number }) *
-              invItem.price *
-              materialUpcharge;
-            costs.set(material.inventoryId, cost);
-          }
-        }
-      }
-
-      // Add manually-assigned job-specific materials (not from part)
-      for (const jobMaterial of job.inventoryItems || []) {
-        const invItem = inventoryById.get(jobMaterial.inventoryId);
-        if (invItem && invItem.price) {
-          const existingCost = costs.get(jobMaterial.inventoryId) || 0;
-          const additionalCost = jobMaterial.quantity * invItem.price * materialUpcharge;
-          costs.set(jobMaterial.inventoryId, existingCost + additionalCost);
-        }
-      }
-
-      setMaterialCosts(costs);
-    },
-    [inventoryById, job.inventoryItems, dashQuantities, materialUpcharge]
-  );
-
-  // Recalculate materials when dashQuantities change (live update)
-  useEffect(() => {
-    if (linkedPart && Object.keys(dashQuantities).length > 0) {
-      calculateMaterialCosts(linkedPart);
-    }
-  }, [dashQuantities, linkedPart, calculateMaterialCosts]);
-
-  /** Required materials from part × dash quantities (for auto markers and debounced sync) */
-  const requiredMaterialsMap = useMemo(() => {
-    const normalizedDash = normalizeDashQuantities(dashQuantities);
-    if (!linkedPart || Object.keys(normalizedDash).length === 0)
-      return new Map<string, { quantity: number; unit: string }>();
-    return computeRequiredMaterials(linkedPart, normalizedDash);
-  }, [linkedPart, dashQuantities]);
-
-  /** Whether a job inventory item matches the part-derived requirement (auto-assigned) */
-  const isMaterialAuto = useCallback(
-    (inventoryId: string, quantity: number) => {
-      const req = requiredMaterialsMap.get(inventoryId);
-      return req != null && Math.abs(req.quantity - quantity) < 0.0001;
-    },
-    [requiredMaterialsMap]
-  );
-
-  // Auto-sync materials when dash quantities change (debounced)
-  const syncAfterDashChangeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const syncRequestIdRef = useRef(0);
-  useEffect(() => {
-    const normalizedDash = normalizeDashQuantities(dashQuantities);
-    if (!linkedPart || !Object.values(normalizedDash).some((q) => q > 0)) return;
-    if (syncAfterDashChangeRef.current) clearTimeout(syncAfterDashChangeRef.current);
-    const requestId = ++syncRequestIdRef.current;
-    syncAfterDashChangeRef.current = setTimeout(async () => {
-      syncAfterDashChangeRef.current = null;
-      try {
-        await syncJobInventoryFromPart(job.id, linkedPart, normalizedDash);
-        if (requestId === syncRequestIdRef.current) {
-          await onReloadJobRef.current?.();
-        }
-      } catch (e) {
-        console.error('Auto-sync materials:', e);
-      }
-    }, 1200);
-    return () => {
-      if (syncAfterDashChangeRef.current) clearTimeout(syncAfterDashChangeRef.current);
-    };
-  }, [job.id, linkedPart, dashQuantities]);
+  const { isMaterialAuto } = useMaterialSync({
+    jobId: job.id,
+    linkedPart,
+    dashQuantities,
+    onReloadJob,
+  });
 
   // Load linked part
   const loadLinkedPart = useCallback(
@@ -513,6 +395,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
       loadLinkedPart(job.partNumber);
     }
   }, [job.partNumber, loadLinkedPart]);
+
+  useEffect(() => {
+    if (!job.partNumber && !job.partId) return;
+    const handlePartUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ partId?: string; partNumber?: string }>).detail;
+      if (!detail) return;
+      const normalizedJobPart = (job.partNumber ?? '').trim();
+      const normalizedEventPart = (detail.partNumber ?? '').trim();
+      const partNumberMatch =
+        normalizedJobPart.length > 0 &&
+        normalizedEventPart.length > 0 &&
+        normalizedJobPart === normalizedEventPart;
+      const partIdMatch = !!job.partId && !!detail.partId && job.partId === detail.partId;
+      if (!partNumberMatch && !partIdMatch) return;
+      if (normalizedJobPart) {
+        loadLinkedPart(normalizedJobPart);
+      }
+    };
+    window.addEventListener('parts:updated', handlePartUpdated as EventListener);
+    return () => window.removeEventListener('parts:updated', handlePartUpdated as EventListener);
+  }, [job.partId, job.partNumber, loadLinkedPart]);
 
   // When linked part loads and job has no labor/machine set, pull labor/CNC/3D from master part into overrides
   const jobHasNoLabor =
@@ -568,7 +471,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       cncHours: totalCnc > 0 ? totalCnc.toFixed(2) : prev.cncHours,
       printer3DHours: total3D > 0 ? total3D.toFixed(2) : prev.printer3DHours,
     }));
-  }, [linkedPart?.id, linkedPart?.variants, shouldPullFromPart, jobHasNoLabor, dashQuantities]);
+  }, [linkedPart, linkedPart?.id, linkedPart?.variants, shouldPullFromPart, jobHasNoLabor, dashQuantities]);
 
   // Part name (editable when linked part exists); sync from linked part
   const [partNameEdit, setPartNameEdit] = useState(linkedPart?.name ?? '');
@@ -600,83 +503,34 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return hours * laborRate;
   }, [editForm.laborHours, laborRate]);
 
-  const variantAllocation = useMemo(
+  const computedCostTotal = useMemo(
     () =>
-      computeVariantBreakdown({
-        part: linkedPart,
-        dashQuantities,
-        source: allocationSource,
-        totalLaborHours: parseFloat(editForm.laborHours) || 0,
-        totalCncHours: parseFloat(editForm.cncHours) || 0,
-        totalPrinter3DHours: parseFloat(editForm.printer3DHours) || 0,
-        laborOverridePerUnit: laborPerUnitOverrides,
-        machineOverridePerUnit: machinePerUnitOverrides,
-      }),
-    [
-      linkedPart,
-      dashQuantities,
-      allocationSource,
-      editForm.laborHours,
-      editForm.cncHours,
-      editForm.printer3DHours,
-      laborPerUnitOverrides,
-      machinePerUnitOverrides,
-    ]
+      laborCost +
+      totalMaterialCost +
+      (parseFloat(editForm.cncHours) || 0) * cncRate +
+      (parseFloat(editForm.printer3DHours) || 0) * printer3DRate,
+    [laborCost, totalMaterialCost, editForm.cncHours, editForm.printer3DHours, cncRate, printer3DRate]
   );
 
-  // Per-dash breakdown across labor + machine hours
-  const laborBreakdownByDash = useMemo(() => {
-    if (variantAllocation.entries.length === 0) return null;
-    return {
-      entries: variantAllocation.entries,
-      totalFromDash: variantAllocation.totals.laborHours,
-      totalCncFromDash: variantAllocation.totals.cncHours,
-      totalPrinter3DFromDash: variantAllocation.totals.printer3DHours,
-    };
-  }, [variantAllocation]);
+  const partDerivedPrice = useMemo(
+    () => (linkedPart ? calculateJobPriceFromPart(linkedPart, dashQuantities) : null),
+    [linkedPart, dashQuantities]
+  );
+
+  const { variantAllocation, laborBreakdownByDash, persistedLaborBreakdown, persistedMachineBreakdown } =
+    useVariantBreakdown({
+      part: linkedPart,
+      dashQuantities,
+      source: allocationSource,
+      totalLaborHours: parseFloat(editForm.laborHours) || 0,
+      totalCncHours: parseFloat(editForm.cncHours) || 0,
+      totalPrinter3DHours: parseFloat(editForm.printer3DHours) || 0,
+      laborOverridePerUnit: laborPerUnitOverrides,
+      machineOverridePerUnit: machinePerUnitOverrides,
+    });
 
   // Auto-fill labor from part × dash quantities when labor is empty (so calculations stay automatic)
   const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
-  const persistedLaborBreakdown = useMemo(
-    () =>
-      variantAllocation.entries.reduce<
-        Record<string, { qty: number; hoursPerUnit: number; totalHours: number }>
-      >((acc, entry) => {
-        acc[entry.suffix] = {
-          qty: entry.qty,
-          hoursPerUnit: entry.laborHoursPerUnit,
-          totalHours: entry.laborHoursTotal,
-        };
-        return acc;
-      }, {}),
-    [variantAllocation.entries]
-  );
-
-  const persistedMachineBreakdown = useMemo(
-    () =>
-      variantAllocation.entries.reduce<
-        Record<
-          string,
-          {
-            qty: number;
-            cncHoursPerUnit: number;
-            cncHoursTotal: number;
-            printer3DHoursPerUnit: number;
-            printer3DHoursTotal: number;
-          }
-        >
-      >((acc, entry) => {
-        acc[entry.suffix] = {
-          qty: entry.qty,
-          cncHoursPerUnit: entry.cncHoursPerUnit,
-          cncHoursTotal: entry.cncHoursTotal,
-          printer3DHoursPerUnit: entry.printer3DHoursPerUnit,
-          printer3DHoursTotal: entry.printer3DHoursTotal,
-        };
-        return acc;
-      }, {}),
-    [variantAllocation.entries]
-  );
   useEffect(() => {
     if (allocationSource !== 'variant') return;
     const totals = variantAllocation.totals;
@@ -706,6 +560,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [
     laborBreakdownTotal,
     allocationSource,
+    variantAllocation.totals,
     variantAllocation.totals?.laborHours,
     variantAllocation.totals?.cncHours,
     variantAllocation.totals?.printer3DHours,
@@ -794,8 +649,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
         return { ...prev, ...updates };
       });
 
-      calculateMaterialCosts(partWithVariants);
-
       if (part) {
         showToast(`Linked to part: ${part.name}`, 'success');
       }
@@ -808,7 +661,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
   }, [
     partNumberSearch,
-    calculateMaterialCosts,
     job.description,
     job.laborHours,
     editForm.description,
@@ -816,13 +668,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
     autoJobName,
     showToast,
   ]);
-
-  // Recalculate material costs when variant or linked part changes
-  useEffect(() => {
-    if (linkedPart) {
-      calculateMaterialCosts(linkedPart, selectedVariant?.variantSuffix || editForm.variantSuffix);
-    }
-  }, [linkedPart, selectedVariant, editForm.variantSuffix, calculateMaterialCosts]);
 
   // Reset edit form when job changes (use stable deps to avoid infinite loop).
   // Skip when user is editing so we never overwrite in-progress edits (e.g. after save, job updates and we want to show saved values only when not editing).
@@ -981,24 +826,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
     } catch (error) {
       console.error('Error deleting comment:', error);
     }
-  };
-
-  const handleAddInventory = async () => {
-    if (!selectedInventory || !inventoryQty) return;
-    const item = inventoryById.get(selectedInventory);
-    if (!item) return;
-
-    setIsSubmitting(true);
-    try {
-      await onAddInventory(job.id, selectedInventory, parseFloat(inventoryQty), item.unit);
-      setShowAddInventory(false);
-      setSelectedInventory('');
-      setInventoryQty('1');
-      setInventorySearch('');
-    } catch (error) {
-      console.error('Error adding inventory:', error);
-    }
-    setIsSubmitting(false);
   };
 
   const handleSaveEdit = async () => {
@@ -1183,40 +1010,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
     showToast('Applied labor/machine/material logic from part', 'success');
   }, [linkedPart, showToast]);
 
-  const handleVariantHoursChange = useCallback(
-    (
-      suffix: string,
-      field: 'laborHoursPerUnit' | 'cncHoursPerUnit' | 'printer3DHoursPerUnit',
-      value: string
-    ) => {
-      const key = toDashSuffix(suffix);
-      const nextValue = Math.max(0, parseFloat(value) || 0);
-      setAllocationSource('variant');
-      setLaborHoursFromPart(false);
-      if (field === 'laborHoursPerUnit') {
-        setLaborPerUnitOverrides((prev) => ({ ...prev, [key]: nextValue }));
-        return;
-      }
-      setMachinePerUnitOverrides((prev) => ({
-        ...prev,
-        [key]: {
-          ...(prev[key] ?? {}),
-          [field]: nextValue,
-        },
-      }));
-    },
-    []
-  );
-
-  const handleRemoveInventory = async (jobInvId: string) => {
-    if (!jobInvId) return;
-    try {
-      await onRemoveInventory(job.id, jobInvId);
-    } catch (error) {
-      console.error('Error removing inventory:', error);
-    }
-  };
-
   // File attachment handlers
   const handleFileUpload = async (file: File, isAdminOnly = false): Promise<boolean> => {
     try {
@@ -1356,19 +1149,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return date.toLocaleDateString();
   };
 
-  const filteredInventory = useMemo(
-    () =>
-      inventory.filter(
-        (i) =>
-          i.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
-          i.barcode?.toLowerCase().includes(inventorySearch.toLowerCase())
-      ),
-    [inventory, inventorySearch]
-  );
-
-  const getInventoryItem = (inventoryId: string) => {
-    return inventoryById.get(inventoryId);
-  };
   const displayInvNumber = sanitizeReferenceValue(job.invNumber);
 
   return (
@@ -1729,7 +1509,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </span>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     {linkedPart.variants.map((variant) => {
-                      const variantKey = toDashSuffix(variant.variantSuffix);
                       const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
                       return (
                         <div key={variant.id} className="flex items-center gap-1.5">
@@ -1777,7 +1556,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
                 Labor & materials
               </h3>
-              {currentUser.isAdmin ? (
+              {canViewFinancials ? (
                 <>
                   <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                     <div>
@@ -1867,12 +1646,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </div>
                   <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
                     Total $
-                    {(
-                      laborCost +
-                      totalMaterialCost +
-                      (parseFloat(editForm.cncHours) || 0) * cncRate +
-                      (parseFloat(editForm.printer3DHours) || 0) * printer3DRate
-                    ).toFixed(2)}
+                    {(partDerivedPrice?.totalPrice ?? computedCostTotal).toFixed(2)}
+                    {partDerivedPrice && (
+                      <span className="ml-2 text-[10px] font-medium text-primary/80">
+                        from {partDerivedPrice.source.replace('_', ' ')}
+                      </span>
+                    )}
                   </div>
                   {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
                     <div className="mb-3 space-y-0.5">
@@ -1902,13 +1681,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <div className="border-t border-white/10 pt-2">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">Materials</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddInventory(true)}
-                    className="text-[11px] font-medium text-primary hover:underline"
-                  >
-                    + Add
-                  </button>
                 </div>
                 {!job.inventoryItems?.length ? (
                   <p className="text-xs text-slate-400">
@@ -2000,7 +1772,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                 {material.unit}
                               </span>
                             </div>
-                            {currentUser.isAdmin && cost > 0 && (
+                            {canViewFinancials && cost > 0 && (
                               <span className="shrink-0 text-xs font-semibold text-white">
                                 ${cost.toFixed(2)}
                               </span>
@@ -2257,204 +2029,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
               />
             </div>
 
-            {/* Materials / Inventory Section */}
-            <div className="p-3 pt-0">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-                  <span className="material-symbols-outlined text-lg text-primary">
-                    inventory_2
-                  </span>
-                  Materials ({job.inventoryItems?.length || 0})
-                </h3>
-                {currentUser.isAdmin && (
-                  <button
-                    onClick={() => setShowAddInventory(true)}
-                    className="flex items-center gap-1 text-xs font-bold text-primary"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    Add
-                  </button>
-                )}
-              </div>
-
-              {!job.inventoryItems || job.inventoryItems.length === 0 ? (
-                <div className="rounded-sm bg-[#261a32] p-3 text-center">
-                  <span className="material-symbols-outlined mb-2 text-3xl text-slate-500">
-                    inventory_2
-                  </span>
-                  <p className="text-sm text-slate-400">No materials assigned</p>
-                  {currentUser.isAdmin && (
-                    <button
-                      onClick={() => setShowAddInventory(true)}
-                      className="mt-2 text-sm font-bold text-primary"
-                    >
-                      + Add materials
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {(job.inventoryItems || []).map((item) => {
-                    const invItem = getInventoryItem(item.inventoryId);
-                    const available = invItem
-                      ? (invItem.available ?? calculateAvailable(invItem))
-                      : 0;
-                    const isLow = available < item.quantity;
-                    const isEditingThis = editingMaterialQty === item.id;
-
-                    return (
-                      <div
-                        key={item.id || item.inventoryId}
-                        className="overflow-hidden rounded-sm bg-[#261a32]"
-                      >
-                        <div className="flex items-center justify-between p-3">
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              if (invItem) {
-                                onNavigate('inventory-detail', invItem.id);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                if (invItem) onNavigate('inventory-detail', invItem.id);
-                              }
-                            }}
-                            className="-ml-1 flex flex-1 cursor-pointer items-center gap-3 rounded-sm p-1 text-left transition-colors hover:bg-white/5"
-                          >
-                            {invItem?.imageUrl ? (
-                              <img
-                                src={invItem.imageUrl}
-                                alt={item.inventoryName || 'Material'}
-                                className={`size-10 flex-shrink-0 rounded-sm object-cover ${isLow ? 'ring-2 ring-red-500' : ''}`}
-                              />
-                            ) : (
-                              <div
-                                className={`flex size-10 flex-shrink-0 items-center justify-center rounded-sm ${isLow ? 'bg-red-500/20' : 'bg-white/10'}`}
-                              >
-                                <span
-                                  className={`material-symbols-outlined ${isLow ? 'text-red-400' : 'text-slate-400'}`}
-                                >
-                                  {isLow ? 'warning' : 'inventory_2'}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="min-w-0 flex-1">
-                              {invItem ? (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigate('inventory-detail', invItem.id);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      onNavigate('inventory-detail', invItem.id);
-                                    }
-                                  }}
-                                  role="button"
-                                  tabIndex={0}
-                                  className="cursor-pointer truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline"
-                                >
-                                  {item.inventoryName || invItem.name || 'Unknown Item'}
-                                </span>
-                              ) : (
-                                <p className="truncate font-medium text-white">
-                                  {item.inventoryName || 'Unknown Item'}
-                                </p>
-                              )}
-                              <p className="text-xs text-slate-400">
-                                Need:{' '}
-                                {isEditingThis ? (
-                                  <input
-                                    type="number"
-                                    value={materialQtyValue}
-                                    onChange={(e) => setMaterialQtyValue(e.target.value)}
-                                    onBlur={async () => {
-                                      const newQty = parseFloat(materialQtyValue);
-                                      if (newQty > 0 && newQty !== item.quantity && item.id) {
-                                        setIsSubmitting(true);
-                                        await onRemoveInventory(job.id, item.id);
-                                        await onAddInventory(
-                                          job.id,
-                                          item.inventoryId,
-                                          newQty,
-                                          item.unit
-                                        );
-                                        setIsSubmitting(false);
-                                      }
-                                      setEditingMaterialQty(null);
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.currentTarget.blur();
-                                      }
-                                      if (e.key === 'Escape') {
-                                        setEditingMaterialQty(null);
-                                      }
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-16 rounded border border-primary bg-white/10 px-2 py-0.5 text-xs text-white"
-                                    autoFocus
-                                  />
-                                ) : (
-                                  <span
-                                    onClick={(e) => {
-                                      if (currentUser.isAdmin && item.id) {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        setEditingMaterialQty(item.id);
-                                        setMaterialQtyValue(item.quantity.toString());
-                                      }
-                                    }}
-                                    className={
-                                      currentUser.isAdmin
-                                        ? '-mx-2 -my-1 inline-block cursor-pointer rounded px-2 py-1 transition-colors hover:bg-primary/10 hover:text-primary hover:underline'
-                                        : ''
-                                    }
-                                    title={currentUser.isAdmin ? 'Click to edit quantity' : ''}
-                                  >
-                                    {item.quantity}
-                                  </span>
-                                )}{' '}
-                                {item.unit}
-                                {isMaterialAuto(item.inventoryId, item.quantity) && (
-                                  <span className="ml-1.5 rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                                    auto
-                                  </span>
-                                )}
-                                {invItem && (
-                                  <span className="ml-2">
-                                    • Available: {invItem.available ?? calculateAvailable(invItem)}
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-
-                          {currentUser.isAdmin && item.id && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveInventory(item.id!);
-                              }}
-                              className="ml-2 p-1 text-red-400 hover:text-red-300"
-                              title="Remove material"
-                            >
-                              <span className="material-symbols-outlined text-lg">delete</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <JobInventory
+              job={job}
+              inventory={inventory}
+              inventoryById={inventoryById}
+              calculateAvailable={calculateAvailable}
+              currentUserIsAdmin={currentUser.isAdmin}
+              isSubmitting={isSubmitting}
+              onNavigate={onNavigate}
+              isMaterialAuto={isMaterialAuto}
+              onAddInventory={onAddInventory}
+              onRemoveInventory={onRemoveInventory}
+            />
 
             {/* Drawings: part drawing files are the only files standard users can access */}
             <div className="p-3 pt-0">
@@ -2549,207 +2135,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
               />
             </div>
 
-            {/* Comments Section */}
-            <div className="p-3 pt-0">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
-                <span className="material-symbols-outlined text-lg text-primary">chat</span>
-                Comments ({job.comments?.length || 0})
-              </h3>
-
-              {/* Add Comment */}
-              <div className="mb-3 rounded-sm bg-[#261a32] p-3">
-                <div className="flex gap-2">
-                  <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-white">
-                    {currentUser.initials}
-                  </div>
-                  <div className="flex-1">
-                    <textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Write a comment..."
-                      className="w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
-                      rows={2}
-                    />
-                    <div className="flex justify-end">
-                      <button
-                        onClick={handleSubmitComment}
-                        disabled={!newComment.trim() || isSubmitting}
-                        className="rounded-sm bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-                      >
-                        {isSubmitting ? 'Posting...' : 'Post'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Comments List */}
-              <div className="space-y-2">
-                {(job.comments || []).map((comment) => {
-                  const isOwnComment = comment.user === currentUser.id;
-                  const canEdit = isOwnComment || currentUser.isAdmin;
-                  const isEditingThis = editingCommentId === comment.id;
-
-                  return (
-                    <div key={comment.id} className="rounded-sm bg-[#261a32] p-3">
-                      <div className="flex items-start gap-2">
-                        <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-slate-600 text-xs font-bold text-white">
-                          {comment.userInitials || 'U'}
-                        </div>
-                        <div className="flex-1">
-                          <div className="mb-1 flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-white">
-                                {comment.userName || 'User'}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {formatCommentTime(comment.created || comment.timestamp)}
-                              </p>
-                            </div>
-                            {canEdit && !isEditingThis && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => {
-                                    setEditingCommentId(comment.id);
-                                    setEditingCommentText(comment.text);
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-primary"
-                                  title="Edit comment"
-                                >
-                                  <span className="material-symbols-outlined text-sm">edit</span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  className="p-1 text-slate-400 hover:text-red-500"
-                                  title="Delete comment"
-                                >
-                                  <span className="material-symbols-outlined text-sm">delete</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {isEditingThis ? (
-                            <div className="space-y-2">
-                              <textarea
-                                value={editingCommentText}
-                                onChange={(e) => setEditingCommentText(e.target.value)}
-                                className="w-full resize-none rounded border border-primary/30 bg-[#1a1122] p-2 text-sm text-white outline-none"
-                                rows={2}
-                                autoFocus
-                              />
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingCommentId(null);
-                                    setEditingCommentText('');
-                                  }}
-                                  className="rounded px-3 py-1 text-xs font-bold text-slate-400 hover:bg-slate-700"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateComment(comment.id)}
-                                  disabled={!editingCommentText.trim()}
-                                  className="rounded bg-primary px-3 py-1 text-xs font-bold text-white disabled:opacity-50"
-                                >
-                                  Save
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-slate-300">{comment.text}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {(!job.comments || job.comments.length === 0) && (
-                  <p className="py-4 text-center text-sm text-slate-500">No comments yet</p>
-                )}
-              </div>
-            </div>
+            <JobComments
+              comments={job.comments || []}
+              currentUser={currentUser}
+              newComment={newComment}
+              setNewComment={setNewComment}
+              isSubmitting={isSubmitting}
+              onSubmitComment={handleSubmitComment}
+              editingCommentId={editingCommentId}
+              editingCommentText={editingCommentText}
+              setEditingCommentId={setEditingCommentId}
+              setEditingCommentText={setEditingCommentText}
+              onUpdateComment={handleUpdateComment}
+              onDeleteComment={handleDeleteComment}
+              formatCommentTime={formatCommentTime}
+            />
           </>
         )}
       </main>
-
-      {/* Add Inventory Modal */}
-      {showAddInventory && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/80 backdrop-blur-sm">
-          <div className="flex max-h-[80vh] w-full flex-col rounded-t-md border-t border-white/10 bg-background-dark p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Add Material</h3>
-              <button
-                onClick={() => setShowAddInventory(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="relative mb-4">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                search
-              </span>
-              <input
-                type="text"
-                placeholder="Search inventory..."
-                value={inventorySearch}
-                onChange={(e) => setInventorySearch(e.target.value)}
-                className="h-12 w-full rounded-sm border border-white/20 bg-white/10 pl-10 pr-4 text-white"
-              />
-            </div>
-
-            {/* Inventory List */}
-            <div className="mb-3 flex-1 space-y-2 overflow-y-auto">
-              {filteredInventory.slice(0, 20).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setSelectedInventory(item.id)}
-                  className={`w-full rounded-sm p-3 text-left transition-colors ${
-                    selectedInventory === item.id
-                      ? 'border border-primary bg-primary/20'
-                      : 'bg-white/5 hover:bg-white/10'
-                  }`}
-                >
-                  <p className="font-medium text-white">{item.name}</p>
-                  <p className="text-xs text-slate-400">
-                    Available: {item.available ?? calculateAvailable(item)} {item.unit} \u2022{' '}
-                    {item.category}
-                  </p>
-                </button>
-              ))}
-            </div>
-
-            {/* Quantity & Submit */}
-            {selectedInventory && (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold uppercase text-slate-400">
-                    Quantity Needed
-                  </label>
-                  <input
-                    type="number"
-                    value={inventoryQty}
-                    onChange={(e) => setInventoryQty(e.target.value)}
-                    className="mt-1 h-12 w-full rounded-sm border border-white/20 bg-white/10 px-4 text-white"
-                    min="1"
-                  />
-                </div>
-                <button
-                  onClick={handleAddInventory}
-                  disabled={isSubmitting}
-                  className="w-full rounded-sm bg-primary py-3 font-bold text-white disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Adding...' : 'Add to Job'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Fixed Bottom Action Bar */}
       {!isEditing && (
@@ -2770,14 +2173,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
               >
                 <span className="material-symbols-outlined mr-2 align-middle">login</span>
                 Clock In
-              </button>
-            )}
-            {currentUser.isAdmin && (
-              <button
-                onClick={() => setShowAddInventory(true)}
-                className="rounded-sm border border-primary/30 bg-primary/20 px-4 py-3 font-bold text-primary transition-colors hover:bg-primary/30 active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined align-middle">add</span>
               </button>
             )}
           </div>
