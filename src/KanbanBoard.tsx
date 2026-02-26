@@ -435,14 +435,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
-        className="flex-1 touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden md:snap-none"
+        className="min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden md:snap-none"
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x',
-          overscrollBehaviorX: 'contain',
+          overscrollBehavior: 'contain',
         }}
       >
-        <div className="flex h-full min-w-max gap-2.5 p-3 md:min-w-max">
+        <div className="flex h-full min-w-max gap-0 py-3 md:gap-2.5 md:px-3">
           {columns.map((column) => {
             const columnJobs = getJobsForColumn(column.id);
             const isOver = dragOverColumn === column.id;
@@ -451,7 +451,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <div
                 key={column.id}
                 data-kanban-column-root="true"
-                className={`flex w-[calc(100vw-1.5rem)] min-w-[calc(100vw-1.5rem)] shrink-0 snap-start flex-col rounded-sm border bg-black/20 max-md:[scroll-snap-stop:always] md:w-64 md:min-w-64 ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex h-full w-[100vw] min-w-[100vw] shrink-0 snap-center flex-col rounded-sm border bg-black/20 max-md:[scroll-snap-stop:always] md:w-64 md:min-w-64 md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);
@@ -512,11 +512,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   }}
                   data-kanban-column-scroll="true"
                   onScroll={(e) => handleColumnScroll(e, column.id)}
-                  className="flex-1 space-y-1.5 overflow-y-auto p-1.5"
+                  className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-1.5"
                   style={{
                     WebkitOverflowScrolling: 'touch',
                     overscrollBehavior: 'contain',
-                    touchAction: 'pan-y',
                   }}
                 >
                   {columnJobs.map((job) => {
