@@ -180,6 +180,20 @@ export const checklistHistoryService = {
     }));
   },
 
+  /** All checklist history for a job (all statuses), sorted by timestamp descending. */
+  async getByJob(jobId: string): Promise<(ChecklistHistoryRow & { status?: JobStatus })[]> {
+    const checklists = await checklistService.getByJob(jobId);
+    const all: (ChecklistHistoryRow & { status?: JobStatus })[] = [];
+    for (const c of checklists) {
+      const rows = await this.getByChecklist(c.id);
+      for (const r of rows) {
+        all.push({ ...r, status: c.status });
+      }
+    }
+    all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return all;
+  },
+
   async create(data: {
     checklist_id: string;
     user_id: string;

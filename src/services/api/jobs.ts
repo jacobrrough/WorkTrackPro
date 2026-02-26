@@ -428,11 +428,7 @@ export const jobService = {
       revision: data.revision ?? null,
       part_id: data.partId ?? resolvedPart?.partId ?? null,
     };
-    const {
-      data: created,
-      error,
-      strippedColumns,
-    } = await runMutationWithSchemaFallback({
+    const { data: created, error } = await runMutationWithSchemaFallback({
       tableName: 'jobs',
       initialPayload: row,
       mutate: async (payload) => {
@@ -448,11 +444,6 @@ export const jobService = {
       },
     });
     if (error) throw new Error(error.message);
-    if (strippedColumns.length > 0) {
-      console.warn(
-        `jobs.createJob: omitted unsupported columns for this schema: ${strippedColumns.join(', ')}`
-      );
-    }
     return mapJobRow(created as Record<string, unknown>, {
       job_inventory: [],
       comments: [],
@@ -525,11 +516,7 @@ export const jobService = {
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
     row.updated_at = new Date().toISOString();
-    const {
-      data: updated,
-      error,
-      strippedColumns,
-    } = await runMutationWithSchemaFallback({
+    const { data: updated, error } = await runMutationWithSchemaFallback({
       tableName: 'jobs',
       initialPayload: row,
       mutate: async (payload) => {
@@ -546,11 +533,6 @@ export const jobService = {
       },
     });
     if (error) return null;
-    if (strippedColumns.length > 0) {
-      console.warn(
-        `jobs.updateJob: omitted unsupported columns for this schema: ${strippedColumns.join(', ')}`
-      );
-    }
     const expand = await fetchJobExpand(jobId);
     return mapJobRow(updated as Record<string, unknown>, expand);
   },

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getMissingColumnFromSchemaError, runMutationWithSchemaFallback } from './schemaCompat';
+import {
+  clearSchemaCacheForTest,
+  getMissingColumnFromSchemaError,
+  runMutationWithSchemaFallback,
+} from './schemaCompat';
 
 describe('getMissingColumnFromSchemaError', () => {
   it('parses PostgREST schema cache missing-column errors', () => {
@@ -22,6 +26,16 @@ describe('getMissingColumnFromSchemaError', () => {
     expect(missing).toBe('allocation_source');
   });
 
+  it('parses Postgres relation with schema (public.jobs)', () => {
+    const missing = getMissingColumnFromSchemaError(
+      {
+        message: 'column "labor_breakdown_by_variant" of relation "public.jobs" does not exist',
+      },
+      'jobs'
+    );
+    expect(missing).toBe('labor_breakdown_by_variant');
+  });
+
   it('returns null for unrelated errors', () => {
     const missing = getMissingColumnFromSchemaError(
       {
@@ -35,6 +49,7 @@ describe('getMissingColumnFromSchemaError', () => {
 
 describe('runMutationWithSchemaFallback', () => {
   it('strips missing columns and retries until success', async () => {
+    clearSchemaCacheForTest('jobs');
     const payload = {
       name: 'Example',
       allocation_source: 'variant',

@@ -27,14 +27,15 @@ export function getMissingColumnFromSchemaError(
   if (!message) return null;
 
   const postgrestPattern = new RegExp(
-    `Could not find the '([^']+)' column of '${tableName}' in the schema cache`,
+    `Could not find the '([^']+)' column of '${tableName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}' in the schema cache`,
     'i'
   );
   const postgrestMatch = message.match(postgrestPattern);
   if (postgrestMatch?.[1]) return postgrestMatch[1];
 
+  // Postgres may report relation as "jobs" or "public.jobs"
   const postgresPattern = new RegExp(
-    `column "([^"]+)" of relation "${tableName}" does not exist`,
+    `column "([^"]+)" of relation "(?:public\\.)?${tableName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" does not exist`,
     'i'
   );
   const postgresMatch = message.match(postgresPattern);
@@ -43,19 +44,69 @@ export function getMissingColumnFromSchemaError(
   return null;
 }
 
+const knownMissingColumnsByTable = new Map<string, Set<string>>();
+const STORAGE_KEY_PREFIX = 'supabase_schema_omit_';
+
+/** Only for tests: clear cached missing columns so fallback retries from scratch */
+export function clearSchemaCacheForTest(tableName: string): void {
+  knownMissingColumnsByTable.delete(tableName);
+  try {
+    localStorage.removeItem(STORAGE_KEY_PREFIX + tableName);
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadKnownMissing(tableName: string): Set<string> {
+  let set = knownMissingColumnsByTable.get(tableName);
+  if (set) return set;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + tableName);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    set = new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    set = new Set();
+  }
+  knownMissingColumnsByTable.set(tableName, set);
+  return set;
+}
+
+function saveKnownMissing(tableName: string, set: Set<string>): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_PREFIX + tableName, JSON.stringify([...set]));
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function runMutationWithSchemaFallback<T>({
   initialPayload,
   tableName,
   mutate,
 }: RunWithSchemaFallbackParams<T>): Promise<RunWithSchemaFallbackResult<T>> {
-  let candidatePayload: Record<string, unknown> = { ...initialPayload };
+  const knownMissing = loadKnownMissing(tableName);
   const strippedColumns: string[] = [];
+
+  let candidatePayload: Record<string, unknown> = { ...initialPayload };
+  for (const key of knownMissing) {
+    if (key in candidatePayload) {
+      delete candidatePayload[key];
+      strippedColumns.push(key);
+    }
+  }
+
   const attemptedMissingColumns = new Set<string>();
-  const maxIterations = Math.max(1, Object.keys(initialPayload).length + 1);
+  const maxIterations = Math.max(1, Object.keys(candidatePayload).length + 1);
+  let didStripThisRun = false;
 
   for (let i = 0; i < maxIterations; i += 1) {
     const result = await mutate(candidatePayload);
     if (!result.error) {
+      if (didStripThisRun && strippedColumns.length > 0) {
+        console.warn(
+          `Schema fallback: omitted columns not in database (run migration 20260224000007 if you need them): ${[...new Set(strippedColumns)].join(', ')}`
+        );
+      }
       return { ...result, usedPayload: candidatePayload, strippedColumns };
     }
 
@@ -68,7 +119,10 @@ export async function runMutationWithSchemaFallback<T>({
       return { ...result, usedPayload: candidatePayload, strippedColumns };
     }
 
+    didStripThisRun = true;
     attemptedMissingColumns.add(missingColumn);
+    knownMissing.add(missingColumn);
+    saveKnownMissing(tableName, knownMissing);
     strippedColumns.push(missingColumn);
     const nextPayload = { ...candidatePayload };
     delete nextPayload[missingColumn];
@@ -76,5 +130,10 @@ export async function runMutationWithSchemaFallback<T>({
   }
 
   const result = await mutate(candidatePayload);
+  if (didStripThisRun && strippedColumns.length > 0 && !result.error) {
+    console.warn(
+      `Schema fallback: omitted columns not in database (run migration 20260224000007 if you need them): ${[...new Set(strippedColumns)].join(', ')}`
+    );
+  }
   return { ...result, usedPayload: candidatePayload, strippedColumns };
 }

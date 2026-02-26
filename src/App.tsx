@@ -397,17 +397,19 @@ export default function App() {
     const boardType = view === 'board-admin' && isAdmin ? 'admin' : 'shopFloor';
     return (
       <AppShell>
-        <KanbanBoard
-          jobs={jobs}
-          onNavigate={handleNavigate}
-          onCreateJob={() => handleNavigate('create-job')}
-          onDeleteJob={deleteJob}
-          onDeleteAttachment={deleteAttachment}
-          boardType={boardType}
-          isAdmin={isAdmin}
-          onUpdateJobStatus={updateJobStatus}
-          onUpdateJob={updateJob}
-        />
+        <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
+          <KanbanBoard
+            jobs={jobs}
+            onNavigate={handleNavigate}
+            onCreateJob={() => handleNavigate('create-job')}
+            onDeleteJob={deleteJob}
+            onDeleteAttachment={deleteAttachment}
+            boardType={boardType}
+            isAdmin={isAdmin}
+            onUpdateJobStatus={updateJobStatus}
+            onUpdateJob={updateJob}
+          />
+        </div>
       </AppShell>
     );
   }

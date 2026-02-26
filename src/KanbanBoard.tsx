@@ -83,6 +83,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [checklistRefreshTrigger, setChecklistRefreshTrigger] = useState(0);
   const [columnMenuOpen, setColumnMenuOpen] = useState<string | null>(null);
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
+  const [moveColumnForJobId, setMoveColumnForJobId] = useState<string | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -353,7 +354,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Close menus on outside click
   useEffect(() => {
-    if (menuOpenFor || columnMenuOpen) {
+    if (menuOpenFor || columnMenuOpen || moveColumnForJobId) {
       const close = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         // Don't close if clicking inside a menu or menu button
@@ -367,12 +368,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         }
         setMenuOpenFor(null);
         setColumnMenuOpen(null);
+        setMoveColumnForJobId(null);
       };
       // Use mousedown instead of click to catch events earlier
       document.addEventListener('mousedown', close);
       return () => document.removeEventListener('mousedown', close);
     }
-  }, [menuOpenFor, columnMenuOpen]);
+  }, [menuOpenFor, columnMenuOpen, moveColumnForJobId]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d] pb-20">
@@ -515,6 +517,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-1.5"
                   style={{
                     WebkitOverflowScrolling: 'touch',
+                    touchAction: 'pan-y',
                     overscrollBehavior: 'contain',
                   }}
                 >
@@ -589,71 +592,138 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        setMenuOpenFor(null);
-                                        localStorage.setItem('wtp-open-job-edit', job.id);
-                                        onNavigate('job-detail', job.id);
-                                      }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                    >
-                                      <span className="material-symbols-outlined text-base">
-                                        edit
-                                      </span>
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        setMenuOpenFor(null);
-                                        setFilesForJob(job.id);
-                                      }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                    >
-                                      <span className="material-symbols-outlined text-base">
-                                        attach_file
-                                      </span>
-                                      Files
-                                    </button>
-                                    {job.status === 'waitingForPayment' && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          e.preventDefault();
-                                          setMenuOpenFor(null);
-                                          onUpdateJobStatus(job.id, 'paid');
-                                          showToast('Job marked as Paid and reconciled', 'success');
-                                        }}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
-                                      >
-                                        <span className="material-symbols-outlined text-base">
-                                          payments
-                                        </span>
-                                        Mark as Paid
-                                      </button>
+                                    {moveColumnForJobId === job.id ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setMoveColumnForJobId(null);
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-400 hover:text-white"
+                                        >
+                                          <span className="material-symbols-outlined text-base">
+                                            arrow_back
+                                          </span>
+                                          Back
+                                        </button>
+                                        <div className="my-1 max-h-[min(60vh,320px)] overflow-y-auto border-t border-white/10">
+                                          {columns
+                                            .filter(
+                                              (col) =>
+                                                col.id !== normalizeLegacyRushStatus(job.status)
+                                            )
+                                            .map((col) => (
+                                              <button
+                                                key={col.id}
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  e.preventDefault();
+                                                  setMoveColumnForJobId(null);
+                                                  setMenuOpenFor(null);
+                                                  onUpdateJobStatus(job.id, col.id);
+                                                  showToast(`Moved to ${col.title}`, 'success');
+                                                }}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                              >
+                                                <span
+                                                  className={`size-2 shrink-0 rounded-full ${col.color}`}
+                                                />
+                                                {col.title}
+                                              </button>
+                                            ))}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setMenuOpenFor(null);
+                                            localStorage.setItem('wtp-open-job-edit', job.id);
+                                            onNavigate('job-detail', job.id);
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                        >
+                                          <span className="material-symbols-outlined text-base">
+                                            edit
+                                          </span>
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setMenuOpenFor(null);
+                                            setFilesForJob(job.id);
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                        >
+                                          <span className="material-symbols-outlined text-base">
+                                            attach_file
+                                          </span>
+                                          Files
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setMoveColumnForJobId(job.id);
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                        >
+                                          <span className="material-symbols-outlined text-base">
+                                            swap_horiz
+                                          </span>
+                                          Move to column
+                                        </button>
+                                        {job.status === 'waitingForPayment' && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              e.preventDefault();
+                                              setMenuOpenFor(null);
+                                              onUpdateJobStatus(job.id, 'paid');
+                                              showToast(
+                                                'Job marked as Paid and reconciled',
+                                                'success'
+                                              );
+                                            }}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
+                                          >
+                                            <span className="material-symbols-outlined text-base">
+                                              payments
+                                            </span>
+                                            Mark as Paid
+                                          </button>
+                                        )}
+                                        <div className="my-1 border-t border-white/10" />
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setMenuOpenFor(null);
+                                            setDeleteConfirm(job.id);
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
+                                        >
+                                          <span className="material-symbols-outlined text-base">
+                                            delete
+                                          </span>
+                                          Delete
+                                        </button>
+                                      </>
                                     )}
-                                    <div className="my-1 border-t border-white/10" />
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        setMenuOpenFor(null);
-                                        setDeleteConfirm(job.id);
-                                      }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
-                                    >
-                                      <span className="material-symbols-outlined text-base">
-                                        delete
-                                      </span>
-                                      Delete
-                                    </button>
                                   </div>
                                 )}
                               </div>

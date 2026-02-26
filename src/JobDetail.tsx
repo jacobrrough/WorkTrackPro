@@ -514,6 +514,52 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
   }, [job.partNumber, loadLinkedPart]);
 
+  // When linked part loads and job has no labor set, pull labor/CNC/3D from master part into overrides
+  const jobHasNoLabor =
+    (job.laborHours == null || job.laborHours === 0) &&
+    (!job.laborBreakdownByVariant ||
+      Object.values(job.laborBreakdownByVariant).every(
+        (e) => !Number(e?.hoursPerUnit) || e.hoursPerUnit === 0
+      ));
+  useEffect(() => {
+    if (!linkedPart?.variants?.length || !jobHasNoLabor) return;
+    setAllocationSource('variant');
+    const laborNext: Record<string, number> = {};
+    const machineNext: Record<
+      string,
+      { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
+    > = {};
+    let totalLabor = 0;
+    let totalCnc = 0;
+    let total3D = 0;
+    linkedPart.variants.forEach((variant) => {
+      const key = toDashSuffix(variant.variantSuffix);
+      const laborPerUnit = variant.laborHours ?? linkedPart.laborHours ?? 0;
+      const cncPerUnit = variant.requiresCNC ? (variant.cncTimeHours ?? 0) : 0;
+      const printer3DPerUnit = variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) : 0;
+      laborNext[key] = laborPerUnit;
+      machineNext[key] = {
+        cncHoursPerUnit: cncPerUnit,
+        printer3DHoursPerUnit: printer3DPerUnit,
+      };
+      const qty = getDashQuantity(dashQuantities, key);
+      if (qty > 0) {
+        totalLabor += laborPerUnit * qty;
+        totalCnc += cncPerUnit * qty;
+        total3D += printer3DPerUnit * qty;
+      }
+    });
+    setLaborPerUnitOverrides(laborNext);
+    setMachinePerUnitOverrides(machineNext);
+    setLaborHoursFromPart(true);
+    setEditForm((prev) => ({
+      ...prev,
+      laborHours: totalLabor.toFixed(2),
+      cncHours: totalCnc > 0 ? totalCnc.toFixed(2) : prev.cncHours,
+      printer3DHours: total3D > 0 ? total3D.toFixed(2) : prev.printer3DHours,
+    }));
+  }, [linkedPart?.id, linkedPart?.variants, jobHasNoLabor, dashQuantities]);
+
   // Part name (editable when linked part exists); sync from linked part
   const [partNameEdit, setPartNameEdit] = useState(linkedPart?.name ?? '');
   useEffect(() => {
@@ -1628,48 +1674,26 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
             </div>
 
-            {/* Variants & quantities - own section below Description */}
-            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+            {/* Variants & quantities - compact */}
+            <div className="rounded-sm border border-white/10 bg-white/5 p-2">
+              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 Variants & quantities
               </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
-                  {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 ? (
-                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
-                      {formatDashSummary(dashQuantities)} → Total:{' '}
-                      {totalFromDashQuantities(dashQuantities)}
-                    </div>
-                  ) : totalFromDashQuantities(dashQuantities) > 0 ? (
-                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-300">
-                      {formatDashSummary(dashQuantities)} → Total:{' '}
-                      {totalFromDashQuantities(dashQuantities)}
-                    </div>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editForm.qty}
-                      onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
-                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                      placeholder="Qty"
-                    />
-                  )}
-                </div>
-                {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] font-medium text-slate-400">Per variant</p>
+              {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  <span className="text-xs text-slate-400">
+                    {formatDashSummary(dashQuantities)} → Total{' '}
+                    {totalFromDashQuantities(dashQuantities)}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     {linkedPart.variants.map((variant) => {
                       const variantKey = toDashSuffix(variant.variantSuffix);
                       const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
-                      const breakdownEntry = laborBreakdownByDash?.entries.find(
-                        (entry) => entry.suffix === variantKey
-                      );
                       return (
-                        <div key={variant.id} className="flex items-center gap-2">
-                          <label className="w-28 truncate text-xs text-slate-400">
-                            {linkedPart.partNumber}-{variant.variantSuffix}
-                          </label>
+                        <div key={variant.id} className="flex items-center gap-1.5">
+                          <span className="w-20 truncate text-[11px] text-slate-400">
+                            {variant.variantSuffix}
+                          </span>
                           <input
                             type="number"
                             min={0}
@@ -1677,63 +1701,33 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             onChange={(e) =>
                               handleDashQuantityChange(variant.variantSuffix, e.target.value)
                             }
-                            className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                            className="w-14 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary/50 focus:outline-none"
+                            aria-label={`Qty ${variant.variantSuffix}`}
                           />
-                          {currentUser.isAdmin && (
-                            <>
-                              <input
-                                type="number"
-                                step="0.1"
-                                min={0}
-                                value={breakdownEntry?.laborHoursPerUnit ?? 0}
-                                onChange={(e) =>
-                                  handleVariantHoursChange(
-                                    variant.variantSuffix,
-                                    'laborHoursPerUnit',
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px] text-white focus:border-primary/50 focus:outline-none"
-                                title="Labor hrs per unit"
-                              />
-                              <input
-                                type="number"
-                                step="0.1"
-                                min={0}
-                                value={breakdownEntry?.cncHoursPerUnit ?? 0}
-                                onChange={(e) =>
-                                  handleVariantHoursChange(
-                                    variant.variantSuffix,
-                                    'cncHoursPerUnit',
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px] text-white focus:border-primary/50 focus:outline-none"
-                                title="CNC hrs per unit"
-                              />
-                              <input
-                                type="number"
-                                step="0.1"
-                                min={0}
-                                value={breakdownEntry?.printer3DHoursPerUnit ?? 0}
-                                onChange={(e) =>
-                                  handleVariantHoursChange(
-                                    variant.variantSuffix,
-                                    'printer3DHoursPerUnit',
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[11px] text-white focus:border-primary/50 focus:outline-none"
-                                title="3D hrs per unit"
-                              />
-                            </>
-                          )}
                         </div>
                       );
                     })}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
+                  {totalFromDashQuantities(dashQuantities) > 0 ? (
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-300">
+                      {formatDashSummary(dashQuantities)} → Total{' '}
+                      {totalFromDashQuantities(dashQuantities)}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editForm.qty}
+                      onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
+                      className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                      placeholder="Qty"
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Labor & Materials intertwined with variants section */}
@@ -2047,47 +2041,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 Object.keys(job.dashQuantities).length > 0 && (
                   <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
                     <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
-                    <p className="mb-2 text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-white">
                       {formatDashSummary(job.dashQuantities)} →{' '}
                       {totalFromDashQuantities(job.dashQuantities)} total
                     </p>
-                    {linkedPart &&
-                      linkedPart.setComposition &&
-                      Object.keys(linkedPart.setComposition).length > 0 && (
-                        <div className="mt-2 rounded border border-white/10 bg-white/5 p-2">
-                          <div className="mb-1 flex items-center justify-between text-xs">
-                            <span className="text-slate-300">Set:</span>
-                            <span className="font-medium text-white">
-                              {formatSetComposition(linkedPart.setComposition)}
-                            </span>
-                          </div>
-                          {(() => {
-                            const { completeSets, percentage } = calculateSetCompletion(
-                              job.dashQuantities,
-                              linkedPart.setComposition
-                            );
-                            return (
-                              <>
-                                <div className="mb-1 flex items-center justify-between text-xs">
-                                  <span className="text-slate-300">Complete:</span>
-                                  <span className="font-bold text-primary">{completeSets}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-1.5 flex-1 overflow-hidden rounded-sm bg-white/10">
-                                    <div
-                                      className="h-full bg-primary transition-all"
-                                      style={{ width: `${Math.min(100, percentage)}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[10px] font-medium text-slate-300">
-                                    {percentage}%
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
                   </div>
                 )}
 

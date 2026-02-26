@@ -1,6 +1,6 @@
 // ChecklistDisplay.tsx - Display checklist on job cards and detail pages
 import React, { useState, useEffect } from 'react';
-import { Checklist, ChecklistHistory, JobStatus, User } from '@/core/types';
+import { Checklist, ChecklistHistory, JobStatus, User, getStatusDisplayName } from '@/core/types';
 import { useToast } from './Toast';
 import { checklistService, checklistHistoryService } from './pocketbase';
 
@@ -79,10 +79,9 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
   }, [loadChecklist]);
 
   const loadHistory = async () => {
-    if (!checklist) return;
-
+    if (!jobId) return;
     try {
-      const records = await checklistHistoryService.getByChecklist(checklist.id);
+      const records = await checklistHistoryService.getByJob(jobId);
       setHistory(records);
       setShowHistory(true);
     } catch (error) {
@@ -174,15 +173,14 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
             ({completedCount}/{totalCount})
           </span>
         </div>
-        {currentUser.isAdmin && (
-          <button
-            onClick={loadHistory}
-            className="flex items-center gap-1 text-sm text-slate-400 hover:text-primary"
-          >
-            <span className="material-symbols-outlined text-sm">history</span>
-            History
-          </button>
-        )}
+        <button
+          onClick={loadHistory}
+          className="flex items-center gap-1 text-sm text-slate-400 hover:text-primary"
+          title="View who completed items"
+        >
+          <span className="material-symbols-outlined text-sm">history</span>
+          History
+        </button>
       </div>
 
       <div className="space-y-2">
@@ -254,15 +252,18 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                       key={record.id}
                       className="rounded-sm border border-white/10 bg-white/5 p-3"
                     >
-                      <div className="mb-2 flex items-start justify-between">
+                      <div className="mb-2 flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-bold text-white">{record.userName}</p>
                           <p className="text-xs text-slate-400">
                             {new Date(record.timestamp).toLocaleString()}
+                            {'status' in record && record.status
+                              ? ` · ${getStatusDisplayName(record.status)}`
+                              : ''}
                           </p>
                         </div>
                         <span
-                          className={`rounded px-2 py-1 text-xs font-bold ${
+                          className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${
                             record.checked
                               ? 'bg-green-500/20 text-green-400'
                               : 'bg-red-500/20 text-red-400'
