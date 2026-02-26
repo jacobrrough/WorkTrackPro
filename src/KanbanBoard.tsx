@@ -437,14 +437,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
-        className="min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden md:snap-none"
+        className="min-h-0 flex-1 snap-x snap-mandatory overflow-y-hidden overflow-x-scroll md:snap-none md:overflow-x-auto"
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x',
           overscrollBehavior: 'contain',
+          scrollPaddingInline: 0,
         }}
       >
-        <div className="flex h-full min-w-max gap-0 py-3 md:gap-2.5 md:px-3">
+        <div className="flex h-full min-w-max flex-nowrap gap-0 py-3 md:gap-2.5 md:px-3">
           {columns.map((column) => {
             const columnJobs = getJobsForColumn(column.id);
             const isOver = dragOverColumn === column.id;
@@ -453,7 +454,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <div
                 key={column.id}
                 data-kanban-column-root="true"
-                className={`flex h-full w-[100vw] min-w-[100vw] shrink-0 snap-center flex-col rounded-sm border bg-black/20 max-md:[scroll-snap-stop:always] md:w-64 md:min-w-64 md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex h-full w-full min-w-full shrink-0 snap-center flex-col rounded-sm border bg-black/20 md:w-64 md:min-w-64 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);
