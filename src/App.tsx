@@ -4,7 +4,6 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
 import Login from './Login';
-import { jobService } from './pocketbase';
 import PublicHome from './public/PublicHome';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
@@ -76,6 +75,7 @@ export default function App() {
     addInventoryAttachment,
     deleteInventoryAttachment,
     refreshJobs,
+    refreshJob,
     refreshShifts,
     refreshInventory,
     calculateAvailable,
@@ -293,8 +293,7 @@ export default function App() {
           onRemoveInventory={removeJobInventory}
           onUpdateJob={updateJob}
           onReloadJob={async () => {
-            const updated = await jobService.getJobById(job.id);
-            if (updated) refreshJobs();
+            await refreshJob(job.id);
           }}
           currentUser={currentUser!}
           onAddAttachment={addAttachment}

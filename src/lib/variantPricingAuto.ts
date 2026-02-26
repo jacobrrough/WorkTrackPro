@@ -38,6 +38,10 @@ export function buildEffectiveSetComposition(
   return fallback;
 }
 
+/**
+ * Returns updates for variants that have no price set. Never overwrites an existing variant price:
+ * manually entered variant totals must stay exactly as the user set them.
+ */
 export function seedMissingVariantPrices(
   variants: PartVariant[],
   sourceVariantId: string
@@ -75,6 +79,31 @@ export function calculateVariantLaborTargets(
     targets.push({
       variantId: variant.id,
       laborHours: round2((setLaborHours * qtyInSet) / totalUnits),
+    });
+  }
+  return targets;
+}
+
+export function calculateVariantCncTargets(
+  variants: PartVariant[],
+  setComposition: Record<string, number> | null | undefined,
+  setCncHours: number
+): Array<{ variantId: string; cncTimeHours: number }> {
+  if (!Number.isFinite(setCncHours) || setCncHours <= 0 || variants.length === 0) {
+    return [];
+  }
+
+  const composition = buildEffectiveSetComposition(variants, setComposition);
+  const totalUnits = unitsInComposition(composition);
+  if (totalUnits <= 0) return [];
+
+  const targets: Array<{ variantId: string; cncTimeHours: number }> = [];
+  for (const variant of variants) {
+    const qtyInSet = qtyInSetForVariant(composition, variant.variantSuffix);
+    if (qtyInSet <= 0) continue;
+    targets.push({
+      variantId: variant.id,
+      cncTimeHours: round2((setCncHours * qtyInSet) / totalUnits),
     });
   }
   return targets;

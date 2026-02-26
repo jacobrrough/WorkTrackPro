@@ -129,6 +129,24 @@ export function variantLaborFromSetComposition(
 }
 
 /**
+ * Compute variant's share of set CNC hours from set composition (proportional).
+ * Same logic as variantLaborFromSetComposition but for machine/CNC time.
+ */
+export function variantCncFromSetComposition(
+  variantSuffix: string,
+  setCncHours: number,
+  setComposition: Record<string, number> | null | undefined
+): number | undefined {
+  if (setCncHours <= 0 || !setComposition || Object.keys(setComposition).length === 0)
+    return undefined;
+  const suffixNorm = norm(variantSuffix);
+  const variantQty = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
+  const totalUnits = Object.values(setComposition).reduce((a, b) => a + b, 0);
+  if (totalUnits <= 0 || variantQty <= 0) return undefined;
+  return Math.round(((setCncHours * variantQty) / totalUnits) * 100) / 100;
+}
+
+/**
  * Calculate set labor from variant labor hours and set composition.
  * Set labor = sum of (variant.laborHours × setComposition[variant]) for each variant.
  */
@@ -145,6 +163,28 @@ export function calculateSetLaborFromVariants(
     const qtyInSet = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
     if (qtyInSet > 0 && v.laborHours != null) {
       total += v.laborHours * qtyInSet;
+    }
+  }
+  return total > 0 ? total : undefined;
+}
+
+/**
+ * Calculate set CNC hours from variant cncTimeHours and set composition.
+ * Set CNC = sum of (variant.cncTimeHours × setComposition[variant]) for variants with requiresCNC.
+ */
+export function calculateSetCncFromVariants(
+  variants: PartVariant[],
+  setComposition: Record<string, number> | null | undefined
+): number | undefined {
+  if (!variants?.length || !setComposition || Object.keys(setComposition).length === 0) {
+    return undefined;
+  }
+  let total = 0;
+  for (const v of variants) {
+    const suffixNorm = norm(v.variantSuffix);
+    const qtyInSet = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
+    if (qtyInSet > 0 && v.requiresCNC && v.cncTimeHours != null) {
+      total += v.cncTimeHours * qtyInSet;
     }
   }
   return total > 0 ? total : undefined;

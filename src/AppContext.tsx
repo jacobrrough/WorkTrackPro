@@ -80,6 +80,8 @@ interface AppContextType {
   ) => Promise<boolean>;
   deleteInventoryAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   refreshJobs: () => Promise<void>;
+  /** Refetch a single job and update it in the list (avoids full refresh overwriting unsaved or just-saved data). */
+  refreshJob: (jobId: string) => Promise<void>;
   refreshShifts: () => Promise<void>;
   refreshUsers: () => Promise<void>;
   refreshInventory: () => Promise<void>;
@@ -131,6 +133,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setJobs(dedupeJobsById(jobsData));
     } catch (error) {
       console.error('Failed to refresh jobs:', error);
+    }
+  }, []);
+
+  /** Refetch a single job and replace it in the list. Use after save + material sync so we don't overwrite with stale data from refreshJobs(). */
+  const refreshJob = useCallback(async (jobId: string) => {
+    try {
+      const job = await jobService.getJobById(jobId);
+      if (job) {
+        setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
+      }
+    } catch (error) {
+      console.error('Failed to refresh job:', error);
     }
   }, []);
 
@@ -309,7 +323,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)));
         } else {
           setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)));
-          await jobService.updateJobStatus(jobId, status);
+          const ok = await jobService.updateJobStatus(jobId, status);
+          if (!ok) {
+            await refreshJobs();
+            return false;
+          }
         }
 
         // Ensure checklist is ready for the destination status.
@@ -1014,6 +1032,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addInventoryAttachment,
       deleteInventoryAttachment,
       refreshJobs,
+      refreshJob,
       refreshShifts,
       refreshUsers,
       refreshInventory,
@@ -1058,6 +1077,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addInventoryAttachment,
       deleteInventoryAttachment,
       refreshJobs,
+      refreshJob,
       refreshShifts,
       refreshUsers,
       refreshInventory,

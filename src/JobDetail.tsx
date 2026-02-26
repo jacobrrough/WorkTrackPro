@@ -514,15 +514,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
   }, [job.partNumber, loadLinkedPart]);
 
-  // When linked part loads and job has no labor set, pull labor/CNC/3D from master part into overrides
+  // When linked part loads and job has no labor/machine set, pull labor/CNC/3D from master part into overrides
   const jobHasNoLabor =
     (job.laborHours == null || job.laborHours === 0) &&
     (!job.laborBreakdownByVariant ||
       Object.values(job.laborBreakdownByVariant).every(
         (e) => !Number(e?.hoursPerUnit) || e.hoursPerUnit === 0
       ));
+  const jobHasNoMachineHours =
+    !job.machineBreakdownByVariant ||
+    Object.values(job.machineBreakdownByVariant).every(
+      (e) =>
+        (!Number(e?.cncHoursPerUnit) || e.cncHoursPerUnit === 0) &&
+        (!Number(e?.printer3DHoursPerUnit) || e.printer3DHoursPerUnit === 0)
+    );
+  const shouldPullFromPart =
+    (jobHasNoLabor || jobHasNoMachineHours) && !!linkedPart?.variants?.length;
+
   useEffect(() => {
-    if (!linkedPart?.variants?.length || !jobHasNoLabor) return;
+    if (!shouldPullFromPart) return;
     setAllocationSource('variant');
     const laborNext: Record<string, number> = {};
     const machineNext: Record<
@@ -532,12 +542,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
     let totalLabor = 0;
     let totalCnc = 0;
     let total3D = 0;
-    linkedPart.variants.forEach((variant) => {
+    linkedPart!.variants!.forEach((variant) => {
       const key = toDashSuffix(variant.variantSuffix);
-      const laborPerUnit = variant.laborHours ?? linkedPart.laborHours ?? 0;
+      const laborPerUnit = variant.laborHours ?? linkedPart!.laborHours ?? 0;
       const cncPerUnit = variant.requiresCNC ? (variant.cncTimeHours ?? 0) : 0;
       const printer3DPerUnit = variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) : 0;
-      laborNext[key] = laborPerUnit;
+      if (jobHasNoLabor) laborNext[key] = laborPerUnit;
       machineNext[key] = {
         cncHoursPerUnit: cncPerUnit,
         printer3DHoursPerUnit: printer3DPerUnit,
@@ -549,16 +559,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
         total3D += printer3DPerUnit * qty;
       }
     });
-    setLaborPerUnitOverrides(laborNext);
+    if (jobHasNoLabor) setLaborPerUnitOverrides(laborNext);
     setMachinePerUnitOverrides(machineNext);
-    setLaborHoursFromPart(true);
+    if (jobHasNoLabor) setLaborHoursFromPart(true);
     setEditForm((prev) => ({
       ...prev,
-      laborHours: totalLabor.toFixed(2),
+      ...(jobHasNoLabor ? { laborHours: totalLabor.toFixed(2) } : {}),
       cncHours: totalCnc > 0 ? totalCnc.toFixed(2) : prev.cncHours,
       printer3DHours: total3D > 0 ? total3D.toFixed(2) : prev.printer3DHours,
     }));
-  }, [linkedPart?.id, linkedPart?.variants, jobHasNoLabor, dashQuantities]);
+  }, [linkedPart?.id, linkedPart?.variants, shouldPullFromPart, jobHasNoLabor, dashQuantities]);
 
   // Part name (editable when linked part exists); sync from linked part
   const [partNameEdit, setPartNameEdit] = useState(linkedPart?.name ?? '');
@@ -668,10 +678,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [variantAllocation.entries]
   );
   useEffect(() => {
-    if (laborBreakdownTotal <= 0 || allocationSource !== 'variant') return;
+    if (allocationSource !== 'variant') return;
     const totals = variantAllocation.totals;
+    const hasLabor = (laborBreakdownTotal ?? 0) > 0;
+    const hasCnc = (totals?.cncHours ?? 0) > 0;
+    const has3D = (totals?.printer3DHours ?? 0) > 0;
+    if (!hasLabor && !hasCnc && !has3D) return;
     setEditForm((prev) => {
-      const nextLabor = laborBreakdownTotal.toFixed(2);
+      const nextLabor = (laborBreakdownTotal ?? 0).toFixed(2);
       const nextCnc = (totals?.cncHours ?? 0).toFixed(2);
       const nextPrinter3D = (totals?.printer3DHours ?? 0).toFixed(2);
       if (
@@ -692,6 +706,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [
     laborBreakdownTotal,
     allocationSource,
+    variantAllocation.totals?.laborHours,
     variantAllocation.totals?.cncHours,
     variantAllocation.totals?.printer3DHours,
   ]);
@@ -809,10 +824,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
   }, [linkedPart, selectedVariant, editForm.variantSuffix, calculateMaterialCosts]);
 
-  // Reset edit form when job changes (use stable deps to avoid infinite loop)
+  // Reset edit form when job changes (use stable deps to avoid infinite loop).
+  // Skip when user is editing so we never overwrite in-progress edits (e.g. after save, job updates and we want to show saved values only when not editing).
   const jobId = job.id;
   const jobPartNumber = job.partNumber || '';
   useEffect(() => {
+    if (isEditing) return;
     setLaborHoursFromPart(false);
     setAllocationSource(job.allocationSource ?? 'variant');
     setDashQuantities(normalizeDashQuantities(job.dashQuantities || {}));
@@ -839,6 +856,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
         Object.values(job.laborBreakdownByVariant).every(
           (e) => !Number(e?.hoursPerUnit) || e.hoursPerUnit === 0
         ));
+    const jobHasNoMachineHoursReset =
+      !job.machineBreakdownByVariant ||
+      Object.values(job.machineBreakdownByVariant).every(
+        (e) =>
+          (!Number(e?.cncHoursPerUnit) || e.cncHoursPerUnit === 0) &&
+          (!Number(e?.printer3DHoursPerUnit) || e.printer3DHoursPerUnit === 0)
+      );
     setEditForm((prev) => ({
       ...prev,
       po: job.po || '',
@@ -849,12 +873,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
       laborHours: jobHasNoLaborReset
         ? prev.laborHours || job.laborHours?.toString() || ''
         : job.laborHours?.toString() || '',
-      cncHours: jobHasNoLaborReset
+      cncHours: jobHasNoMachineHoursReset
         ? prev.cncHours || (machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '')
         : machineTotals.cncHours > 0
           ? machineTotals.cncHours.toFixed(2)
           : '',
-      printer3DHours: jobHasNoLaborReset
+      printer3DHours: jobHasNoMachineHoursReset
         ? prev.printer3DHours ||
           (machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '')
         : machineTotals.printer3DHours > 0
@@ -903,6 +927,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     machineTotals.cncHours,
     machineTotals.printer3DHours,
     loadLinkedPart,
+    isEditing,
   ]);
 
   useEffect(() => {

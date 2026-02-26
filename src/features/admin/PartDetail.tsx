@@ -32,12 +32,15 @@ import {
   variantPricesFromSetPrice,
   calculateSetLaborFromVariants,
   variantLaborFromSetComposition,
+  variantCncFromSetComposition,
+  calculateSetCncFromVariants,
   distributeSetMaterialToVariants,
 } from '@/lib/partDistribution';
 import {
   buildEffectiveSetComposition,
   seedMissingVariantPrices,
   calculateVariantLaborTargets,
+  calculateVariantCncTargets,
 } from '@/lib/variantPricingAuto';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 
@@ -76,6 +79,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
   const [confirmDeletePart, setConfirmDeletePart] = useState(false);
   const [deletingPart, setDeletingPart] = useState(false);
   const { showToast } = useToast();
+  const loadPartRequestIdRef = useRef(0);
+  // Guards against stale reloads briefly returning old variant totals after manual edits.
+  // null means user explicitly reverted that variant to auto (no manual total).
+  const manualVariantPriceOverridesRef = useRef<Record<string, number | null>>({});
 
   const partJobs = useMemo(() => {
     if (!part) return [];
@@ -277,7 +284,28 @@ const PartDetail: React.FC<PartDetailProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPart, loadInventory are stable
   }, [partId]);
 
+  const applyManualVariantPriceOverrides = (input: Part | null): Part | null => {
+    if (!input?.variants?.length) return input;
+    const overrides = manualVariantPriceOverridesRef.current;
+    if (!overrides || Object.keys(overrides).length === 0) return input;
+
+    return {
+      ...input,
+      variants: input.variants.map((variant) => {
+        if (!Object.prototype.hasOwnProperty.call(overrides, variant.id)) {
+          return variant;
+        }
+        const override = overrides[variant.id];
+        return {
+          ...variant,
+          pricePerVariant: override == null ? undefined : override,
+        };
+      }),
+    };
+  };
+
   const loadPart = async (silent = false): Promise<Part | null> => {
+    const requestId = ++loadPartRequestIdRef.current;
     try {
       if (!silent) setLoading(true);
       setIsVirtualPart(false);
@@ -286,8 +314,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
         const fromDb = await partsService.getPartByNumber(partNumberFromJob);
         if (fromDb) {
           const withVariants = await partsService.getPartWithVariants(fromDb.id);
-          setPart(withVariants);
-          return withVariants;
+          const nextPart = applyManualVariantPriceOverrides(withVariants);
+          if (requestId === loadPartRequestIdRef.current) setPart(nextPart);
+          return nextPart;
         }
         const matchingJobs = allJobs.filter(
           (j) =>
@@ -308,9 +337,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        setPart(virtualPart);
+        const nextPart = applyManualVariantPriceOverrides(virtualPart);
+        if (requestId === loadPartRequestIdRef.current) setPart(nextPart);
         setIsVirtualPart(true);
-        return virtualPart;
+        return nextPart;
       }
       let data = await partsService.getPartWithVariants(partId);
       if (
@@ -322,12 +352,15 @@ const PartDetail: React.FC<PartDetailProps> = ({
           (await partsService.getPartByNumber(partId))?.id ?? ''
         );
       }
-      setPart(data ?? null);
-      return data ?? null;
+      const nextPart = applyManualVariantPriceOverrides(data ?? null);
+      if (requestId === loadPartRequestIdRef.current) setPart(nextPart);
+      return nextPart;
     } catch (error) {
-      showToast('Failed to load part details', 'error');
-      console.error('Error loading part:', error);
-      setPart(null);
+      if (requestId === loadPartRequestIdRef.current) {
+        showToast('Failed to load part details', 'error');
+        console.error('Error loading part:', error);
+        setPart(null);
+      }
       return null;
     } finally {
       if (!silent) setLoading(false);
@@ -373,9 +406,22 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
   const handleUpdateVariant = async (
     variantId: string,
-    updates: { name?: string; pricePerVariant?: number; laborHours?: number }
+    updates: {
+      name?: string;
+      pricePerVariant?: number;
+      laborHours?: number;
+      cncTimeHours?: number;
+      requiresCNC?: boolean;
+    }
   ) => {
     try {
+      const hasPriceInPayload = Object.prototype.hasOwnProperty.call(updates, 'pricePerVariant');
+      if (hasPriceInPayload) {
+        manualVariantPriceOverridesRef.current[variantId] =
+          updates.pricePerVariant != null && Number.isFinite(updates.pricePerVariant)
+            ? updates.pricePerVariant
+            : null;
+      }
       const saved = await partsService.updateVariant(variantId, updates);
       if (!saved) {
         showToast('Failed to save variant. Check your connection or permissions.', 'error');
@@ -384,6 +430,16 @@ const PartDetail: React.FC<PartDetailProps> = ({
       }
       showToast('Variant updated successfully', 'success');
       setEditingVariant(null);
+      // Merge saved variant into state immediately so UI shows persisted values
+      // (avoids revert when reopening variant if loadPart is slow or races).
+      setPart((prev) =>
+        prev?.variants
+          ? {
+              ...prev,
+              variants: prev.variants.map((v) => (v.id === saved.id ? { ...v, ...saved } : v)),
+            }
+          : prev
+      );
       let updated = await loadPart(true);
       if (!updated || updates.pricePerVariant === undefined || !updated.variants?.length) return;
 
@@ -420,6 +476,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
       const nextSetLaborHours = derivedSetQuote?.isLaborAutoAdjusted
         ? Number(derivedSetQuote.laborHours.toFixed(2))
         : undefined;
+      const nextSetCncHours =
+        updates.cncTimeHours !== undefined || updates.requiresCNC !== undefined
+          ? calculateSetCncFromVariants(variants, composition)
+          : undefined;
 
       const partUpdates: Partial<Part> = {};
       if (Math.abs((updated.pricePerSet ?? 0) - roundedSetPrice) > 0.01) {
@@ -430,6 +490,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
         Math.abs((updated.laborHours ?? 0) - nextSetLaborHours) > 0.01
       ) {
         partUpdates.laborHours = nextSetLaborHours;
+      }
+      if (
+        nextSetCncHours != null &&
+        Math.abs((updated.cncTimeHours ?? 0) - nextSetCncHours) > 0.01
+      ) {
+        partUpdates.cncTimeHours = nextSetCncHours;
+        if (nextSetCncHours > 0) partUpdates.requiresCNC = true;
       }
 
       if (Object.keys(partUpdates).length > 0) {
@@ -488,8 +555,38 @@ const PartDetail: React.FC<PartDetailProps> = ({
           if (target.variantId === variantId) continue; // keep edited variant's own labor
           const current = variantById.get(target.variantId);
           if (!current) continue;
+          // Keep explicit manual labor for sibling variants unchanged.
+          if (current.laborHours != null && current.laborHours !== undefined) continue;
           if (Math.abs((current.laborHours ?? 0) - target.laborHours) <= 0.01) continue;
           await partsService.updateVariant(target.variantId, { laborHours: target.laborHours });
+          laborVariantsChanged = true;
+        }
+      }
+
+      const targetSetCnc =
+        nextSetCncHours ?? (updated.requiresCNC ? updated.cncTimeHours : undefined);
+      const shouldPushCnc =
+        targetSetCnc != null &&
+        targetSetCnc > 0 &&
+        (updates.cncTimeHours !== undefined || updates.requiresCNC !== undefined);
+      if (shouldPushCnc) {
+        const expectedVariantCnc = calculateVariantCncTargets(variants, composition, targetSetCnc);
+        const variantById = new Map(variants.map((v) => [v.id, v]));
+        for (const target of expectedVariantCnc) {
+          if (target.variantId === variantId) continue;
+          const current = variantById.get(target.variantId);
+          if (!current) continue;
+          // Keep explicit manual CNC values for sibling variants unchanged.
+          if (current.cncTimeHours != null && current.cncTimeHours !== undefined) continue;
+          if (
+            Math.abs((current.cncTimeHours ?? 0) - target.cncTimeHours) <= 0.01 &&
+            current.requiresCNC
+          )
+            continue;
+          await partsService.updateVariant(target.variantId, {
+            requiresCNC: true,
+            cncTimeHours: target.cncTimeHours,
+          });
           laborVariantsChanged = true;
         }
       }
@@ -1282,6 +1379,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     } else if (part.laborHours != null) {
                       targetSetLaborHours = part.laborHours;
                     }
+                    const targetSetCncHours =
+                      part.requiresCNC && part.cncTimeHours != null ? part.cncTimeHours : undefined;
                     if (Object.keys(updates).length > 0) {
                       await handleUpdatePart(updates);
                     }
@@ -1302,36 +1401,40 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           : []
                         ).map((entry) => [entry.variantId, entry.laborHours])
                       );
-                      const currentSetDerivedPrices = variantPricesFromSetPrice(
-                        part.pricePerSet ?? 0,
-                        composition,
-                        variants
-                      );
-                      const currentDerivedByVariantId = new Map(
-                        currentSetDerivedPrices.map((e) => [e.variantId, e.price])
+                      const cncByVariantId = new Map(
+                        (targetSetCncHours != null && targetSetCncHours > 0
+                          ? calculateVariantCncTargets(variants, composition, targetSetCncHours)
+                          : []
+                        ).map((entry) => [entry.variantId, entry.cncTimeHours])
                       );
 
                       for (const variant of variants) {
                         const variantUpdates: Partial<PartVariant> = {};
                         const nextPrice = priceByVariantId.get(variant.id);
-                        const currentDerived = currentDerivedByVariantId.get(variant.id);
-                        const matchesCurrentSetDerived =
-                          currentDerived != null &&
+                        // Never overwrite a manually set variant total: only fill when the variant
+                        // has no price at all. A variant with any numeric price (including 0) stays as-is.
+                        const hasExistingVariantPrice =
                           variant.pricePerVariant != null &&
-                          Math.abs(variant.pricePerVariant - currentDerived) < 0.01;
-                        if (
-                          nextPrice != null &&
-                          matchesCurrentSetDerived &&
-                          Math.abs((variant.pricePerVariant ?? 0) - nextPrice) > 0.01
-                        ) {
+                          variant.pricePerVariant !== undefined &&
+                          Number.isFinite(Number(variant.pricePerVariant));
+                        if (nextPrice != null && !hasExistingVariantPrice) {
                           variantUpdates.pricePerVariant = nextPrice;
                         }
                         const nextLabor = laborByVariantId.get(variant.id);
+                        // Keep manual labor values intact; only fill labor when not explicitly set.
                         if (
                           nextLabor != null &&
-                          Math.abs((variant.laborHours ?? 0) - nextLabor) > 0.01
+                          (variant.laborHours == null || variant.laborHours === undefined)
                         ) {
                           variantUpdates.laborHours = nextLabor;
+                        }
+                        const nextCnc = cncByVariantId.get(variant.id);
+                        if (
+                          nextCnc != null &&
+                          (variant.cncTimeHours == null || variant.cncTimeHours === undefined)
+                        ) {
+                          variantUpdates.requiresCNC = true;
+                          variantUpdates.cncTimeHours = nextCnc;
                         }
 
                         if (Object.keys(variantUpdates).length > 0) {
@@ -1400,8 +1503,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
                       onMaterialAdded={() => loadPart(true)}
                       onVariantMaterialChanged={syncSetMaterialFromVariants}
-                      partPricePerSet={part.pricePerSet}
                       partLaborHours={part.laborHours}
+                      partCncHours={part.requiresCNC ? part.cncTimeHours : undefined}
                       setComposition={part.setComposition}
                       isAddingMaterial={showAddMaterial?.variantId === variant.id}
                       onAddMaterialCancel={() => setShowAddMaterial(null)}
@@ -1605,8 +1708,8 @@ interface VariantCardProps {
   onAddMaterial: () => void;
   onMaterialAdded: () => void;
   onVariantMaterialChanged: (inventoryId: string) => Promise<void>;
-  partPricePerSet?: number;
   partLaborHours?: number;
+  partCncHours?: number;
   setComposition?: Record<string, number> | null;
   isAddingMaterial?: boolean;
   onAddMaterialCancel?: () => void;
@@ -1632,8 +1735,8 @@ const VariantCard: React.FC<VariantCardProps> = ({
   onAddMaterial,
   onMaterialAdded,
   onVariantMaterialChanged,
-  partPricePerSet,
   partLaborHours,
+  partCncHours,
   setComposition,
   isAddingMaterial,
   onAddMaterialCancel,
@@ -1643,14 +1746,40 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const [name, setName] = useState(variant.name || '');
   const [price, setPrice] = useState(variant.pricePerVariant?.toString() || '');
   const [laborHours, setLaborHours] = useState(variant.laborHours?.toString() || '');
+  const [cncHours, setCncHours] = useState(variant.cncTimeHours?.toString() || '');
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValues, setMaterialQtyValues] = useState<Record<string, string>>({});
   const [materialUnitValues, setMaterialUnitValues] = useState<Record<string, string>>({});
   const [addMaterialToAllVariants, setAddMaterialToAllVariants] = useState(true);
 
+  // Sync form state when variant prop updates (e.g. after save + merge or loadPart)
+  useEffect(() => {
+    if (!isEditing) {
+      setName(variant.name || '');
+      setPrice(variant.pricePerVariant?.toString() || '');
+      setLaborHours(variant.laborHours?.toString() || '');
+      setCncHours(variant.cncTimeHours?.toString() || '');
+    }
+  }, [
+    isEditing,
+    variant.id,
+    variant.name,
+    variant.pricePerVariant,
+    variant.laborHours,
+    variant.cncTimeHours,
+  ]);
+
   const autoLaborHours =
     partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
       ? variantLaborFromSetComposition(variant.variantSuffix, partLaborHours, setComposition)
+      : undefined;
+
+  const autoCncHours =
+    partCncHours != null &&
+    partCncHours > 0 &&
+    setComposition &&
+    Object.keys(setComposition).length > 0
+      ? variantCncFromSetComposition(variant.variantSuffix, partCncHours, setComposition)
       : undefined;
 
   const handleSave = () => {
@@ -1658,6 +1787,8 @@ const VariantCard: React.FC<VariantCardProps> = ({
       name: name || undefined,
       pricePerVariant: price ? Number(price) : undefined,
       laborHours: laborHours ? Number(laborHours) : undefined,
+      cncTimeHours: cncHours ? Number(cncHours) : undefined,
+      requiresCNC: cncHours ? true : variant.requiresCNC,
     });
   };
 
@@ -1665,6 +1796,12 @@ const VariantCard: React.FC<VariantCardProps> = ({
     if (autoLaborHours != null) {
       setLaborHours(autoLaborHours.toString());
       onUpdate(variant.id, { laborHours: autoLaborHours });
+    }
+  };
+  const revertCncToAuto = () => {
+    if (autoCncHours != null) {
+      setCncHours(autoCncHours.toString());
+      onUpdate(variant.id, { requiresCNC: true, cncTimeHours: autoCncHours });
     }
   };
 
@@ -1759,6 +1896,31 @@ const VariantCard: React.FC<VariantCardProps> = ({
               placeholder={autoLaborHours != null ? autoLaborHours.toString() : '0.0'}
             />
           </div>
+          {(partCncHours != null && partCncHours > 0) || variant.requiresCNC ? (
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs text-slate-400">Machine time (CNC hrs)</label>
+                {autoCncHours != null && (
+                  <button
+                    type="button"
+                    onClick={revertCncToAuto}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Use Auto
+                  </button>
+                )}
+              </div>
+              <input
+                type="number"
+                step="0.1"
+                min={0}
+                value={cncHours}
+                onChange={(e) => setCncHours(e.target.value)}
+                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
+                placeholder={autoCncHours != null ? autoCncHours.toString() : '0.0'}
+              />
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -1768,6 +1930,9 @@ const VariantCard: React.FC<VariantCardProps> = ({
             <span>${variant.pricePerVariant.toFixed(2)}/variant</span>
           )}
           {variant.laborHours !== undefined && <span>{variant.laborHours}h</span>}
+          {variant.requiresCNC && variant.cncTimeHours !== undefined && (
+            <span>{variant.cncTimeHours}h CNC</span>
+          )}
         </div>
       )}
 
@@ -1993,16 +2158,22 @@ const VariantCard: React.FC<VariantCardProps> = ({
         <VariantQuoteMini
           partNumber={partNumber}
           variant={variant}
-          allVariants={allVariants}
           inventoryItems={inventoryItems}
-          partPricePerSet={partPricePerSet}
           partLaborHours={partLaborHours}
+          partCncHours={partCncHours}
           setComposition={setComposition}
           onVariantPriceChange={(variantId, price) => {
             if (variantId === variant.id) onUpdate(variantId, { pricePerVariant: price });
           }}
           onVariantLaborChange={(variantId, laborHours) => {
             if (variantId === variant.id) onUpdate(variantId, { laborHours });
+          }}
+          onVariantCncChange={(variantId, cncTimeHours) => {
+            if (variantId === variant.id)
+              onUpdate(variantId, {
+                requiresCNC: cncTimeHours != null && cncTimeHours > 0,
+                cncTimeHours: cncTimeHours ?? undefined,
+              });
           }}
         />
       </div>
@@ -2013,38 +2184,52 @@ const VariantCard: React.FC<VariantCardProps> = ({
 function VariantQuoteMini({
   partNumber,
   variant,
-  allVariants = [],
   inventoryItems,
-  partPricePerSet,
   partLaborHours,
+  partCncHours,
   setComposition,
   onVariantPriceChange,
   onVariantLaborChange,
+  onVariantCncChange,
 }: {
   partNumber: string;
   variant: PartVariant & { materials?: PartMaterial[] };
-  allVariants?: PartVariant[];
   inventoryItems: InventoryItem[];
-  partPricePerSet?: number;
   partLaborHours?: number;
+  partCncHours?: number;
   setComposition?: Record<string, number> | null;
   onVariantPriceChange?: (variantId: string, price: number | undefined) => void;
   onVariantLaborChange?: (variantId: string, laborHours: number | undefined) => void;
+  onVariantCncChange?: (variantId: string, cncTimeHours: number | undefined) => void;
 }) {
   const { settings } = useSettings();
   const autoLaborHours =
     partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
       ? variantLaborFromSetComposition(variant.variantSuffix, partLaborHours, setComposition)
       : undefined;
+  const autoCncHours =
+    partCncHours != null &&
+    partCncHours > 0 &&
+    setComposition &&
+    Object.keys(setComposition).length > 0
+      ? variantCncFromSetComposition(variant.variantSuffix, partCncHours, setComposition)
+      : undefined;
   const effectiveLaborHours = variant.laborHours ?? autoLaborHours ?? 0;
+  const effectiveCncHours = variant.cncTimeHours ?? autoCncHours ?? 0;
 
   const [laborHoursInput, setLaborHoursInput] = useState(
     variant.laborHours != null ? variant.laborHours.toString() : (autoLaborHours?.toString() ?? '')
+  );
+  const [cncHoursInput, setCncHoursInput] = useState(
+    variant.cncTimeHours != null
+      ? variant.cncTimeHours.toString()
+      : (autoCncHours?.toString() ?? '')
   );
   const [totalInput, setTotalInput] = useState(
     variant.pricePerVariant != null ? variant.pricePerVariant.toString() : ''
   );
   const [hasUserEditedLabor, setHasUserEditedLabor] = useState(false);
+  const [hasUserEditedCnc, setHasUserEditedCnc] = useState(false);
   const [hasUserEditedTotal, setHasUserEditedTotal] = useState(false);
   const lastSentTotalRef = useRef<number | null>(null);
 
@@ -2056,21 +2241,28 @@ function VariantQuoteMini({
           : (autoLaborHours?.toString() ?? '')
       );
     }
+    // Do not revert to auto when variant matches input: variant can update from set-price
+    // distribution or other saves; manual stays manual until user clicks "Use auto".
   }, [variant.laborHours, autoLaborHours, hasUserEditedLabor]);
+
+  useEffect(() => {
+    if (!hasUserEditedCnc) {
+      setCncHoursInput(
+        variant.cncTimeHours != null
+          ? variant.cncTimeHours.toString()
+          : (autoCncHours?.toString() ?? '')
+      );
+    }
+    // Do not revert to auto when variant matches input; manual stays manual until "Use auto".
+  }, [variant.cncTimeHours, autoCncHours, hasUserEditedCnc]);
 
   useEffect(() => {
     if (!hasUserEditedTotal) {
       setTotalInput(variant.pricePerVariant != null ? variant.pricePerVariant.toString() : '');
       lastSentTotalRef.current = null;
-    } else if (
-      variant.pricePerVariant != null &&
-      lastSentTotalRef.current != null &&
-      Math.abs(variant.pricePerVariant - lastSentTotalRef.current) < 0.01
-    ) {
-      setTotalInput(variant.pricePerVariant.toString());
-      setHasUserEditedTotal(false);
-      lastSentTotalRef.current = null;
     }
+    // Do not revert to auto when variant matches lastSentTotalRef: manual stays manual until
+    // the user explicitly clicks "Use auto".
   }, [variant.pricePerVariant, hasUserEditedTotal]);
 
   const result = useMemo(() => {
@@ -2081,7 +2273,19 @@ function VariantQuoteMini({
             return Number.isFinite(p) && p >= 0 ? p : effectiveLaborHours;
           })()
         : effectiveLaborHours;
-    const variantWithEffectiveLabor = { ...variant, laborHours: laborHoursForQuote };
+    const cncHoursForQuote =
+      hasUserEditedCnc && cncHoursInput.trim() !== ''
+        ? (() => {
+            const p = parseFloat(cncHoursInput);
+            return Number.isFinite(p) && p >= 0 ? p : effectiveCncHours;
+          })()
+        : effectiveCncHours;
+    const variantWithEffectiveLabor = {
+      ...variant,
+      laborHours: laborHoursForQuote,
+      requiresCNC: cncHoursForQuote > 0 || variant.requiresCNC === true,
+      cncTimeHours: cncHoursForQuote > 0 ? cncHoursForQuote : variant.cncTimeHours,
+    };
     const manualPrice =
       hasUserEditedTotal && totalInput.trim() ? parseFloat(totalInput) : undefined;
     return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
@@ -2092,34 +2296,21 @@ function VariantQuoteMini({
     partNumber,
     variant,
     effectiveLaborHours,
+    effectiveCncHours,
     inventoryItems,
     settings.laborRate,
     totalInput,
     hasUserEditedTotal,
     laborHoursInput,
     hasUserEditedLabor,
+    cncHoursInput,
+    hasUserEditedCnc,
   ]);
 
   const isLaborAuto = variant.laborHours == null && autoLaborHours != null;
-  const derivedPricesFromSet =
-    partPricePerSet != null &&
-    partPricePerSet > 0 &&
-    setComposition &&
-    Object.keys(setComposition).length > 0 &&
-    allVariants.length > 0
-      ? variantPricesFromSetPrice(partPricePerSet, setComposition, allVariants)
-      : [];
-  const derivedTotalForThisVariant = derivedPricesFromSet.find(
-    (p) => p.variantId === variant.id
-  )?.price;
-  const totalMatchesSetDerived =
-    derivedTotalForThisVariant != null &&
-    variant.pricePerVariant != null &&
-    Math.abs(variant.pricePerVariant - derivedTotalForThisVariant) < 0.01;
-  const isTotalAuto =
-    !hasUserEditedTotal &&
-    result != null &&
-    (variant.pricePerVariant == null || totalMatchesSetDerived);
+  const isCncAuto = variant.cncTimeHours == null && autoCncHours != null;
+  const isTotalAuto = !hasUserEditedTotal && result != null && variant.pricePerVariant == null;
+  const persistedVariantTotal = variant.pricePerVariant;
 
   const handleLaborHoursBlur = () => {
     const val = laborHoursInput.trim() === '' ? undefined : parseFloat(laborHoursInput);
@@ -2130,7 +2321,20 @@ function VariantQuoteMini({
     } else {
       onVariantLaborChange?.(variant.id, undefined);
     }
-    setHasUserEditedLabor(false);
+    // Do not clear hasUserEditedLabor here: keep showing manual value until variant prop updates
+    // (clearing here caused "auto" to show when variant was still stale after save).
+  };
+
+  const handleCncHoursBlur = () => {
+    const val = cncHoursInput.trim() === '' ? undefined : parseFloat(cncHoursInput);
+    if (val !== undefined && !Number.isNaN(val) && val >= 0) {
+      if (Math.abs((variant.cncTimeHours ?? 0) - val) > 0.001) {
+        onVariantCncChange?.(variant.id, val);
+      }
+    } else {
+      onVariantCncChange?.(variant.id, undefined);
+    }
+    // Do not clear hasUserEditedCnc here: keep showing manual value until variant prop updates.
   };
 
   const handleTotalBlur = () => {
@@ -2154,12 +2358,17 @@ function VariantQuoteMini({
     setHasUserEditedLabor(false);
     onVariantLaborChange?.(variant.id, undefined);
   };
+  const useCncAuto = () => {
+    setHasUserEditedCnc(false);
+    onVariantCncChange?.(variant.id, undefined);
+  };
   const useTotalAuto = () => {
     setHasUserEditedTotal(false);
     lastSentTotalRef.current = null;
     onVariantPriceChange?.(variant.id, undefined);
   };
   const switchLaborToManual = () => setHasUserEditedLabor(true);
+  const switchCncToManual = () => setHasUserEditedCnc(true);
   const switchTotalToManual = () => setHasUserEditedTotal(true);
 
   const displayLaborHours = hasUserEditedLabor
@@ -2167,11 +2376,18 @@ function VariantQuoteMini({
     : result?.isLaborAutoAdjusted === true
       ? result.laborHours.toFixed(2)
       : (effectiveLaborHours?.toString() ?? '');
+  const displayCncHours = hasUserEditedCnc
+    ? cncHoursInput
+    : effectiveCncHours > 0
+      ? effectiveCncHours.toString()
+      : '';
   const displayTotal = hasUserEditedTotal
     ? totalInput
-    : result != null
-      ? result.total.toFixed(2)
-      : '';
+    : persistedVariantTotal != null
+      ? persistedVariantTotal.toFixed(2)
+      : result != null
+        ? result.total.toFixed(2)
+        : '';
 
   return (
     <div className="rounded border border-primary/20 bg-primary/5 p-3">
@@ -2218,6 +2434,46 @@ function VariantQuoteMini({
               placeholder={autoLaborHours?.toString() ?? '0'}
             />
           </div>
+          {(partCncHours != null && partCncHours > 0) ||
+          variant.requiresCNC ||
+          effectiveCncHours > 0 ? (
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center text-slate-300">
+                Machine time (CNC hrs)
+                {isCncAuto && <AutoBadge />}
+                {isCncAuto ? (
+                  <button
+                    type="button"
+                    onClick={switchCncToManual}
+                    className="ml-2 text-xs text-primary hover:underline"
+                  >
+                    Manual
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={useCncAuto}
+                    className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  >
+                    Use auto
+                  </button>
+                )}
+              </span>
+              <input
+                type="number"
+                step="0.1"
+                min={0}
+                value={displayCncHours}
+                onChange={(e) => {
+                  setCncHoursInput(e.target.value);
+                  setHasUserEditedCnc(true);
+                }}
+                onBlur={handleCncHoursBlur}
+                className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+                placeholder={autoCncHours?.toString() ?? '0'}
+              />
+            </div>
+          ) : null}
           <div className="flex items-center justify-between text-slate-300">
             <span className="flex items-center">
               Labor

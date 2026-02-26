@@ -532,7 +532,13 @@ export const jobService = {
         };
       },
     });
-    if (error) return null;
+    if (error) {
+      console.error('updateJob failed:', error?.message ?? error, error?.code, {
+        jobId,
+        payloadKeys: Object.keys(row),
+      });
+      return null;
+    }
     const expand = await fetchJobExpand(jobId);
     return mapJobRow(updated as Record<string, unknown>, expand);
   },
@@ -542,7 +548,11 @@ export const jobService = {
       .from('jobs')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', jobId);
-    return !error;
+    if (error) {
+      console.error('updateJobStatus failed:', error.message, error.code, { jobId, status });
+      return false;
+    }
+    return true;
   },
 
   async deleteJob(jobId: string): Promise<boolean> {

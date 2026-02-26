@@ -38,6 +38,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   const [manualSetPrice, setManualSetPrice] = useState<string>(part.pricePerSet?.toString() || '');
   const [isManualPrice, setIsManualPrice] = useState(!!part.pricePerSet);
   const [hasUserEdited, setHasUserEdited] = useState(false);
+  const [hasUserEditedSetLabor, setHasUserEditedSetLabor] = useState(false);
   const [laborHoursInput, setLaborHoursInput] = useState<string>(part.laborHours?.toString() ?? '');
   const onSetPriceChangeRef = useRef(onSetPriceChange);
   onSetPriceChangeRef.current = onSetPriceChange;
@@ -66,8 +67,11 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   }, [part.pricePerSet, hasUserEdited, autoSetPrice]);
 
   useEffect(() => {
-    setLaborHoursInput(part.laborHours?.toString() ?? '');
-  }, [part.laborHours]);
+    if (!hasUserEditedSetLabor) {
+      setLaborHoursInput(part.laborHours?.toString() ?? '');
+    }
+    // Do not overwrite manual set labor when part updates (e.g. from set-price distribution).
+  }, [part.laborHours, hasUserEditedSetLabor]);
 
   useEffect(() => {
     if (hasUserEdited && onSetPriceChangeRef.current) {
@@ -133,7 +137,10 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             step="0.1"
             min={0}
             value={laborDisplayValue}
-            onChange={(e) => setLaborHoursInput(e.target.value)}
+            onChange={(e) => {
+              setLaborHoursInput(e.target.value);
+              setHasUserEditedSetLabor(true);
+            }}
             onBlur={() => {
               if (isLaborAutoFromTarget) return;
               const nextLabor = laborHoursInput.trim() === '' ? undefined : Number(laborHoursInput);
@@ -149,6 +156,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             <button
               type="button"
               onClick={() => {
+                setHasUserEditedSetLabor(false);
                 const nextAuto = Number(autoSetLaborHours.toFixed(2));
                 setLaborHoursInput(nextAuto.toString());
                 onLaborHoursChange?.(nextAuto);
