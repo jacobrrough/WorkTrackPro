@@ -9,6 +9,7 @@ import React, {
   useMemo,
   ReactNode,
 } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { User, Job, Shift, InventoryItem, JobStatus, Comment } from '@/core/types';
 import {
   authService,
@@ -112,13 +113,49 @@ function dedupeJobsById(items: Job[]): Job[] {
 }
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+
+  const enabled = !!currentUser && currentUser.isApproved !== false;
+
+  const { data: jobsData = [] } = useQuery({
+    queryKey: ['jobs'],
+    queryFn: async () => {
+      const list = await jobService.getAllJobs();
+      list.sort((a, b) => {
+        const dateA = a.dueDate || a.ecd || '9999-12-31';
+        const dateB = b.dueDate || b.ecd || '9999-12-31';
+        return dateA.localeCompare(dateB);
+      });
+      return dedupeJobsById(list);
+    },
+    enabled,
+  });
+
+  const { data: shiftsData = [] } = useQuery({
+    queryKey: ['shifts'],
+    queryFn: () => shiftService.getAllShifts(),
+    enabled,
+  });
+
+  const { data: usersData = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => userService.getAllUsers(),
+    enabled,
+  });
+
+  const { data: inventoryData = [] } = useQuery({
+    queryKey: ['inventory'],
+    queryFn: () => inventoryService.getAllInventory(),
+    enabled,
+  });
+
+  const jobs = jobsData;
+  const shifts = shiftsData;
+  const users = usersData;
+  const inventory = inventoryData;
 
   const activeShift = useMemo(() => {
     if (!currentUser) return null;
@@ -131,58 +168,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [activeShift, jobs]);
 
   const refreshJobs = useCallback(async () => {
-    try {
-      const jobsData = await jobService.getAllJobs();
-      // Sort jobs by date (soonest first)
-      jobsData.sort((a, b) => {
-        const dateA = a.dueDate || a.ecd || '9999-12-31';
-        const dateB = b.dueDate || b.ecd || '9999-12-31';
-        return dateA.localeCompare(dateB);
-      });
-      setJobs(dedupeJobsById(jobsData));
-    } catch (error) {
-      console.error('Failed to refresh jobs:', error);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+  }, [queryClient]);
 
   /** Refetch a single job and replace it in the list. Use after save + material sync so we don't overwrite with stale data from refreshJobs(). */
-  const refreshJob = useCallback(async (jobId: string) => {
-    try {
-      const job = await jobService.getJobById(jobId);
-      if (job) {
-        setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
+  const refreshJob = useCallback(
+    async (jobId: string) => {
+      try {
+        const job = await jobService.getJobById(jobId);
+        if (job) {
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev ? prev.map((j) => (j.id === jobId ? job : j)) : [job]
+          );
+        }
+      } catch (error) {
+        console.error('Failed to refresh job:', error);
+        await queryClient.invalidateQueries({ queryKey: ['jobs'] });
       }
-    } catch (error) {
-      console.error('Failed to refresh job:', error);
-    }
-  }, []);
+    },
+    [queryClient]
+  );
 
   const refreshShifts = useCallback(async () => {
-    try {
-      const shiftsData = await shiftService.getAllShifts();
-      setShifts(shiftsData);
-    } catch (error) {
-      console.error('Failed to refresh shifts:', error);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: ['shifts'] });
+  }, [queryClient]);
 
   const refreshInventory = useCallback(async () => {
-    try {
-      const inventoryData = await inventoryService.getAllInventory();
-      setInventory(inventoryData);
-    } catch (error) {
-      console.error('Failed to refresh inventory:', error);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: ['inventory'] });
+  }, [queryClient]);
 
   const refreshUsers = useCallback(async () => {
-    try {
-      const usersData = await userService.getAllUsers();
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Failed to refresh users:', error);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: ['users'] });
+  }, [queryClient]);
 
   const login = useCallback(
     async (email: string, password: string): Promise<boolean> => {
@@ -191,12 +208,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const user = await authService.login(email, password);
         setCurrentUser(user);
-
-        // Load data only when approved; pending users should see the approval gate.
-        if (user.isApproved !== false) {
-          await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
-        }
-
+        // Queries will refetch automatically when enabled (currentUser is set)
         return true;
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Login failed';
@@ -206,7 +218,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsLoading(false);
       }
     },
-    [refreshInventory, refreshJobs, refreshShifts, refreshUsers]
+    []
   );
 
   const signUp = useCallback(
@@ -221,9 +233,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
         if (user) {
           setCurrentUser(user);
-          if (user.isApproved !== false) {
-            await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
-          }
           return true;
         }
         return needsEmailConfirmation ? 'needs_email_confirmation' : false;
@@ -235,7 +244,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsLoading(false);
       }
     },
-    [refreshInventory, refreshJobs, refreshShifts, refreshUsers]
+    []
   );
 
   const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
@@ -246,10 +255,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = useCallback(() => {
     authService.logout();
     setCurrentUser(null);
-    setJobs([]);
-    setShifts([]);
-    setUsers([]);
-    setInventory([]);
+    // Query cache is left as-is; queries are disabled when !currentUser
   }, []);
 
   const calculateAllocated = useCallback(
@@ -270,14 +276,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return null;
       }
       if (job) {
-        setJobs((prev) => dedupeJobsById([job, ...prev]));
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+          prev ? dedupeJobsById([job, ...prev]) : [job]
+        );
       }
       return job;
     } catch (error) {
       console.error('Create job error:', error);
       return null;
     }
-  }, []);
+  }, [queryClient]);
 
   const updateJob = useCallback(async (jobId: string, data: Partial<Job>): Promise<Job | null> => {
     try {
@@ -288,21 +296,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const updatedJob = await jobService.updateJob(jobId, data);
       if (updatedJob) {
-        setJobs((prev) => prev.map((j) => (j.id === jobId ? updatedJob : j)));
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+          prev ? prev.map((j) => (j.id === jobId ? updatedJob : j)) : []
+        );
       }
       return updatedJob;
     } catch (error) {
       console.error('Update job error:', error);
       return null;
     }
-  }, []);
+  }, [queryClient]);
 
   const deleteJob = useCallback(
     async (jobId: string): Promise<boolean> => {
       try {
         const deleted = await jobService.deleteJob(jobId);
         if (!deleted) return false;
-        setJobs((prev) => prev.filter((j) => j.id !== jobId));
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+          prev ? prev.filter((j) => j.id !== jobId) : []
+        );
         await refreshJobs();
         await refreshInventory();
         await refreshShifts();
@@ -312,7 +324,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
     },
-    [refreshInventory, refreshJobs, refreshShifts]
+    [queryClient, refreshInventory, refreshJobs, refreshShifts]
   );
 
   // FIXED: Now returns boolean for success/failure
@@ -332,9 +344,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             await refreshJobs();
             return false;
           }
-          setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)));
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev ? prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)) : []
+          );
         } else {
-          setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)));
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev ? prev.map((j) => (j.id === jobId ? { ...j, status } : j)) : []
+          );
           const ok = await jobService.updateJobStatus(jobId, status);
           if (!ok) {
             await refreshJobs();
@@ -392,7 +408,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
     },
-    [refreshJobs, refreshInventory, jobs, inventory, currentUser]
+    [refreshJobs, refreshInventory, jobs, inventory, currentUser, queryClient]
   );
 
   const advanceJobToNextStatus = useCallback(
@@ -516,18 +532,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (getRemainingBreakMs(activeShift) <= 0) return false;
     const shiftId = activeShift.id;
     const nowIso = new Date().toISOString();
-    setShifts((prev) =>
-      prev.map((s) =>
-        s.id === shiftId ? { ...s, lunchStartTime: nowIso, lunchEndTime: undefined } : s
-      )
+    queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+      prev
+        ? prev.map((s) =>
+            s.id === shiftId ? { ...s, lunchStartTime: nowIso, lunchEndTime: undefined } : s
+          )
+        : []
     );
     try {
       const success = await shiftService.startLunch(shiftId);
       if (!success) {
-        setShifts((prev) =>
-          prev.map((s) =>
-            s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
-          )
+        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+          prev
+            ? prev.map((s) =>
+                s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
+              )
+            : []
         );
         return false;
       }
@@ -535,46 +555,52 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     } catch (error) {
       console.error('Start lunch error:', error);
-      setShifts((prev) =>
-        prev.map((s) =>
-          s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
-        )
+      queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+        prev
+          ? prev.map((s) =>
+              s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
+            )
+          : []
       );
       return false;
     }
-  }, [activeShift, refreshShifts]);
+  }, [activeShift, refreshShifts, queryClient]);
 
   const endLunch = useCallback(async (): Promise<boolean> => {
     if (!activeShift?.lunchStartTime || activeShift.lunchEndTime) return false;
     const shiftId = activeShift.id;
     const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
     const nowIso = new Date().toISOString();
-    setShifts((prev) =>
-      prev.map((s) =>
-        s.id === shiftId
-          ? {
-              ...s,
-              lunchStartTime: undefined,
-              lunchEndTime: nowIso,
-              lunchMinutesUsed: totalBreakMinutes,
-            }
-          : s
-      )
+    queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+      prev
+        ? prev.map((s) =>
+            s.id === shiftId
+              ? {
+                  ...s,
+                  lunchStartTime: undefined,
+                  lunchEndTime: nowIso,
+                  lunchMinutesUsed: totalBreakMinutes,
+                }
+              : s
+          )
+        : []
     );
     try {
       const success = await shiftService.endLunch(shiftId, totalBreakMinutes);
       if (!success) {
-        setShifts((prev) =>
-          prev.map((s) =>
-            s.id === shiftId
-              ? {
-                  ...s,
-                  lunchStartTime: activeShift.lunchStartTime,
-                  lunchEndTime: undefined,
-                  lunchMinutesUsed: activeShift.lunchMinutesUsed,
-                }
-              : s
-          )
+        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+          prev
+            ? prev.map((s) =>
+                s.id === shiftId
+                  ? {
+                      ...s,
+                      lunchStartTime: activeShift.lunchStartTime,
+                      lunchEndTime: undefined,
+                      lunchMinutesUsed: activeShift.lunchMinutesUsed,
+                    }
+                  : s
+              )
+            : []
         );
         return false;
       }
@@ -582,21 +608,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     } catch (error) {
       console.error('End lunch error:', error);
-      setShifts((prev) =>
-        prev.map((s) =>
-          s.id === shiftId
-            ? {
-                ...s,
-                lunchStartTime: activeShift.lunchStartTime,
-                lunchEndTime: undefined,
-                lunchMinutesUsed: activeShift.lunchMinutesUsed,
-              }
-            : s
-        )
+      queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+        prev
+          ? prev.map((s) =>
+              s.id === shiftId
+                ? {
+                    ...s,
+                    lunchStartTime: activeShift.lunchStartTime,
+                    lunchEndTime: undefined,
+                    lunchMinutesUsed: activeShift.lunchMinutesUsed,
+                  }
+                : s
+            )
+          : []
       );
       return false;
     }
-  }, [activeShift, refreshShifts]);
+  }, [activeShift, refreshShifts, queryClient]);
 
   const createInventory = useCallback(
     async (data: Partial<InventoryItem>): Promise<InventoryItem | null> => {
@@ -609,7 +637,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           onOrder: data.onOrder ?? 0,
         });
         if (item) {
-          setInventory((prev) => [item, ...prev]);
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? [item, ...prev] : [item]
+          );
         }
         return item;
       } catch (error) {
@@ -617,7 +647,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return null;
       }
     },
-    []
+    [queryClient]
   );
 
   const updateInventoryItem = useCallback(
@@ -625,7 +655,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const updatedItem = await inventoryService.updateInventory(id, data);
         if (updatedItem) {
-          setInventory((prev) => prev.map((i) => (i.id === id ? updatedItem : i)));
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? prev.map((i) => (i.id === id ? updatedItem : i)) : []
+          );
         }
         return updatedItem;
       } catch (error) {
@@ -633,7 +665,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return null;
       }
     },
-    []
+    [queryClient]
   );
 
   const updateInventoryStock = useCallback(
@@ -650,7 +682,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const previousAvailable = calculateAvailable(currentItem);
         const changeAmount = inStock - previousInStock;
 
-        setInventory((prev) => prev.map((i) => (i.id === id ? { ...i, inStock } : i)));
+        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+          prev ? prev.map((i) => (i.id === id ? { ...i, inStock } : i)) : []
+        );
 
         // Update in database (only inStock)
         await inventoryService.updateStock(id, inStock);
@@ -676,7 +710,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         await refreshInventory();
       }
     },
-    [refreshInventory, inventory, calculateAvailable, calculateAllocated, currentUser]
+    [refreshInventory, inventory, calculateAvailable, calculateAllocated, currentUser, queryClient]
   );
 
   const addJobInventory = useCallback(
@@ -932,11 +966,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const user = await authService.checkAuth();
         if (user) {
           setCurrentUser(user);
-          // Avoid slow loads / RLS spam for users pending approval.
-          // They should see the approval gate immediately.
-          if (user.isApproved !== false) {
-            await Promise.all([refreshJobs(), refreshShifts(), refreshUsers(), refreshInventory()]);
-          }
+          // Server data (jobs, shifts, inventory, users) is now loaded via useQuery when enabled
         }
       } catch (error) {
         console.error('App initialization error:', error);
@@ -945,7 +975,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     };
     initApp();
-  }, [refreshJobs, refreshShifts, refreshUsers, refreshInventory]);
+  }, []);
 
   // Auto-refresh auth token + idle timeout (resilient to avoid constant logouts)
   useEffect(() => {
@@ -1011,10 +1041,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
         setCurrentUser(null);
-        setJobs([]);
-        setShifts([]);
-        setUsers([]);
-        setInventory([]);
       }
       if (event === 'TOKEN_REFRESHED' && session?.user) {
         authService.checkAuth().then((user) => {
@@ -1030,44 +1056,59 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const unsubJobs = subscriptions.subscribeToJobs((action, record) => {
       if (action === 'create') {
-        setJobs((prev) => dedupeJobsById([record as Job, ...prev]));
-        // Refresh inventory to recalculate allocated when new job created
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+          prev ? dedupeJobsById([record as Job, ...prev]) : [record as Job]
+        );
         refreshInventory();
       } else if (action === 'update') {
-        setJobs((prev) => {
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
+          if (!prev) return [record as Job];
           const exists = prev.some((j) => j.id === record.id);
           const next = exists
             ? prev.map((j) => (j.id === record.id ? (record as Job) : j))
             : ([record as Job, ...prev] as Job[]);
           return dedupeJobsById(next);
         });
-        // Refresh inventory when job status changes (affects allocated)
         refreshInventory();
       } else if (action === 'delete') {
-        setJobs((prev) => prev.filter((j) => j.id !== record.id));
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+          prev ? prev.filter((j) => j.id !== record.id) : []
+        );
         refreshInventory();
       }
     });
 
     const unsubShifts = subscriptions.subscribeToShifts((action, record) => {
       if (action === 'create') {
-        setShifts((prev) => [record as Shift, ...prev]);
+        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+          prev ? [record as Shift, ...prev] : [record as Shift]
+        );
       } else if (action === 'update') {
-        setShifts((prev) => prev.map((s) => (s.id === record.id ? (record as Shift) : s)));
+        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+          prev ? prev.map((s) => (s.id === record.id ? (record as Shift) : s)) : []
+        );
       } else if (action === 'delete') {
-        setShifts((prev) => prev.filter((s) => s.id !== record.id));
+        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+          prev ? prev.filter((s) => s.id !== record.id) : []
+        );
       }
     });
 
     const unsubInventory = subscriptions.subscribeToInventory((action, record) => {
       if (action === 'create') {
-        setInventory((prev) => [record as InventoryItem, ...prev]);
+        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+          prev ? [record as InventoryItem, ...prev] : [record as InventoryItem]
+        );
       } else if (action === 'update') {
-        setInventory((prev) =>
-          prev.map((i) => (i.id === record.id ? (record as InventoryItem) : i))
+        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+          prev
+            ? prev.map((i) => (i.id === record.id ? (record as InventoryItem) : i))
+            : []
         );
       } else if (action === 'delete') {
-        setInventory((prev) => prev.filter((i) => i.id !== record.id));
+        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+          prev ? prev.filter((i) => i.id !== record.id) : []
+        );
       }
     });
 
@@ -1078,7 +1119,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     // refreshInventory intentionally omitted to avoid re-subscribing on every refresh
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
+  }, [currentUser, queryClient]);
 
   // Single source of truth: inventory with available/allocated computed from jobs (never use DB .available for display)
   const inventoryWithComputed = useMemo(

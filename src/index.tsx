@@ -2,6 +2,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import { AppProvider } from './AppContext';
 import { ToastProvider } from './Toast';
@@ -9,6 +10,15 @@ import ErrorBoundary from './ErrorBoundary';
 import SetupRequired from './SetupRequired';
 import { isSupabaseConfigured } from './lib/supabaseEnv';
 import './index.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 min
+      retry: 2,
+    },
+  },
+});
 
 const PRELOAD_RELOAD_GUARD_KEY = 'worktrack-preload-reload-at';
 const PRELOAD_RELOAD_GUARD_MS = 15_000;
@@ -43,13 +53,15 @@ try {
   } else {
     root.render(
       <ErrorBoundary>
-        <BrowserRouter>
-          <AppProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </AppProvider>
-        </BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AppProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </AppProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
       </ErrorBoundary>
     );
   }
