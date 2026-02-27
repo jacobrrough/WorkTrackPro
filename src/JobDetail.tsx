@@ -564,9 +564,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
             : prev.printer3DHours,
       }));
     } else {
-      const partLabor = Number(linkedPart.laborHours) || 0;
-      const partCnc = Number(linkedPart.cncTimeHours) || 0;
-      const partPrinter3D = Number(linkedPart.printer3DTimeHours) || 0;
+      // Part has no variants: use set-level hours × job qty for total job labor/CNC/3D
+      const jobQty = Math.max(1, Number(job.qty) || 1);
+      const partLaborPerSet = Number(linkedPart.laborHours) || 0;
+      const partCncPerSet = Number(linkedPart.cncTimeHours) || 0;
+      const partPrinter3DPerSet = Number(linkedPart.printer3DTimeHours) || 0;
+      const partLabor = partLaborPerSet * jobQty;
+      const partCnc = partCncPerSet * jobQty;
+      const partPrinter3D = partPrinter3DPerSet * jobQty;
       if (jobHasNoLabor || jobHasNoMachineHours) setLaborHoursFromPart(true);
       setEditForm((prev) => ({
         ...prev,
@@ -591,6 +596,44 @@ const JobDetail: React.FC<JobDetailProps> = ({
     jobHasNoLabor,
     jobHasNoMachineHours,
     dashQuantities,
+    job.qty,
+  ]);
+
+  // When part has no variants and user changes qty, recompute total labor/CNC/3D from part per-set × qty
+  useEffect(() => {
+    if (!linkedPart || linkedPart.variants?.length || !laborHoursFromPart) return;
+    const jobQty = Math.max(1, Number(editForm.qty) || 1);
+    const partLaborPerSet = Number(linkedPart.laborHours) || 0;
+    const partCncPerSet = Number(linkedPart.cncTimeHours) || 0;
+    const partPrinter3DPerSet = Number(linkedPart.printer3DTimeHours) || 0;
+    const totalLabor = partLaborPerSet * jobQty;
+    const totalCnc = partCncPerSet * jobQty;
+    const totalPrinter3D = partPrinter3DPerSet * jobQty;
+    setEditForm((prev) => {
+      const nextLabor = totalLabor > 0 ? totalLabor.toFixed(2) : prev.laborHours;
+      const nextCnc = totalCnc > 0 ? totalCnc.toFixed(2) : prev.cncHours;
+      const nextPrinter3D = totalPrinter3D > 0 ? totalPrinter3D.toFixed(2) : prev.printer3DHours;
+      if (
+        prev.laborHours === nextLabor &&
+        prev.cncHours === nextCnc &&
+        prev.printer3DHours === nextPrinter3D
+      )
+        return prev;
+      return {
+        ...prev,
+        laborHours: nextLabor,
+        cncHours: nextCnc,
+        printer3DHours: nextPrinter3D,
+      };
+    });
+  }, [
+    linkedPart,
+    linkedPart?.id,
+    linkedPart?.laborHours,
+    linkedPart?.cncTimeHours,
+    linkedPart?.printer3DTimeHours,
+    editForm.qty,
+    laborHoursFromPart,
   ]);
 
   useEffect(() => {
@@ -687,6 +730,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
   useEffect(() => {
     if (allocationSource !== 'variant') return;
+    // When part has no variants or no dash qty, variant allocation has no entries — don't overwrite
+    // form with zeros; let the pull-from-part effect set labor/CNC from part set-level values.
+    if (!laborBreakdownByDash) return;
     const totals = variantAllocation.totals;
     setEditForm((prev) => {
       const nextLabor = (laborBreakdownTotal ?? 0).toFixed(2);
@@ -853,6 +899,28 @@ const JobDetail: React.FC<JobDetailProps> = ({
           (!Number(e?.cncHoursPerUnit) || e.cncHoursPerUnit === 0) &&
           (!Number(e?.printer3DHoursPerUnit) || e.printer3DHoursPerUnit === 0)
       );
+    // For parts without variants: when job has no labor/CNC, use linked part's set-level values so labor applies as soon as part is loaded
+    const partNoVariants =
+      linkedPart &&
+      !linkedPart.variants?.length &&
+      (jobHasNoLaborReset || jobHasNoMachineHoursReset);
+    const jobQty = Math.max(1, Number(job.qty) || 1);
+    const partLaborPerSet =
+      partNoVariants && Number(linkedPart!.laborHours) > 0 ? Number(linkedPart!.laborHours) : null;
+    const partCncPerSet =
+      partNoVariants && Number(linkedPart!.cncTimeHours) > 0
+        ? Number(linkedPart!.cncTimeHours)
+        : null;
+    const partPrinter3DPerSet =
+      partNoVariants && Number(linkedPart!.printer3DTimeHours) > 0
+        ? Number(linkedPart!.printer3DTimeHours)
+        : null;
+    const partLabor = partLaborPerSet != null ? partLaborPerSet * jobQty : null;
+    const partCnc = partCncPerSet != null ? partCncPerSet * jobQty : null;
+    const partPrinter3D = partPrinter3DPerSet != null ? partPrinter3DPerSet * jobQty : null;
+    if (partNoVariants && (partLabor != null || partCnc != null || partPrinter3D != null)) {
+      setLaborHoursFromPart(true);
+    }
     setEditForm((prev) => ({
       ...prev,
       po: job.po || '',
@@ -861,16 +929,22 @@ const JobDetail: React.FC<JobDetailProps> = ({
       ecd: isoToDateInput(job.ecd),
       qty: job.qty || '',
       laborHours: jobHasNoLaborReset
-        ? prev.laborHours || job.laborHours?.toString() || ''
+        ? partLabor != null
+          ? partLabor.toFixed(2)
+          : prev.laborHours || job.laborHours?.toString() || ''
         : job.laborHours?.toString() || '',
       cncHours: jobHasNoMachineHoursReset
-        ? prev.cncHours || (machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '')
+        ? partCnc != null
+          ? partCnc.toFixed(2)
+          : prev.cncHours || (machineTotals.cncHours > 0 ? machineTotals.cncHours.toFixed(2) : '')
         : machineTotals.cncHours > 0
           ? machineTotals.cncHours.toFixed(2)
           : '',
       printer3DHours: jobHasNoMachineHoursReset
-        ? prev.printer3DHours ||
-          (machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '')
+        ? partPrinter3D != null
+          ? partPrinter3D.toFixed(2)
+          : prev.printer3DHours ||
+            (machineTotals.printer3DHours > 0 ? machineTotals.printer3DHours.toFixed(2) : '')
         : machineTotals.printer3DHours > 0
           ? machineTotals.printer3DHours.toFixed(2)
           : '',
@@ -919,6 +993,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     machineTotals.printer3DHours,
     loadLinkedPart,
     isEditing,
+    linkedPart,
   ]);
 
   useEffect(() => {
