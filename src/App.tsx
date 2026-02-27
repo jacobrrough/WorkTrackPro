@@ -4,6 +4,9 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
 import { AdminRoute } from './components/AdminRoute';
+import { NotificationBell } from './components/NotificationBell';
+import { NotificationsProvider } from './contexts/NotificationsContext';
+import { NotificationTrigger } from './components/NotificationTrigger';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -560,8 +563,11 @@ export default function App() {
   }
 
   return (
-    <AppShell>
-      <Dashboard onNavigate={handleNavigate} />
-    </AppShell>
+    <NotificationsProvider>
+      <NotificationTrigger />
+      <AppShell>
+        <Dashboard onNavigate={handleNavigate} />
+      </AppShell>
+    </NotificationsProvider>
   );
 }

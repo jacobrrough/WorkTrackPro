@@ -5,6 +5,7 @@ import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { NotificationBell } from './components/NotificationBell';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -292,6 +293,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
         <div className="flex items-center gap-2">
           <OfflineIndicator />
+          <NotificationBell onNavigate={onNavigate} />
         <button
           type="button"
           onClick={logout}
