@@ -6,12 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distDir = path.resolve(__dirname, '..', 'dist');
+const distDir = path.join(__dirname, 'dist');
 const indexFile = path.join(distDir, 'index.html');
-const projectRoot = path.resolve(__dirname, '..');
 const host = '0.0.0.0';
 const port = Number.parseInt(process.env.PORT ?? '4173', 10);
-const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 const mimeByExt = {
   '.css': 'text/css; charset=utf-8',
@@ -31,27 +29,23 @@ const mimeByExt = {
   '.woff2': 'font/woff2',
 };
 
-const runCommand = (args) => {
-  const result = spawnSync(npmCmd, args, {
+const ensureDist = () => {
+  if (existsSync(indexFile)) {
+    return;
+  }
+
+  console.warn('PocketBaseServer/dist missing. Running build script.');
+  const buildResult = spawnSync(process.execPath, ['./build.mjs'], {
+    cwd: __dirname,
     stdio: 'inherit',
     env: process.env,
-    cwd: projectRoot,
   });
 
-  return result.status === 0;
-};
-
-if (!existsSync(indexFile)) {
-  console.warn('dist/index.html not found. Running install + build.');
-
-  const installOk = runCommand(['ci', '--include=dev']);
-  const buildOk = installOk && runCommand(['run', 'build']);
-
-  if (!buildOk || !existsSync(indexFile)) {
-    console.error('Unable to produce dist/index.html for startup.');
+  if (buildResult.status !== 0 || !existsSync(indexFile)) {
+    console.error('Unable to generate PocketBaseServer/dist for startup.');
     process.exit(1);
   }
-}
+};
 
 const sendFile = (res, filePath) => {
   const ext = path.extname(filePath).toLowerCase();
@@ -65,6 +59,8 @@ const sendFile = (res, filePath) => {
   });
   stream.pipe(res);
 };
+
+ensureDist();
 
 const server = createServer(async (req, res) => {
   const requestUrl = req.url ?? '/';
@@ -93,5 +89,6 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`Serving dist at http://${host}:${port}`);
+  console.log(`PocketBaseServer compat serving at http://${host}:${port}`);
 });
+
