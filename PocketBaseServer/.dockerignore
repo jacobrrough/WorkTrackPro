@@ -1,5 +1,0 @@
-# Ignore everything except what we need
-*
-!pb_migrations
-!pb_hooks
-!Dockerfile

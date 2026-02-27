@@ -5,12 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:with-proxy": "concurrently \"npm:dev\" \"npm:trello-proxy\"",
-    "trello-proxy": "node server/trelloProxy.js",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server/static-serve.js",
-    "serve": "node server/server.js",
     "generate-cert": "node scripts/generate-cert.cjs",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
@@ -21,8 +17,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
-    "express": "^4.21.0",
-    "http-proxy-middleware": "^3.0.0",
     "jsqr": "^1.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -48,7 +42,6 @@
     "typescript-eslint": "^8.15.0",
     "vite": "^6.2.0",
     "vitest": "^2.1.4",
-    "selfsigned": "^2.4.1",
-    "concurrently": "^9.1.0"
+    "selfsigned": "^2.4.1"
   }
 }

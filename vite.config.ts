@@ -35,11 +35,6 @@ export default defineConfig({
     }),
     proxy: {
       // Trello attachment proxy is handled by trelloProxyPlugin (no separate server needed)
-      // PocketBase proxy (only when HTTPS is enabled)
-      ...(hasHttps && {
-        '/api': { target: 'http://192.168.1.39:8090', changeOrigin: true, secure: false, rewrite: (p) => p },
-        '/_': { target: 'http://192.168.1.39:8090', changeOrigin: true, secure: false },
-      }),
     },
     host: '0.0.0.0',
     port: 3000,
