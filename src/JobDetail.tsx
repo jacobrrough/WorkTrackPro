@@ -194,6 +194,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [showDeleteJobConfirm, setShowDeleteJobConfirm] = useState(false);
   const [isDeletingJob, setIsDeletingJob] = useState(false);
   const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null);
+  const editSeedRef = useRef<string | null>(null);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
   const [, setLoadingPart] = useState(false);
   const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
@@ -474,6 +475,29 @@ const JobDetail: React.FC<JobDetailProps> = ({
     jobHasNoMachineHours,
     dashQuantities,
   ]);
+
+  useEffect(() => {
+    if (!isEditing) {
+      editSeedRef.current = null;
+      return;
+    }
+    if (!linkedPart?.variants?.length) return;
+    if (!Object.values(dashQuantities).some((qty) => qty > 0)) return;
+    const seedKey = `${job.id}:${linkedPart.id}`;
+    if (editSeedRef.current === seedKey) return;
+    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
+    setAllocationSource('variant');
+    setLaborPerUnitOverrides(defaults.laborPerUnit);
+    setMachinePerUnitOverrides(defaults.machinePerUnit);
+    setLaborHoursFromPart(true);
+    setEditForm((prev) => ({
+      ...prev,
+      laborHours: defaults.totals.laborHours.toFixed(2),
+      cncHours: defaults.totals.cncHours.toFixed(2),
+      printer3DHours: defaults.totals.printer3DHours.toFixed(2),
+    }));
+    editSeedRef.current = seedKey;
+  }, [dashQuantities, isEditing, job.id, linkedPart]);
 
   // Part name (editable when linked part exists); sync from linked part
   const [partNameEdit, setPartNameEdit] = useState(linkedPart?.name ?? '');

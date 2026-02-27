@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
-import { formatJobCode, getJobDisplayName, formatJobIdentityLine } from '@/lib/formatJob';
+import { formatJobCode, formatDashSummary } from '@/lib/formatJob';
 import { matchesJobSearch } from '@/lib/jobSearch';
+import { getDashQuantity } from '@/lib/variantMath';
 import { checklistService } from './pocketbase';
+import { partsService } from './services/api/parts';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useThrottle } from '@/useThrottle';
@@ -55,6 +57,37 @@ const excludePaid = (jobs: Job[]) => jobs.filter((j) => j.status !== 'paid');
 const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
   status === 'rush' ? 'pending' : status;
 
+function getExactSetCount(
+  dashQuantities: Record<string, number> | undefined,
+  setComposition: Record<string, number> | undefined
+): number | null {
+  if (!dashQuantities || !setComposition || Object.keys(setComposition).length === 0) return null;
+
+  let setCount: number | null = null;
+  for (const [suffix, requiredRaw] of Object.entries(setComposition)) {
+    const required = Number(requiredRaw);
+    if (!Number.isFinite(required) || required <= 0) continue;
+    const ordered = getDashQuantity(dashQuantities, suffix);
+    if (ordered <= 0 || ordered % required !== 0) return null;
+    const currentCount = ordered / required;
+    if (setCount == null) {
+      setCount = currentCount;
+    } else if (setCount !== currentCount) {
+      return null;
+    }
+  }
+
+  if (!setCount || setCount <= 0) return null;
+
+  for (const [dashSuffix, qty] of Object.entries(dashQuantities)) {
+    if ((qty ?? 0) <= 0) continue;
+    const required = getDashQuantity(setComposition, dashSuffix);
+    if (required <= 0) return null;
+  }
+
+  return setCount;
+}
+
 const KanbanBoard: React.FC<KanbanBoardProps> = ({
   jobs: allJobs,
   boardType,
@@ -85,6 +118,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const [moveColumnForJobId, setMoveColumnForJobId] = useState<string | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
+  const [partsByNumber, setPartsByNumber] = useState<
+    Record<string, { name: string; setComposition?: Record<string, number> }>
+  >({});
   const [viewportWidth, setViewportWidth] = useState<number>(
     typeof window !== 'undefined' ? window.innerWidth : 1280
   );
@@ -288,6 +324,31 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       cancelled = true;
     };
   }, [jobIdsKey, checklistRefreshTrigger, jobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    partsService
+      .getAllParts()
+      .then((parts) => {
+        if (cancelled) return;
+        const next: Record<string, { name: string; setComposition?: Record<string, number> }> = {};
+        parts.forEach((part) => {
+          const key = part.partNumber?.trim();
+          if (!key) return;
+          next[key] = {
+            name: part.name?.trim() || key,
+            setComposition: part.setComposition ?? undefined,
+          };
+        });
+        setPartsByNumber(next);
+      })
+      .catch(() => {
+        if (!cancelled) setPartsByNumber({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const sortColumnJobs = (columnJobs: Job[]) => {
     return [...columnJobs].sort((a, b) => {
@@ -580,6 +641,23 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const hasChecklist = checklistState && checklistState.total > 0;
                     const checklistComplete =
                       hasChecklist && checklistState.completed === checklistState.total;
+                    const partNumber = job.partNumber?.trim() || '';
+                    const partMeta = partNumber ? partsByNumber[partNumber] : undefined;
+                    const partNameFromMap = partMeta?.name || '';
+                    const fallbackName = (job.name ?? '').trim();
+                    const partName =
+                      partNameFromMap ||
+                      (fallbackName.startsWith('PO#') ? '—' : fallbackName || '—');
+                    const exactSetCount = getExactSetCount(
+                      job.dashQuantities,
+                      partMeta?.setComposition
+                    );
+                    const qtyDisplay =
+                      exactSetCount != null
+                        ? `${exactSetCount} ${exactSetCount === 1 ? 'set' : 'sets'}`
+                        : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+                          ? formatDashSummary(job.dashQuantities)
+                          : (job.qty ?? '—');
 
                     return (
                       <div
@@ -785,9 +863,24 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           </div>
                         </div>
 
-                        <p className="mb-1 text-sm font-medium text-slate-300">
-                          {formatJobIdentityLine(job) || getJobDisplayName(job) || '—'}
-                        </p>
+                        <div className="mb-1 space-y-0.5 text-xs">
+                          <p className="truncate text-slate-200">
+                            <span className="text-slate-500">Part# </span>
+                            {partNumber || '—'}
+                          </p>
+                          <p className="truncate text-slate-200">
+                            <span className="text-slate-500">Part Name </span>
+                            {partName}
+                          </p>
+                          <p className="truncate text-slate-200">
+                            <span className="text-slate-500">Qty </span>
+                            {qtyDisplay}
+                          </p>
+                          <p className="truncate text-slate-200">
+                            <span className="text-slate-500">PO# </span>
+                            {job.po || '—'}
+                          </p>
+                        </div>
 
                         {/* Priority 3: ECD / Due date */}
                         <p className="mb-1.5">
