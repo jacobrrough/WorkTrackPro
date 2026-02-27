@@ -6,6 +6,7 @@ import { shiftService, shiftEditService } from './pocketbase';
 import ConfirmDialog from './ConfirmDialog';
 import { formatDurationHours } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
+import { exportToCsv } from './lib/exportCsv';
 
 type DateRange = 'today' | 'week' | 'month' | 'all';
 
@@ -233,6 +234,22 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
   const activeShifts = filteredShifts.filter((s) => !s.clockOutTime);
   const completedShifts = filteredShifts.filter((s) => s.clockOutTime);
+
+  const onTimeDelivery = useMemo(() => {
+    const completedStatuses: Job['status'][] = [
+      'finished',
+      'delivered',
+      'projectCompleted',
+      'paid',
+    ];
+    const completed = jobs.filter((j) => completedStatuses.includes(j.status) && j.ecd);
+    if (completed.length === 0) return { rate: 0, onTime: 0, total: 0 };
+    const completedAt = (j: Job) => (j as { updated?: string }).updated ?? j.ecd ?? '';
+    const onTime = completed.filter(
+      (j) => completedAt(j) && new Date(completedAt(j)) <= new Date(j.ecd!)
+    ).length;
+    return { rate: (onTime / completed.length) * 100, onTime, total: completed.length };
+  }, [jobs]);
 
   const dailyBreakdown = useMemo(() => {
     const days: { date: string; hours: number; shifts: number }[] = [];
@@ -570,6 +587,23 @@ const TimeReports: React.FC<TimeReportsProps> = ({
             </div>
           )}
 
+          {/* On-Time Delivery */}
+          {onTimeDelivery.total > 0 && (
+            <div className="mb-4 rounded-sm border border-white/10 bg-card-dark p-3">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">
+                On-Time Delivery
+              </h3>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-white">
+                  {onTimeDelivery.rate.toFixed(0)}%
+                </span>
+                <span className="text-sm text-slate-400">
+                  {onTimeDelivery.onTime} of {onTimeDelivery.total} completed jobs delivered on or before ECD
+                </span>
+              </div>
+            </div>
+          )}
+
           {filter === 'all' && (
             <div className="flex gap-2">
               {(['shifts', 'users', 'jobs'] as const).map((mode) => (
@@ -632,7 +666,29 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         {/* Users Summary (Admin) */}
         {filter === 'all' && viewMode === 'users' && (
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-white">Users</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-white">Users</h3>
+              {totalsByUser.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    exportToCsv(
+                      `employee-hours-${periodWindow.label.replace(/\s+/g, '-')}.csv`,
+                      totalsByUser.map(([userId, data]) => ({
+                        name: getUserName(userId),
+                        initials: getUserInitials(userId),
+                        totalHours: data.hours.toFixed(1),
+                        shifts: data.shifts,
+                        active: data.active ? 'Yes' : 'No',
+                      }))
+                    )
+                  }
+                  className="rounded-sm border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+                >
+                  Export CSV
+                </button>
+              )}
+            </div>
             {totalsByUser.map(([userId, data]) => (
               <button
                 key={userId}
@@ -670,9 +726,28 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         {/* Hours by Job */}
         {(viewMode === 'jobs' || filter === 'mine') && totalsByJob.length > 0 && (
           <div className="mb-4 rounded-sm border border-white/5 bg-card-dark p-3">
-            <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary">
-              Hours by Project
-            </h3>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-primary">
+                Hours by Project
+              </h3>
+              <button
+                type="button"
+                onClick={() =>
+                  exportToCsv(
+                    `labor-by-job-${periodWindow.label.replace(/\s+/g, '-')}.csv`,
+                    totalsByJob.map(([jobId, hours]) => ({
+                      jobCode: getJobCode(jobId),
+                      jobName: getJobName(jobId),
+                      po: getJobPO(jobId) ?? '',
+                      hours: hours.toFixed(1),
+                    }))
+                  )
+                }
+                className="rounded-sm border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+              >
+                Export CSV
+              </button>
+            </div>
             <div className="space-y-4">
               {totalsByJob.slice(0, 8).map(([jobId, hours]) => {
                 const percentage = totalHours > 0 ? (hours / totalHours) * 100 : 0;
