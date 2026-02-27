@@ -221,6 +221,20 @@ export default function InventoryMainView({
   return (
     <div className="flex h-full flex-col bg-background-dark">
       <div className="sticky top-0 z-20 border-b border-white/10 bg-background-dark px-3 py-3">
+        {summary.lowStock > 0 && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-amber-500/50 bg-amber-500/20 px-3 py-2 text-amber-200">
+            <span className="text-sm font-medium">
+              {summary.lowStock} item{summary.lowStock !== 1 ? 's' : ''} below reorder threshold.
+            </span>
+            <button
+              type="button"
+              onClick={() => setTab('lowStock')}
+              className="rounded border border-amber-400/50 px-2 py-1 text-xs font-bold text-amber-200 hover:bg-amber-500/30"
+            >
+              View
+            </button>
+          </div>
+        )}
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button

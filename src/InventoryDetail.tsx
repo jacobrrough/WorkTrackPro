@@ -6,6 +6,7 @@ import {
   InventoryCategory,
   Attachment,
   Job,
+  InventoryHistoryEntry,
 } from '@/core/types';
 import { inventoryHistoryService, inventoryService } from './pocketbase';
 import { useToast } from './Toast';
@@ -49,7 +50,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [history, setHistory] = useState<Array<Record<string, unknown>>>([]);
+  const [history, setHistory] = useState<InventoryHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentItem, setCurrentItem] = useState<InventoryItem>(item);
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
@@ -1127,19 +1128,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                         <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>
                         <p className="text-sm text-slate-400">{h.reason}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {(
-                            h as {
-                              profiles?: { name?: string };
-                              expand?: { user?: { name?: string } };
-                            }
-                          ).profiles?.name ||
-                            (h as { expand?: { user?: { name?: string } } }).expand?.user?.name ||
-                            'System'}{' '}
-                          •{' '}
-                          {formatHistoryDate(
-                            (h as { created_at?: string; created?: string }).created_at ??
-                              (h as { created?: string }).created
-                          )}
+                          {h.userName || 'System'} • {formatHistoryDate(h.createdAt)}
                         </p>
                       </div>
                       <div className="ml-3 text-right">
