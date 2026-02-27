@@ -44,7 +44,7 @@ const runCommand = (args) => {
 if (!existsSync(indexFile)) {
   console.warn('dist/index.html not found. Running install + build.');
 
-  const installOk = runCommand(['ci', '--include=dev']);
+  const installOk = runCommand(['ci']);
   const buildOk = installOk && runCommand(['run', 'build']);
 
   if (!buildOk || !existsSync(indexFile)) {

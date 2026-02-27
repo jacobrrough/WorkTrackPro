@@ -106,6 +106,18 @@ Output is in `dist/`. Netlify builds this automatically when you connect the rep
 4. Set environment variables in Netlify: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 5. Optional: configure Netlify serverless functions (e.g. `netlify/functions/submit-proposal.js` for customer proposals).
 
+### Deploy to Railway
+
+The repo includes a root `railway.toml`. Use the **project root** as the Railway service root (not PocketBaseServer).
+
+1. In Railway, create a new service from this repo (root directory).
+2. Build and start use: `npm ci && npm run build` and `npm start` (see `railway.toml`). `npm start` serves the `dist/` folder via `scripts/static-serve.mjs` and respects the `PORT` variable.
+3. **Required:** In Railway → your service → **Variables**, set:
+   - `VITE_SUPABASE_URL` = your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key  
+   These are baked in at build time, so redeploy after changing them.
+4. Optional: `.nvmrc` pins Node 20 for the build.
+
 ## Development
 
 ### Scripts
