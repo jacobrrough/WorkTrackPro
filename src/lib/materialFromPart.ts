@@ -1,5 +1,6 @@
 import type { Part, PartVariant } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
+import { partsService } from '@/services/api/parts';
 import { calculateSetCompletion } from '@/lib/formatJob';
 import {
   normalizeVariantSuffix,
@@ -82,18 +83,31 @@ export function computeRequiredMaterials(
 
 /**
  * Sync job_inventory for a job from part and dash quantities.
- * Adds or updates lines; does not remove existing lines (preserves manual additions).
+ * When replace is true: job_inventory is replaced by Part BOM (rows not in Part BOM are removed).
+ * When replace is false: adds or updates lines only; does not remove existing lines (preserves manual additions).
  */
 export async function syncJobInventoryFromPart(
   jobId: string,
   part: Part & { variants?: PartVariant[] },
-  dashQuantities: Record<string, number>
+  dashQuantities: Record<string, number>,
+  options?: { replace?: boolean }
 ): Promise<void> {
+  const replace = options?.replace === true;
   const required = computeRequiredMaterials(part, dashQuantities);
-  if (required.size === 0) return;
 
   const job = await jobService.getJobById(jobId);
   if (!job) throw new Error('Job not found');
+
+  if (replace) {
+    const requiredIds = new Set(required.keys());
+    for (const ji of job.inventoryItems ?? []) {
+      if (!requiredIds.has(ji.inventoryId)) {
+        await jobService.removeJobInventory(jobId, ji.id);
+      }
+    }
+  }
+
+  if (required.size === 0) return;
 
   const existingByInventoryId = new Map<string, { id: string; quantity: number; unit: string }>();
   for (const ji of job.inventoryItems ?? []) {
@@ -113,5 +127,41 @@ export async function syncJobInventoryFromPart(
     } else {
       await jobService.addJobInventory(jobId, inventoryId, quantity, unit);
     }
+  }
+}
+
+/**
+ * When the user edits a job material line (quantity or unit) and the job has a linked Part,
+ * push the new quantity back to the Part's BOM (PartMaterial) so Part and job stay in sync.
+ * Computes quantityPerUnit = newJobQuantity / totalUnits (from dash quantities or 1).
+ */
+export async function syncPartMaterialFromJobQuantity(
+  part: Part & { variants?: PartVariant[] },
+  dashQuantities: Record<string, number>,
+  inventoryId: string,
+  newJobQuantity: number,
+  unit: string
+): Promise<void> {
+  const normalizedDash = normalizeDashQuantities(dashQuantities);
+  const totalUnits = Object.values(normalizedDash).reduce((sum, q) => sum + q, 0) || 1;
+  const quantityPerUnit = newJobQuantity / totalUnits;
+
+  const toUpdate: Array<{ id: string }> = [];
+  if (part.materials) {
+    for (const m of part.materials) {
+      if (m.inventoryId === inventoryId) toUpdate.push({ id: m.id });
+    }
+  }
+  if (part.variants) {
+    for (const v of part.variants) {
+      if (!v.materials) continue;
+      for (const m of v.materials) {
+        if (m.inventoryId === inventoryId) toUpdate.push({ id: m.id });
+      }
+    }
+  }
+
+  for (const { id } of toUpdate) {
+    await partsService.updatePartMaterial(id, { quantityPerUnit, unit });
   }
 }

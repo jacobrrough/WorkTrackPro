@@ -48,7 +48,7 @@ export function useMaterialSync({
     syncAfterDashChangeRef.current = setTimeout(async () => {
       syncAfterDashChangeRef.current = null;
       try {
-        await syncJobInventoryFromPart(jobId, linkedPart, normalizedDash);
+        await syncJobInventoryFromPart(jobId, linkedPart, normalizedDash, { replace: true });
         if (requestId === syncRequestIdRef.current) {
           await onReloadJobRef.current?.();
         }

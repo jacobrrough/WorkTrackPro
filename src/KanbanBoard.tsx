@@ -103,6 +103,18 @@ function getExactSetCount(
   return setCount;
 }
 
+function getPartMetaForJob(
+  partNumber: string,
+  partsByNumber: Record<string, { name: string; setComposition?: Record<string, number> }>
+): { name: string; setComposition?: Record<string, number> } | undefined {
+  if (!partNumber?.trim()) return undefined;
+  const meta = partsByNumber[partNumber.trim()];
+  if (meta) return meta;
+  const basePartNumber = partNumber.replace(/-\d{2}$/, '').trim();
+  if (basePartNumber !== partNumber.trim()) return partsByNumber[basePartNumber];
+  return undefined;
+}
+
 const KanbanBoard: React.FC<KanbanBoardProps> = ({
   jobs: allJobs,
   boardType,
@@ -704,7 +716,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const checklistComplete =
                       hasChecklist && checklistState.completed === checklistState.total;
                     const partNumber = job.partNumber?.trim() || '';
-                    const partMeta = partNumber ? partsByNumber[partNumber] : undefined;
+                    const partMeta = getPartMetaForJob(partNumber, partsByNumber);
                     const partNameFromMap = partMeta?.name || '';
                     const fallbackName = (job.name ?? '').trim();
                     const partName =

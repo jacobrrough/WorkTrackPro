@@ -36,7 +36,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
-import { syncJobInventoryFromPart } from '@/lib/materialFromPart';
+import { syncJobInventoryFromPart, syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import {
@@ -375,7 +375,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
           partWithVariants = await partsService.getPartWithVariants(partId);
         }
         if (!partWithVariants && partNumber?.trim()) {
-          const part = await partsService.getPartByNumber(partNumber.trim());
+          let part = await partsService.getPartByNumber(partNumber.trim());
+          if (!part) {
+            const basePartNumber = partNumber.replace(/-\d{2}$/, '').trim();
+            if (basePartNumber !== partNumber.trim()) {
+              part = await partsService.getPartByNumber(basePartNumber);
+            }
+          }
           if (part) {
             partWithVariants = await partsService.getPartWithVariants(part.id);
           }
@@ -448,31 +454,55 @@ const JobDetail: React.FC<JobDetailProps> = ({
         (!Number(e?.cncHoursPerUnit) || e.cncHoursPerUnit === 0) &&
         (!Number(e?.printer3DHoursPerUnit) || e.printer3DHoursPerUnit === 0)
     );
-  const shouldPullFromPart =
-    (jobHasNoLabor || jobHasNoMachineHours) && !!linkedPart?.variants?.length;
+  const shouldPullFromPart = (jobHasNoLabor || jobHasNoMachineHours) && !!linkedPart;
 
   useEffect(() => {
-    if (!shouldPullFromPart) return;
-    setAllocationSource('variant');
-    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
-    if (jobHasNoLabor || jobHasNoMachineHours) setLaborPerUnitOverrides(defaults.laborPerUnit);
-    setMachinePerUnitOverrides(defaults.machinePerUnit);
-    if (jobHasNoLabor || jobHasNoMachineHours) setLaborHoursFromPart(true);
-    setEditForm((prev) => ({
-      ...prev,
-      ...(jobHasNoLabor || jobHasNoMachineHours
-        ? { laborHours: defaults.totals.laborHours.toFixed(2) }
-        : {}),
-      cncHours: defaults.totals.cncHours > 0 ? defaults.totals.cncHours.toFixed(2) : prev.cncHours,
-      printer3DHours:
-        defaults.totals.printer3DHours > 0
-          ? defaults.totals.printer3DHours.toFixed(2)
-          : prev.printer3DHours,
-    }));
+    if (!shouldPullFromPart || !linkedPart) return;
+    const hasVariants = !!linkedPart.variants?.length;
+    const hasDashQty = Object.values(dashQuantities).some((q) => q > 0);
+
+    if (hasVariants && hasDashQty) {
+      setAllocationSource('variant');
+      const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
+      if (jobHasNoLabor || jobHasNoMachineHours) setLaborPerUnitOverrides(defaults.laborPerUnit);
+      setMachinePerUnitOverrides(defaults.machinePerUnit);
+      if (jobHasNoLabor || jobHasNoMachineHours) setLaborHoursFromPart(true);
+      setEditForm((prev) => ({
+        ...prev,
+        ...(jobHasNoLabor || jobHasNoMachineHours
+          ? { laborHours: defaults.totals.laborHours.toFixed(2) }
+          : {}),
+        cncHours:
+          defaults.totals.cncHours > 0 ? defaults.totals.cncHours.toFixed(2) : prev.cncHours,
+        printer3DHours:
+          defaults.totals.printer3DHours > 0
+            ? defaults.totals.printer3DHours.toFixed(2)
+            : prev.printer3DHours,
+      }));
+    } else {
+      const partLabor = Number(linkedPart.laborHours) || 0;
+      const partCnc = Number(linkedPart.cncTimeHours) || 0;
+      const partPrinter3D = Number(linkedPart.printer3DTimeHours) || 0;
+      if (jobHasNoLabor || jobHasNoMachineHours) setLaborHoursFromPart(true);
+      setEditForm((prev) => ({
+        ...prev,
+        ...(jobHasNoLabor
+          ? { laborHours: partLabor > 0 ? partLabor.toFixed(2) : prev.laborHours }
+          : {}),
+        cncHours: jobHasNoMachineHours && partCnc > 0 ? partCnc.toFixed(2) : prev.cncHours,
+        printer3DHours:
+          jobHasNoMachineHours && partPrinter3D > 0
+            ? partPrinter3D.toFixed(2)
+            : prev.printer3DHours,
+      }));
+    }
   }, [
     linkedPart,
     linkedPart?.id,
     linkedPart?.variants,
+    linkedPart?.laborHours,
+    linkedPart?.cncTimeHours,
+    linkedPart?.printer3DTimeHours,
     shouldPullFromPart,
     jobHasNoLabor,
     jobHasNoMachineHours,
@@ -919,7 +949,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
         showToast('Job updated successfully', 'success');
         if (linkedPart && Object.values(normalizedDashQuantities).some((q) => q > 0)) {
           try {
-            await syncJobInventoryFromPart(job.id, linkedPart, normalizedDashQuantities);
+            await syncJobInventoryFromPart(job.id, linkedPart, normalizedDashQuantities, {
+              replace: true,
+            });
             await onReloadJob?.();
           } catch (syncErr) {
             console.error('Material sync after save:', syncErr);
@@ -985,7 +1017,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     if (!linkedPart || !Object.values(normalizedDash).some((q) => q > 0)) return;
     setSyncingMaterials(true);
     try {
-      await syncJobInventoryFromPart(job.id, linkedPart, normalizedDash);
+      await syncJobInventoryFromPart(job.id, linkedPart, normalizedDash, { replace: true });
       await onReloadJob?.();
       showToast('Materials auto-assigned from part', 'success');
     } catch (err) {
@@ -995,6 +1027,31 @@ const JobDetail: React.FC<JobDetailProps> = ({
       setSyncingMaterials(false);
     }
   };
+
+  const handleAddInventory = useCallback(
+    async (jobId: string, inventoryId: string, quantity: number, unit: string) => {
+      await onAddInventory(jobId, inventoryId, quantity, unit);
+      if (linkedPart && jobId === job.id) {
+        try {
+          await syncPartMaterialFromJobQuantity(
+            linkedPart,
+            dashQuantities,
+            inventoryId,
+            quantity,
+            unit
+          );
+          const updated = await partsService.getPartWithVariants(linkedPart.id);
+          if (updated) setLinkedPart(updated);
+          await onReloadJob?.();
+          showToast('Part BOM updated from job', 'success');
+        } catch (err) {
+          console.error('Sync job material to Part:', err);
+          showToast('Job material updated; Part BOM sync failed', 'warning');
+        }
+      }
+    },
+    [onAddInventory, linkedPart, job.id, dashQuantities, onReloadJob, showToast]
+  );
 
   const handleConfirmDeleteJob = useCallback(async () => {
     if (!currentUser.isAdmin || isDeletingJob) return;
@@ -1672,7 +1729,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
               <div className="border-t border-white/10 pt-2">
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white">Materials</span>
+                  <span className="text-xs font-semibold text-white">
+                    {linkedPart ? 'Linked Materials' : 'Materials'}
+                  </span>
                 </div>
                 {!job.inventoryItems?.length ? (
                   <p className="text-xs text-slate-400">
@@ -2041,7 +2100,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 isSubmitting={isSubmitting}
                 onNavigate={onNavigate}
                 isMaterialAuto={isMaterialAuto}
-                onAddInventory={onAddInventory}
+                onAddInventory={handleAddInventory}
                 onRemoveInventory={onRemoveInventory}
               />
             </div>
