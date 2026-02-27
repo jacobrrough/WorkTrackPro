@@ -57,6 +57,21 @@ const excludePaid = (jobs: Job[]) => jobs.filter((j) => j.status !== 'paid');
 const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
   status === 'rush' ? 'pending' : status;
 
+const COMPLETE_STATUSES: JobStatus[] = [
+  'delivered',
+  'finished',
+  'projectCompleted',
+  'paid',
+  'waitingForPayment',
+];
+function isJobOverdue(job: Job): boolean {
+  const dateStr = job.ecd || job.dueDate;
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return false;
+  return d < new Date() && !COMPLETE_STATUSES.includes(job.status);
+}
+
 function getExactSetCount(
   dashQuantities: Record<string, number> | undefined,
   setComposition: Record<string, number> | undefined
@@ -118,6 +133,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const [moveColumnForJobId, setMoveColumnForJobId] = useState<string | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [bulkTargetStatus, setBulkTargetStatus] = useState<JobStatus | null>(null);
   const [partsByNumber, setPartsByNumber] = useState<
     Record<string, { name: string; setComposition?: Record<string, number> }>
   >({});
@@ -522,6 +540,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <span>New</span>
               </button>
             )}
+            <button
+              onClick={() => {
+                setBulkSelectMode((prev) => !prev);
+                if (bulkSelectMode) setSelectedJobIds(new Set());
+              }}
+              className="rounded-sm border border-white/30 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/10"
+            >
+              {bulkSelectMode ? 'Cancel' : 'Select'}
+            </button>
           </div>
         </div>
         {activeSearchTerm && (
@@ -658,13 +685,25 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
                           ? formatDashSummary(job.dashQuantities)
                           : (job.qty ?? '—');
+                    const overdue = isJobOverdue(job);
+                    const isSelected = selectedJobIds.has(job.id);
 
                     return (
                       <div
                         key={job.id}
-                        draggable={canDragCards}
-                        onDragStart={(e) => canDragCards && handleDragStart(e, job)}
+                        draggable={canDragCards && !bulkSelectMode}
+                        onDragStart={(e) => canDragCards && !bulkSelectMode && handleDragStart(e, job)}
                         onClick={(e) => {
+                          if (bulkSelectMode) {
+                            e.stopPropagation();
+                            setSelectedJobIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(job.id)) next.delete(job.id);
+                              else next.add(job.id);
+                              return next;
+                            });
+                            return;
+                          }
                           // Don't navigate if clicking on menu or menu is open
                           if (
                             menuOpenFor === job.id ||
@@ -674,8 +713,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           }
                           onNavigate('job-detail', job.id);
                         }}
-                        className={`relative cursor-pointer rounded-sm border border-white/5 bg-[#2a1f35] p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''}`}
+                        className={`relative cursor-pointer rounded-sm border p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${job.isRush ? 'border-red-500/70 bg-red-500/5' : 'border-white/5 bg-[#2a1f35]'} ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
                       >
+                        {bulkSelectMode && (
+                          <div className="absolute left-2 top-2.5 z-10">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              onClick={(e) => e.stopPropagation()}
+                              className="size-4 rounded border-white/30"
+                            />
+                          </div>
+                        )}
                         <div className="mb-1 flex items-start gap-2">
                           {/* Job identity: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
                           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -685,6 +735,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             {job.isRush && (
                               <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                                 Rush
+                              </span>
+                            )}
+                            {overdue && (
+                              <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                Overdue
                               </span>
                             )}
                           </div>
@@ -817,6 +872,27 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                           </span>
                                           Move to column
                                         </button>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setMenuOpenFor(null);
+                                            if (onUpdateJob) {
+                                              await onUpdateJob(job.id, { isRush: !job.isRush });
+                                              showToast(
+                                                job.isRush ? 'Rush removed' : 'Marked as Rush',
+                                                'success'
+                                              );
+                                            }
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                        >
+                                          <span className="material-symbols-outlined text-base">
+                                            priority_high
+                                          </span>
+                                          {job.isRush ? 'Remove Rush' : 'Mark as Rush'}
+                                        </button>
                                         {job.status === 'waitingForPayment' && (
                                           <button
                                             onClick={(e) => {
@@ -947,6 +1023,49 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           })}
         </div>
       </div>
+
+      {/* Bulk action bar */}
+      {bulkSelectMode && selectedJobIds.size > 0 && (
+        <div className="fixed bottom-20 left-0 right-0 z-40 flex items-center justify-between gap-3 border-t border-white/10 bg-[#1a1122] px-4 py-3 shadow-lg">
+          <span className="text-sm font-medium text-white">
+            {selectedJobIds.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <select
+              value={bulkTargetStatus ?? ''}
+              onChange={(e) =>
+                setBulkTargetStatus((e.target.value as JobStatus) || null)
+              }
+              className="rounded border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+            >
+              <option value="">Move to…</option>
+              {columns.map((col) => (
+                <option key={col.id} value={col.id}>
+                  {col.title}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={!bulkTargetStatus}
+              onClick={async () => {
+                if (!bulkTargetStatus) return;
+                await Promise.all(
+                  Array.from(selectedJobIds).map((id) =>
+                    onUpdateJobStatus(id, bulkTargetStatus)
+                  )
+                );
+                showToast(`Moved ${selectedJobIds.size} job(s) to ${columns.find((c) => c.id === bulkTargetStatus)?.title ?? bulkTargetStatus}`, 'success');
+                setSelectedJobIds(new Set());
+                setBulkTargetStatus(null);
+                setBulkSelectMode(false);
+              }}
+              className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
