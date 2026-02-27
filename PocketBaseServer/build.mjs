@@ -31,7 +31,7 @@ const copyBuiltDist = (distPath) => {
 };
 
 const buildFromLocalRepo = () => {
-  run('npm ci --include=dev', localRepoRoot);
+  run('npm ci', localRepoRoot);
   run('npm run build', localRepoRoot);
   copyBuiltDist(path.join(localRepoRoot, 'dist'));
 };
@@ -64,7 +64,7 @@ const buildFromClonedRepo = () => {
     }
   }
 
-  run('npm ci --include=dev', cloneRoot);
+  run('npm ci', cloneRoot);
   run('npm run build', cloneRoot);
   copyBuiltDist(path.join(cloneRoot, 'dist'));
 };
