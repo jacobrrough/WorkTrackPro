@@ -1,0 +1,19 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine
+WORKDIR /app
+
+ENV NODE_ENV=production
+EXPOSE 4173
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/scripts/static-serve.mjs ./scripts/static-serve.mjs
+
+CMD ["node", "scripts/static-serve.mjs"]
