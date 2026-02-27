@@ -90,6 +90,8 @@ export function calculatePartQuote(
     materialMultiplier?: number;
     /** Manual set price - when provided, total = manualSetPrice * quantity and calculation works backwards */
     manualSetPrice?: number;
+    /** When set, use this labor hours per set instead of reverse-calculating from price. Allows UI to show editable labor. */
+    overrideLaborHours?: number;
   }
 ): PartQuoteResult | null {
   if (quantity <= 0) return null;
@@ -99,6 +101,7 @@ export function calculatePartQuote(
   const printer3DRate = options?.printer3DRate ?? DEFAULT_LABOR_RATE;
   const multiplier = options?.materialMultiplier ?? MATERIAL_MARKUP_MULTIPLIER;
   const manualSetPrice = options?.manualSetPrice;
+  const overrideLaborHours = options?.overrideLaborHours;
 
   const setComposition =
     part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : {};
@@ -123,7 +126,15 @@ export function calculatePartQuote(
   let laborHours = baseLaborHours;
   const isReverseCalculated = manualSetPrice != null && manualSetPrice > 0;
   let isLaborAutoAdjusted = false;
-  if (isReverseCalculated) {
+  if (
+    overrideLaborHours != null &&
+    Number.isFinite(overrideLaborHours) &&
+    overrideLaborHours >= 0
+  ) {
+    // Use explicit labor (e.g. from part or "Use Auto") so UI can show editable labor field.
+    laborHours = overrideLaborHours * quantity;
+    isLaborAutoAdjusted = false;
+  } else if (isReverseCalculated) {
     // Reverse calculation for set totals: solve labor hours directly.
     const targetTotal = manualSetPrice * quantity;
     const fixedNonLaborSubtotal = materialCostCustomer + cncCost + printer3DCost;

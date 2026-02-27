@@ -101,6 +101,8 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
       cncRate,
       printer3DRate,
       manualSetPrice: effectiveSetPrice,
+      overrideLaborHours:
+        part.laborHours != null && Number.isFinite(part.laborHours) ? part.laborHours : undefined,
     });
   }, [
     part,
@@ -135,6 +137,13 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     ? (result?.laborHours?.toFixed(2) ?? laborHoursInput)
     : laborHoursInput;
 
+  const effectiveAutoSetLabor =
+    autoSetLaborHours ?? (part.laborHours != null ? part.laborHours : 0);
+  const showUseAutoLabor =
+    (part.variants?.length ?? 0) > 0 &&
+    part.setComposition &&
+    Object.keys(part.setComposition).length > 0;
+
   return (
     <div className={`rounded-sm border border-primary/30 bg-primary/10 p-4 ${className}`}>
       <p className="mb-3 text-xs font-bold uppercase text-slate-400">Quote calculator (per set)</p>
@@ -161,12 +170,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             placeholder="0.0"
           />
           {isLaborAutoFromTarget && <AutoBadge />}
-          {autoSetLaborHours != null && (
+          {showUseAutoLabor && (
             <button
               type="button"
               onClick={() => {
                 setHasUserEditedSetLabor(false);
-                const nextAuto = Number(autoSetLaborHours.toFixed(2));
+                const nextAuto = Number(
+                  (typeof effectiveAutoSetLabor === 'number' ? effectiveAutoSetLabor : 0).toFixed(2)
+                );
                 setLaborHoursInput(nextAuto.toString());
                 onLaborHoursChange?.(nextAuto);
               }}
