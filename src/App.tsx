@@ -4,12 +4,12 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
 import { AdminRoute } from './components/AdminRoute';
-import { NotificationBell } from './components/NotificationBell';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { NotificationTrigger } from './components/NotificationTrigger';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import BottomNavigation from './BottomNavigation';
+import { CommandPalette } from './components/CommandPalette';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
 const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
@@ -103,7 +103,19 @@ export default function App() {
     'part-detail': 'parts',
   });
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {
@@ -570,6 +582,16 @@ export default function App() {
   return (
     <NotificationsProvider>
       <NotificationTrigger />
+      {currentUser && (
+        <CommandPalette
+          open={commandPaletteOpen}
+          onOpenChange={setCommandPaletteOpen}
+          jobs={jobs}
+          inventory={inventory}
+          users={users}
+          onNavigate={handleNavigate}
+        />
+      )}
       <AppShell>
         <Dashboard onNavigate={handleNavigate} />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
