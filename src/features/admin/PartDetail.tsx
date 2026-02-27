@@ -25,7 +25,7 @@ import Accordion from '@/components/Accordion';
 import MaterialCostDisplay from '@/components/MaterialCostDisplay';
 import QuoteCalculator from '@/components/QuoteCalculator';
 import FileUploadButton from '@/FileUploadButton';
-import { calculatePartQuote, calculateVariantQuote } from '@/lib/calculatePartQuote';
+import { calculatePartQuote, calculateVariantQuote } from '@/lib/partsCalculations';
 import { useSettings } from '@/contexts/SettingsContext';
 import {
   calculateSetPriceFromVariants,
@@ -44,6 +44,7 @@ import {
 } from '@/lib/variantPricingAuto';
 import { usePartJobs, usePartLaborFeedback } from '@/features/admin/hooks/usePartLaborFeedback';
 import { canViewPartFinancials } from '@/lib/priceVisibility';
+import PartMaterialLink from '@/features/admin/PartMaterialLink';
 
 interface PartDetailProps {
   partId: string;
@@ -1254,13 +1255,18 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   />
                 )}
                 {part.materials && part.materials.length > 0 ? (
-                  <MaterialsListWithCost
-                    materials={part.materials}
-                    inventoryItems={inventoryItems}
-                    onUpdate={() => loadPart(true)}
-                    onNavigate={onNavigate}
-                    showFinancials={canViewFinancials}
-                  />
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                    {part.materials.map((material) => (
+                      <PartMaterialLink
+                        key={material.id}
+                        material={material}
+                        inventoryItem={inventoryItems.find((i) => i.id === material.inventoryId)}
+                        onUpdate={() => loadPart(true)}
+                        onNavigate={onNavigate}
+                        showFinancials={canViewFinancials}
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <p className="text-sm text-slate-500">No materials defined for this part.</p>
                 )}
@@ -2624,206 +2630,6 @@ const MaterialsList: React.FC<MaterialsListProps> = ({ materials, onUpdate }) =>
           </button>
         </div>
       ))}
-    </div>
-  );
-};
-
-interface MaterialsListWithCostProps {
-  materials: PartMaterial[];
-  inventoryItems: InventoryItem[];
-  onUpdate: () => void;
-  onNavigate?: (view: string, id?: string) => void;
-  showFinancials?: boolean;
-}
-
-const MaterialsListWithCost: React.FC<MaterialsListWithCostProps> = ({
-  materials,
-  inventoryItems,
-  onUpdate,
-  onNavigate,
-  showFinancials = true,
-}) => {
-  const { showToast } = useToast();
-  const [editingQty, setEditingQty] = useState<string | null>(null);
-  const [qtyValues, setQtyValues] = useState<Record<string, string>>({});
-  const [unitValues, setUnitValues] = useState<Record<string, string>>({});
-
-  const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 1;
-
-  const handleQtyChange = (materialId: string, value: string) => {
-    setQtyValues((prev) => ({ ...prev, [materialId]: value }));
-  };
-
-  const handleQtySave = async (materialId: string, _material: PartMaterial) => {
-    const value = qtyValues[materialId];
-    if (!value) {
-      setEditingQty(null);
-      return;
-    }
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue < 0) {
-      showToast('Invalid quantity', 'error');
-      return;
-    }
-    try {
-      const nextUnit = (unitValues[materialId] ?? _material.unit ?? 'units').trim();
-      const updated = await partsService.updatePartMaterial(materialId, {
-        quantityPerUnit: numValue,
-        unit: nextUnit || 'units',
-      });
-      if (updated) {
-        showToast('Material updated', 'success');
-        setEditingQty(null);
-        setUnitValues((prev) => {
-          const next = { ...prev };
-          delete next[materialId];
-          return next;
-        });
-        onUpdate();
-      } else {
-        showToast('Failed to update material', 'error');
-      }
-    } catch {
-      showToast('Failed to update material', 'error');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await partsService.deleteMaterial(id);
-      showToast('Material removed', 'success');
-      onUpdate();
-    } catch {
-      showToast('Failed to delete material', 'error');
-    }
-  };
-
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-      {materials.map((material) => {
-        const inv = inventoryItems.find((i) => i.id === material.inventoryId);
-        const currentQty = qty(material);
-        const isEditing = editingQty === material.id;
-        const displayQty = isEditing
-          ? (qtyValues[material.id] ?? currentQty.toString())
-          : currentQty;
-        const ourCost =
-          (inv?.price ?? 0) *
-          (isEditing ? parseFloat(qtyValues[material.id] || '0') || currentQty : currentQty);
-        return (
-          <div
-            key={material.id}
-            role={onNavigate ? 'button' : undefined}
-            tabIndex={onNavigate ? 0 : undefined}
-            onClick={
-              onNavigate ? () => onNavigate('inventory-detail', material.inventoryId) : undefined
-            }
-            onKeyDown={
-              onNavigate
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onNavigate('inventory-detail', material.inventoryId);
-                    }
-                  }
-                : undefined
-            }
-            className={`flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3 ${onNavigate ? 'cursor-pointer transition-colors hover:border-primary/30 hover:bg-white/10' : ''}`}
-          >
-            <div className="min-h-0 flex-1">
-              <p
-                className="truncate text-sm font-medium text-white"
-                title={material.inventoryName || inv?.name || 'Unknown'}
-              >
-                {material.inventoryName || inv?.name || 'Unknown'}
-              </p>
-              {onNavigate && (
-                <span className="mt-1 inline-block text-xs text-primary">View inventory →</span>
-              )}
-              <div
-                className="mt-1.5 flex flex-wrap items-center gap-1.5"
-                onClick={(e) => onNavigate && e.stopPropagation()}
-              >
-                {isEditing ? (
-                  <>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      value={qtyValues[material.id] ?? currentQty}
-                      onChange={(e) => handleQtyChange(material.id, e.target.value)}
-                      onBlur={() => handleQtySave(material.id, material)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleQtySave(material.id, material);
-                        } else if (e.key === 'Escape') {
-                          setEditingQty(null);
-                          setQtyValues((prev) => {
-                            const next = { ...prev };
-                            delete next[material.id];
-                            return next;
-                          });
-                          setUnitValues((prev) => {
-                            const next = { ...prev };
-                            delete next[material.id];
-                            return next;
-                          });
-                        }
-                      }}
-                      autoFocus
-                      className="w-16 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={unitValues[material.id] ?? material.unit ?? 'units'}
-                      onChange={(e) =>
-                        setUnitValues((prev) => ({ ...prev, [material.id]: e.target.value }))
-                      }
-                      className="w-14 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <span className="text-xs text-slate-400">
-                      {displayQty} {material.unit}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingQty(material.id);
-                        setQtyValues((prev) => ({ ...prev, [material.id]: currentQty.toString() }));
-                        setUnitValues((prev) => ({
-                          ...prev,
-                          [material.id]: material.unit ?? 'units',
-                        }));
-                      }}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Edit
-                    </button>
-                  </>
-                )}
-              </div>
-              {showFinancials && (
-                <div className="mt-1" onClick={(e) => onNavigate && e.stopPropagation()}>
-                  <MaterialCostDisplay ourCost={ourCost} />
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                if (onNavigate) e.stopPropagation();
-                handleDelete(material.id);
-              }}
-              className="mt-2 flex shrink-0 items-center justify-center self-start rounded border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
-              aria-label="Remove material"
-            >
-              <span className="material-symbols-outlined text-base">delete</span>
-            </button>
-          </div>
-        );
-      })}
     </div>
   );
 };

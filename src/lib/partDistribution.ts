@@ -147,6 +147,23 @@ export function variantCncFromSetComposition(
 }
 
 /**
+ * Compute variant's share of set 3D printer hours from set composition (proportional).
+ */
+export function variantPrinter3DFromSetComposition(
+  variantSuffix: string,
+  setPrinter3DHours: number,
+  setComposition: Record<string, number> | null | undefined
+): number | undefined {
+  if (setPrinter3DHours <= 0 || !setComposition || Object.keys(setComposition).length === 0)
+    return undefined;
+  const suffixNorm = norm(variantSuffix);
+  const variantQty = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
+  const totalUnits = Object.values(setComposition).reduce((a, b) => a + b, 0);
+  if (totalUnits <= 0 || variantQty <= 0) return undefined;
+  return Math.round(((setPrinter3DHours * variantQty) / totalUnits) * 100) / 100;
+}
+
+/**
  * Calculate set labor from variant labor hours and set composition.
  * Set labor = sum of (variant.laborHours × setComposition[variant]) for each variant.
  */

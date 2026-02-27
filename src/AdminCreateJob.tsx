@@ -23,7 +23,7 @@ import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
-import { syncJobInventoryFromPart } from '@/lib/materialFromPart';
+import { syncJobInventoryFromPart } from '@/lib/partsCalculations';
 
 interface AdminCreateJobProps {
   onCreate: (data: {

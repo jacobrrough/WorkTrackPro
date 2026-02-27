@@ -28,6 +28,7 @@ import {
   formatSetComposition,
   getJobNameForSave,
   sanitizeReferenceValue,
+  calculateSetCompletion,
 } from './lib/formatJob';
 import { partsService } from './services/api/parts';
 import { Part, PartVariant } from '@/core/types';
@@ -36,8 +37,15 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
-import { syncJobInventoryFromPart, syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
+import { syncJobInventoryFromPart } from '@/lib/partsCalculations';
+import { syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults } from '@/lib/variantAllocation';
+import {
+  variantLaborFromSetComposition,
+  variantCncFromSetComposition,
+  variantPrinter3DFromSetComposition,
+} from '@/lib/partDistribution';
+import type { VariantDefaultOverrides } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import {
   getDashQuantity,
@@ -128,6 +136,71 @@ function getMachineOverrideFromJob(
     };
   }
   return out;
+}
+
+/**
+ * When the Part has set composition and set-level labor/CNC/3D, use those so the job card
+ * matches the Part's quote calculator (e.g. 12.74 labor, 1.0 CNC per set). Otherwise use
+ * variant-level sums from buildPartVariantDefaults.
+ */
+function getPartDerivedDefaultsForJob(
+  part: (Part & { variants?: PartVariant[] }) | null,
+  dashQuantities: Record<string, number>
+): VariantDefaultOverrides {
+  const defaults = buildPartVariantDefaults(part, dashQuantities);
+  if (
+    !part?.variants?.length ||
+    !part?.setComposition ||
+    Object.keys(part.setComposition).length === 0
+  ) {
+    return defaults;
+  }
+  const setLabor = Number(part.laborHours) || 0;
+  const setCnc = Number(part.cncTimeHours) || 0;
+  const setPrinter = Number(part.printer3DTimeHours) || 0;
+  if (setLabor <= 0 && setCnc <= 0 && setPrinter <= 0) return defaults;
+
+  const normalizedDash = normalizeDashQuantities(dashQuantities);
+  const { completeSets } = calculateSetCompletion(normalizedDash, part.setComposition);
+  const setCount = completeSets > 0 ? completeSets : 1;
+
+  const laborPerUnit: Record<string, number> = { ...defaults.laborPerUnit };
+  const machinePerUnit: Record<
+    string,
+    { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
+  > = { ...defaults.machinePerUnit };
+
+  for (const v of part.variants) {
+    const key = toDashSuffix(v.variantSuffix);
+    if (setLabor > 0) {
+      const val = variantLaborFromSetComposition(v.variantSuffix, setLabor, part.setComposition);
+      laborPerUnit[key] = val ?? 0;
+    }
+    if (setCnc > 0 || setPrinter > 0) {
+      const cncVal =
+        setCnc > 0
+          ? variantCncFromSetComposition(v.variantSuffix, setCnc, part.setComposition)
+          : undefined;
+      const printerVal =
+        setPrinter > 0
+          ? variantPrinter3DFromSetComposition(v.variantSuffix, setPrinter, part.setComposition)
+          : undefined;
+      machinePerUnit[key] = {
+        cncHoursPerUnit: cncVal ?? 0,
+        printer3DHoursPerUnit: printerVal ?? 0,
+      };
+    }
+  }
+
+  return {
+    laborPerUnit,
+    machinePerUnit,
+    totals: {
+      laborHours: setLabor * setCount,
+      cncHours: setCnc * setCount,
+      printer3DHours: setPrinter * setCount,
+    },
+  };
 }
 
 const JobDetail: React.FC<JobDetailProps> = ({
@@ -456,6 +529,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
     );
   const shouldPullFromPart = (jobHasNoLabor || jobHasNoMachineHours) && !!linkedPart;
 
+  // When Part has set composition and set-level labor/CNC, always apply so variant breakdown sum = set total
+  const partHasSetLevel =
+    !!linkedPart?.setComposition &&
+    Object.keys(linkedPart.setComposition).length > 0 &&
+    (Number(linkedPart.laborHours) > 0 ||
+      Number(linkedPart.cncTimeHours) > 0 ||
+      Number(linkedPart.printer3DTimeHours) > 0) &&
+    !!linkedPart?.variants?.length &&
+    Object.values(dashQuantities).some((q) => q > 0);
+  const shouldApplySetLevelFromPart = partHasSetLevel;
+
   useEffect(() => {
     if (!shouldPullFromPart || !linkedPart) return;
     const hasVariants = !!linkedPart.variants?.length;
@@ -518,7 +602,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     if (!Object.values(dashQuantities).some((qty) => qty > 0)) return;
     const seedKey = `${job.id}:${linkedPart.id}`;
     if (editSeedRef.current === seedKey) return;
-    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
+    const defaults = getPartDerivedDefaultsForJob(linkedPart, dashQuantities);
     setAllocationSource('variant');
     setLaborPerUnitOverrides(defaults.laborPerUnit);
     setMachinePerUnitOverrides(defaults.machinePerUnit);
@@ -1111,10 +1195,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleApplyFromPart = useCallback(() => {
     if (!linkedPart?.variants?.length) return;
     setAllocationSource('variant');
-    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
+    const defaults = getPartDerivedDefaultsForJob(linkedPart, dashQuantities);
     setLaborPerUnitOverrides(defaults.laborPerUnit);
     setMachinePerUnitOverrides(defaults.machinePerUnit);
     setLaborHoursFromPart(true);
+    setEditForm((prev) => ({
+      ...prev,
+      laborHours: defaults.totals.laborHours.toFixed(2),
+      cncHours: defaults.totals.cncHours.toFixed(2),
+      printer3DHours: defaults.totals.printer3DHours.toFixed(2),
+    }));
     showToast('Applied labor/machine/material logic from part', 'success');
   }, [dashQuantities, linkedPart, showToast]);
 

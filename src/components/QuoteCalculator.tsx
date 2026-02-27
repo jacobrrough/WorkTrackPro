@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Part, PartVariant, InventoryItem } from '@/core/types';
-import { calculatePartQuote } from '@/lib/calculatePartQuote';
+import { calculatePartQuote } from '@/lib/partsCalculations';
 import { calculateSetPriceFromVariants } from '@/lib/partDistribution';
 
 export interface QuoteCalculatorProps {

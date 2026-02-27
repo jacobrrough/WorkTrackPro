@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Part } from '../../../core/types';
-import { syncJobInventoryFromPart, computeRequiredMaterials } from '../../../lib/materialFromPart';
+import { syncJobInventoryFromPart, computeRequiredMaterials } from '../../../lib/partsCalculations';
 import { normalizeDashQuantities } from '../../../lib/variantMath';
 
 interface UseMaterialSyncParams {
