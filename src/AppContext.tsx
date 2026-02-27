@@ -20,6 +20,7 @@ import {
   checklistService,
   subscriptions,
 } from './pocketbase';
+import { supabase } from './services/api/supabaseClient';
 import {
   calculateAllocated as calcAllocated,
   calculateAvailable as calcAvailable,
@@ -1002,6 +1003,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       window.removeEventListener('scroll', updateActivity);
     };
   }, [currentUser, logout]);
+
+  // Auth state listener: handle session expiry and token refresh so UI stays in sync
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setCurrentUser(null);
+        setJobs([]);
+        setShifts([]);
+        setUsers([]);
+        setInventory([]);
+      }
+      if (event === 'TOKEN_REFRESHED' && session?.user) {
+        authService.checkAuth().then((user) => {
+          if (user) setCurrentUser(user);
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;

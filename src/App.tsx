@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
+import { AdminRoute } from './components/AdminRoute';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -420,72 +421,127 @@ export default function App() {
   }
 
   if (view === 'parts') {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
     return (
-      <AppShell>
-        <Parts
-          jobs={jobs}
-          currentUser={currentUser!}
-          onNavigate={handleNavigate}
-          onNavigateBack={() => handleNavigate('dashboard')}
-        />
-      </AppShell>
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <Parts
+            jobs={jobs}
+            currentUser={currentUser!}
+            onNavigate={handleNavigate}
+            onNavigateBack={() => handleNavigate('dashboard')}
+          />
+        </AppShell>
+      </AdminRoute>
     );
   }
 
   if (view === 'part-detail' && id) {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
     return (
-      <AppShell>
-        <PartDetail
-          partId={id}
-          jobs={jobs}
-          shifts={shifts}
-          onNavigate={handleNavigate}
-          onNavigateBack={() => handleNavigate('parts')}
-        />
-      </AppShell>
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <PartDetail
+            partId={id}
+            jobs={jobs}
+            shifts={shifts}
+            onNavigate={handleNavigate}
+            onNavigateBack={() => handleNavigate('parts')}
+          />
+        </AppShell>
+      </AdminRoute>
     );
   }
 
   if (view === 'create-job' && currentUser) {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
     return (
-      <AppShell>
-        <AdminCreateJob
-          onCreate={createJob}
-          onNavigate={handleNavigate}
-          users={users}
-          existingJobCodes={existingJobCodes}
-          currentUser={currentUser}
-          jobs={jobs}
-          shifts={shifts}
-        />
-      </AppShell>
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <AdminCreateJob
+            onCreate={createJob}
+            onNavigate={handleNavigate}
+            users={users}
+            existingJobCodes={existingJobCodes}
+            currentUser={currentUser}
+            jobs={jobs}
+            shifts={shifts}
+          />
+        </AppShell>
+      </AdminRoute>
     );
   }
 
   if (view === 'quotes' && currentUser) {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
     return (
-      <AppShell>
-        <Quotes
-          jobs={jobs}
-          inventory={inventory}
-          shifts={shifts}
-          currentUser={currentUser}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-        />
-      </AppShell>
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <Quotes
+            jobs={jobs}
+            inventory={inventory}
+            shifts={shifts}
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onBack={() => handleNavigate('dashboard')}
+          />
+        </AppShell>
+      </AdminRoute>
+    );
+  }
+
+  if (view === 'time-reports' && currentUser) {
+    return (
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <TimeReports
+            shifts={shifts}
+            users={users}
+            jobs={jobs}
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onBack={() => handleNavigate('dashboard')}
+            onRefreshShifts={refreshShifts}
+          />
+        </AppShell>
+      </AdminRoute>
+    );
+  }
+
+  if (view === 'admin-settings') {
+    return (
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <AdminSettings onNavigate={handleNavigate} onBack={() => handleNavigate('dashboard')} />
+        </AppShell>
+      </AdminRoute>
+    );
+  }
+
+  if (view === 'trello-import') {
+    return (
+      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
+        <AppShell>
+          <div className="flex min-h-screen flex-col bg-background-dark">
+            <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => handleNavigate('dashboard')}
+                className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+              >
+                <span className="material-symbols-outlined">arrow_back</span>
+              </button>
+              <h1 className="text-lg font-bold text-white">Import Trello</h1>
+              <div className="size-10" />
+            </header>
+            <main className="flex-1 overflow-y-auto p-4">
+              <TrelloImport
+                onClose={() => handleNavigate('dashboard')}
+                onImportComplete={() => {
+                  refreshJobs();
+                  handleNavigate('dashboard');
+                }}
+              />
+            </main>
+          </div>
+        </AppShell>
+      </AdminRoute>
     );
   }
 
@@ -499,68 +555,6 @@ export default function App() {
           onNavigate={handleNavigate}
           onBack={() => handleNavigate('dashboard')}
         />
-      </AppShell>
-    );
-  }
-
-  if (view === 'time-reports' && currentUser) {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
-    return (
-      <AppShell>
-        <TimeReports
-          shifts={shifts}
-          users={users}
-          jobs={jobs}
-          currentUser={currentUser}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-          onRefreshShifts={refreshShifts}
-        />
-      </AppShell>
-    );
-  }
-
-  if (view === 'admin-settings') {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
-    return (
-      <AppShell>
-        <AdminSettings onNavigate={handleNavigate} onBack={() => handleNavigate('dashboard')} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'trello-import') {
-    if (!isAdmin) {
-      return renderDashboard();
-    }
-    return (
-      <AppShell>
-        <div className="flex min-h-screen flex-col bg-background-dark">
-          <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
-            <button
-              type="button"
-              onClick={() => handleNavigate('dashboard')}
-              className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
-            >
-              <span className="material-symbols-outlined">arrow_back</span>
-            </button>
-            <h1 className="text-lg font-bold text-white">Import Trello</h1>
-            <div className="size-10" />
-          </header>
-          <main className="flex-1 overflow-y-auto p-4">
-            <TrelloImport
-              onClose={() => handleNavigate('dashboard')}
-              onImportComplete={() => {
-                refreshJobs();
-                handleNavigate('dashboard');
-              }}
-            />
-          </main>
-        </div>
       </AppShell>
     );
   }
