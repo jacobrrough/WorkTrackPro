@@ -56,7 +56,10 @@ export function CommandPalette({
             </Command.Item>
           ))}
         </Command.Group>
-        <Command.Group heading="Inventory" className="mt-2 text-xs font-bold uppercase text-primary">
+        <Command.Group
+          heading="Inventory"
+          className="mt-2 text-xs font-bold uppercase text-primary"
+        >
           {inventory.slice(0, 30).map((item) => {
             const sku = (item.barcode || item.id.slice(0, 8)).toUpperCase();
             return (

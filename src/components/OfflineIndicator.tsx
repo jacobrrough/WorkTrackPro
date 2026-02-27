@@ -35,14 +35,8 @@ export function OfflineIndicator() {
           : `${pendingOfflinePunchCount} punch(es) waiting to sync`
       }
     >
-      <span className="material-symbols-outlined text-sm">
-        {isOffline ? 'cloud_off' : 'sync'}
-      </span>
-      {isOffline ? (
-        <span>Offline</span>
-      ) : (
-        <span>{pendingOfflinePunchCount} pending</span>
-      )}
+      <span className="material-symbols-outlined text-sm">{isOffline ? 'cloud_off' : 'sync'}</span>
+      {isOffline ? <span>Offline</span> : <span>{pendingOfflinePunchCount} pending</span>}
     </div>
   );
 }

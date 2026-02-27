@@ -186,6 +186,15 @@ export default function InventoryMainView({
           >
             View History
           </button>
+          {stock.needsReorder && (
+            <button
+              type="button"
+              onClick={() => onOpenDetail(item.id)}
+              className="min-h-[44px] rounded-sm border border-amber-500/50 bg-amber-500/20 px-3 text-xs font-bold text-amber-200"
+            >
+              Reorder
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setAllocatingItem(item)}

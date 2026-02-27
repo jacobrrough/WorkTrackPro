@@ -1,12 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useApp } from '@/AppContext';
 import { useToast } from '@/Toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import type { AppNotification } from '@/lib/notifications';
-import {
-  getNewNotificationIds,
-  markNotificationSeen,
-} from '@/lib/notifications';
+import { getNewNotificationIds, markNotificationSeen } from '@/lib/notifications';
 
 const COMPLETED_STATUSES = ['finished', 'delivered', 'projectCompleted', 'paid'];
 

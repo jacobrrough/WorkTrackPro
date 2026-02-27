@@ -692,7 +692,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       <div
                         key={job.id}
                         draggable={canDragCards && !bulkSelectMode}
-                        onDragStart={(e) => canDragCards && !bulkSelectMode && handleDragStart(e, job)}
+                        onDragStart={(e) =>
+                          canDragCards && !bulkSelectMode && handleDragStart(e, job)
+                        }
                         onClick={(e) => {
                           if (bulkSelectMode) {
                             e.stopPropagation();
@@ -1027,15 +1029,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Bulk action bar */}
       {bulkSelectMode && selectedJobIds.size > 0 && (
         <div className="fixed bottom-20 left-0 right-0 z-40 flex items-center justify-between gap-3 border-t border-white/10 bg-[#1a1122] px-4 py-3 shadow-lg">
-          <span className="text-sm font-medium text-white">
-            {selectedJobIds.size} selected
-          </span>
+          <span className="text-sm font-medium text-white">{selectedJobIds.size} selected</span>
           <div className="flex items-center gap-2">
             <select
               value={bulkTargetStatus ?? ''}
-              onChange={(e) =>
-                setBulkTargetStatus((e.target.value as JobStatus) || null)
-              }
+              onChange={(e) => setBulkTargetStatus((e.target.value as JobStatus) || null)}
               className="rounded border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
             >
               <option value="">Move to…</option>
@@ -1050,11 +1048,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               onClick={async () => {
                 if (!bulkTargetStatus) return;
                 await Promise.all(
-                  Array.from(selectedJobIds).map((id) =>
-                    onUpdateJobStatus(id, bulkTargetStatus)
-                  )
+                  Array.from(selectedJobIds).map((id) => onUpdateJobStatus(id, bulkTargetStatus))
                 );
-                showToast(`Moved ${selectedJobIds.size} job(s) to ${columns.find((c) => c.id === bulkTargetStatus)?.title ?? bulkTargetStatus}`, 'success');
+                showToast(
+                  `Moved ${selectedJobIds.size} job(s) to ${columns.find((c) => c.id === bulkTargetStatus)?.title ?? bulkTargetStatus}`,
+                  'success'
+                );
                 setSelectedJobIds(new Set());
                 setBulkTargetStatus(null);
                 setBulkSelectMode(false);

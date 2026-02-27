@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import type { AppNotification } from '@/lib/notifications';
 
 interface NotificationsContextType {
@@ -25,9 +19,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   }, []);
 
   const markAllRead = useCallback(() => {
@@ -44,11 +36,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     markAllRead,
   };
 
-  return (
-    <NotificationsContext.Provider value={value}>
-      {children}
-    </NotificationsContext.Provider>
-  );
+  return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }
 
 export function useNotifications(): NotificationsContextType {

@@ -32,11 +32,7 @@ import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 import { withComputedInventory } from '@/lib/inventoryState';
 import { buildReconciliationMutations } from '@/lib/inventoryReconciliation';
-import {
-  enqueueClockPunch,
-  getQueue,
-  clearPunchFromQueue,
-} from '@/lib/offlineQueue';
+import { enqueueClockPunch, getQueue, clearPunchFromQueue } from '@/lib/offlineQueue';
 
 interface AppContextType {
   currentUser: User | null;
@@ -165,10 +161,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const users = usersData;
   const inventory = inventoryData;
 
-  const pendingOfflinePunchCount = useMemo(
-    () => getQueue().length,
-    [offlineQueueVersion]
-  );
+  const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
 
   const activeShift = useMemo(() => {
     if (!currentUser) return null;
@@ -214,25 +207,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await queryClient.invalidateQueries({ queryKey: ['users'] });
   }, [queryClient]);
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
-      setAuthError(null);
-      setIsLoading(true);
-      try {
-        const user = await authService.login(email, password);
-        setCurrentUser(user);
-        // Queries will refetch automatically when enabled (currentUser is set)
-        return true;
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Login failed';
-        setAuthError(errorMessage);
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    setAuthError(null);
+    setIsLoading(true);
+    try {
+      const user = await authService.login(email, password);
+      setCurrentUser(user);
+      // Queries will refetch automatically when enabled (currentUser is set)
+      return true;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setAuthError(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const signUp = useCallback(
     async (
@@ -281,44 +271,50 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [jobs]
   );
 
-  const createJob = useCallback(async (data: Partial<Job>): Promise<Job | null> => {
-    try {
-      const job = await jobService.createJob(data);
-      if (!job) {
-        console.error('Job creation returned null');
+  const createJob = useCallback(
+    async (data: Partial<Job>): Promise<Job | null> => {
+      try {
+        const job = await jobService.createJob(data);
+        if (!job) {
+          console.error('Job creation returned null');
+          return null;
+        }
+        if (job) {
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev ? dedupeJobsById([job, ...prev]) : [job]
+          );
+        }
+        return job;
+      } catch (error) {
+        console.error('Create job error:', error);
         return null;
       }
-      if (job) {
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? dedupeJobsById([job, ...prev]) : [job]
-        );
-      }
-      return job;
-    } catch (error) {
-      console.error('Create job error:', error);
-      return null;
-    }
-  }, [queryClient]);
+    },
+    [queryClient]
+  );
 
-  const updateJob = useCallback(async (jobId: string, data: Partial<Job>): Promise<Job | null> => {
-    try {
-      // If marking job as inactive, clear the bin location to free up the space
-      if (data.active === false) {
-        data.binLocation = undefined;
-      }
+  const updateJob = useCallback(
+    async (jobId: string, data: Partial<Job>): Promise<Job | null> => {
+      try {
+        // If marking job as inactive, clear the bin location to free up the space
+        if (data.active === false) {
+          data.binLocation = undefined;
+        }
 
-      const updatedJob = await jobService.updateJob(jobId, data);
-      if (updatedJob) {
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? prev.map((j) => (j.id === jobId ? updatedJob : j)) : []
-        );
+        const updatedJob = await jobService.updateJob(jobId, data);
+        if (updatedJob) {
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev ? prev.map((j) => (j.id === jobId ? updatedJob : j)) : []
+          );
+        }
+        return updatedJob;
+      } catch (error) {
+        console.error('Update job error:', error);
+        return null;
       }
-      return updatedJob;
-    } catch (error) {
-      console.error('Update job error:', error);
-      return null;
-    }
-  }, [queryClient]);
+    },
+    [queryClient]
+  );
 
   const deleteJob = useCallback(
     async (jobId: string): Promise<boolean> => {
@@ -1082,9 +1078,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             let shiftId = punch.shiftId;
             if (!shiftId) {
               const allShifts = await shiftService.getAllShifts();
-              const active = allShifts.find(
-                (s) => s.user === punch.userId && !s.clockOutTime
-              );
+              const active = allShifts.find((s) => s.user === punch.userId && !s.clockOutTime);
               shiftId = active?.id;
             }
             if (shiftId) {
@@ -1172,9 +1166,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         );
       } else if (action === 'update') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev
-            ? prev.map((i) => (i.id === record.id ? (record as InventoryItem) : i))
-            : []
+          prev ? prev.map((i) => (i.id === record.id ? (record as InventoryItem) : i)) : []
         );
       } else if (action === 'delete') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>

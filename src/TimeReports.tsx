@@ -598,7 +598,8 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   {onTimeDelivery.rate.toFixed(0)}%
                 </span>
                 <span className="text-sm text-slate-400">
-                  {onTimeDelivery.onTime} of {onTimeDelivery.total} completed jobs delivered on or before ECD
+                  {onTimeDelivery.onTime} of {onTimeDelivery.total} completed jobs delivered on or
+                  before ECD
                 </span>
               </div>
             </div>

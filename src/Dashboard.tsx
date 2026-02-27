@@ -294,16 +294,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-2">
           <OfflineIndicator />
           <NotificationBell onNavigate={onNavigate} />
-        <button
-          type="button"
-          onClick={logout}
-          className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Log out"
-        >
-          <span aria-hidden="true" className="material-symbols-outlined">
-            logout
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Log out"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">
+              logout
+            </span>
+          </button>
         </div>
       </header>
 

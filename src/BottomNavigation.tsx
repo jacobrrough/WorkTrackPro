@@ -16,7 +16,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
   const navToJobs = () => onNavigate('board-shop');
 
   return (
-    <nav className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1a1122]/95 pt-2 backdrop-blur-lg md:hidden" aria-label="Bottom navigation">
+    <nav
+      className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1a1122]/95 pt-2 backdrop-blur-lg md:hidden"
+      aria-label="Bottom navigation"
+    >
       <div className="mx-auto flex max-w-md items-center justify-around px-3">
         <button
           type="button"
