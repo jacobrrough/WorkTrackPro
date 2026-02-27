@@ -29,14 +29,11 @@ jobs:
       - name: Check formatting
         run: npx prettier --check "src/**/*.{ts,tsx,css,json}"
 
-      # Type check disabled until TS6305 / strict types are resolved; build uses Vite only.
-      # - name: Type check
-      #   run: npx tsc --noEmit
-
-      - name: Run tests
-        run: npm run test
-
       - name: Build
         run: npm run build
         env:
-          VITE_POCKETBASE_URL: http://localhost:8090
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+
+      - name: Run tests
+        run: npm run test -- --run
