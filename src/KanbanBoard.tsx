@@ -65,7 +65,7 @@ const COMPLETE_STATUSES: JobStatus[] = [
   'waitingForPayment',
 ];
 function isJobOverdue(job: Job): boolean {
-  const dateStr = job.ecd || job.dueDate;
+  const dateStr = job.dueDate || job.ecd;
   if (!dateStr) return false;
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return false;
@@ -148,6 +148,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollPositionsRef = useRef(navState.scrollPositions);
+  const boardTouchRef = useRef<{
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    locked: 'x' | 'y' | null;
+  } | null>(null);
 
   // HTML5 drag-and-drop on touch devices can hijack swipe gestures; keep drag for fine pointers.
   const supportsFinePointer =
@@ -214,6 +221,63 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // On mobile: capture touch on board container so horizontal swipes scroll the board even when touch starts on a card
+  useEffect(() => {
+    const el = boardContainerRef.current;
+    if (!el || !mobileColumnWidth) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      boardTouchRef.current = {
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        lastX: e.touches[0].clientX,
+        lastY: e.touches[0].clientY,
+        locked: null,
+      };
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const state = boardTouchRef.current;
+      if (!state || e.touches.length !== 1) return;
+
+      const curX = e.touches[0].clientX;
+      const curY = e.touches[0].clientY;
+
+      if (state.locked === null) {
+        const dx = Math.abs(curX - state.startX);
+        const dy = Math.abs(curY - state.startY);
+        if (dx > dy * 1.2) state.locked = 'x';
+        else if (dy > dx * 1.2) state.locked = 'y';
+      }
+
+      if (state.locked === 'x') {
+        e.preventDefault();
+        const delta = curX - state.lastX;
+        el.scrollLeft -= delta;
+      }
+
+      state.lastX = curX;
+      state.lastY = curY;
+    };
+
+    const onTouchEnd = () => {
+      boardTouchRef.current = null;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [mobileColumnWidth]);
 
   useEffect(() => {
     const positions = scrollPositionsSnapshot.current;
@@ -963,13 +1027,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           </p>
                         </div>
 
-                        {/* Priority 3: ECD / Due date */}
+                        {/* Due date */}
                         <p className="mb-1.5">
-                          {(job.ecd || job.dueDate) && (
+                          {(job.dueDate || job.ecd) && (
                             <span
                               className={`rounded px-1.5 py-0.5 text-xs font-medium ${job.dueDate && new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
                             >
-                              {formatDateOnly(job.ecd || job.dueDate).replace(/, \d{4}/, '')}
+                              {formatDateOnly(job.dueDate || job.ecd).replace(/, \d{4}/, '')}
                             </span>
                           )}
                         </p>

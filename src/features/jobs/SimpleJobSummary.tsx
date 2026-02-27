@@ -110,11 +110,11 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
           </div>
         )}
 
-        {/* ECD / Due date */}
+        {/* Due date */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-          <p className="mb-1 text-xs font-bold uppercase text-slate-400">ECD / Due</p>
+          <p className="mb-1 text-xs font-bold uppercase text-slate-400">Due</p>
           <p className="text-lg font-bold text-white">
-            {job.ecd ? formatDateOnly(job.ecd) : job.dueDate ? formatDateOnly(job.dueDate) : '—'}
+            {job.dueDate ? formatDateOnly(job.dueDate) : job.ecd ? formatDateOnly(job.ecd) : '—'}
           </p>
         </div>
 
