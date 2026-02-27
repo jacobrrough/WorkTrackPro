@@ -182,16 +182,53 @@ export const checklistHistoryService = {
 
   /** All checklist history for a job (all statuses), sorted by timestamp descending. */
   async getByJob(jobId: string): Promise<(ChecklistHistoryRow & { status?: JobStatus })[]> {
-    const checklists = await checklistService.getByJob(jobId);
-    const all: (ChecklistHistoryRow & { status?: JobStatus })[] = [];
-    for (const c of checklists) {
-      const rows = await this.getByChecklist(c.id);
-      for (const r of rows) {
-        all.push({ ...r, status: c.status });
-      }
+    const { data, error } = await supabase
+      .from('checklist_history')
+      .select(
+        `
+          id,
+          checklist_id,
+          user_id,
+          item_index,
+          item_text,
+          checked,
+          created_at,
+          checklists!inner(job_id,status),
+          profiles:user_id(name,initials)
+        `
+      )
+      .eq('checklists.job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('checklistHistoryService.getByJob failed:', error.message);
+      return [];
     }
-    all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    return all;
+
+    return (data ?? []).map(
+      (row: {
+        id: string;
+        checklist_id: string;
+        user_id: string;
+        item_index: number;
+        item_text?: string;
+        checked: boolean;
+        created_at: string;
+        checklists?: { status?: JobStatus };
+        profiles?: { name?: string; initials?: string };
+      }) => ({
+        id: row.id,
+        checklist: row.checklist_id,
+        user: row.user_id,
+        userName: row.profiles?.name,
+        userInitials: row.profiles?.initials,
+        itemIndex: row.item_index,
+        itemText: row.item_text ?? '',
+        checked: row.checked,
+        timestamp: row.created_at,
+        status: row.checklists?.status,
+      })
+    );
   },
 
   async create(data: {

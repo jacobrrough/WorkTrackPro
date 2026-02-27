@@ -85,9 +85,7 @@ export default function JobComments({
                   <div className="mb-1 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-white">{comment.userName || 'User'}</p>
-                      <p className="text-xs text-slate-500">
-                        {formatCommentTime(timestamp)}
-                      </p>
+                      <p className="text-xs text-slate-500">{formatCommentTime(timestamp)}</p>
                     </div>
                     {canEdit && !isEditingThis && (
                       <div className="flex gap-1">
@@ -148,7 +146,9 @@ export default function JobComments({
             </div>
           );
         })}
-        {comments.length === 0 && <p className="py-4 text-center text-sm text-slate-500">No comments yet</p>}
+        {comments.length === 0 && (
+          <p className="py-4 text-center text-sm text-slate-500">No comments yet</p>
+        )}
       </div>
     </div>
   );

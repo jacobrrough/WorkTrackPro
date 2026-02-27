@@ -5,12 +5,7 @@ import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
-import {
-  MAX_BREAK_MINUTES,
-  getRemainingBreakMs,
-  getTotalBreakMs,
-  getWorkedShiftMs,
-} from './lib/lunchUtils';
+import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
@@ -32,17 +27,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const {
-    currentUser,
-    jobs,
-    inventory,
-    activeShift,
-    activeJob,
-    logout,
-    clockOut,
-    startLunch,
-    endLunch,
-  } = useApp();
+  const { currentUser, jobs, inventory, activeShift, activeJob, logout, clockOut } = useApp();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin ?? false;
   const { state: navState, updateState } = useNavigation();
@@ -50,24 +35,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [showScanner, setShowScanner] = useState(false);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
-  const [isLunchLoading, setIsLunchLoading] = useState(false);
   const [shiftTimer, setShiftTimer] = useState('00:00:00');
-  const [lunchTimer, setLunchTimer] = useState('00:00:00');
   const shiftClockInTime = activeShift?.clockInTime ?? null;
   const shiftClockOutTime = activeShift?.clockOutTime ?? null;
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
-  const isOnLunch = Boolean(activeShift?.lunchStartTime && !activeShift?.lunchEndTime);
-  const hasCompletedLunch = Boolean(activeShift?.lunchStartTime && activeShift?.lunchEndTime);
   const resumeJobId =
     navState.lastViewedJobId && jobs.some((job) => job.id === navState.lastViewedJobId)
       ? navState.lastViewedJobId
       : null;
-  const remainingBreakMs = activeShift
-    ? getRemainingBreakMs(activeShift)
-    : MAX_BREAK_MINUTES * 60 * 1000;
-  const breakLimitReached = remainingBreakMs <= 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,9 +88,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (!activeShift?.id) {
       setIsTrackerOpen(false);
       setIsClockOutLoading(false);
-      setIsLunchLoading(false);
       setShiftTimer('00:00:00');
-      setLunchTimer('00:00:00');
     }
   }, [activeShift?.id]);
 
@@ -143,33 +118,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     shiftClockOutTime,
   ]);
 
-  useEffect(() => {
-    if (!activeShift) {
-      setLunchTimer('00:00:00');
-      return undefined;
-    }
-
-    const updateLunchTimer = () => {
-      setLunchTimer(formatDurationHMS(getTotalBreakMs(activeShift)));
-    };
-
-    updateLunchTimer();
-
-    if (!isOnLunch) {
-      return undefined;
-    }
-
-    const interval = setInterval(updateLunchTimer, 1000);
-    return () => clearInterval(interval);
-  }, [
-    activeShift?.id,
-    activeShift?.lunchStartTime,
-    activeShift?.lunchEndTime,
-    activeShift?.lunchMinutesUsed,
-    activeShift?.clockOutTime,
-    isOnLunch,
-  ]);
-
   const handleClockOutFromPopup = async () => {
     setIsClockOutLoading(true);
     const success = await clockOut();
@@ -180,23 +128,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       showToast('Failed to clock out', 'error');
     }
     setIsClockOutLoading(false);
-  };
-
-  const handleLunchToggle = async () => {
-    if (!activeShift) return;
-    if (!isOnLunch && breakLimitReached) {
-      showToast('Break limit reached (60 minutes total).', 'info');
-      return;
-    }
-
-    setIsLunchLoading(true);
-    const success = isOnLunch ? await endLunch() : await startLunch();
-    if (success) {
-      showToast(isOnLunch ? 'Clocked out of lunch' : 'Clocked into lunch', 'success');
-    } else {
-      showToast(isOnLunch ? 'Unable to clock out of lunch' : 'Unable to clock into lunch', 'error');
-    }
-    setIsLunchLoading(false);
   };
 
   const quickActionButtonBaseClassName =
@@ -494,16 +425,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 Shift Timer
               </p>
               <p className="font-mono text-3xl font-bold text-green-400">{shiftTimer}</p>
-              <p className="mt-2 text-xs text-slate-300">
-                {isOnLunch
-                  ? `On break • ${lunchTimer}`
-                  : breakLimitReached
-                    ? `Break limit reached • ${lunchTimer}`
-                    : `Break used • ${lunchTimer} of 01:00:00`}
-              </p>
+              <p className="mt-2 text-xs text-slate-300">Tracking active job time.</p>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-3">
               <button
                 type="button"
                 onClick={handleClockOutFromPopup}
@@ -514,31 +439,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   logout
                 </span>
                 {isClockOutLoading ? 'Clocking out...' : 'Clock Out'}
-              </button>
-              <button
-                type="button"
-                onClick={handleLunchToggle}
-                disabled={isLunchLoading || (!isOnLunch && breakLimitReached)}
-                className={`flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm px-4 py-3 text-sm font-bold text-white transition-colors disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 ${
-                  isOnLunch
-                    ? 'bg-amber-500 hover:bg-amber-600'
-                    : breakLimitReached
-                      ? 'bg-slate-700'
-                      : 'bg-primary hover:bg-primary/90'
-                }`}
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-base">
-                  restaurant
-                </span>
-                {isLunchLoading
-                  ? isOnLunch
-                    ? 'Clocking out lunch...'
-                    : 'Clocking in lunch...'
-                  : isOnLunch
-                    ? 'Clock Out Break'
-                    : breakLimitReached
-                      ? 'Break Maxed'
-                      : 'Clock In Break'}
               </button>
             </div>
 

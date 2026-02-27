@@ -795,6 +795,100 @@ export const partsService = {
   },
 
   /**
+   * Apply pricing + variants + materials from one part to another.
+   * Useful when customer-facing part numbers differ but manufacturing setup is identical.
+   */
+  async applyPartTemplate(targetPartId: string, sourcePartId: string): Promise<boolean> {
+    if (!targetPartId || !sourcePartId || targetPartId === sourcePartId) return false;
+
+    const [source, target] = await Promise.all([
+      this.getPartWithVariants(sourcePartId),
+      this.getPartWithVariants(targetPartId),
+    ]);
+    if (!source || !target) return false;
+
+    await this.updatePart(targetPartId, {
+      pricePerSet: source.pricePerSet,
+      laborHours: source.laborHours,
+      requiresCNC: source.requiresCNC,
+      cncTimeHours: source.cncTimeHours,
+      requires3DPrint: source.requires3DPrint,
+      printer3DTimeHours: source.printer3DTimeHours,
+      setComposition: source.setComposition ?? null,
+    });
+
+    for (const existingMaterial of target.materials ?? []) {
+      await this.deleteMaterial(existingMaterial.id);
+    }
+    for (const sourceMaterial of source.materials ?? []) {
+      await this.addMaterial({
+        partId: targetPartId,
+        inventoryId: sourceMaterial.inventoryId,
+        quantity: sourceMaterial.quantityPerUnit,
+        unit: sourceMaterial.unit,
+        usageType: 'per_set',
+      });
+    }
+
+    const targetBySuffix = new Map(
+      (target.variants ?? []).map((v) => [v.variantSuffix, v] as const)
+    );
+    for (const sourceVariant of source.variants ?? []) {
+      const targetVariant = targetBySuffix.get(sourceVariant.variantSuffix);
+      if (targetVariant) {
+        await this.updateVariant(targetVariant.id, {
+          name: sourceVariant.name,
+          pricePerVariant: sourceVariant.pricePerVariant,
+          laborHours: sourceVariant.laborHours,
+          requiresCNC: sourceVariant.requiresCNC,
+          cncTimeHours: sourceVariant.cncTimeHours,
+          requires3DPrint: sourceVariant.requires3DPrint,
+          printer3DTimeHours: sourceVariant.printer3DTimeHours,
+        });
+      } else {
+        await this.createVariant(targetPartId, {
+          variantSuffix: sourceVariant.variantSuffix,
+          name: sourceVariant.name,
+          pricePerVariant: sourceVariant.pricePerVariant,
+          laborHours: sourceVariant.laborHours,
+          requiresCNC: sourceVariant.requiresCNC,
+          cncTimeHours: sourceVariant.cncTimeHours,
+          requires3DPrint: sourceVariant.requires3DPrint,
+          printer3DTimeHours: sourceVariant.printer3DTimeHours,
+        });
+      }
+    }
+
+    const targetAfterVariantSync = await this.getPartWithVariants(targetPartId);
+    if (!targetAfterVariantSync) return false;
+
+    for (const variant of targetAfterVariantSync.variants ?? []) {
+      for (const existingMaterial of variant.materials ?? []) {
+        await this.deleteMaterial(existingMaterial.id);
+      }
+    }
+
+    const sourceBySuffix = new Map(
+      (source.variants ?? []).map((variant) => [variant.variantSuffix, variant] as const)
+    );
+    for (const targetVariant of targetAfterVariantSync.variants ?? []) {
+      const sourceVariant = sourceBySuffix.get(targetVariant.variantSuffix);
+      if (!sourceVariant) continue;
+      for (const sourceMaterial of sourceVariant.materials ?? []) {
+        await this.addMaterial({
+          variantId: targetVariant.id,
+          inventoryId: sourceMaterial.inventoryId,
+          quantity: sourceMaterial.quantityPerUnit,
+          unit: sourceMaterial.unit,
+          usageType: 'per_variant',
+        });
+      }
+    }
+
+    return true;
+  },
+
+  /**
    * Get completed jobs that are missing part information.
    * Returns jobs grouped by potential part number for suggestions.
    */

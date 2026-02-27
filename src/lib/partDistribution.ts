@@ -245,8 +245,7 @@ export function distributeSetMaterialToVariants(
     [];
   for (const v of variants) {
     const suffixNorm = norm(v.variantSuffix);
-    const qtyInSet =
-      Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
+    const qtyInSet = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
     if (qtyInSet > 0) {
       toAdd.push({
         variantId: v.id,

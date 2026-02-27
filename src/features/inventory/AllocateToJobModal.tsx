@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { InventoryItem, Job } from '@/core/types';
 import { formatJobCode } from '@/lib/formatJob';
+import { isAllocationActiveStatus } from '@/lib/inventoryCalculations';
 
 interface AllocateToJobModalProps {
   item: InventoryItem;
@@ -9,15 +10,6 @@ interface AllocateToJobModalProps {
   onClose: () => void;
   onAllocate: (jobId: string, quantity: number, notes?: string) => Promise<boolean>;
 }
-
-const ALLOCATABLE_STATUSES = new Set([
-  'pod',
-  'rush',
-  'pending',
-  'inProgress',
-  'qualityControl',
-  'finished',
-]);
 
 export default function AllocateToJobModal({
   item,
@@ -32,7 +24,7 @@ export default function AllocateToJobModal({
   const [saving, setSaving] = useState(false);
 
   const activeJobs = useMemo(
-    () => jobs.filter((job) => ALLOCATABLE_STATUSES.has(job.status)),
+    () => jobs.filter((job) => isAllocationActiveStatus(job.status)),
     [jobs]
   );
 

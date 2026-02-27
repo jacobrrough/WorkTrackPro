@@ -10,7 +10,12 @@ interface JobInventoryProps {
   isSubmitting: boolean;
   onNavigate: (view: ViewState, id?: string) => void;
   isMaterialAuto: (inventoryId: string, quantity: number) => boolean;
-  onAddInventory: (jobId: string, inventoryId: string, quantity: number, unit: string) => Promise<void>;
+  onAddInventory: (
+    jobId: string,
+    inventoryId: string,
+    quantity: number,
+    unit: string
+  ) => Promise<void>;
   onRemoveInventory: (jobId: string, jobInventoryId: string) => Promise<void>;
 }
 
@@ -80,7 +85,9 @@ export default function JobInventory({
 
         {!job.inventoryItems || job.inventoryItems.length === 0 ? (
           <div className="rounded-sm bg-[#261a32] p-3 text-center">
-            <span className="material-symbols-outlined mb-2 text-3xl text-slate-500">inventory_2</span>
+            <span className="material-symbols-outlined mb-2 text-3xl text-slate-500">
+              inventory_2
+            </span>
             <p className="text-sm text-slate-400">No materials assigned</p>
             {currentUserIsAdmin && (
               <button
@@ -101,7 +108,10 @@ export default function JobInventory({
               const isEditingThis = editingMaterialQty === item.id;
 
               return (
-                <div key={item.id || item.inventoryId} className="overflow-hidden rounded-sm bg-[#261a32]">
+                <div
+                  key={item.id || item.inventoryId}
+                  className="overflow-hidden rounded-sm bg-[#261a32]"
+                >
                   <div className="flex items-center justify-between p-3">
                     <div
                       role="button"
@@ -148,7 +158,12 @@ export default function JobInventory({
                               onChange={(e) => setMaterialQtyValue(e.target.value)}
                               onBlur={async () => {
                                 const newQty = parseFloat(materialQtyValue);
-                                if (newQty > 0 && newQty !== item.quantity && item.id && item.inventoryId) {
+                                if (
+                                  newQty > 0 &&
+                                  newQty !== item.quantity &&
+                                  item.id &&
+                                  item.inventoryId
+                                ) {
                                   await onRemoveInventory(job.id, item.id);
                                   await onAddInventory(job.id, item.inventoryId, newQty, item.unit);
                                 }
@@ -189,7 +204,9 @@ export default function JobInventory({
                             </span>
                           )}
                           {invItem && (
-                            <span className="ml-2">• Available: {invItem.available ?? calculateAvailable(invItem)}</span>
+                            <span className="ml-2">
+                              • Available: {invItem.available ?? calculateAvailable(invItem)}
+                            </span>
                           )}
                         </p>
                       </div>
@@ -220,7 +237,10 @@ export default function JobInventory({
           <div className="flex max-h-[80vh] w-full flex-col rounded-t-md border-t border-white/10 bg-background-dark p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Add Material</h3>
-              <button onClick={() => setShowAddInventory(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setShowAddInventory(false)}
+                className="text-slate-400 hover:text-white"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>

@@ -471,7 +471,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
       cncHours: totalCnc > 0 ? totalCnc.toFixed(2) : prev.cncHours,
       printer3DHours: total3D > 0 ? total3D.toFixed(2) : prev.printer3DHours,
     }));
-  }, [linkedPart, linkedPart?.id, linkedPart?.variants, shouldPullFromPart, jobHasNoLabor, dashQuantities]);
+  }, [
+    linkedPart,
+    linkedPart?.id,
+    linkedPart?.variants,
+    shouldPullFromPart,
+    jobHasNoLabor,
+    dashQuantities,
+  ]);
 
   // Part name (editable when linked part exists); sync from linked part
   const [partNameEdit, setPartNameEdit] = useState(linkedPart?.name ?? '');
@@ -509,7 +516,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
       totalMaterialCost +
       (parseFloat(editForm.cncHours) || 0) * cncRate +
       (parseFloat(editForm.printer3DHours) || 0) * printer3DRate,
-    [laborCost, totalMaterialCost, editForm.cncHours, editForm.printer3DHours, cncRate, printer3DRate]
+    [
+      laborCost,
+      totalMaterialCost,
+      editForm.cncHours,
+      editForm.printer3DHours,
+      cncRate,
+      printer3DRate,
+    ]
   );
 
   const partDerivedPrice = useMemo(
@@ -517,17 +531,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [linkedPart, dashQuantities]
   );
 
-  const { variantAllocation, laborBreakdownByDash, persistedLaborBreakdown, persistedMachineBreakdown } =
-    useVariantBreakdown({
-      part: linkedPart,
-      dashQuantities,
-      source: allocationSource,
-      totalLaborHours: parseFloat(editForm.laborHours) || 0,
-      totalCncHours: parseFloat(editForm.cncHours) || 0,
-      totalPrinter3DHours: parseFloat(editForm.printer3DHours) || 0,
-      laborOverridePerUnit: laborPerUnitOverrides,
-      machineOverridePerUnit: machinePerUnitOverrides,
-    });
+  const {
+    variantAllocation,
+    laborBreakdownByDash,
+    persistedLaborBreakdown,
+    persistedMachineBreakdown,
+  } = useVariantBreakdown({
+    part: linkedPart,
+    dashQuantities,
+    source: allocationSource,
+    totalLaborHours: parseFloat(editForm.laborHours) || 0,
+    totalCncHours: parseFloat(editForm.cncHours) || 0,
+    totalPrinter3DHours: parseFloat(editForm.printer3DHours) || 0,
+    laborOverridePerUnit: laborPerUnitOverrides,
+    machineOverridePerUnit: machinePerUnitOverrides,
+  });
 
   // Auto-fill labor from part × dash quantities when labor is empty (so calculations stay automatic)
   const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
@@ -1645,8 +1663,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     </div>
                   </div>
                   <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                    Total $
-                    {(partDerivedPrice?.totalPrice ?? computedCostTotal).toFixed(2)}
+                    Total ${(partDerivedPrice?.totalPrice ?? computedCostTotal).toFixed(2)}
                     {partDerivedPrice && (
                       <span className="ml-2 text-[10px] font-medium text-primary/80">
                         from {partDerivedPrice.source.replace('_', ' ')}

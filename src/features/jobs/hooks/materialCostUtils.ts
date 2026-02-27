@@ -76,7 +76,9 @@ export function computeMaterialCosts({
     for (const material of materials) {
       const invItem = inventoryById.get(material.inventoryId);
       if (invItem && invItem.price) {
-        const requiredQty = quantityPerUnit(material as { quantityPerUnit?: number; quantity?: number });
+        const requiredQty = quantityPerUnit(
+          material as { quantityPerUnit?: number; quantity?: number }
+        );
         requiredQtyByInventory.set(material.inventoryId, requiredQty);
         const cost = requiredQty * invItem.price * materialUpcharge;
         costs.set(material.inventoryId, cost);

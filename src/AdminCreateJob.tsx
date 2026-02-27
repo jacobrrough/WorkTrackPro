@@ -126,8 +126,6 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     setFormData((prev) => ({
       ...prev,
       laborHours: part.laborHours?.toString() || prev.laborHours,
-      // Only auto-fill from part when description is still empty.
-      description: prev.description.trim() ? prev.description : part.description || '',
     }));
   };
 
@@ -182,8 +180,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     if (formData.dueDate && formData.ecd) {
       const due = new Date(formData.dueDate);
       const ecd = new Date(formData.ecd);
-      if (ecd > due) {
-        errors.ecd = 'ECD cannot be after due date';
+      if (due > ecd) {
+        errors.dueDate = 'Due date must be on or before ECD';
       }
     }
 
@@ -374,6 +372,20 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             </button>
           </div>
         )}
+        {Object.keys(validationErrors).length > 0 && (
+          <div className="mb-4 rounded-sm border border-red-500/40 bg-red-500/10 p-3">
+            <p className="mb-2 text-sm font-bold text-red-300">Validation details</p>
+            <ul className="space-y-1 text-xs text-red-200">
+              {Object.entries(validationErrors)
+                .filter(([, value]) => !!value)
+                .map(([key, value]) => (
+                  <li key={key}>
+                    {key}: {value}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Part Selector */}
@@ -491,6 +503,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                     disabled={isSubmitting}
                   />
                 )}
+                {validationErrors.qty && (
+                  <p className="mt-1 text-xs text-red-400">{validationErrors.qty}</p>
+                )}
               </div>
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-slate-300">EST #</label>
@@ -581,9 +596,14 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                   disabled={isSubmitting}
                 />
+                {validationErrors.dueDate && (
+                  <p className="mt-1 text-xs text-red-400">{validationErrors.dueDate}</p>
+                )}
               </div>
               <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">ECD</label>
+                <label className="pb-1 text-xs font-medium text-slate-300">
+                  ECD (latest finish)
+                </label>
                 <input
                   type="date"
                   className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white"
@@ -591,6 +611,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   onChange={(e) => setFormData({ ...formData, ecd: e.target.value })}
                   disabled={isSubmitting}
                 />
+                {validationErrors.ecd && (
+                  <p className="mt-1 text-xs text-red-400">{validationErrors.ecd}</p>
+                )}
               </div>
             </div>
             <div className="mt-3 flex flex-col">

@@ -1,5 +1,111 @@
 # Inventory Refresh Summary
 
+This document captures the implemented Parts/Inventory refresh work, focused on functional correctness, cross-module consistency, and mobile-first UX.
+
+## What changed
+
+### 1) Allocation and availability logic was unified
+- `src/lib/inventoryCalculations.ts`
+  - Added shared allocation status guard (`isAllocationActiveStatus`)
+  - Added single-pass allocation map builder (`buildAllocatedByInventoryId`)
+- `src/lib/inventoryState.ts` (new)
+  - Added `withComputedInventory()` to compute `allocated` and `available` in one canonical pass
+- `src/features/inventory/AllocateToJobModal.tsx`
+  - Switched job eligibility to the shared `isAllocationActiveStatus()` helper
+
+Why this grouping:
+- Keeps every screen using one allocation truth path.
+- Eliminates drift between AppContext, modals, and detail/list views.
+
+### 2) Job delivery reconciliation is now reversible
+- `src/lib/inventoryReconciliation.ts` (new)
+  - Added reconciliation mutation builder for delivery consume/restore transitions
+- `src/AppContext.tsx`
+  - `updateJobStatus` now reconciles both:
+    - to `delivered` => consume stock (`reconcile_job`)
+    - from `delivered` => restore stock (`reconcile_job_reversal`)
+
+Why this grouping:
+- Keeps status-transition business rules in one module, not inline in context.
+- Prevents stock drift when jobs are moved out of delivered.
+
+### 3) Stock write semantics are consistent
+- `src/services/api/inventory.ts`
+  - `updateStock()` now updates `in_stock` only (no forced `available = in_stock`)
+
+Why this grouping:
+- `available` is a computed operational value tied to active allocations.
+- Prevents DB-level overwrite from fighting computed UI logic.
+
+### 4) Inventory list UX was refined for scannability
+- `src/features/inventory/InventoryMainView.tsx`
+  - Added top summary cards (total, needs reorder, low/critical)
+  - Added min-stock badge in table rows
+  - Improved desktop action cluster with quick +/- stock controls
+  - Kept existing grouped tabs, global search, filters, FAB add action, and CSV export
+
+Why this grouping:
+- Keeps list glanceable on mobile and desktop.
+- Groups operational urgency (needs reorder/low stock) above row-level actions.
+
+### 5) Inventory detail sections were strengthened
+- `src/InventoryDetail.tsx`
+  - Added top header card with SKU, in-stock count, and category/vendor pills
+  - Linked jobs now explicitly show active allocation jobs only
+  - Added readable labels for new history actions:
+    - `allocated_to_job`
+    - `reconcile_job_reversal`
+
+Why this grouping:
+- Keeps detail view structured by operator intent: identify part, assess stock health, act.
+- Aligns history readability with operational actions.
+
+### 6) System documentation was refreshed
+- `SYSTEM_MASTERY.md`
+  - Fully updated with verified schema, relationships, and runtime flows
+  - Added explicit interconnectivity and pain-point documentation
+
+## Files created
+- `src/lib/inventoryState.ts`
+- `src/lib/inventoryReconciliation.ts`
+- `INVENTORY_REFRESH_SUMMARY.md`
+
+## Files modified
+- `SYSTEM_MASTERY.md`
+- `src/AppContext.tsx`
+- `src/lib/inventoryCalculations.ts`
+- `src/services/api/inventory.ts`
+- `src/features/inventory/AllocateToJobModal.tsx`
+- `src/features/inventory/InventoryMainView.tsx`
+- `src/InventoryDetail.tsx`
+
+## Manual PocketBase/Supabase schema changes required
+- None required for this refresh.
+
+## Ready-to-test checklist
+
+1. Allocate inventory from `/inventory` list:
+   - allocate `5` units to an active job
+   - verify `allocated` increases and `available` decreases immediately
+   - verify inventory history shows `Allocated To Job`
+2. Delivery reconciliation:
+   - move a job with allocations to `delivered`
+   - verify `in_stock` decreases and history shows `Job Reconciliation`
+3. Reversal reconciliation:
+   - move same job from `delivered` back to `inProgress`
+   - verify stock is restored and history shows `Delivery Reversal`
+4. Over-allocation guard:
+   - attempt allocation greater than available quantity
+   - verify allocation is blocked
+5. Inventory list UX:
+   - verify summary cards, tab filtering, search/filter behavior, and quick +/- stock actions
+6. Inventory detail UX:
+   - verify header card values (SKU/category/vendor/stock) and linked jobs list
+7. Role visibility:
+   - non-admin user: confirm financial fields remain hidden where expected
+   - admin user: confirm pricing views still render
+# Inventory Refresh Summary
+
 This summarizes the Parts/Inventory refresh implemented in this pass and why each grouping/layout decision was made.
 
 ## What Changed

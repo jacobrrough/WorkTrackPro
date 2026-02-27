@@ -23,11 +23,14 @@ import {
 import {
   calculateAllocated as calcAllocated,
   calculateAvailable as calcAvailable,
+  buildAllocatedByInventoryId,
 } from './lib/inventoryCalculations';
 import { buildJobNameFromConvention } from './lib/formatJob';
 import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
+import { withComputedInventory } from '@/lib/inventoryState';
+import { buildReconciliationMutations } from '@/lib/inventoryReconciliation';
 
 interface AppContextType {
   currentUser: User | null;
@@ -317,6 +320,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     async (jobId: string, status: JobStatus): Promise<boolean> => {
       try {
         const job = jobs.find((j) => j.id === jobId);
+        const wasDelivered = job?.status === 'delivered';
+        const isDelivered = status === 'delivered';
+        const nextJobs = jobs.map((j) => (j.id === jobId ? { ...j, status } : j));
+        const nextAllocationMap = buildAllocatedByInventoryId(nextJobs);
 
         // When marking as paid, rename job to Part REV per convention
         if (status === 'paid' && job) {
@@ -342,38 +349,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           await checklistService.ensureJobChecklistForStatus(jobId, status);
         }
 
-        // CRITICAL: Material reconciliation on delivery
-        if (status === 'delivered' && job && job.expand?.job_inventory) {
-          for (const ji of job.expand.job_inventory) {
-            const inventoryId = ji.inventory;
-            const quantity = ji.quantity || 0;
+        // Reconcile stock when entering delivered, and restore when leaving delivered.
+        if (job && isDelivered !== wasDelivered) {
+          const direction = isDelivered ? 'consume' : 'restore';
+          const action = isDelivered ? 'reconcile_job' : 'reconcile_job_reversal';
+          const reason = isDelivered
+            ? `Materials used for Job #${job.jobCode} (Delivered)`
+            : `Delivered status reversed for Job #${job.jobCode}; stock restored`;
 
-            if (quantity > 0) {
-              // Get current inventory item
-              const invItem = inventory.find((i) => i.id === inventoryId);
-              if (invItem) {
-                const newInStock = Math.max(0, invItem.inStock - quantity);
-                const previousAvailable = calculateAvailable(invItem);
+          const updates = buildReconciliationMutations({
+            job,
+            inventory,
+            jobsAfterStatusUpdate: nextJobs,
+            direction,
+          });
 
-                // Update stock
-                await inventoryService.updateStock(inventoryId, newInStock);
-
-                // Create history entry
-                if (currentUser) {
-                  await inventoryHistoryService.createHistory({
-                    inventory: inventoryId,
-                    user: currentUser.id,
-                    action: 'reconcile_job',
-                    reason: `Materials used for Job #${job.jobCode} (Delivered)`,
-                    previousInStock: invItem.inStock,
-                    newInStock: newInStock,
-                    previousAvailable: previousAvailable,
-                    newAvailable: Math.max(0, newInStock - calculateAllocated(inventoryId)),
-                    changeAmount: -quantity,
-                    relatedJob: jobId,
-                  });
-                }
-              }
+          for (const entry of updates) {
+            await inventoryService.updateStock(entry.inventoryId, entry.newInStock);
+            if (currentUser) {
+              await inventoryHistoryService.createHistory({
+                inventory: entry.inventoryId,
+                user: currentUser.id,
+                action,
+                reason,
+                previousInStock: entry.previousInStock,
+                newInStock: entry.newInStock,
+                previousAvailable: entry.previousAvailable,
+                newAvailable: Math.max(
+                  0,
+                  entry.newInStock - (nextAllocationMap.get(entry.inventoryId) ?? 0)
+                ),
+                changeAmount: entry.changeAmount,
+                relatedJob: jobId,
+              });
             }
           }
         }
@@ -388,15 +396,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
     },
-    [
-      refreshJobs,
-      refreshInventory,
-      jobs,
-      inventory,
-      currentUser,
-      calculateAvailable,
-      calculateAllocated,
-    ]
+    [refreshJobs, refreshInventory, jobs, inventory, currentUser]
   );
 
   const advanceJobToNextStatus = useCallback(
@@ -446,8 +446,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const clockIn = useCallback(
     async (jobId: string): Promise<boolean> => {
       if (!currentUser) return false;
+
+      // Auto-switch behavior: if user is already clocked into another job, clock out first.
+      const existingActiveShift = shifts.find((s) => s.user === currentUser.id && !s.clockOutTime);
+      if (existingActiveShift) {
+        if (existingActiveShift.job === jobId) return true;
+        if (existingActiveShift.lunchStartTime && !existingActiveShift.lunchEndTime) {
+          const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(existingActiveShift));
+          await shiftService.endLunch(existingActiveShift.id, totalBreakMinutes);
+        }
+        await shiftService.clockOut(existingActiveShift.id);
+        await refreshShifts();
+      }
       try {
-        const success = await shiftService.clockIn(jobId, currentUser.id);
+        let success = await shiftService.clockIn(jobId, currentUser.id);
+        if (!success) {
+          // Recovery path for stale client state (e.g. active shift created elsewhere).
+          const latestShifts = await shiftService.getAllShifts();
+          const latestActiveShift = latestShifts.find(
+            (s) => s.user === currentUser.id && !s.clockOutTime
+          );
+          if (latestActiveShift && latestActiveShift.job !== jobId) {
+            if (latestActiveShift.lunchStartTime && !latestActiveShift.lunchEndTime) {
+              const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(latestActiveShift));
+              await shiftService.endLunch(latestActiveShift.id, totalBreakMinutes);
+            }
+            await shiftService.clockOut(latestActiveShift.id);
+            await refreshShifts();
+            success = await shiftService.clockIn(jobId, currentUser.id);
+          }
+        }
         if (success) {
           await refreshShifts();
           const job = jobs.find((j) => j.id === jobId);
@@ -465,7 +493,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
     },
-    [currentUser, refreshShifts, refreshJobs, jobs, updateJobStatus]
+    [currentUser, shifts, refreshShifts, refreshJobs, jobs, updateJobStatus]
   );
 
   // FIXED: Now returns boolean for success/failure
@@ -662,9 +690,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (item) {
           const available = calculateAvailable(item);
           if (quantity > available) {
-            console.warn(
-              `Add job inventory: only ${available} available for ${item.name}, requested ${quantity}`
-            );
+            return;
           }
         }
         await jobService.addJobInventory(jobId, inventoryId, quantity, unit);
@@ -690,11 +716,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (!item || !job || quantity <= 0) return false;
 
         const previousAvailable = calculateAvailable(item);
+        if (quantity > previousAvailable) {
+          return false;
+        }
         const currentAllocated = calculateAllocated(inventoryId);
         const nextAllocated = currentAllocated + quantity;
         const newAvailable = Math.max(0, item.inStock - nextAllocated);
 
-        const ok = await jobService.addJobInventory(jobId, inventoryId, quantity, item.unit || 'units');
+        const ok = await jobService.addJobInventory(
+          jobId,
+          inventoryId,
+          quantity,
+          item.unit || 'units'
+        );
         if (!ok) return false;
 
         if (currentUser) {
@@ -702,9 +736,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             inventory: inventoryId,
             user: currentUser.id,
             action: 'allocated_to_job',
-            reason:
-              notes?.trim() ||
-              `Allocated ${quantity} ${item.unit} to Job #${job.jobCode}`,
+            reason: notes?.trim() || `Allocated ${quantity} ${item.unit} to Job #${job.jobCode}`,
             previousInStock: item.inStock,
             newInStock: item.inStock,
             previousAvailable,
@@ -1032,24 +1064,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [currentUser]);
 
   // Single source of truth: inventory with available/allocated computed from jobs (never use DB .available for display)
-  const inventoryWithComputed = useMemo(() => {
-    // Precompute allocations in one pass to avoid O(inventory * jobs) scans.
-    const allocatedByInventoryId = new Map<string, number>();
-    for (const job of jobs) {
-      for (const ji of job.inventoryItems ?? []) {
-        allocatedByInventoryId.set(
-          ji.inventoryId,
-          (allocatedByInventoryId.get(ji.inventoryId) ?? 0) + ji.quantity
-        );
-      }
-    }
-
-    return inventory.map((item) => ({
-      ...item,
-      allocated: allocatedByInventoryId.get(item.id) ?? 0,
-      available: Math.max(0, item.inStock - (allocatedByInventoryId.get(item.id) ?? 0)),
-    }));
-  }, [inventory, jobs]);
+  const inventoryWithComputed = useMemo(
+    () => withComputedInventory(inventory, jobs),
+    [inventory, jobs]
+  );
 
   // Defense in depth: never expose inventory pricing to non-admin UI consumers.
   const inventoryForRole = useMemo(() => {

@@ -136,6 +136,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
     clockOutTime: string;
   }>({ user: '', job: '', clockInTime: '', clockOutTime: '' });
   const [addingShift, setAddingShift] = useState(false);
+  const [manualClockOutShiftId, setManualClockOutShiftId] = useState<string | null>(null);
 
   // Admin: Delete shift confirmation
   const [shiftToDeleteId, setShiftToDeleteId] = useState<string | null>(null);
@@ -408,6 +409,21 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       showToast('Failed to delete shift', 'error');
     } finally {
       setDeletingShift(false);
+    }
+  };
+
+  const handleManualClockOut = async (shiftId: string) => {
+    if (!onRefreshShifts) return;
+    setManualClockOutShiftId(shiftId);
+    try {
+      await shiftService.clockOut(shiftId);
+      showToast('User clocked out successfully', 'success');
+      await onRefreshShifts();
+    } catch (error) {
+      console.error('Failed to clock user out manually:', error);
+      showToast('Failed to clock user out', 'error');
+    } finally {
+      setManualClockOutShiftId(null);
     }
   };
 
@@ -708,9 +724,19 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="ml-2 text-right">
                     <p className="font-bold text-green-400">{formatShiftHours(s)}</p>
                     <p className="text-[9px] text-slate-500">since {formatTime(s.clockInTime)}</p>
+                    {currentUser.isAdmin && onRefreshShifts && (
+                      <button
+                        type="button"
+                        onClick={() => handleManualClockOut(s.id)}
+                        disabled={manualClockOutShiftId === s.id}
+                        className="mt-2 min-h-[36px] rounded-sm border border-red-500/40 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {manualClockOutShiftId === s.id ? 'Clocking out…' : 'Clock Out User'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

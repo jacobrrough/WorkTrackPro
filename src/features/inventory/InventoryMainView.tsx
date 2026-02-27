@@ -23,7 +23,12 @@ interface InventoryMainViewProps {
   onAddItem: () => void;
   onOpenDetail: (itemId: string) => void;
   onQuickAdjust: (item: InventoryItem, delta: number) => Promise<void>;
-  onAllocateToJob: (jobId: string, inventoryId: string, quantity: number, notes?: string) => Promise<boolean>;
+  onAllocateToJob: (
+    jobId: string,
+    inventoryId: string,
+    quantity: number,
+    notes?: string
+  ) => Promise<boolean>;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
 }
@@ -59,15 +64,18 @@ export default function InventoryMainView({
 
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
   const baseFiltered = useMemo(
-    () => inventory.filter((item) => matchesFilters(item, filters)).sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      inventory
+        .filter((item) => matchesFilters(item, filters))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [filters, inventory]
   );
 
   const tabFiltered = useMemo(() => {
     if (tab === 'allParts') return baseFiltered;
     if (tab === 'needsReordering') {
-      return baseFiltered.filter((item) =>
-        computeStock(item, calculateAvailable, calculateAllocated).needsReorder
+      return baseFiltered.filter(
+        (item) => computeStock(item, calculateAvailable, calculateAllocated).needsReorder
       );
     }
     if (tab === 'lowStock') {
@@ -80,6 +88,16 @@ export default function InventoryMainView({
   }, [baseFiltered, calculateAllocated, calculateAvailable, tab]);
 
   const bins = useMemo(() => groupByBin(baseFiltered), [baseFiltered]);
+  const summary = useMemo(() => {
+    let needsReorder = 0;
+    let lowStock = 0;
+    for (const item of baseFiltered) {
+      const stock = computeStock(item, calculateAvailable, calculateAllocated);
+      if (stock.needsReorder) needsReorder += 1;
+      if (stock.lowStock || stock.available <= 0) lowStock += 1;
+    }
+    return { total: baseFiltered.length, needsReorder, lowStock };
+  }, [baseFiltered, calculateAllocated, calculateAvailable]);
 
   const handleQuickAdjust = async (item: InventoryItem, delta: number) => {
     if (!isAdmin) {
@@ -291,13 +309,32 @@ export default function InventoryMainView({
             </select>
           </div>
         </div>
+
+        <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm">
+          <div className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
+            <p className="text-slate-400">Parts</p>
+            <p className="font-bold text-white">{summary.total}</p>
+          </div>
+          <div className="rounded-sm border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-200">
+            <p className="text-yellow-300/80">Needs Reorder</p>
+            <p className="font-bold">{summary.needsReorder}</p>
+          </div>
+          <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
+            <p className="text-red-300/80">Low/Critical</p>
+            <p className="font-bold">{summary.lowStock}</p>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 pb-28">
         {tab === 'byBin' ? (
           <div className="space-y-3">
             {bins.map((group) => (
-              <details key={group.bin} open className="rounded-sm border border-white/10 bg-white/5">
+              <details
+                key={group.bin}
+                open
+                className="rounded-sm border border-white/10 bg-white/5"
+              >
                 <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-white">
                   {group.bin} ({group.items.length})
                 </summary>
@@ -326,7 +363,14 @@ export default function InventoryMainView({
                       <tr key={item.id} className="border-t border-white/10">
                         <td className="px-3 py-2">
                           <p className="font-bold text-white">{item.name}</p>
-                          <p className="text-xs text-slate-400">{getSku(item)}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-slate-400">{getSku(item)}</p>
+                            {stock.needsReorder && (
+                              <span className="rounded-sm border border-red-500/40 bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-300">
+                                Min Stock
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2 text-white">{item.inStock}</td>
                         <td className="px-3 py-2 text-yellow-300">{stock.allocated}</td>
@@ -335,15 +379,17 @@ export default function InventoryMainView({
                         >
                           {stock.available}
                         </td>
-                        <td className="px-3 py-2 text-slate-300">{item.binLocation || 'Unassigned'}</td>
+                        <td className="px-3 py-2 text-slate-300">
+                          {item.binLocation || 'Unassigned'}
+                        </td>
                         <td className="px-3 py-2">
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap items-center gap-1">
                             <button
                               type="button"
                               onClick={() => onOpenDetail(item.id)}
                               className="rounded-sm border border-white/10 px-2 py-1 text-xs text-white"
                             >
-                              Edit
+                              View
                             </button>
                             <button
                               type="button"
@@ -359,6 +405,28 @@ export default function InventoryMainView({
                             >
                               Allocate
                             </button>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAdjust(item, -1)}
+                                  className="flex size-8 items-center justify-center rounded-sm border border-white/10 text-white"
+                                  aria-label={`Decrease stock for ${item.name}`}
+                                >
+                                  <span className="material-symbols-outlined text-base">
+                                    remove
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAdjust(item, 1)}
+                                  className="flex size-8 items-center justify-center rounded-sm border border-white/10 text-white"
+                                  aria-label={`Increase stock for ${item.name}`}
+                                >
+                                  <span className="material-symbols-outlined text-base">add</span>
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -388,7 +456,9 @@ export default function InventoryMainView({
         <AllocateToJobModal
           item={allocatingItem}
           jobs={jobs}
-          maxAvailable={computeStock(allocatingItem, calculateAvailable, calculateAllocated).available}
+          maxAvailable={
+            computeStock(allocatingItem, calculateAvailable, calculateAllocated).available
+          }
           onClose={() => setAllocatingItem(null)}
           onAllocate={(jobId, quantity, notes) =>
             onAllocateToJob(jobId, allocatingItem.id, quantity, notes)

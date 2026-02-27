@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Part, PartVariant } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
@@ -33,6 +33,8 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const [quantityMode, setQuantityMode] = useState<'sets' | 'variants'>('variants');
   const [setCount, setSetCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [allParts, setAllParts] = useState<Part[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const getEffectiveSetComposition = useCallback(
     (targetPart: Part & { variants?: PartVariant[] }): Record<string, number> | null => {
@@ -151,6 +153,36 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     }
   }, [initialPartNumber, loadPart]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadParts = async () => {
+      try {
+        const parts = await partsService.getAllParts();
+        if (!cancelled) {
+          setAllParts(parts);
+        }
+      } catch (error) {
+        console.error('Failed to load part suggestions:', error);
+      }
+    };
+    loadParts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filteredSuggestions = useMemo(() => {
+    const query = search.trim().toUpperCase();
+    if (!query) return [];
+    return allParts
+      .filter((item) => {
+        const number = item.partNumber.toUpperCase();
+        const name = (item.name ?? '').toUpperCase();
+        return number.includes(query) || name.includes(query);
+      })
+      .slice(0, 8);
+  }, [allParts, search]);
+
   const handleSearch = () => {
     loadPart(search);
   };
@@ -227,21 +259,46 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
       <div className="mb-3">
         <label className="mb-1 block text-xs font-medium text-slate-300">Part Number</label>
-        <div className="flex gap-2">
+        <div className="relative flex gap-2">
           <input
             type="text"
             value={search}
             onChange={(e) => {
               const nextValue = e.target.value.toUpperCase();
               setSearch(nextValue);
+              setShowSuggestions(true);
               onPartNumberResolved?.(nextValue.trim(), null);
             }}
-            onBlur={handleSearch}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => {
+              window.setTimeout(() => setShowSuggestions(false), 120);
+              handleSearch();
+            }}
             placeholder="e.g., SK-F35-0911"
             className="flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
           />
           {loading && (
             <span className="material-symbols-outlined animate-spin text-primary">refresh</span>
+          )}
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-56 overflow-y-auto rounded-sm border border-white/10 bg-background-dark shadow-lg">
+              {filteredSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setSearch(suggestion.partNumber.toUpperCase());
+                    setShowSuggestions(false);
+                    loadPart(suggestion.partNumber);
+                  }}
+                  className="flex w-full items-center justify-between border-b border-white/5 px-3 py-2 text-left hover:bg-white/5"
+                >
+                  <span className="font-mono text-xs text-white">{suggestion.partNumber}</span>
+                  <span className="truncate pl-3 text-xs text-slate-400">{suggestion.name}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
         {part && (

@@ -135,7 +135,7 @@ export const inventoryService = {
   async updateStock(id: string, inStock: number): Promise<void> {
     await supabase
       .from('inventory')
-      .update({ in_stock: inStock, available: inStock, updated_at: new Date().toISOString() })
+      .update({ in_stock: inStock, updated_at: new Date().toISOString() })
       .eq('id', id);
   },
 

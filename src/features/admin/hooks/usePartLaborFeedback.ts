@@ -29,7 +29,8 @@ export function usePartJobs(part: Part | null, allJobs: Job[]): Job[] {
       if (j.partId && j.partId === part.id) return true;
       if (
         j.partNumber &&
-        (j.partNumber === part.partNumber || j.partNumber.replace(/-\d{2}$/, '') === part.partNumber)
+        (j.partNumber === part.partNumber ||
+          j.partNumber.replace(/-\d{2}$/, '') === part.partNumber)
       ) {
         return true;
       }
@@ -67,7 +68,8 @@ export function usePartLaborFeedback(part: Part | null, partJobs: Job[], shifts:
           setCount,
           actualPerSet: actualHours / setCount,
           estimatedTotalHours,
-          varianceHours: estimatedTotalHours != null ? actualHours - estimatedTotalHours : undefined,
+          varianceHours:
+            estimatedTotalHours != null ? actualHours - estimatedTotalHours : undefined,
         };
       })
       .filter((row): row is NonNullable<typeof row> => row != null);
@@ -112,7 +114,11 @@ export function usePartLaborFeedback(part: Part | null, partJobs: Job[], shifts:
         variant.laborHours != null
           ? variant.laborHours
           : part?.laborHours != null && part.setComposition
-            ? variantLaborFromSetComposition(variant.variantSuffix, part.laborHours, part.setComposition)
+            ? variantLaborFromSetComposition(
+                variant.variantSuffix,
+                part.laborHours,
+                part.setComposition
+              )
             : undefined;
       return {
         variantSuffix: variant.variantSuffix,
@@ -121,7 +127,9 @@ export function usePartLaborFeedback(part: Part | null, partJobs: Job[], shifts:
         actualPerUnit,
         estimatedPerUnit,
         variancePerUnit:
-          actualPerUnit != null && estimatedPerUnit != null ? actualPerUnit - estimatedPerUnit : undefined,
+          actualPerUnit != null && estimatedPerUnit != null
+            ? actualPerUnit - estimatedPerUnit
+            : undefined,
       };
     });
 

@@ -72,6 +72,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
     variantId?: string;
   } | null>(null);
   const [creatingPart, setCreatingPart] = useState(false);
+  const [templateParts, setTemplateParts] = useState<Part[]>([]);
+  const [templateSourcePartId, setTemplateSourcePartId] = useState('');
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [partInfoDraft, setPartInfoDraft] = useState({
     partNumber: '',
     name: '',
@@ -122,6 +125,23 @@ const PartDetail: React.FC<PartDetailProps> = ({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keep draft stable while editing; reset only when switching parts
   }, [part?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadTemplateParts = async () => {
+      try {
+        const parts = await partsService.getAllParts();
+        if (cancelled) return;
+        setTemplateParts(parts);
+      } catch (error) {
+        console.error('Failed to load template parts:', error);
+      }
+    };
+    loadTemplateParts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (partId === 'new') {
@@ -740,7 +760,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       updates.name = nextName;
     }
     if (nextDescription !== (part.description ?? '')) {
-      updates.description = nextDescription || undefined;
+      updates.description = nextDescription;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -768,6 +788,34 @@ const PartDetail: React.FC<PartDetailProps> = ({
       name: part.name ?? '',
       description: part.description ?? '',
     });
+  };
+
+  const handleApplyTemplateToPart = async () => {
+    if (!part || !templateSourcePartId || isApplyingTemplate) return;
+    if (templateSourcePartId === part.id) {
+      showToast('Select a different source part', 'warning');
+      return;
+    }
+    try {
+      setIsApplyingTemplate(true);
+      const ok = await partsService.applyPartTemplate(part.id, templateSourcePartId);
+      if (!ok) {
+        showToast('Failed to apply template', 'error');
+        return;
+      }
+      const source = templateParts.find((item) => item.id === templateSourcePartId);
+      await loadPart();
+      notifyPartUpdated();
+      showToast(
+        `Applied pricing and materials from ${source?.partNumber ?? 'selected part'}`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Apply template error:', error);
+      showToast('Failed to apply template', 'error');
+    } finally {
+      setIsApplyingTemplate(false);
+    }
   };
 
   const handleCreateInRepository = async () => {
@@ -952,6 +1000,33 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 >
                   Reset
                 </button>
+                {!isVirtualPart && (
+                  <div className="flex min-w-[280px] flex-1 flex-wrap items-center gap-2 rounded-sm border border-white/10 bg-white/5 p-2">
+                    <label className="text-xs text-slate-400">Apply pricing/materials from</label>
+                    <select
+                      value={templateSourcePartId}
+                      onChange={(e) => setTemplateSourcePartId(e.target.value)}
+                      className="min-h-[44px] min-w-[180px] flex-1 rounded-sm border border-white/10 bg-background-dark px-2 text-xs text-white"
+                    >
+                      <option value="">Select source part</option>
+                      {templateParts
+                        .filter((item) => item.id !== part.id)
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.partNumber} - {item.name}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleApplyTemplateToPart}
+                      disabled={!templateSourcePartId || isApplyingTemplate}
+                      className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isApplyingTemplate ? 'Applying…' : 'Apply'}
+                    </button>
+                  </div>
+                )}
                 {!isVirtualPart && (
                   <>
                     {confirmDeletePart ? (
@@ -1217,123 +1292,129 @@ const PartDetail: React.FC<PartDetailProps> = ({
               )}
               {canViewFinancials && (
                 <QuoteCalculator
-                part={part}
-                inventoryItems={inventoryItems}
-                variants={part.variants ?? []}
-                setComposition={part.setComposition}
-                laborRate={settings.laborRate}
-                cncRate={settings.cncRate}
-                printer3DRate={settings.printer3DRate}
-                autoSetLaborHours={
-                  part.variants?.length &&
-                  part.setComposition &&
-                  Object.keys(part.setComposition).length > 0
-                    ? calculateSetLaborFromVariants(part.variants, part.setComposition)
-                    : undefined
-                }
-                onLaborHoursChange={async (laborHours) => {
-                  if (Math.abs((part.laborHours ?? 0) - (laborHours ?? 0)) > 0.01) {
-                    await handleUpdatePart({ laborHours });
+                  part={part}
+                  inventoryItems={inventoryItems}
+                  variants={part.variants ?? []}
+                  setComposition={part.setComposition}
+                  laborRate={settings.laborRate}
+                  cncRate={settings.cncRate}
+                  printer3DRate={settings.printer3DRate}
+                  autoSetLaborHours={
+                    part.variants?.length &&
+                    part.setComposition &&
+                    Object.keys(part.setComposition).length > 0
+                      ? calculateSetLaborFromVariants(part.variants, part.setComposition)
+                      : undefined
                   }
-                }}
-                onSetPriceChange={async (price) => {
-                  const variants = part.variants ?? [];
-                  const composition = buildEffectiveSetComposition(variants, part.setComposition);
-
-                  if (price !== undefined) {
-                    const roundedPrice = Number(price.toFixed(2));
-                    const updates: Partial<Part> = {};
-                    if (Math.abs((part.pricePerSet ?? 0) - roundedPrice) > 0.01) {
-                      updates.pricePerSet = roundedPrice;
+                  onLaborHoursChange={async (laborHours) => {
+                    if (Math.abs((part.laborHours ?? 0) - (laborHours ?? 0)) > 0.01) {
+                      await handleUpdatePart({ laborHours });
                     }
-                    let targetSetLaborHours: number | undefined;
-                    const derived = calculatePartQuote(part, 1, inventoryItems, {
-                      laborRate: settings.laborRate,
-                      cncRate: settings.cncRate,
-                      printer3DRate: settings.printer3DRate,
-                      manualSetPrice: roundedPrice,
-                    });
-                    if (derived?.isLaborAutoAdjusted) {
-                      targetSetLaborHours = Number(derived.laborHours.toFixed(2));
-                      if (Math.abs((part.laborHours ?? 0) - targetSetLaborHours) > 0.01) {
-                        updates.laborHours = targetSetLaborHours;
+                  }}
+                  onSetPriceChange={async (price) => {
+                    const variants = part.variants ?? [];
+                    const composition = buildEffectiveSetComposition(variants, part.setComposition);
+
+                    if (price !== undefined) {
+                      const roundedPrice = Number(price.toFixed(2));
+                      const updates: Partial<Part> = {};
+                      if (Math.abs((part.pricePerSet ?? 0) - roundedPrice) > 0.01) {
+                        updates.pricePerSet = roundedPrice;
                       }
-                    } else if (part.laborHours != null) {
-                      targetSetLaborHours = part.laborHours;
-                    }
-                    const targetSetCncHours =
-                      part.requiresCNC && part.cncTimeHours != null ? part.cncTimeHours : undefined;
-                    if (Object.keys(updates).length > 0) {
-                      await handleUpdatePart(updates);
-                    }
-
-                    let variantsUpdated = false;
-                    if (variants.length > 0 && Object.keys(composition).length > 0) {
-                      const priceTargets = variantPricesFromSetPrice(
-                        roundedPrice,
-                        composition,
-                        variants
-                      );
-                      const priceByVariantId = new Map(
-                        priceTargets.map((entry) => [entry.variantId, entry.price])
-                      );
-                      const laborByVariantId = new Map(
-                        (targetSetLaborHours != null
-                          ? calculateVariantLaborTargets(variants, composition, targetSetLaborHours)
-                          : []
-                        ).map((entry) => [entry.variantId, entry.laborHours])
-                      );
-                      const cncByVariantId = new Map(
-                        (targetSetCncHours != null && targetSetCncHours > 0
-                          ? calculateVariantCncTargets(variants, composition, targetSetCncHours)
-                          : []
-                        ).map((entry) => [entry.variantId, entry.cncTimeHours])
-                      );
-
-                      for (const variant of variants) {
-                        const variantUpdates: Partial<PartVariant> = {};
-                        const nextPrice = priceByVariantId.get(variant.id);
-                        // Never overwrite a manually set variant total: only fill when the variant
-                        // has no price at all. A variant with any numeric price (including 0) stays as-is.
-                        const hasExistingVariantPrice =
-                          variant.pricePerVariant != null &&
-                          variant.pricePerVariant !== undefined &&
-                          Number.isFinite(Number(variant.pricePerVariant));
-                        if (nextPrice != null && !hasExistingVariantPrice) {
-                          variantUpdates.pricePerVariant = nextPrice;
+                      let targetSetLaborHours: number | undefined;
+                      const derived = calculatePartQuote(part, 1, inventoryItems, {
+                        laborRate: settings.laborRate,
+                        cncRate: settings.cncRate,
+                        printer3DRate: settings.printer3DRate,
+                        manualSetPrice: roundedPrice,
+                      });
+                      if (derived?.isLaborAutoAdjusted) {
+                        targetSetLaborHours = Number(derived.laborHours.toFixed(2));
+                        if (Math.abs((part.laborHours ?? 0) - targetSetLaborHours) > 0.01) {
+                          updates.laborHours = targetSetLaborHours;
                         }
-                        const nextLabor = laborByVariantId.get(variant.id);
-                        // Keep manual labor values intact; only fill labor when not explicitly set.
-                        if (
-                          nextLabor != null &&
-                          (variant.laborHours == null || variant.laborHours === undefined)
-                        ) {
-                          variantUpdates.laborHours = nextLabor;
-                        }
-                        const nextCnc = cncByVariantId.get(variant.id);
-                        if (
-                          nextCnc != null &&
-                          (variant.cncTimeHours == null || variant.cncTimeHours === undefined)
-                        ) {
-                          variantUpdates.requiresCNC = true;
-                          variantUpdates.cncTimeHours = nextCnc;
-                        }
+                      } else if (part.laborHours != null) {
+                        targetSetLaborHours = part.laborHours;
+                      }
+                      const targetSetCncHours =
+                        part.requiresCNC && part.cncTimeHours != null
+                          ? part.cncTimeHours
+                          : undefined;
+                      if (Object.keys(updates).length > 0) {
+                        await handleUpdatePart(updates);
+                      }
 
-                        if (Object.keys(variantUpdates).length > 0) {
-                          await partsService.updateVariant(variant.id, variantUpdates);
-                          variantsUpdated = true;
+                      let variantsUpdated = false;
+                      if (variants.length > 0 && Object.keys(composition).length > 0) {
+                        const priceTargets = variantPricesFromSetPrice(
+                          roundedPrice,
+                          composition,
+                          variants
+                        );
+                        const priceByVariantId = new Map(
+                          priceTargets.map((entry) => [entry.variantId, entry.price])
+                        );
+                        const laborByVariantId = new Map(
+                          (targetSetLaborHours != null
+                            ? calculateVariantLaborTargets(
+                                variants,
+                                composition,
+                                targetSetLaborHours
+                              )
+                            : []
+                          ).map((entry) => [entry.variantId, entry.laborHours])
+                        );
+                        const cncByVariantId = new Map(
+                          (targetSetCncHours != null && targetSetCncHours > 0
+                            ? calculateVariantCncTargets(variants, composition, targetSetCncHours)
+                            : []
+                          ).map((entry) => [entry.variantId, entry.cncTimeHours])
+                        );
+
+                        for (const variant of variants) {
+                          const variantUpdates: Partial<PartVariant> = {};
+                          const nextPrice = priceByVariantId.get(variant.id);
+                          // Never overwrite a manually set variant total: only fill when the variant
+                          // has no price at all. A variant with any numeric price (including 0) stays as-is.
+                          const hasExistingVariantPrice =
+                            variant.pricePerVariant != null &&
+                            variant.pricePerVariant !== undefined &&
+                            Number.isFinite(Number(variant.pricePerVariant));
+                          if (nextPrice != null && !hasExistingVariantPrice) {
+                            variantUpdates.pricePerVariant = nextPrice;
+                          }
+                          const nextLabor = laborByVariantId.get(variant.id);
+                          // Keep manual labor values intact; only fill labor when not explicitly set.
+                          if (
+                            nextLabor != null &&
+                            (variant.laborHours == null || variant.laborHours === undefined)
+                          ) {
+                            variantUpdates.laborHours = nextLabor;
+                          }
+                          const nextCnc = cncByVariantId.get(variant.id);
+                          if (
+                            nextCnc != null &&
+                            (variant.cncTimeHours == null || variant.cncTimeHours === undefined)
+                          ) {
+                            variantUpdates.requiresCNC = true;
+                            variantUpdates.cncTimeHours = nextCnc;
+                          }
+
+                          if (Object.keys(variantUpdates).length > 0) {
+                            await partsService.updateVariant(variant.id, variantUpdates);
+                            variantsUpdated = true;
+                          }
                         }
                       }
+                      if (variantsUpdated) await loadPart();
+                    } else {
+                      const auto = calculateSetPriceFromVariants(
+                        part.variants ?? [],
+                        part.setComposition ?? {}
+                      );
+                      if (auto != null) await handleUpdatePart({ pricePerSet: auto });
                     }
-                    if (variantsUpdated) await loadPart();
-                  } else {
-                    const auto = calculateSetPriceFromVariants(
-                      part.variants ?? [],
-                      part.setComposition ?? {}
-                    );
-                    if (auto != null) await handleUpdatePart({ pricePerSet: auto });
-                  }
-                }}
+                  }}
                 />
               )}
             </div>
@@ -1718,7 +1799,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
             >
               Save
             </button>
-            <button onClick={onCancel} className="min-h-[44px] rounded bg-white/10 px-3 py-1 text-sm text-white">
+            <button
+              onClick={onCancel}
+              className="min-h-[44px] rounded bg-white/10 px-3 py-1 text-sm text-white"
+            >
               Cancel
             </button>
             <button
@@ -1732,7 +1816,10 @@ const VariantCard: React.FC<VariantCardProps> = ({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <button onClick={onEdit} className="min-h-[44px] rounded-sm px-2 text-sm text-primary hover:bg-primary/10 hover:underline">
+            <button
+              onClick={onEdit}
+              className="min-h-[44px] rounded-sm px-2 text-sm text-primary hover:bg-primary/10 hover:underline"
+            >
               Edit
             </button>
             <button

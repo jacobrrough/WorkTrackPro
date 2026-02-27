@@ -15,6 +15,7 @@ import AttachmentsList from './AttachmentsList';
 import FileUploadButton from './FileUploadButton';
 import FileViewer from './FileViewer';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
+import { isAllocationActiveStatus } from '@/lib/inventoryCalculations';
 
 interface InventoryDetailProps {
   item: InventoryItem;
@@ -98,6 +99,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const available = currentItem.available ?? calculateAvailable(currentItem);
   const minStock = currentItem.reorderPoint ?? 0;
   const minStockPercent = minStock > 0 ? Math.min(200, (available / minStock) * 100) : 100;
+  const sku = (currentItem.barcode || currentItem.id.slice(0, 8)).toUpperCase();
   const reorderCostEstimate =
     shouldShowInventoryDetailPrice(item, isAdmin) && minStock > 0
       ? minStock * (item.price ?? 0)
@@ -105,6 +107,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const linkedJobs = useMemo(() => {
     const entries: Array<{ job: Job; quantity: number; jobInventoryId: string }> = [];
     for (const job of jobs) {
+      if (!isAllocationActiveStatus(job.status)) continue;
       for (const ji of job.inventoryItems ?? []) {
         if (ji.inventoryId === currentItem.id) {
           entries.push({ job, quantity: ji.quantity, jobInventoryId: ji.id });
@@ -513,12 +516,14 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
   const getActionLabel = (action: string) => {
     const labels: Record<string, string> = {
-      manual_adjust: '📝 Manual Adjustment',
-      reconcile_job: '📦 Job Reconciliation',
-      reconcile_po: '📋 PO Reconciliation',
-      order_received: '✅ Order Received',
-      order_placed: '🛒 Order Placed',
-      stock_correction: '🔧 Stock Correction',
+      manual_adjust: 'Manual Adjustment',
+      reconcile_job: 'Job Reconciliation',
+      reconcile_job_reversal: 'Delivery Reversal',
+      reconcile_po: 'PO Reconciliation',
+      order_received: 'Order Received',
+      order_placed: 'Order Placed',
+      allocated_to_job: 'Allocated To Job',
+      stock_correction: 'Stock Correction',
     };
     return labels[action] || action;
   };
@@ -840,6 +845,29 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
         {/* Content */}
         <div className="flex-1 space-y-3 overflow-y-auto p-3">
+          <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">SKU</p>
+                <p className="font-mono text-sm text-white">{sku}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">In Stock</p>
+                <p className="text-3xl font-bold text-white">{currentItem.inStock}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-200">
+                {getCategoryDisplayName(currentItem.category)}
+              </span>
+              {currentItem.vendor && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-200">
+                  {currentItem.vendor}
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* Description */}
           {currentItem.description && (
             <div className="rounded-sm bg-card-dark p-3">

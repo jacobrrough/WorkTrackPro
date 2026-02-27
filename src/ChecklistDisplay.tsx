@@ -40,19 +40,6 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
         matchingChecklist = await checklistService.ensureJobChecklistForStatus(jobId, jobStatus);
       }
 
-      if (matchingChecklist && allChecklists.length > 0 && currentUser.isAdmin) {
-        const otherStatusChecklists = allChecklists.filter(
-          (c) => c.status !== jobStatus && c.id !== matchingChecklist!.id
-        );
-        for (const oldChecklist of otherStatusChecklists) {
-          try {
-            await checklistService.delete(oldChecklist.id);
-          } catch (deleteError) {
-            console.warn('Could not delete old checklist (may need admin):', deleteError);
-          }
-        }
-      }
-
       if (matchingChecklist) {
         setChecklist({
           id: matchingChecklist.id,
@@ -72,7 +59,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [jobId, jobStatus, currentUser.isAdmin]);
+  }, [jobId, jobStatus]);
 
   useEffect(() => {
     loadChecklist();

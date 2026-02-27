@@ -85,6 +85,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [editingChecklistFor, setEditingChecklistFor] = useState<JobStatus | null>(null);
   const [moveColumnForJobId, setMoveColumnForJobId] = useState<string | null>(null);
   const [scanningBinForJob, setScanningBinForJob] = useState<string | null>(null);
+  const [viewportWidth, setViewportWidth] = useState<number>(
+    typeof window !== 'undefined' ? window.innerWidth : 1280
+  );
   const { showToast } = useToast();
 
   // Refs for column scroll containers and horizontal board container
@@ -99,6 +102,41 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const canDragCards = (boardType === 'shopFloor' || isAdmin) && supportsFinePointer;
   const columns = boardType === 'shopFloor' ? SHOP_FLOOR_COLUMNS : ADMIN_COLUMNS;
+  const mobileColumnWidth = useMemo(() => {
+    if (viewportWidth >= 768) return null;
+    // Keep mobile columns predictable so a single swipe moves one usable column.
+    return Math.max(280, Math.min(460, viewportWidth - 16));
+  }, [viewportWidth]);
+  const desktopColumnWidth = useMemo(() => {
+    if (viewportWidth < 768) return null;
+
+    const visibleColumns =
+      boardType === 'admin'
+        ? viewportWidth >= 1536
+          ? 7
+          : viewportWidth >= 1280
+            ? 6
+            : viewportWidth >= 1024
+              ? 5
+              : 4
+        : viewportWidth >= 1536
+          ? 6
+          : viewportWidth >= 1280
+            ? 5
+            : viewportWidth >= 1024
+              ? 4
+              : 3;
+
+    const gapPx = 8; // md:gap-2
+    const sidePaddingPx = 16; // md:px-2
+    const available = Math.max(0, viewportWidth - sidePaddingPx);
+    const rawWidth = Math.floor((available - gapPx * (visibleColumns - 1)) / visibleColumns);
+
+    const min = boardType === 'admin' ? 140 : 160;
+    const max = boardType === 'admin' ? 220 : 260;
+    return Math.max(min, Math.min(max, rawWidth));
+  }, [boardType, viewportWidth]);
+  const columnWidth = desktopColumnWidth ?? mobileColumnWidth;
   const boardViewKey = `kanban-board-${boardType}`;
   const horizontalScrollKey = `${boardViewKey}-horizontal`;
   const filteredJobs = useMemo(
@@ -116,6 +154,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   useEffect(() => {
     scrollPositionsSnapshot.current = navState.scrollPositions;
   }, [navState.scrollPositions]);
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     const positions = scrollPositionsSnapshot.current;
@@ -445,7 +489,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           scrollPaddingInline: 0,
         }}
       >
-        <div className="flex h-full min-w-max flex-nowrap gap-0 py-3 md:gap-2.5 md:px-3">
+        <div className="flex h-full w-max min-w-full flex-nowrap gap-2 px-2 py-3 md:gap-2 md:px-2">
           {columns.map((column) => {
             const columnJobs = getJobsForColumn(column.id);
             const isOver = dragOverColumn === column.id;
@@ -454,7 +498,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <div
                 key={column.id}
                 data-kanban-column-root="true"
-                className={`flex h-full w-full min-w-full shrink-0 snap-center flex-col rounded-sm border bg-black/20 md:w-64 md:min-w-64 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                className={`flex h-full shrink-0 snap-center flex-col rounded-sm border bg-black/20 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                style={
+                  columnWidth
+                    ? {
+                        width: `${columnWidth}px`,
+                        minWidth: `${columnWidth}px`,
+                        maxWidth: `${columnWidth}px`,
+                      }
+                    : undefined
+                }
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOverColumn(column.id);

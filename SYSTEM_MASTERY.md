@@ -1,326 +1,206 @@
 # System Mastery Document
 
-This document captures the current, verified system state of WorkTrack Pro as implemented today.
+Verified against current implementation in `src/core/types.ts`, `src/services/api/*`, `src/App.tsx`, `src/AppContext.tsx`, and Supabase migrations in `supabase/migrations`.
 
-## 1) Backend and Collection/Table Model
+## Backend model and exact relations
 
-The frontend still uses a PocketBase-style service facade (`src/pocketbase.ts`), but runtime persistence is Supabase (`src/services/api/*`, `supabase/migrations/*`).
+Runtime backend is Supabase, with PocketBase-compatible service patterns preserved by `src/pocketbase.ts`.
 
-### Core identity and access
+### Identity and access
 
 #### `profiles`
-- Source: `supabase/migrations/20250216000001_initial_schema.sql`, `20260224000003_user_approval.sql`
-- Fields:
-  - `id` (uuid, PK, FK to `auth.users.id`)
-  - `email` (text)
-  - `name` (text)
-  - `initials` (text)
-  - `is_admin` (boolean)
-  - `is_approved` (boolean)
-  - `approved_at` (timestamptz)
-  - `approved_by` (uuid, FK to `profiles.id`)
-  - `created_at`, `updated_at` (timestamptz)
-- Primary relations:
-  - `profiles` 1:N `jobs.created_by`
-  - `profiles` 1:N `shifts.user_id`
-  - `profiles` 1:N `comments.user_id`
-  - `profiles` 1:N `shift_edits.edited_by`
-  - `profiles` 1:N `checklist_history.user_id`
-  - `profiles` 1:N `inventory_history.user_id`
-  - `profiles` 1:N `quotes.created_by`
-  - `profiles` 1:N `organization_settings.updated_by`
+- Fields: `id`, `email`, `name`, `initials`, `is_admin`, `is_approved`, `approved_at`, `approved_by`, `created_at`, `updated_at`
+- Relations:
+  - 1:N to `jobs.created_by`
+  - 1:N to `shifts.user_id`
+  - 1:N to `comments.user_id`
+  - 1:N to `shift_edits.edited_by`
+  - 1:N to `checklist_history.user_id`
+  - 1:N to `inventory_history.user_id`
+  - 1:N to `quotes.created_by`
+  - 1:N to `organization_settings.updated_by`
+  - self-reference via `approved_by`
 
-### Jobs, inventory, and production
+### Jobs, inventory, allocations
 
 #### `jobs`
-- Source: `20250216000001_initial_schema.sql` + follow-up migrations
-- Fields (in use by app/services/types):
-  - `id`, `job_code`, `po`, `name`, `qty`, `description`
-  - `ecd`, `due_date`, `labor_hours`
-  - `active`, `status`, `board_type`
-  - `created_by`, `assigned_users`, `is_rush`, `workers`, `bin_location`
-  - `part_number`, `part_id`, `variant_suffix`
-  - `est_number`, `inv_number`, `rfq_number`, `owr_number`
-  - `dash_quantities`, `revision`
-  - `labor_breakdown_by_variant`, `machine_breakdown_by_variant`
-  - `allocation_source`, `allocation_source_updated_at`
-  - `created_at`, `updated_at`
-- Primary relations:
-  - `jobs` 1:N `job_inventory.job_id`
-  - `jobs` 1:N `shifts.job_id`
-  - `jobs` 1:N `comments.job_id`
-  - `jobs` 1:N `attachments.job_id`
-  - `jobs` 1:N `checklists.job_id`
-  - `jobs` 1:N `inventory_history.related_job_id`
-  - `jobs` N:1 `parts` via `part_id` (and legacy `part_number` FK)
+- Fields: `id`, `job_code`, `po`, `name`, `qty`, `description`, `ecd`, `due_date`, `labor_hours`, `active`, `status`, `board_type`, `created_by`, `assigned_users`, `is_rush`, `workers`, `bin_location`, `part_number`, `part_id`, `variant_suffix`, `est_number`, `inv_number`, `rfq_number`, `owr_number`, `dash_quantities`, `revision`, `labor_breakdown_by_variant`, `machine_breakdown_by_variant`, `allocation_source`, `allocation_source_updated_at`, `created_at`, `updated_at`
+- Relations:
+  - 1:N `job_inventory.job_id`
+  - 1:N `shifts.job_id`
+  - 1:N `comments.job_id`
+  - 1:N `attachments.job_id`
+  - 1:N `checklists.job_id`
+  - 1:N `inventory_history.related_job_id`
+  - N:1 `parts` (`part_id`, plus legacy `part_number`)
 
 #### `inventory`
-- Source: `20250216000001_initial_schema.sql`
-- Fields:
-  - `id`, `name`, `description`, `category`
-  - `in_stock`, `available`, `disposed`, `on_order`
-  - `reorder_point`, `price`, `unit`
-  - `has_image`, `image_path`
-  - `barcode`, `bin_location`, `vendor`
-  - `attachment_count`, `created_at`, `updated_at`
-- Primary relations:
-  - `inventory` 1:N `job_inventory.inventory_id`
-  - `inventory` 1:N `part_materials.inventory_id`
-  - `inventory` 1:N `attachments.inventory_id`
-  - `inventory` 1:N `inventory_history.inventory_id`
+- Fields: `id`, `name`, `description`, `category`, `in_stock`, `available`, `disposed`, `on_order`, `reorder_point`, `price`, `unit`, `has_image`, `image_path`, `barcode`, `bin_location`, `vendor`, `attachment_count`, `created_at`, `updated_at`
+- Relations:
+  - 1:N `job_inventory.inventory_id`
+  - 1:N `part_materials.inventory_id`
+  - 1:N `attachments.inventory_id`
+  - 1:N `inventory_history.inventory_id`
 
-#### `job_inventory` (junction)
-- Source: `20250216000001_initial_schema.sql`
+#### `job_inventory`
 - Fields: `id`, `job_id`, `inventory_id`, `quantity`, `unit`, `created_at`
-- Primary relation:
-  - `jobs` N:M `inventory` through `job_inventory`
+- Relation role: N:M bridge for `jobs` and `inventory`
 
-### Time tracking and audit
+### Time and labor audit
 
 #### `shifts`
-- Source: `20250216000001_initial_schema.sql`, `20260221000200_shift_lunch_tracking.sql`
-- Fields:
-  - `id`, `user_id`, `job_id`
-  - `clock_in_time`, `clock_out_time`
-  - `lunch_start_time`, `lunch_end_time`, `lunch_minutes_used`
-  - `notes`, `created_at`
-- Primary relations:
-  - N:1 `profiles`
-  - N:1 `jobs`
-  - 1:N `shift_edits`
+- Fields: `id`, `user_id`, `job_id`, `clock_in_time`, `clock_out_time`, `lunch_start_time`, `lunch_end_time`, `lunch_minutes_used`, `notes`, `created_at`
+- Relations: N:1 to `profiles`, N:1 to `jobs`, 1:N to `shift_edits`
 
 #### `shift_edits`
-- Fields:
-  - `id`, `shift_id`, `edited_by`
-  - `previous_clock_in`, `new_clock_in`
-  - `previous_clock_out`, `new_clock_out`
-  - `reason`, `edit_timestamp`
+- Fields: `id`, `shift_id`, `edited_by`, `previous_clock_in`, `new_clock_in`, `previous_clock_out`, `new_clock_out`, `reason`, `edit_timestamp`
 
-### Collaboration and files
+### Collaboration and media
 
 #### `comments`
 - Fields: `id`, `job_id`, `user_id`, `text`, `created_at`
 
 #### `attachments`
-- Source: base schema + inventory/part migrations + constraint fix
-- Fields:
-  - `id`
-  - `job_id` (nullable)
-  - `inventory_id` (nullable)
-  - `part_id` (nullable)
-  - `filename`, `storage_path`, `is_admin_only`, `created_at`
-- Relation model:
-  - Polymorphic link: exactly one parent entity per attachment (job OR inventory OR part)
+- Fields: `id`, `job_id`, `inventory_id`, `part_id`, `filename`, `storage_path`, `is_admin_only`, `created_at`
+- Constraint: exactly one parent key (`job_id` xor `inventory_id` xor `part_id`)
 
-### Checklists
+### Checklists and history
 
 #### `checklists`
-- Fields: `id`, `job_id` (nullable for templates), `status`, `items` (jsonb), `created_at`, `updated_at`
+- Fields: `id`, `job_id`, `status`, `items`, `created_at`, `updated_at`
 
 #### `checklist_history`
 - Fields: `id`, `checklist_id`, `user_id`, `item_index`, `item_text`, `checked`, `created_at`
 
-### Pricing and quotes
+### Quotes and financial modeling
 
 #### `quotes`
-- Fields:
-  - `id`, `product_name`, `description`
-  - `material_cost`, `labor_hours`, `labor_rate`, `labor_cost`
-  - `markup_percent`, `subtotal`, `markup_amount`, `total`
-  - `line_items` (jsonb), `reference_job_ids` (uuid[])
-  - `notes`, `created_by`, `created_at`, `updated_at`
+- Fields: `id`, `product_name`, `description`, `material_cost`, `labor_hours`, `labor_rate`, `labor_cost`, `markup_percent`, `subtotal`, `markup_amount`, `total`, `line_items`, `reference_job_ids`, `notes`, `created_by`, `created_at`, `updated_at`
 
-### Inventory change audit
+### Inventory audit
 
 #### `inventory_history`
-- Fields:
-  - `id`, `inventory_id`, `user_id`
-  - `action`, `reason`
-  - `previous_in_stock`, `new_in_stock`
-  - `previous_available`, `new_available`
-  - `change_amount`
-  - `related_job_id`, `related_po`
-  - `created_at`
+- Fields: `id`, `inventory_id`, `user_id`, `action`, `reason`, `previous_in_stock`, `new_in_stock`, `previous_available`, `new_available`, `change_amount`, `related_job_id`, `related_po`, `created_at`
 
-### Parts and variant manufacturing model
+### Parts and variant materials
 
 #### `parts`
-- Fields:
-  - `id`, `part_number`, `name`, `description`
-  - `price_per_set`, `labor_hours`
-  - `requires_cnc`, `cnc_time_hours`
-  - `requires_3d_print`, `printer_3d_time_hours`
-  - `set_composition`, `created_at`, `updated_at`
+- Fields: `id`, `part_number`, `name`, `description`, `price_per_set`, `labor_hours`, `requires_cnc`, `cnc_time_hours`, `requires_3d_print`, `printer_3d_time_hours`, `set_composition`, `created_at`, `updated_at`
 
 #### `part_variants`
-- Fields:
-  - `id`, `part_id`, `variant_suffix`, `name`
-  - `price_per_variant`, `labor_hours`
-  - `requires_cnc`, `cnc_time_hours`
-  - `requires_3d_print`, `printer_3d_time_hours`
-  - `created_at`, `updated_at`
+- Fields: `id`, `part_id`, `variant_suffix`, `name`, `price_per_variant`, `labor_hours`, `requires_cnc`, `cnc_time_hours`, `requires_3d_print`, `printer_3d_time_hours`, `created_at`, `updated_at`
 
 #### `part_materials`
-- Fields (supports old/new schema names):
-  - `id`
-  - `part_id` (nullable for variant-only rows)
-  - `part_variant_id` or legacy `variant_id` (nullable for part-level per-set rows)
-  - `inventory_id`
-  - `quantity_per_unit` or legacy `quantity`
-  - `unit`, `usage_type`, `created_at`, `updated_at`
-- Relation model:
-  - `parts` N:M `inventory` via `part_materials`
-  - `part_variants` N:M `inventory` via `part_materials`
+- Fields: `id`, `part_id`, `part_variant_id` (legacy `variant_id` compatibility), `inventory_id`, `quantity_per_unit` (legacy `quantity` compatibility), `unit`, `usage_type`, `created_at`, `updated_at`
+- Relation role: links parts/variants to inventory material requirements
 
-### Organization settings
+### Admin/org settings and intake
 
 #### `organization_settings`
-- Fields:
-  - `id`, `org_key`
-  - `labor_rate`, `material_upcharge`, `cnc_rate`, `printer_3d_rate`
-  - `employee_count`, `overtime_multiplier`, `work_week_schedule`
-  - `require_on_site`, `site_lat`, `site_lng`, `site_radius_meters`, `enforce_on_site_at_login`
-  - `updated_by`, `created_at`, `updated_at`
+- Fields: `id`, `org_key`, `labor_rate`, `material_upcharge`, `cnc_rate`, `printer_3d_rate`, `employee_count`, `overtime_multiplier`, `work_week_schedule`, `require_on_site`, `site_lat`, `site_lng`, `site_radius_meters`, `enforce_on_site_at_login`, `updated_by`, `created_at`, `updated_at`
 
-### Additional tables present (not central to current inventory/parts flow)
-- `customer_proposals`
-- `customer_proposal_files`
+#### `customer_proposals`
+- Fields: `id`, `submission_id`, `contact_name`, `email`, `phone`, `description`, `status`, `linked_job_id`, `created_at`, `updated_at`
 
-## 2) How the Pieces Interact
+#### `customer_proposal_files`
+- Fields: `id`, `proposal_id`, `filename`, `storage_path`, `content_type`, `size_bytes`, `public_url`, `created_at`
+
+## Interaction flows and interconnectivity
 
 ### Inventory ↔ Jobs via `job_inventory`
+- Allocation rows are created through `jobService.addJobInventory`.
+- Display allocation is computed, not trusted from `inventory.available`.
+- Canonical logic now comes from:
+  - `src/lib/inventoryCalculations.ts`
+  - `src/lib/inventoryState.ts`
+- Active allocation statuses used for availability: `pod`, `rush`, `pending`, `inProgress`, `qualityControl`, `finished`.
 
-- Job material assignment writes rows in `job_inventory` through `jobService.addJobInventory(...)`.
-- Allocation is conceptually derived, not permanently deducted at assignment time.
-- Official math helper is `src/lib/inventoryCalculations.ts`:
-  - Allocated = sum of `job_inventory` on active workflow statuses only.
-  - Available = `max(0, inStock - allocated)`.
-- `AppContext` also computes `inventoryWithComputed` in one pass for UI display.
-
-### Available vs allocated and stock reconciliation
-
-- Operational model:
-  - Pre-delivery: inventory is allocated (planning commitment).
-  - On delivery: reconciliation reduces `in_stock` based on `job_inventory`.
-- In `AppContext.updateJobStatus(...)`:
-  - when status becomes `delivered`, each allocated line decrements stock and writes `inventory_history` action `reconcile_job`.
+### Available vs allocated and reconciliation on status changes
+- Available is always computed as `max(0, inStock - allocated)`.
+- `AppContext.updateJobStatus` now supports both directions:
+  - transition to `delivered` -> stock consumed + `inventory_history.action = reconcile_job`
+  - transition from `delivered` to non-delivered -> stock restored + `inventory_history.action = reconcile_job_reversal`
+- Reconciliation planning logic is extracted to `src/lib/inventoryReconciliation.ts`.
 
 ### Inventory history logging
+- Paths writing `inventory_history`:
+  - manual stock change (`manual_adjust`)
+  - allocation operation (`allocated_to_job`)
+  - order placement (`order_placed`)
+  - order receipt (`order_received`)
+  - delivery reconciliation (`reconcile_job`)
+  - delivery rollback (`reconcile_job_reversal`)
+- Read path is `inventoryHistoryService.getHistory`.
 
-- `inventoryHistoryService.createHistory(...)` writes audit rows for:
-  - `manual_adjust`
-  - `reconcile_job`
-  - `order_placed`
-  - `order_received`
-- History is queried in detail pages (`inventory_history` + profile/job joins for display metadata).
-
-### Time clock / shifts impact on jobs
-
-- `clockIn(jobId)` creates a shift.
-- If clocking into a `pending` or `rush` job, job status auto-advances to `inProgress`.
-- Lunch state is tracked on shift fields and influences shift totals/reporting; no direct inventory quantity mutation occurs from shifts.
+### Time clock and shifts impact on jobs
+- `clockIn(jobId)` creates a shift and auto-advances job status from `pending`/`rush` to `inProgress`.
+- Lunch tracking updates shift records (`startLunch`, `endLunch`) and reporting values.
+- No direct quantity mutation from shifts to inventory.
 
 ### Realtime subscriptions
+- `src/services/api/subscriptions.ts` subscribes to `jobs`, `shifts`, `inventory` postgres changes.
+- `AppContext` applies in-memory updates and triggers inventory refresh on job changes for allocation consistency.
 
-- `src/services/api/subscriptions.ts` subscribes to `jobs`, `shifts`, and `inventory`.
-- `AppContext` attaches listeners and updates local state.
-- On job create/update/delete events, inventory refresh is triggered to keep allocation-driven display values current.
-
-### Navigation / AppContext / state flow
-
-- Router wrapper exists (`BrowserRouter` in `src/index.tsx`) but app navigation is still custom state in `App.tsx` (`view`, `id`, `returnViews`).
-- Global domain state/actions are centralized in `AppContext`.
-- UI navigation persistence uses `NavigationContext` + localStorage for:
-  - search terms (`searchTerm`, `inventorySearchTerm`, `partsSearchTerm`)
-  - expanded categories
-  - scroll positions
-  - last viewed job
-  - minimal view
+### Navigation and application state flow
+- Top-level route split: `/` public marketing vs `/app` employee app.
+- Internal app navigation is custom view-state in `App.tsx` using `view`, `id`, and `returnViews`.
+- `NavigationContext` persists to localStorage:
+  - `searchTerm`
+  - `inventorySearchTerm`
+  - `partsSearchTerm`
+  - `expandedCategories`
+  - `scrollPositions`
+  - `lastViewedJobId`
+  - `minimalView`
 
 ### Validation, error handling, toasts, modals
+- Validation helpers live in `src/core/validation.ts`.
+- Mutation feedback pattern is toast-first via `useToast`.
+- Modals mix reusable and inline implementations (`ConfirmDialog`, `QRScanner`, `FileViewer`, `AllocateToJobModal`, inline overlays).
+- Error handling is primarily try/catch + console logging + toast fallback.
 
-- Validation helpers in `src/core/validation.ts`.
-- Mutations generally use `useToast().showToast(...)` for success/error feedback.
-- Modal patterns are mixed:
-  - reusable modal components exist (`ConfirmDialog`, `QRScanner`, `FileViewer`)
-  - some screens still use inline overlay modals and occasional `confirm(...)`.
-- Error handling is mostly catch/log/toast; some operations return booleans and degrade gracefully.
+## Current navigation and view system
 
-## 3) Current Navigation & View System
+- Router shell exists, but feature navigation remains custom state-machine in `App.tsx`.
+- Main views include:
+  - `dashboard`
+  - `job-detail`
+  - `clock-in`
+  - `inventory`
+  - `inventory-detail`
+  - `board-shop` / `board-admin`
+  - `parts`
+  - `part-detail`
+  - `create-job`
+  - `quotes`
+  - `calendar`
+  - `time-reports`
+  - `admin-settings`
+  - `trello-import`
 
-- Current primary view routing is a custom switch tree in `App.tsx`:
-  - `dashboard`, `job-detail`, `inventory`, `inventory-detail`, `parts`, `part-detail`, `quotes`, etc.
-- Return navigation is manually tracked with `returnViews`.
-- URL path is only used at top level to split public site (`/`) and employee app (`/app`).
-- Some components read router location for scroll state, but not all views are true route-driven pages.
+## Inventory and parts pain points observed in code
 
-## 4) Inventory/Parts UI Pain Points (Observed in Code)
+1. `src/AppContext.tsx` is still large and combines auth, jobs, shifts, inventory orchestration.
+2. `src/InventoryDetail.tsx` remains monolithic (scanner, edit form, history, attachments, linked-jobs in one file).
+3. `src/features/admin/PartDetail.tsx` is large and high-coupling.
+4. Mixed modal patterns and one-off overlays increase maintenance cost.
+5. `inventory.available` still exists in schema but display uses computed values, requiring discipline across services/UI.
+6. Some action clusters in list/detail views still duplicate controls (for example edit/history both entering same detail surface).
+7. Limited test coverage around status transitions and stock reconciliation edge cases.
 
-1. `src/features/admin/PartDetail.tsx` is extremely large and mixes many concerns (load/update/material logic/analytics/UI).
-2. Inventory list UX is split across old kanban-style and ordering views with inconsistent information density between mobile/desktop.
-3. Inventory detail includes heavy scanner and editing logic in a single large component.
-4. Allocation/availability display uses multiple computation paths (`inventoryCalculations` + `AppContext` memo pass), increasing drift risk.
-5. `inventoryService.updateStock(...)` writes `available = in_stock` at DB level, while UI treats available as computed.
-6. Ordering flow still shows pricing information in places where role-specific visibility must be explicitly guarded.
-7. Modal and confirm patterns are inconsistent (`ConfirmDialog` used in some places, native `confirm` still used in others).
-8. Touch target sizing is not uniformly applied across all icon actions in inventory surfaces.
-9. Parts list is simple and clean, but coupling from part edits into job card pricing/scheduling visibility needs explicit verification and tests.
-
-## 5) Libraries/Helpers That Must Be Preserved or Extended
+## Helpers and utilities to preserve/extend
 
 - `src/lib/inventoryCalculations.ts`
-  - canonical allocated/available math; keep as single source of truth.
+- `src/lib/inventoryState.ts`
+- `src/lib/inventoryReconciliation.ts`
 - `src/lib/timeUtils.ts`
-  - shared shift duration formatting and totals.
 - `src/core/validation.ts`
-  - form validation primitives; extend rather than duplicate.
 - `src/lib/materialFromPart.ts`
-  - computes required materials from part variants + dash quantities and syncs job inventory.
 - `src/lib/partDistribution.ts`
-  - set/variant distribution logic for pricing, labor, and materials.
 - `src/lib/priceVisibility.ts`
-  - role-based hiding of financial fields.
+- `src/lib/jobWorkflow.ts`
 
-## 6) PocketBase Compatibility Notes
+## Compatibility notes
 
-- Runtime backend is Supabase, but service naming and app architecture retain PocketBase compatibility conventions:
-  - central facade import from `src/pocketbase.ts`
-  - `expand`-style shapes on jobs (`job_inventory`, comments, attachments) mirrored in mapped types
-- This compatibility should be preserved while refactoring to avoid broad app breakage.
-
-## 7) Job Detail Refresh Notes (Current State)
-
-- Scope locked to `src/JobDetail.tsx` and directly coupled modules, with parent prop contract unchanged from `src/App.tsx`.
-- Non-breaking baseline contract documented in `JOB_DETAIL_REFRESH_BASELINE.md`.
-- Job Detail internals now use extracted modules:
-  - Hooks:
-    - `src/features/jobs/hooks/useMaterialSync.ts`
-    - `src/features/jobs/hooks/useVariantBreakdown.ts`
-    - `src/features/jobs/hooks/useMaterialCosts.ts`
-  - Components:
-    - `src/features/jobs/components/JobComments.tsx`
-    - `src/features/jobs/components/JobInventory.tsx`
-- Financial visibility guardrails are centralized through `src/lib/priceVisibility.ts` job helpers:
-  - `canViewJobFinancials(...)`
-  - `shouldComputeJobFinancials(...)`
-- Navigation reliability remains on existing foundations:
-  - custom app view stack in `App.tsx`
-  - persisted scroll + last viewed job in `NavigationContext`
-  - debounced material sync behavior retained for dash-quantity changes.
-
-## 8) Part Detail Refresh Notes (Current State)
-
-- Scope remains centered on `src/features/admin/PartDetail.tsx`.
-- Non-breaking baseline contract documented in `PART_DETAIL_REFRESH_BASELINE.md`.
-- Part detail analytics extraction added:
-  - `src/features/admin/hooks/usePartLaborFeedback.ts`
-  - isolates part-linked job matching and labor feedback derivation.
-- Financial guardrail hardening:
-  - centralized part visibility helper added in `src/lib/priceVisibility.ts`:
-    - `canViewPartFinancials(...)`
-  - Part Detail now uses this guard for financial widgets/displays.
-- Mobile/touch ergonomics improved on key actions:
-  - larger back/action tap targets
-  - improved Add/Edit action hit areas in materials/variant sections.
-- Parts-to-jobs coupling remains preserved:
-  - `parts:updated` dispatch continues from part updates and is consumed by job detail refresh paths.
+- Keep PocketBase-style API facade contracts (`src/pocketbase.ts`) stable while continuing Supabase-backed runtime behavior.
+- Preserve `expand`-style relationship shapes in mapped types and service outputs to avoid regressions in existing feature modules.

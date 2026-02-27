@@ -21,21 +21,25 @@ export function useMaterialCosts({
   materialUpcharge,
   isAdmin,
 }: UseMaterialCostsParams): Map<string, number> {
-  return useMemo(() => computeMaterialCosts({
-    isAdmin,
-    linkedPart,
-    selectedVariantSuffix,
-    dashQuantities,
-    inventoryById,
-    jobInventoryItems,
-    materialUpcharge,
-  }), [
-    isAdmin,
-    linkedPart,
-    selectedVariantSuffix,
-    dashQuantities,
-    inventoryById,
-    jobInventoryItems,
-    materialUpcharge,
-  ]);
+  return useMemo(
+    () =>
+      computeMaterialCosts({
+        isAdmin,
+        linkedPart,
+        selectedVariantSuffix,
+        dashQuantities,
+        inventoryById,
+        jobInventoryItems,
+        materialUpcharge,
+      }),
+    [
+      isAdmin,
+      linkedPart,
+      selectedVariantSuffix,
+      dashQuantities,
+      inventoryById,
+      jobInventoryItems,
+      materialUpcharge,
+    ]
+  );
 }

@@ -139,7 +139,8 @@ export function calculatePartQuote(
 
   const markupPercent = 0;
   const markupAmount = 0;
-  const total = isReverseCalculated && manualSetPrice != null ? manualSetPrice * quantity : subtotal;
+  const total =
+    isReverseCalculated && manualSetPrice != null ? manualSetPrice * quantity : subtotal;
 
   return {
     materialCostOur,

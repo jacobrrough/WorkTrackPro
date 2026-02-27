@@ -82,6 +82,24 @@ export const shiftService = {
   },
 
   async clockIn(jobId: string, userId: string): Promise<boolean> {
+    const { data: activeShift, error: activeShiftError } = await supabase
+      .from('shifts')
+      .select('id')
+      .eq('user_id', userId)
+      .is('clock_out_time', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (activeShiftError) {
+      console.error('Shift active-check failed:', activeShiftError);
+      return false;
+    }
+
+    // Enforce exactly one active shift per user.
+    if (activeShift) {
+      return false;
+    }
+
     const { error } = await supabase.from('shifts').insert({
       job_id: jobId,
       user_id: userId,

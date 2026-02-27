@@ -53,7 +53,9 @@ describe('calculatePartQuote', () => {
       laborHours: 1,
       requiresCNC: false,
       requires3DPrint: false,
-      materials: [{ id: 'm-1', inventoryId: 'inv-1', quantityPerUnit: 2, unit: 'ea', usageType: 'per_set' }],
+      materials: [
+        { id: 'm-1', inventoryId: 'inv-1', quantityPerUnit: 2, unit: 'ea', usageType: 'per_set' },
+      ],
       variants: [],
       setComposition: {},
     } as unknown as Part;
