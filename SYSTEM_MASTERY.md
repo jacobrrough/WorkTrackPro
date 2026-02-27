@@ -4,7 +4,7 @@ Verified against current implementation in `src/core/types.ts`, `src/services/ap
 
 ## Backend model and exact relations
 
-Runtime backend is Supabase, with PocketBase-compatible service patterns preserved by `src/pocketbase.ts`.
+Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility import facade that re-exports Supabase-backed services.
 
 ### Identity and access
 
@@ -202,5 +202,6 @@ Runtime backend is Supabase, with PocketBase-compatible service patterns preserv
 
 ## Compatibility notes
 
-- Keep PocketBase-style API facade contracts (`src/pocketbase.ts`) stable while continuing Supabase-backed runtime behavior.
-- Preserve `expand`-style relationship shapes in mapped types and service outputs to avoid regressions in existing feature modules.
+- Keep `src/pocketbase.ts` import contracts stable while runtime remains Supabase-backed.
+- Preserve `expand`-style relationship shapes in service outputs where existing UI depends on them (`jobs.expand.job_inventory`, `jobs.expand.comments`, `jobs.expand.attachments`).
+- Keep schema fallback behavior in `src/services/api/schemaCompat.ts` for forward/backward compatibility with incremental migrations.

@@ -26,7 +26,6 @@ import {
   formatDashSummary,
   totalFromDashQuantities,
   formatSetComposition,
-  calculateSetCompletion,
   getJobNameForSave,
   sanitizeReferenceValue,
 } from './lib/formatJob';
@@ -38,6 +37,7 @@ import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
 import { syncJobInventoryFromPart } from '@/lib/materialFromPart';
+import { buildPartVariantDefaults } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import {
   getDashQuantity,
@@ -52,6 +52,7 @@ import { useMaterialCosts } from '@/features/jobs/hooks/useMaterialCosts';
 import { useVariantBreakdown } from '@/features/jobs/hooks/useVariantBreakdown';
 import JobComments from '@/features/jobs/components/JobComments';
 import JobInventory from '@/features/jobs/components/JobInventory';
+import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import ConfirmDialog from './ConfirmDialog';
 
 interface JobDetailProps {
@@ -112,6 +113,21 @@ function getMachineTotalsFromJob(job: Job): { cncHours: number; printer3DHours: 
     },
     { cncHours: 0, printer3DHours: 0 }
   );
+}
+
+function getMachineOverrideFromJob(
+  job: Job
+): Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> {
+  const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
+  for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
+    const cncRaw = Number(entry.cncHoursPerUnit);
+    const printerRaw = Number(entry.printer3DHoursPerUnit);
+    out[toDashSuffix(suffix)] = {
+      cncHoursPerUnit: Number.isFinite(cncRaw) ? cncRaw : undefined,
+      printer3DHoursPerUnit: Number.isFinite(printerRaw) ? printerRaw : undefined,
+    };
+  }
+  return out;
 }
 
 const JobDetail: React.FC<JobDetailProps> = ({
@@ -177,6 +193,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteJobConfirm, setShowDeleteJobConfirm] = useState(false);
   const [isDeletingJob, setIsDeletingJob] = useState(false);
+  const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
   const [, setLoadingPart] = useState(false);
   const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
@@ -203,16 +220,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   });
   const [machinePerUnitOverrides, setMachinePerUnitOverrides] = useState<
     Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }>
-  >(() => {
-    const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
-    for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
-      out[toDashSuffix(suffix)] = {
-        cncHoursPerUnit: Number(entry.cncHoursPerUnit) || 0,
-        printer3DHoursPerUnit: Number(entry.printer3DHoursPerUnit) || 0,
-      };
-    }
-    return out;
-  });
+  >(() => getMachineOverrideFromJob(job));
   const machineTotals = useMemo(() => getMachineTotalsFromJob(job), [job]);
   const [editForm, setEditForm] = useState({
     po: job.po || '',
@@ -442,39 +450,20 @@ const JobDetail: React.FC<JobDetailProps> = ({
   useEffect(() => {
     if (!shouldPullFromPart) return;
     setAllocationSource('variant');
-    const laborNext: Record<string, number> = {};
-    const machineNext: Record<
-      string,
-      { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
-    > = {};
-    let totalLabor = 0;
-    let totalCnc = 0;
-    let total3D = 0;
-    linkedPart!.variants!.forEach((variant) => {
-      const key = toDashSuffix(variant.variantSuffix);
-      const laborPerUnit = variant.laborHours ?? linkedPart!.laborHours ?? 0;
-      const cncPerUnit = variant.requiresCNC ? (variant.cncTimeHours ?? 0) : 0;
-      const printer3DPerUnit = variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) : 0;
-      if (jobHasNoLabor) laborNext[key] = laborPerUnit;
-      machineNext[key] = {
-        cncHoursPerUnit: cncPerUnit,
-        printer3DHoursPerUnit: printer3DPerUnit,
-      };
-      const qty = getDashQuantity(dashQuantities, key);
-      if (qty > 0) {
-        totalLabor += laborPerUnit * qty;
-        totalCnc += cncPerUnit * qty;
-        total3D += printer3DPerUnit * qty;
-      }
-    });
-    if (jobHasNoLabor) setLaborPerUnitOverrides(laborNext);
-    setMachinePerUnitOverrides(machineNext);
-    if (jobHasNoLabor) setLaborHoursFromPart(true);
+    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
+    if (jobHasNoLabor || jobHasNoMachineHours) setLaborPerUnitOverrides(defaults.laborPerUnit);
+    setMachinePerUnitOverrides(defaults.machinePerUnit);
+    if (jobHasNoLabor || jobHasNoMachineHours) setLaborHoursFromPart(true);
     setEditForm((prev) => ({
       ...prev,
-      ...(jobHasNoLabor ? { laborHours: totalLabor.toFixed(2) } : {}),
-      cncHours: totalCnc > 0 ? totalCnc.toFixed(2) : prev.cncHours,
-      printer3DHours: total3D > 0 ? total3D.toFixed(2) : prev.printer3DHours,
+      ...(jobHasNoLabor || jobHasNoMachineHours
+        ? { laborHours: defaults.totals.laborHours.toFixed(2) }
+        : {}),
+      cncHours: defaults.totals.cncHours > 0 ? defaults.totals.cncHours.toFixed(2) : prev.cncHours,
+      printer3DHours:
+        defaults.totals.printer3DHours > 0
+          ? defaults.totals.printer3DHours.toFixed(2)
+          : prev.printer3DHours,
     }));
   }, [
     linkedPart,
@@ -482,6 +471,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     linkedPart?.variants,
     shouldPullFromPart,
     jobHasNoLabor,
+    jobHasNoMachineHours,
     dashQuantities,
   ]);
 
@@ -552,15 +542,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
     machineOverridePerUnit: machinePerUnitOverrides,
   });
 
-  // Auto-fill labor from part × dash quantities when labor is empty (so calculations stay automatic)
+  // Keep edit-form labor/CNC/3D fields synced with part-derived totals in variant mode.
   const laborBreakdownTotal = laborBreakdownByDash?.totalFromDash ?? 0;
   useEffect(() => {
     if (allocationSource !== 'variant') return;
     const totals = variantAllocation.totals;
-    const hasLabor = (laborBreakdownTotal ?? 0) > 0;
-    const hasCnc = (totals?.cncHours ?? 0) > 0;
-    const has3D = (totals?.printer3DHours ?? 0) > 0;
-    if (!hasLabor && !hasCnc && !has3D) return;
     setEditForm((prev) => {
       const nextLabor = (laborBreakdownTotal ?? 0).toFixed(2);
       const nextCnc = (totals?.cncHours ?? 0).toFixed(2);
@@ -572,7 +558,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       ) {
         return prev;
       }
-      setLaborHoursFromPart(true);
+      setLaborHoursFromPart(
+        Number(nextLabor) > 0 || Number(nextCnc) > 0 || Number(nextPrinter3D) > 0
+      );
       return {
         ...prev,
         laborHours: nextLabor,
@@ -709,14 +697,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       return out;
     });
     setMachinePerUnitOverrides(() => {
-      const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
-      for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
-        out[toDashSuffix(suffix)] = {
-          cncHoursPerUnit: Number(entry.cncHoursPerUnit) || 0,
-          printer3DHoursPerUnit: Number(entry.printer3DHoursPerUnit) || 0,
-        };
-      }
-      return out;
+      return getMachineOverrideFromJob(job);
     });
     const jobHasNoLaborReset =
       (job.laborHours == null || job.laborHours === 0) &&
@@ -771,6 +752,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       setSelectedVariant(null);
     }
   }, [
+    job,
     jobId,
     jobPartNumber,
     job.po,
@@ -833,23 +815,33 @@ const JobDetail: React.FC<JobDetailProps> = ({
       await jobService.updateComment(commentId, editingCommentText.trim());
       setEditingCommentId(null);
       setEditingCommentText('');
+      showToast('Comment updated', 'success');
       // Reload job data to show updated comment
       if (onReloadJob) await onReloadJob();
     } catch (error) {
       console.error('Error updating comment:', error);
+      showToast('Failed to update comment', 'error');
     }
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Delete this comment?')) return;
+    setPendingDeleteCommentId(commentId);
+  };
+
+  const handleConfirmDeleteComment = useCallback(async () => {
+    if (!pendingDeleteCommentId) return;
     try {
-      await jobService.deleteComment(commentId);
+      await jobService.deleteComment(pendingDeleteCommentId);
+      showToast('Comment deleted', 'success');
       // Reload job data to remove deleted comment
       if (onReloadJob) await onReloadJob();
     } catch (error) {
       console.error('Error deleting comment:', error);
+      showToast('Failed to delete comment', 'error');
+    } finally {
+      setPendingDeleteCommentId(null);
     }
-  };
+  }, [onReloadJob, pendingDeleteCommentId, showToast]);
 
   const handleSaveEdit = async () => {
     const partNumber = editForm.partNumber?.trim() || undefined;
@@ -954,14 +946,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       return out;
     });
     setMachinePerUnitOverrides(() => {
-      const out: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }> = {};
-      for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
-        out[toDashSuffix(suffix)] = {
-          cncHoursPerUnit: Number(entry.cncHoursPerUnit) || 0,
-          printer3DHoursPerUnit: Number(entry.printer3DHoursPerUnit) || 0,
-        };
-      }
-      return out;
+      return getMachineOverrideFromJob(job);
     });
     setPartNumberSearch(job.partNumber || '');
     setSelectedVariant(null);
@@ -1009,6 +994,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [currentUser.isAdmin, isDeletingJob, onDeleteJob, job.id, showToast, onBack, onNavigate]);
 
   const handleDashQuantityChange = useCallback((variantSuffix: string, rawValue: string) => {
+    setAllocationSource('variant');
+    setLaborHoursFromPart(true);
     const qty = Math.max(0, parseInt(rawValue, 10) || 0);
     const key = toDashSuffix(variantSuffix);
     setDashQuantities((prev) => {
@@ -1024,6 +1011,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   const handleFillFullSet = useCallback(() => {
     if (!linkedPart?.variants?.length) return;
+    setAllocationSource('variant');
+    setLaborHoursFromPart(true);
     const setComp = linkedPart.setComposition ?? {};
     const next: Record<string, number> = {};
     linkedPart.variants.forEach((variant) => {
@@ -1038,24 +1027,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleApplyFromPart = useCallback(() => {
     if (!linkedPart?.variants?.length) return;
     setAllocationSource('variant');
-    const laborNext: Record<string, number> = {};
-    const machineNext: Record<
-      string,
-      { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
-    > = {};
-    linkedPart.variants.forEach((variant) => {
-      const key = toDashSuffix(variant.variantSuffix);
-      laborNext[key] = variant.laborHours ?? linkedPart.laborHours ?? 0;
-      machineNext[key] = {
-        cncHoursPerUnit: variant.requiresCNC ? (variant.cncTimeHours ?? 0) : 0,
-        printer3DHoursPerUnit: variant.requires3DPrint ? (variant.printer3DTimeHours ?? 0) : 0,
-      };
-    });
-    setLaborPerUnitOverrides(laborNext);
-    setMachinePerUnitOverrides(machineNext);
+    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
+    setLaborPerUnitOverrides(defaults.laborPerUnit);
+    setMachinePerUnitOverrides(defaults.machinePerUnit);
     setLaborHoursFromPart(true);
     showToast('Applied labor/machine/material logic from part', 'success');
-  }, [linkedPart, showToast]);
+  }, [dashQuantities, linkedPart, showToast]);
 
   // File attachment handlers
   const handleFileUpload = async (file: File, isAdminOnly = false): Promise<boolean> => {
@@ -1217,65 +1194,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
         }
       `}</style>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={async () => {
-              await waitForPendingAttachmentToggles();
-              if (isEditing) {
-                handleCancelEdit();
-              } else if (onBack) {
-                onBack();
-              } else {
-                onNavigate('dashboard');
-              }
-            }}
-            disabled={pendingAttachmentToggleCount > 0}
-            className="flex size-10 items-center justify-center text-slate-400 hover:text-white disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-          <div className="flex-1 text-center">
-            <h1 className="text-lg font-bold text-white">
-              {isEditing ? 'Edit Job' : formatJobCode(job.jobCode)}
-            </h1>
-            {!isEditing && <StatusBadge status={job.status} size="sm" />}
-            {isEditing && <p className="text-[11px] text-slate-400">Edit below</p>}
-          </div>
-          <div className="flex items-center gap-2">
-            {currentUser.isAdmin && !isEditing && (
-              <button
-                onClick={() => updateState({ minimalView: !navState.minimalView })}
-                className="flex size-10 items-center justify-center text-slate-400 hover:text-white"
-                title="Toggle minimal view"
-              >
-                <span className="material-symbols-outlined">
-                  {navState.minimalView ? 'view_agenda' : 'view_compact'}
-                </span>
-              </button>
-            )}
-            {currentUser.isAdmin && (
-              <button
-                onClick={() => (isEditing ? handleSaveEdit() : setIsEditing(true))}
-                disabled={isSubmitting}
-                className={`flex size-10 items-center justify-center ${
-                  isEditing
-                    ? 'text-green-400 hover:text-green-300'
-                    : 'text-primary hover:text-primary/80'
-                } ${isSubmitting ? 'opacity-50' : ''}`}
-              >
-                <span className="material-symbols-outlined">{isEditing ? 'check' : 'edit'}</span>
-              </button>
-            )}
-            {!currentUser.isAdmin && (
-              <div className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                View Only
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <JobDetailHeaderBar
+        isEditing={isEditing}
+        jobCode={job.jobCode}
+        status={job.status}
+        isAdmin={currentUser.isAdmin}
+        minimalView={!!navState.minimalView}
+        isSubmitting={isSubmitting}
+        pendingAttachmentToggleCount={pendingAttachmentToggleCount}
+        onBackOrClose={async () => {
+          await waitForPendingAttachmentToggles();
+          if (isEditing) {
+            handleCancelEdit();
+          } else if (onBack) {
+            onBack();
+          } else {
+            onNavigate('dashboard');
+          }
+        }}
+        onToggleMinimalView={() => updateState({ minimalView: !navState.minimalView })}
+        onEditOrSave={() => (isEditing ? handleSaveEdit() : setIsEditing(true))}
+      />
 
       <main
         className="flex-1 overflow-y-auto pb-24"
@@ -1305,25 +1244,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         {formatDashSummary(dashQuantities)}
                       </span>
                     </div>
-                    {(() => {
-                      const { completeSets, percentage } = calculateSetCompletion(
-                        dashQuantities,
-                        linkedPart.setComposition
-                      );
-                      return (
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 overflow-hidden rounded-sm bg-white/10">
-                            <div
-                              className="h-full bg-primary transition-all"
-                              style={{ width: `${Math.min(100, percentage)}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium text-primary">
-                            {completeSets} sets ({percentage}%)
-                          </span>
-                        </div>
-                      );
-                    })()}
                   </div>
                 </div>
               )}
@@ -2085,18 +2005,20 @@ const JobDetail: React.FC<JobDetailProps> = ({
               />
             </div>
 
-            <JobInventory
-              job={job}
-              inventory={inventory}
-              inventoryById={inventoryById}
-              calculateAvailable={calculateAvailable}
-              currentUserIsAdmin={currentUser.isAdmin}
-              isSubmitting={isSubmitting}
-              onNavigate={onNavigate}
-              isMaterialAuto={isMaterialAuto}
-              onAddInventory={onAddInventory}
-              onRemoveInventory={onRemoveInventory}
-            />
+            <div>
+              <JobInventory
+                job={job}
+                inventory={inventory}
+                inventoryById={inventoryById}
+                calculateAvailable={calculateAvailable}
+                currentUserIsAdmin={currentUser.isAdmin}
+                isSubmitting={isSubmitting}
+                onNavigate={onNavigate}
+                isMaterialAuto={isMaterialAuto}
+                onAddInventory={onAddInventory}
+                onRemoveInventory={onRemoveInventory}
+              />
+            </div>
 
             {/* Drawings: part drawing files are the only files standard users can access */}
             <div className="p-3 pt-0">
@@ -2191,26 +2113,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
               />
             </div>
 
-            <JobComments
-              comments={job.comments || []}
-              currentUser={currentUser}
-              newComment={newComment}
-              setNewComment={setNewComment}
-              isSubmitting={isSubmitting}
-              onSubmitComment={handleSubmitComment}
-              editingCommentId={editingCommentId}
-              editingCommentText={editingCommentText}
-              setEditingCommentId={setEditingCommentId}
-              setEditingCommentText={setEditingCommentText}
-              onUpdateComment={handleUpdateComment}
-              onDeleteComment={handleDeleteComment}
-              formatCommentTime={formatCommentTime}
-            />
+            <div>
+              <JobComments
+                comments={job.comments || []}
+                currentUser={currentUser}
+                newComment={newComment}
+                setNewComment={setNewComment}
+                isSubmitting={isSubmitting}
+                onSubmitComment={handleSubmitComment}
+                editingCommentId={editingCommentId}
+                editingCommentText={editingCommentText}
+                setEditingCommentId={setEditingCommentId}
+                setEditingCommentText={setEditingCommentText}
+                onUpdateComment={handleUpdateComment}
+                onDeleteComment={handleDeleteComment}
+                formatCommentTime={formatCommentTime}
+              />
+            </div>
           </>
         )}
       </main>
 
-      {/* Fixed Bottom Action Bar */}
       {!isEditing && (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background-dark/95 p-3 backdrop-blur-md">
           <div className="flex gap-3">
@@ -2271,6 +2194,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
         destructive
         onConfirm={handleConfirmDeleteJob}
         onCancel={() => !isDeletingJob && setShowDeleteJobConfirm(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!pendingDeleteCommentId}
+        title="Delete this comment?"
+        message="This comment will be permanently removed."
+        confirmText="Delete Comment"
+        cancelText="Cancel"
+        destructive
+        onConfirm={handleConfirmDeleteComment}
+        onCancel={() => setPendingDeleteCommentId(null)}
       />
     </div>
   );

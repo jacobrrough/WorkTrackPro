@@ -23,7 +23,6 @@ import {
 import {
   calculateAllocated as calcAllocated,
   calculateAvailable as calcAvailable,
-  buildAllocatedByInventoryId,
 } from './lib/inventoryCalculations';
 import { buildJobNameFromConvention } from './lib/formatJob';
 import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
@@ -323,7 +322,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const wasDelivered = job?.status === 'delivered';
         const isDelivered = status === 'delivered';
         const nextJobs = jobs.map((j) => (j.id === jobId ? { ...j, status } : j));
-        const nextAllocationMap = buildAllocatedByInventoryId(nextJobs);
 
         // When marking as paid, rename job to Part REV per convention
         if (status === 'paid' && job) {
@@ -375,10 +373,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 previousInStock: entry.previousInStock,
                 newInStock: entry.newInStock,
                 previousAvailable: entry.previousAvailable,
-                newAvailable: Math.max(
-                  0,
-                  entry.newInStock - (nextAllocationMap.get(entry.inventoryId) ?? 0)
-                ),
+                newAvailable: entry.newAvailable,
                 changeAmount: entry.changeAmount,
                 relatedJob: jobId,
               });

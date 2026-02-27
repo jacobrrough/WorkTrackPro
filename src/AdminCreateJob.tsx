@@ -17,6 +17,8 @@ import {
   totalFromDashQuantities,
   getJobNameForSave,
 } from '@/lib/formatJob';
+import { computeVariantBreakdown } from '@/lib/variantAllocation';
+import { buildPersistedVariantBreakdowns } from '@/features/jobs/hooks/variantBreakdownUtils';
 import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
@@ -48,6 +50,21 @@ interface AdminCreateJobProps {
     revision?: string;
     variantSuffix?: string;
     dashQuantities?: Record<string, number>;
+    laborBreakdownByVariant?: Record<
+      string,
+      { qty: number; hoursPerUnit: number; totalHours: number }
+    >;
+    machineBreakdownByVariant?: Record<
+      string,
+      {
+        qty: number;
+        cncHoursPerUnit: number;
+        cncHoursTotal: number;
+        printer3DHoursPerUnit: number;
+        printer3DHoursTotal: number;
+      }
+    >;
+    allocationSource?: 'variant' | 'total';
   }) => Promise<Job | null>;
   onNavigate: (view: ViewState) => void;
   users: User[];
@@ -118,14 +135,38 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     revision: '',
   });
 
+  const deriveLaborHoursFromPart = (
+    part: Part | null,
+    quantities: Record<string, number>
+  ): number | undefined => {
+    if (!part) return undefined;
+    const hasDashQuantities = Object.values(quantities).some((qty) => qty > 0);
+    if (!hasDashQuantities) {
+      return typeof part.laborHours === 'number' && part.laborHours > 0
+        ? part.laborHours
+        : undefined;
+    }
+
+    const { totals } = computeVariantBreakdown({
+      part,
+      dashQuantities: quantities,
+      source: 'variant',
+    });
+    if (totals.laborHours > 0) return totals.laborHours;
+
+    return typeof part.laborHours === 'number' && part.laborHours > 0 ? part.laborHours : undefined;
+  };
+
   const handlePartSelect = (part: Part, quantities: Record<string, number>) => {
     setSelectedPartNumber(part.partNumber.trim());
     setSelectedPart(part);
     setPartNameEdit(part.name ?? '');
     setDashQuantities(quantities);
+    const derivedLaborHours = deriveLaborHoursFromPart(part, quantities);
     setFormData((prev) => ({
       ...prev,
-      laborHours: part.laborHours?.toString() || prev.laborHours,
+      laborHours:
+        typeof derivedLaborHours === 'number' ? derivedLaborHours.toFixed(2) : prev.laborHours,
     }));
   };
 
@@ -226,6 +267,23 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       },
       formData.jobCode
     );
+    const derivedLaborHours = deriveLaborHoursFromPart(selectedPart, dashQuantities);
+    const laborHoursForCreate = formData.laborHours
+      ? parseFloat(formData.laborHours)
+      : derivedLaborHours;
+    const normalizedDashQuantities =
+      Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined;
+    const computedBreakdown =
+      selectedPart && normalizedDashQuantities
+        ? computeVariantBreakdown({
+            part: selectedPart,
+            dashQuantities: normalizedDashQuantities,
+            source: 'variant',
+          })
+        : null;
+    const persistedBreakdowns = computedBreakdown
+      ? buildPersistedVariantBreakdowns(computedBreakdown.entries)
+      : null;
 
     try {
       const job = await onCreate({
@@ -239,7 +297,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             ? String(totalFromDashQuantities(dashQuantities))
             : formData.qty.trim() || undefined,
         description: formData.description.trim() || undefined,
-        laborHours: formData.laborHours ? parseFloat(formData.laborHours) : undefined,
+        laborHours: laborHoursForCreate,
         status: formData.status,
         isRush: formData.isRush,
         active: true, // CRITICAL: Set active to true!
@@ -252,7 +310,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         rfqNumber: formData.rfqNumber.trim() || undefined,
         partNumber: partNumberForCreate || undefined,
         revision: formData.revision.trim() || undefined,
-        dashQuantities: Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined,
+        dashQuantities: normalizedDashQuantities,
+        laborBreakdownByVariant: persistedBreakdowns?.persistedLaborBreakdown,
+        machineBreakdownByVariant: persistedBreakdowns?.persistedMachineBreakdown,
+        allocationSource: persistedBreakdowns ? 'variant' : undefined,
       } as Partial<Job>);
 
       if (job) {

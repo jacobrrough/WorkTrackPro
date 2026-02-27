@@ -5,7 +5,7 @@ import {
   normalizeDashQuantities,
   normalizeVariantSuffix,
   toDashSuffix,
-} from '@/lib/variantMath';
+} from './variantMath';
 
 export interface VariantRuntimeBreakdown {
   suffix: string;
@@ -24,6 +24,12 @@ export interface VariantBreakdownTotals {
   printer3DHours: number;
 }
 
+export interface VariantDefaultOverrides {
+  laborPerUnit: Record<string, number>;
+  machinePerUnit: Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }>;
+  totals: VariantBreakdownTotals;
+}
+
 export type VariantAllocationSource = 'variant' | 'total';
 
 type LaborOverride = Record<string, number>;
@@ -36,6 +42,31 @@ function getVariantBySuffix(
   if (!part?.variants?.length) return undefined;
   const normalized = normalizeVariantSuffix(suffix);
   return part.variants.find((v) => normalizeVariantSuffix(v.variantSuffix) === normalized);
+}
+
+function getEffectiveSetTotalUnits(part: (Part & { variants?: PartVariant[] }) | null): number {
+  if (!part) return 0;
+  if (part.setComposition && Object.keys(part.setComposition).length > 0) {
+    return Object.values(part.setComposition).reduce((sum, rawQty) => {
+      const qty = Number(rawQty);
+      return Number.isFinite(qty) && qty > 0 ? sum + qty : sum;
+    }, 0);
+  }
+  return part.variants?.length ?? 0;
+}
+
+function isSuffixInSetComposition(
+  part: (Part & { variants?: PartVariant[] }) | null,
+  suffix: string
+): boolean {
+  if (!part) return false;
+  if (part.setComposition && Object.keys(part.setComposition).length > 0) {
+    const normalized = normalizeVariantSuffix(suffix);
+    return Object.keys(part.setComposition).some(
+      (rawSuffix) => normalizeVariantSuffix(rawSuffix) === normalized
+    );
+  }
+  return !!getVariantBySuffix(part, suffix);
 }
 
 function distributeTotalPerUnit(
@@ -99,9 +130,57 @@ export function computeVariantBreakdown(params: {
     if (qty <= 0) continue;
     const variant = getVariantBySuffix(part, suffix);
     const suffixKey = toDashSuffix(suffix);
-    const laborFromPart = variant?.laborHours ?? part?.laborHours ?? 0;
-    const cncFromPart = variant?.requiresCNC ? (variant.cncTimeHours ?? 0) : 0;
-    const printerFromPart = variant?.requires3DPrint ? (variant.printer3DTimeHours ?? 0) : 0;
+    const setTotalUnits = getEffectiveSetTotalUnits(part);
+    const suffixInSet = isSuffixInSetComposition(part, suffix);
+    const partLaborPerUnit =
+      typeof part?.laborHours === 'number' &&
+      part.laborHours > 0 &&
+      setTotalUnits > 0 &&
+      suffixInSet
+        ? part.laborHours / setTotalUnits
+        : (part?.laborHours ?? 0);
+    const laborFromPart = variant?.laborHours ?? partLaborPerUnit;
+    const variantDefinesCnc =
+      variant != null &&
+      (variant.requiresCNC === true ||
+        (typeof variant.cncTimeHours === 'number' && variant.cncTimeHours > 0));
+    const variantDefines3d =
+      variant != null &&
+      (variant.requires3DPrint === true ||
+        (typeof variant.printer3DTimeHours === 'number' && variant.printer3DTimeHours > 0));
+
+    const requiresCNC = variantDefinesCnc
+      ? (variant?.requiresCNC ?? false)
+      : (part?.requiresCNC ?? false);
+    const requires3DPrint = variantDefines3d
+      ? (variant?.requires3DPrint ?? false)
+      : (part?.requires3DPrint ?? false);
+
+    const partCncPerUnit =
+      typeof part?.cncTimeHours === 'number' &&
+      part.cncTimeHours > 0 &&
+      setTotalUnits > 0 &&
+      suffixInSet
+        ? part.cncTimeHours / setTotalUnits
+        : (part?.cncTimeHours ?? 0);
+    const partPrinterPerUnit =
+      typeof part?.printer3DTimeHours === 'number' &&
+      part.printer3DTimeHours > 0 &&
+      setTotalUnits > 0 &&
+      suffixInSet
+        ? part.printer3DTimeHours / setTotalUnits
+        : (part?.printer3DTimeHours ?? 0);
+
+    const cncFromPart = requiresCNC
+      ? variantDefinesCnc
+        ? (variant?.cncTimeHours ?? 0)
+        : partCncPerUnit
+      : 0;
+    const printerFromPart = requires3DPrint
+      ? variantDefines3d
+        ? (variant?.printer3DTimeHours ?? 0)
+        : partPrinterPerUnit
+      : 0;
 
     const laborHoursPerUnit =
       source === 'variant'
@@ -139,4 +218,31 @@ export function computeVariantBreakdown(params: {
   );
 
   return { entries, totals };
+}
+
+export function buildPartVariantDefaults(
+  part: (Part & { variants?: PartVariant[] }) | null,
+  dashQuantities: Record<string, number>
+): VariantDefaultOverrides {
+  const { entries, totals } = computeVariantBreakdown({
+    part,
+    dashQuantities,
+    source: 'variant',
+  });
+
+  const laborPerUnit: Record<string, number> = {};
+  const machinePerUnit: Record<
+    string,
+    { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
+  > = {};
+
+  entries.forEach((entry) => {
+    laborPerUnit[entry.suffix] = entry.laborHoursPerUnit;
+    machinePerUnit[entry.suffix] = {
+      cncHoursPerUnit: entry.cncHoursPerUnit,
+      printer3DHoursPerUnit: entry.printer3DHoursPerUnit,
+    };
+  });
+
+  return { laborPerUnit, machinePerUnit, totals };
 }

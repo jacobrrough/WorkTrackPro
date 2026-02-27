@@ -1,5 +1,5 @@
 import type { InventoryItem, Job } from '@/core/types';
-import { buildAllocatedByInventoryId, calculateAvailable } from '@/lib/inventoryCalculations';
+import { buildAllocatedByInventoryId, calculateAvailable } from './inventoryCalculations';
 
 interface ReconciliationMutation {
   inventoryId: string;
@@ -42,7 +42,9 @@ export function buildReconciliationMutations(args: {
     if (!item) continue;
 
     const previousInStock = item.inStock;
-    const newInStock = Math.max(0, previousInStock + sign * qty);
+    // Preserve reversible delivered <-> non-delivered transitions.
+    // We intentionally allow temporary negative inStock so a restore can return to the exact prior value.
+    const newInStock = previousInStock + sign * qty;
     const previousAvailable = calculateAvailable(item, allocatedAfterUpdate.get(inventoryId) ?? 0);
     const nextAvailable = calculateAvailable(
       { ...item, inStock: newInStock },

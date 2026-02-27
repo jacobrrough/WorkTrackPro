@@ -1,3 +1,40 @@
+# Inventory Refresh Compatibility Addendum
+
+This iteration did **not** rework the Parts/Inventory refresh UI. The focus was Job Detail + Edit overhaul, with compatibility safeguards so existing inventory behavior remains stable.
+
+## What was safeguarded
+
+- Kept all inventory allocation and available-stock logic on shared helpers:
+  - `src/lib/inventoryCalculations.ts`
+  - `src/lib/inventoryState.ts`
+  - `src/lib/inventoryReconciliation.ts`
+- Kept existing allocation and history write pathways in place:
+  - `AppContext.updateJobStatus(...)` still writes inventory history actions (`reconcile_job`, `reconcile_job_reversal`).
+  - `syncJobInventoryFromPart(...)` still routes through `jobService` inventory methods.
+- Preserved existing inventory navigation links from Job Detail and edit material rows to `inventory-detail`.
+- Did not change Inventory list/detail routing, filters, tabs, or scanner flows implemented in the previous refresh.
+
+## Job Detail changes with inventory impact
+
+- Replaced duplicated inline part/variant math in `JobDetail` with shared helper usage:
+  - Added `buildPartVariantDefaults(...)` in `src/lib/variantAllocation.ts`.
+  - `JobDetail` now reuses this helper for both auto-pull and apply-from-part flows.
+- Reconciliation is now reversible across delivered status toggles:
+  - `buildReconciliationMutations(...)` now allows reversible stock delta math.
+  - `AppContext` uses `entry.newAvailable` from reconciliation output directly (single truth path).
+
+## Compatibility verification performed
+
+- `npm run test -- --run` passed (including new reconciliation + variant allocation tests).
+- `npm run build` passed.
+- `npm run lint` passed with only pre-existing warnings in `src/TimeReports.tsx`.
+
+## Why this is safe
+
+- Inventory UI contracts were not changed.
+- Inventory service contracts were not changed.
+- Job Detail still uses existing `onAddInventory`, `onRemoveInventory`, and `onNavigate` interfaces.
+- Role-based visibility remains guarded by existing admin checks and `priceVisibility` helpers.
 # Inventory Refresh Summary
 
 This document captures the implemented Parts/Inventory refresh work, focused on functional correctness, cross-module consistency, and mobile-first UX.
