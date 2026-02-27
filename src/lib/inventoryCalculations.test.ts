@@ -87,3 +87,15 @@ describe('calculateAvailable', () => {
     expect(available).toBe(0);
   });
 });
+
+describe('low stock detection', () => {
+  it('available at or below reorderPoint indicates low stock', () => {
+    const item = mockInventoryItem('inv1', 10);
+    (item as { reorderPoint?: number }).reorderPoint = 10;
+    const allocated = 0;
+    const available = calculateAvailable(item, allocated);
+    expect(available).toBe(10);
+    const reorderPoint = (item as { reorderPoint?: number }).reorderPoint ?? 0;
+    expect(reorderPoint > 0 && available <= reorderPoint).toBe(true);
+  });
+});
