@@ -33,7 +33,9 @@ import {
   calculateSetLaborFromVariants,
   variantLaborFromSetComposition,
   variantCncFromSetComposition,
+  variantPrinter3DFromSetComposition,
   calculateSetCncFromVariants,
+  calculateSetPrinter3DFromVariants,
   distributeSetMaterialToVariants,
 } from '@/lib/partDistribution';
 import {
@@ -114,37 +116,45 @@ const PartDetail: React.FC<PartDetailProps> = ({
     );
   }, [part, partInfoDraft]);
 
-  /** When part has variants + set composition, derive set labor/CNC from variants so "Use Auto" in variant cards has a value (part.laborHours may be unset when Set section is read-only). */
-  const { effectiveSetLaborHours, effectiveSetCncHours } = useMemo(() => {
-    if (
-      !part?.variants?.length ||
-      !part.setComposition ||
-      Object.keys(part.setComposition).length === 0
-    ) {
+  /** When part has variants + set composition, derive set labor/CNC/3D from variants so "Use Auto" in variant cards has a value (part.laborHours may be unset when Set section is read-only). */
+  const { effectiveSetLaborHours, effectiveSetCncHours, effectiveSetPrinter3DHours } =
+    useMemo(() => {
+      if (
+        !part?.variants?.length ||
+        !part.setComposition ||
+        Object.keys(part.setComposition).length === 0
+      ) {
+        return {
+          effectiveSetLaborHours: part?.laborHours,
+          effectiveSetCncHours: part?.requiresCNC ? part?.cncTimeHours : undefined,
+          effectiveSetPrinter3DHours: part?.requires3DPrint ? part?.printer3DTimeHours : undefined,
+        };
+      }
+      const derivedLabor = calculateSetLaborFromVariants(
+        part.variants,
+        part.setComposition,
+        part.variantsAreCopies
+      );
+      const derivedCnc = calculateSetCncFromVariants(part.variants, part.setComposition);
+      const derived3D = calculateSetPrinter3DFromVariants(part.variants, part.setComposition);
       return {
-        effectiveSetLaborHours: part?.laborHours,
-        effectiveSetCncHours: part?.requiresCNC ? part?.cncTimeHours : undefined,
+        effectiveSetLaborHours: part.laborHours ?? derivedLabor,
+        effectiveSetCncHours: part.requiresCNC ? (part.cncTimeHours ?? derivedCnc) : undefined,
+        effectiveSetPrinter3DHours: part.requires3DPrint
+          ? (part.printer3DTimeHours ?? derived3D)
+          : undefined,
       };
-    }
-    const derivedLabor = calculateSetLaborFromVariants(
-      part.variants,
-      part.setComposition,
-      part.variantsAreCopies
-    );
-    const derivedCnc = calculateSetCncFromVariants(part.variants, part.setComposition);
-    return {
-      effectiveSetLaborHours: part.laborHours ?? derivedLabor,
-      effectiveSetCncHours: part.requiresCNC ? (part.cncTimeHours ?? derivedCnc) : undefined,
-    };
-  }, [
-    part?.id,
-    part?.laborHours,
-    part?.cncTimeHours,
-    part?.requiresCNC,
-    part?.variants,
-    part?.setComposition,
-    part?.variantsAreCopies,
-  ]);
+    }, [
+      part?.id,
+      part?.laborHours,
+      part?.cncTimeHours,
+      part?.requiresCNC,
+      part?.printer3DTimeHours,
+      part?.requires3DPrint,
+      part?.variants,
+      part?.setComposition,
+      part?.variantsAreCopies,
+    ]);
 
   useEffect(() => {
     if (!part) {
@@ -1290,6 +1300,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         showFinancials={canViewFinancials}
                         partLaborHours={effectiveSetLaborHours}
                         partCncHours={effectiveSetCncHours}
+                        partPrinter3DHours={effectiveSetPrinter3DHours}
                         setComposition={part.setComposition}
                         isAddingMaterial={showAddMaterial?.variantId === variant.id}
                         onAddMaterialCancel={() => setShowAddMaterial(null)}
@@ -1726,6 +1737,7 @@ interface VariantCardProps {
   showFinancials: boolean;
   partLaborHours?: number;
   partCncHours?: number;
+  partPrinter3DHours?: number;
   setComposition?: Record<string, number> | null;
   isAddingMaterial?: boolean;
   onAddMaterialCancel?: () => void;
@@ -1754,6 +1766,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   showFinancials,
   partLaborHours,
   partCncHours,
+  partPrinter3DHours,
   setComposition,
   isAddingMaterial,
   onAddMaterialCancel,
@@ -1764,6 +1777,9 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const [price, setPrice] = useState(variant.pricePerVariant?.toString() || '');
   const [laborHours, setLaborHours] = useState(variant.laborHours?.toString() || '');
   const [cncHours, setCncHours] = useState(variant.cncTimeHours?.toString() || '');
+  const [printer3DHours, setPrinter3DHours] = useState(
+    variant.printer3DTimeHours?.toString() || ''
+  );
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValues, setMaterialQtyValues] = useState<Record<string, string>>({});
   const [materialUnitValues, setMaterialUnitValues] = useState<Record<string, string>>({});
@@ -1776,6 +1792,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
       setPrice(variant.pricePerVariant?.toString() || '');
       setLaborHours(variant.laborHours?.toString() || '');
       setCncHours(variant.cncTimeHours?.toString() || '');
+      setPrinter3DHours(variant.printer3DTimeHours?.toString() || '');
     }
   }, [
     isEditing,
@@ -1784,6 +1801,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
     variant.pricePerVariant,
     variant.laborHours,
     variant.cncTimeHours,
+    variant.printer3DTimeHours,
   ]);
 
   const autoLaborHours =
@@ -1806,6 +1824,8 @@ const VariantCard: React.FC<VariantCardProps> = ({
       laborHours: laborHours ? Number(laborHours) : undefined,
       cncTimeHours: cncHours ? Number(cncHours) : undefined,
       requiresCNC: cncHours ? true : variant.requiresCNC,
+      printer3DTimeHours: printer3DHours ? Number(printer3DHours) : undefined,
+      requires3DPrint: printer3DHours ? true : variant.requires3DPrint,
     });
   };
 
@@ -1921,31 +1941,41 @@ const VariantCard: React.FC<VariantCardProps> = ({
               placeholder={autoLaborHours != null ? autoLaborHours.toString() : '0.0'}
             />
           </div>
-          {(partCncHours != null && partCncHours > 0) || variant.requiresCNC ? (
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs text-slate-400">Machine time (CNC hrs)</label>
-                {autoCncHours != null && (
-                  <button
-                    type="button"
-                    onClick={revertCncToAuto}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Use Auto
-                  </button>
-                )}
-              </div>
-              <input
-                type="number"
-                step="0.1"
-                min={0}
-                value={cncHours}
-                onChange={(e) => setCncHours(e.target.value)}
-                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
-                placeholder={autoCncHours != null ? autoCncHours.toString() : '0.0'}
-              />
+          <div>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-slate-400">Machine time (CNC hrs)</label>
+              {autoCncHours != null && (
+                <button
+                  type="button"
+                  onClick={revertCncToAuto}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Use Auto
+                </button>
+              )}
             </div>
-          ) : null}
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              value={cncHours}
+              onChange={(e) => setCncHours(e.target.value)}
+              className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
+              placeholder={autoCncHours != null ? autoCncHours.toString() : '0.0'}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-slate-400">3D print time (hours)</label>
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              value={printer3DHours}
+              onChange={(e) => setPrinter3DHours(e.target.value)}
+              className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
+              placeholder="0.0"
+            />
+          </div>
         </div>
       )}
 
@@ -1957,6 +1987,9 @@ const VariantCard: React.FC<VariantCardProps> = ({
           {variant.laborHours !== undefined && <span>{variant.laborHours}h</span>}
           {variant.requiresCNC && variant.cncTimeHours !== undefined && (
             <span>{variant.cncTimeHours}h CNC</span>
+          )}
+          {variant.requires3DPrint && variant.printer3DTimeHours !== undefined && (
+            <span>{variant.printer3DTimeHours}h 3D</span>
           )}
         </div>
       )}
@@ -2189,6 +2222,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             inventoryItems={inventoryItems}
             partLaborHours={partLaborHours}
             partCncHours={partCncHours}
+            partPrinter3DHours={partPrinter3DHours}
             setComposition={setComposition}
             onVariantPriceChange={(variantId, price) => {
               if (variantId === variant.id) onUpdate(variantId, { pricePerVariant: price });
@@ -2201,6 +2235,13 @@ const VariantCard: React.FC<VariantCardProps> = ({
                 onUpdate(variantId, {
                   requiresCNC: cncTimeHours != null && cncTimeHours > 0,
                   cncTimeHours: cncTimeHours ?? undefined,
+                });
+            }}
+            onVariant3DChange={(variantId, printer3DTimeHours) => {
+              if (variantId === variant.id)
+                onUpdate(variantId, {
+                  requires3DPrint: printer3DTimeHours != null && printer3DTimeHours > 0,
+                  printer3DTimeHours: printer3DTimeHours ?? undefined,
                 });
             }}
           />
@@ -2216,20 +2257,24 @@ function VariantQuoteMini({
   inventoryItems,
   partLaborHours,
   partCncHours,
+  partPrinter3DHours,
   setComposition,
   onVariantPriceChange,
   onVariantLaborChange,
   onVariantCncChange,
+  onVariant3DChange,
 }: {
   partNumber: string;
   variant: PartVariant & { materials?: PartMaterial[] };
   inventoryItems: InventoryItem[];
   partLaborHours?: number;
   partCncHours?: number;
+  partPrinter3DHours?: number;
   setComposition?: Record<string, number> | null;
   onVariantPriceChange?: (variantId: string, price: number | undefined) => void;
   onVariantLaborChange?: (variantId: string, laborHours: number | undefined) => void;
   onVariantCncChange?: (variantId: string, cncTimeHours: number | undefined) => void;
+  onVariant3DChange?: (variantId: string, printer3DTimeHours: number | undefined) => void;
 }) {
   const { settings } = useSettings();
   const autoLaborHours =
@@ -2243,8 +2288,20 @@ function VariantQuoteMini({
     Object.keys(setComposition).length > 0
       ? variantCncFromSetComposition(variant.variantSuffix, partCncHours, setComposition)
       : undefined;
+  const autoPrinter3DHours =
+    partPrinter3DHours != null &&
+    partPrinter3DHours > 0 &&
+    setComposition &&
+    Object.keys(setComposition).length > 0
+      ? variantPrinter3DFromSetComposition(
+          variant.variantSuffix,
+          partPrinter3DHours,
+          setComposition
+        )
+      : undefined;
   const effectiveLaborHours = variant.laborHours ?? autoLaborHours ?? 0;
   const effectiveCncHours = variant.cncTimeHours ?? autoCncHours ?? 0;
+  const effectivePrinter3DHours = variant.printer3DTimeHours ?? autoPrinter3DHours ?? 0;
 
   const [laborHoursInput, setLaborHoursInput] = useState(
     variant.laborHours != null ? variant.laborHours.toString() : (autoLaborHours?.toString() ?? '')
@@ -2254,11 +2311,17 @@ function VariantQuoteMini({
       ? variant.cncTimeHours.toString()
       : (autoCncHours?.toString() ?? '')
   );
+  const [printer3DHoursInput, setPrinter3DHoursInput] = useState(
+    variant.printer3DTimeHours != null
+      ? variant.printer3DTimeHours.toString()
+      : (autoPrinter3DHours?.toString() ?? '')
+  );
   const [totalInput, setTotalInput] = useState(
     variant.pricePerVariant != null ? variant.pricePerVariant.toString() : ''
   );
   const [hasUserEditedLabor, setHasUserEditedLabor] = useState(false);
   const [hasUserEditedCnc, setHasUserEditedCnc] = useState(false);
+  const [hasUserEdited3D, setHasUserEdited3D] = useState(false);
   const [hasUserEditedTotal, setHasUserEditedTotal] = useState(false);
   const lastSentTotalRef = useRef<number | null>(null);
 
@@ -2286,6 +2349,16 @@ function VariantQuoteMini({
   }, [variant.cncTimeHours, autoCncHours, hasUserEditedCnc]);
 
   useEffect(() => {
+    if (!hasUserEdited3D) {
+      setPrinter3DHoursInput(
+        variant.printer3DTimeHours != null
+          ? variant.printer3DTimeHours.toString()
+          : (autoPrinter3DHours?.toString() ?? '')
+      );
+    }
+  }, [variant.printer3DTimeHours, autoPrinter3DHours, hasUserEdited3D]);
+
+  useEffect(() => {
     if (!hasUserEditedTotal) {
       setTotalInput(variant.pricePerVariant != null ? variant.pricePerVariant.toString() : '');
       lastSentTotalRef.current = null;
@@ -2309,16 +2382,27 @@ function VariantQuoteMini({
             return Number.isFinite(p) && p >= 0 ? p : effectiveCncHours;
           })()
         : effectiveCncHours;
+    const printer3DHoursForQuote =
+      hasUserEdited3D && printer3DHoursInput.trim() !== ''
+        ? (() => {
+            const p = parseFloat(printer3DHoursInput);
+            return Number.isFinite(p) && p >= 0 ? p : effectivePrinter3DHours;
+          })()
+        : effectivePrinter3DHours;
     const variantWithEffectiveLabor = {
       ...variant,
       laborHours: laborHoursForQuote,
       requiresCNC: cncHoursForQuote > 0 || variant.requiresCNC === true,
       cncTimeHours: cncHoursForQuote > 0 ? cncHoursForQuote : variant.cncTimeHours,
+      requires3DPrint: printer3DHoursForQuote > 0 || variant.requires3DPrint === true,
+      printer3DTimeHours:
+        printer3DHoursForQuote > 0 ? printer3DHoursForQuote : variant.printer3DTimeHours,
     };
     const manualPrice =
       hasUserEditedTotal && totalInput.trim() ? parseFloat(totalInput) : undefined;
     return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
       laborRate: settings.laborRate,
+      printer3DRate: settings.printer3DRate,
       manualVariantPrice: Number.isFinite(manualPrice) ? manualPrice : undefined,
     });
   }, [
@@ -2326,18 +2410,23 @@ function VariantQuoteMini({
     variant,
     effectiveLaborHours,
     effectiveCncHours,
+    effectivePrinter3DHours,
     inventoryItems,
     settings.laborRate,
+    settings.printer3DRate,
     totalInput,
     hasUserEditedTotal,
     laborHoursInput,
     hasUserEditedLabor,
     cncHoursInput,
     hasUserEditedCnc,
+    printer3DHoursInput,
+    hasUserEdited3D,
   ]);
 
   const isLaborAuto = variant.laborHours == null && autoLaborHours != null;
   const isCncAuto = variant.cncTimeHours == null && autoCncHours != null;
+  const isPrinter3DAuto = variant.printer3DTimeHours == null && autoPrinter3DHours != null;
   const isTotalAuto = !hasUserEditedTotal && result != null && variant.pricePerVariant == null;
   const persistedVariantTotal = variant.pricePerVariant;
 
@@ -2366,6 +2455,17 @@ function VariantQuoteMini({
     // Do not clear hasUserEditedCnc here: keep showing manual value until variant prop updates.
   };
 
+  const handlePrinter3DBlur = () => {
+    const val = printer3DHoursInput.trim() === '' ? undefined : parseFloat(printer3DHoursInput);
+    if (val !== undefined && !Number.isNaN(val) && val >= 0) {
+      if (Math.abs((variant.printer3DTimeHours ?? 0) - val) > 0.001) {
+        onVariant3DChange?.(variant.id, val);
+      }
+    } else {
+      onVariant3DChange?.(variant.id, undefined);
+    }
+  };
+
   const handleTotalBlur = () => {
     const val = totalInput.trim() === '' ? undefined : parseFloat(totalInput);
     if (val !== undefined && !Number.isNaN(val) && val >= 0) {
@@ -2391,6 +2491,10 @@ function VariantQuoteMini({
     setHasUserEditedCnc(false);
     onVariantCncChange?.(variant.id, undefined);
   };
+  const usePrinter3DAuto = () => {
+    setHasUserEdited3D(false);
+    onVariant3DChange?.(variant.id, undefined);
+  };
   const useTotalAuto = () => {
     setHasUserEditedTotal(false);
     lastSentTotalRef.current = null;
@@ -2398,6 +2502,7 @@ function VariantQuoteMini({
   };
   const switchLaborToManual = () => setHasUserEditedLabor(true);
   const switchCncToManual = () => setHasUserEditedCnc(true);
+  const switchPrinter3DToManual = () => setHasUserEdited3D(true);
   const switchTotalToManual = () => setHasUserEditedTotal(true);
 
   const displayLaborHours = hasUserEditedLabor
@@ -2409,6 +2514,11 @@ function VariantQuoteMini({
     ? cncHoursInput
     : effectiveCncHours > 0
       ? effectiveCncHours.toString()
+      : '';
+  const displayPrinter3DHours = hasUserEdited3D
+    ? printer3DHoursInput
+    : effectivePrinter3DHours > 0
+      ? effectivePrinter3DHours.toString()
       : '';
   const displayTotal = hasUserEditedTotal
     ? totalInput
@@ -2463,46 +2573,78 @@ function VariantQuoteMini({
               placeholder={autoLaborHours?.toString() ?? '0'}
             />
           </div>
-          {(partCncHours != null && partCncHours > 0) ||
-          variant.requiresCNC ||
-          effectiveCncHours > 0 ? (
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center text-slate-300">
-                Machine time (CNC hrs)
-                {isCncAuto && <AutoBadge />}
-                {isCncAuto ? (
-                  <button
-                    type="button"
-                    onClick={switchCncToManual}
-                    className="ml-2 text-xs text-primary hover:underline"
-                  >
-                    Manual
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={useCncAuto}
-                    className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
-                  >
-                    Use auto
-                  </button>
-                )}
-              </span>
-              <input
-                type="number"
-                step="0.1"
-                min={0}
-                value={displayCncHours}
-                onChange={(e) => {
-                  setCncHoursInput(e.target.value);
-                  setHasUserEditedCnc(true);
-                }}
-                onBlur={handleCncHoursBlur}
-                className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
-                placeholder={autoCncHours?.toString() ?? '0'}
-              />
-            </div>
-          ) : null}
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center text-slate-300">
+              Machine time (CNC hrs)
+              {isCncAuto && <AutoBadge />}
+              {isCncAuto ? (
+                <button
+                  type="button"
+                  onClick={switchCncToManual}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Manual
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={useCncAuto}
+                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                >
+                  Use auto
+                </button>
+              )}
+            </span>
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              value={displayCncHours}
+              onChange={(e) => {
+                setCncHoursInput(e.target.value);
+                setHasUserEditedCnc(true);
+              }}
+              onBlur={handleCncHoursBlur}
+              className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              placeholder={autoCncHours?.toString() ?? '0'}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center text-slate-300">
+              Machine time (3D hrs)
+              {isPrinter3DAuto && <AutoBadge />}
+              {isPrinter3DAuto ? (
+                <button
+                  type="button"
+                  onClick={switchPrinter3DToManual}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Manual
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={usePrinter3DAuto}
+                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                >
+                  Use auto
+                </button>
+              )}
+            </span>
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              value={displayPrinter3DHours}
+              onChange={(e) => {
+                setPrinter3DHoursInput(e.target.value);
+                setHasUserEdited3D(true);
+              }}
+              onBlur={handlePrinter3DBlur}
+              className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              placeholder={autoPrinter3DHours?.toString() ?? '0'}
+            />
+          </div>
           <div className="flex items-center justify-between text-slate-300">
             <span className="flex items-center">
               Labor

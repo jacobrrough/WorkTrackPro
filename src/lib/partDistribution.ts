@@ -219,6 +219,27 @@ export function calculateSetCncFromVariants(
 }
 
 /**
+ * Calculate set 3D printer hours from variant printer3DTimeHours and set composition.
+ */
+export function calculateSetPrinter3DFromVariants(
+  variants: PartVariant[],
+  setComposition: Record<string, number> | null | undefined
+): number | undefined {
+  if (!variants?.length || !setComposition || Object.keys(setComposition).length === 0) {
+    return undefined;
+  }
+  let total = 0;
+  for (const v of variants) {
+    const suffixNorm = norm(v.variantSuffix);
+    const qtyInSet = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
+    if (qtyInSet > 0 && v.requires3DPrint && v.printer3DTimeHours != null) {
+      total += v.printer3DTimeHours * qtyInSet;
+    }
+  }
+  return total > 0 ? total : undefined;
+}
+
+/**
  * Copy material definitions (inventoryId, quantityPerUnit, unit) from source variant to target variants.
  * Only adds materials that the target variant doesn't already have (by inventoryId).
  * Returns list of { variantId, inventoryId, quantity, unit } to add (caller persists via API).
