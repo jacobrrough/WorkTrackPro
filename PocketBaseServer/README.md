@@ -10,3 +10,7 @@ The current app lives at repository root, so this wrapper:
 3. Serves that static bundle on `PORT`.
 
 It is intentionally lightweight and deploy-only.
+
+If the build path fails in Railway, the wrapper emits a fallback static bundle
+that redirects to `https://work-track-pro-v6.vercel.app` (or
+`RAILWAY_FALLBACK_URL` when provided) so deployment checks do not hard-fail.

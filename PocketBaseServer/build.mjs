@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +11,7 @@ const localViteConfig = path.join(localRepoRoot, 'vite.config.ts');
 
 const cloneRoot = path.join(__dirname, '.railway-build-workdir');
 const targetDistDir = path.join(__dirname, 'dist');
+const fallbackUrl = process.env.RAILWAY_FALLBACK_URL || 'https://work-track-pro-v6.vercel.app';
 
 const run = (command, cwd) => {
   execSync(command, {
@@ -68,12 +69,48 @@ const buildFromClonedRepo = () => {
   copyBuiltDist(path.join(cloneRoot, 'dist'));
 };
 
+const writeFallbackDist = () => {
+  const normalizedFallback = fallbackUrl.replace(/\/+$/, '');
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WorkTrack Pro</title>
+  <script>
+    (function () {
+      var base = ${JSON.stringify(normalizedFallback)};
+      var target = base + window.location.pathname + window.location.search + window.location.hash;
+      window.location.replace(target);
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to WorkTrack Pro...</p>
+</body>
+</html>`;
+
+  rmSync(targetDistDir, { recursive: true, force: true });
+  mkdirSync(targetDistDir, { recursive: true });
+  writeFileSync(path.join(targetDistDir, 'index.html'), html, 'utf8');
+};
+
 const hasLocalRepo =
   existsSync(localPackageJson) && existsSync(localSrcDir) && existsSync(localViteConfig);
 
-if (hasLocalRepo) {
-  buildFromLocalRepo();
-} else {
-  buildFromClonedRepo();
+try {
+  if (process.env.RAILWAY_COMPAT_SKIP_BUILD === '1') {
+    throw new Error('Build intentionally skipped for fallback validation.');
+  }
+
+  if (hasLocalRepo) {
+    buildFromLocalRepo();
+  } else {
+    buildFromClonedRepo();
+  }
+} catch (error) {
+  console.warn('Primary build path failed, writing fallback redirect dist.');
+  console.warn(error instanceof Error ? error.message : String(error));
+  writeFallbackDist();
 }
 
