@@ -169,11 +169,11 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
             </button>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Button - large on mobile for shop floor */}
           <button
             onClick={handleSubmit}
             disabled={!jobCode || isLoading}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 text-lg font-bold text-white transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
+            className="mt-6 flex h-24 min-h-24 w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 text-lg font-bold text-white transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 md:h-14 md:min-h-0"
           >
             {isLoading ? (
               <>

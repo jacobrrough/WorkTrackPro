@@ -9,6 +9,7 @@ import { NotificationsProvider } from './contexts/NotificationsContext';
 import { NotificationTrigger } from './components/NotificationTrigger';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
+import BottomNavigation from './BottomNavigation';
 import { lazyWithRetry } from './lib/lazyWithRetry';
 
 const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
@@ -322,6 +323,7 @@ export default function App() {
           activeJob={activeJob}
           onClockOut={clockOut}
         />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
   }
@@ -348,6 +350,7 @@ export default function App() {
           initialItemId={id}
           onBackFromDetail={() => setId(undefined)}
         />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
   }
@@ -398,6 +401,7 @@ export default function App() {
           initialItemId={id}
           onBackFromDetail={() => handleNavigate(backView, backId)}
         />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
   }
@@ -419,6 +423,7 @@ export default function App() {
             onUpdateJob={updateJob}
           />
         </div>
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
   }
@@ -567,6 +572,7 @@ export default function App() {
       <NotificationTrigger />
       <AppShell>
         <Dashboard onNavigate={handleNavigate} />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     </NotificationsProvider>
   );
