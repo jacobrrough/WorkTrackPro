@@ -67,6 +67,7 @@ export type ViewState =
   | 'dashboard'
   | 'job-detail'
   | 'clock-in'
+  | 'scanner'
   | 'inventory'
   | 'inventory-detail'
   | 'board-shop'

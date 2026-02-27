@@ -28,6 +28,7 @@ const AdminSettings = lazyWithRetry(
   'AdminSettings'
 );
 const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
+const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
 
 function AppViewFallback() {
   return (
@@ -335,6 +336,15 @@ export default function App() {
           activeJob={activeJob}
           onClockOut={clockOut}
         />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'scanner') {
+    return (
+      <AppShell>
+        <ScannerScreen jobs={jobs} inventory={inventory} onNavigate={handleNavigate} />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );

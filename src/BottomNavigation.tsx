@@ -6,12 +6,12 @@ interface BottomNavigationProps {
   onNavigate: (view: ViewState) => void;
 }
 
-/** Persistent bottom tab bar for shop floor: Home | Jobs | Clock In | Stock */
+/** Persistent bottom tab bar for shop floor: Home | Jobs | Stock | Scanner */
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate }) => {
   const isHome = currentView === 'dashboard';
   const isJobs = currentView === 'board-shop';
-  const isClockIn = currentView === 'clock-in';
   const isStock = currentView === 'inventory' || currentView === 'inventory-detail';
+  const isScanner = currentView === 'scanner';
 
   const navToJobs = () => onNavigate('board-shop');
 
@@ -39,14 +39,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
         </button>
         <button
           type="button"
-          onClick={() => onNavigate('clock-in')}
-          className={`flex flex-col items-center gap-1 transition-colors ${isClockIn ? 'text-primary' : 'text-slate-400'}`}
-        >
-          <span className={`material-symbols-outlined ${isClockIn ? 'fill-1' : ''}`}>schedule</span>
-          <span className="text-[10px] font-bold uppercase">Clock In</span>
-        </button>
-        <button
-          type="button"
           onClick={() => onNavigate('inventory')}
           className={`flex flex-col items-center gap-1 transition-colors ${isStock ? 'text-primary' : 'text-slate-400'}`}
         >
@@ -54,6 +46,16 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
             inventory_2
           </span>
           <span className="text-[10px] font-bold uppercase">Stock</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('scanner')}
+          className={`flex flex-col items-center gap-1 transition-colors ${isScanner ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <span className={`material-symbols-outlined ${isScanner ? 'fill-1' : ''}`}>
+            qr_code_scanner
+          </span>
+          <span className="text-[10px] font-bold uppercase">Scan</span>
         </button>
       </div>
     </nav>

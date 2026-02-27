@@ -574,7 +574,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x',
           overscrollBehavior: 'contain',
+          overscrollBehaviorX: 'contain',
           scrollPaddingInline: 0,
+          overflowX: 'scroll',
+          overflowY: 'hidden',
         }}
       >
         <div className="flex h-full w-max min-w-full flex-nowrap gap-2 px-2 py-3 md:gap-2 md:px-2">
