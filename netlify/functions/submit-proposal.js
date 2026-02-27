@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Public endpoint: customer proposal form. No user JWT required; Turnstile + body validation used.
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',

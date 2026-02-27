@@ -1,5 +1,7 @@
 # WorkTrack Pro - Netlify
 # Build and deploy from GitHub
+# Required env vars (set in Netlify dashboard): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (build);
+# for functions: SUPABASE_SERVICE_ROLE_KEY, TURNSTILE_SECRET_KEY, RESEND_API_KEY, PROPOSAL_* / RESEND_*
 
 [build]
   command = "npm run build"
