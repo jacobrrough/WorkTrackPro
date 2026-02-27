@@ -32,17 +32,30 @@ export interface PartQuoteResult {
 
 /**
  * Compute material quantities required for one set: variant materials × setComposition + part-level per_set materials.
+ * When variantsAreCopies is true and variants exist, use first variant's materials for every suffix in setComposition and skip part-level per_set.
  */
 function materialRequirementsForOneSet(
-  part: Part & { variants?: PartVariant[]; materials?: PartMaterial[] },
+  part: Part & {
+    variants?: PartVariant[];
+    materials?: PartMaterial[];
+    variantsAreCopies?: boolean;
+  },
   setComposition: Record<string, number>
 ): Map<string, { quantity: number; unit: string }> {
   const map = new Map<string, { quantity: number; unit: string }>();
   const norm = (s: string) => s.replace(/^-/, '');
 
+  const useFirstVariantForAll =
+    part.variantsAreCopies === true &&
+    part.variants != null &&
+    part.variants.length > 0 &&
+    (part.variants[0]?.materials?.length ?? 0) > 0;
+
   for (const [suffix, setQty] of Object.entries(setComposition)) {
     if (setQty <= 0) continue;
-    const variant = part.variants?.find((v) => norm(v.variantSuffix) === norm(suffix));
+    const variant = useFirstVariantForAll
+      ? part.variants![0]
+      : part.variants?.find((v) => norm(v.variantSuffix) === norm(suffix));
     if (!variant?.materials) continue;
     for (const mat of variant.materials) {
       if (mat.usageType === 'per_set') continue;
@@ -56,6 +69,9 @@ function materialRequirementsForOneSet(
       }
     }
   }
+
+  // When variantsAreCopies and we used first variant for all, skip part-level per_set (single source is variants).
+  if (useFirstVariantForAll) return map;
 
   if (part.materials) {
     for (const mat of part.materials) {

@@ -549,10 +549,14 @@ export const jobService = {
   },
 
   async updateJobStatus(jobId: string, status: JobStatus): Promise<boolean> {
-    const { error } = await supabase
-      .from('jobs')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', jobId);
+    const payload: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (status === 'delivered') {
+      payload.bin_location = null;
+    }
+    const { error } = await supabase.from('jobs').update(payload).eq('id', jobId);
     if (error) {
       console.error('updateJobStatus failed:', error.message, error.code, { jobId, status });
       return false;

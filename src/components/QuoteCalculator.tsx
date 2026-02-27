@@ -19,6 +19,10 @@ export interface QuoteCalculatorProps {
   onLaborHoursChange?: (laborHours: number | undefined) => void;
   /** Optional auto-calculated set labor hours from variant composition. */
   autoSetLaborHours?: number;
+  /** When true, set price and labor inputs are display-only (e.g. when set is aggregate of variants). */
+  readOnly?: boolean;
+  /** When true, use first variant price for all units in set (variants are copies). */
+  variantsAreCopies?: boolean;
 }
 
 const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
@@ -33,6 +37,8 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   onSetPriceChange,
   onLaborHoursChange,
   autoSetLaborHours,
+  readOnly = false,
+  variantsAreCopies = false,
 }) => {
   const quantity = 1;
   const [manualSetPrice, setManualSetPrice] = useState<string>(part.pricePerSet?.toString() || '');
@@ -44,8 +50,8 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   onSetPriceChangeRef.current = onSetPriceChange;
 
   const autoSetPrice = useMemo(
-    () => calculateSetPriceFromVariants(variants ?? [], setComposition ?? {}),
-    [variants, setComposition]
+    () => calculateSetPriceFromVariants(variants ?? [], setComposition ?? {}, variantsAreCopies),
+    [variants, setComposition, variantsAreCopies]
   );
 
   useEffect(() => {
@@ -137,8 +143,11 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     ? (result?.laborHours?.toFixed(2) ?? laborHoursInput)
     : laborHoursInput;
 
+  // When set price is manual and labor was reverse-calculated from it, "Use Auto" for set labor should use that value and persist it (and distribute to variants)
   const effectiveAutoSetLabor =
-    autoSetLaborHours ?? (part.laborHours != null ? part.laborHours : 0);
+    result?.isLaborAutoAdjusted && result != null && Number.isFinite(result.laborHours)
+      ? result.laborHours
+      : (autoSetLaborHours ?? (part.laborHours != null ? part.laborHours : 0));
   const showUseAutoLabor =
     (part.variants?.length ?? 0) > 0 &&
     part.setComposition &&
@@ -156,21 +165,22 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             min={0}
             value={laborDisplayValue}
             onChange={(e) => {
+              if (readOnly) return;
               setLaborHoursInput(e.target.value);
               setHasUserEditedSetLabor(true);
             }}
             onBlur={() => {
-              if (isLaborAutoFromTarget) return;
+              if (readOnly || isLaborAutoFromTarget) return;
               const nextLabor = laborHoursInput.trim() === '' ? undefined : Number(laborHoursInput);
               if (nextLabor != null && Number.isNaN(nextLabor)) return;
               onLaborHoursChange?.(nextLabor);
             }}
-            readOnly={isLaborAutoFromTarget}
-            className="w-32 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+            readOnly={readOnly || isLaborAutoFromTarget}
+            className="w-32 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-70"
             placeholder="0.0"
           />
           {isLaborAutoFromTarget && <AutoBadge />}
-          {showUseAutoLabor && (
+          {!readOnly && showUseAutoLabor && (
             <button
               type="button"
               onClick={() => {
@@ -197,20 +207,23 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             min={0}
             value={displayValue}
             onChange={(e) => {
+              if (readOnly) return;
               setManualSetPrice(e.target.value);
               setHasUserEdited(true);
               setIsManualPrice(e.target.value.trim() !== '');
             }}
             onBlur={() => {
+              if (readOnly) return;
               if (manualSetPrice.trim() === '' && !isManualPrice) {
                 setManualSetPrice(autoSetPrice != null ? autoSetPrice.toString() : '');
               }
             }}
-            className="w-32 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+            readOnly={readOnly}
+            className="w-32 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-70"
             placeholder={autoSetPrice != null ? autoSetPrice.toFixed(2) : 'Auto'}
           />
-          {!isManualPrice && autoSetPrice != null && <AutoBadge />}
-          {isManualPrice && (autoSetPrice != null || part.pricePerSet != null) && (
+          {!readOnly && !isManualPrice && autoSetPrice != null && <AutoBadge />}
+          {!readOnly && isManualPrice && (autoSetPrice != null || part.pricePerSet != null) && (
             <button
               type="button"
               onClick={revertToAuto}

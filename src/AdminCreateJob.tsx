@@ -549,7 +549,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 )}
               </div>
               <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">Qty</label>
+                <label className="pb-1 text-xs font-medium text-slate-300">
+                  {totalFromDashQuantities(dashQuantities) > 0 ? 'Variant qty' : 'Sets'}
+                </label>
                 {totalFromDashQuantities(dashQuantities) > 0 ? (
                   <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-300">
                     {formatDashSummary(dashQuantities)} → Total:{' '}
@@ -558,7 +560,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 ) : (
                   <input
                     className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                    placeholder="e.g., 50 units"
+                    placeholder="e.g. 50 sets"
                     value={formData.qty}
                     onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
                     disabled={isSubmitting}

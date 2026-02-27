@@ -37,7 +37,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
-import { syncJobInventoryFromPart } from '@/lib/partsCalculations';
+import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/partsCalculations';
 import { syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults } from '@/lib/variantAllocation';
 import {
@@ -282,6 +282,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(
     normalizeDashQuantities(job.dashQuantities || {})
   );
+  /** When part has variants: 'sets' = one input for number of sets; 'variants' = per-variant inputs */
+  const [quantityInputMode, setQuantityInputMode] = useState<'sets' | 'variants'>('variants');
   const [allocationSource, setAllocationSource] = useState<'variant' | 'total'>(
     job.allocationSource ?? 'variant'
   );
@@ -539,6 +541,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
     !!linkedPart?.variants?.length &&
     Object.values(dashQuantities).some((q) => q > 0);
   const shouldApplySetLevelFromPart = partHasSetLevel;
+
+  /** Complete sets derived from current dash quantities (for "Full sets" input when part has set composition). */
+  const derivedCompleteSets = useMemo(() => {
+    if (!linkedPart?.setComposition || Object.keys(linkedPart.setComposition).length === 0)
+      return 0;
+    const norm = normalizeDashQuantities(dashQuantities);
+    return calculateSetCompletion(norm, linkedPart.setComposition).completeSets;
+  }, [linkedPart?.setComposition, dashQuantities]);
 
   useEffect(() => {
     if (!shouldPullFromPart || !linkedPart) return;
@@ -1267,6 +1277,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
     showToast('Filled with one full set', 'success');
   }, [linkedPart, showToast]);
 
+  /** Set dash quantities from number of full sets (setComposition × numSets). */
+  const handleSetsQuantityChange = useCallback(
+    (numSets: number) => {
+      if (!linkedPart?.variants?.length) return;
+      setAllocationSource('variant');
+      setLaborHoursFromPart(true);
+      const setComp = linkedPart.setComposition ?? {};
+      const next: Record<string, number> = {};
+      linkedPart.variants.forEach((variant) => {
+        const key = toDashSuffix(variant.variantSuffix);
+        const qtyPerSet = getDashQuantity(setComp, key) || 1;
+        next[key] = Math.max(0, Math.floor(qtyPerSet * numSets));
+      });
+      setDashQuantities(next);
+    },
+    [linkedPart]
+  );
+
   const handleApplyFromPart = useCallback(() => {
     if (!linkedPart?.variants?.length) return;
     setAllocationSource('variant');
@@ -1713,41 +1741,99 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Variants & quantities - compact */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-2">
-              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Variants & quantities
-              </h3>
               {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                  <span className="text-xs text-slate-400">
-                    {formatDashSummary(dashQuantities)} → Total{' '}
-                    {totalFromDashQuantities(dashQuantities)}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    {linkedPart.variants.map((variant) => {
-                      const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
-                      return (
-                        <div key={variant.id} className="flex items-center gap-1.5">
-                          <span className="w-20 truncate text-[11px] text-slate-400">
-                            {variant.variantSuffix}
-                          </span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={qty}
-                            onChange={(e) =>
-                              handleDashQuantityChange(variant.variantSuffix, e.target.value)
-                            }
-                            className="w-14 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary/50 focus:outline-none"
-                            aria-label={`Qty ${variant.variantSuffix}`}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <>
+                  <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Variants & quantities
+                  </h3>
+                  {linkedPart.setComposition &&
+                  Object.keys(linkedPart.setComposition).length > 0 ? (
+                    <div className="mb-2 flex flex-wrap items-center gap-3">
+                      <span className="text-[11px] text-slate-400">Input by:</span>
+                      <label className="flex cursor-pointer items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="quantity-input-mode"
+                          checked={quantityInputMode === 'sets'}
+                          onChange={() => setQuantityInputMode('sets')}
+                          className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-white">Full sets</span>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="quantity-input-mode"
+                          checked={quantityInputMode === 'variants'}
+                          onChange={() => setQuantityInputMode('variants')}
+                          className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-white">Variants</span>
+                      </label>
+                    </div>
+                  ) : null}
+                  {quantityInputMode === 'sets' &&
+                  linkedPart.setComposition &&
+                  Object.keys(linkedPart.setComposition).length > 0 ? (
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">
+                        Number of sets
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={derivedCompleteSets}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          handleSetsQuantityChange(Number.isFinite(v) && v >= 0 ? v : 0);
+                        }}
+                        className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        aria-label="Number of sets"
+                      />
+                      {derivedCompleteSets > 0 && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          {formatDashSummary(dashQuantities)} → Total{' '}
+                          {totalFromDashQuantities(dashQuantities)} units
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                      <span className="text-xs text-slate-400">
+                        {formatDashSummary(dashQuantities)} → Total{' '}
+                        {totalFromDashQuantities(dashQuantities)}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {linkedPart.variants.map((variant) => {
+                          const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
+                          return (
+                            <div key={variant.id} className="flex items-center gap-1.5">
+                              <span className="w-20 truncate text-[11px] text-slate-400">
+                                {variant.variantSuffix}
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={qty}
+                                onChange={(e) =>
+                                  handleDashQuantityChange(variant.variantSuffix, e.target.value)
+                                }
+                                className="w-14 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary/50 focus:outline-none"
+                                aria-label={`Variant ${variant.variantSuffix} qty`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Qty</label>
+                  <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Set quantity
+                  </h3>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">Sets</label>
                   {totalFromDashQuantities(dashQuantities) > 0 ? (
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-300">
                       {formatDashSummary(dashQuantities)} → Total{' '}
@@ -1759,7 +1845,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       value={editForm.qty}
                       onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
                       className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
-                      placeholder="Qty"
+                      placeholder="Sets"
+                      aria-label="Quantity (sets)"
                     />
                   )}
                 </div>
@@ -1853,7 +1940,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Materials $</label>
+                      <label className="mb-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                        Materials $
+                        {linkedPart && (
+                          <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                            from part
+                          </span>
+                        )}
+                      </label>
                       <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
                         ${totalMaterialCost.toFixed(2)}
                       </div>
@@ -1895,51 +1989,57 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <div className="border-t border-white/10 pt-2">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">
-                    {linkedPart ? 'Linked Materials' : 'Materials'}
+                    {linkedPart ? 'Materials' : 'Materials'}
                   </span>
                 </div>
-                {!job.inventoryItems?.length ? (
-                  <p className="text-xs text-slate-400">
-                    No materials assigned. Add from part or manually.
-                  </p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {job.inventoryItems.map((item) => {
-                      const invItem = inventoryById.get(item.inventoryId);
-                      return (
-                        <li
-                          key={item.id}
-                          className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
-                        >
-                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                {!linkedPart ? (
+                  !job.inventoryItems?.length ? (
+                    <p className="text-xs text-slate-400">
+                      No materials assigned. Add from part or manually.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {job.inventoryItems.map((item) => {
+                        const invItem = inventoryById.get(item.inventoryId);
+                        return (
+                          <li
+                            key={item.id}
+                            className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  invItem && onNavigate('inventory-detail', invItem.id)
+                                }
+                                className="min-w-0 flex-1 truncate text-left text-xs font-medium text-primary hover:underline"
+                              >
+                                {item.inventoryName || invItem?.name || 'Unknown'}
+                              </button>
+                              <span className="ml-2 text-[10px] text-slate-400">
+                                {item.quantity} {item.unit}
+                              </span>
+                              {isMaterialAuto(item.inventoryId, item.quantity) && (
+                                <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                  auto
+                                </span>
+                              )}
+                            </div>
                             <button
                               type="button"
-                              onClick={() => invItem && onNavigate('inventory-detail', invItem.id)}
-                              className="min-w-0 flex-1 truncate text-left text-xs font-medium text-primary hover:underline"
+                              onClick={() => item.id && onRemoveInventory(job.id, item.id)}
+                              className="ml-2 rounded p-1 text-slate-400 hover:bg-red-500/20 hover:text-red-400"
+                              aria-label="Remove"
                             >
-                              {item.inventoryName || invItem?.name || 'Unknown'}
+                              <span className="material-symbols-outlined text-sm">close</span>
                             </button>
-                            <span className="ml-2 text-[10px] text-slate-400">
-                              {item.quantity} {item.unit}
-                            </span>
-                            {isMaterialAuto(item.inventoryId, item.quantity) && (
-                              <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                                auto
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => item.id && onRemoveInventory(job.id, item.id)}
-                            className="ml-2 rounded p-1 text-slate-400 hover:bg-red-500/20 hover:text-red-400"
-                            aria-label="Remove"
-                          >
-                            <span className="material-symbols-outlined text-sm">close</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )
+                ) : (
+                  <p className="text-xs text-slate-400">From part BOM below.</p>
                 )}
               </div>
             </div>
@@ -1947,55 +2047,65 @@ const JobDetail: React.FC<JobDetailProps> = ({
             {linkedPart && (
               <div className="rounded-sm border border-white/10 bg-white/5 p-3">
                 <h3 className="mb-1.5 text-xs font-semibold text-white">
-                  Part BOM {linkedPart.variants?.length ? `(${linkedPart.partNumber})` : ''}
+                  Part BOM ({linkedPart.partNumber})
                 </h3>
                 {(() => {
-                  const materials = selectedVariant?.materials || linkedPart.materials || [];
-                  if (materials.length === 0) {
+                  const requiredMap = computeRequiredMaterials(linkedPart, dashQuantities);
+                  const materialsFromPart =
+                    linkedPart.variantsAreCopies && linkedPart.variants?.[0]?.materials?.length
+                      ? linkedPart.variants[0].materials
+                      : linkedPart.materials || [];
+                  if (requiredMap.size === 0 && materialsFromPart.length === 0) {
                     return (
                       <p className="text-xs text-slate-400">No materials defined for this part.</p>
                     );
                   }
+                  if (requiredMap.size === 0) {
+                    return (
+                      <p className="text-xs text-slate-400">
+                        Set variant quantities above to see required materials.
+                      </p>
+                    );
+                  }
                   return (
                     <div className="space-y-1.5">
-                      {materials.map((material) => {
-                        const invItem = inventoryById.get(material.inventoryId);
-                        const cost = materialCosts.get(material.inventoryId) || 0;
-                        const materialName = material.inventoryName || invItem?.name || 'Unknown';
-                        return (
-                          <div
-                            key={material.id}
-                            className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
-                          >
-                            <div className="flex min-w-0 items-center gap-2">
-                              {invItem ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onNavigate('inventory-detail', invItem.id)}
-                                  className="truncate text-left text-xs font-medium text-primary hover:underline"
-                                >
-                                  {materialName}
-                                </button>
-                              ) : (
-                                <span className="truncate text-xs font-medium text-white">
-                                  {materialName}
+                      {Array.from(requiredMap.entries()).map(
+                        ([inventoryId, { quantity, unit }]) => {
+                          const invItem = inventoryById.get(inventoryId);
+                          const cost = materialCosts.get(inventoryId) || 0;
+                          const materialName = invItem?.name ?? 'Unknown';
+                          return (
+                            <div
+                              key={inventoryId}
+                              className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-2 py-1.5"
+                            >
+                              <div className="flex min-w-0 items-center gap-2">
+                                {invItem ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onNavigate('inventory-detail', invItem.id)}
+                                    className="truncate text-left text-xs font-medium text-primary hover:underline"
+                                  >
+                                    {materialName}
+                                  </button>
+                                ) : (
+                                  <span className="truncate text-xs font-medium text-white">
+                                    {materialName}
+                                  </span>
+                                )}
+                                <span className="shrink-0 text-[10px] text-slate-400">
+                                  {quantity.toFixed(2)} {unit}
+                                </span>
+                              </div>
+                              {canViewFinancials && cost > 0 && (
+                                <span className="shrink-0 text-xs font-semibold text-white">
+                                  ${cost.toFixed(2)}
                                 </span>
                               )}
-                              <span className="shrink-0 text-[10px] text-slate-400">
-                                {quantityPerUnit(
-                                  material as { quantityPerUnit?: number; quantity?: number }
-                                )}{' '}
-                                {material.unit}
-                              </span>
                             </div>
-                            {canViewFinancials && cost > 0 && (
-                              <span className="shrink-0 text-xs font-semibold text-white">
-                                ${cost.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
+                          );
+                        }
+                      )}
                     </div>
                   );
                 })()}
@@ -2075,12 +2185,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               )}
 
-              {/* Dash Quantities (below top line) */}
               {job.partNumber &&
                 job.dashQuantities &&
                 Object.keys(job.dashQuantities).length > 0 && (
                   <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
-                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">Dash</p>
+                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">Variant qty</p>
                     <p className="text-sm font-medium text-white">
                       {formatDashSummary(job.dashQuantities)} →{' '}
                       {totalFromDashQuantities(job.dashQuantities)} total
@@ -2134,7 +2243,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.ecd)}</p>
                 </div>
                 <div className="rounded-sm bg-white/5 p-2.5">
-                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Quantity</p>
+                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">
+                    {job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+                      ? 'Variant qty'
+                      : 'Sets'}
+                  </p>
                   <p className="text-sm font-bold text-white">
                     {job.dashQuantities && Object.keys(job.dashQuantities).length > 0
                       ? `${formatDashSummary(job.dashQuantities)} (${totalFromDashQuantities(job.dashQuantities)})`
@@ -2256,18 +2369,112 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             <div>
-              <JobInventory
-                job={job}
-                inventory={inventory}
-                inventoryById={inventoryById}
-                calculateAvailable={calculateAvailable}
-                currentUserIsAdmin={currentUser.isAdmin}
-                isSubmitting={isSubmitting}
-                onNavigate={onNavigate}
-                isMaterialAuto={isMaterialAuto}
-                onAddInventory={handleAddInventory}
-                onRemoveInventory={onRemoveInventory}
-              />
+              {linkedPart ? (
+                <div className="p-3 pt-0">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+                    <span className="material-symbols-outlined text-lg text-primary">
+                      inventory_2
+                    </span>
+                    Part BOM ({linkedPart.partNumber})
+                  </h3>
+                  {(() => {
+                    let jobDashQty = normalizeDashQuantities(job.dashQuantities || {});
+                    const totalFromJob =
+                      totalFromDashQuantities(jobDashQty) || Number(job.qty) || 0;
+                    // When part is "variants are copies" (or single variant), normalized dash may be empty
+                    // if job stores qty differently; use job total on first variant so BOM still computes.
+                    if (
+                      totalFromJob > 0 &&
+                      Object.keys(jobDashQty).length === 0 &&
+                      linkedPart.variants?.length &&
+                      linkedPart.variants[0]
+                    ) {
+                      jobDashQty = {
+                        [toDashSuffix(linkedPart.variants[0].variantSuffix)]: totalFromJob,
+                      };
+                    }
+                    const requiredMap = computeRequiredMaterials(linkedPart, jobDashQty);
+                    const materialsFromPart =
+                      linkedPart.variantsAreCopies && linkedPart.variants?.[0]?.materials?.length
+                        ? linkedPart.variants[0].materials
+                        : linkedPart.materials || [];
+                    if (requiredMap.size === 0 && materialsFromPart.length === 0) {
+                      return (
+                        <div className="rounded-sm bg-[#261a32] p-3 text-center">
+                          <p className="text-sm text-slate-400">
+                            No materials defined for this part.
+                          </p>
+                        </div>
+                      );
+                    }
+                    if (requiredMap.size === 0) {
+                      return (
+                        <div className="rounded-sm bg-[#261a32] p-3 text-center">
+                          <p className="text-sm text-slate-400">
+                            Set variant quantities to see required materials.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2">
+                        {Array.from(requiredMap.entries()).map(
+                          ([inventoryId, { quantity, unit }]) => {
+                            const invItem = inventoryById.get(inventoryId);
+                            const cost = materialCosts.get(inventoryId) || 0;
+                            const materialName = invItem?.name ?? 'Unknown';
+                            return (
+                              <div
+                                key={inventoryId}
+                                className="flex items-center justify-between overflow-hidden rounded-sm bg-[#261a32] p-3"
+                              >
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  {invItem ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => onNavigate('inventory-detail', invItem.id)}
+                                      className="-ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm p-1 text-left transition-colors hover:bg-white/5"
+                                    >
+                                      <span className="truncate font-medium text-primary hover:underline">
+                                        {materialName}
+                                      </span>
+                                    </button>
+                                  ) : (
+                                    <span className="truncate font-medium text-white">
+                                      {materialName}
+                                    </span>
+                                  )}
+                                  <span className="shrink-0 text-xs text-slate-400">
+                                    {quantity.toFixed(2)} {unit}
+                                  </span>
+                                </div>
+                                {canViewFinancials && cost > 0 && (
+                                  <span className="shrink-0 text-sm font-semibold text-white">
+                                    ${cost.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <JobInventory
+                  job={job}
+                  inventory={inventory}
+                  inventoryById={inventoryById}
+                  calculateAvailable={calculateAvailable}
+                  currentUserIsAdmin={currentUser.isAdmin}
+                  isSubmitting={isSubmitting}
+                  onNavigate={onNavigate}
+                  isMaterialAuto={isMaterialAuto}
+                  onAddInventory={handleAddInventory}
+                  onRemoveInventory={onRemoveInventory}
+                />
+              )}
             </div>
 
             {/* Drawings: part drawing files are the only files standard users can access */}

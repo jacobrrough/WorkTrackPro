@@ -6,6 +6,7 @@ import {
   normalizeVariantSuffix,
   normalizeDashQuantities,
   quantityPerUnit,
+  toDashSuffix,
 } from '@/lib/variantMath';
 
 /** Epsilon for quantity comparison to avoid float drift and unnecessary updates; align with useMaterialSync isMaterialAuto. */
@@ -19,24 +20,59 @@ function qtyEqual(a: number, b: number): boolean {
  * Compute required materials for a job from part definition and dash quantities.
  * Returns a Map keyed by inventoryId with { quantity, unit }.
  * Algorithm: per-variant materials × dash qty; part-level per_set × complete sets (or total qty if no set composition).
+ * When variantsAreCopies is true, first variant's materials are used for every variant in dashQuantities.
  */
 export function computeRequiredMaterials(
-  part: Part & { variants?: PartVariant[]; setComposition?: Record<string, number> | null },
+  part: Part & {
+    variants?: PartVariant[];
+    setComposition?: Record<string, number> | null;
+    variantsAreCopies?: boolean;
+  },
   dashQuantities: Record<string, number>
 ): Map<string, { quantity: number; unit: string }> {
   const materialMap = new Map<string, { quantity: number; unit: string }>();
-  const normalizedDash = normalizeDashQuantities(dashQuantities);
+  let normalizedDash = normalizeDashQuantities(dashQuantities);
 
-  const totalQty = Object.values(normalizedDash).reduce((sum, q) => sum + q, 0);
+  let totalQty = Object.values(normalizedDash).reduce((sum, q) => sum + q, 0);
+
+  // When "variants are copies", use one variant's materials for all. Prefer the first variant that has materials.
+  const firstVariantWithMaterials =
+    part.variants?.find((v) => (v.materials?.length ?? 0) > 0) ?? part.variants?.[0];
+  const useFirstVariantForAll =
+    part.variantsAreCopies === true &&
+    part.variants != null &&
+    part.variants.length > 0 &&
+    (firstVariantWithMaterials?.materials?.length ?? 0) > 0;
+
+  // Fallback when normalized dash is empty but we have quantity and at least one variant with materials.
+  // Handles: key format mismatch, variantsAreCopies not set in API, or job.dashQuantities not loaded.
+  if (totalQty <= 0 && part.variants?.length) {
+    const rawTotal = Object.values(dashQuantities).reduce(
+      (sum, v) => sum + (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0),
+      0
+    );
+    if (rawTotal > 0) {
+      const variantWithMaterials = part.variants[0]?.materials?.length
+        ? part.variants[0]
+        : part.variants.find((v) => (v.materials?.length ?? 0) > 0);
+      if (variantWithMaterials?.materials?.length) {
+        const suffix = toDashSuffix(variantWithMaterials.variantSuffix) || '-01';
+        normalizedDash = { [suffix]: rawTotal };
+        totalQty = rawTotal;
+      }
+    }
+  }
+
   if (totalQty <= 0) return materialMap;
 
-  // Per-variant materials × dash quantity
+  // Per-variant materials × dash quantity (or first variant's materials for all when variantsAreCopies)
   for (const [suffix, qty] of Object.entries(normalizedDash)) {
     if (qty <= 0) continue;
-    const normalized = normalizeVariantSuffix(suffix);
-    const variant = part.variants?.find(
-      (v) => normalizeVariantSuffix(v.variantSuffix) === normalized
-    );
+    const variant = useFirstVariantForAll
+      ? firstVariantWithMaterials!
+      : part.variants?.find(
+          (v) => normalizeVariantSuffix(v.variantSuffix) === normalizeVariantSuffix(suffix)
+        );
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
       if (material.usageType === 'per_set') continue;
@@ -54,7 +90,12 @@ export function computeRequiredMaterials(
     }
   }
 
-  // Part-level per_set: use complete sets when setComposition exists (matches part definition and calculateSetCompletion), else total quantity
+  // Part-level per_set: when variants exist and variantsAreCopies, skip (single source is variants).
+  // Otherwise use complete sets when setComposition exists, else total quantity.
+  if (useFirstVariantForAll) {
+    return materialMap;
+  }
+
   const setComposition =
     part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
   const perSetMultiplier = setComposition

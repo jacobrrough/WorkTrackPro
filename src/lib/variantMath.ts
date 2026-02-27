@@ -33,8 +33,10 @@ export const normalizeDashQuantities = (
   for (const [suffix, rawQty] of Object.entries(dashQuantities)) {
     const qty = Number(rawQty);
     if (!Number.isFinite(qty) || qty <= 0) continue;
-    const key = toDashSuffix(suffix);
-    if (!key) continue;
+    const n = normalizeVariantSuffix(suffix);
+    if (!n) continue;
+    // Use zero-padded dash form (-01, -02) so keys match part variantSuffix (-01, -02)
+    const key = /^\d{1,2}$/.test(n) ? `-${n.padStart(2, '0')}` : `-${n}`;
     normalized[key] = qty;
   }
   return normalized;

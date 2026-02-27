@@ -732,6 +732,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
                           ? formatDashSummary(job.dashQuantities)
                           : (job.qty ?? '—');
+                    const qtyLabel =
+                      job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+                        ? 'Variant qty'
+                        : 'Sets';
                     const overdue = isJobOverdue(job);
                     const isSelected = selectedJobIds.has(job.id);
 
@@ -1003,7 +1007,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             {partName}
                           </p>
                           <p className="truncate text-slate-200">
-                            <span className="text-slate-500">Qty </span>
+                            <span className="text-slate-500">{qtyLabel} </span>
                             {qtyDisplay}
                           </p>
                           <p className="truncate text-slate-200">

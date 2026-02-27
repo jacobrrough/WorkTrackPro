@@ -5,13 +5,19 @@ const norm = (s: string) => s.replace(/^-/, '');
 /**
  * Calculate set price from variant prices and set composition.
  * Set price = sum of (variant.pricePerVariant × setComposition[variant]) for each variant in composition.
+ * When useFirstVariantPriceForAll is true (e.g. variantsAreCopies), use first variant's price for every unit in the set.
  */
 export function calculateSetPriceFromVariants(
   variants: PartVariant[],
-  setComposition: Record<string, number> | null | undefined
+  setComposition: Record<string, number> | null | undefined,
+  useFirstVariantPriceForAll?: boolean
 ): number | undefined {
   if (!variants?.length || !setComposition || Object.keys(setComposition).length === 0) {
     return undefined;
+  }
+  if (useFirstVariantPriceForAll && variants[0].pricePerVariant != null) {
+    const totalUnits = Object.values(setComposition).reduce((a, b) => a + (Number(b) || 0), 0);
+    return totalUnits > 0 ? variants[0].pricePerVariant! * totalUnits : undefined;
   }
   let total = 0;
   for (const v of variants) {
@@ -169,10 +175,15 @@ export function variantPrinter3DFromSetComposition(
  */
 export function calculateSetLaborFromVariants(
   variants: PartVariant[],
-  setComposition: Record<string, number> | null | undefined
+  setComposition: Record<string, number> | null | undefined,
+  useFirstVariantLaborForAll?: boolean
 ): number | undefined {
   if (!variants?.length || !setComposition || Object.keys(setComposition).length === 0) {
     return undefined;
+  }
+  if (useFirstVariantLaborForAll && variants[0].laborHours != null) {
+    const totalUnits = Object.values(setComposition).reduce((a, b) => a + (Number(b) || 0), 0);
+    return totalUnits > 0 ? variants[0].laborHours! * totalUnits : undefined;
   }
   let total = 0;
   for (const v of variants) {

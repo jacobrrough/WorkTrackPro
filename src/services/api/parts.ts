@@ -27,6 +27,7 @@ function mapRowToPart(row: Record<string, unknown>): Part {
       setComp != null && typeof setComp === 'object' && !Array.isArray(setComp)
         ? (setComp as Record<string, number>)
         : undefined,
+    variantsAreCopies: row.variants_are_copies === true,
     createdAt: row.created_at as string | undefined,
     updatedAt: row.updated_at as string | undefined,
   };
@@ -267,6 +268,7 @@ export const partsService = {
     if (data.requires3DPrint != null) row.requires_3d_print = data.requires3DPrint;
     if (data.printer3DTimeHours != null) row.printer_3d_time_hours = data.printer3DTimeHours;
     if (data.setComposition != null) row.set_composition = data.setComposition;
+    if (data.variantsAreCopies != null) row.variants_are_copies = data.variantsAreCopies;
     const { data: created, error } = await supabase.from('parts').insert(row).select('*').single();
     if (error) return null;
     return mapRowToPart(created as unknown as Record<string, unknown>);
@@ -285,6 +287,7 @@ export const partsService = {
     if (data.requires3DPrint !== undefined) row.requires_3d_print = data.requires3DPrint;
     if (data.printer3DTimeHours !== undefined) row.printer_3d_time_hours = data.printer3DTimeHours;
     if (data.setComposition !== undefined) row.set_composition = data.setComposition;
+    if (data.variantsAreCopies !== undefined) row.variants_are_copies = data.variantsAreCopies;
     const { data: updated, error } = await supabase
       .from('parts')
       .update(row)
@@ -795,6 +798,43 @@ export const partsService = {
   },
 
   /**
+   * Copy first variant's BOM and costs (labor, CNC, 3D, price) to all other variants.
+   * Then set variantsAreCopies to false so each variant has its own data and job BOM works normally.
+   */
+  async copyFirstVariantBomAndCostsToAll(partId: string): Promise<boolean> {
+    const part = await this.getPartWithVariantsAndMaterials(partId);
+    if (!part?.variants?.length || part.variants.length < 2) return false;
+    const first = part.variants[0];
+    if (!first?.materials?.length) return false;
+
+    const others = part.variants.slice(1);
+    for (const other of others) {
+      for (const mat of other.materials ?? []) {
+        if (mat.id) await this.deleteMaterial(mat.id);
+      }
+      for (const mat of first.materials) {
+        const added = await this.addPartMaterial(
+          other.id,
+          mat.inventoryId,
+          mat.quantityPerUnit ?? 1,
+          mat.unit
+        );
+        if (!added) return false;
+      }
+      await this.updateVariant(other.id, {
+        laborHours: first.laborHours,
+        cncTimeHours: first.cncTimeHours,
+        printer3DTimeHours: first.printer3DTimeHours,
+        pricePerVariant: first.pricePerVariant,
+        requiresCNC: first.requiresCNC,
+        requires3DPrint: first.requires3DPrint,
+      });
+    }
+    await this.updatePart(partId, { variantsAreCopies: false });
+    return true;
+  },
+
+  /**
    * Apply pricing + variants + materials from one part to another.
    * Useful when customer-facing part numbers differ but manufacturing setup is identical.
    */
@@ -815,6 +855,7 @@ export const partsService = {
       requires3DPrint: source.requires3DPrint,
       printer3DTimeHours: source.printer3DTimeHours,
       setComposition: source.setComposition ?? null,
+      variantsAreCopies: source.variantsAreCopies,
     });
 
     for (const existingMaterial of target.materials ?? []) {

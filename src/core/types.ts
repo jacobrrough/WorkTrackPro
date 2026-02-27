@@ -239,6 +239,8 @@ export interface Part {
   /** 3D printer time per set (hours), used when requires3DPrint is true */
   printer3DTimeHours?: number;
   setComposition?: Record<string, number> | null;
+  /** When true, only first variant holds materials/costs; all variants treated as copies for BOM and quote */
+  variantsAreCopies?: boolean;
   createdAt?: string;
   updatedAt?: string;
   variants?: PartVariant[];

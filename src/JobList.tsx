@@ -213,10 +213,10 @@ const JobList: React.FC<JobListProps> = ({
                         </span>
                         {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 ? (
                           <span className="text-xs text-slate-500">
-                            Qty: {formatDashSummary(job.dashQuantities)}
+                            Variant: {formatDashSummary(job.dashQuantities)}
                           </span>
                         ) : (
-                          job.qty && <span className="text-xs text-slate-500">Qty: {job.qty}</span>
+                          job.qty && <span className="text-xs text-slate-500">Sets: {job.qty}</span>
                         )}
                       </div>
                     </div>

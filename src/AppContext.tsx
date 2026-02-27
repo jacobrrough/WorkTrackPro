@@ -358,7 +358,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           );
         } else {
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? { ...j, status } : j)) : []
+            prev
+              ? prev.map((j) =>
+                  j.id === jobId
+                    ? {
+                        ...j,
+                        status,
+                        ...(status === 'delivered' ? { binLocation: undefined } : {}),
+                      }
+                    : j
+                )
+              : []
           );
           const ok = await jobService.updateJobStatus(jobId, status);
           if (!ok) {
