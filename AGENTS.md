@@ -40,9 +40,31 @@ The Supabase instance has email confirmation enabled. If the test account ever n
 
 ### App routes
 
-- `/` — Public landing page (Rough Cut Manufacturing)
-- `/app` — Employee login → WorkTrack Pro dashboard
-- Sign-up available via the login page
+- **`/`** — Public landing page (Rough Cut Manufacturing)
+- **`/app`** — Employee login → WorkTrack Pro dashboard (SPA)
+
+Internal app navigation is view-state (not URL path). Main views:
+
+| View | Description |
+|------|-------------|
+| `dashboard` | Home: active shift, quick links (Jobs, Inventory, Parts, Quotes, Boards), notifications |
+| `job-detail` | Job detail (materials, comments, attachments, checklists, status) |
+| `clock-in` | Time clock (pick job, clock in/out, lunch) |
+| `scanner` | QR/barcode scanner (inventory, job, bin) |
+| `inventory` | Inventory list; add item, search, categories |
+| `inventory-detail` | Single item: stock, history, attachments, allocate to job |
+| `board-shop` | Shop-floor Kanban |
+| `board-admin` | Admin Kanban |
+| `parts` | Parts list (admin) |
+| `part-detail` | Part/variants, materials, quote calculator (admin) |
+| `create-job` | Create job from part (admin) |
+| `quotes` | Quotes list and editor (admin) |
+| `time-reports` | Labor by job/employee, CSV export (admin) |
+| `calendar` | Calendar view (admin) |
+| `admin-settings` | Org settings, labor rates, on-site rules (admin) |
+| `trello-import` | Trello import (admin) |
+
+Sign-up is available from the login page. Navigation state (search, filters, scroll, last job, minimal view) is persisted via `NavigationContext`.
 
 ### Notes
 

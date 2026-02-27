@@ -36,8 +36,9 @@ A comprehensive business management application for small to medium manufacturin
 ### Job Tracker
 - Kanban boards (Shop Floor and Admin)
 - Status workflow, bulk status update, rush and overdue indicators
+- Multi-variant jobs: `dashQuantities` per variant (e.g. `-01`, `-05`); material auto-assignment from Part → PartMaterial
 - Material allocation, comments, attachments, checklists
-- Bin location, ECD, due dates
+- Bin location, ECD, due dates; clickable material names link to inventory detail
 
 ### Other
 - Role-based access (Admin vs Employee); admin-only views guarded
@@ -74,7 +75,7 @@ Copy `.env.template` to `.env.local` and set your Supabase credentials:
 cp .env.template .env.local
 ```
 
-Edit `.env.local`:
+Edit `.env.local` and set:
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -134,13 +135,17 @@ The repo includes a root `railway.toml`. Use the **project root** as the Railway
 
 ```
 src/
-├── services/api/     # Supabase-backed API (jobs, shifts, inventory, auth, etc.)
-├── lib/              # Utilities (timeUtils, inventoryCalculations, offlineQueue, exportCsv)
-├── components/       # Shared UI (Toast, ProtectedRoute, AdminRoute, NotificationBell, CommandPalette)
+├── services/api/     # Supabase-backed API (jobs, shifts, inventory, auth, parts, quotes, etc.)
+├── lib/              # Utilities (timeUtils, inventoryCalculations, inventoryState, offlineQueue, exportCsv, partDistribution, etc.)
+├── components/       # Shared UI (Toast, ProtectedRoute, AdminRoute, NotificationBell, CommandPalette, QRScanner, etc.)
 ├── contexts/         # Navigation, Settings, ClockIn, Notifications
-├── core/             # types.ts, validation
+├── core/             # types.ts, validation, imageHelper
+├── features/         # Feature modules (admin, dashboard, inventory, jobs, parts, quotes, time)
+├── hooks/            # useClockInWithOnSiteCheck, etc.
+├── public/           # PublicHome (landing)
 ├── App.tsx           # View-state routing and shell
 ├── AppContext.tsx    # Auth, mutations, TanStack Query wiring
+├── pocketbase.ts     # Facade re-exporting Supabase services (legacy import path)
 └── *.test.ts        # Vitest tests
 ```
 

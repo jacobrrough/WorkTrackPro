@@ -148,13 +148,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const boardContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollPositionsRef = useRef(navState.scrollPositions);
-  const boardTouchRef = useRef<{
-    startX: number;
-    startY: number;
-    lastX: number;
-    lastY: number;
-    locked: 'x' | 'y' | null;
-  } | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const didScrollRef = useRef(false);
 
   // HTML5 drag-and-drop on touch devices can hijack swipe gestures; keep drag for fine pointers.
   const supportsFinePointer =
@@ -222,63 +217,39 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // On mobile: capture touch on board container so horizontal swipes scroll the board even when touch starts on a card
+  // Scroll-vs-tap: if the user moved the pointer enough (e.g. horizontal swipe), don't treat as card tap
   useEffect(() => {
     const el = boardContainerRef.current;
-    if (!el || !mobileColumnWidth) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      boardTouchRef.current = {
-        startX: e.touches[0].clientX,
-        startY: e.touches[0].clientY,
-        lastX: e.touches[0].clientX,
-        lastY: e.touches[0].clientY,
-        locked: null,
-      };
+    if (!el) return;
+    const THRESHOLD = 10;
+    const onPointerDown = (e: PointerEvent) => {
+      pointerStartRef.current = { x: e.clientX, y: e.clientY };
+      didScrollRef.current = false;
     };
-
-    const onTouchMove = (e: TouchEvent) => {
-      const state = boardTouchRef.current;
-      if (!state || e.touches.length !== 1) return;
-
-      const curX = e.touches[0].clientX;
-      const curY = e.touches[0].clientY;
-
-      if (state.locked === null) {
-        const dx = Math.abs(curX - state.startX);
-        const dy = Math.abs(curY - state.startY);
-        if (dx > dy * 1.2) state.locked = 'x';
-        else if (dy > dx * 1.2) state.locked = 'y';
-      }
-
-      if (state.locked === 'x') {
-        e.preventDefault();
-        const delta = curX - state.lastX;
-        el.scrollLeft -= delta;
-      }
-
-      state.lastX = curX;
-      state.lastY = curY;
+    const onPointerMove = (e: PointerEvent) => {
+      const start = pointerStartRef.current;
+      if (!start) return;
+      const dx = Math.abs(e.clientX - start.x);
+      const dy = Math.abs(e.clientY - start.y);
+      if (dx > THRESHOLD || dy > THRESHOLD) didScrollRef.current = true;
     };
-
-    const onTouchEnd = () => {
-      boardTouchRef.current = null;
+    const onPointerUp = () => {
+      pointerStartRef.current = null;
     };
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd, { passive: true });
-    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
-
+    el.addEventListener('pointerdown', onPointerDown, true);
+    el.addEventListener('pointermove', onPointerMove, true);
+    el.addEventListener('pointerup', onPointerUp, true);
+    el.addEventListener('pointercancel', onPointerUp, true);
     return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-      el.removeEventListener('touchcancel', onTouchEnd);
+      el.removeEventListener('pointerdown', onPointerDown, true);
+      el.removeEventListener('pointermove', onPointerMove, true);
+      el.removeEventListener('pointerup', onPointerUp, true);
+      el.removeEventListener('pointercancel', onPointerUp, true);
     };
-  }, [mobileColumnWidth]);
+  }, []);
 
+  // Restore scroll positions only on mount/return (NOT when scrollPositions updates, or scrolling would re-trigger restore and cause jumpiness)
+  // (Removed custom touch handler: it locked to vertical too easily and blocked horizontal scroll; native scroll + touch-action is used instead.)
   useEffect(() => {
     const positions = scrollPositionsSnapshot.current;
     const timeoutId = setTimeout(() => {
@@ -629,19 +600,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         )}
       </header>
 
-      {/* Board: mobile = one column at a time, swipe L/R; desktop = multi-column, vertical scroll only */}
+      {/* Board: mobile = one column at a time, swipe L/R; desktop = multi-column, horizontal scroll */}
       <div
         ref={boardContainerRef}
         onScroll={handleHorizontalScroll}
-        className="min-h-0 flex-1 snap-x snap-mandatory overflow-y-hidden overflow-x-scroll md:snap-none md:overflow-x-auto"
+        className="min-h-0 flex-1 snap-x snap-mandatory overflow-y-hidden overflow-x-scroll md:snap-none md:overflow-x-scroll"
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-x',
           overscrollBehavior: 'contain',
           overscrollBehaviorX: 'contain',
           scrollPaddingInline: 0,
-          overflowX: 'scroll',
-          overflowY: 'hidden',
         }}
       >
         <div className="flex h-full w-max min-w-full flex-nowrap gap-2 px-2 py-3 md:gap-2 md:px-2">
@@ -726,7 +695,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-1.5"
                   style={{
                     WebkitOverflowScrolling: 'touch',
-                    touchAction: 'pan-y',
                     overscrollBehavior: 'contain',
                   }}
                 >
@@ -763,6 +731,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           canDragCards && !bulkSelectMode && handleDragStart(e, job)
                         }
                         onClick={(e) => {
+                          if (didScrollRef.current) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return;
+                          }
                           if (bulkSelectMode) {
                             e.stopPropagation();
                             setSelectedJobIds((prev) => {

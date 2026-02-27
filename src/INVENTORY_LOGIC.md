@@ -2,8 +2,8 @@
 
 ## Stock Fields:
 - **inStock**: Total physical inventory in warehouse
-- **available**: Stock available for allocation (inStock - allocated)
-- **allocated**: Stock assigned to active jobs (calculated from job.inventoryItems)
+- **available**: Stock available for allocation (inStock - allocated), computed in app
+- **allocated**: Stock assigned to active jobs (calculated from jobs + job_inventory via `inventoryCalculations.buildAllocatedByInventoryId`)
 - **onOrder**: Stock ordered from vendors (pending receipt)
 
 ## Stock Lifecycle:
@@ -18,8 +18,8 @@ onOrder = 0          // nothing ordered yet
 
 ### 2. Allocating to Job (when materials added to job)
 ```
-allocated += quantity
-available -= quantity
+allocated += quantity   // from job_inventory rows for active-status jobs
+available -= quantity   // available = inStock - allocated (computed)
 inStock stays the same  // physical stock unchanged
 ```
 
@@ -44,67 +44,56 @@ available += receivedQty
 onOrder -= receivedQty
 ```
 
-## Calculation Functions:
+## Calculation Functions (current app)
+
+Allocation and available are computed in the app; do not trust `inventory.available` from the DB for display.
 
 ### Calculate Allocated (from all active jobs)
-```typescript
-const allocated = jobs
-  .filter(job => job.status !== 'delivered')
-  .reduce((sum, job) => {
-    const jobItem = job.inventoryItems?.find(ji => ji.inventoryId === itemId);
-    return sum + (jobItem?.quantity || 0);
-  }, 0);
-```
+- **Source:** `src/lib/inventoryCalculations.ts`
+- **Function:** `buildAllocatedByInventoryId(jobs)` returns `Map<inventoryId, quantity>`
+- **Function:** `calculateAllocated(inventoryId, jobs)` returns the allocated quantity for one item
+- Active statuses (count toward allocated): `pod`, `rush`, `pending`, `inProgress`, `qualityControl`, `finished` (see `ACTIVE_ALLOCATION_STATUSES`)
+
+Jobs are loaded with relation `job_inventory` (or `job_inventory_via_job` for schema compat). Each job’s `expand.job_inventory` / `expand.job_inventory_via_job` is an array of `{ inventory_id, quantity, ... }`.
 
 ### Calculate Available
 ```typescript
-available = inStock - allocated;
+available = Math.max(0, inStock - allocated);
 ```
+- **Source:** `calculateAvailable(item, allocated)` in `src/lib/inventoryCalculations.ts`
 
 ### Low Stock Check
 ```typescript
 const needsReordering = available < reorderPoint;
 ```
 
-## PocketBase Updates:
+## Supabase / App logic
 
 ### On Receive Order:
-```typescript
-await pb.collection('inventory').update(itemId, {
-  inStock: item.inStock + receivedQty,
-  available: item.available + receivedQty,
-  onOrder: Math.max(0, item.onOrder - receivedQty)
-});
-```
+- **Service:** `inventoryService.receiveOrder` (or equivalent) updates the inventory row:
+  - `in_stock` += receivedQty
+  - `on_order` = max(0, on_order - receivedQty)
+- Available is computed in the UI from `inStock - allocated` (allocated from current jobs list).
 
 ### On Job Delivered:
-```typescript
-// For each inventory item in job:
-await pb.collection('inventory').update(inventoryId, {
-  inStock: item.inStock - quantity,
-  allocated: item.allocated - quantity
-  // available stays same (was already subtracted when allocated)
-});
-```
+- **Context:** `AppContext.updateJobStatus` when transitioning to `delivered`
+- **Logic:** `src/lib/inventoryReconciliation.ts` — for each job_inventory row, reduce `in_stock` and log `inventory_history` with action `reconcile_job`
+- Reverse (job status away from delivered): action `reconcile_job_reversal` restores stock
 
 ### On Add Materials to Job:
-```typescript
-await pb.collection('inventory').update(inventoryId, {
-  available: item.available - quantity
-  // allocated will be recalculated from jobs
-});
-```
+- **Service:** `jobService.addJobInventory` adds/updates `job_inventory` rows
+- Allocated is recomputed from all jobs via `buildAllocatedByInventoryId`; available = inStock - allocated. No direct write to `inventory.available` for allocation; display always uses computed available.
 
 ## Important Rules:
-1. Never let available go negative
+1. Never let available go negative (use `Math.max(0, inStock - allocated)`).
 2. Never let onOrder go negative
-3. inStock should never be less than allocated
-4. Recalculate allocated from jobs periodically to prevent drift
+3. inStock should never be less than allocated after reconciliation
+4. Allocated is always derived from jobs + job_inventory in the app (`inventoryCalculations`); the DB `inventory.available` column may exist but is not the source of truth for allocation display
 
 ## PO / In-Production Jobs (Allocated):
 - **Allocated** = sum of material quantities on jobs that have a PO / are in production (status: pod, rush, pending, inProgress, qualityControl, finished). Delivered jobs do not count.
 - Once a job has a PO number (status PO'd or later), its materials count against **available** (available = inStock - allocated).
-- **API**: Jobs are loaded with back-relation expand `job_inventory_via_job` (PocketBase: collection_via_relationField) so each job gets `expand.job_inventory_via_job` = array of job_inventory records.
+- **API:** Jobs are loaded with expand for `job_inventory` (Supabase relation). Each job gets `expand.job_inventory` (or `expand.job_inventory_via_job` for compat) = array of job_inventory records.
 
 ## Reorder Flag & "Needed to Complete All Jobs":
 - **Flag for reorder** when: available < reorderPoint (and nothing on order) OR available < allocated (short for committed jobs).

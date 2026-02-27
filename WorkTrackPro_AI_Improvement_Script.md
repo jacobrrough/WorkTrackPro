@@ -7,6 +7,16 @@
 
 ---
 
+## Current state of the app (as of doc update)
+
+- **Backend:** Supabase only (auth, database, storage). No PocketBase or local backend server in use.
+- **`src/pocketbase.ts`** is a facade that re-exports from `src/services/api` (Supabase); the name is legacy.
+- **Deployment:** Netlify (auto-deploy from GitHub); optional Railway config in `railway.toml` for serving the built `dist/` with `npm start`.
+- **Data model & flows:** See `SYSTEM_MASTERY.md` and `README.md` for current features, views, and architecture.
+- The steps below may have been partially or fully applied already; use them as a checklist and adapt to the current codebase.
+
+---
+
 ## GROUND RULES FOR THE AI AGENT
 
 Before starting any step:

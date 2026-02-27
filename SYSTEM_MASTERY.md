@@ -169,6 +169,12 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - Modals mix reusable and inline implementations (`ConfirmDialog`, `QRScanner`, `FileViewer`, `AllocateToJobModal`, inline overlays).
 - Error handling is primarily try/catch + console logging + toast fallback.
 
+## Compatibility notes
+
+- **`src/pocketbase.ts`** is a facade that re-exports Supabase-backed services from `src/services/api`. Keep this import path stable for any legacy imports.
+- **Expand-style relationship shapes:** Services return job/inventory shapes that include `expand.job_inventory` (or `expand.job_inventory_via_job` for schema compat). UI and `inventoryCalculations.buildAllocatedByInventoryId` accept both; see `src/lib/inventoryCalculations.ts` and `src/services/api/schemaCompat.ts`.
+- Keep schema fallback behavior in `src/services/api/schemaCompat.ts` for forward/backward compatibility with incremental migrations.
+
 ## Current navigation and view system
 
 - Router shell exists, but feature navigation remains custom state-machine in `App.tsx`.
@@ -209,9 +215,3 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - `src/lib/partDistribution.ts`
 - `src/lib/priceVisibility.ts`
 - `src/lib/jobWorkflow.ts`
-
-## Compatibility notes
-
-- Keep `src/pocketbase.ts` import contracts stable while runtime remains Supabase-backed.
-- Preserve `expand`-style relationship shapes in service outputs where existing UI depends on them (`jobs.expand.job_inventory`, `jobs.expand.comments`, `jobs.expand.attachments`).
-- Keep schema fallback behavior in `src/services/api/schemaCompat.ts` for forward/backward compatibility with incremental migrations.
