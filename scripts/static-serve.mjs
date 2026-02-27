@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createReadStream, existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -9,6 +10,7 @@ const distDir = path.resolve(__dirname, '..', 'dist');
 const indexFile = path.join(distDir, 'index.html');
 const host = '0.0.0.0';
 const port = Number.parseInt(process.env.PORT ?? '4173', 10);
+const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 const mimeByExt = {
   '.css': 'text/css; charset=utf-8',
@@ -28,9 +30,25 @@ const mimeByExt = {
   '.woff2': 'font/woff2',
 };
 
+const runCommand = (args) => {
+  const result = spawnSync(npmCmd, args, {
+    stdio: 'inherit',
+    env: process.env,
+  });
+
+  return result.status === 0;
+};
+
 if (!existsSync(indexFile)) {
-  console.error('dist/index.html not found. Run `npm run build` before starting.');
-  process.exit(1);
+  console.warn('dist/index.html not found. Running install + build.');
+
+  const installOk = runCommand(['ci', '--include=dev']);
+  const buildOk = installOk && runCommand(['run', 'build']);
+
+  if (!buildOk || !existsSync(indexFile)) {
+    console.error('Unable to produce dist/index.html for startup.');
+    process.exit(1);
+  }
 }
 
 const sendFile = (res, filePath) => {
