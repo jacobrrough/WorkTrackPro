@@ -52,6 +52,7 @@ import { useMaterialCosts } from '@/features/jobs/hooks/useMaterialCosts';
 import { useVariantBreakdown } from '@/features/jobs/hooks/useVariantBreakdown';
 import JobComments from '@/features/jobs/components/JobComments';
 import JobInventory from '@/features/jobs/components/JobInventory';
+import ConfirmDialog from './ConfirmDialog';
 
 interface JobDetailProps {
   job: Job;
@@ -73,6 +74,7 @@ interface JobDetailProps {
   ) => Promise<void>;
   onRemoveInventory: (jobId: string, jobInventoryId: string) => Promise<void>;
   onUpdateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
+  onDeleteJob: (jobId: string) => Promise<boolean>;
   onReloadJob?: () => Promise<void>;
   currentUser: User;
   onAddAttachment: (jobId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
@@ -127,6 +129,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   onAddInventory,
   onRemoveInventory,
   onUpdateJob,
+  onDeleteJob,
   onReloadJob,
   currentUser,
   onAddAttachment,
@@ -172,6 +175,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteJobConfirm, setShowDeleteJobConfirm] = useState(false);
+  const [isDeletingJob, setIsDeletingJob] = useState(false);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
   const [, setLoadingPart] = useState(false);
   const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
@@ -978,6 +983,30 @@ const JobDetail: React.FC<JobDetailProps> = ({
       setSyncingMaterials(false);
     }
   };
+
+  const handleConfirmDeleteJob = useCallback(async () => {
+    if (!currentUser.isAdmin || isDeletingJob) return;
+    setIsDeletingJob(true);
+    try {
+      const deleted = await onDeleteJob(job.id);
+      if (!deleted) {
+        showToast('Failed to delete job', 'error');
+        return;
+      }
+      showToast('Job deleted', 'success');
+      setShowDeleteJobConfirm(false);
+      if (onBack) {
+        onBack();
+      } else {
+        onNavigate('dashboard');
+      }
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      showToast('Failed to delete job', 'error');
+    } finally {
+      setIsDeletingJob(false);
+    }
+  }, [currentUser.isAdmin, isDeletingJob, onDeleteJob, job.id, showToast, onBack, onNavigate]);
 
   const handleDashQuantityChange = useCallback((variantSuffix: string, rawValue: string) => {
     const qty = Math.max(0, parseInt(rawValue, 10) || 0);
@@ -1805,6 +1834,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
+              {currentUser.isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteJobConfirm(true)}
+                  disabled={isDeletingJob || isSubmitting}
+                  className="min-h-[48px] touch-manipulation rounded-sm border border-red-500/40 bg-red-500/10 px-4 py-3 font-bold text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Delete Job
+                </button>
+              )}
               <button
                 onClick={handleCancelEdit}
                 className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20"
@@ -2222,6 +2261,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
           onClose={() => setShowBinLocationScanner(false)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteJobConfirm}
+        title="Delete this job?"
+        message="This will permanently remove the job and its linked records. This cannot be undone."
+        confirmText={isDeletingJob ? 'Deleting...' : 'Delete Job'}
+        cancelText="Cancel"
+        destructive
+        onConfirm={handleConfirmDeleteJob}
+        onCancel={() => !isDeletingJob && setShowDeleteJobConfirm(false)}
+      />
     </div>
   );
 };

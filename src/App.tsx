@@ -293,6 +293,7 @@ export default function App() {
           onAddInventory={addJobInventory}
           onRemoveInventory={removeJobInventory}
           onUpdateJob={updateJob}
+          onDeleteJob={deleteJob}
           onReloadJob={async () => {
             await refreshJob(job.id);
           }}

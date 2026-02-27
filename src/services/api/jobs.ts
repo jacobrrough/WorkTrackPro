@@ -150,6 +150,11 @@ function isPartsTableUnavailable(error: SupabaseErrorLike | null | undefined): b
   return error.code === 'PGRST205' || error.code === '42P01';
 }
 
+function isMissingTableError(error: SupabaseErrorLike | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST205' || error.code === '42P01';
+}
+
 function toFiniteNumber(value: unknown): number | undefined {
   if (value == null) return undefined;
   const parsed = typeof value === 'number' ? value : parseFloat(String(value));
@@ -556,8 +561,167 @@ export const jobService = {
   },
 
   async deleteJob(jobId: string): Promise<boolean> {
-    const { error } = await supabase.from('jobs').delete().eq('id', jobId);
-    return !error;
+    try {
+      // Delete attachment rows linked to this job first.
+      // (Storage cleanup remains handled by explicit attachment deletion flows.)
+      {
+        const { error } = await supabase.from('attachments').delete().eq('job_id', jobId);
+        if (error && !isMissingTableError(error)) {
+          console.error('deleteJob attachments cleanup failed:', error.message, error.code, {
+            jobId,
+          });
+          return false;
+        }
+      }
+
+      // Delete comments linked to this job.
+      {
+        const { error } = await supabase.from('comments').delete().eq('job_id', jobId);
+        if (error && !isMissingTableError(error)) {
+          console.error('deleteJob comments cleanup failed:', error.message, error.code, { jobId });
+          return false;
+        }
+      }
+
+      // Delete checklist history and checklists linked to this job.
+      {
+        const { data: checklistRows, error: checklistFetchError } = await supabase
+          .from('checklists')
+          .select('id')
+          .eq('job_id', jobId);
+        if (checklistFetchError && !isMissingTableError(checklistFetchError)) {
+          console.error(
+            'deleteJob checklist fetch failed:',
+            checklistFetchError.message,
+            checklistFetchError.code,
+            { jobId }
+          );
+          return false;
+        }
+        const checklistIds = (checklistRows ?? [])
+          .map((row) => row.id as string)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+        if (checklistIds.length > 0) {
+          const { error: historyDeleteError } = await supabase
+            .from('checklist_history')
+            .delete()
+            .in('checklist_id', checklistIds);
+          if (historyDeleteError && !isMissingTableError(historyDeleteError)) {
+            console.error(
+              'deleteJob checklist history cleanup failed:',
+              historyDeleteError.message,
+              historyDeleteError.code,
+              { jobId }
+            );
+            return false;
+          }
+        }
+
+        const { error: checklistDeleteError } = await supabase
+          .from('checklists')
+          .delete()
+          .eq('job_id', jobId);
+        if (checklistDeleteError && !isMissingTableError(checklistDeleteError)) {
+          console.error(
+            'deleteJob checklists cleanup failed:',
+            checklistDeleteError.message,
+            checklistDeleteError.code,
+            { jobId }
+          );
+          return false;
+        }
+      }
+
+      // Delete time-tracking rows linked to this job.
+      {
+        const { data: shiftRows, error: shiftsFetchError } = await supabase
+          .from('shifts')
+          .select('id')
+          .eq('job_id', jobId);
+        if (shiftsFetchError && !isMissingTableError(shiftsFetchError)) {
+          console.error(
+            'deleteJob shifts fetch failed:',
+            shiftsFetchError.message,
+            shiftsFetchError.code,
+            {
+              jobId,
+            }
+          );
+          return false;
+        }
+        const shiftIds = (shiftRows ?? [])
+          .map((row) => row.id as string)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+        if (shiftIds.length > 0) {
+          const { error: shiftEditsDeleteError } = await supabase
+            .from('shift_edits')
+            .delete()
+            .in('shift_id', shiftIds);
+          if (shiftEditsDeleteError && !isMissingTableError(shiftEditsDeleteError)) {
+            console.error(
+              'deleteJob shift edits cleanup failed:',
+              shiftEditsDeleteError.message,
+              shiftEditsDeleteError.code,
+              { jobId }
+            );
+            return false;
+          }
+        }
+
+        const { error: shiftsDeleteError } = await supabase
+          .from('shifts')
+          .delete()
+          .eq('job_id', jobId);
+        if (shiftsDeleteError && !isMissingTableError(shiftsDeleteError)) {
+          console.error(
+            'deleteJob shifts cleanup failed:',
+            shiftsDeleteError.message,
+            shiftsDeleteError.code,
+            {
+              jobId,
+            }
+          );
+          return false;
+        }
+      }
+
+      // Delete material allocations tied to this job.
+      {
+        const { error } = await supabase.from('job_inventory').delete().eq('job_id', jobId);
+        if (error && !isMissingTableError(error)) {
+          console.error('deleteJob job_inventory cleanup failed:', error.message, error.code, {
+            jobId,
+          });
+          return false;
+        }
+      }
+
+      // Delete inventory history entries that reference this job.
+      {
+        const { error } = await supabase
+          .from('inventory_history')
+          .delete()
+          .eq('related_job_id', jobId);
+        if (error && !isMissingTableError(error)) {
+          console.error('deleteJob inventory_history cleanup failed:', error.message, error.code, {
+            jobId,
+          });
+          return false;
+        }
+      }
+
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId);
+      if (error) {
+        console.error('deleteJob jobs delete failed:', error.message, error.code, { jobId });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('deleteJob unexpected error:', error);
+      return false;
+    }
   },
 
   async addComment(jobId: string, text: string, userId: string): Promise<Comment | null> {
