@@ -32,6 +32,11 @@ import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 import { withComputedInventory } from '@/lib/inventoryState';
 import { buildReconciliationMutations } from '@/lib/inventoryReconciliation';
+import {
+  enqueueClockPunch,
+  getQueue,
+  clearPunchFromQueue,
+} from '@/lib/offlineQueue';
 
 interface AppContextType {
   currentUser: User | null;
@@ -97,6 +102,8 @@ interface AppContextType {
   refreshInventory: () => Promise<void>;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
+  /** Number of clock punches waiting to sync (offline queue). */
+  pendingOfflinePunchCount: number;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -117,6 +124,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
 
   const enabled = !!currentUser && currentUser.isApproved !== false;
 
@@ -156,6 +164,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const shifts = shiftsData;
   const users = usersData;
   const inventory = inventoryData;
+
+  const pendingOfflinePunchCount = useMemo(
+    () => getQueue().length,
+    [offlineQueueVersion]
+  );
 
   const activeShift = useMemo(() => {
     if (!currentUser) return null;
@@ -444,7 +457,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (fromMemory) return fromMemory;
       const fromApi = await jobService.getJobByCode(code);
       if (fromApi) {
-        setJobs((prev) => {
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
+          if (!prev) return [fromApi];
           const exists = prev.some((j) => j.id === fromApi.id);
           return exists ? prev.map((j) => (j.id === fromApi.id ? fromApi : j)) : [fromApi, ...prev];
         });
@@ -452,7 +466,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       return null;
     },
-    [jobs]
+    [jobs, queryClient]
   );
 
   const clockIn = useCallback(
@@ -502,6 +516,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return success;
       } catch (error) {
         console.error('Clock in error:', error);
+        if (currentUser && jobId) {
+          enqueueClockPunch({
+            type: 'clock_in',
+            userId: currentUser.id,
+            jobId,
+            timestamp: new Date().toISOString(),
+          });
+          setOfflineQueueVersion((v) => v + 1);
+        }
         return false;
       }
     },
@@ -522,9 +545,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     } catch (error) {
       console.error('Clock out error:', error);
+      if (activeShift && currentUser) {
+        enqueueClockPunch({
+          type: 'clock_out',
+          userId: currentUser.id,
+          timestamp: new Date().toISOString(),
+          shiftId: activeShift.id,
+        });
+        setOfflineQueueVersion((v) => v + 1);
+      }
       return false;
     }
-  }, [activeShift, refreshShifts, refreshJobs]);
+  }, [activeShift, refreshShifts, refreshJobs, currentUser]);
 
   const startLunch = useCallback(async (): Promise<boolean> => {
     if (!activeShift) return false;
@@ -1034,6 +1066,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [currentUser, logout]);
 
+  // Offline clock queue: sync when back online
+  useEffect(() => {
+    const syncQueue = async () => {
+      if (!navigator.onLine) return;
+      const queue = getQueue();
+      for (const punch of queue) {
+        try {
+          if (punch.type === 'clock_in' && punch.jobId) {
+            await shiftService.clockIn(punch.jobId, punch.userId);
+            clearPunchFromQueue(punch.id);
+            setOfflineQueueVersion((v) => v + 1);
+            await refreshShifts();
+          } else if (punch.type === 'clock_out') {
+            let shiftId = punch.shiftId;
+            if (!shiftId) {
+              const allShifts = await shiftService.getAllShifts();
+              const active = allShifts.find(
+                (s) => s.user === punch.userId && !s.clockOutTime
+              );
+              shiftId = active?.id;
+            }
+            if (shiftId) {
+              await shiftService.clockOut(shiftId);
+              clearPunchFromQueue(punch.id);
+              setOfflineQueueVersion((v) => v + 1);
+              await refreshShifts();
+              await refreshJobs();
+            }
+          }
+        } catch {
+          // Leave in queue, try again next cycle
+        }
+      }
+    };
+    window.addEventListener('online', syncQueue);
+    syncQueue();
+    return () => window.removeEventListener('online', syncQueue);
+  }, [refreshShifts, refreshJobs]);
+
   // Auth state listener: handle session expiry and token refresh so UI stays in sync
   useEffect(() => {
     const {
@@ -1178,6 +1249,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       refreshInventory,
       calculateAvailable,
       calculateAllocated,
+      pendingOfflinePunchCount,
     }),
     [
       currentUser,
@@ -1224,6 +1296,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       refreshInventory,
       calculateAvailable,
       calculateAllocated,
+      pendingOfflinePunchCount,
     ]
   );
 

@@ -4,6 +4,7 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -289,6 +290,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <OfflineIndicator />
         <button
           type="button"
           onClick={logout}
@@ -299,6 +302,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             logout
           </span>
         </button>
+        </div>
       </header>
 
       <main

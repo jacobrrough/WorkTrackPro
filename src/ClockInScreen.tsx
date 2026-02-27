@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ViewState, Shift, Job } from '@/core/types';
 import { useClockIn } from '@/contexts/ClockInContext';
+import { useToast } from './Toast';
 
 interface ClockInScreenProps {
   onNavigate: (view: ViewState) => void;
@@ -20,6 +21,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   onClockOut,
 }) => {
   const clockInCtx = useClockIn();
+  const { showToast } = useToast();
   const effectiveOnClockInByCode = useCallback(
     (code: number) => (clockInCtx?.onClockInByCode ?? onClockInByCode)(code),
     [clockInCtx, onClockInByCode]
@@ -64,6 +66,8 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
     if (res.success) {
       setJobCode('');
       setTimeout(() => onNavigate('dashboard'), 1000);
+    } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showToast('Clocked in offline — will sync when connected', 'warning');
     }
   };
 
