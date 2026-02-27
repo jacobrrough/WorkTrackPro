@@ -354,6 +354,26 @@ export interface ShiftEdit {
   editTimestamp: string;
 }
 
+// Inventory history (transaction log)
+export interface InventoryHistoryEntry {
+  id: string;
+  inventoryId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  action: string;
+  reason: string;
+  previousInStock: number;
+  newInStock: number;
+  previousAvailable?: number;
+  newAvailable?: number;
+  changeAmount: number;
+  relatedJobId?: string;
+  relatedJobName?: string;
+  relatedPO?: string;
+  createdAt: string;
+}
+
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },

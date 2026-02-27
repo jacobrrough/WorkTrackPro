@@ -1,3 +1,4 @@
+import type { InventoryHistoryEntry } from '../../core/types';
 import { supabase } from './supabaseClient';
 
 export const inventoryHistoryService = {
@@ -35,7 +36,7 @@ export const inventoryHistoryService = {
     return true;
   },
 
-  async getHistory(inventoryId: string, limit = 50): Promise<unknown[]> {
+  async getHistory(inventoryId: string, limit = 50): Promise<InventoryHistoryEntry[]> {
     const { data, error } = await supabase
       .from('inventory_history')
       .select('*, profiles:user_id ( name, initials ), jobs:related_job_id ( name )')
@@ -46,10 +47,27 @@ export const inventoryHistoryService = {
       console.error('Failed to get inventory history:', error);
       return [];
     }
-    return (data ?? []).slice(0, limit);
+    return (data ?? []).slice(0, limit).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      inventoryId: row.inventory_id as string,
+      userId: row.user_id as string,
+      userName: (row.profiles as { name?: string })?.name,
+      userInitials: (row.profiles as { initials?: string })?.initials,
+      action: row.action as string,
+      reason: row.reason as string,
+      previousInStock: (row.previous_in_stock as number) ?? 0,
+      newInStock: (row.new_in_stock as number) ?? 0,
+      previousAvailable: row.previous_available as number | undefined,
+      newAvailable: row.new_available as number | undefined,
+      changeAmount: (row.change_amount as number) ?? 0,
+      relatedJobId: row.related_job_id as string | undefined,
+      relatedJobName: (row.jobs as { name?: string })?.name,
+      relatedPO: row.related_po as string | undefined,
+      createdAt: row.created_at as string,
+    }));
   },
 
-  async getAllHistory(limit = 100): Promise<unknown[]> {
+  async getAllHistory(limit = 100): Promise<InventoryHistoryEntry[]> {
     const { data, error } = await supabase
       .from('inventory_history')
       .select(
@@ -61,6 +79,23 @@ export const inventoryHistoryService = {
       console.error('Failed to get all inventory history:', error);
       return [];
     }
-    return (data ?? []).slice(0, limit);
+    return (data ?? []).slice(0, limit).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      inventoryId: row.inventory_id as string,
+      userId: row.user_id as string,
+      userName: (row.profiles as { name?: string })?.name,
+      userInitials: (row.profiles as { initials?: string })?.initials,
+      action: row.action as string,
+      reason: row.reason as string,
+      previousInStock: (row.previous_in_stock as number) ?? 0,
+      newInStock: (row.new_in_stock as number) ?? 0,
+      previousAvailable: row.previous_available as number | undefined,
+      newAvailable: row.new_available as number | undefined,
+      changeAmount: (row.change_amount as number) ?? 0,
+      relatedJobId: row.related_job_id as string | undefined,
+      relatedJobName: (row.jobs as { name?: string })?.name,
+      relatedPO: row.related_po as string | undefined,
+      createdAt: row.created_at as string,
+    }));
   },
 };
