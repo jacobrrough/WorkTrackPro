@@ -349,7 +349,7 @@ export default function InventoryMainView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 pb-28">
+      <div className="content-above-nav flex-1 overflow-y-auto p-3">
         {tab === 'byBin' ? (
           <div className="space-y-3">
             {bins.map((group) => (

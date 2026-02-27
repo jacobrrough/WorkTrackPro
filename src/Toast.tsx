@@ -59,7 +59,10 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const toastContainer = (
     <div
-      className="pointer-events-none fixed bottom-20 right-4 z-[9999] space-y-2"
+      className="pointer-events-none fixed right-4 z-[9999] space-y-2"
+      style={{
+        bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
+      }}
       aria-live="polite"
     >
       {toasts.map((toast) => (

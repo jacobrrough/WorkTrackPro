@@ -72,9 +72,9 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background-dark">
+    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-background-dark p-3">
+      <header className="safe-area-top sticky top-0 z-50 border-b border-white/10 bg-background-dark p-3">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack || (() => onNavigate('dashboard'))}
@@ -89,7 +89,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center p-4">
+      <main className="content-above-nav flex min-h-0 flex-1 flex-col items-center justify-center p-4">
         {/* Active Job Alert */}
         {activeShift && activeJob && (
           <div className="mb-4 w-full max-w-sm rounded-sm border border-green-500/30 bg-green-500/10 p-3">

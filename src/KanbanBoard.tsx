@@ -500,14 +500,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   }, [menuOpenFor, columnMenuOpen, moveColumnForJobId]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d] pb-20">
+    <div className="content-above-nav flex h-full min-h-0 flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d]">
       {/* Header - Streamlined */}
-      <header className="sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-md">
+      <header className="safe-area-top sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('dashboard')}
-              className="flex size-9 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
@@ -526,7 +526,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {isAdmin && (
               <button
                 onClick={() => onNavigate(boardType === 'shopFloor' ? 'board-admin' : 'board-shop')}
-                className="rounded-sm bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+                className="min-h-[44px] touch-manipulation rounded-sm bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
               >
                 {boardType === 'shopFloor' ? 'Admin' : 'Shop'}
               </button>
@@ -534,7 +534,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {isAdmin && (
               <button
                 onClick={onCreateJob}
-                className="flex items-center gap-1 rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary/90"
+                className="flex min-h-[44px] touch-manipulation items-center gap-1 rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-base">add</span>
                 <span>New</span>
@@ -545,7 +545,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 setBulkSelectMode((prev) => !prev);
                 if (bulkSelectMode) setSelectedJobIds(new Set());
               }}
-              className="rounded-sm border border-white/30 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/10"
+              className="min-h-[44px] touch-manipulation rounded-sm border border-white/30 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/10"
             >
               {bulkSelectMode ? 'Cancel' : 'Select'}
             </button>

@@ -7,6 +7,13 @@ import {
   quantityPerUnit,
 } from '@/lib/variantMath';
 
+/** Epsilon for quantity comparison to avoid float drift and unnecessary updates; align with useMaterialSync isMaterialAuto. */
+const QTY_EPSILON = 1e-6;
+
+function qtyEqual(a: number, b: number): boolean {
+  return Math.abs(a - b) < QTY_EPSILON;
+}
+
 /**
  * Compute required materials for a job from part definition and dash quantities.
  * Returns a Map keyed by inventoryId with { quantity, unit }.
@@ -46,7 +53,7 @@ export function computeRequiredMaterials(
     }
   }
 
-  // Part-level per_set: use complete sets when setComposition exists, else total quantity
+  // Part-level per_set: use complete sets when setComposition exists (matches part definition and calculateSetCompletion), else total quantity
   const setComposition =
     part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
   const perSetMultiplier = setComposition
@@ -100,7 +107,7 @@ export async function syncJobInventoryFromPart(
   for (const [inventoryId, { quantity, unit }] of required.entries()) {
     const existing = existingByInventoryId.get(inventoryId);
     if (existing) {
-      if (existing.quantity !== quantity) {
+      if (!qtyEqual(existing.quantity, quantity) || (existing.unit || 'units') !== unit) {
         await jobService.updateJobInventory(existing.id, quantity, unit);
       }
     } else {

@@ -79,4 +79,19 @@ option {
   .safe-area-pb {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
+
+  /* Bottom safe area - used by fixed bottom nav and content above it */
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Top safe area for notch/dynamic island (iPhone) */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Content above bottom nav: reserve space so content doesn't sit under nav or home indicator */
+  .content-above-nav {
+    padding-bottom: max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px)));
+  }
 }

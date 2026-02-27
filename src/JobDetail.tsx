@@ -361,25 +361,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
     onReloadJob,
   });
 
-  // Load linked part
+  // Load linked part (prefer job.partId so auto-calc uses the exact linked part)
   const loadLinkedPart = useCallback(
-    async (partNumber: string) => {
-      if (!partNumber.trim()) {
+    async (partNumber: string, partId?: string) => {
+      if (!partNumber?.trim() && !partId) {
         setLinkedPart(null);
         return;
       }
       setLoadingPart(true);
       try {
-        const part = await partsService.getPartByNumber(partNumber);
-        if (part) {
-          const partWithVariants = await partsService.getPartWithVariants(part.id);
-          if (!partWithVariants) {
-            setLinkedPart(null);
-            setSelectedVariant(null);
-            return;
+        let partWithVariants: Awaited<ReturnType<typeof partsService.getPartWithVariants>> = null;
+        if (partId) {
+          partWithVariants = await partsService.getPartWithVariants(partId);
+        }
+        if (!partWithVariants && partNumber?.trim()) {
+          const part = await partsService.getPartByNumber(partNumber.trim());
+          if (part) {
+            partWithVariants = await partsService.getPartWithVariants(part.id);
           }
+        }
+        if (partWithVariants) {
           setLinkedPart(partWithVariants);
-          // Set selected variant if job has one
           if (job.variantSuffix && partWithVariants.variants) {
             const variant = partWithVariants.variants.find(
               (v) => v.variantSuffix === job.variantSuffix
@@ -403,12 +405,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [job.variantSuffix]
   );
 
-  // Load linked part when part number changes
+  // Load linked part when part number or partId changes
   useEffect(() => {
-    if (job.partNumber) {
-      loadLinkedPart(job.partNumber);
+    if (job.partNumber || job.partId) {
+      loadLinkedPart(job.partNumber ?? '', job.partId);
     }
-  }, [job.partNumber, loadLinkedPart]);
+  }, [job.partNumber, job.partId, loadLinkedPart]);
 
   useEffect(() => {
     if (!job.partNumber && !job.partId) return;
@@ -423,9 +425,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
         normalizedJobPart === normalizedEventPart;
       const partIdMatch = !!job.partId && !!detail.partId && job.partId === detail.partId;
       if (!partNumberMatch && !partIdMatch) return;
-      if (normalizedJobPart) {
-        loadLinkedPart(normalizedJobPart);
-      }
+      loadLinkedPart(
+        (detail.partNumber ?? job.partNumber ?? '').trim(),
+        detail.partId ?? job.partId
+      );
     };
     window.addEventListener('parts:updated', handlePartUpdated as EventListener);
     return () => window.removeEventListener('parts:updated', handlePartUpdated as EventListener);
@@ -1200,7 +1203,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const displayInvNumber = sanitizeReferenceValue(job.invNumber);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background-dark text-white">
+    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark text-white">
       {/* Custom Scrollbar Styles */}
       <style>{`
         main::-webkit-scrollbar {
@@ -1241,11 +1244,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
       />
 
       <main
-        className="flex-1 overflow-y-auto pb-24"
+        className={`flex-1 overflow-y-auto ${!isEditing ? 'content-above-nav' : 'pb-safe pb-6'}`}
         style={{
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain',
-          paddingBottom: !isEditing ? '100px' : '24px',
         }}
       >
         {/* EDIT MODE - compact, sharp */}
@@ -2159,7 +2161,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       </main>
 
       {!isEditing && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background-dark/95 p-3 backdrop-blur-md">
+        <div className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-background-dark/95 p-3 backdrop-blur-md">
           <div className="flex gap-3">
             {isClockedIn ? (
               <button
