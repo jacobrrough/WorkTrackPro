@@ -1,12 +1,13 @@
 # WorkTrackPro
 
-A comprehensive business management application for small to medium businesses, featuring inventory tracking, time clock, job management, and reporting capabilities.
+A comprehensive business management application for small to medium manufacturing businesses: job tracking, inventory, time clock, and reporting.
 
 ## Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite 6, Tailwind CSS
-- **Backend:** PocketBase (single executable, no Node/Express required)
-- **Routing:** React Router DOM v7
+- **Backend / Auth / DB:** Supabase (hosted)
+- **Hosting:** Netlify (auto-deploy from GitHub)
+- **State:** TanStack Query for server state; React context for auth and UI
 - **Icons:** Material Symbols
 - **Testing:** Vitest
 - **Linting:** ESLint + Prettier
@@ -15,55 +16,49 @@ A comprehensive business management application for small to medium businesses, 
 
 ### Inventory Management
 - Track stock levels, item details, suppliers, and purchases
-- Allocated vs available stock calculation (committed to active jobs)
-- Low stock alerts and reordering workflow
-- Bin location tracking with barcode scanning
-- Inventory history and transaction logging
+- Allocated vs available stock (committed to active jobs)
+- Low-stock banner and reorder workflow
+- Bin location and barcode scanning
+- Inventory history (transaction log) on item detail
 - Category-based organization (Material, Foam, Trim & Cord, 3D Printing, Chemicals, Hardware, Misc Supplies)
 
 ### Time Clock
-- Employee clock-in/clock-out system
-- Job code scanning for quick clock-in
+- Employee clock-in/clock-out by job code
+- Offline queue: punches stored locally when offline and synced when back online
 - Active shift tracking with live timer
-- Geolocation support (via PocketBase hooks)
+- Geolocation/on-site requirement (optional, via org settings)
 
-### Time Tracker
-- Detailed time tracking for tasks, projects, and clients
-- Time reports with filtering (today, week, month, all)
-- View by shifts, users, or jobs
-- Shift edit history tracking
-- Hours calculation and formatting
+### Time & Reporting
+- Time reports with date range and filters (shifts, users, jobs)
+- Labor by job and employee hours with CSV export
+- On-time delivery report (completed jobs vs ECD)
 
 ### Job Tracker
-- Kanban board views (Shop Floor and Admin)
-- Job status workflow management
-- Material allocation to jobs
-- Comments and attachments
-- Checklists with completion tracking
-- Bin location assignment
-- Rush job handling
-- Expected completion dates (ECD) and due dates
+- Kanban boards (Shop Floor and Admin)
+- Status workflow, bulk status update, rush and overdue indicators
+- Material allocation, comments, attachments, checklists
+- Bin location, ECD, due dates
 
-### Additional Modules
-- User roles and permissions (Admin/Employee)
-- Admin console for job management
-- Reporting dashboards
-- File attachments (images, PDFs, documents)
-- Responsive design for mobile and desktop
+### Other
+- Role-based access (Admin vs Employee); admin-only views guarded
+- Global search (Cmd/Ctrl+K) from dashboard: jobs, inventory, people
+- In-app notifications (overdue, rush, low stock)
+- Mobile bottom nav and large clock-in button on small screens
+- Netlify serverless function for customer proposal intake
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- PocketBase server (included in `PocketBaseServer/` folder)
+- Supabase project (create at [supabase.com](https://supabase.com))
 
 ### Installation
 
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd WorkTrackPro_V5
+cd WorkTrackPro
 ```
 
 2. Install dependencies:
@@ -71,31 +66,29 @@ cd WorkTrackPro_V5
 npm install
 ```
 
-3. Set up environment variables:
+3. Environment variables (Supabase only):
+
+Copy `.env.template` to `.env.local` and set your Supabase credentials:
+
 ```bash
-cp .env.template .env
+cp .env.template .env.local
 ```
 
-Edit `.env` and set `VITE_POCKETBASE_URL` to your PocketBase server URL:
-```
-VITE_POCKETBASE_URL=http://192.168.1.100:8090
-```
+Edit `.env.local`:
 
-**Important:** Replace `192.168.1.100` with your computer's actual IP address for mobile device access.
-
-4. Start PocketBase server:
-```bash
-cd PocketBaseServer
-# Follow instructions in PocketBaseServer/README.md
-# Or run START-SERVER-AUTO.bat (Windows)
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-5. Start the development server:
+Get these from Supabase Dashboard → Settings → API.
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-The app will be available at `https://localhost:3000` (or your configured port).
+The app runs at `http://localhost:3000`. Use `/app` for the employee app; `/` is the public landing page.
 
 ### Building for Production
 
@@ -103,167 +96,69 @@ The app will be available at `https://localhost:3000` (or your configured port).
 npm run build
 ```
 
-The built files will be in the `dist/` directory.
+Output is in `dist/`. Netlify builds this automatically when you connect the repo.
 
-### Deploy to Vercel (roughcutmfg.com)
+### Deploy to Netlify
 
-To host the app on Vercel and use your **roughcutmfg.com** domain (Squarespace), see **[DEPLOYMENT.md](./DEPLOYMENT.md)** for step-by-step instructions: connect your repo, set `VITE_POCKETBASE_URL`, and point the domain to Vercel.
-
-### Docker Deployment
-
-#### Using Docker Compose (Recommended)
-
-1. Create a `.env` file with your PocketBase encryption key:
-```bash
-PB_ENCRYPTION_KEY=your-secure-encryption-key-here
-```
-
-2. Start services:
-```bash
-docker-compose up -d
-```
-
-The frontend will be available at `http://localhost:3000` and PocketBase at `http://localhost:8090`.
-
-3. Stop services:
-```bash
-docker-compose down
-```
-
-#### Using Dockerfile Only
-
-1. Build the image:
-```bash
-docker build -t worktrackpro .
-```
-
-2. Run the container:
-```bash
-docker run -p 3000:80 worktrackpro
-```
-
-**Note:** For production, configure PocketBase separately or use the docker-compose setup which includes both frontend and backend.
+1. Connect your GitHub repo to Netlify.
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Set environment variables in Netlify: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+5. Optional: configure Netlify serverless functions (e.g. `netlify/functions/submit-proposal.js` for customer proposals).
 
 ## Development
 
-### Available Scripts
+### Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
-- `npm run test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
+- `npm run dev` – Development server
+- `npm run build` – Production build
+- `npm run preview` – Preview production build
+- `npm run lint` – ESLint
+- `npm run format` – Prettier
+- `npm run test` – Vitest (once)
+- `npm run test:watch` – Vitest watch
 
 ### Project Structure
 
 ```
 src/
-├── services/api/      # API service modules (auth, jobs, shifts, inventory)
-├── lib/               # Utility functions (timeUtils, inventoryCalculations)
-├── components/        # React components
-├── types.ts          # TypeScript type definitions
-├── routes.tsx         # Route path helpers
-├── App.tsx           # Main app component with routing
-├── AppContext.tsx    # Global state management
-└── test/             # Test setup and utilities
+├── services/api/     # Supabase-backed API (jobs, shifts, inventory, auth, etc.)
+├── lib/              # Utilities (timeUtils, inventoryCalculations, offlineQueue, exportCsv)
+├── components/       # Shared UI (Toast, ProtectedRoute, AdminRoute, NotificationBell, CommandPalette)
+├── contexts/         # Navigation, Settings, ClockIn, Notifications
+├── core/             # types.ts, validation
+├── App.tsx           # View-state routing and shell
+├── AppContext.tsx    # Auth, mutations, TanStack Query wiring
+└── *.test.ts        # Vitest tests
 ```
-
-### Code Style
-
-- ESLint for linting (see `eslint.config.js`)
-- Prettier for formatting (see `.prettierrc`)
-- TypeScript strict mode enabled
-- Tailwind CSS for styling
-
-## Configuration
-
-### PocketBase Setup
-
-1. Start PocketBase server (see `PocketBaseServer/README.md`)
-2. Create collections: `users`, `jobs`, `shifts`, `inventory`, `job_inventory`, `comments`, `attachments`, `checklists`, `inventory_history`
-3. Set up authentication rules and permissions
-4. Configure file storage for attachments
 
 ### Environment Variables
 
-- `VITE_POCKETBASE_URL` - PocketBase backend URL (default: `http://192.168.1.100:8090`)
+- `VITE_SUPABASE_URL` – Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` – Supabase anonymous (public) key
 
-### Vite Proxy
-
-The Vite dev server proxies `/api` and `/_` requests to PocketBase. Update `vite.config.ts` if your PocketBase runs on a different port or host.
+No PocketBase or Docker required.
 
 ## Testing
-
-Tests are written with Vitest and React Testing Library:
 
 ```bash
 npm run test          # Run once
 npm run test:watch    # Watch mode
 ```
 
-Test files:
-- `src/validation.test.ts` - Validation utilities
-- `src/lib/timeUtils.test.ts` - Time calculation utilities
-- `src/lib/inventoryCalculations.test.ts` - Inventory calculation logic
+Tests include: validation, time utils, inventory calculations, offline queue, price visibility, schema compat, and others.
 
-## Deployment
+## Security and Auth
 
-### Production Build
-
-1. Build the app:
-```bash
-npm run build
-```
-
-2. Serve the `dist/` directory with a static file server (nginx, Apache, etc.)
-
-3. Ensure PocketBase server is running and accessible
-
-### Docker (Optional)
-
-A Dockerfile can be added for containerized deployment. See `OVERHAUL_PLAN.md` for deployment recommendations.
-
-## Security Notes
-
-- Authentication handled by PocketBase
-- HTTPS required for camera access on mobile devices
-- Input validation on all forms
-- File upload size limits (10MB default)
-- Admin-only features protected by role checks
+- Auth is handled by Supabase Auth (email/password; email confirmation can be enabled).
+- Protected routes render only when the user is authenticated.
+- Admin-only views use `AdminRoute` and redirect non-admins to the dashboard.
+- Shop-floor users never see prices/costs; admins have full visibility.
 
 ## Browser Support
 
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Troubleshooting
-
-### Camera not working
-- Ensure HTTPS is enabled (required for camera access)
-- Check browser permissions for camera access
-- Verify PocketBase server is accessible
-
-### Can't connect to PocketBase
-- Check `VITE_POCKETBASE_URL` in `.env`
-- Verify PocketBase server is running
-- Check firewall settings
-- For mobile: use your computer's IP address, not `localhost`
-
-### Build errors
-- Run `npm install` to ensure dependencies are installed
-- Check Node.js version (18+ required)
-- Clear `node_modules` and reinstall if needed
-
-## Contributing
-
-1. Follow the code style (ESLint + Prettier)
-2. Write tests for new features
-3. Update documentation as needed
-4. Ensure all tests pass before submitting
+- Chrome/Edge, Firefox, Safari (latest)
+- Mobile browsers (iOS Safari, Chrome Mobile); layout is mobile-first with bottom nav on small screens.
 
 ## License
 
@@ -271,4 +166,4 @@ A Dockerfile can be added for containerized deployment. See `OVERHAUL_PLAN.md` f
 
 ## Support
 
-For issues and questions, please refer to the `OVERHAUL_PLAN.md` for detailed architecture and improvement plans.
+See `SYSTEM_MASTERY.md` for data model, relations, and implementation notes.

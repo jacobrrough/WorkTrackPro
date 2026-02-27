@@ -141,6 +141,16 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - `src/services/api/subscriptions.ts` subscribes to `jobs`, `shifts`, `inventory` postgres changes.
 - `AppContext` applies in-memory updates and triggers inventory refresh on job changes for allocation consistency.
 
+### TanStack Query and server state
+- Jobs, shifts, users, and inventory are fetched via `useQuery` in `AppContext` (query keys: `['jobs']`, `['shifts']`, `['users']`, `['inventory']`), enabled when the user is approved.
+- Mutations use `queryClient.invalidateQueries` or `setQueryData`; realtime handlers update the cache. No duplicate fetch-on-mount for these lists.
+
+### Offline time clock queue
+- `src/lib/offlineQueue.ts`: failed clock-in/clock-out enqueues to localStorage; sync on `online` and mount. `OfflineIndicator` shows pending count in the dashboard header.
+
+### Netlify functions
+- `netlify/functions/` (e.g. `submit-proposal.js`) for serverless endpoints; proposal intake is public. Set env vars in Netlify for secrets.
+
 ### Navigation and application state flow
 - Top-level route split: `/` public marketing vs `/app` employee app.
 - Internal app navigation is custom view-state in `App.tsx` using `view`, `id`, and `returnViews`.
