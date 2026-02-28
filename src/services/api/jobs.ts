@@ -269,6 +269,23 @@ async function fetchJobExpand(jobId: string): Promise<{
   return { job_inventory, comments, attachments };
 }
 
+/** If the job row has part_number but no part_id (e.g. link was lost due to schema cache), resolve part_id and patch the DB. Returns the resolved partId or null. */
+async function repairJobPartIdIfNeeded(
+  jobId: string,
+  partNumber: string | null | undefined,
+  partId: string | null | undefined
+): Promise<string | null> {
+  const trimmed = partNumber?.trim();
+  if (!trimmed || partId) return partId ?? null;
+  const resolved = await resolvePartForJob({ partNumber: trimmed });
+  if (!resolved.partId) return null;
+  await supabase
+    .from('jobs')
+    .update({ part_id: resolved.partId, updated_at: new Date().toISOString() })
+    .eq('id', jobId);
+  return resolved.partId;
+}
+
 async function fetchJobsExpandBatch(jobIds: string[]): Promise<
   Map<
     string,
@@ -363,17 +380,48 @@ export const jobService = {
       .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
     const expandByJobId = await fetchJobsExpandBatch(jobIds);
-    return list.map((row) => {
+    const mapped = list.map((row) => {
       const jobId = row.id as string;
       return mapJobRow(row, expandByJobId.get(jobId));
     });
+    // Repair lost job–part links (part_number present but part_id null) in batch so list shows links
+    const toRepair = mapped.filter((j) => (j.partNumber?.trim() ?? '') !== '' && !j.partId);
+    if (toRepair.length > 0) {
+      const partNumbers = [...new Set(toRepair.map((j) => j.partNumber!.trim()))];
+      const { data: partsRows } = await supabase
+        .from('parts')
+        .select('id, part_number')
+        .in('part_number', partNumbers);
+      const partNumberToId = new Map(
+        (partsRows ?? []).map((r: { id: string; part_number: string }) => [r.part_number, r.id])
+      );
+      for (const job of toRepair) {
+        const partId = partNumberToId.get(job.partNumber!.trim()) ?? null;
+        if (partId) {
+          await supabase
+            .from('jobs')
+            .update({ part_id: partId, updated_at: new Date().toISOString() })
+            .eq('id', job.id);
+          job.partId = partId;
+        }
+      }
+    }
+    return mapped;
   },
 
   async getJobById(jobId: string): Promise<Job | null> {
     const { data: row, error } = await supabase.from('jobs').select('*').eq('id', jobId).single();
     if (error || !row) return null;
     const expand = await fetchJobExpand(jobId);
-    return mapJobRow(row as Record<string, unknown>, expand);
+    const raw = row as Record<string, unknown>;
+    // Repair lost job–part link (e.g. after Supabase schema cache was stale and client stripped part_id on writes)
+    const repairedPartId = await repairJobPartIdIfNeeded(
+      jobId,
+      raw.part_number as string | undefined,
+      raw.part_id as string | undefined
+    );
+    if (repairedPartId) raw.part_id = repairedPartId;
+    return mapJobRow(raw, expand);
   },
 
   async getJobByCode(jobCode: number): Promise<Job | null> {

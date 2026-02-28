@@ -1,5 +1,8 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApp } from './AppContext';
+import { jobService } from './pocketbase';
+import type { Job } from './core/types';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
@@ -106,6 +109,22 @@ export default function App() {
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
+
+  // Fetch job by id when on job-detail so we always have the repaired job (partId) and materials don't flash away when the list refetches
+  const jobIdForDetail = view === 'job-detail' && id ? id : null;
+  const { data: detailJob } = useQuery({
+    queryKey: ['job', jobIdForDetail],
+    queryFn: () => jobService.getJobById(jobIdForDetail!),
+    enabled: !!jobIdForDetail,
+  });
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (detailJob && jobIdForDetail) {
+      queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+        prev ? prev.map((j) => (j.id === jobIdForDetail ? detailJob : j)) : [detailJob]
+      );
+    }
+  }, [detailJob, jobIdForDetail, queryClient]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -277,7 +296,7 @@ export default function App() {
   }
 
   if (view === 'job-detail' && id) {
-    const job = jobs.find((j) => j.id === id);
+    const job = detailJob ?? jobs.find((j) => j.id === id);
     if (!job) {
       return (
         <AppShell>

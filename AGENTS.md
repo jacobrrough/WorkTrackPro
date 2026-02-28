@@ -72,3 +72,15 @@ Sign-up is available from the login page. Navigation state (search, filters, scr
 - The Vite config conditionally enables HTTPS and PocketBase proxy only when `key.pem`/`cert.pem` exist; in Cloud Agent environments these files don't exist, so the dev server runs on plain HTTP — this is fine.
 - Supabase is cloud-hosted (no local Supabase CLI setup needed). Migrations in `supabase/migrations/` are reference only.
 - The Trello proxy (`npm run trello-proxy`) is optional and only needed for Trello import features.
+
+### Troubleshooting: Jobs not linking to parts (BOM / labor gone)
+
+**Root cause:** Supabase’s PostgREST schema cache can become stale. If it doesn’t know about the `jobs.part_id` column, the API rejects writes that include `part_id`. The app’s schema fallback then treats `part_id` as “missing” and strips it from future writes, so job–part links and BOM/labor stop working.
+
+**Server-side fix (do this first):** In the [Supabase SQL Editor](https://supabase.com/dashboard), run:
+
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+
+Then hard-refresh the app (Ctrl+F5). The app also heals the client-side “omit” cache and repairs jobs that have `part_number` but null `part_id` when loading the job list or opening a job.

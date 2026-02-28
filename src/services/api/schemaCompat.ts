@@ -47,6 +47,23 @@ export function getMissingColumnFromSchemaError(
 const knownMissingColumnsByTable = new Map<string, Set<string>>();
 const STORAGE_KEY_PREFIX = 'supabase_schema_omit_';
 
+/** Run once on module load to fix jobs cache so part_id is no longer stripped (job–part linking and BOM/labor work again). */
+function healJobsPartIdCache(): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + 'jobs');
+    if (!raw) return;
+    const arr = JSON.parse(raw) as string[];
+    const set = new Set(Array.isArray(arr) ? arr : []);
+    if (!set.has('part_id')) return;
+    set.delete('part_id');
+    localStorage.setItem(STORAGE_KEY_PREFIX + 'jobs', JSON.stringify([...set]));
+    knownMissingColumnsByTable.delete('jobs');
+  } catch {
+    /* ignore */
+  }
+}
+healJobsPartIdCache();
+
 /** Only for tests: clear cached missing columns so fallback retries from scratch */
 export function clearSchemaCacheForTest(tableName: string): void {
   knownMissingColumnsByTable.delete(tableName);
@@ -66,6 +83,12 @@ function loadKnownMissing(tableName: string): Set<string> {
     set = new Set(Array.isArray(arr) ? arr : []);
   } catch {
     set = new Set();
+  }
+  // Self-heal: part_id must not be stripped for jobs (migration 20250217000001 adds it).
+  // If it was previously cached as missing, stop stripping it so job–part linking and BOM/labor work again.
+  if (tableName === 'jobs' && set.has('part_id')) {
+    set.delete('part_id');
+    saveKnownMissing(tableName, set);
   }
   knownMissingColumnsByTable.set(tableName, set);
   return set;
