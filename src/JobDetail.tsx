@@ -1858,132 +1858,126 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
                 Labor & materials
               </h3>
-              {canViewFinancials ? (
-                <>
-                  <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                    <div>
-                      <div className="mb-0.5 flex items-center justify-between">
-                        <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                          Labor hrs
-                          {laborHoursFromPart && (
-                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                              auto
-                            </span>
-                          )}
-                        </label>
-                        {laborSuggestion != null && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })
-                            }
-                            className="text-[10px] text-primary hover:underline"
-                          >
-                            Use {laborSuggestion.toFixed(1)}h
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={editForm.laborHours}
-                        onChange={(e) => {
-                          setAllocationSource('total');
-                          setLaborHoursFromPart(false);
-                          setEditForm({ ...editForm, laborHours: e.target.value });
-                        }}
-                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Rate</label>
-                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white">
-                        ${laborRate}/hr
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Labor $</label>
-                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
-                        ${laborCost.toFixed(2)}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">CNC hrs</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={editForm.cncHours}
-                        onChange={(e) => {
-                          setAllocationSource('total');
-                          setEditForm({ ...editForm, cncHours: e.target.value });
-                        }}
-                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">3D hrs</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={editForm.printer3DHours}
-                        onChange={(e) => {
-                          setAllocationSource('total');
-                          setEditForm({ ...editForm, printer3DHours: e.target.value });
-                        }}
-                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
-                        Materials $
-                        {linkedPart && (
-                          <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                            from part
-                          </span>
-                        )}
-                      </label>
-                      <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
-                        ${totalMaterialCost.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                    Total ${(partDerivedPrice?.totalPrice ?? computedCostTotal).toFixed(2)}
-                    {partDerivedPrice && (
-                      <span className="ml-2 text-[10px] font-medium text-primary/80">
-                        from {partDerivedPrice.source.replace('_', ' ')}
-                      </span>
+              <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                <div>
+                  <div className="mb-0.5 flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                      Labor hrs
+                      {laborHoursFromPart && (
+                        <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                          auto
+                        </span>
+                      )}
+                    </label>
+                    {laborSuggestion != null && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })
+                        }
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        Use {laborSuggestion.toFixed(1)}h
+                      </button>
                     )}
                   </div>
-                  {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
-                    <div className="mb-3 space-y-0.5">
-                      {laborBreakdownByDash.entries.map(
-                        ({ suffix, qty, laborHoursTotal, cncHoursTotal, printer3DHoursTotal }) => (
-                          <div
-                            key={suffix}
-                            className="flex justify-between text-[10px] text-slate-400"
-                          >
-                            {suffix} ×{qty} = L {(laborHoursTotal ?? 0).toFixed(1)}h / CNC{' '}
-                            {(cncHoursTotal ?? 0).toFixed(1)}h / 3D{' '}
-                            {(printer3DHoursTotal ?? 0).toFixed(1)}h
-                          </div>
-                        )
-                      )}
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editForm.laborHours}
+                    onChange={(e) => {
+                      setAllocationSource('total');
+                      setLaborHoursFromPart(false);
+                      setEditForm({ ...editForm, laborHours: e.target.value });
+                    }}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="0"
+                  />
+                </div>
+                {canViewFinancials && (
+                  <div>
+                    <label className="mb-0.5 block text-[11px] text-slate-400">Rate</label>
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white">
+                      ${laborRate}/hr
                     </div>
-                  )}
-                </>
-              ) : (
-                <div className="mb-3">
-                  <label className="text-[11px] text-slate-400">Labor hours</label>
-                  <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white">
-                    {parseFloat(editForm.laborHours) || 0} h
                   </div>
+                )}
+                {canViewFinancials && (
+                  <div>
+                    <label className="mb-0.5 block text-[11px] text-slate-400">Labor $</label>
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
+                      ${laborCost.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">CNC hrs</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editForm.cncHours}
+                    onChange={(e) => {
+                      setAllocationSource('total');
+                      setEditForm({ ...editForm, cncHours: e.target.value });
+                    }}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-slate-400">3D hrs</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={editForm.printer3DHours}
+                    onChange={(e) => {
+                      setAllocationSource('total');
+                      setEditForm({ ...editForm, printer3DHours: e.target.value });
+                    }}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="0"
+                  />
+                </div>
+                {canViewFinancials && (
+                  <div>
+                    <label className="mb-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                      Materials $
+                      {linkedPart && (
+                        <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                          from part
+                        </span>
+                      )}
+                    </label>
+                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
+                      ${totalMaterialCost.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {canViewFinancials && (
+                <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
+                  Total ${(partDerivedPrice?.totalPrice ?? computedCostTotal).toFixed(2)}
+                  {partDerivedPrice && (
+                    <span className="ml-2 text-[10px] font-medium text-primary/80">
+                      from {partDerivedPrice.source.replace('_', ' ')}
+                    </span>
+                  )}
+                </div>
+              )}
+              {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
+                <div className="mb-3 space-y-0.5">
+                  {laborBreakdownByDash.entries.map(
+                    ({ suffix, qty, laborHoursTotal, cncHoursTotal, printer3DHoursTotal }) => (
+                      <div key={suffix} className="flex justify-between text-[10px] text-slate-400">
+                        {suffix} ×{qty} = L {(laborHoursTotal ?? 0).toFixed(1)}h / CNC{' '}
+                        {(cncHoursTotal ?? 0).toFixed(1)}h / 3D{' '}
+                        {(printer3DHoursTotal ?? 0).toFixed(1)}h
+                      </div>
+                    )
+                  )}
                 </div>
               )}
               <div className="border-t border-white/10 pt-2">
@@ -2072,7 +2066,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       {Array.from(requiredMap.entries()).map(
                         ([inventoryId, { quantity, unit }]) => {
                           const invItem = inventoryById.get(inventoryId);
-                          const cost = materialCosts.get(inventoryId) || 0;
                           const materialName = invItem?.name ?? 'Unknown';
                           return (
                             <div
@@ -2097,11 +2090,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                   {quantity.toFixed(2)} {unit}
                                 </span>
                               </div>
-                              {canViewFinancials && cost > 0 && (
-                                <span className="shrink-0 text-xs font-semibold text-white">
-                                  ${cost.toFixed(2)}
-                                </span>
-                              )}
                             </div>
                           );
                         }
@@ -2421,7 +2409,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         {Array.from(requiredMap.entries()).map(
                           ([inventoryId, { quantity, unit }]) => {
                             const invItem = inventoryById.get(inventoryId);
-                            const cost = materialCosts.get(inventoryId) || 0;
                             const materialName = invItem?.name ?? 'Unknown';
                             return (
                               <div
@@ -2448,11 +2435,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                     {quantity.toFixed(2)} {unit}
                                   </span>
                                 </div>
-                                {canViewFinancials && cost > 0 && (
-                                  <span className="shrink-0 text-sm font-semibold text-white">
-                                    ${cost.toFixed(2)}
-                                  </span>
-                                )}
                               </div>
                             );
                           }
