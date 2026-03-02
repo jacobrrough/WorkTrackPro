@@ -131,8 +131,18 @@ export const partsService = {
       .select('*')
       .eq('part_number', trimmed)
       .maybeSingle();
-    if (error || !data) return null;
-    return mapRowToPart(data as unknown as Record<string, unknown>);
+    if (data) return mapRowToPart(data as unknown as Record<string, unknown>);
+    if (error) return null;
+
+    // Case-insensitive fallback to avoid creating/using duplicate parts that only differ by casing.
+    const { data: ciRows, error: ciError } = await supabase
+      .from('parts')
+      .select('*')
+      .ilike('part_number', trimmed)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (ciError || !ciRows || ciRows.length === 0) return null;
+    return mapRowToPart(ciRows[0] as unknown as Record<string, unknown>);
   },
 
   /** Load part with variants (and their materials). Alias for getPartWithVariantsAndMaterials. */
@@ -172,10 +182,15 @@ export const partsService = {
       variant_id?: string;
       inventory_id?: string;
     };
+    const hasVariants = variantIds.length > 0;
     const partLevelRows = allMaterials.filter((r: PartMaterialRow) => {
       const partId = r.part_id;
       const variantId = r.part_variant_id ?? r.variant_id;
-      return partId === id && !variantId;
+      if (partId !== id) return false;
+      // No-variant master parts: treat any part_id-linked row as part-level source.
+      // This recovers legacy rows that may still have a variant link populated.
+      if (!hasVariants) return true;
+      return !variantId;
     });
     const variantLevelRows =
       variantIds.length === 0

@@ -167,15 +167,16 @@ async function resolvePartForJob(params: {
   fallbackDescription?: string;
   fallbackLaborHours?: number;
 }): Promise<{ partNumber: string; partId: string | null }> {
-  const normalizedPartNumber = params.partNumber.trim();
+  const normalizedPartNumber = params.partNumber.trim().toUpperCase();
   if (!normalizedPartNumber) return { partNumber: '', partId: null };
 
   const { data: existingPartData, error: lookupError } = await supabase
     .from('parts')
     .select('id, part_number')
-    .eq('part_number', normalizedPartNumber)
-    .maybeSingle();
-  const existingPart = (existingPartData ?? null) as PartLookupRow | null;
+    .ilike('part_number', normalizedPartNumber)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  const existingPart = ((existingPartData ?? [])[0] ?? null) as PartLookupRow | null;
   if (existingPart) {
     return {
       partNumber: existingPart.part_number,
@@ -214,9 +215,10 @@ async function resolvePartForJob(params: {
     const { data: conflictPartData } = await supabase
       .from('parts')
       .select('id, part_number')
-      .eq('part_number', normalizedPartNumber)
-      .maybeSingle();
-    const conflictPart = (conflictPartData ?? null) as PartLookupRow | null;
+      .ilike('part_number', normalizedPartNumber)
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const conflictPart = ((conflictPartData ?? [])[0] ?? null) as PartLookupRow | null;
     if (conflictPart) {
       return {
         partNumber: conflictPart.part_number,

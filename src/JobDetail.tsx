@@ -111,6 +111,13 @@ const ALL_STATUSES: { id: JobStatus; label: string }[] = [
 const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
   status === 'rush' ? 'pending' : status;
 
+function parseQuantityFromText(value: string | undefined | null): number {
+  const match = String(value ?? '').match(/(\d+(?:\.\d+)?)/);
+  if (!match) return 0;
+  const parsed = Number.parseFloat(match[1]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 function getMachineTotalsFromJob(job: Job): { cncHours: number; printer3DHours: number } {
   const entries = Object.values(job.machineBreakdownByVariant ?? {});
   return entries.reduce(
@@ -419,10 +426,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
   );
 
   const selectedVariantSuffix = selectedVariant?.variantSuffix || editForm.variantSuffix;
+  const effectiveMaterialQuantities = useMemo(() => {
+    const normalizedDash = normalizeDashQuantities(dashQuantities);
+    if (Object.values(normalizedDash).some((qty) => qty > 0)) return normalizedDash;
+    if (!linkedPart || (linkedPart.variants?.length ?? 0) > 0) return normalizedDash;
+    const qtySource = isEditing ? editForm.qty : job.qty;
+    const setQty = parseQuantityFromText(qtySource);
+    return setQty > 0 ? { '-01': setQty } : normalizedDash;
+  }, [dashQuantities, linkedPart, isEditing, editForm.qty, job.qty]);
+
   const materialCosts = useMaterialCosts({
     linkedPart,
     selectedVariantSuffix,
-    dashQuantities,
+    dashQuantities: effectiveMaterialQuantities,
     inventoryById,
     jobInventoryItems: job.inventoryItems || [],
     materialUpcharge,
@@ -432,7 +448,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const { isMaterialAuto } = useMaterialSync({
     jobId: job.id,
     linkedPart,
-    dashQuantities,
+    dashQuantities: effectiveMaterialQuantities,
     onReloadJob,
   });
 
@@ -459,6 +475,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
           }
           if (part) {
             partWithVariants = await partsService.getPartWithVariants(part.id);
+          }
+        }
+        // If a linked part id resolves to an empty shell, prefer canonical part-number match.
+        // This repairs legacy/casing duplicates where a job can point to a BOM-less part row.
+        if (partWithVariants && partNumber?.trim()) {
+          const hasBom =
+            (partWithVariants.materials?.length ?? 0) > 0 ||
+            (partWithVariants.variants ?? []).some((v) => (v.materials?.length ?? 0) > 0);
+          if (!hasBom) {
+            const canonicalPart = await partsService.getPartByNumber(partNumber.trim());
+            if (canonicalPart && canonicalPart.id !== partWithVariants.id) {
+              const canonicalWithVariants = await partsService.getPartWithVariants(
+                canonicalPart.id
+              );
+              const canonicalHasBom =
+                (canonicalWithVariants?.materials?.length ?? 0) > 0 ||
+                (canonicalWithVariants?.variants ?? []).some((v) => (v.materials?.length ?? 0) > 0);
+              if (canonicalWithVariants && canonicalHasBom) {
+                partWithVariants = canonicalWithVariants;
+              }
+            }
           }
         }
         if (partWithVariants) {
@@ -716,8 +753,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   );
 
   const partDerivedPrice = useMemo(
-    () => (linkedPart ? calculateJobPriceFromPart(linkedPart, dashQuantities) : null),
-    [linkedPart, dashQuantities]
+    () => (linkedPart ? calculateJobPriceFromPart(linkedPart, effectiveMaterialQuantities) : null),
+    [linkedPart, effectiveMaterialQuantities]
   );
 
   const {
@@ -1116,9 +1153,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       if (updated) {
         showToast('Job updated successfully', 'success');
-        if (linkedPart && Object.values(normalizedDashQuantities).some((q) => q > 0)) {
+        if (linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0)) {
           try {
-            await syncJobInventoryFromPart(job.id, linkedPart, normalizedDashQuantities, {
+            await syncJobInventoryFromPart(job.id, linkedPart, effectiveMaterialQuantities, {
               replace: true,
             });
             await onReloadJob?.();
@@ -1182,11 +1219,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
   };
 
   const handleAutoAssignMaterials = async () => {
-    const normalizedDash = normalizeDashQuantities(dashQuantities);
-    if (!linkedPart || !Object.values(normalizedDash).some((q) => q > 0)) return;
+    if (!linkedPart || !Object.values(effectiveMaterialQuantities).some((q) => q > 0)) return;
     setSyncingMaterials(true);
     try {
-      await syncJobInventoryFromPart(job.id, linkedPart, normalizedDash, { replace: true });
+      await syncJobInventoryFromPart(job.id, linkedPart, effectiveMaterialQuantities, {
+        replace: true,
+      });
       await onReloadJob?.();
       showToast('Materials auto-assigned from part', 'success');
     } catch (err) {
@@ -2044,7 +2082,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   Part BOM ({linkedPart.partNumber})
                 </h3>
                 {(() => {
-                  const requiredMap = computeRequiredMaterials(linkedPart, dashQuantities);
+                  const requiredMap = computeRequiredMaterials(
+                    linkedPart,
+                    effectiveMaterialQuantities
+                  );
                   const materialsFromPart =
                     linkedPart.variantsAreCopies && linkedPart.variants?.[0]?.materials?.length
                       ? linkedPart.variants[0].materials
@@ -2368,7 +2409,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   {(() => {
                     let jobDashQty = normalizeDashQuantities(job.dashQuantities || {});
                     const totalFromJob =
-                      totalFromDashQuantities(jobDashQty) || Number(job.qty) || 0;
+                      totalFromDashQuantities(jobDashQty) || parseQuantityFromText(job.qty) || 0;
                     // When part is "variants are copies" (or single variant), normalized dash may be empty
                     // if job stores qty differently; use job total on first variant so BOM still computes.
                     if (
@@ -2380,6 +2421,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       jobDashQty = {
                         [toDashSuffix(linkedPart.variants[0].variantSuffix)]: totalFromJob,
                       };
+                    }
+                    // No-variant master parts: derive synthetic quantity key from set qty.
+                    if (
+                      totalFromJob > 0 &&
+                      Object.keys(jobDashQty).length === 0 &&
+                      !linkedPart.variants?.length
+                    ) {
+                      jobDashQty = { '-01': totalFromJob };
                     }
                     const requiredMap = computeRequiredMaterials(linkedPart, jobDashQty);
                     const materialsFromPart =

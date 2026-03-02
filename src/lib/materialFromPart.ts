@@ -65,6 +65,25 @@ export function computeRequiredMaterials(
 
   if (totalQty <= 0) return materialMap;
 
+  // Master part path: when no variants exist, treat all part-level materials as set-level
+  // regardless of usageType to support legacy rows that were tagged per_variant.
+  if (!part.variants?.length) {
+    for (const material of part.materials ?? []) {
+      const qtyPerUnit = quantityPerUnit(
+        material as { quantityPerUnit?: number; quantity?: number }
+      );
+      const requiredQty = qtyPerUnit * totalQty;
+      const existing = materialMap.get(material.inventoryId);
+      const unit = material.unit || 'units';
+      if (existing) {
+        existing.quantity += requiredQty;
+      } else {
+        materialMap.set(material.inventoryId, { quantity: requiredQty, unit });
+      }
+    }
+    return materialMap;
+  }
+
   // Per-variant materials × dash quantity (or first variant's materials for all when variantsAreCopies)
   for (const [suffix, qty] of Object.entries(normalizedDash)) {
     if (qty <= 0) continue;
@@ -135,6 +154,14 @@ export async function syncJobInventoryFromPart(
 ): Promise<void> {
   const replace = options?.replace === true;
   const required = computeRequiredMaterials(part, dashQuantities);
+  const isMasterPartWithoutVariants = !part.variants?.length;
+  const hasAnyPartMaterialRows = (part.materials?.length ?? 0) > 0;
+
+  // Safety: if source part has no variants and no loaded material rows, never do a destructive replace.
+  // This avoids wiping job BOM from transient/legacy loader gaps.
+  if (replace && required.size === 0 && isMasterPartWithoutVariants && !hasAnyPartMaterialRows) {
+    return;
+  }
 
   const job = await jobService.getJobById(jobId);
   if (!job) throw new Error('Job not found');

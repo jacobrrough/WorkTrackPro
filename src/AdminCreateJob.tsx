@@ -135,6 +135,22 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     revision: '',
   });
 
+  const parseQuantityFromText = (value: string): number => {
+    const match = value.match(/(\d+(?:\.\d+)?)/);
+    if (!match) return 0;
+    const parsed = Number.parseFloat(match[1]);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const buildEffectiveQuantities = (part: Part | null): Record<string, number> => {
+    const hasDashQuantities = Object.values(dashQuantities).some((qty) => qty > 0);
+    if (hasDashQuantities) return dashQuantities;
+    // Master-part fallback: when there are no variants, use entered set qty for price/material sync.
+    if (!part || (part.variants?.length ?? 0) > 0) return {};
+    const setQty = parseQuantityFromText(formData.qty);
+    return setQty > 0 ? { '-01': setQty } : {};
+  };
+
   const deriveLaborHoursFromPart = (
     part: Part | null,
     quantities: Record<string, number>
@@ -192,10 +208,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     formData.jobCode
   );
 
-  const autoPriceFromPart = useMemo(
-    () => (selectedPart ? calculateJobPriceFromPart(selectedPart, dashQuantities) : null),
-    [selectedPart, dashQuantities]
-  );
+  const autoPriceFromPart = useMemo(() => {
+    if (!selectedPart) return null;
+    return calculateJobPriceFromPart(selectedPart, buildEffectiveQuantities(selectedPart));
+  }, [selectedPart, dashQuantities, formData.qty]);
 
   // Calculate labor hours suggestion from similar jobs (using auto name)
   const laborSuggestion = useMemo(() => {
@@ -335,15 +351,18 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             showToast('Job created, but failed to create master part', 'warning');
           }
         }
-        // Auto-assign materials from part when job has part + dash quantities
-        if (job.partNumber && dashQuantities && Object.values(dashQuantities).some((q) => q > 0)) {
+        // Auto-assign materials from part (variant dash quantities, or set qty fallback for master parts).
+        if (job.partNumber) {
           try {
             const found = await partsService.getPartByNumber(job.partNumber);
             if (found) {
               const fullPart = await partsService.getPartWithVariants(found.id);
               if (fullPart) {
-                await syncJobInventoryFromPart(job.id, fullPart, dashQuantities);
-                showToast('Job created; materials assigned from part.', 'success');
+                const effectiveQuantities = buildEffectiveQuantities(fullPart);
+                if (Object.values(effectiveQuantities).some((q) => q > 0)) {
+                  await syncJobInventoryFromPart(job.id, fullPart, effectiveQuantities);
+                  showToast('Job created; materials assigned from part.', 'success');
+                }
               }
             }
           } catch (syncErr) {

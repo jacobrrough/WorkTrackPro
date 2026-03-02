@@ -90,6 +90,18 @@ export function calculateJobPriceFromPart(
   const normalizedDash = normalizeDashQuantities(dashQuantities);
   const selectedDashKeys = Object.keys(normalizedDash);
   if (selectedDashKeys.length === 0) return null;
+  const totalSelectedQty = Object.values(normalizedDash).reduce((sum, qty) => sum + qty, 0);
+
+  // Master part path: no variants configured, use set price directly from total entered quantity.
+  if (!part.variants?.length) {
+    if (part.pricePerSet == null || totalSelectedQty <= 0) return null;
+    return {
+      totalPrice: round2(totalSelectedQty * part.pricePerSet),
+      source: 'set_price',
+      setCount: totalSelectedQty,
+      missingVariantPrices: [],
+    };
+  }
 
   const effectiveSetComposition = buildEffectiveSetComposition(part);
   const selectedVariants =

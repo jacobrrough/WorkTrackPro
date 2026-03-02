@@ -86,4 +86,17 @@ describe('calculateJobPriceFromPart', () => {
     expect(result?.setCount).toBe(2);
     expect(result?.totalPrice).toBe(160);
   });
+
+  it('uses set price for master parts with no variants', () => {
+    const part = makePart({
+      variants: [],
+      setComposition: null,
+      pricePerSet: 125,
+    });
+    const result = calculateJobPriceFromPart(part, { '-01': 3 });
+    expect(result).not.toBeNull();
+    expect(result?.source).toBe('set_price');
+    expect(result?.setCount).toBe(3);
+    expect(result?.totalPrice).toBe(375);
+  });
 });
