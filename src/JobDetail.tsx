@@ -118,6 +118,43 @@ function parseQuantityFromText(value: string | undefined | null): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+function buildEffectivePartQuantities(
+  part: Part | null,
+  dashQuantities: Record<string, number>,
+  qtyText: string | undefined | null
+): Record<string, number> {
+  const normalizedDash = normalizeDashQuantities(dashQuantities);
+  if (Object.values(normalizedDash).some((qty) => qty > 0)) return normalizedDash;
+  if (!part) return normalizedDash;
+
+  const totalQty = parseQuantityFromText(qtyText);
+  if (totalQty <= 0) return normalizedDash;
+
+  if (!part.variants?.length) {
+    return { '-01': totalQty };
+  }
+
+  // Multi-variant fallback: derive dash quantities from set composition × set qty.
+  if (part.setComposition && Object.keys(part.setComposition).length > 0) {
+    const fromSetCount: Record<string, number> = {};
+    for (const variant of part.variants) {
+      const qtyPerSet = getDashQuantity(part.setComposition, variant.variantSuffix);
+      if (qtyPerSet > 0) {
+        fromSetCount[toDashSuffix(variant.variantSuffix)] = qtyPerSet * totalQty;
+      }
+    }
+    const normalizedFromSetCount = normalizeDashQuantities(fromSetCount);
+    if (Object.keys(normalizedFromSetCount).length > 0) return normalizedFromSetCount;
+  }
+
+  // Copy/single-variant fallback when set composition is missing.
+  if (part.variantsAreCopies || part.variants.length === 1) {
+    return { [toDashSuffix(part.variants[0].variantSuffix)]: totalQty };
+  }
+
+  return normalizedDash;
+}
+
 function getMachineTotalsFromJob(job: Job): { cncHours: number; printer3DHours: number } {
   const entries = Object.values(job.machineBreakdownByVariant ?? {});
   return entries.reduce(
@@ -427,12 +464,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   const selectedVariantSuffix = selectedVariant?.variantSuffix || editForm.variantSuffix;
   const effectiveMaterialQuantities = useMemo(() => {
-    const normalizedDash = normalizeDashQuantities(dashQuantities);
-    if (Object.values(normalizedDash).some((qty) => qty > 0)) return normalizedDash;
-    if (!linkedPart || (linkedPart.variants?.length ?? 0) > 0) return normalizedDash;
-    const qtySource = isEditing ? editForm.qty : job.qty;
-    const setQty = parseQuantityFromText(qtySource);
-    return setQty > 0 ? { '-01': setQty } : normalizedDash;
+    return buildEffectivePartQuantities(
+      linkedPart,
+      dashQuantities,
+      isEditing ? editForm.qty : job.qty
+    );
   }, [dashQuantities, linkedPart, isEditing, editForm.qty, job.qty]);
 
   const materialCosts = useMaterialCosts({
@@ -2407,29 +2443,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     Part BOM ({linkedPart.partNumber})
                   </h3>
                   {(() => {
-                    let jobDashQty = normalizeDashQuantities(job.dashQuantities || {});
-                    const totalFromJob =
-                      totalFromDashQuantities(jobDashQty) || parseQuantityFromText(job.qty) || 0;
-                    // When part is "variants are copies" (or single variant), normalized dash may be empty
-                    // if job stores qty differently; use job total on first variant so BOM still computes.
-                    if (
-                      totalFromJob > 0 &&
-                      Object.keys(jobDashQty).length === 0 &&
-                      linkedPart.variants?.length &&
-                      linkedPart.variants[0]
-                    ) {
-                      jobDashQty = {
-                        [toDashSuffix(linkedPart.variants[0].variantSuffix)]: totalFromJob,
-                      };
-                    }
-                    // No-variant master parts: derive synthetic quantity key from set qty.
-                    if (
-                      totalFromJob > 0 &&
-                      Object.keys(jobDashQty).length === 0 &&
-                      !linkedPart.variants?.length
-                    ) {
-                      jobDashQty = { '-01': totalFromJob };
-                    }
+                    const jobDashQty = buildEffectivePartQuantities(
+                      linkedPart,
+                      job.dashQuantities || {},
+                      job.qty
+                    );
                     const requiredMap = computeRequiredMaterials(linkedPart, jobDashQty);
                     const materialsFromPart =
                       linkedPart.variantsAreCopies && linkedPart.variants?.[0]?.materials?.length

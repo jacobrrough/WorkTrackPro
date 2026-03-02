@@ -137,12 +137,15 @@ const PartDetail: React.FC<PartDetailProps> = ({
       );
       const derivedCnc = calculateSetCncFromVariants(part.variants, part.setComposition);
       const derived3D = calculateSetPrinter3DFromVariants(part.variants, part.setComposition);
+      const partLabor = Number(part.laborHours);
+      const partCnc = Number(part.cncTimeHours);
+      const part3D = Number(part.printer3DTimeHours);
       return {
-        effectiveSetLaborHours: part.laborHours ?? derivedLabor,
-        effectiveSetCncHours: part.requiresCNC ? (part.cncTimeHours ?? derivedCnc) : undefined,
-        effectiveSetPrinter3DHours: part.requires3DPrint
-          ? (part.printer3DTimeHours ?? derived3D)
-          : undefined,
+        effectiveSetLaborHours:
+          Number.isFinite(partLabor) && partLabor > 0 ? partLabor : (derivedLabor ?? 0),
+        effectiveSetCncHours: Number.isFinite(partCnc) && partCnc > 0 ? partCnc : (derivedCnc ?? 0),
+        effectiveSetPrinter3DHours:
+          Number.isFinite(part3D) && part3D > 0 ? part3D : (derived3D ?? 0),
       };
     }, [
       part?.id,
@@ -155,6 +158,33 @@ const PartDetail: React.FC<PartDetailProps> = ({
       part?.setComposition,
       part?.variantsAreCopies,
     ]);
+
+  const setInfoDerivedQuote = useMemo(() => {
+    if (!part || !part.variants?.length) return null;
+    const partForSetQuote: Part = {
+      ...part,
+      laborHours: effectiveSetLaborHours ?? 0,
+      requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
+      cncTimeHours: effectiveSetCncHours ?? 0,
+      requires3DPrint: (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
+      printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
+    };
+    return calculatePartQuote(partForSetQuote, 1, inventoryItems, {
+      laborRate: settings.laborRate,
+      cncRate: settings.cncRate,
+      printer3DRate: settings.printer3DRate,
+      overrideLaborHours: effectiveSetLaborHours ?? 0,
+    });
+  }, [
+    part,
+    inventoryItems,
+    settings.laborRate,
+    settings.cncRate,
+    settings.printer3DRate,
+    effectiveSetLaborHours,
+    effectiveSetCncHours,
+    effectiveSetPrinter3DHours,
+  ]);
 
   useEffect(() => {
     if (!part) {
@@ -1337,7 +1367,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
                               part.variants,
                               part.setComposition ?? undefined,
                               part.variantsAreCopies
-                            ) ?? 0
+                            ) ??
+                            setInfoDerivedQuote?.total ??
+                            part.pricePerSet ??
+                            0
                           ).toFixed(2)}
                         </p>
                       </div>
@@ -1365,17 +1398,22 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     )}
                   {canViewFinancials && (
                     <QuoteCalculator
-                      part={part}
+                      part={{
+                        ...part,
+                        laborHours: effectiveSetLaborHours ?? 0,
+                        requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
+                        cncTimeHours: effectiveSetCncHours ?? 0,
+                        requires3DPrint:
+                          (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
+                        printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
+                      }}
                       inventoryItems={inventoryItems}
                       variants={part.variants ?? []}
                       setComposition={part.setComposition}
                       laborRate={settings.laborRate}
                       cncRate={settings.cncRate}
                       printer3DRate={settings.printer3DRate}
-                      autoSetLaborHours={calculateSetLaborFromVariants(
-                        part.variants,
-                        part.setComposition ?? undefined
-                      )}
+                      autoSetLaborHours={effectiveSetLaborHours ?? 0}
                       readOnly={true}
                       variantsAreCopies={!!part.variantsAreCopies}
                     />

@@ -58,7 +58,8 @@ function materialRequirementsForOneSet(
       : part.variants?.find((v) => norm(v.variantSuffix) === norm(suffix));
     if (!variant?.materials) continue;
     for (const mat of variant.materials) {
-      if (mat.usageType === 'per_set') continue;
+      // Variant-linked rows should contribute to set requirements regardless of usageType.
+      // This protects quote math from legacy rows mis-tagged as per_set.
       const qty = quantityPerUnit(mat as { quantityPerUnit?: number; quantity?: number }) * setQty;
       const unit = mat.unit ?? 'units';
       const existing = map.get(mat.inventoryId);

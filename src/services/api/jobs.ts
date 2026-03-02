@@ -170,11 +170,24 @@ async function resolvePartForJob(params: {
   const normalizedPartNumber = params.partNumber.trim().toUpperCase();
   if (!normalizedPartNumber) return { partNumber: '', partId: null };
 
+  const { data: existingExactPartData, error: lookupExactError } = await supabase
+    .from('parts')
+    .select('id, part_number')
+    .eq('part_number', normalizedPartNumber)
+    .maybeSingle();
+  const existingExactPart = (existingExactPartData ?? null) as PartLookupRow | null;
+  if (existingExactPart) {
+    return {
+      partNumber: existingExactPart.part_number,
+      partId: existingExactPart.id,
+    };
+  }
+
   const { data: existingPartData, error: lookupError } = await supabase
     .from('parts')
     .select('id, part_number')
     .ilike('part_number', normalizedPartNumber)
-    .order('created_at', { ascending: true })
+    .order('updated_at', { ascending: false })
     .limit(1);
   const existingPart = ((existingPartData ?? [])[0] ?? null) as PartLookupRow | null;
   if (existingPart) {
@@ -184,7 +197,8 @@ async function resolvePartForJob(params: {
     };
   }
 
-  if (lookupError && isPartsTableUnavailable(lookupError)) {
+  const lookupErr = lookupExactError ?? lookupError;
+  if (lookupErr && isPartsTableUnavailable(lookupErr)) {
     // Parts repository may not be migrated yet. Keep text value on job card.
     return { partNumber: normalizedPartNumber, partId: null };
   }
@@ -212,11 +226,24 @@ async function resolvePartForJob(params: {
 
   if ((createError as SupabaseErrorLike | null)?.code === '23505') {
     // Race condition: another request created the same part number first.
+    const { data: conflictExactPartData } = await supabase
+      .from('parts')
+      .select('id, part_number')
+      .eq('part_number', normalizedPartNumber)
+      .maybeSingle();
+    const conflictExactPart = (conflictExactPartData ?? null) as PartLookupRow | null;
+    if (conflictExactPart) {
+      return {
+        partNumber: conflictExactPart.part_number,
+        partId: conflictExactPart.id,
+      };
+    }
+
     const { data: conflictPartData } = await supabase
       .from('parts')
       .select('id, part_number')
       .ilike('part_number', normalizedPartNumber)
-      .order('created_at', { ascending: true })
+      .order('updated_at', { ascending: false })
       .limit(1);
     const conflictPart = ((conflictPartData ?? [])[0] ?? null) as PartLookupRow | null;
     if (conflictPart) {

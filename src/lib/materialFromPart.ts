@@ -94,7 +94,8 @@ export function computeRequiredMaterials(
         );
     if (!variant?.materials) continue;
     for (const material of variant.materials) {
-      if (material.usageType === 'per_set') continue;
+      // Variant-linked rows should always be treated as per-variant requirements,
+      // even if legacy data has usageType incorrectly set to per_set.
       const qtyPerUnit = quantityPerUnit(
         material as { quantityPerUnit?: number; quantity?: number }
       );

@@ -38,4 +38,36 @@ describe('computeRequiredMaterials', () => {
     expect(result.get('inv-1')?.quantity).toBe(8);
     expect(result.get('inv-2')?.quantity).toBe(6);
   });
+
+  it('includes variant-linked materials even when usageType is per_set', () => {
+    const part: Part & {
+      variants: Array<{ id: string; variantSuffix: string; materials: PartMaterial[] }>;
+    } = {
+      id: 'part-variant',
+      partNumber: 'SK-1000',
+      name: 'Variant Part',
+      variants: [
+        {
+          id: 'v-1',
+          variantSuffix: '01',
+          materials: [
+            {
+              id: 'vm-1',
+              partVariantId: 'v-1',
+              inventoryId: 'inv-1',
+              quantityPerUnit: 2,
+              unit: 'ea',
+              usageType: 'per_set',
+            },
+          ],
+        },
+      ],
+      setComposition: { '-01': 1 },
+    } as unknown as Part & {
+      variants: Array<{ id: string; variantSuffix: string; materials: PartMaterial[] }>;
+    };
+
+    const result = computeRequiredMaterials(part, { '-01': 3 });
+    expect(result.get('inv-1')?.quantity).toBe(6);
+  });
 });

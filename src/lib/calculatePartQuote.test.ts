@@ -70,4 +70,43 @@ describe('calculatePartQuote', () => {
     expect(result?.isReverseCalculated).toBe(true);
     expect(result?.total).toBeCloseTo(9300, 2);
   });
+
+  it('includes variant-linked materials even when usageType is per_set', () => {
+    const part = {
+      id: 'part-2',
+      partNumber: 'P-200',
+      name: 'Part 200',
+      laborHours: 0,
+      requiresCNC: false,
+      requires3DPrint: false,
+      variants: [
+        {
+          id: 'variant-2',
+          partId: 'part-2',
+          variantSuffix: '02',
+          laborHours: 0,
+          materials: [
+            {
+              id: 'vm-1',
+              partVariantId: 'variant-2',
+              inventoryId: 'inv-1',
+              quantityPerUnit: 1,
+              unit: 'ea',
+              usageType: 'per_set',
+            },
+          ],
+        },
+      ],
+      setComposition: { '-02': 1 },
+    } as unknown as Part;
+    const inventory = [makeInventory('inv-1', 200)];
+
+    const result = calculatePartQuote(part, 1, inventory, {
+      laborRate: 175,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.materialCostOur).toBe(200);
+    expect(result?.materialCostCustomer).toBe(450);
+  });
 });

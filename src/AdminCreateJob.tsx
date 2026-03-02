@@ -20,6 +20,7 @@ import {
 import { computeVariantBreakdown } from '@/lib/variantAllocation';
 import { buildPersistedVariantBreakdowns } from '@/features/jobs/hooks/variantBreakdownUtils';
 import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
+import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
@@ -143,12 +144,37 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   };
 
   const buildEffectiveQuantities = (part: Part | null): Record<string, number> => {
-    const hasDashQuantities = Object.values(dashQuantities).some((qty) => qty > 0);
-    if (hasDashQuantities) return dashQuantities;
-    // Master-part fallback: when there are no variants, use entered set qty for price/material sync.
-    if (!part || (part.variants?.length ?? 0) > 0) return {};
+    const normalizedDash = normalizeDashQuantities(dashQuantities);
+    if (Object.values(normalizedDash).some((qty) => qty > 0)) return normalizedDash;
+    if (!part) return normalizedDash;
     const setQty = parseQuantityFromText(formData.qty);
-    return setQty > 0 ? { '-01': setQty } : {};
+    if (setQty <= 0) return normalizedDash;
+
+    if (!(part.variants?.length ?? 0)) {
+      return { '-01': setQty };
+    }
+
+    if (
+      part.setComposition &&
+      Object.keys(part.setComposition).length > 0 &&
+      part.variants?.length
+    ) {
+      const fromSetCount: Record<string, number> = {};
+      for (const variant of part.variants) {
+        const qtyPerSet = getDashQuantity(part.setComposition, variant.variantSuffix);
+        if (qtyPerSet > 0) {
+          fromSetCount[toDashSuffix(variant.variantSuffix)] = qtyPerSet * setQty;
+        }
+      }
+      const normalizedFromSet = normalizeDashQuantities(fromSetCount);
+      if (Object.keys(normalizedFromSet).length > 0) return normalizedFromSet;
+    }
+
+    if ((part.variantsAreCopies || part.variants?.length === 1) && part.variants?.[0]) {
+      return { [toDashSuffix(part.variants[0].variantSuffix)]: setQty };
+    }
+
+    return normalizedDash;
   };
 
   const deriveLaborHoursFromPart = (

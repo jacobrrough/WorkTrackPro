@@ -139,7 +139,7 @@ export const partsService = {
       .from('parts')
       .select('*')
       .ilike('part_number', trimmed)
-      .order('created_at', { ascending: true })
+      .order('updated_at', { ascending: false })
       .limit(1);
     if (ciError || !ciRows || ciRows.length === 0) return null;
     return mapRowToPart(ciRows[0] as unknown as Record<string, unknown>);
