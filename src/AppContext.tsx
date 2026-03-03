@@ -304,9 +304,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         const updatedJob = await jobService.updateJob(jobId, data);
         if (updatedJob) {
+          const jobForCache =
+            data.cncCompletedAt !== undefined || data.cncCompletedBy !== undefined
+              ? {
+                  ...updatedJob,
+                  cncCompletedAt:
+                    data.cncCompletedAt !== undefined
+                      ? data.cncCompletedAt
+                      : updatedJob.cncCompletedAt,
+                  cncCompletedBy:
+                    data.cncCompletedBy !== undefined
+                      ? data.cncCompletedBy
+                      : updatedJob.cncCompletedBy,
+                }
+              : updatedJob;
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? updatedJob : j)) : []
+            prev ? prev.map((j) => (j.id === jobId ? jobForCache : j)) : []
           );
+          queryClient.setQueryData(['job', jobId], jobForCache);
         }
         return updatedJob;
       } catch (error) {

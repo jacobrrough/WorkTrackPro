@@ -37,7 +37,7 @@ interface JobTimeline {
     overtimeHours: number;
     capacityHours: number;
   }>;
-  /** Overdue = planned end past due; Behind = past ECD; At risk = due past, not done */
+  /** Overdue = due date has passed; At risk = due in future but plan will miss it; Behind = plan past ECD */
   scheduleRisk: 'overdue' | 'behind' | 'atRisk' | null;
 }
 
@@ -243,9 +243,9 @@ const Calendar: React.FC<CalendarProps> = ({
         const dueKey = normalizeDateKey(job.dueDate ?? '');
         const ecdKey = job.ecd ? normalizeDateKey(job.ecd) : null;
         let scheduleRisk: 'overdue' | 'behind' | 'atRisk' | null = null;
-        if (plannedEndDate > dueKey) scheduleRisk = 'overdue';
+        if (dueKey && dueKey < todayKey) scheduleRisk = 'overdue';
+        else if (dueKey && plannedEndDate > dueKey) scheduleRisk = 'atRisk';
         else if (ecdKey && plannedEndDate > ecdKey) scheduleRisk = 'behind';
-        else if (dueKey && dueKey < todayKey) scheduleRisk = 'atRisk';
 
         return {
           job,

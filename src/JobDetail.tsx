@@ -1530,9 +1530,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
         cncCompletedAt: markDone ? new Date().toISOString() : null,
         cncCompletedBy: markDone ? currentUser.id : null,
       });
-      if (updated && onReloadJob) await onReloadJob();
       if (updated) {
         showToast(markDone ? 'CNC marked done' : 'CNC marked pending', 'success');
+        // Do not refetch after CNC toggle: we already merged CNC state into cache in updateJob.
+        // Refetch would overwrite cache with API response that may omit cnc_completed_at.
       } else {
         showToast('Failed to update CNC status', 'error');
       }
