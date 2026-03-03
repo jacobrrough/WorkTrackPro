@@ -1174,10 +1174,21 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
       {isScanningBin && (
         <QRScanner
           scanType="bin"
-          onScanComplete={(binLocation) => {
+          onScanComplete={async (binLocation) => {
             setEditBinLocation(binLocation);
             setIsScanningBin(false);
-            showToast(`Bin location scanned: ${binLocation}`, 'success');
+            try {
+              const updated = await onUpdateItem(currentItem.id, {
+                binLocation: binLocation.trim() || undefined,
+              });
+              if (updated) {
+                showToast('Bin location saved', 'success');
+              } else {
+                showToast('Failed to save bin location', 'error');
+              }
+            } catch {
+              showToast('Failed to save bin location', 'error');
+            }
           }}
           onClose={() => setIsScanningBin(false)}
           currentValue={editBinLocation}

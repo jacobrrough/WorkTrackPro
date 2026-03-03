@@ -569,7 +569,7 @@ export const jobService = {
     if (data.assignedUsers !== undefined) row.assigned_users = data.assignedUsers;
     if (data.isRush !== undefined) row.is_rush = data.isRush;
     if (data.workers !== undefined) row.workers = data.workers;
-    if (data.binLocation !== undefined) row.bin_location = data.binLocation;
+    if (data.binLocation !== undefined) row.bin_location = data.binLocation?.trim() || null;
     if (data.partNumber !== undefined) {
       const partNum = data.partNumber?.trim() || null;
       if (partNum) {

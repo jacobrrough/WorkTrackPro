@@ -1509,8 +1509,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
       if (updated && onReloadJob) {
         await onReloadJob();
       }
-      if (updated && shouldAutoMarkCncDone) {
-        showToast('CNC marked done from bin scan', 'success');
+      if (updated) {
+        if (shouldAutoMarkCncDone) {
+          showToast('CNC marked done from bin scan', 'success');
+        } else {
+          showToast('Bin location saved', 'success');
+        }
       }
     } catch (error) {
       console.error('Error updating bin location:', error);
@@ -2846,6 +2850,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
             if (isEditing) {
               setEditForm({ ...editForm, binLocation: location });
               setShowBinLocationScanner(false);
+              // Persist immediately so scanned location is saved without requiring Save
+              handleBinLocationUpdate(location);
             } else {
               handleBinLocationUpdate(location);
               setShowBinLocationScanner(false);

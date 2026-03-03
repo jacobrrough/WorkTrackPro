@@ -120,7 +120,7 @@ export const inventoryService = {
     if (data.hasImage != null) row.has_image = data.hasImage;
     if (data.imageUrl != null) row.image_path = data.imageUrl;
     if (data.barcode != null) row.barcode = data.barcode;
-    if (data.binLocation != null) row.bin_location = data.binLocation;
+    if (data.binLocation !== undefined) row.bin_location = data.binLocation?.trim() || null;
     if (data.vendor != null) row.vendor = data.vendor;
     const { data: updated, error } = await supabase
       .from('inventory')

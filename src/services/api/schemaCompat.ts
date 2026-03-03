@@ -86,9 +86,17 @@ function loadKnownMissing(tableName: string): Set<string> {
   }
   // Self-heal: part_id must not be stripped for jobs (migration 20250217000001 adds it).
   // If it was previously cached as missing, stop stripping it so job–part linking and BOM/labor work again.
-  if (tableName === 'jobs' && set.has('part_id')) {
-    set.delete('part_id');
-    saveKnownMissing(tableName, set);
+  // Also heal bin_location and CNC completion columns (migrations add them) so QR-scanned locations save.
+  if (tableName === 'jobs') {
+    const jobColumnsToHeal = ['part_id', 'bin_location', 'cnc_completed_at', 'cnc_completed_by'];
+    let healed = false;
+    for (const col of jobColumnsToHeal) {
+      if (set.has(col)) {
+        set.delete(col);
+        healed = true;
+      }
+    }
+    if (healed) saveKnownMissing(tableName, set);
   }
   knownMissingColumnsByTable.set(tableName, set);
   return set;
