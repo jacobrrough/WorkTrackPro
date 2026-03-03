@@ -16,11 +16,11 @@ import AttachmentsList from './AttachmentsList';
 import BinLocationScanner from './BinLocationScanner';
 import ChecklistDisplay from './ChecklistDisplay';
 import { formatDateOnly, isoToDateInput, dateInputToISO } from '@/core/date';
-import { formatDurationHMS } from './lib/timeUtils';
+import { formatDurationHMS, formatDurationHours } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { useToast } from './Toast';
 import { StatusBadge } from './components/ui/StatusBadge';
-import { getLaborSuggestion } from './lib/laborSuggestion';
+import { calculateJobHoursFromShifts, getLaborSuggestion } from './lib/laborSuggestion';
 import {
   formatJobCode,
   formatDashSummary,
@@ -58,6 +58,8 @@ import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
 import { useMaterialCosts } from '@/features/jobs/hooks/useMaterialCosts';
 import { useVariantBreakdown } from '@/features/jobs/hooks/useVariantBreakdown';
+import { getMachineTotalsFromJob } from '@/lib/machineHours';
+import { computeJobCompletionProgress } from '@/lib/jobProgress';
 import JobComments from '@/features/jobs/components/JobComments';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
@@ -153,18 +155,6 @@ function buildEffectivePartQuantities(
   }
 
   return normalizedDash;
-}
-
-function getMachineTotalsFromJob(job: Job): { cncHours: number; printer3DHours: number } {
-  const entries = Object.values(job.machineBreakdownByVariant ?? {});
-  return entries.reduce(
-    (acc, entry) => {
-      acc.cncHours += Number(entry.cncHoursTotal) || 0;
-      acc.printer3DHours += Number(entry.printer3DHoursTotal) || 0;
-      return acc;
-    },
-    { cncHours: 0, printer3DHours: 0 }
-  );
 }
 
 function getMachineOverrideFromJob(
@@ -342,6 +332,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
     Record<string, { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }>
   >(() => getMachineOverrideFromJob(job));
   const machineTotals = useMemo(() => getMachineTotalsFromJob(job), [job]);
+  const loggedLaborHours = useMemo(
+    () => calculateJobHoursFromShifts(job.id, shifts),
+    [job.id, shifts]
+  );
+  const completionProgress = useMemo(
+    () => computeJobCompletionProgress(job, loggedLaborHours),
+    [job, loggedLaborHours]
+  );
+  const isCncRequired = completionProgress.plannedCncHours > 0;
   const [editForm, setEditForm] = useState({
     po: job.po || '',
     description: job.description || '',
@@ -1147,7 +1146,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const revision = editForm.revision?.trim() || undefined;
     const estNumber = editForm.estNumber?.trim() || undefined;
     const po = editForm.po?.trim() || undefined;
+    const normalizedBinLocation = editForm.binLocation?.trim() || undefined;
     const normalizedDashQuantities = normalizeDashQuantities(dashQuantities);
+    const shouldAutoMarkCncDone =
+      Boolean(normalizedBinLocation) && isCncRequired && !job.cncCompletedAt;
     const payload = {
       partNumber,
       revision,
@@ -1159,7 +1161,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       laborHours: editForm.laborHours ? parseFloat(editForm.laborHours) : undefined,
       status: editForm.status,
       isRush: editForm.isRush,
-      binLocation: editForm.binLocation?.trim() || undefined,
+      binLocation: normalizedBinLocation,
+      cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
+      cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
       variantSuffix: selectedVariant
         ? selectedVariant.variantSuffix
         : editForm.variantSuffix?.trim() || undefined,
@@ -1493,16 +1497,44 @@ const JobDetail: React.FC<JobDetailProps> = ({
   // Bin location handlers
   const handleBinLocationUpdate = async (location: string) => {
     try {
+      const normalizedLocation = location?.trim() || undefined;
+      const shouldAutoMarkCncDone =
+        Boolean(normalizedLocation) && isCncRequired && !job.cncCompletedAt;
       const updated = await onUpdateJob(job.id, {
-        binLocation: location || undefined,
+        binLocation: normalizedLocation,
+        cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
+        cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
       });
 
       if (updated && onReloadJob) {
         await onReloadJob();
       }
+      if (updated && shouldAutoMarkCncDone) {
+        showToast('CNC marked done from bin scan', 'success');
+      }
     } catch (error) {
       console.error('Error updating bin location:', error);
       showToast('Failed to update bin location', 'error');
+    }
+  };
+
+  const handleToggleCncDone = async () => {
+    if (!currentUser.isAdmin || !isCncRequired) return;
+    try {
+      const markDone = !job.cncCompletedAt;
+      const updated = await onUpdateJob(job.id, {
+        cncCompletedAt: markDone ? new Date().toISOString() : null,
+        cncCompletedBy: markDone ? currentUser.id : null,
+      });
+      if (updated && onReloadJob) await onReloadJob();
+      if (updated) {
+        showToast(markDone ? 'CNC marked done' : 'CNC marked pending', 'success');
+      } else {
+        showToast('Failed to update CNC status', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating CNC status:', error);
+      showToast('Failed to update CNC status', 'error');
     }
   };
 
@@ -2320,6 +2352,138 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </p>
                 </div>
               </div>
+
+              {currentUser.isAdmin && (
+                <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Completion
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {completionProgress.laborOverEstimate && (
+                        <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                          Over estimate – review
+                        </span>
+                      )}
+                      <span className="text-sm font-bold text-white">
+                        {completionProgress.weightedPercent.toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        completionProgress.laborOverEstimate ? 'bg-red-500' : 'bg-primary'
+                      }`}
+                      style={{ width: `${completionProgress.weightedPercent}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+                    <span>L {completionProgress.laborPercent.toFixed(0)}%</span>
+                    <span>CNC {completionProgress.cncPercent.toFixed(0)}%</span>
+                    <span>3D {completionProgress.printer3DPercent.toFixed(0)}%</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Time / Shifts - list and link to Time Reports */}
+              <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2.5">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    Time
+                  </p>
+                  {currentUser.isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('time-reports', job.id)}
+                      className="rounded border border-primary/40 bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary transition-colors hover:bg-primary/30"
+                    >
+                      View in Time Reports
+                    </button>
+                  )}
+                </div>
+                {(() => {
+                  const jobShifts = shifts
+                    .filter((s) => s.job === job.id)
+                    .sort(
+                      (a, b) =>
+                        new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime()
+                    );
+                  if (jobShifts.length === 0) {
+                    return (
+                      <p className="text-xs text-slate-500">
+                        No time logged yet.
+                        {currentUser.isAdmin && ' Use Time Reports to add or view shifts.'}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="space-y-1">
+                      <p className="mb-1.5 text-xs text-slate-400">
+                        {loggedLaborHours.toFixed(1)}h total · {jobShifts.length} shift
+                        {jobShifts.length !== 1 ? 's' : ''}
+                      </p>
+                      {jobShifts.slice(0, 5).map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => currentUser.isAdmin && onNavigate('time-reports', job.id)}
+                          className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[10px] transition-colors ${
+                            currentUser.isAdmin
+                              ? 'cursor-pointer hover:bg-white/10'
+                              : 'cursor-default'
+                          }`}
+                        >
+                          <span className="text-slate-300">
+                            {formatDateOnly(s.clockInTime)} · {s.userName || s.userInitials || '—'}
+                          </span>
+                          <span className="font-medium text-white">
+                            {formatDurationHours(getWorkedShiftMs(s))}
+                          </span>
+                        </button>
+                      ))}
+                      {jobShifts.length > 5 && (
+                        <p className="pt-1 text-[10px] text-slate-500">
+                          +{jobShifts.length - 5} more · View in Time Reports
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {currentUser.isAdmin && isCncRequired && (
+                <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        CNC Status
+                      </p>
+                      <p
+                        className={`text-sm font-semibold ${job.cncCompletedAt ? 'text-green-300' : 'text-amber-300'}`}
+                      >
+                        {job.cncCompletedAt ? 'CNC Done' : 'CNC Pending'}
+                      </p>
+                      {job.cncCompletedAt && (
+                        <p className="text-[10px] text-slate-400">
+                          Marked {formatDateOnly(job.cncCompletedAt)}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleCncDone}
+                      className={`h-11 touch-manipulation rounded-sm border px-3 text-xs font-semibold ${
+                        job.cncCompletedAt
+                          ? 'border-green-500/40 bg-green-500/20 text-green-200'
+                          : 'border-amber-500/40 bg-amber-500/20 text-amber-200'
+                      }`}
+                    >
+                      {job.cncCompletedAt ? 'Mark Pending' : 'Mark Done'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Bin Location - Compact */}
               {job.binLocation && (

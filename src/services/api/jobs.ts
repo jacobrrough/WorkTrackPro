@@ -92,6 +92,8 @@ function mapJobRow(
           }
         >
       | undefined,
+    cncCompletedAt: (row.cnc_completed_at as string | null | undefined) ?? null,
+    cncCompletedBy: (row.cnc_completed_by as string | null | undefined) ?? null,
     allocationSource: row.allocation_source as 'variant' | 'total' | undefined,
     allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,
@@ -505,6 +507,8 @@ export const jobService = {
       dash_quantities: data.dashQuantities ?? null,
       labor_breakdown_by_variant: data.laborBreakdownByVariant ?? null,
       machine_breakdown_by_variant: data.machineBreakdownByVariant ?? null,
+      cnc_completed_at: data.cncCompletedAt ?? null,
+      cnc_completed_by: data.cncCompletedBy ?? null,
       allocation_source: data.allocationSource ?? null,
       allocation_source_updated_at: data.allocationSource ? new Date().toISOString() : null,
       revision: data.revision ?? null,
@@ -591,6 +595,8 @@ export const jobService = {
       row.labor_breakdown_by_variant = data.laborBreakdownByVariant;
     if (data.machineBreakdownByVariant !== undefined)
       row.machine_breakdown_by_variant = data.machineBreakdownByVariant;
+    if (data.cncCompletedAt !== undefined) row.cnc_completed_at = data.cncCompletedAt;
+    if (data.cncCompletedBy !== undefined) row.cnc_completed_by = data.cncCompletedBy;
     if (data.allocationSource !== undefined) {
       row.allocation_source = data.allocationSource;
       row.allocation_source_updated_at = new Date().toISOString();

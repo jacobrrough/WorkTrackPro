@@ -29,7 +29,17 @@ const WEEK_DAYS: Array<{ day: number; short: string; label: string }> = [
 ];
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, onBack }) => {
-  const { currentUser, users, refreshUsers } = useApp();
+  const {
+    currentUser,
+    users,
+    refreshUsers,
+    jobs,
+    inventory,
+    updateJob,
+    updateInventoryItem,
+    refreshJobs,
+    refreshInventory,
+  } = useApp();
   const { settings, updateSettings, isSyncing } = useSettings();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin === true;
@@ -51,6 +61,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
   const [enforceOnSiteAtLogin, setEnforceOnSiteAtLogin] = useState(settings.enforceOnSiteAtLogin);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [clearingBin, setClearingBin] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -250,6 +261,50 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
   const pendingUsers = useMemo(() => (users ?? []).filter((u) => u.isApproved === false), [users]);
   const approvedUsers = useMemo(() => (users ?? []).filter((u) => u.isApproved !== false), [users]);
+
+  /** Bins that have at least one job or inventory item, with counts. */
+  const binsWithCounts = useMemo(() => {
+    const map = new Map<string, { jobIds: string[]; inventoryIds: string[] }>();
+    (jobs ?? []).forEach((j) => {
+      const bin = j.binLocation?.trim();
+      if (!bin) return;
+      const entry = map.get(bin) ?? { jobIds: [], inventoryIds: [] };
+      entry.jobIds.push(j.id);
+      map.set(bin, entry);
+    });
+    (inventory ?? []).forEach((item) => {
+      const bin = item.binLocation?.trim();
+      if (!bin) return;
+      const entry = map.get(bin) ?? { jobIds: [], inventoryIds: [] };
+      entry.inventoryIds.push(item.id);
+      map.set(bin, entry);
+    });
+    return Array.from(map.entries())
+      .map(([bin, counts]) => ({ bin, ...counts }))
+      .sort((a, b) => a.bin.localeCompare(b.bin));
+  }, [jobs, inventory]);
+
+  const handleClearShelf = async (bin: string) => {
+    if (!updateJob || !updateInventoryItem) return;
+    setClearingBin(bin);
+    try {
+      const entry = binsWithCounts.find((b) => b.bin === bin);
+      if (!entry) return;
+      await Promise.all([
+        ...entry.jobIds.map((id) => updateJob(id, { binLocation: undefined })),
+        ...entry.inventoryIds.map((id) => updateInventoryItem(id, { binLocation: undefined })),
+      ]);
+      const total = entry.jobIds.length + entry.inventoryIds.length;
+      showToast(`Cleared shelf ${bin} (${total} item(s))`, 'success');
+      await refreshJobs?.();
+      await refreshInventory?.();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to clear shelf';
+      showToast(msg, 'error');
+    } finally {
+      setClearingBin(null);
+    }
+  };
 
   const handleApprove = async (userId: string, makeAdmin: boolean) => {
     if (!isAdmin || !currentUser?.id) {
@@ -795,6 +850,43 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                 </>
               )}
             </div>
+            {/* Shelf / Bin Reconcile */}
+            {isAdmin && (
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+                <h2 className="mb-1 text-sm font-semibold text-white">Shelf / Bin Reconcile</h2>
+                <p className="mb-3 text-[10px] text-slate-500">
+                  Clear a shelf to remove bin location from all jobs and inventory at that bin. Use
+                  Kanban bulk select + &quot;Set bin&quot; to assign multiple jobs to one location.
+                </p>
+                {binsWithCounts.length === 0 ? (
+                  <p className="text-sm text-slate-400">No bins in use.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {binsWithCounts.map(({ bin, jobIds, inventoryIds }) => (
+                      <li
+                        key={bin}
+                        className="flex items-center justify-between gap-3 rounded border border-white/10 bg-white/5 p-2"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-mono font-semibold text-primary">{bin}</span>
+                          <p className="text-[10px] text-slate-400">
+                            {jobIds.length} job(s), {inventoryIds.length} inventory item(s)
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={clearingBin === bin}
+                          onClick={() => handleClearShelf(bin)}
+                          className="shrink-0 rounded border border-red-500/40 bg-red-500/20 px-2 py-1.5 text-xs font-bold text-red-300 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+                        >
+                          {clearingBin === bin ? 'Clearing…' : 'Clear shelf'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <button
               onClick={handleSave}
               disabled={isSyncing}

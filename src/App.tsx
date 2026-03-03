@@ -454,6 +454,7 @@ export default function App() {
         <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
           <KanbanBoard
             jobs={jobs}
+            shifts={shifts}
             onNavigate={handleNavigate}
             onCreateJob={() => handleNavigate('create-job')}
             onDeleteJob={deleteJob}
@@ -547,6 +548,7 @@ export default function App() {
             onNavigate={handleNavigate}
             onBack={() => handleNavigate('dashboard')}
             onRefreshShifts={refreshShifts}
+            initialJobId={id}
           />
         </AppShell>
       </AdminRoute>

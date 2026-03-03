@@ -57,6 +57,16 @@ export interface CapacityScheduleInput {
   priority?: number;
 }
 
+/** Input for front-loaded (forward) labor scheduling. Labor starts on earliestStartDate and fills forward toward dueDate. */
+export interface CapacityScheduleForwardInput {
+  id: string;
+  earliestStartDate: string; // YYYY-MM-DD — labor cannot start before this (e.g. after CNC completes)
+  dueDate: string | Date;
+  requiredHours: number;
+  isRush?: boolean;
+  priority?: number;
+}
+
 export interface CapacityScheduleResult {
   id: string;
   dueDate: string;
@@ -497,6 +507,106 @@ export function buildCapacityAwareBackwardSchedules(
       id: item.id,
       dueDate: item.dueDateKey,
       startDate: allocations[0]?.date ?? item.dueDateKey,
+      requiredHours: item.requiredHours,
+      scheduledHours,
+      overtimeHours,
+      unscheduledHours: Math.max(0, remainingHours),
+      allocations,
+    });
+  }
+
+  const dayUsage = Object.fromEntries(usageMap.entries());
+  return { results, dayUsage };
+}
+
+/**
+ * Front-loaded labor scheduling: allocates from earliestStartDate forward, filling first day first.
+ * Uses shared dayUsage so multiple jobs share capacity (employees can work on different projects the same day).
+ * Order: earliest due first (overdue jobs get first pick), then rush, then priority.
+ */
+export function buildCapacityAwareForwardSchedules(
+  inputs: CapacityScheduleForwardInput[],
+  options: WorkCapacityOptions = {}
+): CapacityAwareScheduleOutput {
+  const allowOvertime = options.includeOvertime === true;
+  const usageMap = new Map<string, DayUsageEntry>();
+  const results: CapacityScheduleResult[] = [];
+
+  const ordered = inputs
+    .filter((input) => Number.isFinite(input.requiredHours) && input.requiredHours > 0)
+    .map((input) => ({
+      ...input,
+      earliestStartKey: normalizeDueDateKey(input.earliestStartDate),
+      dueDateKey: normalizeDueDateKey(input.dueDate),
+    }))
+    .sort((a, b) => {
+      // Earliest due first (overdue jobs get capacity first)
+      if (a.dueDateKey !== b.dueDateKey) return a.dueDateKey.localeCompare(b.dueDateKey);
+      if (!!a.isRush !== !!b.isRush) return a.isRush ? -1 : 1;
+      const pa = a.priority ?? 0;
+      const pb = b.priority ?? 0;
+      return pa - pb;
+    });
+
+  for (const item of ordered) {
+    let remainingHours = item.requiredHours;
+    const startDate = toLocalNoonDate(item.earliestStartKey);
+    const dueDate = toLocalNoonDate(item.dueDateKey);
+    const allocations: DailyWorkAllocation[] = [];
+    let currentDate = new Date(startDate);
+    let lookedAhead = 0;
+
+    while (remainingHours > 0 && lookedAhead < MAX_ALLOCATION_LOOKAHEAD_DAYS) {
+      const dateKey = toDateOnlyString(currentDate);
+      const capacity = getDailyCapacityForDate(currentDate, options);
+      const overtimeCapacityHours = allowOvertime ? capacity.overtimeCapacityHours : 0;
+      const capacityHours = capacity.regularCapacityHours + overtimeCapacityHours;
+
+      if (capacityHours > 0) {
+        const usage = usageMap.get(dateKey) ?? { regularHours: 0, overtimeHours: 0, totalHours: 0 };
+
+        const availableRegular = Math.max(0, capacity.regularCapacityHours - usage.regularHours);
+        const regularHours = Math.min(remainingHours, availableRegular);
+        remainingHours -= regularHours;
+
+        const availableOvertime = Math.max(0, overtimeCapacityHours - usage.overtimeHours);
+        const overtimeHours =
+          allowOvertime && remainingHours > 0 ? Math.min(remainingHours, availableOvertime) : 0;
+        remainingHours -= overtimeHours;
+
+        const scheduledHours = regularHours + overtimeHours;
+        if (scheduledHours > 0) {
+          usage.regularHours += regularHours;
+          usage.overtimeHours += overtimeHours;
+          usage.totalHours = usage.regularHours + usage.overtimeHours;
+          usageMap.set(dateKey, usage);
+
+          allocations.push({
+            date: dateKey,
+            scheduledHours,
+            regularHours,
+            overtimeHours,
+            regularCapacityHours: capacity.regularCapacityHours,
+            overtimeCapacityHours,
+            capacityHours,
+          });
+        }
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+      lookedAhead += 1;
+    }
+
+    const scheduledHours = Math.max(0, item.requiredHours - remainingHours);
+    const overtimeHours = allocations.reduce(
+      (sum, allocation) => sum + allocation.overtimeHours,
+      0
+    );
+
+    results.push({
+      id: item.id,
+      dueDate: item.dueDateKey,
+      startDate: allocations[0]?.date ?? item.earliestStartKey,
       requiredHours: item.requiredHours,
       scheduledHours,
       overtimeHours,

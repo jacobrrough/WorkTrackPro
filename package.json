@@ -15,6 +15,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "doctor:duplicate-parts": "node scripts/doctor-duplicate-parts.mjs",
     "deploy:push": "git add -A && git status"
   },
   "dependencies": {

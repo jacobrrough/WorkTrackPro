@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Job, ViewState, User, Shift } from '@/core/types';
 import {
   buildCapacityAwareBackwardSchedules,
+  buildCapacityAwareForwardSchedules,
   getDailyCapacityForDate,
   getWeeklyCapacityHours,
   getWeeklyWorkHours,
@@ -11,6 +12,8 @@ import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
 import { getJobDisplayName } from '@/lib/formatJob';
 import { useSettings } from '@/contexts/SettingsContext';
+import { getMachineTotalsFromJob } from '@/lib/machineHours';
+import { computeJobCompletionProgress } from '@/lib/jobProgress';
 
 interface CalendarProps {
   jobs: Job[];
@@ -23,7 +26,7 @@ interface CalendarProps {
 interface JobTimeline {
   job: Job;
   startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD (planned completion = last allocation date)
   hours: number;
   overtimeHours: number;
   unscheduledHours: number;
@@ -34,6 +37,8 @@ interface JobTimeline {
     overtimeHours: number;
     capacityHours: number;
   }>;
+  /** Overdue = planned end past due; Behind = past ECD; At risk = due past, not done */
+  scheduleRisk: 'overdue' | 'behind' | 'atRisk' | null;
 }
 
 const toDateKey = (date: Date) => {
@@ -59,13 +64,15 @@ const normalizeDateKey = (value: string) => {
 const Calendar: React.FC<CalendarProps> = ({
   jobs: allJobs,
   shifts,
-  currentUser: _currentUser,
+  currentUser,
   onNavigate,
   onBack,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [includeOvertimeInSchedule, setIncludeOvertimeInSchedule] = useState(false);
-  const [plannerHours, setPlannerHours] = useState('5');
+  const [plannerLaborHours, setPlannerLaborHours] = useState('5');
+  const [plannerCncHours, setPlannerCncHours] = useState('0');
+  const [plannerPrinter3DHours, setPlannerPrinter3DHours] = useState('0');
   const [plannerDueDate, setPlannerDueDate] = useState('');
   const [plannerUseOvertime, setPlannerUseOvertime] = useState(true);
   const { settings } = useSettings();
@@ -111,7 +118,64 @@ const Calendar: React.FC<CalendarProps> = ({
     [settings.employeeCount, settings.workWeekSchedule]
   );
 
-  const scheduleInputs = useMemo(
+  const todayKey = useMemo(() => toDateKey(new Date()), []);
+
+  const cncScheduleInputs = useMemo(
+    () =>
+      jobs
+        .filter((job) => job.dueDate && job.active)
+        .map((job) => ({
+          id: job.id,
+          dueDate: job.dueDate!,
+          requiredHours: getMachineTotalsFromJob(job).cncHours,
+          isRush: job.isRush,
+        }))
+        .filter((job) => job.requiredHours > 0),
+    [jobs]
+  );
+  const printer3DScheduleInputs = useMemo(
+    () =>
+      jobs
+        .filter((job) => job.dueDate && job.active)
+        .map((job) => ({
+          id: job.id,
+          dueDate: job.dueDate!,
+          requiredHours: getMachineTotalsFromJob(job).printer3DHours,
+          isRush: job.isRush,
+        }))
+        .filter((job) => job.requiredHours > 0),
+    [jobs]
+  );
+
+  const cncCapacitySchedule = useMemo(
+    () =>
+      buildCapacityAwareBackwardSchedules(cncScheduleInputs, {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      }),
+    [cncScheduleInputs, baseScheduleOptions]
+  );
+  const printer3DCapacitySchedule = useMemo(
+    () =>
+      buildCapacityAwareBackwardSchedules(printer3DScheduleInputs, {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      }),
+    [printer3DScheduleInputs, baseScheduleOptions]
+  );
+
+  /** CNC must finish before labor; per-job last date of CNC work. */
+  const cncCompletionByJobId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of cncCapacitySchedule.results) {
+      const last = r.allocations[r.allocations.length - 1];
+      if (last) map.set(r.id, last.date);
+    }
+    return map;
+  }, [cncCapacitySchedule.results]);
+
+  /** Labor inputs with earliest start = max(today, CNC completion). Front-loaded via forward scheduler. */
+  const laborForwardInputs = useMemo(
     () =>
       jobs
         .filter((job) => job.dueDate && job.active)
@@ -119,46 +183,84 @@ const Calendar: React.FC<CalendarProps> = ({
           const fallbackHours = calculateJobHoursFromShifts(job.id, shifts);
           const requiredHours =
             job.laborHours && job.laborHours > 0 ? job.laborHours : fallbackHours;
+          const cncHours = getMachineTotalsFromJob(job).cncHours;
+          const cncCompletion = cncHours > 0 ? cncCompletionByJobId.get(job.id) : null;
+          // CNC must finish the day before labor starts
+          let earliestStartDate = todayKey;
+          if (cncCompletion) {
+            const [y, m, d] = cncCompletion.split('-').map(Number);
+            const laborStartDayAfterCnc = new Date(y, m - 1, d + 1);
+            const laborStartKey = `${laborStartDayAfterCnc.getFullYear()}-${String(laborStartDayAfterCnc.getMonth() + 1).padStart(2, '0')}-${String(laborStartDayAfterCnc.getDate()).padStart(2, '0')}`;
+            earliestStartDate = laborStartKey > todayKey ? laborStartKey : todayKey;
+          }
           return {
             id: job.id,
+            earliestStartDate,
             dueDate: job.dueDate!,
             requiredHours,
             isRush: job.isRush,
           };
         })
         .filter((job) => job.requiredHours > 0),
-    [jobs, shifts]
+    [jobs, shifts, todayKey, cncCompletionByJobId]
   );
 
   const capacityAwareSchedule = useMemo(
     () =>
-      buildCapacityAwareBackwardSchedules(scheduleInputs, {
+      buildCapacityAwareForwardSchedules(laborForwardInputs, {
         ...baseScheduleOptions,
         includeOvertime: includeOvertimeInSchedule,
       }),
-    [scheduleInputs, baseScheduleOptions, includeOvertimeInSchedule]
+    [laborForwardInputs, baseScheduleOptions, includeOvertimeInSchedule]
   );
 
   const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
+  const jobProgressById = useMemo(() => {
+    const next = new Map<string, ReturnType<typeof computeJobCompletionProgress>>();
+    for (const job of jobs) {
+      const loggedLaborHours = calculateJobHoursFromShifts(job.id, shifts);
+      next.set(job.id, computeJobCompletionProgress(job, loggedLaborHours));
+    }
+    return next;
+  }, [jobs, shifts]);
+  const jobMachineById = useMemo(() => {
+    const next = new Map<string, ReturnType<typeof getMachineTotalsFromJob>>();
+    for (const job of jobs) {
+      next.set(job.id, getMachineTotalsFromJob(job));
+    }
+    return next;
+  }, [jobs]);
 
   const jobTimelines = useMemo((): JobTimeline[] => {
     return capacityAwareSchedule.results
       .map((result) => {
         const job = jobsById.get(result.id);
         if (!job) return null;
+        const plannedEndDate =
+          result.allocations.length > 0
+            ? result.allocations[result.allocations.length - 1].date
+            : result.startDate;
+        const dueKey = normalizeDateKey(job.dueDate ?? '');
+        const ecdKey = job.ecd ? normalizeDateKey(job.ecd) : null;
+        let scheduleRisk: 'overdue' | 'behind' | 'atRisk' | null = null;
+        if (plannedEndDate > dueKey) scheduleRisk = 'overdue';
+        else if (ecdKey && plannedEndDate > ecdKey) scheduleRisk = 'behind';
+        else if (dueKey && dueKey < todayKey) scheduleRisk = 'atRisk';
+
         return {
           job,
           startDate: result.startDate,
-          endDate: normalizeDateKey(result.dueDate),
+          endDate: plannedEndDate,
           hours: result.requiredHours,
           overtimeHours: result.overtimeHours,
           unscheduledHours: result.unscheduledHours,
           allocations: result.allocations,
+          scheduleRisk,
         } as JobTimeline;
       })
       .filter((timeline): timeline is JobTimeline => timeline != null)
       .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
-  }, [capacityAwareSchedule.results, jobsById]);
+  }, [capacityAwareSchedule.results, jobsById, todayKey]);
 
   // Get days in current month
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -241,6 +343,34 @@ const Calendar: React.FC<CalendarProps> = ({
     }
     return loadByDate;
   }, [capacityAwareSchedule.dayUsage, baseScheduleOptions, includeOvertimeInSchedule]);
+  const cncDayLoadMap = useMemo(() => {
+    const loadByDate = new Map<string, { scheduledHours: number; capacityHours: number }>();
+    for (const [date, usage] of Object.entries(cncCapacitySchedule.dayUsage)) {
+      const capacity = getDailyCapacityForDate(date, {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      });
+      loadByDate.set(date, {
+        scheduledHours: usage.totalHours,
+        capacityHours: capacity.regularCapacityHours,
+      });
+    }
+    return loadByDate;
+  }, [cncCapacitySchedule.dayUsage, baseScheduleOptions]);
+  const printer3DDayLoadMap = useMemo(() => {
+    const loadByDate = new Map<string, { scheduledHours: number; capacityHours: number }>();
+    for (const [date, usage] of Object.entries(printer3DCapacitySchedule.dayUsage)) {
+      const capacity = getDailyCapacityForDate(date, {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      });
+      loadByDate.set(date, {
+        scheduledHours: usage.totalHours,
+        capacityHours: capacity.regularCapacityHours,
+      });
+    }
+    return loadByDate;
+  }, [printer3DCapacitySchedule.dayUsage, baseScheduleOptions]);
 
   // Generate unique color for job based on ID
   const getJobColor = (jobId: string): string => {
@@ -284,17 +414,27 @@ const Calendar: React.FC<CalendarProps> = ({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1));
   };
 
-  const plannerRequiredHours = useMemo(() => {
-    const parsed = parseFloat(plannerHours);
+  const plannerLaborRequiredHours = useMemo(() => {
+    const parsed = parseFloat(plannerLaborHours);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  }, [plannerHours]);
+  }, [plannerLaborHours]);
+  const plannerCncRequiredHours = useMemo(() => {
+    const parsed = parseFloat(plannerCncHours);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [plannerCncHours]);
+  const plannerPrinter3DRequiredHours = useMemo(() => {
+    const parsed = parseFloat(plannerPrinter3DHours);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [plannerPrinter3DHours]);
+  const plannerAnyHours =
+    plannerLaborRequiredHours > 0 ||
+    plannerCncRequiredHours > 0 ||
+    plannerPrinter3DRequiredHours > 0;
 
-  const todayKey = useMemo(() => toDateKey(new Date()), []);
-
-  const earliestPlan = useMemo(() => {
-    if (plannerRequiredHours <= 0) return null;
+  const earliestLaborPlan = useMemo(() => {
+    if (plannerLaborRequiredHours <= 0) return null;
     return planForwardFromDate(
-      plannerRequiredHours,
+      plannerLaborRequiredHours,
       todayKey,
       {
         ...baseScheduleOptions,
@@ -303,17 +443,46 @@ const Calendar: React.FC<CalendarProps> = ({
       capacityAwareSchedule.dayUsage
     );
   }, [
-    plannerRequiredHours,
+    plannerLaborRequiredHours,
     todayKey,
     baseScheduleOptions,
     plannerUseOvertime,
     capacityAwareSchedule.dayUsage,
   ]);
-
-  const duePlanWithoutOvertime = useMemo(() => {
-    if (plannerRequiredHours <= 0 || !plannerDueDate) return null;
+  const earliestCncPlan = useMemo(() => {
+    if (plannerCncRequiredHours <= 0) return null;
     return planForwardFromDate(
-      plannerRequiredHours,
+      plannerCncRequiredHours,
+      todayKey,
+      {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      },
+      cncCapacitySchedule.dayUsage
+    );
+  }, [plannerCncRequiredHours, todayKey, baseScheduleOptions, cncCapacitySchedule.dayUsage]);
+  const earliestPrinter3DPlan = useMemo(() => {
+    if (plannerPrinter3DRequiredHours <= 0) return null;
+    return planForwardFromDate(
+      plannerPrinter3DRequiredHours,
+      todayKey,
+      {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      },
+      printer3DCapacitySchedule.dayUsage
+    );
+  }, [
+    plannerPrinter3DRequiredHours,
+    todayKey,
+    baseScheduleOptions,
+    printer3DCapacitySchedule.dayUsage,
+  ]);
+
+  const laborDuePlanWithoutOvertime = useMemo(() => {
+    if (plannerLaborRequiredHours <= 0 || !plannerDueDate) return null;
+    return planForwardFromDate(
+      plannerLaborRequiredHours,
       todayKey,
       {
         ...baseScheduleOptions,
@@ -323,42 +492,58 @@ const Calendar: React.FC<CalendarProps> = ({
       plannerDueDate
     );
   }, [
-    plannerRequiredHours,
+    plannerLaborRequiredHours,
     plannerDueDate,
     todayKey,
     baseScheduleOptions,
     capacityAwareSchedule.dayUsage,
   ]);
-
-  const duePlanWithOvertime = useMemo(() => {
-    if (plannerRequiredHours <= 0 || !plannerDueDate) return null;
+  const cncDuePlan = useMemo(() => {
+    if (plannerCncRequiredHours <= 0 || !plannerDueDate) return null;
     return planForwardFromDate(
-      plannerRequiredHours,
+      plannerCncRequiredHours,
       todayKey,
       {
         ...baseScheduleOptions,
-        includeOvertime: true,
+        includeOvertime: false,
       },
-      capacityAwareSchedule.dayUsage,
+      cncCapacitySchedule.dayUsage,
       plannerDueDate
     );
   }, [
-    plannerRequiredHours,
+    plannerCncRequiredHours,
     plannerDueDate,
     todayKey,
     baseScheduleOptions,
-    capacityAwareSchedule.dayUsage,
+    cncCapacitySchedule.dayUsage,
+  ]);
+  const printer3DDuePlan = useMemo(() => {
+    if (plannerPrinter3DRequiredHours <= 0 || !plannerDueDate) return null;
+    return planForwardFromDate(
+      plannerPrinter3DRequiredHours,
+      todayKey,
+      {
+        ...baseScheduleOptions,
+        includeOvertime: false,
+      },
+      printer3DCapacitySchedule.dayUsage,
+      plannerDueDate
+    );
+  }, [
+    plannerPrinter3DRequiredHours,
+    plannerDueDate,
+    todayKey,
+    baseScheduleOptions,
+    printer3DCapacitySchedule.dayUsage,
   ]);
 
-  const overtimeNeededForDue = useMemo(() => {
-    if (!duePlanWithoutOvertime) return 0;
-    return Math.max(0, duePlanWithoutOvertime.remainingHours);
-  }, [duePlanWithoutOvertime]);
-
-  const overtimePremiumCost = useMemo(
-    () => overtimeNeededForDue * settings.laborRate * Math.max(0, settings.overtimeMultiplier - 1),
-    [overtimeNeededForDue, settings.laborRate, settings.overtimeMultiplier]
-  );
+  const earliestCompletionDate = useMemo(() => {
+    const dates = [earliestLaborPlan, earliestCncPlan, earliestPrinter3DPlan]
+      .map((plan) => plan?.completionDate ?? null)
+      .filter((value): value is string => Boolean(value));
+    if (dates.length === 0) return null;
+    return dates.sort()[dates.length - 1];
+  }, [earliestLaborPlan, earliestCncPlan, earliestPrinter3DPlan]);
 
   return (
     <div className="flex h-full flex-col bg-background-dark">
@@ -431,16 +616,38 @@ const Calendar: React.FC<CalendarProps> = ({
         </div>
 
         <div className="mb-4 rounded-sm border border-white/10 bg-white/5 p-3">
-          <h3 className="mb-3 text-sm font-bold text-white">What-if Planner</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <h3 className="mb-3 text-sm font-bold text-white">New Job Planner</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
             <label className="text-xs text-slate-400">
               New job labor hours
               <input
                 type="number"
                 min="0.1"
                 step="0.1"
-                value={plannerHours}
-                onChange={(e) => setPlannerHours(e.target.value)}
+                value={plannerLaborHours}
+                onChange={(e) => setPlannerLaborHours(e.target.value)}
+                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              CNC hours
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={plannerCncHours}
+                onChange={(e) => setPlannerCncHours(e.target.value)}
+                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+              />
+            </label>
+            <label className="text-xs text-slate-400">
+              3D print hours
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={plannerPrinter3DHours}
+                onChange={(e) => setPlannerPrinter3DHours(e.target.value)}
                 className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
               />
             </label>
@@ -468,67 +675,79 @@ const Calendar: React.FC<CalendarProps> = ({
               </button>
             </label>
           </div>
-          {plannerRequiredHours > 0 && earliestPlan && (
+
+          {plannerAnyHours && (
             <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
               <p>
                 Soonest completion:{' '}
                 <span className="font-semibold text-white">
-                  {earliestPlan.completionDate
-                    ? formatDateOnly(earliestPlan.completionDate)
+                  {earliestCompletionDate
+                    ? formatDateOnly(earliestCompletionDate)
                     : 'No capacity found'}
                 </span>
               </p>
               <p className="mt-1">
-                Scheduled hours: {plannerRequiredHours.toFixed(1)}h
-                {earliestPlan.overtimeHours > 0 && (
-                  <>
-                    {' '}
-                    (
-                    <span className="font-semibold text-amber-300">
-                      {earliestPlan.overtimeHours.toFixed(1)}h overtime
-                    </span>
-                    )
-                  </>
-                )}
+                Labor lane:{' '}
+                {earliestLaborPlan?.completionDate
+                  ? formatDateOnly(earliestLaborPlan.completionDate)
+                  : 'n/a'}
+              </p>
+              <p className="mt-1">
+                CNC lane:{' '}
+                {earliestCncPlan?.completionDate
+                  ? formatDateOnly(earliestCncPlan.completionDate)
+                  : 'n/a'}
+              </p>
+              <p className="mt-1">
+                3D lane:{' '}
+                {earliestPrinter3DPlan?.completionDate
+                  ? formatDateOnly(earliestPrinter3DPlan.completionDate)
+                  : 'n/a'}
               </p>
             </div>
           )}
 
-          {plannerRequiredHours > 0 &&
-            plannerDueDate &&
-            duePlanWithoutOvertime &&
-            duePlanWithOvertime && (
-              <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
-                <p>
-                  Due-date check ({formatDateOnly(plannerDueDate)}):{' '}
-                  {duePlanWithoutOvertime.remainingHours <= 0 ? (
-                    <span className="font-semibold text-green-400">Fits with regular hours</span>
+          {plannerAnyHours && plannerDueDate && (
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
+              <p className="mb-1">Due-date lane checks ({formatDateOnly(plannerDueDate)}):</p>
+              {laborDuePlanWithoutOvertime && (
+                <p className="mt-1">
+                  Labor:{' '}
+                  {laborDuePlanWithoutOvertime.remainingHours <= 0 ? (
+                    <span className="font-semibold text-green-400">fits</span>
                   ) : (
-                    <span className="font-semibold text-amber-300">
-                      Needs {overtimeNeededForDue.toFixed(1)}h overtime
+                    <span className="font-semibold text-red-400">
+                      short {laborDuePlanWithoutOvertime.remainingHours.toFixed(1)}h
                     </span>
                   )}
                 </p>
+              )}
+              {cncDuePlan && (
                 <p className="mt-1">
-                  Additional OT labor premium @ {settings.overtimeMultiplier.toFixed(2)}x:{' '}
-                  <span className="font-semibold text-amber-300">
-                    ${overtimePremiumCost.toFixed(2)}
-                  </span>
+                  CNC:{' '}
+                  {cncDuePlan.remainingHours <= 0 ? (
+                    <span className="font-semibold text-green-400">fits</span>
+                  ) : (
+                    <span className="font-semibold text-red-400">
+                      short {cncDuePlan.remainingHours.toFixed(1)}h
+                    </span>
+                  )}
                 </p>
+              )}
+              {printer3DDuePlan && (
                 <p className="mt-1">
-                  Total labor with required overtime:{' '}
-                  <span className="font-semibold text-white">
-                    ${(plannerRequiredHours * settings.laborRate + overtimePremiumCost).toFixed(2)}
-                  </span>
+                  3D:{' '}
+                  {printer3DDuePlan.remainingHours <= 0 ? (
+                    <span className="font-semibold text-green-400">fits</span>
+                  ) : (
+                    <span className="font-semibold text-red-400">
+                      short {printer3DDuePlan.remainingHours.toFixed(1)}h
+                    </span>
+                  )}
                 </p>
-                {duePlanWithOvertime.remainingHours > 0 && (
-                  <p className="mt-1 font-semibold text-red-400">
-                    Even with configured overtime, short by{' '}
-                    {duePlanWithOvertime.remainingHours.toFixed(1)}h.
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-7 gap-1">
@@ -545,6 +764,8 @@ const Calendar: React.FC<CalendarProps> = ({
             const isToday = dayData.date.toDateString() === new Date().toDateString();
             const dateKey = toDateKey(dayData.date);
             const dayLoad = dayLoadMap.get(dateKey);
+            const cncDayLoad = cncDayLoadMap.get(dateKey);
+            const printer3DDayLoad = printer3DDayLoadMap.get(dateKey);
             const dayCapacity = getDailyCapacityForDate(dayData.date, {
               ...baseScheduleOptions,
               includeOvertime: includeOvertimeInSchedule,
@@ -590,6 +811,18 @@ const Calendar: React.FC<CalendarProps> = ({
                     OT {overtimeHours.toFixed(1)}h
                   </div>
                 )}
+                {cncDayLoad && (
+                  <div className="text-[10px] text-cyan-300">
+                    CNC {cncDayLoad.scheduledHours.toFixed(1)}/{cncDayLoad.capacityHours.toFixed(1)}
+                    h
+                  </div>
+                )}
+                {printer3DDayLoad && (
+                  <div className="text-[10px] text-purple-300">
+                    3D {printer3DDayLoad.scheduledHours.toFixed(1)}/
+                    {printer3DDayLoad.capacityHours.toFixed(1)}h
+                  </div>
+                )}
                 <div className="mt-1 space-y-0.5">
                   {jobsForDay.slice(0, 3).map((tl) => (
                     <button
@@ -598,7 +831,9 @@ const Calendar: React.FC<CalendarProps> = ({
                       className={`w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-white transition-colors hover:opacity-80 ${getJobColor(tl.job.id)}`}
                       title={`#${tl.job.jobCode} - ${getJobDisplayName(tl.job)}`}
                     >
-                      {tl.job.isRush && '⚡ '}#{tl.job.jobCode}
+                      {tl.job.isRush && '⚡ '}
+                      {tl.job.cncCompletedAt && '✓ '}
+                      {tl.scheduleRisk === 'overdue' && '! '}#{tl.job.jobCode}
                     </button>
                   ))}
                   {jobsForDay.length > 3 && (
@@ -617,37 +852,112 @@ const Calendar: React.FC<CalendarProps> = ({
             <p className="text-sm text-slate-400">No jobs with due dates</p>
           ) : (
             <div className="space-y-2">
-              {jobTimelines.slice(0, 10).map((tl) => (
-                <button
-                  key={tl.job.id}
-                  onClick={() => onNavigate('job-detail', tl.job.id)}
-                  className="w-full rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white">#{tl.job.jobCode}</span>
-                        <span className="text-sm text-slate-300">{getJobDisplayName(tl.job)}</span>
-                        {tl.job.isRush && <span className="text-yellow-400">⚡</span>}
-                      </div>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
-                        <span>Start: {formatDateOnly(tl.startDate)}</span>
-                        <span>Due: {formatDateOnly(tl.endDate)}</span>
-                        <span>{tl.hours.toFixed(1)}h</span>
-                        {tl.overtimeHours > 0 && (
-                          <span className="text-amber-300">OT {tl.overtimeHours.toFixed(1)}h</span>
-                        )}
-                        {tl.unscheduledHours > 0 && (
-                          <span className="text-red-400">
-                            Short {tl.unscheduledHours.toFixed(1)}h
+              {jobTimelines.slice(0, 10).map((tl) => {
+                const progress = jobProgressById.get(tl.job.id);
+                const machine = jobMachineById.get(tl.job.id);
+                return (
+                  <button
+                    key={tl.job.id}
+                    onClick={() => onNavigate('job-detail', tl.job.id)}
+                    className="w-full rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="w-full">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">#{tl.job.jobCode}</span>
+                          <span className="text-sm text-slate-300">
+                            {getJobDisplayName(tl.job)}
                           </span>
+                          {tl.job.isRush && <span className="text-yellow-400">⚡</span>}
+                          {tl.scheduleRisk === 'overdue' && (
+                            <span className="rounded bg-red-500/30 px-1.5 py-0.5 text-[10px] font-bold text-red-300">
+                              Overdue
+                            </span>
+                          )}
+                          {tl.scheduleRisk === 'behind' && (
+                            <span className="rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                              Behind
+                            </span>
+                          )}
+                          {tl.scheduleRisk === 'atRisk' && (
+                            <span className="rounded bg-orange-500/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-300">
+                              At risk
+                            </span>
+                          )}
+                          {tl.job.cncCompletedAt ? (
+                            <span className="text-[11px] font-semibold text-green-300">
+                              CNC Done
+                            </span>
+                          ) : (
+                            (machine?.cncHours ?? 0) > 0 && (
+                              <span className="text-[11px] font-semibold text-amber-300">
+                                CNC Pending
+                              </span>
+                            )
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
+                          <span>Start: {formatDateOnly(tl.startDate)}</span>
+                          <span>Due: {formatDateOnly(tl.job.dueDate)}</span>
+                          <span>Planned: {formatDateOnly(tl.endDate)}</span>
+                          <span>{tl.hours.toFixed(1)}h</span>
+                          {tl.overtimeHours > 0 && (
+                            <span className="text-amber-300">
+                              OT {tl.overtimeHours.toFixed(1)}h
+                            </span>
+                          )}
+                          {tl.unscheduledHours > 0 && (
+                            <span className="text-red-400">
+                              Short {tl.unscheduledHours.toFixed(1)}h
+                            </span>
+                          )}
+                        </div>
+                        {currentUser.isAdmin && progress && (
+                          <div className="mt-2">
+                            <div className="mb-1 flex items-center justify-between text-[10px] text-slate-400">
+                              <span>Completion</span>
+                              <div className="flex items-center gap-1.5">
+                                {progress.laborOverEstimate && (
+                                  <span className="rounded bg-red-500/20 px-1 py-0.5 text-[10px] font-semibold text-red-400">
+                                    Review
+                                  </span>
+                                )}
+                                <span>{progress.weightedPercent.toFixed(0)}%</span>
+                              </div>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  progress.laborOverEstimate ? 'bg-red-500' : 'bg-primary'
+                                }`}
+                                style={{ width: `${progress.weightedPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {currentUser.isAdmin && (
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onNavigate('time-reports', tl.job.id);
+                              }}
+                              className="rounded border border-white/20 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+                            >
+                              Time
+                            </button>
+                          </div>
                         )}
                       </div>
+                      <span className="material-symbols-outlined text-slate-400">
+                        chevron_right
+                      </span>
                     </div>
-                    <span className="material-symbols-outlined text-slate-400">chevron_right</span>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

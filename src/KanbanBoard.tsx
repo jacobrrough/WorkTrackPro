@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Job, JobStatus, ViewState, User, Checklist, InventoryItem } from '@/core/types';
+import { Job, JobStatus, ViewState, User, Checklist, InventoryItem, Shift } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import { formatJobCode, formatDashSummary } from '@/lib/formatJob';
 import { matchesJobSearch } from '@/lib/jobSearch';
@@ -10,9 +10,12 @@ import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useThrottle } from '@/useThrottle';
 import QRScanner from './components/QRScanner';
+import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
+import { validateBinLocation } from '@/core/validation';
 
 interface KanbanBoardProps {
   jobs: Job[];
+  shifts?: Shift[];
   boardType: 'shopFloor' | 'admin';
   onNavigate: (view: ViewState, jobId?: string) => void;
   onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
@@ -117,6 +120,7 @@ function getPartMetaForJob(
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({
   jobs: allJobs,
+  shifts: shiftsProp = [],
   boardType,
   onNavigate,
   onUpdateJobStatus,
@@ -148,6 +152,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [bulkTargetStatus, setBulkTargetStatus] = useState<JobStatus | null>(null);
+  const [bulkSetBinOpen, setBulkSetBinOpen] = useState(false);
+  const [bulkSetBinValue, setBulkSetBinValue] = useState('');
+  const [bulkSetBinError, setBulkSetBinError] = useState<string | null>(null);
   const [partsByNumber, setPartsByNumber] = useState<
     Record<string, { name: string; setComposition?: Record<string, number> }>
   >({});
@@ -738,6 +745,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         : 'Sets';
                     const overdue = isJobOverdue(job);
                     const isSelected = selectedJobIds.has(job.id);
+                    const jobHours = calculateJobHoursFromShifts(job.id, shiftsProp);
 
                     return (
                       <div
@@ -1014,6 +1022,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             <span className="text-slate-500">PO# </span>
                             {job.po || '—'}
                           </p>
+                          {job.binLocation && (
+                            <p className="flex items-center gap-1 truncate text-slate-200">
+                              <span className="material-symbols-outlined text-[10px] text-primary">
+                                location_on
+                              </span>
+                              <span className="text-slate-500">Bin </span>
+                              <span className="font-mono font-medium text-primary">
+                                {job.binLocation}
+                              </span>
+                            </p>
+                          )}
                         </div>
 
                         {/* Due date */}
@@ -1026,6 +1045,30 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             </span>
                           )}
                         </p>
+
+                        {/* Time logged + link to Time Reports (admin) */}
+                        {(jobHours > 0 || isAdmin) && (
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            {jobHours > 0 && (
+                              <span className="text-[10px] text-slate-400">
+                                {jobHours.toFixed(1)}h logged
+                              </span>
+                            )}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  onNavigate('time-reports', job.id);
+                                }}
+                                className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+                              >
+                                Time
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {/* Footer - checklist / comment / attachment counts */}
                         <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
@@ -1086,7 +1129,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {bulkSelectMode && selectedJobIds.size > 0 && (
         <div className="fixed bottom-20 left-0 right-0 z-40 flex items-center justify-between gap-3 border-t border-white/10 bg-[#1a1122] px-4 py-3 shadow-lg">
           <span className="text-sm font-medium text-white">{selectedJobIds.size} selected</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setBulkSetBinValue('');
+                setBulkSetBinError(null);
+                setBulkSetBinOpen(true);
+              }}
+              className="rounded border border-primary/40 bg-primary/20 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/30"
+            >
+              Set bin
+            </button>
             <select
               value={bulkTargetStatus ?? ''}
               onChange={(e) => setBulkTargetStatus((e.target.value as JobStatus) || null)}
@@ -1118,6 +1172,86 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             >
               Apply
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Set bin modal */}
+      {bulkSetBinOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setBulkSetBinOpen(false);
+              setBulkSetBinValue('');
+              setBulkSetBinError(null);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-set-bin-title"
+        >
+          <div
+            className="w-full max-w-sm rounded-sm border border-white/10 bg-[#1a1122] p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="bulk-set-bin-title" className="mb-3 text-lg font-bold text-white">
+              Set bin for {selectedJobIds.size} job(s)
+            </h3>
+            <p className="mb-2 text-xs text-slate-400">
+              Enter bin (e.g. A4c). All selected jobs will be assigned this location.
+            </p>
+            <input
+              type="text"
+              value={bulkSetBinValue}
+              onChange={(e) => {
+                const v = e.target.value.toUpperCase();
+                setBulkSetBinValue(v);
+                setBulkSetBinError(validateBinLocation(v.trim()) ?? null);
+              }}
+              placeholder="A4c"
+              className="mb-2 w-full rounded border border-white/20 bg-white/10 px-3 py-2 font-mono text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary"
+              autoFocus
+            />
+            {bulkSetBinError && <p className="mb-2 text-xs text-red-400">{bulkSetBinError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkSetBinOpen(false);
+                  setBulkSetBinValue('');
+                  setBulkSetBinError(null);
+                }}
+                className="flex-1 rounded-sm bg-white/10 py-2.5 font-bold text-white transition-colors hover:bg-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!bulkSetBinError || !bulkSetBinValue.trim()}
+                onClick={async () => {
+                  const bin = bulkSetBinValue.trim();
+                  const err = validateBinLocation(bin);
+                  if (err) {
+                    setBulkSetBinError(err);
+                    return;
+                  }
+                  if (!onUpdateJob) return;
+                  await Promise.all(
+                    Array.from(selectedJobIds).map((id) => onUpdateJob(id, { binLocation: bin }))
+                  );
+                  showToast(`Bin ${bin} set for ${selectedJobIds.size} job(s)`, 'success');
+                  setSelectedJobIds(new Set());
+                  setBulkSetBinOpen(false);
+                  setBulkSetBinValue('');
+                  setBulkSetBinError(null);
+                  setBulkSelectMode(false);
+                }}
+                className="flex-1 rounded-sm bg-primary py-2.5 font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </div>
       )}

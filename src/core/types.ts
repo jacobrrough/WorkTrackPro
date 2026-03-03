@@ -190,6 +190,8 @@ export interface Job {
       printer3DHoursTotal: number;
     }
   >;
+  cncCompletedAt?: string | null;
+  cncCompletedBy?: string | null;
   allocationSource?: 'variant' | 'total';
   allocationSourceUpdatedAt?: string;
   revision?: string;

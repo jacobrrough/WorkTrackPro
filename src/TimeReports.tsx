@@ -92,10 +92,12 @@ interface TimeReportsProps {
   shifts: Shift[];
   users: User[];
   jobs: Job[];
-  onNavigate: (view: ViewState) => void;
+  onNavigate: (view: ViewState, id?: string) => void;
   onBack?: () => void;
   currentUser: User;
   onRefreshShifts?: () => Promise<void>;
+  /** When set, filter shifts to this job and show a "Show all" banner. */
+  initialJobId?: string | null;
 }
 
 const TimeReports: React.FC<TimeReportsProps> = ({
@@ -106,8 +108,15 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   onBack,
   currentUser,
   onRefreshShifts,
+  initialJobId,
 }) => {
   const { showToast } = useToast();
+  /** When set, show only shifts for this job (from initialJobId or user cleared "Show all"). */
+  const [jobFilter, setJobFilter] = useState<string | null>(() => initialJobId ?? null);
+  // Sync job filter when navigating to Time Reports with a job id
+  React.useEffect(() => {
+    if (initialJobId) setJobFilter(initialJobId);
+  }, [initialJobId]);
   const [filter, setFilter] = useState<'all' | 'mine'>('mine');
   const [dateRange, setDateRange] = useState<DateRange>('week');
   const [periodOffset, setPeriodOffset] = useState(0);
@@ -191,6 +200,10 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       result = result.filter((s) => s.user === selectedUser);
     }
 
+    if (jobFilter) {
+      result = result.filter((s) => s.job === jobFilter);
+    }
+
     const rangeStart = periodWindow.start;
     const rangeEnd = periodWindow.end;
     if (rangeStart && rangeEnd) {
@@ -203,7 +216,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
     return result.sort(
       (a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime()
     );
-  }, [shifts, filter, periodWindow, currentUser.id, selectedUser]);
+  }, [shifts, filter, periodWindow, currentUser.id, selectedUser, jobFilter]);
 
   const totalsByJob = useMemo(() => {
     const map: Record<string, number> = {};
@@ -515,6 +528,22 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       </header>
 
       <main className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
+        {/* Job filter banner when opened from a job card */}
+        {jobFilter && (
+          <div className="flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/10 p-3">
+            <p className="min-w-0 text-sm font-medium text-white">
+              Showing time for: #{getJobCode(jobFilter)} – {getJobName(jobFilter)}
+            </p>
+            <button
+              type="button"
+              onClick={() => setJobFilter(null)}
+              className="shrink-0 rounded-sm border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+            >
+              Show all
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="space-y-4 rounded-sm border border-white/5 bg-card-dark p-3">
           {currentUser.isAdmin && (

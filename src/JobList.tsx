@@ -7,6 +7,7 @@ import {
   getJobDisplayName,
   formatJobIdentityLine,
 } from '@/lib/formatJob';
+import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { useClockIn } from '@/contexts/ClockInContext';
 
 interface JobListProps {
@@ -16,6 +17,8 @@ interface JobListProps {
   activeJobId?: string;
   shifts: Shift[];
   users: User[];
+  /** When true, show "Time" link to Time Reports on each card. */
+  isAdmin?: boolean;
 }
 
 const normalizeLegacyRushStatus = (status: Job['status']): Job['status'] =>
@@ -28,6 +31,7 @@ const JobList: React.FC<JobListProps> = ({
   activeJobId,
   shifts,
   users,
+  isAdmin = false,
 }) => {
   const clockInCtx = useClockIn();
   const handleClockIn = useCallback(
@@ -173,6 +177,7 @@ const JobList: React.FC<JobListProps> = ({
             filteredJobs.map((job) => {
               const activeWorkers = getActiveUsersForJob(job.id);
               const isActive = job.id === activeJobId;
+              const jobHours = calculateJobHoursFromShifts(job.id, shifts);
 
               return (
                 <div
@@ -211,6 +216,9 @@ const JobList: React.FC<JobListProps> = ({
                         >
                           {getStatusDisplayName(job.status)}
                         </span>
+                        {jobHours > 0 && (
+                          <span className="text-xs text-slate-400">{jobHours.toFixed(1)}h</span>
+                        )}
                         {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 ? (
                           <span className="text-xs text-slate-500">
                             Variant: {formatDashSummary(job.dashQuantities)}
@@ -237,6 +245,18 @@ const JobList: React.FC<JobListProps> = ({
 
                   <div className="flex items-center justify-between gap-2 border-t border-white/5 pt-2">
                     <div className="flex items-center gap-2">
+                      {isAdmin && jobHours > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNavigate('time-reports', job.id);
+                          }}
+                          className="flex items-center gap-1 rounded border border-white/20 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+                        >
+                          <span className="material-symbols-outlined text-sm">schedule</span>
+                          Time
+                        </button>
+                      )}
                       {job.dueDate && (
                         <div className="flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-sm text-slate-400">

@@ -324,6 +324,12 @@ alter table public.jobs
 alter table public.jobs
   add column if not exists allocation_source_updated_at timestamptz;
 
+-- Migration 10: Job-level CNC completion tracking
+alter table public.jobs
+  add column if not exists cnc_completed_at timestamptz;
+alter table public.jobs
+  add column if not exists cnc_completed_by uuid references public.profiles(id) on delete set null;
+
 -- ============================================
 -- MIGRATIONS COMPLETE
 -- ============================================
