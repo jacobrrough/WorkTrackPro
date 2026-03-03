@@ -177,7 +177,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await queryClient.invalidateQueries({ queryKey: ['jobs'] });
   }, [queryClient]);
 
-  /** Refetch a single job and replace it in the list. Use after save + material sync so we don't overwrite with stale data from refreshJobs(). */
+  /** Refetch a single job and replace it in the list. Also update the single-job cache so Job Detail (detailJob) and progress bar reflect CNC/bin updates. */
   const refreshJob = useCallback(
     async (jobId: string) => {
       try {
@@ -186,6 +186,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
             prev ? prev.map((j) => (j.id === jobId ? job : j)) : [job]
           );
+          queryClient.setQueryData(['job', jobId], job);
         }
       } catch (error) {
         console.error('Failed to refresh job:', error);

@@ -9,6 +9,8 @@ import { NotificationBell } from './components/NotificationBell';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
+import { formatJobCode, getJobDisplayName } from './lib/formatJob';
+import type { Job } from './core/types';
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
 
@@ -29,12 +31,27 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { currentUser, jobs, inventory, activeShift, activeJob, logout, clockOut } = useApp();
+  const {
+    currentUser,
+    jobs,
+    inventory,
+    activeShift,
+    activeJob,
+    logout,
+    clockOut,
+    updateJob,
+    updateInventoryItem,
+    refreshJobs,
+    refreshInventory,
+  } = useApp();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin ?? false;
   const { state: navState, updateState } = useNavigation();
   const [searchInput, setSearchInput] = useState(navState.searchTerm);
   const [showScanner, setShowScanner] = useState(false);
+  const [scannedBinLocation, setScannedBinLocation] = useState<string | null>(null);
+  const [addingJobToBin, setAddingJobToBin] = useState(false);
+  const [clearingBinForId, setClearingBinForId] = useState<string | null>(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
   const [shiftTimer, setShiftTimer] = useState('00:00:00');
@@ -59,13 +76,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }, [navState.searchTerm]);
 
   const handleScanComplete = (scannedData: string) => {
+    const trimmed = scannedData.trim();
+
+    if (addingJobToBin && scannedBinLocation) {
+      setShowScanner(false);
+      setAddingJobToBin(false);
+      const job = jobs.find((j) => j.id === trimmed || j.jobCode.toString() === trimmed);
+      if (job) {
+        updateJob(job.id, { binLocation: scannedBinLocation })
+          .then(() => {
+            showToast(`Job #${job.jobCode} added to bin ${scannedBinLocation}`, 'success');
+            return refreshJobs();
+          })
+          .catch(() => showToast('Failed to add job to bin', 'error'));
+      } else {
+        showToast('Scan a job code to add to this bin', 'warning');
+      }
+      return;
+    }
+
     setShowScanner(false);
 
-    // Try to match scanned code to inventory or job
-    const inventoryItem = inventory.find(
-      (item) => item.id === scannedData || item.barcode === scannedData
-    );
-    const job = jobs.find((j) => j.id === scannedData || j.jobCode.toString() === scannedData);
+    const inventoryItem = inventory.find((item) => item.id === trimmed || item.barcode === trimmed);
+    const job = jobs.find((j) => j.id === trimmed || j.jobCode.toString() === trimmed);
 
     if (inventoryItem) {
       showToast(`Found inventory: ${inventoryItem.name}`, 'success');
@@ -74,14 +107,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       showToast(`Found job: ${job.jobCode}`, 'success');
       onNavigate('job-detail', job.id);
     } else {
-      // Check if it's a bin location format
-      const binMatch = /^[A-Z]\d+[a-z]$/.test(scannedData);
+      const binMatch = /^[A-Z]\d+[a-z]$/.test(trimmed);
       if (binMatch) {
-        showToast(`Scanned bin location: ${scannedData}`, 'info');
-        // Could navigate to a bin location search view or show items at that bin
-        // For now, just show toast
+        setScannedBinLocation(trimmed);
       } else {
-        showToast(`Scanned: ${scannedData} (not found)`, 'warning');
+        showToast(`Scanned: ${trimmed} (not found)`, 'warning');
       }
     }
   };
@@ -466,6 +496,207 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       )}
 
+      {/* Bin results modal (dashboard scanner only: after scanning a bin) */}
+      {scannedBinLocation && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col bg-background-dark"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bin-results-title"
+        >
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3">
+              <h2 id="bin-results-title" className="text-lg font-bold text-white">
+                Bin {scannedBinLocation}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setScannedBinLocation(null)}
+                className="flex size-10 items-center justify-center rounded text-slate-400 hover:text-white"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {(() => {
+                const bin = scannedBinLocation.trim();
+                const jobsAtBin = jobs.filter((j) => (j.binLocation ?? '').trim() === bin) as Job[];
+                const inventoryAtBin = inventory.filter(
+                  (i) => (i.binLocation ?? '').trim() === bin
+                );
+
+                const handleClearJobBin = async (jobId: string) => {
+                  setClearingBinForId(jobId);
+                  try {
+                    const ok = await updateJob(jobId, { binLocation: undefined });
+                    if (ok) {
+                      showToast('Removed from bin', 'success');
+                      await refreshJobs();
+                    }
+                  } catch {
+                    showToast('Failed to remove from bin', 'error');
+                  } finally {
+                    setClearingBinForId(null);
+                  }
+                };
+
+                const handleClearInventoryBin = async (itemId: string) => {
+                  setClearingBinForId(itemId);
+                  try {
+                    const ok = await updateInventoryItem(itemId, {
+                      binLocation: undefined,
+                    });
+                    if (ok) {
+                      showToast('Removed from bin', 'success');
+                      await refreshInventory();
+                    }
+                  } catch {
+                    showToast('Failed to remove from bin', 'error');
+                  } finally {
+                    setClearingBinForId(null);
+                  }
+                };
+
+                if (jobsAtBin.length === 0 && inventoryAtBin.length === 0) {
+                  return (
+                    <div className="py-8 text-center">
+                      <p className="text-slate-400">Nothing at this bin</p>
+                      <button
+                        type="button"
+                        onClick={() => setScannedBinLocation(null)}
+                        className="mt-4 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-6">
+                    {jobsAtBin.length > 0 && (
+                      <section>
+                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+                          Jobs
+                        </h3>
+                        <ul className="space-y-1">
+                          {jobsAtBin.map((j) => (
+                            <li
+                              key={j.id}
+                              className="flex items-center gap-3 rounded border border-white/10 bg-white/5 p-2"
+                            >
+                              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={true}
+                                  onChange={() => handleClearJobBin(j.id)}
+                                  disabled={clearingBinForId === j.id}
+                                  className="size-5 rounded border-white/20"
+                                />
+                                <span
+                                  className="min-w-0 flex-1 truncate text-white"
+                                  onClick={(e) => {
+                                    if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                                      onNavigate('job-detail', j.id);
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ')
+                                      onNavigate('job-detail', j.id);
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  #{formatJobCode(j.jobCode)} – {getJobDisplayName(j)}
+                                </span>
+                              </label>
+                              <span className="material-symbols-outlined text-primary" aria-hidden>
+                                chevron_right
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          Uncheck to remove from bin. Tap row to open job.
+                        </p>
+                      </section>
+                    )}
+                    {inventoryAtBin.length > 0 && (
+                      <section>
+                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+                          Inventory
+                        </h3>
+                        <ul className="space-y-1">
+                          {inventoryAtBin.map((item) => (
+                            <li
+                              key={item.id}
+                              className="flex items-center gap-3 rounded border border-white/10 bg-white/5 p-2"
+                            >
+                              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={true}
+                                  onChange={() => handleClearInventoryBin(item.id)}
+                                  disabled={clearingBinForId === item.id}
+                                  className="size-5 rounded border-white/20"
+                                />
+                                <span
+                                  className="min-w-0 flex-1 truncate text-white"
+                                  onClick={(e) => {
+                                    if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                                      onNavigate('inventory-detail', item.id);
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ')
+                                      onNavigate('inventory-detail', item.id);
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                >
+                                  {item.name}
+                                </span>
+                              </label>
+                              <span className="material-symbols-outlined text-primary" aria-hidden>
+                                chevron_right
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          Uncheck to remove from bin. Tap row to open item.
+                        </p>
+                      </section>
+                    )}
+                    <div className="flex flex-col gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddingJobToBin(true);
+                          setShowScanner(true);
+                        }}
+                        className="flex items-center justify-center gap-2 rounded-sm border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
+                      >
+                        <span className="material-symbols-outlined">add_circle</span>
+                        Add job to this bin
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScannedBinLocation(null)}
+                        className="rounded-sm bg-white/10 py-3 text-sm font-bold text-white"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Scanner Modal */}
       {showScanner && (
         <Suspense
@@ -482,9 +713,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <QRScanner
             scanType="any"
             onScanComplete={handleScanComplete}
-            onClose={() => setShowScanner(false)}
-            title="Scan QR Code"
-            description="Scan inventory, job, or bin location QR code"
+            onClose={() => {
+              setShowScanner(false);
+              setAddingJobToBin(false);
+            }}
+            title={addingJobToBin ? 'Scan job to add to bin' : 'Scan QR Code'}
+            description={
+              addingJobToBin
+                ? 'Scan a job code to assign this bin'
+                : 'Scan inventory, job, or bin location QR code'
+            }
           />
         </Suspense>
       )}
