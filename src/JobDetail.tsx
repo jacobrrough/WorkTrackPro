@@ -47,12 +47,7 @@ import {
 } from '@/lib/partDistribution';
 import type { VariantDefaultOverrides } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
-import {
-  getDashQuantity,
-  normalizeDashQuantities,
-  quantityPerUnit,
-  toDashSuffix,
-} from '@/lib/variantMath';
+import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
 import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
@@ -602,17 +597,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
         (!Number(e?.printer3DHoursPerUnit) || e.printer3DHoursPerUnit === 0)
     );
   const shouldPullFromPart = (jobHasNoLabor || jobHasNoMachineHours) && !!linkedPart;
-
-  // When Part has set composition and set-level labor/CNC, always apply so variant breakdown sum = set total
-  const partHasSetLevel =
-    !!linkedPart?.setComposition &&
-    Object.keys(linkedPart.setComposition).length > 0 &&
-    (Number(linkedPart.laborHours) > 0 ||
-      Number(linkedPart.cncTimeHours) > 0 ||
-      Number(linkedPart.printer3DTimeHours) > 0) &&
-    !!linkedPart?.variants?.length &&
-    Object.values(dashQuantities).some((q) => q > 0);
-  const shouldApplySetLevelFromPart = partHasSetLevel;
 
   /** Complete sets derived from current dash quantities (for "Full sets" input when part has set composition). */
   const derivedCompleteSets = useMemo(() => {

@@ -551,9 +551,8 @@ export function buildCapacityAwareForwardSchedules(
   for (const item of ordered) {
     let remainingHours = item.requiredHours;
     const startDate = toLocalNoonDate(item.earliestStartKey);
-    const dueDate = toLocalNoonDate(item.dueDateKey);
     const allocations: DailyWorkAllocation[] = [];
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     let lookedAhead = 0;
 
     while (remainingHours > 0 && lookedAhead < MAX_ALLOCATION_LOOKAHEAD_DAYS) {
