@@ -408,7 +408,8 @@ const Calendar: React.FC<CalendarProps> = ({
     'December',
   ];
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDaysLong = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDaysShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const changeMonth = (delta: number) => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1));
@@ -547,137 +548,139 @@ const Calendar: React.FC<CalendarProps> = ({
 
   return (
     <div className="flex h-full flex-col bg-background-dark">
-      {/* Header */}
-      <div className="border-b border-white/10 bg-background-light px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-                aria-label="Back"
-              >
-                <span className="material-symbols-outlined text-xl">arrow_back</span>
-              </button>
-            )}
-            <div>
-              <h1 className="text-xl font-bold text-white">Calendar</h1>
-              <p className="text-xs text-slate-400">Job timelines and scheduling</p>
+      {/* Header - mobile-first: stack on narrow screens, safe area for iPhone notch */}
+      <div className="safe-area-top shrink-0 border-b border-white/10 bg-background-light px-3 py-3 sm:px-4 sm:py-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label="Back"
+                >
+                  <span className="material-symbols-outlined text-xl">arrow_back</span>
+                </button>
+              )}
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-bold text-white sm:text-xl">Calendar</h1>
+                <p className="truncate text-xs text-slate-400">Job timelines and scheduling</p>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               onClick={() => setIncludeOvertimeInSchedule((v) => !v)}
-              className={`rounded-sm px-3 py-2 text-xs font-semibold transition-colors ${
+              className={`min-h-[44px] touch-manipulation rounded-sm px-2 py-2 text-xs font-semibold transition-colors sm:px-3 ${
                 includeOvertimeInSchedule
                   ? 'bg-amber-500/20 text-amber-300'
                   : 'bg-white/5 text-slate-400 hover:bg-white/10'
               }`}
             >
-              {includeOvertimeInSchedule ? 'Using OT Capacity' : 'Regular Capacity Only'}
+              <span className="hidden sm:inline">
+                {includeOvertimeInSchedule ? 'Using OT Capacity' : 'Regular Capacity Only'}
+              </span>
+              <span className="sm:hidden">{includeOvertimeInSchedule ? 'OT on' : 'OT off'}</span>
             </button>
-            <button
-              onClick={() => changeMonth(-1)}
-              className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Previous month"
-            >
-              <span className="material-symbols-outlined text-xl">chevron_left</span>
-            </button>
-            <h2 className="min-w-[180px] text-center font-bold text-white">
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </h2>
-            <button
-              onClick={() => changeMonth(1)}
-              className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Next month"
-            >
-              <span className="material-symbols-outlined text-xl">chevron_right</span>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => changeMonth(-1)}
+                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Previous month"
+              >
+                <span className="material-symbols-outlined text-xl">chevron_left</span>
+              </button>
+              <h2 className="min-w-[140px] text-center text-sm font-bold text-white sm:min-w-[180px] sm:text-base">
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </h2>
+              <button
+                onClick={() => changeMonth(1)}
+                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Next month"
+              >
+                <span className="material-symbols-outlined text-xl">chevron_right</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-3 text-xs text-slate-300">
+      {/* Calendar Grid - scrollable with safe area bottom for iPhone */}
+      <div className="flex-1 overflow-x-auto overflow-y-auto px-3 py-4 pb-[env(safe-area-inset-bottom)] sm:px-4">
+        <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
           <p>
-            {settings.employeeCount} employee{settings.employeeCount !== 1 ? 's' : ''} ·{' '}
-            {weeklyRegularHoursPerEmployee.toFixed(1)}h regular/employee/week
+            {settings.employeeCount} emp · {weeklyRegularHoursPerEmployee.toFixed(1)}h reg/wk
           </p>
-          <p className="mt-1 text-slate-300">
-            Overtime possible/employee/week: {weeklyOvertimeHoursPerEmployee.toFixed(1)}h
-          </p>
-          <p className="mt-1 font-medium text-primary">
-            Weekly regular capacity: {weeklyCapacityHours.toFixed(1)}h
-          </p>
-          <p className="mt-1 text-amber-300">
-            Weekly max capacity with overtime: {weeklyCapacityWithOvertime.toFixed(1)}h
+          <p className="mt-0.5 sm:mt-1">
+            OT/emp: {weeklyOvertimeHoursPerEmployee.toFixed(1)}h · Reg cap:{' '}
+            <span className="font-medium text-primary">{weeklyCapacityHours.toFixed(1)}h</span> ·
+            Max: <span className="text-amber-300">{weeklyCapacityWithOvertime.toFixed(1)}h</span>
           </p>
         </div>
 
-        <div className="mb-4 rounded-sm border border-white/10 bg-white/5 p-3">
-          <h3 className="mb-3 text-sm font-bold text-white">New Job Planner</h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-            <label className="text-xs text-slate-400">
-              New job labor hours
+        <div className="mb-4 rounded-sm border border-white/10 bg-white/5 p-2.5 sm:p-3">
+          <h3 className="mb-2 text-sm font-bold text-white sm:mb-3">New Job Planner</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+            <label className="col-span-2 text-xs text-slate-400 sm:col-span-1">
+              Labor hrs
               <input
                 type="number"
                 min="0.1"
                 step="0.1"
                 value={plannerLaborHours}
                 onChange={(e) => setPlannerLaborHours(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="text-xs text-slate-400">
-              CNC hours
+              CNC hrs
               <input
                 type="number"
                 min="0"
                 step="0.1"
                 value={plannerCncHours}
                 onChange={(e) => setPlannerCncHours(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="text-xs text-slate-400">
-              3D print hours
+              3D hrs
               <input
                 type="number"
                 min="0"
                 step="0.1"
                 value={plannerPrinter3DHours}
                 onChange={(e) => setPlannerPrinter3DHours(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="text-xs text-slate-400">
-              Due date (optional)
+              Due date
               <input
                 type="date"
                 value={plannerDueDate}
                 onChange={(e) => setPlannerDueDate(e.target.value)}
-                className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
-            <label className="text-xs text-slate-400">
-              Soonest-date uses overtime
+            <label className="col-span-2 text-xs text-slate-400 sm:col-span-1">
+              Use OT for soonest
               <button
                 type="button"
                 onClick={() => setPlannerUseOvertime((v) => !v)}
-                className={`mt-1 flex h-[42px] w-full items-center justify-center rounded border px-2 text-sm font-medium transition-colors ${
+                className={`mt-1 flex min-h-[44px] w-full touch-manipulation items-center justify-center rounded border px-2 text-sm font-medium transition-colors ${
                   plannerUseOvertime
                     ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
                     : 'border-white/10 bg-white/5 text-slate-300'
                 }`}
               >
-                {plannerUseOvertime ? 'Yes (OT allowed)' : 'No (regular hours only)'}
+                {plannerUseOvertime ? 'Yes' : 'No'}
               </button>
             </label>
           </div>
 
           {plannerAnyHours && (
-            <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
               <p>
                 Soonest completion:{' '}
                 <span className="font-semibold text-white">
@@ -708,7 +711,7 @@ const Calendar: React.FC<CalendarProps> = ({
           )}
 
           {plannerAnyHours && plannerDueDate && (
-            <div className="mt-3 rounded border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
               <p className="mb-1">Due-date lane checks ({formatDateOnly(plannerDueDate)}):</p>
               {laborDuePlanWithoutOvertime && (
                 <p className="mt-1">
@@ -750,10 +753,13 @@ const Calendar: React.FC<CalendarProps> = ({
           )}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {/* Week day headers */}
-          {weekDays.map((day) => (
-            <div key={day} className="py-2 text-center text-xs font-bold text-slate-400">
+        <div className="grid min-w-[280px] grid-cols-7 gap-0.5 sm:gap-1">
+          {/* Week day headers - short on mobile for iPhone */}
+          {weekDaysShort.map((day, i) => (
+            <div
+              key={weekDaysLong[i]}
+              className="py-1.5 text-center text-[10px] font-bold text-slate-400 sm:py-2 sm:text-xs"
+            >
               {day}
             </div>
           ))}
@@ -781,54 +787,54 @@ const Calendar: React.FC<CalendarProps> = ({
             return (
               <div
                 key={idx}
-                className={`min-h-[80px] rounded border p-1 ${
+                className={`min-h-[72px] rounded border p-0.5 sm:min-h-[80px] sm:p-1 ${
                   dayData.isCurrentMonth
                     ? 'border-white/10 bg-white/5'
                     : 'bg-white/2 border-white/5'
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
               >
                 <div
-                  className={`text-xs font-medium ${
+                  className={`text-[11px] font-medium sm:text-xs ${
                     dayData.isCurrentMonth ? 'text-slate-300' : 'text-slate-600'
                   }`}
                 >
                   {dayData.date.getDate()}
                   {totalCapacity > 0 && (
-                    <span className="ml-1 text-[10px] text-slate-500">
+                    <span className="ml-0.5 text-[9px] text-slate-500 sm:ml-1 sm:text-[10px]">
                       ({totalCapacity.toFixed(1)}h)
                     </span>
                   )}
                 </div>
                 {totalCapacity > 0 && (
                   <div
-                    className={`mt-0.5 text-[10px] ${overCapacity ? 'font-bold text-red-400' : 'text-slate-500'}`}
+                    className={`mt-0.5 text-[9px] sm:text-[10px] ${overCapacity ? 'font-bold text-red-400' : 'text-slate-500'}`}
                   >
                     {scheduledHours.toFixed(1)}/{totalCapacity.toFixed(1)}h
                   </div>
                 )}
                 {overtimeHours > 0 && (
-                  <div className="text-[10px] font-medium text-amber-300">
+                  <div className="text-[9px] font-medium text-amber-300 sm:text-[10px]">
                     OT {overtimeHours.toFixed(1)}h
                   </div>
                 )}
                 {cncDayLoad && (
-                  <div className="text-[10px] text-cyan-300">
+                  <div className="truncate text-[9px] text-cyan-300 sm:text-[10px]">
                     CNC {cncDayLoad.scheduledHours.toFixed(1)}/{cncDayLoad.capacityHours.toFixed(1)}
                     h
                   </div>
                 )}
                 {printer3DDayLoad && (
-                  <div className="text-[10px] text-purple-300">
+                  <div className="truncate text-[9px] text-purple-300 sm:text-[10px]">
                     3D {printer3DDayLoad.scheduledHours.toFixed(1)}/
                     {printer3DDayLoad.capacityHours.toFixed(1)}h
                   </div>
                 )}
-                <div className="mt-1 space-y-0.5">
+                <div className="mt-0.5 space-y-0.5 sm:mt-1">
                   {jobsForDay.slice(0, 3).map((tl) => (
                     <button
                       key={tl.job.id}
                       onClick={() => onNavigate('job-detail', tl.job.id)}
-                      className={`w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-white transition-colors hover:opacity-80 ${getJobColor(tl.job.id)}`}
+                      className={`min-h-[28px] w-full touch-manipulation truncate rounded px-0.5 py-0.5 text-left text-[9px] font-medium text-white transition-colors hover:opacity-80 sm:min-h-0 sm:text-[10px] ${getJobColor(tl.job.id)}`}
                       title={`#${tl.job.jobCode} - ${getJobDisplayName(tl.job)}`}
                     >
                       {tl.job.isRush && '⚡ '}
@@ -837,7 +843,9 @@ const Calendar: React.FC<CalendarProps> = ({
                     </button>
                   ))}
                   {jobsForDay.length > 3 && (
-                    <div className="text-[10px] text-slate-500">+{jobsForDay.length - 3} more</div>
+                    <div className="text-[9px] text-slate-500 sm:text-[10px]">
+                      +{jobsForDay.length - 3} more
+                    </div>
                   )}
                 </div>
               </div>
@@ -845,9 +853,9 @@ const Calendar: React.FC<CalendarProps> = ({
           })}
         </div>
 
-        {/* Summary: Upcoming jobs */}
-        <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
-          <h3 className="mb-3 text-lg font-bold text-white">Upcoming Jobs</h3>
+        {/* Summary: Upcoming jobs - mobile-friendly wrap and touch targets */}
+        <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-2.5 sm:p-3">
+          <h3 className="mb-2 text-base font-bold text-white sm:mb-3 sm:text-lg">Upcoming Jobs</h3>
           {jobTimelines.length === 0 ? (
             <p className="text-sm text-slate-400">No jobs with due dates</p>
           ) : (
@@ -859,13 +867,13 @@ const Calendar: React.FC<CalendarProps> = ({
                   <button
                     key={tl.job.id}
                     onClick={() => onNavigate('job-detail', tl.job.id)}
-                    className="w-full rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                    className="w-full touch-manipulation rounded-sm border border-white/10 bg-white/5 p-2.5 text-left transition-colors active:bg-white/10 sm:p-3 sm:hover:bg-white/10"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="w-full">
-                        <div className="flex items-center gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 gap-y-0.5">
                           <span className="font-bold text-white">#{tl.job.jobCode}</span>
-                          <span className="text-sm text-slate-300">
+                          <span className="truncate text-sm text-slate-300">
                             {getJobDisplayName(tl.job)}
                           </span>
                           {tl.job.isRush && <span className="text-yellow-400">⚡</span>}
@@ -896,7 +904,7 @@ const Calendar: React.FC<CalendarProps> = ({
                             )
                           )}
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400 sm:text-xs">
                           <span>Start: {formatDateOnly(tl.startDate)}</span>
                           <span>Due: {formatDateOnly(tl.job.dueDate)}</span>
                           <span>Planned: {formatDateOnly(tl.endDate)}</span>
@@ -944,14 +952,14 @@ const Calendar: React.FC<CalendarProps> = ({
                                 e.preventDefault();
                                 onNavigate('time-reports', tl.job.id);
                               }}
-                              className="rounded border border-white/20 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+                              className="min-h-[44px] touch-manipulation rounded border border-white/20 bg-white/5 px-3 py-2 text-[10px] font-bold text-slate-300 transition-colors active:bg-white/10 sm:hover:bg-white/10"
                             >
                               Time
                             </button>
                           </div>
                         )}
                       </div>
-                      <span className="material-symbols-outlined text-slate-400">
+                      <span className="material-symbols-outlined mt-0.5 shrink-0 text-slate-400">
                         chevron_right
                       </span>
                     </div>
