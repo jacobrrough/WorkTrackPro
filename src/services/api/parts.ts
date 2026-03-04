@@ -605,7 +605,9 @@ export const partsService = {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.variantSuffix != null) row.variant_suffix = data.variantSuffix;
     if (data.name != null) row.name = data.name;
-    if (data.pricePerVariant !== undefined) row.price_per_variant = data.pricePerVariant;
+    // Only touch price_per_variant when the key is explicitly in the payload (e.g. user chose "Use auto" → undefined).
+    // Callers that do not pass pricePerVariant never overwrite existing variant total; no accidental cascade.
+    if ('pricePerVariant' in data) row.price_per_variant = data.pricePerVariant ?? null;
     if (data.laborHours !== undefined) row.labor_hours = data.laborHours;
     if (data.requiresCNC !== undefined) row.requires_cnc = data.requiresCNC;
     if (data.cncTimeHours !== undefined) row.cnc_time_hours = data.cncTimeHours;
@@ -627,6 +629,58 @@ export const partsService = {
   async deleteVariant(id: string): Promise<boolean> {
     const { error } = await supabase.from('part_variants').delete().eq('id', id);
     return !error;
+  },
+
+  /**
+   * When an inventory item's price is updated, clear stored variant totals (price_per_variant) for all
+   * part variants that use this material so totals recalc from new material cost. Labor hours, CNC,
+   * and 3D print fields are never modified—only price_per_variant and updated_at.
+   * Returns the number of variants updated.
+   */
+  async clearVariantPricesForInventory(inventoryId: string): Promise<number> {
+    const { data: rows, error: matErr } = await supabase
+      .from('part_materials')
+      .select('part_variant_id, variant_id, part_id')
+      .eq('inventory_id', inventoryId);
+    if (matErr || !rows?.length) return 0;
+
+    const variantIds = new Set<string>();
+    const partIds = new Set<string>();
+    for (const r of rows as Array<{
+      part_variant_id?: string;
+      variant_id?: string;
+      part_id?: string;
+    }>) {
+      const vid = r.part_variant_id ?? r.variant_id;
+      if (vid) variantIds.add(vid);
+      else if (r.part_id) partIds.add(r.part_id);
+    }
+
+    if (partIds.size > 0) {
+      const { data: variants, error: vErr } = await supabase
+        .from('part_variants')
+        .select('id')
+        .in('part_id', Array.from(partIds));
+      if (!vErr && variants?.length) {
+        for (const v of variants as Array<{ id: string }>) variantIds.add(v.id);
+      }
+    }
+
+    if (variantIds.size === 0) return 0;
+    const ids = Array.from(variantIds);
+    // Only update variant total; do not touch labor_hours, cnc_time_hours, printer_3d_time_hours, etc.
+    const { error: updateErr } = await supabase
+      .from('part_variants')
+      .update({ price_per_variant: null, updated_at: new Date().toISOString() })
+      .in('id', ids);
+    if (updateErr) {
+      console.error('clearVariantPricesForInventory failed:', updateErr.message, {
+        inventoryId,
+        ids,
+      });
+      return 0;
+    }
+    return ids.length;
   },
 
   async addPartMaterial(

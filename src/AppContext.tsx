@@ -19,6 +19,7 @@ import {
   inventoryService,
   inventoryHistoryService,
   checklistService,
+  partsService,
   subscriptions,
 } from './pocketbase';
 import { supabase } from './services/api/supabaseClient';
@@ -712,6 +713,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
             prev ? prev.map((i) => (i.id === id ? updatedItem : i)) : []
           );
+          if ('price' in data) {
+            // Clear stored variant totals only so recalc uses new material cost; labor hours are never changed.
+            try {
+              await partsService.clearVariantPricesForInventory(id);
+            } catch (cascadeErr) {
+              console.warn('Clear variant prices after inventory price update:', cascadeErr);
+            }
+          }
         }
         return updatedItem;
       } catch (error) {
