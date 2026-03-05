@@ -355,7 +355,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
     invNumber: job.invNumber || '',
     rfqNumber: job.rfqNumber || '',
     owrNumber: job.owrNumber || '',
+    progressEstimatePercent:
+      job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
   });
+  const [progressEstimateInput, setProgressEstimateInput] = useState(
+    job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : ''
+  );
 
   // Store current pathname and scrollPositions in refs to avoid dependency issues
   const pathnameRef = useRef(location.pathname);
@@ -404,6 +409,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
       localStorage.removeItem(key);
     }
   }, [job.id, currentUser.isAdmin]);
+
+  // Sync progress estimate input when job updates (e.g. after Set/Clear or reload)
+  useEffect(() => {
+    setProgressEstimateInput(
+      job.progressEstimatePercent != null ? String(Math.round(job.progressEstimatePercent)) : ''
+    );
+  }, [job.progressEstimatePercent]);
 
   // Part drawings: files standard users can access on job cards
   useEffect(() => {
@@ -1024,6 +1036,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
       owrNumber: job.owrNumber || '',
+      progressEstimatePercent:
+        job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
     }));
     setPartNumberSearch(jobPartNumber);
     if (jobPartNumber) {
@@ -1145,6 +1159,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
       laborHours: editForm.laborHours ? parseFloat(editForm.laborHours) : undefined,
       status: editForm.status,
       isRush: editForm.isRush,
+      progressEstimatePercent:
+        editForm.progressEstimatePercent?.trim() !== ''
+          ? Math.max(0, Math.min(100, parseFloat(editForm.progressEstimatePercent) || 0))
+          : undefined,
       binLocation: normalizedBinLocation,
       cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
       cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
@@ -1224,6 +1242,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
       owrNumber: job.owrNumber || '',
+      progressEstimatePercent:
+        job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
     });
     setDashQuantities(normalizeDashQuantities(job.dashQuantities || {}));
     setAllocationSource(job.allocationSource ?? 'variant');
@@ -1893,29 +1913,46 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       )}
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                      <span className="text-xs text-slate-400">
+                    <div className="space-y-3">
+                      <p className="text-[11px] font-medium text-slate-400">
+                        Per-variant quantities
+                      </p>
+                      <span className="block text-xs text-slate-400">
                         {formatDashSummary(dashQuantities)} → Total{' '}
                         {totalFromDashQuantities(dashQuantities)}
                       </span>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <div className="flex flex-wrap gap-x-4 gap-y-3">
                         {linkedPart.variants.map((variant) => {
                           const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
+                          const label =
+                            linkedPart.partNumber +
+                            toDashSuffix(variant.variantSuffix) +
+                            (variant.name ? ` (${variant.name})` : '');
                           return (
-                            <div key={variant.id} className="flex items-center gap-1.5">
-                              <span className="w-20 truncate text-[11px] text-slate-400">
-                                {variant.variantSuffix}
-                              </span>
-                              <input
-                                type="number"
-                                min={0}
-                                value={qty}
-                                onChange={(e) =>
-                                  handleDashQuantityChange(variant.variantSuffix, e.target.value)
-                                }
-                                className="w-14 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary/50 focus:outline-none"
-                                aria-label={`Variant ${variant.variantSuffix} qty`}
-                              />
+                            <div
+                              key={variant.id}
+                              className="flex flex-col gap-1 rounded border border-white/10 bg-white/5 px-2 py-1.5"
+                            >
+                              <label
+                                htmlFor={`dash-qty-${variant.id}`}
+                                className="text-xs font-medium text-white"
+                              >
+                                {label}
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  id={`dash-qty-${variant.id}`}
+                                  type="number"
+                                  min={0}
+                                  value={qty}
+                                  onChange={(e) =>
+                                    handleDashQuantityChange(variant.variantSuffix, e.target.value)
+                                  }
+                                  className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                                  aria-label={`Quantity for ${label}`}
+                                />
+                                <span className="text-[10px] text-slate-400">Qty</span>
+                              </div>
                             </div>
                           );
                         })}
@@ -2036,6 +2073,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     placeholder="0"
                   />
                 </div>
+                {currentUser.isAdmin && (
+                  <div>
+                    <label className="mb-0.5 block text-[11px] text-slate-400">
+                      Progress estimate %
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={editForm.progressEstimatePercent}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, progressEstimatePercent: e.target.value })
+                      }
+                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                      placeholder="Optional 0–100"
+                    />
+                  </div>
+                )}
                 {canViewFinancials && (
                   <div>
                     <label className="mb-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
@@ -2354,6 +2409,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           Over estimate – review
                         </span>
                       )}
+                      {completionProgress.atRiskFromProgressEstimate && (
+                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                          At risk
+                        </span>
+                      )}
                       <span className="text-sm font-bold text-white">
                         {completionProgress.weightedPercent.toFixed(0)}%
                       </span>
@@ -2371,6 +2431,56 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <span>L {completionProgress.laborPercent.toFixed(0)}%</span>
                     <span>CNC {completionProgress.cncPercent.toFixed(0)}%</span>
                     <span>3D {completionProgress.printer3DPercent.toFixed(0)}%</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2">
+                    <span className="text-[10px] text-slate-500">Progress estimate %</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={progressEstimateInput}
+                      onChange={(e) => setProgressEstimateInput(e.target.value)}
+                      className="h-7 w-14 rounded border border-white/20 bg-white/10 px-1 text-right text-xs text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const v = progressEstimateInput.trim();
+                        const num =
+                          v === '' ? null : Math.max(0, Math.min(100, parseFloat(v) || 0));
+                        try {
+                          await onUpdateJob(job.id, {
+                            progressEstimatePercent: num,
+                          });
+                          // Do not refetch jobs here – cache merge in updateJob already updated list + detail; refetch can overwrite with server response that omits progress_estimate_percent
+                          showToast(
+                            num != null ? 'Progress estimate set' : 'Progress estimate cleared',
+                            'success'
+                          );
+                        } catch (e) {
+                          showToast('Failed to update progress estimate', 'error');
+                        }
+                      }}
+                      className="rounded border border-primary/40 bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/30"
+                    >
+                      Set
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setProgressEstimateInput('');
+                        try {
+                          await onUpdateJob(job.id, { progressEstimatePercent: null });
+                          // Do not refetch – cache merge keeps UI in sync; refetch can revert if server omits column
+                          showToast('Progress estimate cleared', 'success');
+                        } catch (e) {
+                          showToast('Failed to clear', 'error');
+                        }
+                      }}
+                      className="rounded border border-white/20 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/10"
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
               )}
@@ -2406,11 +2516,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       </p>
                     );
                   }
+                  const estRemaining =
+                    job.progressEstimatePercent != null &&
+                    job.progressEstimatePercent > 0 &&
+                    job.progressEstimatePercent < 100 &&
+                    loggedLaborHours > 0
+                      ? (() => {
+                          const totalEst = loggedLaborHours / (job.progressEstimatePercent! / 100);
+                          return Math.max(0, totalEst - loggedLaborHours);
+                        })()
+                      : null;
+
                   return (
                     <div className="space-y-1">
                       <p className="mb-1.5 text-xs text-slate-400">
                         {loggedLaborHours.toFixed(1)}h total · {jobShifts.length} shift
                         {jobShifts.length !== 1 ? 's' : ''}
+                        {estRemaining != null && (
+                          <span className="ml-1.5 font-medium text-primary">
+                            · Est. remaining: {estRemaining.toFixed(1)}h
+                          </span>
+                        )}
                       </p>
                       {jobShifts.slice(0, 5).map((s) => (
                         <button

@@ -12,6 +12,7 @@ import { useThrottle } from '@/useThrottle';
 import QRScanner from './components/QRScanner';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { validateBinLocation } from '@/core/validation';
+import { computeJobCompletionProgress } from '@/lib/jobProgress';
 
 interface KanbanBoardProps {
   jobs: Job[];
@@ -218,6 +219,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     () => jobs.filter((job) => matchesJobSearch(job, normalizedSearchTerm)),
     [jobs, normalizedSearchTerm]
   );
+
+  const jobProgressByJobId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computeJobCompletionProgress>>();
+    for (const job of jobs) {
+      const logged = calculateJobHoursFromShifts(job.id, shiftsProp);
+      map.set(job.id, computeJobCompletionProgress(job, logged));
+    }
+    return map;
+  }, [jobs, shiftsProp]);
 
   // Update scroll positions ref when navState changes
   useEffect(() => {
@@ -746,6 +756,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const overdue = isJobOverdue(job);
                     const isSelected = selectedJobIds.has(job.id);
                     const jobHours = calculateJobHoursFromShifts(job.id, shiftsProp);
+                    const progress = jobProgressByJobId.get(job.id);
+                    const atRiskFromProgress = progress?.atRiskFromProgressEstimate ?? false;
 
                     return (
                       <div
@@ -806,6 +818,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             {overdue && (
                               <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                                 Overdue
+                              </span>
+                            )}
+                            {atRiskFromProgress && (
+                              <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                At risk
                               </span>
                             )}
                           </div>

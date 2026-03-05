@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Job, ViewState, User, Shift } from '@/core/types';
 import {
   buildCapacityAwareBackwardSchedules,
@@ -21,6 +21,8 @@ interface CalendarProps {
   currentUser: User;
   onNavigate: (view: ViewState, id?: string) => void;
   onBack?: () => void;
+  refreshJobs?: () => Promise<void>;
+  refreshShifts?: () => Promise<void>;
 }
 
 interface JobTimeline {
@@ -67,6 +69,8 @@ const Calendar: React.FC<CalendarProps> = ({
   currentUser,
   onNavigate,
   onBack,
+  refreshJobs,
+  refreshShifts,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [includeOvertimeInSchedule, setIncludeOvertimeInSchedule] = useState(false);
@@ -76,14 +80,21 @@ const Calendar: React.FC<CalendarProps> = ({
   const [plannerDueDate, setPlannerDueDate] = useState('');
   const [plannerUseOvertime, setPlannerUseOvertime] = useState(true);
   const { settings } = useSettings();
+
+  useEffect(() => {
+    refreshJobs?.();
+    refreshShifts?.();
+  }, [refreshJobs, refreshShifts]);
+
   const jobs = useMemo(
     () =>
       allJobs.filter(
         (j) =>
+          j.active &&
           j.status !== 'paid' &&
           j.status !== 'projectCompleted' &&
           j.status !== 'delivered' &&
-          j.active
+          j.status !== 'finished'
       ),
     [allJobs]
   );
@@ -232,7 +243,8 @@ const Calendar: React.FC<CalendarProps> = ({
   }, [jobs]);
 
   const jobTimelines = useMemo((): JobTimeline[] => {
-    return capacityAwareSchedule.results
+    const scheduledIds = new Set(capacityAwareSchedule.results.map((r) => r.id));
+    const fromSchedule: JobTimeline[] = capacityAwareSchedule.results
       .map((result) => {
         const job = jobsById.get(result.id);
         if (!job) return null;
@@ -258,9 +270,44 @@ const Calendar: React.FC<CalendarProps> = ({
           scheduleRisk,
         } as JobTimeline;
       })
-      .filter((timeline): timeline is JobTimeline => timeline != null)
-      .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
-  }, [capacityAwareSchedule.results, jobsById, todayKey]);
+      .filter((timeline): timeline is JobTimeline => timeline != null);
+
+    // Placeholder timelines for jobs with a due date but no labor (planning only) — show on due date in any month
+    const placeholders: JobTimeline[] = jobs
+      .filter((job) => job.dueDate && !scheduledIds.has(job.id))
+      .map((job) => {
+        const dueKey = normalizeDateKey(job.dueDate!);
+        const scheduleRisk: 'overdue' | 'behind' | 'atRisk' | null =
+          dueKey && dueKey < todayKey ? 'overdue' : null;
+        return {
+          job,
+          startDate: dueKey,
+          endDate: dueKey,
+          hours: 0,
+          overtimeHours: 0,
+          unscheduledHours: 0,
+          allocations: [
+            {
+              date: dueKey,
+              scheduledHours: 0,
+              regularHours: 0,
+              overtimeHours: 0,
+              capacityHours: 0,
+            },
+          ],
+          scheduleRisk,
+        } as JobTimeline;
+      });
+
+    const combined = [...fromSchedule, ...placeholders];
+    return combined.sort((a, b) => {
+      const riskOrder = { overdue: 0, behind: 1, atRisk: 2, null: 3 };
+      const aRisk = riskOrder[a.scheduleRisk ?? 'null'] ?? 3;
+      const bRisk = riskOrder[b.scheduleRisk ?? 'null'] ?? 3;
+      if (aRisk !== bRisk) return aRisk - bRisk;
+      return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
+    });
+  }, [capacityAwareSchedule.results, jobs, jobsById, todayKey]);
 
   // Get days in current month
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -830,18 +877,24 @@ const Calendar: React.FC<CalendarProps> = ({
                   </div>
                 )}
                 <div className="mt-0.5 space-y-0.5 sm:mt-1">
-                  {jobsForDay.slice(0, 3).map((tl) => (
-                    <button
-                      key={tl.job.id}
-                      onClick={() => onNavigate('job-detail', tl.job.id)}
-                      className={`min-h-[28px] w-full touch-manipulation truncate rounded px-0.5 py-0.5 text-left text-[9px] font-medium text-white transition-colors hover:opacity-80 sm:min-h-0 sm:text-[10px] ${getJobColor(tl.job.id)}`}
-                      title={`#${tl.job.jobCode} - ${getJobDisplayName(tl.job)}`}
-                    >
-                      {tl.job.isRush && '⚡ '}
-                      {tl.job.cncCompletedAt && '✓ '}
-                      {tl.scheduleRisk === 'overdue' && '! '}#{tl.job.jobCode}
-                    </button>
-                  ))}
+                  {jobsForDay.slice(0, 3).map((tl) => {
+                    const progress = jobProgressById.get(tl.job.id);
+                    const isAtRisk =
+                      tl.scheduleRisk === 'atRisk' || progress?.atRiskFromProgressEstimate;
+                    return (
+                      <button
+                        key={tl.job.id}
+                        onClick={() => onNavigate('job-detail', tl.job.id)}
+                        className={`min-h-[28px] w-full touch-manipulation truncate rounded px-0.5 py-0.5 text-left text-[9px] font-medium text-white transition-colors hover:opacity-80 sm:min-h-0 sm:text-[10px] ${getJobColor(tl.job.id)}`}
+                        title={`#${tl.job.jobCode} - ${getJobDisplayName(tl.job)}`}
+                      >
+                        {tl.job.isRush && '⚡ '}
+                        {tl.job.cncCompletedAt && '✓ '}
+                        {tl.scheduleRisk === 'overdue' && '! '}
+                        {isAtRisk && tl.scheduleRisk !== 'overdue' && '⚠ '}#{tl.job.jobCode}
+                      </button>
+                    );
+                  })}
                   {jobsForDay.length > 3 && (
                     <div className="text-[9px] text-slate-500 sm:text-[10px]">
                       +{jobsForDay.length - 3} more
@@ -887,7 +940,8 @@ const Calendar: React.FC<CalendarProps> = ({
                               Behind
                             </span>
                           )}
-                          {tl.scheduleRisk === 'atRisk' && (
+                          {(tl.scheduleRisk === 'atRisk' ||
+                            progress?.atRiskFromProgressEstimate) && (
                             <span className="rounded bg-orange-500/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-300">
                               At risk
                             </span>

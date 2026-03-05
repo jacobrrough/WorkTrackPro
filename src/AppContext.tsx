@@ -305,20 +305,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         const updatedJob = await jobService.updateJob(jobId, data);
         if (updatedJob) {
-          const jobForCache =
-            data.cncCompletedAt !== undefined || data.cncCompletedBy !== undefined
-              ? {
-                  ...updatedJob,
-                  cncCompletedAt:
-                    data.cncCompletedAt !== undefined
-                      ? data.cncCompletedAt
-                      : updatedJob.cncCompletedAt,
-                  cncCompletedBy:
-                    data.cncCompletedBy !== undefined
-                      ? data.cncCompletedBy
-                      : updatedJob.cncCompletedBy,
-                }
-              : updatedJob;
+          // Merge payload into cache so UI updates immediately even if API omits columns (e.g. cnc_completed_at, progress_estimate_percent)
+          const jobForCache = { ...updatedJob, ...data };
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
             prev ? prev.map((j) => (j.id === jobId ? jobForCache : j)) : []
           );

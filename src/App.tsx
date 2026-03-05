@@ -99,13 +99,7 @@ export default function App() {
 
   const [view, setView] = useState<string>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
-  const [returnViews, setReturnViews] = useState<
-    Record<string, string | { view: string; id?: string }>
-  >({
-    'job-detail': 'dashboard',
-    'inventory-detail': 'inventory',
-    'part-detail': 'parts',
-  });
+  const [backStack, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
@@ -116,6 +110,7 @@ export default function App() {
     queryKey: ['job', jobIdForDetail],
     queryFn: () => jobService.getJobById(jobIdForDetail!),
     enabled: !!jobIdForDetail,
+    staleTime: 2 * 60 * 1000, // 2 min – avoid refetch overwriting optimistic progress estimate / CNC updates
   });
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -152,16 +147,18 @@ export default function App() {
 
   const handleNavigate = useCallback(
     (nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
-      if (
-        nextView === 'job-detail' ||
-        nextView === 'inventory-detail' ||
-        nextView === 'part-detail'
-      ) {
-        setReturnViews((prev) => ({
-          ...prev,
-          [nextView]: id !== undefined ? { view, id } : view,
-        }));
+      const isDetailView =
+        nextView === 'job-detail' || nextView === 'inventory-detail' || nextView === 'part-detail';
+
+      if (isDetailView) {
+        setBackStack((prev) => {
+          const entry = id !== undefined ? { view, id } : { view };
+          return [...prev, entry];
+        });
+      } else {
+        setBackStack([]);
       }
+
       setView(nextView);
       if (nextId === undefined) {
         setId(undefined);
@@ -179,15 +176,21 @@ export default function App() {
   );
 
   const navigateBackFrom = useCallback(
-    (detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: string) => {
-      const next = returnViews[detailView] ?? fallback;
-      if (typeof next === 'object' && next != null && 'view' in next) {
-        handleNavigate(next.view, next.id);
-      } else {
-        handleNavigate(typeof next === 'string' ? next : fallback);
-      }
+    (_detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: string) => {
+      setBackStack((prev) => {
+        const entry = prev[prev.length - 1];
+        const nextStack = prev.slice(0, -1);
+        if (entry != null) {
+          setView(entry.view);
+          setId(entry.id ?? undefined);
+        } else {
+          setView(fallback);
+          setId(undefined);
+        }
+        return nextStack;
+      });
     },
-    [handleNavigate, returnViews]
+    []
   );
 
   const handleLogin = useCallback(
@@ -363,7 +366,15 @@ export default function App() {
   if (view === 'scanner') {
     return (
       <AppShell>
-        <ScannerScreen jobs={jobs} inventory={inventory} onNavigate={handleNavigate} />
+        <ScannerScreen
+          jobs={jobs}
+          inventory={inventory}
+          onNavigate={handleNavigate}
+          onUpdateJob={updateJob}
+          onUpdateInventoryItem={updateInventoryItem}
+          onRefreshJobs={refreshJobs}
+          onRefreshInventory={refreshInventory}
+        />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
@@ -399,16 +410,12 @@ export default function App() {
   if (view === 'inventory-detail' && id) {
     const item = inventory.find((i) => i.id === id);
     if (!item) {
-      const returnTo = returnViews['inventory-detail'];
-      const backView =
-        typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
-      const backId = typeof returnTo === 'object' && returnTo?.id != null ? returnTo.id : undefined;
       return (
         <AppShell>
           <div className="flex min-h-screen items-center justify-center bg-background-dark p-4">
             <p className="text-slate-400">Item not found.</p>
             <button
-              onClick={() => handleNavigate(backView, backId)}
+              onClick={() => navigateBackFrom('inventory-detail', 'inventory')}
               className="mt-3 rounded-sm bg-primary px-4 py-2 font-bold text-white"
             >
               Back
@@ -417,10 +424,6 @@ export default function App() {
         </AppShell>
       );
     }
-    const returnTo = returnViews['inventory-detail'];
-    const backView =
-      typeof returnTo === 'object' && returnTo?.view != null ? returnTo.view : 'inventory';
-    const backId = typeof returnTo === 'object' && returnTo?.id != null ? returnTo.id : undefined;
     return (
       <AppShell>
         <Inventory
@@ -440,7 +443,7 @@ export default function App() {
           calculateAllocated={calculateAllocated}
           onAllocateToJob={allocateInventoryToJob}
           initialItemId={id}
-          onBackFromDetail={() => handleNavigate(backView, backId)}
+          onBackFromDetail={() => navigateBackFrom('inventory-detail', 'inventory')}
         />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
@@ -494,7 +497,7 @@ export default function App() {
             jobs={jobs}
             shifts={shifts}
             onNavigate={handleNavigate}
-            onNavigateBack={() => handleNavigate('parts')}
+            onNavigateBack={() => navigateBackFrom('part-detail', 'parts')}
           />
         </AppShell>
       </AdminRoute>
@@ -605,6 +608,8 @@ export default function App() {
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onBack={() => handleNavigate('dashboard')}
+          refreshJobs={refreshJobs}
+          refreshShifts={refreshShifts}
         />
       </AppShell>
     );

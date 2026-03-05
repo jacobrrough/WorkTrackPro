@@ -98,6 +98,10 @@ function mapJobRow(
     allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,
     partId: row.part_id as string | undefined,
+    progressEstimatePercent:
+      row.progress_estimate_percent != null
+        ? Math.max(0, Math.min(100, Number(row.progress_estimate_percent)))
+        : undefined,
   };
   if (expand?.attachments?.length) {
     job.attachments = expand.attachments
@@ -513,6 +517,10 @@ export const jobService = {
       allocation_source_updated_at: data.allocationSource ? new Date().toISOString() : null,
       revision: data.revision ?? null,
       part_id: data.partId ?? resolvedPart?.partId ?? null,
+      progress_estimate_percent:
+        data.progressEstimatePercent != null
+          ? Math.max(0, Math.min(100, Number(data.progressEstimatePercent)))
+          : null,
     };
     const { data: created, error } = await runMutationWithSchemaFallback({
       tableName: 'jobs',
@@ -569,7 +577,8 @@ export const jobService = {
     if (data.assignedUsers !== undefined) row.assigned_users = data.assignedUsers;
     if (data.isRush !== undefined) row.is_rush = data.isRush;
     if (data.workers !== undefined) row.workers = data.workers;
-    if (data.binLocation !== undefined) row.bin_location = data.binLocation?.trim() || null;
+    if ('binLocation' in data)
+      row.bin_location = (data.binLocation ?? '').toString().trim() || null;
     if (data.partNumber !== undefined) {
       const partNum = data.partNumber?.trim() || null;
       if (partNum) {
@@ -603,6 +612,13 @@ export const jobService = {
     }
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
+    if (data.progressEstimatePercent !== undefined) {
+      const p =
+        typeof data.progressEstimatePercent === 'number'
+          ? data.progressEstimatePercent
+          : parseFloat(String(data.progressEstimatePercent));
+      row.progress_estimate_percent = Number.isFinite(p) ? Math.max(0, Math.min(100, p)) : null;
+    }
     row.updated_at = new Date().toISOString();
     const { data: updated, error } = await runMutationWithSchemaFallback({
       tableName: 'jobs',

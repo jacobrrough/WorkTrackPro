@@ -196,6 +196,8 @@ export interface Job {
   allocationSourceUpdatedAt?: string;
   revision?: string;
   partId?: string;
+  /** User-estimated completion percent (0–100). When set, drives progress bar and at-risk if implied labor exceeds estimate. */
+  progressEstimatePercent?: number | null;
   expand?: {
     job_inventory?: JobInventoryItem[];
     job_inventory_via_job?: JobInventoryItem[];
