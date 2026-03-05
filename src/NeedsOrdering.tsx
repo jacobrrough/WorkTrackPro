@@ -40,8 +40,8 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
     const needs: InventoryItem[] = [];
     const onOrder: InventoryItem[] = [];
     inventory.forEach((item) => {
-      const available = item.available ?? calculateAvailable(item);
-      const allocated = item.allocated ?? calculateAllocated(item.id);
+      const available = calculateAvailable(item);
+      const allocated = calculateAllocated(item.id);
       const shortForJobs = allocated > 0 && available < allocated;
       const belowReorder =
         item.reorderPoint != null && item.reorderPoint > 0 && available <= item.reorderPoint;
@@ -355,12 +355,10 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                             <div className="mt-1 flex flex-col gap-0.5">
                               <div className="flex flex-wrap items-center gap-3">
                                 <span className="text-xs font-bold text-red-400">
-                                  Available: {item.available ?? calculateAvailable(item)}{' '}
-                                  {item.unit}
+                                  Available: {calculateAvailable(item)} {item.unit}
                                 </span>
                                 <span className="text-xs font-bold text-yellow-400">
-                                  Needed for jobs: {item.allocated ?? calculateAllocated(item.id)}{' '}
-                                  {item.unit}
+                                  Needed for jobs: {calculateAllocated(item.id)} {item.unit}
                                 </span>
                                 {showOnOrder && (item.onOrder || 0) > 0 && (
                                   <span className="flex items-center gap-1 text-xs font-bold text-blue-400">
@@ -372,8 +370,8 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                                 )}
                               </div>
                               {(() => {
-                                const avail = item.available ?? calculateAvailable(item);
-                                const alloc = item.allocated ?? calculateAllocated(item.id);
+                                const avail = calculateAvailable(item);
+                                const alloc = calculateAllocated(item.id);
                                 const short = alloc > 0 && avail < alloc;
                                 if (short) {
                                   return (

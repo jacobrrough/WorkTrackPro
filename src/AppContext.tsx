@@ -34,6 +34,7 @@ import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunc
 import { withComputedInventory } from '@/lib/inventoryState';
 import { buildReconciliationMutations } from '@/lib/inventoryReconciliation';
 import { enqueueClockPunch, getQueue, clearPunchFromQueue } from '@/lib/offlineQueue';
+import { useToast } from './Toast';
 
 interface AppContextType {
   currentUser: User | null;
@@ -118,6 +119,7 @@ function dedupeJobsById(items: Job[]): Job[] {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -403,22 +405,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             direction,
           });
 
+          let reconciliationFailed = false;
           for (const entry of updates) {
-            await inventoryService.updateStock(entry.inventoryId, entry.newInStock);
-            if (currentUser) {
-              await inventoryHistoryService.createHistory({
-                inventory: entry.inventoryId,
-                user: currentUser.id,
-                action,
-                reason,
-                previousInStock: entry.previousInStock,
-                newInStock: entry.newInStock,
-                previousAvailable: entry.previousAvailable,
-                newAvailable: entry.newAvailable,
-                changeAmount: entry.changeAmount,
-                relatedJob: jobId,
-              });
+            try {
+              await inventoryService.updateStock(entry.inventoryId, entry.newInStock);
+              if (currentUser) {
+                await inventoryHistoryService.createHistory({
+                  inventory: entry.inventoryId,
+                  user: currentUser.id,
+                  action,
+                  reason,
+                  previousInStock: entry.previousInStock,
+                  newInStock: entry.newInStock,
+                  previousAvailable: entry.previousAvailable,
+                  newAvailable: entry.newAvailable,
+                  changeAmount: entry.changeAmount,
+                  relatedJob: jobId,
+                });
+              }
+            } catch (err) {
+              console.error('Reconciliation updateStock failed:', err);
+              reconciliationFailed = true;
             }
+          }
+          if (reconciliationFailed) {
+            showToast(
+              'Failed to update inventory stock for one or more items. Check permissions and try again.',
+              'error'
+            );
           }
         }
 
@@ -432,7 +446,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
     },
-    [refreshJobs, refreshInventory, jobs, inventory, currentUser, queryClient]
+    [refreshJobs, refreshInventory, jobs, inventory, currentUser, queryClient, showToast]
   );
 
   const advanceJobToNextStatus = useCallback(

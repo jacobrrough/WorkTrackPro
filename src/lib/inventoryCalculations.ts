@@ -25,7 +25,10 @@ export function buildAllocatedByInventoryId(jobs: Job[]): Map<string, number> {
     const jobInv = job.expand?.job_inventory_via_job ?? job.expand?.job_inventory ?? [];
     for (const ji of jobInv) {
       const invId =
-        typeof ji.inventory === 'string' ? ji.inventory : (ji.inventory as { id?: string })?.id;
+        typeof ji.inventory === 'string'
+          ? ji.inventory
+          : ((ji as { inventory_id?: string }).inventory_id ??
+            (ji.inventory as { id?: string })?.id);
       if (!invId) continue;
       allocatedByInventoryId.set(
         invId,

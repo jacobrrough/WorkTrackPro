@@ -41,8 +41,8 @@ const Inventory: React.FC<InventoryProps> = ({
   onUpdateStock,
   onUpdateItem,
   onCreateItem,
-  onMarkOrdered: _onMarkOrdered,
-  onReceiveOrder: _onReceiveOrder,
+  onMarkOrdered,
+  onReceiveOrder,
   onAddAttachment,
   onDeleteAttachment,
   onReloadInventory,
@@ -110,6 +110,8 @@ const Inventory: React.FC<InventoryProps> = ({
         onAddAttachment={onAddAttachment}
         onDeleteAttachment={onDeleteAttachment}
         onReloadItem={onReloadInventory}
+        onMarkOrdered={onMarkOrdered}
+        onReceiveOrder={onReceiveOrder}
         isAdmin={isAdmin}
         calculateAvailable={calculateAvailable}
         calculateAllocated={calculateAllocated}
@@ -134,6 +136,8 @@ const Inventory: React.FC<InventoryProps> = ({
       }}
       onAddItem={handleAddItem}
       onOpenDetail={(itemId) => onNavigate('inventory-detail', itemId)}
+      onMarkOrdered={onMarkOrdered}
+      onReceiveOrder={onReceiveOrder}
       onQuickAdjust={async (item, delta) => {
         await onUpdateStock(
           item.id,

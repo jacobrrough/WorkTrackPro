@@ -55,11 +55,11 @@ try {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <AppProvider>
-              <ToastProvider>
+            <ToastProvider>
+              <AppProvider>
                 <App />
-              </ToastProvider>
-            </AppProvider>
+              </AppProvider>
+            </ToastProvider>
           </BrowserRouter>
         </QueryClientProvider>
       </ErrorBoundary>

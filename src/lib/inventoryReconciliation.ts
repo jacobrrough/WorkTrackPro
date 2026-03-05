@@ -15,7 +15,12 @@ function getJobInventoryTotals(job: Job): Map<string, number> {
   const inventoryLines = job.expand?.job_inventory ?? job.inventoryItems ?? [];
 
   for (const line of inventoryLines) {
-    const inventoryId = line.inventoryId ?? line.inventory;
+    const inventoryId =
+      line.inventoryId ??
+      (line as { inventory_id?: string }).inventory_id ??
+      (typeof line.inventory === 'string'
+        ? line.inventory
+        : (line.inventory as { id?: string })?.id);
     if (!inventoryId) continue;
     totals.set(inventoryId, (totals.get(inventoryId) ?? 0) + (line.quantity ?? 0));
   }

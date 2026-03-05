@@ -15,6 +15,7 @@ interface InventoryKanbanProps {
   onUpdateItem?: (itemId: string, updates: Partial<InventoryItem>) => Promise<void>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
+  calculateAllocated?: (inventoryId: string) => number;
 }
 
 const CATEGORIES: { id: InventoryCategory; label: string }[] = [
@@ -38,6 +39,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   onUpdateItem,
   isAdmin,
   calculateAvailable,
+  calculateAllocated,
 }) => {
   const { showToast } = useToast();
   const [scanningForItem, setScanningForItem] = useState<string | null>(null);
@@ -186,8 +188,8 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                     </p>
                   ) : (
                     items.map((item) => {
-                      const available = item.available ?? calculateAvailable(item);
-                      const allocated = item.allocated ?? 0;
+                      const available = calculateAvailable(item);
+                      const allocated = calculateAllocated ? calculateAllocated(item.id) : 0;
                       const shortForJobs = allocated > 0 && available < allocated;
                       const belowReorder =
                         item.reorderPoint != null &&

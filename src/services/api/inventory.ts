@@ -134,10 +134,11 @@ export const inventoryService = {
   },
 
   async updateStock(id: string, inStock: number): Promise<void> {
-    await supabase
+    const { error } = await supabase
       .from('inventory')
       .update({ in_stock: inStock, updated_at: new Date().toISOString() })
       .eq('id', id);
+    if (error) throw error;
   },
 
   /** Get inventory item with attachments */

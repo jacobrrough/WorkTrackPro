@@ -18,6 +18,13 @@ import FileViewer from './FileViewer';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
 import { isAllocationActiveStatus } from '@/lib/inventoryCalculations';
 
+/** Format stock/allocated/available for display; avoids long decimals. */
+function formatStockDisplay(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toFixed(rounded % 1 === 0 ? 0 : 2);
+}
+
 interface InventoryDetailProps {
   item: InventoryItem;
   onNavigate: (view: ViewState, id?: string) => void;
@@ -27,6 +34,8 @@ interface InventoryDetailProps {
   onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   onReloadItem?: () => Promise<void>;
+  onMarkOrdered?: (itemId: string, quantity: number) => Promise<boolean>;
+  onReceiveOrder?: (itemId: string, quantity: number) => Promise<boolean>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
@@ -42,6 +51,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   onAddAttachment,
   onDeleteAttachment,
   onReloadItem,
+  onMarkOrdered,
+  onReceiveOrder,
   isAdmin,
   calculateAvailable,
   calculateAllocated,
@@ -81,6 +92,12 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const [editOnOrder, setEditOnOrder] = useState(currentItem.onOrder || 0);
   const [editReason, setEditReason] = useState('');
 
+  // On Order / Receive Order quick action state
+  const [showAddToOrder, setShowAddToOrder] = useState(false);
+  const [addToOrderQty, setAddToOrderQty] = useState(0);
+  const [showReceiveOrder, setShowReceiveOrder] = useState(false);
+  const [receiveOrderQty, setReceiveOrderQty] = useState(0);
+
   // Update edit form when currentItem changes
   useEffect(() => {
     setEditName(currentItem.name);
@@ -96,8 +113,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
     setEditOnOrder(currentItem.onOrder || 0);
   }, [currentItem]);
 
-  const allocated = currentItem.allocated ?? calculateAllocated(currentItem.id);
-  const available = currentItem.available ?? calculateAvailable(currentItem);
+  // Always use computed values for stock overview (never trust DB available/allocated)
+  const allocated = calculateAllocated(currentItem.id);
+  const available = calculateAvailable(currentItem);
   const minStock = currentItem.reorderPoint ?? 0;
   const minStockPercent = minStock > 0 ? Math.min(200, (available / minStock) * 100) : 100;
   const sku = (currentItem.barcode || currentItem.id.slice(0, 8)).toUpperCase();
@@ -884,29 +902,179 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">In Stock</p>
-                <p className="text-2xl font-bold text-white">{currentItem.inStock}</p>
+                <p className="text-2xl font-bold text-white">
+                  {formatStockDisplay(currentItem.inStock)}
+                </p>
               </div>
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">Available</p>
-                <p className="text-2xl font-bold text-green-400">{available}</p>
+                <p className="text-2xl font-bold text-green-400">{formatStockDisplay(available)}</p>
               </div>
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">Allocated (needed for jobs)</p>
-                <p className="text-2xl font-bold text-yellow-400">{allocated}</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {formatStockDisplay(allocated)}
+                </p>
                 <p className="text-xs text-slate-500">PO&apos;d / in-production jobs only</p>
               </div>
               <div className="rounded-sm bg-white/5 p-3">
                 <p className="text-sm text-slate-400">On Order</p>
-                <p className="text-2xl font-bold text-blue-400">{currentItem.onOrder || 0}</p>
+                <p className="text-2xl font-bold text-blue-400">
+                  {formatStockDisplay(currentItem.onOrder || 0)}
+                </p>
               </div>
             </div>
+
+            {/* On Order / Receive Order quick actions */}
+            {(onMarkOrdered || onReceiveOrder) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {onMarkOrdered && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddToOrder(true)}
+                    className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
+                  >
+                    <span className="material-symbols-outlined mr-1 align-middle text-lg">
+                      pending_actions
+                    </span>
+                    Add to order
+                  </button>
+                )}
+                {onReceiveOrder && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReceiveOrderQty(currentItem.onOrder ?? 0);
+                      setShowReceiveOrder(true);
+                    }}
+                    className="min-h-[44px] rounded-sm border border-green-500/30 bg-green-500/10 px-3 text-sm font-bold text-green-400"
+                  >
+                    <span className="material-symbols-outlined mr-1 align-middle text-lg">
+                      local_shipping
+                    </span>
+                    Receive order
+                  </button>
+                )}
+              </div>
+            )}
+
+            {showAddToOrder && onMarkOrdered && (
+              <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
+                <p className="mb-2 text-sm font-bold text-slate-300">
+                  Add to order ({currentItem.unit})
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={addToOrderQty}
+                    onChange={(e) => setAddToOrderQty(Math.max(0, parseFloat(e.target.value) || 0))}
+                    className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (addToOrderQty <= 0) {
+                        showToast('Enter a quantity greater than 0', 'warning');
+                        return;
+                      }
+                      const ok = await onMarkOrdered(currentItem.id, addToOrderQty);
+                      setShowAddToOrder(false);
+                      setAddToOrderQty(0);
+                      if (ok) {
+                        showToast('Added to order', 'success');
+                        await loadItemWithAttachments();
+                        onReloadItem?.();
+                      } else {
+                        showToast('Failed to add to order', 'error');
+                      }
+                    }}
+                    className="min-h-[44px] rounded-sm bg-primary px-3 text-sm font-bold text-white"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddToOrder(false);
+                      setAddToOrderQty(0);
+                    }}
+                    className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-slate-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {showReceiveOrder && onReceiveOrder && (
+              <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
+                <p className="mb-2 text-sm font-bold text-slate-300">
+                  Receive order ({currentItem.unit})
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max={currentItem.onOrder ?? 0}
+                    step="1"
+                    value={receiveOrderQty}
+                    onChange={(e) =>
+                      setReceiveOrderQty(
+                        Math.max(
+                          0,
+                          Math.min(currentItem.onOrder ?? 0, parseFloat(e.target.value) || 0)
+                        )
+                      )
+                    }
+                    className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
+                  />
+                  <span className="text-xs text-slate-500">
+                    max {formatStockDisplay(currentItem.onOrder ?? 0)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (receiveOrderQty <= 0) {
+                        showToast('Enter a quantity greater than 0', 'warning');
+                        return;
+                      }
+                      const ok = await onReceiveOrder(currentItem.id, receiveOrderQty);
+                      setShowReceiveOrder(false);
+                      setReceiveOrderQty(0);
+                      if (ok) {
+                        showToast(`Received ${receiveOrderQty} ${currentItem.unit}`, 'success');
+                        await loadItemWithAttachments();
+                        onReloadItem?.();
+                      } else {
+                        showToast('Failed to receive order', 'error');
+                      }
+                    }}
+                    className="min-h-[44px] rounded-sm bg-green-600 px-3 text-sm font-bold text-white"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReceiveOrder(false);
+                      setReceiveOrderQty(0);
+                    }}
+                    className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-slate-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {minStock > 0 && (
               <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
                 <div className="mb-2 flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-300">Min Stock Coverage</span>
                   <span className="text-slate-400">
-                    {available} / {minStock}
+                    {formatStockDisplay(available)} / {minStock}
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -940,15 +1108,16 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                   currentItem.reorderPoint > 0 &&
                   available <= currentItem.reorderPoint && (
                     <p className="text-sm font-bold text-red-300">
-                      Available ({available}) is at or below reorder point (
+                      Available ({formatStockDisplay(available)}) is at or below reorder point (
                       {currentItem.reorderPoint}).
                     </p>
                   )}
                 {allocated > 0 && available < allocated && (
                   <p className="text-sm text-red-300">
-                    {allocated} {item.unit} needed to complete all jobs (committed to PO&apos;d /
-                    in-production jobs). Short by {allocated - available} {item.unit} — order at
-                    least this much to fulfill current jobs.
+                    {formatStockDisplay(allocated)} {item.unit} needed to complete all jobs
+                    (committed to PO&apos;d / in-production jobs). Short by{' '}
+                    {formatStockDisplay(allocated - available)} {item.unit} — order at least this
+                    much to fulfill current jobs.
                   </p>
                 )}
               </div>

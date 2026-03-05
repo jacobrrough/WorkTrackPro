@@ -23,6 +23,8 @@ interface InventoryMainViewProps {
   onAddItem: () => void;
   onOpenDetail: (itemId: string) => void;
   onQuickAdjust: (item: InventoryItem, delta: number) => Promise<void>;
+  onMarkOrdered?: (itemId: string, quantity: number) => Promise<boolean>;
+  onReceiveOrder?: (itemId: string, quantity: number) => Promise<boolean>;
   onAllocateToJob: (
     jobId: string,
     inventoryId: string,
@@ -54,6 +56,8 @@ export default function InventoryMainView({
   onAddItem,
   onOpenDetail,
   onQuickAdjust,
+  onMarkOrdered,
+  onReceiveOrder,
   onAllocateToJob,
   calculateAvailable,
   calculateAllocated,
@@ -61,6 +65,9 @@ export default function InventoryMainView({
   const { showToast } = useToast();
   const [tab, setTab] = useState<InventoryTab>('allParts');
   const [allocatingItem, setAllocatingItem] = useState<InventoryItem | null>(null);
+  const [orderModalItem, setOrderModalItem] = useState<InventoryItem | null>(null);
+  const [orderModalMode, setOrderModalMode] = useState<'add' | 'receive' | null>(null);
+  const [orderModalQty, setOrderModalQty] = useState(0);
 
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
   const baseFiltered = useMemo(
@@ -202,6 +209,40 @@ export default function InventoryMainView({
           >
             Allocate To Job
           </button>
+          {isAdmin && onMarkOrdered && (
+            <button
+              type="button"
+              onClick={() => {
+                setOrderModalItem(item);
+                setOrderModalMode('add');
+                setOrderModalQty(0);
+              }}
+              className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-slate-200"
+              title="Add to order"
+            >
+              <span className="material-symbols-outlined mr-1 align-middle text-base">
+                pending_actions
+              </span>
+              On order
+            </button>
+          )}
+          {isAdmin && onReceiveOrder && (item.onOrder ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setOrderModalItem(item);
+                setOrderModalMode('receive');
+                setOrderModalQty(item.onOrder ?? 0);
+              }}
+              className="min-h-[44px] rounded-sm border border-green-500/30 bg-green-500/10 px-3 text-xs font-bold text-green-400"
+              title="Receive order"
+            >
+              <span className="material-symbols-outlined mr-1 align-middle text-base">
+                local_shipping
+              </span>
+              Receive
+            </button>
+          )}
           {isAdmin && (
             <div className="ml-auto flex gap-2">
               <button
@@ -428,6 +469,38 @@ export default function InventoryMainView({
                             >
                               Allocate
                             </button>
+                            {isAdmin && onMarkOrdered && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOrderModalItem(item);
+                                  setOrderModalMode('add');
+                                  setOrderModalQty(0);
+                                }}
+                                className="rounded-sm border border-white/20 px-2 py-1 text-xs text-slate-200"
+                                title="Add to order"
+                              >
+                                <span className="material-symbols-outlined text-base">
+                                  pending_actions
+                                </span>
+                              </button>
+                            )}
+                            {isAdmin && onReceiveOrder && (item.onOrder ?? 0) > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOrderModalItem(item);
+                                  setOrderModalMode('receive');
+                                  setOrderModalQty(item.onOrder ?? 0);
+                                }}
+                                className="rounded-sm border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400"
+                                title="Receive order"
+                              >
+                                <span className="material-symbols-outlined text-base">
+                                  local_shipping
+                                </span>
+                              </button>
+                            )}
                             {isAdmin && (
                               <>
                                 <button
@@ -487,6 +560,78 @@ export default function InventoryMainView({
             onAllocateToJob(jobId, allocatingItem.id, quantity, notes)
           }
         />
+      )}
+
+      {orderModalItem && orderModalMode && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+            <h3 className="mb-3 text-lg font-bold text-white">
+              {orderModalMode === 'add' ? 'Add to order' : 'Receive order'}
+            </h3>
+            <p className="mb-2 text-sm text-slate-400">{orderModalItem.name}</p>
+            <div className="mb-4 flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={orderModalMode === 'receive' ? (orderModalItem.onOrder ?? 0) : undefined}
+                step="1"
+                value={orderModalQty}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value) || 0;
+                  if (orderModalMode === 'receive') {
+                    setOrderModalQty(Math.max(0, Math.min(orderModalItem.onOrder ?? 0, v)));
+                  } else {
+                    setOrderModalQty(Math.max(0, v));
+                  }
+                }}
+                className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
+              />
+              <span className="text-sm text-slate-500">{orderModalItem.unit}</span>
+              {orderModalMode === 'receive' && (
+                <span className="text-xs text-slate-500">max {orderModalItem.onOrder ?? 0}</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (orderModalQty <= 0) {
+                    showToast('Enter a quantity greater than 0', 'warning');
+                    return;
+                  }
+                  const mode = orderModalMode;
+                  const cb = mode === 'add' ? onMarkOrdered : onReceiveOrder;
+                  const ok = cb ? await cb(orderModalItem.id, orderModalQty) : false;
+                  setOrderModalItem(null);
+                  setOrderModalMode(null);
+                  setOrderModalQty(0);
+                  if (ok) {
+                    showToast(mode === 'add' ? 'Added to order' : 'Order received', 'success');
+                  } else {
+                    showToast(
+                      mode === 'add' ? 'Failed to add to order' : 'Failed to receive order',
+                      'error'
+                    );
+                  }
+                }}
+                className="min-h-[44px] flex-1 rounded-sm bg-primary px-3 font-bold text-white"
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrderModalItem(null);
+                  setOrderModalMode(null);
+                  setOrderModalQty(0);
+                }}
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 font-bold text-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

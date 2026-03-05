@@ -103,7 +103,7 @@ export default function JobInventory({
             {(job.inventoryItems || []).map((item) => {
               const itemName = (item as { inventoryName?: string }).inventoryName;
               const invItem = item.inventoryId ? inventoryById.get(item.inventoryId) : undefined;
-              const available = invItem ? (invItem.available ?? calculateAvailable(invItem)) : 0;
+              const available = invItem ? calculateAvailable(invItem) : 0;
               const isLow = available < item.quantity;
               const isEditingThis = editingMaterialQty === item.id;
 
@@ -204,9 +204,7 @@ export default function JobInventory({
                             </span>
                           )}
                           {invItem && (
-                            <span className="ml-2">
-                              • Available: {invItem.available ?? calculateAvailable(invItem)}
-                            </span>
+                            <span className="ml-2">• Available: {calculateAvailable(invItem)}</span>
                           )}
                         </p>
                       </div>
@@ -271,7 +269,7 @@ export default function JobInventory({
                 >
                   <p className="font-medium text-white">{item.name}</p>
                   <p className="text-xs text-slate-400">
-                    Available: {item.available ?? calculateAvailable(item)} {item.unit}
+                    Available: {calculateAvailable(item)} {item.unit}
                   </p>
                 </button>
               ))}
