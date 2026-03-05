@@ -1,4 +1,5 @@
 import type { Job } from '@/core/types';
+import { getPlannedLaborHours } from '@/lib/laborSuggestion';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 
 const TERMINAL_STATUSES = new Set(['finished', 'delivered', 'projectCompleted', 'paid']);
@@ -29,10 +30,9 @@ export function computeJobCompletionProgress(
   loggedLaborHours: number
 ): JobCompletionProgress {
   const machineTotals = getMachineTotalsFromJob(job);
+  const plannedFromJob = getPlannedLaborHours(job);
   const plannedLaborHours =
-    typeof job.laborHours === 'number' && job.laborHours > 0
-      ? job.laborHours
-      : Math.max(0, loggedLaborHours);
+    plannedFromJob > 0 ? plannedFromJob : Math.max(0, loggedLaborHours);
   const plannedCncHours = Math.max(0, machineTotals.cncHours);
   const plannedPrinter3DHours = Math.max(0, machineTotals.printer3DHours);
 

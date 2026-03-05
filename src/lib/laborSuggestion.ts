@@ -7,6 +7,20 @@ import { Job } from '@/core/types';
 import { getWorkedShiftMs } from './lunchUtils';
 
 /**
+ * Planned labor hours for a job: job.laborHours if set, else sum of laborBreakdownByVariant totalHours.
+ * Ensures jobs without variants (only job.laborHours) and jobs with only variant breakdown both register.
+ */
+export function getPlannedLaborHours(job: Job): number {
+  if (typeof job.laborHours === 'number' && job.laborHours > 0) return job.laborHours;
+  const breakdown = job.laborBreakdownByVariant;
+  if (!breakdown || typeof breakdown !== 'object') return 0;
+  return Object.values(breakdown).reduce(
+    (sum, entry) => sum + (Number((entry as { totalHours?: number }).totalHours) || 0),
+    0
+  );
+}
+
+/**
  * Find similar jobs by part number (base) or name/description word match.
  * @param searchTerm Product name or part number to search for
  * @param jobs All jobs to search
@@ -81,9 +95,9 @@ export function getLaborSuggestion(
   const hours: number[] = [];
 
   for (const job of similarJobs) {
-    // Prefer manual laborHours if set
-    if (job.laborHours && job.laborHours > 0) {
-      hours.push(job.laborHours);
+    const planned = getPlannedLaborHours(job);
+    if (planned > 0) {
+      hours.push(planned);
     } else {
       // Fall back to recorded shift hours
       const shiftHours = calculateJobHoursFromShifts(job.id, shifts);

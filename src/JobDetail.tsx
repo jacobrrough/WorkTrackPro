@@ -1156,7 +1156,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
       dueDate: dateInputToISO(editForm.dueDate),
       ecd: dateInputToISO(editForm.ecd),
       qty: editForm.qty?.trim() || undefined,
-      laborHours: editForm.laborHours ? parseFloat(editForm.laborHours) : undefined,
+      // Always persist labor hours when form has a value (fixes jobs without variants not registering)
+      laborHours: (() => {
+        const v = editForm.laborHours?.trim();
+        if (v === '' || v == null) return undefined;
+        const n = parseFloat(v);
+        return Number.isFinite(n) && n >= 0 ? n : undefined;
+      })(),
       status: editForm.status,
       isRush: editForm.isRush,
       progressEstimatePercent:

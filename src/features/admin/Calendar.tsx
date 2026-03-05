@@ -8,7 +8,10 @@ import {
   getWeeklyWorkHours,
   planForwardFromDate,
 } from '@/lib/workHours';
-import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
+import {
+  calculateJobHoursFromShifts,
+  getPlannedLaborHours,
+} from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
 import { getJobDisplayName } from '@/lib/formatJob';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -192,8 +195,8 @@ const Calendar: React.FC<CalendarProps> = ({
         .filter((job) => job.dueDate && job.active)
         .map((job) => {
           const fallbackHours = calculateJobHoursFromShifts(job.id, shifts);
-          const requiredHours =
-            job.laborHours && job.laborHours > 0 ? job.laborHours : fallbackHours;
+          const plannedHours = getPlannedLaborHours(job);
+          const requiredHours = plannedHours > 0 ? plannedHours : fallbackHours;
           const cncHours = getMachineTotalsFromJob(job).cncHours;
           const cncCompletion = cncHours > 0 ? cncCompletionByJobId.get(job.id) : null;
           // CNC must finish the day before labor starts
