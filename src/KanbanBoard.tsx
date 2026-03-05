@@ -45,7 +45,6 @@ const ADMIN_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'rfqReceived', title: 'RFQ Received', color: 'bg-orange-500' },
   { id: 'rfqSent', title: 'RFQ Sent', color: 'bg-yellow-500' },
   { id: 'pod', title: "PO'd", color: 'bg-green-500' },
-  { id: 'rush', title: 'Rush', color: 'bg-red-600' },
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
   { id: 'inProgress', title: 'In Progress', color: 'bg-blue-500' },
   { id: 'qualityControl', title: 'Quality Control', color: 'bg-green-500' },
@@ -820,7 +819,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                 Overdue
                               </span>
                             )}
-                            {atRiskFromProgress && (
+                            {atRiskFromProgress && !overdue && (
                               <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                                 At risk
                               </span>

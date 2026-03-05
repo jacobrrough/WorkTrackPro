@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Job, ViewState, User, Shift } from '@/core/types';
+import { Job, JobStatus, ViewState, User, Shift } from '@/core/types';
 import {
   buildCapacityAwareBackwardSchedules,
   buildCapacityAwareForwardSchedules,
@@ -8,10 +8,7 @@ import {
   getWeeklyWorkHours,
   planForwardFromDate,
 } from '@/lib/workHours';
-import {
-  calculateJobHoursFromShifts,
-  getPlannedLaborHours,
-} from '@/lib/laborSuggestion';
+import { calculateJobHoursFromShifts, getPlannedLaborHours } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
 import { getJobDisplayName } from '@/lib/formatJob';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -61,6 +58,15 @@ const normalizeDateKey = (value: string) => {
   return toDateKey(parsed);
 };
 
+/** Calendar only includes jobs in pipeline from RFQ Sent through Quality Control. */
+const CALENDAR_STATUSES: JobStatus[] = [
+  'rfqSent',
+  'pod',
+  'pending',
+  'inProgress',
+  'qualityControl',
+];
+
 /**
  * Calendar - Admin-only view showing job timelines on a month calendar.
  * Uses due date + labor hours + employee schedule to create a capacity-aware timeline.
@@ -90,15 +96,7 @@ const Calendar: React.FC<CalendarProps> = ({
   }, [refreshJobs, refreshShifts]);
 
   const jobs = useMemo(
-    () =>
-      allJobs.filter(
-        (j) =>
-          j.active &&
-          j.status !== 'paid' &&
-          j.status !== 'projectCompleted' &&
-          j.status !== 'delivered' &&
-          j.status !== 'finished'
-      ),
+    () => allJobs.filter((j) => j.active && CALENDAR_STATUSES.includes(j.status)),
     [allJobs]
   );
   const baseScheduleOptions = useMemo(
@@ -943,12 +941,12 @@ const Calendar: React.FC<CalendarProps> = ({
                               Behind
                             </span>
                           )}
-                          {(tl.scheduleRisk === 'atRisk' ||
-                            progress?.atRiskFromProgressEstimate) && (
-                            <span className="rounded bg-orange-500/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-300">
-                              At risk
-                            </span>
-                          )}
+                          {(tl.scheduleRisk === 'atRisk' || progress?.atRiskFromProgressEstimate) &&
+                            tl.scheduleRisk !== 'overdue' && (
+                              <span className="rounded bg-orange-500/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-300">
+                                At risk
+                              </span>
+                            )}
                           {tl.job.cncCompletedAt ? (
                             <span className="text-[11px] font-semibold text-green-300">
                               CNC Done

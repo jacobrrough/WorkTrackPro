@@ -134,8 +134,13 @@ export async function runMutationWithSchemaFallback<T>({
     const result = await mutate(candidatePayload);
     if (!result.error) {
       if (didStripThisRun && strippedColumns.length > 0) {
+        const hint =
+          tableName === 'jobs' &&
+          strippedColumns.some((c) => c === 'cnc_completed_at' || c === 'cnc_completed_by')
+            ? "Run migration 20260302000001_add_job_cnc_completion.sql, then NOTIFY pgrst, 'reload schema'; and clear localStorage key supabase_schema_omit_jobs to stop omitting them."
+            : `Run the migration that adds these columns, then NOTIFY pgrst, 'reload schema';`;
         console.warn(
-          `Schema fallback: omitted columns not in database (run migration 20260224000007 if you need them): ${[...new Set(strippedColumns)].join(', ')}`
+          `Schema fallback: omitted columns not in database (${hint}): ${[...new Set(strippedColumns)].join(', ')}`
         );
       }
       return { ...result, usedPayload: candidatePayload, strippedColumns };

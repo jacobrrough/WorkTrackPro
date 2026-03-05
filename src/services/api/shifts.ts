@@ -7,8 +7,11 @@ const SHIFTS_SELECT_BASE = 'id, user_id, job_id, clock_in_time, clock_out_time, 
 
 function isMissingLunchColumnsError(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
-  if (error.code === '42703') return true;
-  return /lunch_start_time|lunch_end_time|lunch_minutes_used/i.test(error.message ?? '');
+  if (error.code === '42703') return true; // undefined_column
+  if (error.code === 'PGRST204') return true; // column not in schema
+  const msg = error.message ?? '';
+  if (String(error.code) === '400' && /column|schema/i.test(msg)) return true;
+  return /lunch_start_time|lunch_end_time|lunch_minutes_used|could not find.*column/i.test(msg);
 }
 
 function mapRowToShift(
@@ -47,7 +50,7 @@ export const shiftService = {
       if (!isMissingLunchColumnsError(withLunch.error)) {
         throw withLunch.error;
       }
-      // Backward compatibility for databases that haven't run lunch-tracking migration yet.
+      // Backward compatibility: DB may lack lunch columns (run 20260221000200 + 20260224000008).
       const fallback = await supabase
         .from('shifts')
         .select(SHIFTS_SELECT_BASE)

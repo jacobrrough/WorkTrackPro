@@ -31,8 +31,7 @@ export function computeJobCompletionProgress(
 ): JobCompletionProgress {
   const machineTotals = getMachineTotalsFromJob(job);
   const plannedFromJob = getPlannedLaborHours(job);
-  const plannedLaborHours =
-    plannedFromJob > 0 ? plannedFromJob : Math.max(0, loggedLaborHours);
+  const plannedLaborHours = plannedFromJob > 0 ? plannedFromJob : Math.max(0, loggedLaborHours);
   const plannedCncHours = Math.max(0, machineTotals.cncHours);
   const plannedPrinter3DHours = Math.max(0, machineTotals.printer3DHours);
 
