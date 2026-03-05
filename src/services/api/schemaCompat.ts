@@ -88,7 +88,13 @@ function loadKnownMissing(tableName: string): Set<string> {
   // If it was previously cached as missing, stop stripping it so job–part linking and BOM/labor work again.
   // Also heal bin_location and CNC completion columns (migrations add them) so QR-scanned locations save.
   if (tableName === 'jobs') {
-    const jobColumnsToHeal = ['part_id', 'bin_location', 'cnc_completed_at', 'cnc_completed_by'];
+    const jobColumnsToHeal = [
+      'part_id',
+      'bin_location',
+      'cnc_completed_at',
+      'cnc_completed_by',
+      'planned_completion_date',
+    ];
     let healed = false;
     for (const col of jobColumnsToHeal) {
       if (set.has(col)) {

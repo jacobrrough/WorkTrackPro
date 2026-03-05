@@ -67,8 +67,9 @@ const COMPLETE_STATUSES: JobStatus[] = [
   'paid',
   'waitingForPayment',
 ];
+/** ECD = last possible contracted date; use it for overdue when present. */
 function isJobOverdue(job: Job): boolean {
-  const dateStr = job.dueDate || job.ecd;
+  const dateStr = job.ecd ?? job.dueDate;
   if (!dateStr) return false;
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return false;
@@ -1051,13 +1052,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           )}
                         </div>
 
-                        {/* Due date */}
-                        <p className="mb-1.5">
-                          {(job.dueDate || job.ecd) && (
-                            <span
-                              className={`rounded px-1.5 py-0.5 text-xs font-medium ${job.dueDate && new Date(job.dueDate) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-400'}`}
-                            >
-                              {formatDateOnly(job.dueDate || job.ecd).replace(/, \d{4}/, '')}
+                        {/* Due / ECD / Planned — ECD is reference only, never edited from card */}
+                        <p className="mb-1.5 flex flex-wrap items-center gap-1.5 gap-y-1">
+                          {job.dueDate && (
+                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
+                              Due {formatDateOnly(job.dueDate).replace(/, \d{4}/, '')}
+                            </span>
+                          )}
+                          {job.ecd && (
+                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
+                              ECD {formatDateOnly(job.ecd).replace(/, \d{4}/, '')}
+                            </span>
+                          )}
+                          {job.plannedCompletionDate && (
+                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
+                              Planned{' '}
+                              {formatDateOnly(job.plannedCompletionDate).replace(/, \d{4}/, '')}
                             </span>
                           )}
                         </p>

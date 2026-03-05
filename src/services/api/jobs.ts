@@ -56,6 +56,7 @@ function mapJobRow(
     description: row.description as string | undefined,
     ecd: row.ecd as string | undefined,
     dueDate: row.due_date as string | undefined,
+    plannedCompletionDate: (row.planned_completion_date as string | null | undefined) ?? null,
     laborHours: row.labor_hours as number | undefined,
     active: (row.active as boolean) ?? true,
     status: row.status as string as Job['status'],
@@ -619,6 +620,11 @@ export const jobService = {
           : parseFloat(String(data.progressEstimatePercent));
       row.progress_estimate_percent = Number.isFinite(p) ? Math.max(0, Math.min(100, p)) : null;
     }
+    if (data.plannedCompletionDate !== undefined)
+      row.planned_completion_date =
+        data.plannedCompletionDate && String(data.plannedCompletionDate).trim()
+          ? data.plannedCompletionDate.trim()
+          : null;
     row.updated_at = new Date().toISOString();
     const { data: updated, error } = await runMutationWithSchemaFallback({
       tableName: 'jobs',

@@ -610,6 +610,7 @@ export default function App() {
           onBack={() => handleNavigate('dashboard')}
           refreshJobs={refreshJobs}
           refreshShifts={refreshShifts}
+          onUpdateJob={updateJob}
         />
       </AppShell>
     );

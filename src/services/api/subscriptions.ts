@@ -19,6 +19,7 @@ function mapJobRow(row: Record<string, unknown>): Job {
     description: row.description as string | undefined,
     ecd: row.ecd as string | undefined,
     dueDate: row.due_date as string | undefined,
+    plannedCompletionDate: (row.planned_completion_date as string | null | undefined) ?? null,
     active: (row.active as boolean) ?? true,
     status: row.status as Job['status'],
     boardType: row.board_type as Job['boardType'],

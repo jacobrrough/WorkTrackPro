@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Job, JobStatus, ViewState, User, Shift } from '@/core/types';
 import {
   buildCapacityAwareBackwardSchedules,
@@ -14,6 +14,8 @@ import { getJobDisplayName } from '@/lib/formatJob';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
+import { requiresPastEcdApproval } from '@/lib/calendarDateGuard';
+import { useToast } from '@/Toast';
 
 interface CalendarProps {
   jobs: Job[];
@@ -23,6 +25,7 @@ interface CalendarProps {
   onBack?: () => void;
   refreshJobs?: () => Promise<void>;
   refreshShifts?: () => Promise<void>;
+  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<Job | null>;
 }
 
 interface JobTimeline {
@@ -80,6 +83,7 @@ const Calendar: React.FC<CalendarProps> = ({
   onBack,
   refreshJobs,
   refreshShifts,
+  onUpdateJob,
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [includeOvertimeInSchedule, setIncludeOvertimeInSchedule] = useState(false);
@@ -88,11 +92,29 @@ const Calendar: React.FC<CalendarProps> = ({
   const [plannerPrinter3DHours, setPlannerPrinter3DHours] = useState('0');
   const [plannerDueDate, setPlannerDueDate] = useState('');
   const [plannerUseOvertime, setPlannerUseOvertime] = useState(true);
+  const [applySchedulePending, setApplySchedulePending] = useState(false);
+  const [pastEcdApprovalModal, setPastEcdApprovalModal] = useState<{
+    job: Job;
+    plannedDate: string;
+    resolve: (approved: boolean) => void;
+  } | null>(null);
   const { settings } = useSettings();
+  const { showToast } = useToast();
 
   useEffect(() => {
     refreshJobs?.();
     refreshShifts?.();
+  }, [refreshJobs, refreshShifts]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      refreshJobs?.();
+      refreshShifts?.();
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onFocus);
+      return () => document.removeEventListener('visibilitychange', onFocus);
+    }
   }, [refreshJobs, refreshShifts]);
 
   const jobs = useMemo(
@@ -309,6 +331,39 @@ const Calendar: React.FC<CalendarProps> = ({
       return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
     });
   }, [capacityAwareSchedule.results, jobs, jobsById, todayKey]);
+
+  const handleApplySchedule = useCallback(async () => {
+    if (!onUpdateJob || !refreshJobs) return;
+    setApplySchedulePending(true);
+    try {
+      for (const tl of jobTimelines) {
+        const needsApproval = requiresPastEcdApproval(tl.job, tl.endDate);
+        if (needsApproval) {
+          const approved = await new Promise<boolean>((resolve) => {
+            setPastEcdApprovalModal({ job: tl.job, plannedDate: tl.endDate, resolve });
+          });
+          if (!approved) continue;
+        }
+        await onUpdateJob(tl.job.id, { plannedCompletionDate: tl.endDate });
+      }
+      await refreshJobs();
+      showToast('Schedule applied to planned completion dates', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to apply schedule', 'error');
+    } finally {
+      setApplySchedulePending(false);
+      setPastEcdApprovalModal(null);
+    }
+  }, [jobTimelines, onUpdateJob, refreshJobs, showToast]);
+
+  const handlePastEcdApproval = useCallback(
+    (approved: boolean) => {
+      pastEcdApprovalModal?.resolve(approved);
+      setPastEcdApprovalModal(null);
+    },
+    [pastEcdApprovalModal]
+  );
 
   // Get days in current month
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -664,6 +719,21 @@ const Calendar: React.FC<CalendarProps> = ({
             <span className="font-medium text-primary">{weeklyCapacityHours.toFixed(1)}h</span> ·
             Max: <span className="text-amber-300">{weeklyCapacityWithOvertime.toFixed(1)}h</span>
           </p>
+          {onUpdateJob && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleApplySchedule}
+                disabled={applySchedulePending || jobTimelines.length === 0}
+                className="min-h-[36px] touch-manipulation rounded border border-primary/50 bg-primary/20 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary/30 disabled:opacity-50"
+              >
+                {applySchedulePending ? 'Applying…' : 'Apply schedule'}
+              </button>
+              <span className="ml-2 text-[10px] text-slate-400">
+                Saves planned completion dates (ECD never changed by calendar).
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="mb-4 rounded-sm border border-white/10 bg-white/5 p-2.5 sm:p-3">
@@ -961,8 +1031,11 @@ const Calendar: React.FC<CalendarProps> = ({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400 sm:text-xs">
                           <span>Start: {formatDateOnly(tl.startDate)}</span>
-                          <span>Due: {formatDateOnly(tl.job.dueDate)}</span>
-                          <span>Planned: {formatDateOnly(tl.endDate)}</span>
+                          {tl.job.dueDate && <span>Due: {formatDateOnly(tl.job.dueDate)}</span>}
+                          {tl.job.ecd && <span>ECD: {formatDateOnly(tl.job.ecd)}</span>}
+                          <span>
+                            Planned: {formatDateOnly(tl.job.plannedCompletionDate ?? tl.endDate)}
+                          </span>
                           <span>{tl.hours.toFixed(1)}h</span>
                           {tl.overtimeHours > 0 && (
                             <span className="text-amber-300">
@@ -1025,6 +1098,43 @@ const Calendar: React.FC<CalendarProps> = ({
           )}
         </div>
       </div>
+
+      {pastEcdApprovalModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="past-ecd-title"
+        >
+          <div className="max-w-md rounded-lg border border-white/20 bg-[#2a1f35] p-4 shadow-xl">
+            <h2 id="past-ecd-title" className="text-base font-bold text-white">
+              Planned date is after ECD (contract date)
+            </h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Job #{pastEcdApprovalModal.job.jobCode} — planned completion{' '}
+              {formatDateOnly(pastEcdApprovalModal.plannedDate)} is after ECD{' '}
+              {pastEcdApprovalModal.job.ecd && formatDateOnly(pastEcdApprovalModal.job.ecd)}.
+              Confirm to save this planned date anyway?
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => handlePastEcdApproval(false)}
+                className="min-h-[44px] touch-manipulation rounded border border-white/20 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/10"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePastEcdApproval(true)}
+                className="min-h-[44px] touch-manipulation rounded border border-amber-500/50 bg-amber-500/20 px-4 py-2 text-sm font-medium text-amber-200 hover:bg-amber-500/30"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

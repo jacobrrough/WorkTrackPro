@@ -155,6 +155,8 @@ export interface Job {
   description?: string;
   ecd?: string;
   dueDate?: string;
+  /** Internal planned completion (calendar Apply). ECD is contract reference only; automation never writes ECD. */
+  plannedCompletionDate?: string | null;
   laborHours?: number;
   active: boolean;
   status: JobStatus;
