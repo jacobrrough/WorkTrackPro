@@ -9,7 +9,7 @@ interface ChecklistDisplayProps {
   jobStatus: JobStatus;
   currentUser: User;
   compact?: boolean; // For card view vs detail view
-  onChecklistComplete?: () => void;
+  onChecklistComplete?: () => void | Promise<void>;
 }
 
 const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
@@ -109,10 +109,10 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
 
       setChecklist({ ...checklist, items: updatedItems });
 
-      // Check if all items are now complete
+      // Check if all items are now complete — await so status advance + refresh finish before UI continues
       const allComplete = updatedItems.every((i) => i.checked);
       if (allComplete && onChecklistComplete) {
-        onChecklistComplete();
+        await Promise.resolve(onChecklistComplete());
       }
     } catch (error) {
       console.error('Failed to toggle item:', error);

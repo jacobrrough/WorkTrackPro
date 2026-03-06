@@ -51,7 +51,10 @@ import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/va
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
 import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
-import { useMaterialCosts } from '@/features/jobs/hooks/useMaterialCosts';
+import {
+  useMaterialCosts,
+  computePartDerivedMaterialTotal,
+} from '@/features/jobs/hooks/useMaterialCosts';
 import { useVariantBreakdown } from '@/features/jobs/hooks/useVariantBreakdown';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
@@ -266,7 +269,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [clockInCtx, job.id, onClockIn]);
   const handleChecklistComplete = useCallback(async () => {
     await advanceJobToNextStatus(job.id, job.status);
-  }, [advanceJobToNextStatus, job.id, job.status]);
+    await onReloadJob?.();
+  }, [advanceJobToNextStatus, job.id, job.status, onReloadJob]);
 
   const [timer, setTimer] = useState('00:00:00');
   const [newComment, setNewComment] = useState('');
@@ -756,10 +760,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }
   }, [linkedPart, partNameEdit, showToast]);
 
-  // Calculate total material cost
+  // Calculate total material cost (from job inventory × price × upcharge)
   const totalMaterialCost = useMemo(() => {
     return Array.from(materialCosts.values()).reduce((sum, cost) => sum + cost, 0);
   }, [materialCosts]);
+
+  // When linked to part, use part-derived material total so Materials ≤ Total (both from part)
+  const displayMaterialTotal = useMemo(() => {
+    if (linkedPart && inventoryById.size > 0) {
+      const partDerived = computePartDerivedMaterialTotal(
+        linkedPart,
+        effectiveMaterialQuantities,
+        inventoryById,
+        materialUpcharge
+      );
+      if (partDerived != null) return partDerived;
+    }
+    return totalMaterialCost;
+  }, [linkedPart, effectiveMaterialQuantities, inventoryById, materialUpcharge, totalMaterialCost]);
 
   // Calculate labor cost (whole job)
   const laborCost = useMemo(() => {
@@ -767,15 +785,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return hours * laborRate;
   }, [editForm.laborHours, laborRate]);
 
+  // Total = sum of displayed components (Materials + Labor + CNC + 3D) so Total matches breakdown
   const computedCostTotal = useMemo(
     () =>
       laborCost +
-      totalMaterialCost +
+      displayMaterialTotal +
       (parseFloat(editForm.cncHours) || 0) * cncRate +
       (parseFloat(editForm.printer3DHours) || 0) * printer3DRate,
     [
       laborCost,
-      totalMaterialCost,
+      displayMaterialTotal,
       editForm.cncHours,
       editForm.printer3DHours,
       cncRate,
@@ -2108,17 +2127,20 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       )}
                     </label>
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
-                      ${totalMaterialCost.toFixed(2)}
+                      ${displayMaterialTotal.toFixed(2)}
                     </div>
                   </div>
                 )}
               </div>
               {canViewFinancials && (
                 <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                  Total ${(partDerivedPrice?.totalPrice ?? computedCostTotal).toFixed(2)}
+                  Total ${computedCostTotal.toFixed(2)}
                   {partDerivedPrice && (
-                    <span className="ml-2 text-[10px] font-medium text-primary/80">
-                      from {partDerivedPrice.source.replace('_', ' ')}
+                    <span
+                      className="ml-2 text-[10px] font-medium text-primary/80"
+                      title="Part quote total for reference"
+                    >
+                      part quote ${partDerivedPrice.totalPrice.toFixed(2)}
                     </span>
                   )}
                 </div>

@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { InventoryItem, JobInventoryItem, Part } from '../../../core/types';
-import { computeMaterialCosts } from './materialCostUtils';
+import { computeMaterialCosts, computePartDerivedMaterialTotal } from './materialCostUtils';
+
+export { computePartDerivedMaterialTotal };
 
 interface UseMaterialCostsParams {
   linkedPart: Part | null;
