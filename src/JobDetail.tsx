@@ -2134,13 +2134,22 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
               {canViewFinancials && (
                 <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                  Total ${computedCostTotal.toFixed(2)}
+                  Total $
+                  {(partDerivedPrice ? partDerivedPrice.totalPrice : computedCostTotal).toFixed(2)}
+                  {linkedPart?.pricePerSet != null && (
+                    <span
+                      className="ml-2 text-[10px] font-medium text-primary/80"
+                      title="From linked part (matches Part detail Set price)"
+                    >
+                      Set price ${Number(linkedPart.pricePerSet).toFixed(2)}/set
+                    </span>
+                  )}
                   {partDerivedPrice && (
                     <span
                       className="ml-2 text-[10px] font-medium text-primary/80"
-                      title="Part quote total for reference"
+                      title="From linked part (set price × sets or variant prices)"
                     >
-                      part quote ${partDerivedPrice.totalPrice.toFixed(2)}
+                      from part
                     </span>
                   )}
                 </div>
