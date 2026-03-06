@@ -758,6 +758,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const jobHours = calculateJobHoursFromShifts(job.id, shiftsProp);
                     const progress = jobProgressByJobId.get(job.id);
                     const atRiskFromProgress = progress?.atRiskFromProgressEstimate ?? false;
+                    const hasCnc =
+                      job.machineBreakdownByVariant &&
+                      Object.values(job.machineBreakdownByVariant).some(
+                        (v) => (v?.cncHoursTotal ?? 0) > 0
+                      );
+                    const cncDone = !!job.cncCompletedAt;
 
                     return (
                       <div
@@ -823,6 +829,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             {atRiskFromProgress && !overdue && (
                               <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                                 At risk
+                              </span>
+                            )}
+                            {hasCnc && (
+                              <span
+                                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${cncDone ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'}`}
+                                title={cncDone ? 'CNC machining done' : 'CNC machining pending'}
+                              >
+                                <span className="material-symbols-outlined text-[10px]">
+                                  {cncDone ? 'check_circle' : 'schedule'}
+                                </span>
+                                CNC {cncDone ? 'Done' : 'Pending'}
                               </span>
                             )}
                           </div>
