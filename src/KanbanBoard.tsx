@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem, Shift } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
-import { formatJobCode, formatDashSummary } from '@/lib/formatJob';
+import { formatJobCode, formatDashSummary, totalFromDashQuantities } from '@/lib/formatJob';
 import { matchesJobSearch } from '@/lib/jobSearch';
 import { getDashQuantity } from '@/lib/variantMath';
 import { checklistService } from './pocketbase';
@@ -732,25 +732,53 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const hasChecklist = checklistState && checklistState.total > 0;
                     const checklistComplete =
                       hasChecklist && checklistState.completed === checklistState.total;
-                    const partNumber = job.partNumber?.trim() || '';
-                    const partMeta = getPartMetaForJob(partNumber, partsByNumber);
+                    const isMultiPart = job.parts != null && job.parts.length > 1;
+                    const partNumber = isMultiPart
+                      ? job
+                          .parts!.map((l) => l.partNumber?.trim())
+                          .filter(Boolean)
+                          .join(', ')
+                      : job.partNumber?.trim() || '';
+                    const partMeta = !isMultiPart
+                      ? getPartMetaForJob(partNumber, partsByNumber)
+                      : null;
                     const partNameFromMap = partMeta?.name || '';
                     const fallbackName = (job.name ?? '').trim();
-                    const partName =
-                      partNameFromMap ||
-                      (fallbackName.startsWith('PO#') ? '—' : fallbackName || '—');
+                    const partName = isMultiPart
+                      ? job
+                          .parts!.map(
+                            (l) =>
+                              getPartMetaForJob(l.partNumber?.trim() || '', partsByNumber)?.name
+                          )
+                          .filter(Boolean)
+                          .join(', ') || 'Multi-part'
+                      : partNameFromMap ||
+                        (fallbackName.startsWith('PO#') ? '—' : fallbackName || '—');
+                    const primaryPartMeta =
+                      partMeta ??
+                      (isMultiPart && job.parts!.length > 0
+                        ? getPartMetaForJob(job.parts![0].partNumber?.trim() || '', partsByNumber)
+                        : null);
                     const exactSetCount = getExactSetCount(
                       job.dashQuantities,
-                      partMeta?.setComposition
+                      primaryPartMeta?.setComposition
                     );
-                    const qtyDisplay =
-                      exactSetCount != null
+                    const qtyDisplay = isMultiPart
+                      ? (() => {
+                          const total = job.parts!.reduce(
+                            (sum, l) => sum + totalFromDashQuantities(l.dashQuantities),
+                            0
+                          );
+                          return total > 0 ? `${total} total` : (job.qty ?? '—');
+                        })()
+                      : exactSetCount != null
                         ? `${exactSetCount} ${exactSetCount === 1 ? 'set' : 'sets'}`
                         : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
                           ? formatDashSummary(job.dashQuantities)
                           : (job.qty ?? '—');
-                    const qtyLabel =
-                      job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+                    const qtyLabel = isMultiPart
+                      ? 'Total'
+                      : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
                         ? 'Variant qty'
                         : 'Sets';
                     const overdue = isJobOverdue(job);

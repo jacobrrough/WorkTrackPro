@@ -5,6 +5,7 @@ import { useToast } from '@/Toast';
 import { formatDashSummary, formatSetComposition } from '@/lib/formatJob';
 import { deriveSetCountFromDashQuantities } from '@/lib/jobPriceFromPart';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
+import { debugLog } from '@/lib/debugLog';
 
 interface PartSelectorProps {
   onSelect: (part: Part, dashQuantities: Record<string, number>) => void;
@@ -235,6 +236,17 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
   const handleAutoAssign = () => {
     if (!part) return;
+    // #region agent log
+    const _log = {
+      sessionId: '7c14cd',
+      location: 'PartSelector:handleAutoAssign',
+      message: 'Apply Part clicked',
+      data: { partNumber: part.partNumber },
+      timestamp: Date.now(),
+      hypothesisId: 'H4',
+    };
+    debugLog(_log);
+    // #endregion
     onSelect(part, dashQuantities);
     showToast('Part and dash quantities selected', 'success');
   };
@@ -408,6 +420,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
 
       {part && totalQuantity > 0 && (
         <button
+          type="button"
           onClick={handleAutoAssign}
           className="w-full rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/30"
         >

@@ -8,6 +8,7 @@ import {
   Comment,
   JobStatus,
   Attachment,
+  JobPartLink,
 } from '@/core/types';
 import { jobService } from './pocketbase';
 import FileUploadButton from './FileUploadButton';
@@ -44,7 +45,7 @@ import {
   type PartWithDashQuantities,
 } from '@/lib/partsCalculations';
 import { syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
-import { buildPartVariantDefaults } from '@/lib/variantAllocation';
+import { buildPartVariantDefaults, computeVariantBreakdown } from '@/lib/variantAllocation';
 import {
   variantLaborFromSetComposition,
   variantCncFromSetComposition,
@@ -67,6 +68,7 @@ import JobComments from '@/features/jobs/components/JobComments';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import ConfirmDialog from './ConfirmDialog';
+import PartSelector from '@/components/PartSelector';
 
 interface JobDetailProps {
   job: Job;
@@ -304,6 +306,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteJobConfirm, setShowDeleteJobConfirm] = useState(false);
   const [isDeletingJob, setIsDeletingJob] = useState(false);
+  const [showAddPartToJob, setShowAddPartToJob] = useState(false);
   const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null);
   const editSeedRef = useRef<string | null>(null);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
@@ -347,6 +350,72 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [job, loggedLaborHours]
   );
   const isCncRequired = completionProgress.plannedCncHours > 0;
+
+  /** In edit mode, local copy of job.parts (or [primary]) for editing part list and per-part dash quantities. */
+  const [editingParts, setEditingParts] = useState<JobPartLink[]>(() =>
+    job.parts?.length
+      ? [...job.parts]
+      : job.partId
+        ? [
+            {
+              partId: job.partId,
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ]
+        : []
+  );
+  useEffect(() => {
+    const next = job.parts?.length
+      ? [...job.parts]
+      : job.partId
+        ? [
+            {
+              partId: job.partId,
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ]
+        : [];
+    setEditingParts(next);
+  }, [job.parts, job.partId, job.partNumber, job.dashQuantities]);
+
+  /** Per-part labor/CNC/3D for view and multi-part totals (one entry per job.parts / linkedParts). */
+  const perPartBreakdowns = useMemo(() => {
+    const parts = job.parts?.length
+      ? job.parts
+      : job.partId
+        ? [
+            {
+              partId: job.partId,
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ]
+        : [];
+    if (!linkedParts?.length || parts.length === 0) return null;
+    const out: { laborHours: number; cncHours: number; printer3DHours: number }[] = [];
+    for (let i = 0; i < parts.length && i < linkedParts.length; i++) {
+      const part = linkedParts[i];
+      const dq = parts[i].dashQuantities ?? {};
+      if (!part) {
+        out.push({ laborHours: 0, cncHours: 0, printer3DHours: 0 });
+        continue;
+      }
+      const { totals } = computeVariantBreakdown({
+        part,
+        dashQuantities: dq,
+        source: 'variant',
+      });
+      out.push({
+        laborHours: totals.laborHours,
+        cncHours: totals.cncHours,
+        printer3DHours: totals.printer3DHours,
+      });
+    }
+    return out.length ? out : null;
+  }, [job.parts, job.partId, job.partNumber, job.dashQuantities, linkedParts]);
+
   const [editForm, setEditForm] = useState({
     po: job.po || '',
     description: job.description || '',
@@ -1208,7 +1277,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const normalizedDashQuantities = normalizeDashQuantities(dashQuantities);
     const shouldAutoMarkCncDone =
       Boolean(normalizedBinLocation) && isCncRequired && !job.cncCompletedAt;
+    const partsToSave =
+      editingParts.length > 0
+        ? editingParts.map((p, i) =>
+            i === 0 ? { ...p, dashQuantities: normalizedDashQuantities } : p
+          )
+        : undefined;
     const payload = {
+      ...(partsToSave && partsToSave.length > 0 ? { parts: partsToSave } : {}),
       partNumber,
       revision,
       po,
@@ -1261,14 +1337,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       if (updated) {
         showToast('Job updated successfully', 'success');
-        const hasSinglePartQty =
-          linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0);
-        const hasMultiPartQty = partsWithPartData?.some((p) =>
+        const partsForSync: PartWithDashQuantities[] =
+          partsToSave && partsToSave.length > 0
+            ? (partsToSave
+                .map((link, i) => ({
+                  part: linkedParts?.[i] ?? linkedPart!,
+                  dashQuantities: link.dashQuantities ?? {},
+                }))
+                .filter(
+                  (p): p is PartWithDashQuantities => p.part != null
+                ) as PartWithDashQuantities[])
+            : [];
+        const hasAnyPartQty = partsForSync.some((p) =>
           Object.values(p.dashQuantities).some((q) => q > 0)
         );
-        if (hasMultiPartQty && partsWithPartData?.length) {
+        if (partsForSync.length > 1 && hasAnyPartQty) {
           try {
-            await syncJobInventoryFromParts(job.id, partsWithPartData, { replace: true });
+            await syncJobInventoryFromParts(job.id, partsForSync, { replace: true });
             await onReloadJob?.();
           } catch (syncErr) {
             console.error('Material sync after save (multi-part):', syncErr);
@@ -1277,7 +1362,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
               'warning'
             );
           }
-        } else if (hasSinglePartQty) {
+        } else if (partsForSync.length === 1 && partsForSync[0].part && hasAnyPartQty) {
+          try {
+            await syncJobInventoryFromPart(
+              job.id,
+              partsForSync[0].part,
+              partsForSync[0].dashQuantities,
+              { replace: true }
+            );
+            await onReloadJob?.();
+          } catch (syncErr) {
+            console.error('Material sync after save:', syncErr);
+            showToast(
+              'Job saved; material sync failed. Use Auto-assign materials to retry.',
+              'warning'
+            );
+          }
+        } else if (linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0)) {
           try {
             await syncJobInventoryFromPart(job.id, linkedPart!, effectiveMaterialQuantities, {
               replace: true,
@@ -1341,6 +1442,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
     });
     setPartNumberSearch(job.partNumber || '');
     setSelectedVariant(null);
+    setEditingParts(
+      job.parts?.length
+        ? [...job.parts]
+        : job.partId
+          ? [
+              {
+                partId: job.partId,
+                partNumber: job.partNumber ?? '',
+                dashQuantities: job.dashQuantities ?? {},
+              },
+            ]
+          : []
+    );
     setIsEditing(false);
   };
 
@@ -1369,6 +1483,105 @@ const JobDetail: React.FC<JobDetailProps> = ({
       setSyncingMaterials(false);
     }
   };
+
+  const handleAddPartToExistingJob = useCallback(
+    async (part: Part, dashQuantitiesForPart: Record<string, number>) => {
+      const currentParts: JobPartLink[] =
+        job.parts?.length > 0
+          ? job.parts
+          : job.partId
+            ? [
+                {
+                  partId: job.partId,
+                  partNumber: job.partNumber ?? '',
+                  dashQuantities: job.dashQuantities ?? {},
+                },
+              ]
+            : [];
+      const newLink: JobPartLink = {
+        partId: part.id,
+        partNumber: part.partNumber,
+        dashQuantities: dashQuantitiesForPart ?? {},
+      };
+      const newParts = [...currentParts, newLink];
+      try {
+        const updated = await onUpdateJob(job.id, { parts: newParts });
+        if (updated) {
+          setShowAddPartToJob(false);
+          showToast(`Added part ${part.partNumber} to job`, 'success');
+
+          // Sync materials from all parts (combined BOM) and optionally combine labor for scheduling
+          const partsWithPartData: PartWithDashQuantities[] = [];
+          for (let i = 0; i < newParts.length; i++) {
+            const link = newParts[i];
+            const partWithVariants =
+              link.partId === part.id ? part : await partsService.getPartWithVariants(link.partId);
+            if (partWithVariants) {
+              partsWithPartData.push({
+                part: partWithVariants,
+                dashQuantities: link.dashQuantities ?? {},
+              });
+            }
+          }
+          if (partsWithPartData.length > 0) {
+            try {
+              const hasAnyQty = partsWithPartData.some((p) =>
+                Object.values(p.dashQuantities).some((q) => q > 0)
+              );
+              if (hasAnyQty) {
+                await syncJobInventoryFromParts(job.id, partsWithPartData, { replace: true });
+                showToast('Materials combined from all parts', 'success');
+              }
+            } catch (syncErr) {
+              console.error('Material sync after add part:', syncErr);
+              showToast('Part added; sync materials from job if needed', 'warning');
+            }
+
+            // Combined labor for scheduling: sum labor from each part × quantities
+            let combinedLabor = 0;
+            for (const { part: p, dashQuantities: dq } of partsWithPartData) {
+              const hasQty = Object.values(dq).some((q) => q > 0);
+              let hours: number | undefined;
+              if (hasQty) {
+                const { totals } = computeVariantBreakdown({
+                  part: p,
+                  dashQuantities: dq,
+                  source: 'variant',
+                });
+                hours = totals.laborHours > 0 ? totals.laborHours : undefined;
+              }
+              if (hours == null && typeof p.laborHours === 'number' && p.laborHours > 0) {
+                hours = p.laborHours;
+              }
+              if (typeof hours === 'number' && hours > 0) combinedLabor += hours;
+            }
+            if (combinedLabor > 0) {
+              const laborUpdated = await onUpdateJob(job.id, { laborHours: combinedLabor });
+            }
+          }
+
+          // Do not call onReloadJob() here: the cache was already updated by onUpdateJob with
+          // the full job (including parts). A refetch can overwrite with a response that omits
+          // job_parts and make the newly added part disappear.
+        } else {
+          showToast('Failed to add part to job', 'error');
+        }
+      } catch (err) {
+        console.error('Add part to job:', err);
+        showToast('Failed to add part to job', 'error');
+      }
+    },
+    [
+      job.id,
+      job.partId,
+      job.partNumber,
+      job.dashQuantities,
+      job.parts,
+      onUpdateJob,
+      onReloadJob,
+      showToast,
+    ]
+  );
 
   const handleAddInventory = useCallback(
     async (jobId: string, inventoryId: string, quantity: number, unit: string) => {
@@ -1483,6 +1696,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
     }));
     showToast('Applied labor/machine/material logic from part', 'success');
   }, [dashQuantities, linkedPart, showToast]);
+
+  const setEditingPartDashQuantities = useCallback(
+    (partIndex: number, dq: Record<string, number>) => {
+      setEditingParts((prev) => {
+        if (partIndex < 0 || partIndex >= prev.length) return prev;
+        const next = [...prev];
+        next[partIndex] = { ...next[partIndex], dashQuantities: dq };
+        return next;
+      });
+    },
+    []
+  );
 
   // File attachment handlers
   const handleFileUpload = async (file: File, isAdminOnly = false): Promise<boolean> => {
@@ -1777,52 +2002,87 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
             )}
 
-            {/* Main fields - order: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
-            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Part Number</label>
-                  <input
-                    type="text"
-                    value={editForm.partNumber || ''}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({ ...prev, partNumber: e.target.value }))
-                    }
-                    onBlur={(e) => {
-                      const v = e.currentTarget.value?.trim();
-                      if (v) loadLinkedPart(v);
-                    }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none"
-                    placeholder="e.g., SK-F35-0911"
-                  />
-                </div>
-                <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Rev</label>
-                  <input
-                    type="text"
-                    value={editForm.revision}
-                    onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                    placeholder="A, B, NC"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-3 lg:col-span-2">
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Part Name</label>
-                  {linkedPart ? (
-                    <input
-                      type="text"
-                      value={partNameEdit}
-                      onChange={(e) => setPartNameEdit(e.target.value)}
-                      onBlur={savePartName}
-                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
-                      placeholder="Part name"
-                    />
-                  ) : (
-                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-500">
-                      — Link part above to edit
-                    </div>
+            {/* Part details (top) - one block per part */}
+            <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Part details
+              </p>
+              {editingParts.map((link, idx) => (
+                <div key={link.partId} className="mb-3 last:mb-0">
+                  {editingParts.length > 1 && (
+                    <p className="mb-1 text-[10px] font-medium text-primary">Part {idx + 1}</p>
                   )}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Part Number</label>
+                      {idx === 0 ? (
+                        <input
+                          type="text"
+                          value={editForm.partNumber || ''}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({ ...prev, partNumber: e.target.value }))
+                          }
+                          onBlur={(e) => {
+                            const v = e.currentTarget.value?.trim();
+                            if (v) loadLinkedPart(v);
+                          }}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none"
+                          placeholder="e.g., SK-F35-0911"
+                        />
+                      ) : (
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white">
+                          {link.partNumber || '—'}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Rev</label>
+                      {idx === 0 ? (
+                        <input
+                          type="text"
+                          value={editForm.revision}
+                          onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          placeholder="A, B, NC"
+                        />
+                      ) : (
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-500">
+                          —
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Part Name</label>
+                      {idx === 0 && linkedPart ? (
+                        <input
+                          type="text"
+                          value={partNameEdit}
+                          onChange={(e) => setPartNameEdit(e.target.value)}
+                          onBlur={savePartName}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          placeholder="Part name"
+                        />
+                      ) : linkedParts?.[idx] ? (
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white">
+                          {linkedParts[idx].name || '—'}
+                        </div>
+                      ) : (
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-500">
+                          —
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Job details */}
+            <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Job details
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">EST #</label>
                   <input
@@ -1955,142 +2215,197 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
             </div>
 
-            {/* Variants & quantities - compact */}
-            <div className="rounded-sm border border-white/10 bg-white/5 p-2">
-              {linkedPart && linkedPart.variants && linkedPart.variants.length > 0 ? (
-                <>
-                  <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Variants & quantities
-                  </h3>
-                  {linkedPart.setComposition &&
-                  Object.keys(linkedPart.setComposition).length > 0 ? (
-                    <div className="mb-2 flex flex-wrap items-center gap-3">
-                      <span className="text-[11px] text-slate-400">Input by:</span>
-                      <label className="flex cursor-pointer items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name="quantity-input-mode"
-                          checked={quantityInputMode === 'sets'}
-                          onChange={() => setQuantityInputMode('sets')}
-                          className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-white">Full sets</span>
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-1.5">
-                        <input
-                          type="radio"
-                          name="quantity-input-mode"
-                          checked={quantityInputMode === 'variants'}
-                          onChange={() => setQuantityInputMode('variants')}
-                          className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-white">Variants</span>
-                      </label>
-                    </div>
-                  ) : null}
-                  {quantityInputMode === 'sets' &&
-                  linkedPart.setComposition &&
-                  Object.keys(linkedPart.setComposition).length > 0 ? (
+            {/* Variants and quantities - one block per part */}
+            {editingParts.map((link, partIdx) => {
+              const partForVariants = partIdx === 0 ? linkedPart : linkedParts?.[partIdx];
+              const qtyForPart = partIdx === 0 ? dashQuantities : (link.dashQuantities ?? {});
+              const setQtyForPart =
+                partIdx === 0
+                  ? setDashQuantities
+                  : (next: Record<string, number>) => setEditingPartDashQuantities(partIdx, next);
+              return (
+                <div key={link.partId} className="rounded-sm border border-white/10 bg-white/5 p-2">
+                  {editingParts.length > 1 && (
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Part {partIdx + 1}: {link.partNumber}
+                    </h3>
+                  )}
+                  {partForVariants &&
+                  partForVariants.variants &&
+                  partForVariants.variants.length > 0 ? (
+                    <>
+                      {partIdx === 0 && (
+                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Variants & quantities
+                        </h3>
+                      )}
+                      {partIdx === 0 &&
+                      linkedPart.setComposition &&
+                      Object.keys(linkedPart.setComposition).length > 0 ? (
+                        <div className="mb-2 flex flex-wrap items-center gap-3">
+                          <span className="text-[11px] text-slate-400">Input by:</span>
+                          <label className="flex cursor-pointer items-center gap-1.5">
+                            <input
+                              type="radio"
+                              name="quantity-input-mode"
+                              checked={quantityInputMode === 'sets'}
+                              onChange={() => setQuantityInputMode('sets')}
+                              className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-white">Full sets</span>
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-1.5">
+                            <input
+                              type="radio"
+                              name="quantity-input-mode"
+                              checked={quantityInputMode === 'variants'}
+                              onChange={() => setQuantityInputMode('variants')}
+                              className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-white">Variants</span>
+                          </label>
+                        </div>
+                      ) : null}
+                      {partIdx === 0 &&
+                      quantityInputMode === 'sets' &&
+                      linkedPart.setComposition &&
+                      Object.keys(linkedPart.setComposition).length > 0 ? (
+                        <div>
+                          <label className="mb-0.5 block text-[11px] text-slate-400">
+                            Number of sets
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={derivedCompleteSets}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              handleSetsQuantityChange(Number.isFinite(v) && v >= 0 ? v : 0);
+                            }}
+                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                            aria-label="Number of sets"
+                          />
+                          {derivedCompleteSets > 0 && (
+                            <p className="mt-1 text-xs text-slate-400">
+                              {formatDashSummary(qtyForPart)} → Total{' '}
+                              {totalFromDashQuantities(qtyForPart)} units
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-medium text-slate-400">
+                            Per-variant quantities
+                          </p>
+                          <span className="block text-xs text-slate-400">
+                            {formatDashSummary(qtyForPart)} → Total{' '}
+                            {totalFromDashQuantities(qtyForPart)}
+                          </span>
+                          <div className="flex flex-wrap gap-x-4 gap-y-3">
+                            {partForVariants.variants.map((variant) => {
+                              const qty = getDashQuantity(qtyForPart, variant.variantSuffix);
+                              const label =
+                                partForVariants.partNumber +
+                                toDashSuffix(variant.variantSuffix) +
+                                (variant.name ? ` (${variant.name})` : '');
+                              return (
+                                <div
+                                  key={variant.id}
+                                  className="flex flex-col gap-1 rounded border border-white/10 bg-white/5 px-2 py-1.5"
+                                >
+                                  <label
+                                    htmlFor={`dash-qty-${partIdx}-${variant.id}`}
+                                    className="text-xs font-medium text-white"
+                                  >
+                                    {label}
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      id={`dash-qty-${partIdx}-${variant.id}`}
+                                      type="number"
+                                      min={0}
+                                      value={qty}
+                                      onChange={(e) => {
+                                        if (partIdx === 0) {
+                                          handleDashQuantityChange(
+                                            variant.variantSuffix,
+                                            e.target.value
+                                          );
+                                        } else {
+                                          const key = toDashSuffix(variant.variantSuffix);
+                                          const next = { ...normalizeDashQuantities(qtyForPart) };
+                                          const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                          if (v <= 0) delete next[key];
+                                          else next[key] = v;
+                                          setQtyForPart(next);
+                                        }
+                                      }}
+                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                                      aria-label={`Quantity for ${label}`}
+                                    />
+                                    <span className="text-[10px] text-slate-400">Qty</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
                     <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">
-                        Number of sets
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={derivedCompleteSets}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value, 10);
-                          handleSetsQuantityChange(Number.isFinite(v) && v >= 0 ? v : 0);
-                        }}
-                        className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
-                        aria-label="Number of sets"
-                      />
-                      {derivedCompleteSets > 0 && (
-                        <p className="mt-1 text-xs text-slate-400">
-                          {formatDashSummary(dashQuantities)} → Total{' '}
-                          {totalFromDashQuantities(dashQuantities)} units
-                        </p>
+                      {partIdx === 0 && (
+                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                          Set quantity
+                        </h3>
+                      )}
+                      <label className="mb-0.5 block text-[11px] text-slate-400">Sets</label>
+                      {totalFromDashQuantities(qtyForPart) > 0 ? (
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-300">
+                          {formatDashSummary(qtyForPart)} → Total{' '}
+                          {totalFromDashQuantities(qtyForPart)}
+                        </div>
+                      ) : partIdx === 0 ? (
+                        <input
+                          type="text"
+                          value={editForm.qty}
+                          onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
+                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          placeholder="Sets"
+                          aria-label="Quantity (sets)"
+                        />
+                      ) : (
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-500">
+                          —
+                        </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-medium text-slate-400">
-                        Per-variant quantities
-                      </p>
-                      <span className="block text-xs text-slate-400">
-                        {formatDashSummary(dashQuantities)} → Total{' '}
-                        {totalFromDashQuantities(dashQuantities)}
-                      </span>
-                      <div className="flex flex-wrap gap-x-4 gap-y-3">
-                        {linkedPart.variants.map((variant) => {
-                          const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
-                          const label =
-                            linkedPart.partNumber +
-                            toDashSuffix(variant.variantSuffix) +
-                            (variant.name ? ` (${variant.name})` : '');
-                          return (
-                            <div
-                              key={variant.id}
-                              className="flex flex-col gap-1 rounded border border-white/10 bg-white/5 px-2 py-1.5"
-                            >
-                              <label
-                                htmlFor={`dash-qty-${variant.id}`}
-                                className="text-xs font-medium text-white"
-                              >
-                                {label}
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  id={`dash-qty-${variant.id}`}
-                                  type="number"
-                                  min={0}
-                                  value={qty}
-                                  onChange={(e) =>
-                                    handleDashQuantityChange(variant.variantSuffix, e.target.value)
-                                  }
-                                  className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
-                                  aria-label={`Quantity for ${label}`}
-                                />
-                                <span className="text-[10px] text-slate-400">Qty</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div>
-                  <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Set quantity
-                  </h3>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Sets</label>
-                  {totalFromDashQuantities(dashQuantities) > 0 ? (
-                    <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-300">
-                      {formatDashSummary(dashQuantities)} → Total{' '}
-                      {totalFromDashQuantities(dashQuantities)}
-                    </div>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editForm.qty}
-                      onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
-                      className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
-                      placeholder="Sets"
-                      aria-label="Quantity (sets)"
-                    />
                   )}
                 </div>
-              )}
-            </div>
+              );
+            })}
 
             {/* Labor & Materials intertwined with variants section */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-3">
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
                 Labor & materials
               </h3>
+              {editingParts.length > 1 && perPartBreakdowns && (
+                <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2">
+                  <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
+                    Per-part (read-only)
+                  </p>
+                  {perPartBreakdowns.map((b, i) => (
+                    <p key={i} className="text-[11px] text-slate-300">
+                      Part {i + 1}: L {(b.laborHours || 0).toFixed(1)}h, CNC{' '}
+                      {(b.cncHours || 0).toFixed(1)}h, 3D {(b.printer3DHours || 0).toFixed(1)}h
+                    </p>
+                  ))}
+                  <p className="mt-1 text-[11px] font-medium text-primary">
+                    Combined total (editable below)
+                  </p>
+                </div>
+              )}
               <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 <div>
                   <div className="mb-0.5 flex items-center justify-between">
@@ -2395,7 +2710,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
           </div>
         ) : (
           <>
-            {/* Job Header Card - Part Number, Part Name, OWR only on top */}
+            {/* Job section - job-level data only */}
             <div className="bg-gradient-to-br from-[#2a1f35] to-[#1a1122] p-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {job.isRush && (
@@ -2406,71 +2721,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <span className="text-xs font-bold text-primary">{formatJobCode(job.jobCode)}</span>
               </div>
 
-              {/* Top line: Part Number | Part Name | OWR# only */}
-              <div className="mb-3 grid grid-cols-1 gap-2 rounded-sm border border-primary/30 bg-primary/10 p-3 sm:grid-cols-3">
-                <div>
-                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
-                    Part Number
-                  </p>
-                  <p className="font-mono text-sm font-bold text-primary">
-                    {job.partNumber || '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">Part Name</p>
-                  <p className="text-sm font-medium text-white">{linkedPart?.name || '—'}</p>
-                </div>
-                <div>
-                  <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">OWR#</p>
-                  <p className="text-sm font-medium text-white">{job.owrNumber || '—'}</p>
-                </div>
-              </div>
-
-              {/* Timer if clocked in - Compact */}
-              {isClockedIn && (
-                <div className="mb-2 rounded-sm border border-green-500/30 bg-green-500/20 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 animate-pulse rounded-sm bg-green-500"></div>
-                      <span className="text-xs font-medium text-green-400">Active</span>
-                    </div>
-                    <span className="font-mono text-xl font-bold text-green-400">{timer}</span>
-                  </div>
-                </div>
-              )}
-
-              {job.parts && job.parts.length > 1 && (
-                <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Parts</p>
-                  <ul className="space-y-1 text-sm text-white">
-                    {job.parts.map((link, idx) => (
-                      <li key={link.partId}>
-                        <span className="font-medium">{link.partNumber}</span>
-                        {Object.keys(link.dashQuantities ?? {}).length > 0 && (
-                          <span className="ml-2 text-slate-400">
-                            {formatDashSummary(link.dashQuantities!)} →{' '}
-                            {totalFromDashQuantities(link.dashQuantities!)} total
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {job.partNumber &&
-                job.dashQuantities &&
-                Object.keys(job.dashQuantities).length > 0 &&
-                !(job.parts && job.parts.length > 1) && (
-                  <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
-                    <p className="mb-1 text-xs font-bold uppercase text-slate-400">Variant qty</p>
-                    <p className="text-sm font-medium text-white">
-                      {formatDashSummary(job.dashQuantities)} →{' '}
-                      {totalFromDashQuantities(job.dashQuantities)} total
-                    </p>
-                  </div>
-                )}
-
-              {/* Reference Numbers - order: EST #, RFQ #, PO #, INV#, OWR# */}
+              {/* Reference Numbers - EST #, RFQ #, PO #, INV#, OWR# */}
               {(job.estNumber || job.rfqNumber || job.po || job.invNumber || job.owrNumber) && (
                 <div className="mb-3 flex flex-wrap gap-2">
                   {job.estNumber && (
@@ -2501,7 +2752,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               )}
 
-              {/* Info Grid - Compact 2x2 */}
+              {/* Job info grid: Due, Status, ECD, Bin */}
               <div className="mb-3 grid grid-cols-2 gap-2">
                 <div className="rounded-sm bg-white/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Due Date</p>
@@ -2516,18 +2767,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.ecd)}</p>
                 </div>
                 <div className="rounded-sm bg-white/5 p-2.5">
-                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">
-                    {job.dashQuantities && Object.keys(job.dashQuantities).length > 0
-                      ? 'Variant qty'
-                      : 'Sets'}
-                  </p>
-                  <p className="text-sm font-bold text-white">
-                    {job.dashQuantities && Object.keys(job.dashQuantities).length > 0
-                      ? `${formatDashSummary(job.dashQuantities)} (${totalFromDashQuantities(job.dashQuantities)})`
-                      : job.qty || 'N/A'}
-                  </p>
+                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Bin</p>
+                  <p className="text-sm font-bold text-white">{job.binLocation || '—'}</p>
                 </div>
               </div>
+
+              {/* Timer if clocked in - Compact */}
+              {isClockedIn && (
+                <div className="mb-2 rounded-sm border border-green-500/30 bg-green-500/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 animate-pulse rounded-sm bg-green-500"></div>
+                      <span className="text-xs font-medium text-green-400">Active</span>
+                    </div>
+                    <span className="font-mono text-xl font-bold text-green-400">{timer}</span>
+                  </div>
+                </div>
+              )}
 
               {currentUser.isAdmin && (
                 <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2.5">
@@ -2767,6 +3023,139 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </button>
               )}
             </div>
+
+            {/* Part section(s) - one block per part */}
+            {(() => {
+              const viewParts: JobPartLink[] =
+                job.parts?.length > 0
+                  ? job.parts
+                  : job.partId
+                    ? [
+                        {
+                          partId: job.partId,
+                          partNumber: job.partNumber ?? '',
+                          dashQuantities: job.dashQuantities ?? {},
+                        },
+                      ]
+                    : [];
+              return (
+                <>
+                  {viewParts.map((link, idx) => (
+                    <div key={link.partId} className="p-4 pt-0">
+                      <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Part {viewParts.length > 1 ? idx + 1 : ''}
+                        </p>
+                        <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <div>
+                            <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                              Part Number
+                            </p>
+                            <p className="font-mono text-sm font-bold text-primary">
+                              {link.partNumber || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                              Part Name
+                            </p>
+                            <p className="text-sm font-medium text-white">
+                              {(viewParts.length > 1
+                                ? linkedParts?.[idx]?.name
+                                : linkedPart?.name) || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                              Rev
+                            </p>
+                            <p className="text-sm font-medium text-white">
+                              {idx === 0 ? job.revision || '—' : '—'}
+                            </p>
+                          </div>
+                        </div>
+                        {Object.keys(link.dashQuantities ?? {}).length > 0 && (
+                          <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-2">
+                            <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
+                              Variants & quantities
+                            </p>
+                            <p className="text-sm font-medium text-white">
+                              {formatDashSummary(link.dashQuantities!)} →{' '}
+                              {totalFromDashQuantities(link.dashQuantities!)} total
+                            </p>
+                          </div>
+                        )}
+                        {perPartBreakdowns && perPartBreakdowns[idx] && (
+                          <div className="flex flex-wrap gap-3 text-[11px] text-slate-300">
+                            <span>
+                              Labor {(perPartBreakdowns[idx].laborHours || 0).toFixed(1)}h
+                            </span>
+                            <span>CNC {(perPartBreakdowns[idx].cncHours || 0).toFixed(1)}h</span>
+                            <span>
+                              3D {(perPartBreakdowns[idx].printer3DHours || 0).toFixed(1)}h
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {currentUser.isAdmin &&
+                    (job.partId || job.partNumber || (job.parts && job.parts.length > 0)) &&
+                    !showAddPartToJob && (
+                      <div className="px-4 pb-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddPartToJob(true)}
+                          className="flex items-center gap-2 rounded border border-dashed border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-primary/50 hover:bg-white/10 hover:text-primary"
+                        >
+                          <span className="material-symbols-outlined text-base">add</span>
+                          Add part to job
+                        </button>
+                      </div>
+                    )}
+                  {currentUser.isAdmin && showAddPartToJob && (
+                    <div className="mx-4 mb-2 rounded-sm border border-primary/40 bg-primary/10 p-3">
+                      <p className="mb-2 text-xs font-medium text-primary">
+                        Select part to add to this job
+                      </p>
+                      <PartSelector
+                        onSelect={handleAddPartToExistingJob}
+                        onPartNumberResolved={(partNumber, matchedPart) => {
+                          if (matchedPart === null && !partNumber.trim())
+                            setShowAddPartToJob(false);
+                        }}
+                        isAdmin={currentUser.isAdmin}
+                        showPrices={currentUser.isAdmin}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAddPartToJob(false)}
+                        className="mt-2 text-xs text-slate-400 underline hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Multi-part totals - combined labor/CNC/3D for scheduling */}
+            {job.parts && job.parts.length > 1 && (
+              <div className="p-4 pt-0">
+                <div className="rounded-sm border border-primary/40 bg-primary/20 p-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">
+                    Multi-part totals
+                  </p>
+                  <div className="flex flex-wrap gap-4 text-sm font-medium text-white">
+                    <span>Labor {(job.laborHours ?? 0).toFixed(1)}h</span>
+                    <span>CNC {machineTotals.cncHours.toFixed(1)}h</span>
+                    <span>3D {machineTotals.printer3DHours.toFixed(1)}h</span>
+                  </div>
+                  <p className="mt-2 text-[10px] text-slate-400">Materials combined below</p>
+                </div>
+              </div>
+            )}
 
             {/* Currently Working */}
             {job.workers && job.workers.length > 0 && (

@@ -186,10 +186,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const job = await jobService.getJobById(jobId);
         if (job) {
+          // Preserve parts from cache when API returns none (e.g. getJobById doesn't expand job_parts)
+          let jobToSet = job;
+          const existing = queryClient.getQueryData<Job>(['job', jobId]);
+          if (
+            (job.parts == null || job.parts.length === 0) &&
+            existing?.parts != null &&
+            existing.parts.length > 0
+          ) {
+            jobToSet = { ...job, parts: existing.parts };
+          }
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? job : j)) : [job]
+            prev ? prev.map((j) => (j.id === jobId ? jobToSet : j)) : [jobToSet]
           );
-          queryClient.setQueryData(['job', jobId], job);
+          queryClient.setQueryData(['job', jobId], jobToSet);
         }
       } catch (error) {
         console.error('Failed to refresh job:', error);
@@ -308,7 +318,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const updatedJob = await jobService.updateJob(jobId, data);
         if (updatedJob) {
           // Merge payload into cache so UI updates immediately even if API omits columns (e.g. cnc_completed_at, progress_estimate_percent)
-          const jobForCache = { ...updatedJob, ...data };
+          let jobForCache = { ...updatedJob, ...data };
+          // Preserve parts from cache when this update did not send parts and API returned none (e.g. labor-only update)
+          if (
+            data.parts === undefined &&
+            (updatedJob.parts == null || updatedJob.parts.length === 0)
+          ) {
+            const existing = queryClient.getQueryData<Job>(['job', jobId]);
+            if (existing?.parts != null && existing.parts.length > 0) {
+              jobForCache = { ...jobForCache, parts: existing.parts };
+            }
+          }
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
             prev ? prev.map((j) => (j.id === jobId ? jobForCache : j)) : []
           );

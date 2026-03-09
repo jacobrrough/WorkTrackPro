@@ -266,6 +266,58 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     return suggestion > 0 ? suggestion : null;
   }, [autoJobName, jobs, shifts]);
 
+  /** Per-part labor/CNC/3D for multi-part display and combined total (create flow). */
+  const createPerPartBreakdowns = useMemo(() => {
+    const out: {
+      partNumber: string;
+      laborHours: number;
+      cncHours: number;
+      printer3DHours: number;
+    }[] = [];
+    if (selectedPart) {
+      const dq = Object.keys(dashQuantities).some((k) => (dashQuantities[k] ?? 0) > 0)
+        ? dashQuantities
+        : {};
+      const { totals } = computeVariantBreakdown({
+        part: selectedPart,
+        dashQuantities: dq,
+        source: 'variant',
+      });
+      out.push({
+        partNumber: selectedPart.partNumber ?? '',
+        laborHours: totals.laborHours,
+        cncHours: totals.cncHours,
+        printer3DHours: totals.printer3DHours,
+      });
+    }
+    for (const { part, dashQuantities: dq } of additionalParts) {
+      const { totals } = computeVariantBreakdown({
+        part,
+        dashQuantities: dq ?? {},
+        source: 'variant',
+      });
+      out.push({
+        partNumber: part.partNumber ?? '',
+        laborHours: totals.laborHours,
+        cncHours: totals.cncHours,
+        printer3DHours: totals.printer3DHours,
+      });
+    }
+    if (out.length === 0) return null;
+    const combined =
+      out.length > 1
+        ? out.reduce(
+            (acc, b) => ({
+              laborHours: acc.laborHours + b.laborHours,
+              cncHours: acc.cncHours + b.cncHours,
+              printer3DHours: acc.printer3DHours + b.printer3DHours,
+            }),
+            { laborHours: 0, cncHours: 0, printer3DHours: 0 }
+          )
+        : null;
+    return { perPart: out, combined };
+  }, [selectedPart, dashQuantities, additionalParts]);
+
   // Comprehensive validation (job name is always auto from convention)
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -300,8 +352,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
     // Clear previous errors
     setError(null);
@@ -330,9 +382,12 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       formData.jobCode
     );
     const derivedLaborHours = deriveLaborHoursFromPart(selectedPart, dashQuantities);
+    const combinedFromParts = createPerPartBreakdowns?.combined?.laborHours ?? derivedLaborHours;
     const laborHoursForCreate = formData.laborHours
       ? parseFloat(formData.laborHours)
-      : derivedLaborHours;
+      : additionalParts.length > 0
+        ? combinedFromParts
+        : derivedLaborHours;
     const normalizedDashQuantities =
       Object.keys(dashQuantities).length > 0 ? dashQuantities : undefined;
     const computedBreakdown =
@@ -507,6 +562,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     <div className="flex min-h-screen flex-col bg-background-dark text-white">
       <header className="sticky top-0 z-50 flex items-center justify-between border-b border-[#4d3465]/30 bg-background-dark p-4 backdrop-blur-md">
         <button
+          type="button"
           onClick={() => onNavigate('dashboard')}
           className="text-base font-medium text-primary"
         >
@@ -516,7 +572,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           New Job
         </h2>
         <button
-          onClick={handleSubmit}
+          type="button"
+          onClick={() => {
+            handleSubmit();
+          }}
           className="text-base font-bold text-primary disabled:opacity-50"
           disabled={isSubmitting}
         >
@@ -524,7 +583,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24">
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-28">
         {/* Error Banner */}
         {error && (
           <div className="mb-4 flex items-start gap-3 rounded-sm border border-red-500 bg-red-500/10 p-4">
@@ -533,7 +592,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <p className="mb-1 font-bold text-red-400">Error</p>
               <p className="text-sm text-red-300">{error}</p>
             </div>
-            <button onClick={() => setError(null)} className="text-red-400">
+            <button type="button" onClick={() => setError(null)} className="text-red-400">
               <span className="material-symbols-outlined">close</span>
             </button>
           </div>
@@ -553,11 +612,16 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Part Selector */}
-          <div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
+          className="space-y-6"
+        >
+          {/* Part details (top) */}
+          <div className="pb-16">
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
-              Part Number & Dash Quantities
+              Part details
             </p>
             <PartSelector
               onSelect={handlePartSelect}
@@ -565,6 +629,103 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               isAdmin={currentUser.isAdmin}
               showPrices={currentUser.isAdmin}
             />
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">Rev</label>
+                <input
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-slate-600"
+                  placeholder="e.g. A, B, NC"
+                  value={formData.revision}
+                  onChange={(e) => setFormData({ ...formData, revision: e.target.value })}
+                  disabled={isSubmitting}
+                  maxLength={20}
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">Part Name</label>
+                {selectedPart ? (
+                  <input
+                    className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                    placeholder="Part name"
+                    value={partNameEdit}
+                    onChange={(e) => setPartNameEdit(e.target.value)}
+                    onBlur={async () => {
+                      if (!selectedPart || partNameEdit.trim() === (selectedPart.name ?? '').trim())
+                        return;
+                      try {
+                        const updated = await partsService.updatePart(selectedPart.id, {
+                          name: partNameEdit.trim(),
+                        });
+                        if (updated)
+                          setSelectedPart((p) => (p ? { ...p, name: updated.name } : null));
+                        showToast('Part name updated', 'success');
+                      } catch {
+                        showToast('Failed to update part name', 'error');
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  />
+                ) : (
+                  <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-500">
+                    Select a part above to set part name
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">
+                  {totalFromDashQuantities(dashQuantities) > 0 ? 'Variant qty' : 'Sets'}
+                </label>
+                {totalFromDashQuantities(dashQuantities) > 0 ? (
+                  <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-300">
+                    {formatDashSummary(dashQuantities)} → Total:{' '}
+                    {totalFromDashQuantities(dashQuantities)}
+                  </div>
+                ) : (
+                  <input
+                    className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                    placeholder="e.g. 50 sets"
+                    value={formData.qty}
+                    onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                )}
+                {validationErrors.qty && (
+                  <p className="mt-1 text-xs text-red-400">{validationErrors.qty}</p>
+                )}
+              </div>
+              {selectedPart && (
+                <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary">
+                    Auto Price (Master Part)
+                  </p>
+                  {autoPriceFromPart ? (
+                    <div className="mt-1 space-y-0.5">
+                      <p className="text-lg font-bold text-white">
+                        ${autoPriceFromPart.totalPrice.toFixed(2)}
+                      </p>
+                      <p className="text-[11px] text-slate-300">
+                        {autoPriceFromPart.source === 'set_price'
+                          ? `Calculated from set price${autoPriceFromPart.setCount != null ? ` (${autoPriceFromPart.setCount} sets)` : ''}`
+                          : autoPriceFromPart.source === 'variant_prices'
+                            ? 'Calculated from variant prices'
+                            : 'Calculated from set price distribution'}
+                      </p>
+                      {autoPriceFromPart.missingVariantPrices.length > 0 && (
+                        <p className="text-[10px] text-slate-400">
+                          Missing variant prices:{' '}
+                          {autoPriceFromPart.missingVariantPrices.join(', ')} (using set-price
+                          fallback)
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Add set/variant quantities and ensure master part pricing is configured.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
             {additionalParts.length > 0 && (
               <div className="mt-4 space-y-2 rounded-sm border border-[#4d3465] bg-[#261a32]/30 p-3">
                 <p className="text-xs font-medium text-slate-400">Additional parts</p>
@@ -600,7 +761,12 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <p className="mb-2 text-xs font-medium text-primary">Select part to add</p>
                 <PartSelector
                   onSelect={handleAddPartSelect}
-                  onPartNumberResolved={() => setAddingPart(false)}
+                  onPartNumberResolved={(partNumber, matchedPart) => {
+                    // Only close when field was cleared (e.g. blur empty). Do not close on every keystroke.
+                    if (matchedPart === null && !partNumber.trim()) {
+                      setAddingPart(false);
+                    }
+                  }}
                   isAdmin={currentUser.isAdmin}
                   showPrices={currentUser.isAdmin}
                 />
@@ -627,110 +793,33 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
 
           <div>
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
-              Job Identity
-            </p>
-            <div className="mb-3 flex flex-col">
-              <label className="pb-1 text-xs font-medium text-slate-300">Job Code</label>
-              <button
-                type="button"
-                onClick={handleRegenerateJobCode}
-                className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 transition-colors hover:border-primary hover:bg-[#261a32]"
-                title="Click to regenerate code"
-              >
-                <span className="font-mono text-sm font-bold text-primary">
-                  {formatJobCode(formData.jobCode)}
-                </span>
-                <span className="material-symbols-outlined ml-auto text-xs text-[#ad93c8]">
-                  refresh
-                </span>
-              </button>
-              {validationErrors.jobCode ? (
-                <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
-                  <span className="material-symbols-outlined text-sm">warning</span>
-                  {validationErrors.jobCode}
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-slate-500">
-                  Auto-generated \u2022 Click to regenerate
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
-              Part Number · Rev · Part Name · Qty · EST # · RFQ # · PO # · INV#
+              Job details
             </p>
             <div className="space-y-3">
               <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">Rev</label>
-                <input
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-slate-600"
-                  placeholder="e.g. A, B, NC"
-                  value={formData.revision}
-                  onChange={(e) => setFormData({ ...formData, revision: e.target.value })}
-                  disabled={isSubmitting}
-                  maxLength={20}
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">Part Name</label>
-                {selectedPart ? (
-                  <>
-                    <input
-                      className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                      placeholder="Part name"
-                      value={partNameEdit}
-                      onChange={(e) => setPartNameEdit(e.target.value)}
-                      onBlur={async () => {
-                        if (
-                          !selectedPart ||
-                          partNameEdit.trim() === (selectedPart.name ?? '').trim()
-                        )
-                          return;
-                        try {
-                          const updated = await partsService.updatePart(selectedPart.id, {
-                            name: partNameEdit.trim(),
-                          });
-                          if (updated)
-                            setSelectedPart((p) => (p ? { ...p, name: updated.name } : null));
-                          showToast('Part name updated', 'success');
-                        } catch {
-                          showToast('Failed to update part name', 'error');
-                        }
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Editable; saved to Part when you blur
-                    </p>
-                  </>
+                <label className="pb-1 text-xs font-medium text-slate-300">Job Code</label>
+                <button
+                  type="button"
+                  onClick={handleRegenerateJobCode}
+                  className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 transition-colors hover:border-primary hover:bg-[#261a32]"
+                  title="Click to regenerate code"
+                >
+                  <span className="font-mono text-sm font-bold text-primary">
+                    {formatJobCode(formData.jobCode)}
+                  </span>
+                  <span className="material-symbols-outlined ml-auto text-xs text-[#ad93c8]">
+                    refresh
+                  </span>
+                </button>
+                {validationErrors.jobCode ? (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
+                    <span className="material-symbols-outlined text-sm">warning</span>
+                    {validationErrors.jobCode}
+                  </p>
                 ) : (
-                  <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-500">
-                    Select a part above to set part name
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">
-                  {totalFromDashQuantities(dashQuantities) > 0 ? 'Variant qty' : 'Sets'}
-                </label>
-                {totalFromDashQuantities(dashQuantities) > 0 ? (
-                  <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-300">
-                    {formatDashSummary(dashQuantities)} → Total:{' '}
-                    {totalFromDashQuantities(dashQuantities)}
-                  </div>
-                ) : (
-                  <input
-                    className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                    placeholder="e.g. 50 sets"
-                    value={formData.qty}
-                    onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                )}
-                {validationErrors.qty && (
-                  <p className="mt-1 text-xs text-red-400">{validationErrors.qty}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Auto-generated · Click to regenerate
+                  </p>
                 )}
               </div>
               <div className="flex flex-col">
@@ -773,175 +862,220 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   disabled={isSubmitting}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-slate-300">Due Date</label>
+                  <input
+                    type="date"
+                    className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white"
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                  {validationErrors.dueDate && (
+                    <p className="mt-1 text-xs text-red-400">{validationErrors.dueDate}</p>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-slate-300">
+                    ECD (latest finish)
+                  </label>
+                  <input
+                    type="date"
+                    className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white"
+                    value={formData.ecd}
+                    onChange={(e) => setFormData({ ...formData, ecd: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                  {validationErrors.ecd && (
+                    <p className="mt-1 text-xs text-red-400">{validationErrors.ecd}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">Bin Location</label>
+                <input
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-slate-600"
+                  placeholder="e.g., A4c"
+                  value={formData.binLocation}
+                  onChange={(e) =>
+                    setFormData({ ...formData, binLocation: e.target.value.toUpperCase() })
+                  }
+                  disabled={isSubmitting}
+                  maxLength={10}
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">Initial Status</label>
+                <select
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 text-sm text-white"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value as JobStatus })
+                  }
+                  disabled={isSubmitting}
+                >
+                  {ADMIN_INITIAL_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {getStatusDisplayName(status)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col">
+                <label className="pb-1 text-xs font-medium text-slate-300">Description</label>
+                <textarea
+                  className="min-h-[80px] w-full resize-none rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                  placeholder="Enter job requirements, notes, or instructions..."
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-sm border border-red-500/20 bg-red-500/10 px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-red-500">bolt</span>
+                  <div>
+                    <p className="font-bold text-white">Rush Job</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-red-400/80">
+                      High Priority
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, isRush: !formData.isRush })}
+                  className={`relative h-6 w-12 rounded-sm transition-colors ${formData.isRush ? 'bg-red-500' : 'bg-slate-700'}`}
+                  disabled={isSubmitting}
+                >
+                  <div
+                    className={`absolute top-1 size-4 rounded-sm bg-white transition-all ${formData.isRush ? 'right-1' : 'left-1'}`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Variants and quantities */}
+          <div>
+            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
+              Variants and quantities
+            </p>
+            <div className="space-y-3">
               {selectedPart && (
-                <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-primary">
-                    Auto Price (Master Part)
-                  </p>
-                  {autoPriceFromPart ? (
-                    <div className="mt-1 space-y-0.5">
-                      <p className="text-lg font-bold text-white">
-                        ${autoPriceFromPart.totalPrice.toFixed(2)}
-                      </p>
-                      <p className="text-[11px] text-slate-300">
-                        {autoPriceFromPart.source === 'set_price'
-                          ? `Calculated from set price${autoPriceFromPart.setCount != null ? ` (${autoPriceFromPart.setCount} sets)` : ''}`
-                          : autoPriceFromPart.source === 'variant_prices'
-                            ? 'Calculated from variant prices'
-                            : 'Calculated from set price distribution'}
-                      </p>
-                      {autoPriceFromPart.missingVariantPrices.length > 0 && (
-                        <p className="text-[10px] text-slate-400">
-                          Missing variant prices:{' '}
-                          {autoPriceFromPart.missingVariantPrices.join(', ')} (using set-price
-                          fallback)
-                        </p>
-                      )}
-                    </div>
+                <div className="rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 p-3">
+                  <p className="text-xs font-medium text-slate-400">{selectedPart.partNumber}</p>
+                  {totalFromDashQuantities(dashQuantities) > 0 ? (
+                    <p className="mt-1 text-sm text-slate-300">
+                      {formatDashSummary(dashQuantities)} → Total:{' '}
+                      {totalFromDashQuantities(dashQuantities)}
+                    </p>
                   ) : (
-                    <p className="mt-1 text-xs text-slate-400">
-                      Add set/variant quantities and ensure master part pricing is configured.
+                    <p className="mt-1 text-xs text-slate-500">
+                      Sets / variant qty in Part details above
                     </p>
                   )}
                 </div>
               )}
+              {additionalParts.map(({ part, dashQuantities: dq }, idx) => (
+                <div
+                  key={part.id}
+                  className="rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 p-3"
+                >
+                  <p className="text-xs font-medium text-slate-400">{part.partNumber}</p>
+                  {totalFromDashQuantities(dq ?? {}) > 0 ? (
+                    <p className="mt-1 text-sm text-slate-300">
+                      {formatDashSummary(dq ?? {})} → Total: {totalFromDashQuantities(dq ?? {})}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">No quantities set</p>
+                  )}
+                </div>
+              ))}
+              {!selectedPart && additionalParts.length === 0 && (
+                <p className="text-xs text-slate-500">
+                  Select a part above to set variant/set quantities.
+                </p>
+              )}
             </div>
           </div>
 
+          {/* Labor & materials */}
           <div>
             <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
-              Logistics
+              Labor & materials
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
+              {createPerPartBreakdowns && createPerPartBreakdowns.perPart.length > 1 && (
+                <>
+                  {createPerPartBreakdowns.perPart.map((b, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-wrap items-center gap-3 rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 px-3 py-2 text-sm text-slate-300"
+                    >
+                      <span className="font-mono text-xs text-slate-400">{b.partNumber}</span>
+                      <span>Labor {(b.laborHours || 0).toFixed(1)}h</span>
+                      <span>CNC {(b.cncHours || 0).toFixed(1)}h</span>
+                      <span>3D {(b.printer3DHours || 0).toFixed(1)}h</span>
+                    </div>
+                  ))}
+                  {createPerPartBreakdowns.combined && (
+                    <p className="text-xs font-medium text-primary">
+                      Combined total: Labor {createPerPartBreakdowns.combined.laborHours.toFixed(1)}
+                      h, CNC {createPerPartBreakdowns.combined.cncHours.toFixed(1)}h, 3D{' '}
+                      {createPerPartBreakdowns.combined.printer3DHours.toFixed(1)}h
+                    </p>
+                  )}
+                </>
+              )}
               <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">Due Date</label>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-300">Labor (hours)</label>
+                  {laborSuggestion && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, laborHours: laborSuggestion.toString() })
+                      }
+                      className="text-[10px] font-medium text-primary hover:text-primary/80"
+                    >
+                      Use {laborSuggestion.toFixed(1)}h
+                    </button>
+                  )}
+                </div>
                 <input
-                  type="date"
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                  placeholder={
+                    createPerPartBreakdowns?.combined
+                      ? String(createPerPartBreakdowns.combined.laborHours.toFixed(1))
+                      : '0'
+                  }
+                  value={formData.laborHours}
+                  onChange={(e) => setFormData({ ...formData, laborHours: e.target.value })}
                   disabled={isSubmitting}
                 />
-                {validationErrors.dueDate && (
-                  <p className="mt-1 text-xs text-red-400">{validationErrors.dueDate}</p>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">
-                  ECD (latest finish)
-                </label>
-                <input
-                  type="date"
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white"
-                  value={formData.ecd}
-                  onChange={(e) => setFormData({ ...formData, ecd: e.target.value })}
-                  disabled={isSubmitting}
-                />
-                {validationErrors.ecd && (
-                  <p className="mt-1 text-xs text-red-400">{validationErrors.ecd}</p>
-                )}
-              </div>
-            </div>
-            <div className="mt-3 flex flex-col">
-              <label className="pb-1 text-xs font-medium text-slate-300">Bin Location</label>
-              <input
-                className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-slate-600"
-                placeholder="e.g., A4c"
-                value={formData.binLocation}
-                onChange={(e) =>
-                  setFormData({ ...formData, binLocation: e.target.value.toUpperCase() })
-                }
-                disabled={isSubmitting}
-                maxLength={10}
-              />
-            </div>
-            <div className="mt-3 flex flex-col">
-              <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-300">Labor (hours)</label>
-                {laborSuggestion && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({ ...formData, laborHours: laborSuggestion.toString() })
-                    }
-                    className="text-[10px] font-medium text-primary hover:text-primary/80"
-                  >
-                    Use {laborSuggestion.toFixed(1)}h
-                  </button>
-                )}
-              </div>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                placeholder="0"
-                value={formData.laborHours}
-                onChange={(e) => setFormData({ ...formData, laborHours: e.target.value })}
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[#ad93c8]">
-              Status
-            </p>
-            <div className="flex flex-col">
-              <label className="pb-1 text-xs font-medium text-slate-300">Initial Status</label>
-              <select
-                className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 text-sm text-white"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as JobStatus })}
-                disabled={isSubmitting}
-              >
-                {ADMIN_INITIAL_STATUS_OPTIONS.map((status) => (
-                  <option key={status} value={status}>
-                    {getStatusDisplayName(status)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-sm border border-red-500/20 bg-red-500/10 px-3 py-3">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-red-500">bolt</span>
-              <div>
-                <p className="font-bold text-white">Rush Job</p>
-                <p className="text-xs font-bold uppercase tracking-widest text-red-400/80">
-                  High Priority
+                <p className="mt-1 text-xs text-slate-500">
+                  {createPerPartBreakdowns?.combined
+                    ? 'Combined total from parts above; edit to override.'
+                    : 'Materials will sync from part(s) after create.'}
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, isRush: !formData.isRush })}
-              className={`relative h-6 w-12 rounded-sm transition-colors ${formData.isRush ? 'bg-red-500' : 'bg-slate-700'}`}
-              disabled={isSubmitting}
-            >
-              <div
-                className={`absolute top-1 size-4 rounded-sm bg-white transition-all ${formData.isRush ? 'right-1' : 'left-1'}`}
-              ></div>
-            </button>
-          </div>
-
-          <div className="flex flex-col">
-            <label className="pb-1 text-xs font-medium text-slate-300">Description</label>
-            <textarea
-              className="min-h-[80px] w-full resize-none rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-              placeholder="Enter job requirements, notes, or instructions..."
-              value={formData.description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              disabled={isSubmitting}
-            />
           </div>
         </form>
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 border-t border-[#4d3465]/30 bg-background-dark/90 p-4 backdrop-blur-lg">
         <button
-          onClick={handleSubmit}
+          type="button"
+          onClick={() => {
+            handleSubmit();
+          }}
           className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 font-bold text-white shadow-lg transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isSubmitting}
         >
