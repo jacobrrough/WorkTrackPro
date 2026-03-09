@@ -143,6 +143,54 @@ export function computeRequiredMaterials(
 }
 
 /**
+ * Sync job_inventory from a precomputed required map (e.g. merged from multiple parts).
+ * When replace is true: job_inventory is replaced by the map (rows not in map are removed).
+ * When replace is false: adds or updates lines only; does not remove existing lines.
+ */
+export async function syncJobInventoryFromRequiredMap(
+  jobId: string,
+  required: Map<string, { quantity: number; unit: string }>,
+  options?: { replace?: boolean }
+): Promise<void> {
+  const replace = options?.replace === true;
+  const job = await jobService.getJobById(jobId);
+  if (!job) throw new Error('Job not found');
+
+  if (replace) {
+    const requiredIds = new Set(required.keys());
+    for (const ji of job.inventoryItems ?? []) {
+      if (ji.inventoryId && !requiredIds.has(ji.inventoryId)) {
+        await jobService.removeJobInventory(jobId, ji.id);
+      }
+    }
+  }
+
+  if (required.size === 0) return;
+
+  const existingByInventoryId = new Map<string, { id: string; quantity: number; unit: string }>();
+  for (const ji of job.inventoryItems ?? []) {
+    if (ji.inventoryId) {
+      existingByInventoryId.set(ji.inventoryId, {
+        id: ji.id!,
+        quantity: ji.quantity,
+        unit: ji.unit ?? 'units',
+      });
+    }
+  }
+
+  for (const [inventoryId, { quantity, unit }] of required.entries()) {
+    const existing = existingByInventoryId.get(inventoryId);
+    if (existing) {
+      if (!qtyEqual(existing.quantity, quantity) || (existing.unit || 'units') !== unit) {
+        await jobService.updateJobInventory(existing.id, quantity, unit);
+      }
+    } else {
+      await jobService.addJobInventory(jobId, inventoryId, quantity, unit);
+    }
+  }
+}
+
+/**
  * Sync job_inventory for a job from part and dash quantities.
  * When replace is true: job_inventory is replaced by Part BOM (rows not in Part BOM are removed).
  * When replace is false: adds or updates lines only; does not remove existing lines (preserves manual additions).
@@ -164,39 +212,7 @@ export async function syncJobInventoryFromPart(
     return;
   }
 
-  const job = await jobService.getJobById(jobId);
-  if (!job) throw new Error('Job not found');
-
-  if (replace) {
-    const requiredIds = new Set(required.keys());
-    for (const ji of job.inventoryItems ?? []) {
-      if (!requiredIds.has(ji.inventoryId)) {
-        await jobService.removeJobInventory(jobId, ji.id);
-      }
-    }
-  }
-
-  if (required.size === 0) return;
-
-  const existingByInventoryId = new Map<string, { id: string; quantity: number; unit: string }>();
-  for (const ji of job.inventoryItems ?? []) {
-    existingByInventoryId.set(ji.inventoryId, {
-      id: ji.id!,
-      quantity: ji.quantity,
-      unit: ji.unit ?? 'units',
-    });
-  }
-
-  for (const [inventoryId, { quantity, unit }] of required.entries()) {
-    const existing = existingByInventoryId.get(inventoryId);
-    if (existing) {
-      if (!qtyEqual(existing.quantity, quantity) || (existing.unit || 'units') !== unit) {
-        await jobService.updateJobInventory(existing.id, quantity, unit);
-      }
-    } else {
-      await jobService.addJobInventory(jobId, inventoryId, quantity, unit);
-    }
-  }
+  return syncJobInventoryFromRequiredMap(jobId, required, { replace });
 }
 
 /**

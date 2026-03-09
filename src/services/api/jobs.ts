@@ -1,4 +1,4 @@
-import type { Job, JobStatus, Comment } from '../../core/types';
+import type { Job, JobStatus, Comment, JobPartLink } from '../../core/types';
 import { supabase } from './supabaseClient';
 import { uploadAttachment, deleteAttachmentRecord, getAttachmentPublicUrl } from './storage';
 import { runMutationWithSchemaFallback } from './schemaCompat';
@@ -39,12 +39,22 @@ type PartLookupRow = {
   part_number: string;
 };
 
+type JobPartRow = {
+  id: string;
+  job_id: string;
+  part_id: string;
+  part_number: string | null;
+  dash_quantities: Record<string, number> | null;
+  sort_order: number;
+};
+
 function mapJobRow(
   row: Record<string, unknown>,
   expand?: {
     job_inventory?: JobInventoryRow[];
     comments?: (CommentRow & { user_name?: string; user_initials?: string })[];
     attachments?: AttachmentRow[];
+    job_parts?: JobPartRow[];
   }
 ): Job {
   const job: Job = {
@@ -99,6 +109,19 @@ function mapJobRow(
     allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,
     partId: row.part_id as string | undefined,
+    ...(expand?.job_parts && expand.job_parts.length > 0
+      ? {
+          parts: expand.job_parts
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            .map(
+              (jp): JobPartLink => ({
+                partId: jp.part_id,
+                partNumber: jp.part_number ?? '',
+                dashQuantities: (jp.dash_quantities as Record<string, number>) ?? {},
+              })
+            ),
+        }
+      : {}),
     progressEstimatePercent:
       row.progress_estimate_percent != null
         ? Math.max(0, Math.min(100, Number(row.progress_estimate_percent)))
@@ -267,12 +290,83 @@ async function resolvePartForJob(params: {
   return { partNumber: normalizedPartNumber, partId: null };
 }
 
+/** Fetch job_parts for one job; returns rows with part_number (from parts lookup). Graceful if table missing. */
+async function fetchJobPartsForJob(jobId: string): Promise<JobPartRow[]> {
+  const { data: rows, error } = await supabase
+    .from('job_parts')
+    .select('id, job_id, part_id, dash_quantities, sort_order')
+    .eq('job_id', jobId)
+    .order('sort_order', { ascending: true });
+  if (error) {
+    if (isPartsTableUnavailable(error) || error.code === '42P01') return [];
+    throw error;
+  }
+  const list = (rows ?? []) as Array<{
+    id: string;
+    job_id: string;
+    part_id: string;
+    dash_quantities: Record<string, number> | null;
+    sort_order: number;
+  }>;
+  if (list.length === 0) return [];
+  const partIds = [...new Set(list.map((r) => r.part_id))];
+  const { data: partsData } = await supabase
+    .from('parts')
+    .select('id, part_number')
+    .in('id', partIds);
+  const partNumberById = new Map(
+    (partsData ?? []).map((p: { id: string; part_number: string }) => [p.id, p.part_number])
+  );
+  return list.map((r) => ({
+    ...r,
+    part_number: partNumberById.get(r.part_id) ?? null,
+  }));
+}
+
+/** Fetch job_parts for many jobs; returns map jobId -> JobPartRow[]. Graceful if table missing. */
+async function fetchJobPartsBatch(jobIds: string[]): Promise<Map<string, JobPartRow[]>> {
+  const out = new Map<string, JobPartRow[]>();
+  for (const id of jobIds) out.set(id, []);
+  if (jobIds.length === 0) return out;
+  const { data: rows, error } = await supabase
+    .from('job_parts')
+    .select('id, job_id, part_id, dash_quantities, sort_order')
+    .in('job_id', jobIds)
+    .order('sort_order', { ascending: true });
+  if (error) {
+    if (isPartsTableUnavailable(error) || error.code === '42P01') return out;
+    throw error;
+  }
+  const list = (rows ?? []) as Array<{
+    id: string;
+    job_id: string;
+    part_id: string;
+    dash_quantities: Record<string, number> | null;
+    sort_order: number;
+  }>;
+  const partIds = [...new Set(list.map((r) => r.part_id))];
+  const { data: partsData } = await supabase
+    .from('parts')
+    .select('id, part_number')
+    .in('id', partIds);
+  const partNumberById = new Map(
+    (partsData ?? []).map((p: { id: string; part_number: string }) => [p.id, p.part_number])
+  );
+  for (const r of list) {
+    const arr = out.get(r.job_id) ?? [];
+    arr.push({ ...r, part_number: partNumberById.get(r.part_id) ?? null });
+    out.set(r.job_id, arr);
+  }
+  return out;
+}
+
 async function fetchJobExpand(jobId: string): Promise<{
   job_inventory: JobInventoryRow[];
   comments: (CommentRow & { user_name?: string; user_initials?: string })[];
   attachments: AttachmentRow[];
+  job_parts: JobPartRow[];
 }> {
-  const [jiRes, comRes, attRes] = await Promise.all([
+  const [jiRes, comRes, attRes, jobParts] = await Promise.all([
     supabase
       .from('job_inventory')
       .select('id, job_id, inventory_id, quantity, unit')
@@ -283,6 +377,7 @@ async function fetchJobExpand(jobId: string): Promise<{
       .eq('job_id', jobId)
       .order('created_at', { ascending: true }),
     supabase.from('attachments').select('*').eq('job_id', jobId),
+    fetchJobPartsForJob(jobId).catch(() => [] as JobPartRow[]),
   ]);
 
   const job_inventory = (jiRes.data ?? []) as JobInventoryRow[];
@@ -302,7 +397,7 @@ async function fetchJobExpand(jobId: string): Promise<{
     return { ...c, user_name: p?.name, user_initials: p?.initials };
   });
 
-  return { job_inventory, comments, attachments };
+  return { job_inventory, comments, attachments, job_parts: jobParts };
 }
 
 /** If the job row has part_number but no part_id (e.g. link was lost due to schema cache), resolve part_id and patch the DB. Returns the resolved partId or null. */
@@ -329,6 +424,7 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
       job_inventory: JobInventoryRow[];
       comments: (CommentRow & { user_name?: string; user_initials?: string })[];
       attachments: AttachmentRow[];
+      job_parts: JobPartRow[];
     }
   >
 > {
@@ -338,6 +434,7 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
       job_inventory: JobInventoryRow[];
       comments: (CommentRow & { user_name?: string; user_initials?: string })[];
       attachments: AttachmentRow[];
+      job_parts: JobPartRow[];
     }
   >();
 
@@ -348,10 +445,11 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
       job_inventory: [],
       comments: [],
       attachments: [],
+      job_parts: [],
     });
   }
 
-  const [jiRes, comRes, attRes] = await Promise.all([
+  const [jiRes, comRes, attRes, jobPartsMap] = await Promise.all([
     supabase
       .from('job_inventory')
       .select('id, job_id, inventory_id, quantity, unit')
@@ -362,6 +460,7 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
       .in('job_id', jobIds)
       .order('created_at', { ascending: true }),
     supabase.from('attachments').select('*').in('job_id', jobIds),
+    fetchJobPartsBatch(jobIds).catch(() => new Map<string, JobPartRow[]>()),
   ]);
 
   const jobInventory = (jiRes.data ?? []) as JobInventoryRow[];
@@ -396,6 +495,11 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
     if (!attachment.job_id) continue;
     const target = expandByJobId.get(attachment.job_id);
     if (target) target.attachments.push(attachment);
+  }
+
+  for (const [jid, parts] of jobPartsMap) {
+    const target = expandByJobId.get(jid);
+    if (target) target.job_parts = parts;
   }
 
   return expandByJobId;
@@ -476,9 +580,10 @@ export const jobService = {
     if (nextCode == null) return null;
 
     const resolvedLaborHours = toFiniteNumber(data.laborHours);
-    const rawPartNumber = data.partNumber?.trim();
+    const primaryFromParts = data.parts?.length ? data.parts[0] : null;
+    const rawPartNumber = primaryFromParts?.partNumber ?? data.partNumber?.trim() ?? '';
     const resolvedPart =
-      !data.partId && rawPartNumber
+      !primaryFromParts && !data.partId && rawPartNumber
         ? await resolvePartForJob({
             partNumber: rawPartNumber,
             fallbackDescription: data.description,
@@ -503,13 +608,19 @@ export const jobService = {
       is_rush: data.isRush ?? false,
       workers: data.workers ?? [],
       bin_location: data.binLocation ?? null,
-      part_number: rawPartNumber ? (resolvedPart?.partNumber ?? rawPartNumber) : null,
+      part_number: primaryFromParts
+        ? primaryFromParts.partNumber
+        : rawPartNumber
+          ? (resolvedPart?.partNumber ?? rawPartNumber)
+          : null,
       variant_suffix: data.variantSuffix ?? null,
       est_number: data.estNumber ?? null,
       inv_number: data.invNumber ?? null,
       rfq_number: data.rfqNumber ?? null,
       owr_number: data.owrNumber ?? null,
-      dash_quantities: data.dashQuantities ?? null,
+      dash_quantities: primaryFromParts
+        ? (primaryFromParts.dashQuantities ?? null)
+        : (data.dashQuantities ?? null),
       labor_breakdown_by_variant: data.laborBreakdownByVariant ?? null,
       machine_breakdown_by_variant: data.machineBreakdownByVariant ?? null,
       cnc_completed_at: data.cncCompletedAt ?? null,
@@ -517,7 +628,9 @@ export const jobService = {
       allocation_source: data.allocationSource ?? null,
       allocation_source_updated_at: data.allocationSource ? new Date().toISOString() : null,
       revision: data.revision ?? null,
-      part_id: data.partId ?? resolvedPart?.partId ?? null,
+      part_id: primaryFromParts
+        ? primaryFromParts.partId
+        : (data.partId ?? resolvedPart?.partId ?? null),
       progress_estimate_percent:
         data.progressEstimatePercent != null
           ? Math.max(0, Math.min(100, Number(data.progressEstimatePercent)))
@@ -539,10 +652,38 @@ export const jobService = {
       },
     });
     if (error) throw new Error(error.message);
-    return mapJobRow(created as Record<string, unknown>, {
+    const createdRow = created as Record<string, unknown>;
+    const newJobId = createdRow.id as string;
+    // Sync job_parts: either from data.parts or a single row from primary part
+    try {
+      if (data.parts?.length) {
+        for (let i = 0; i < data.parts.length; i++) {
+          const link = data.parts[i];
+          await supabase.from('job_parts').insert({
+            job_id: newJobId,
+            part_id: link.partId,
+            dash_quantities: link.dashQuantities ?? {},
+            sort_order: i,
+          });
+        }
+      } else if (createdRow.part_id) {
+        await supabase.from('job_parts').insert({
+          job_id: newJobId,
+          part_id: createdRow.part_id,
+          dash_quantities: createdRow.dash_quantities ?? {},
+          sort_order: 0,
+        });
+      }
+    } catch (jobPartsErr) {
+      if (!isMissingTableError(jobPartsErr as SupabaseErrorLike)) {
+        console.warn('createJob job_parts sync failed:', (jobPartsErr as Error)?.message);
+      }
+    }
+    return mapJobRow(createdRow, {
       job_inventory: [],
       comments: [],
       attachments: [],
+      job_parts: [], // Will be populated on next getJobById if table exists
     });
   },
 
@@ -613,6 +754,12 @@ export const jobService = {
     }
     if (data.revision !== undefined) row.revision = data.revision;
     if (data.partId !== undefined) row.part_id = data.partId;
+    if (data.parts !== undefined) {
+      const primary = data.parts.length > 0 ? data.parts[0] : null;
+      row.part_id = primary?.partId ?? null;
+      row.part_number = primary?.partNumber ?? null;
+      row.dash_quantities = primary?.dashQuantities ?? null;
+    }
     if (data.progressEstimatePercent !== undefined) {
       const p =
         typeof data.progressEstimatePercent === 'number'
@@ -648,6 +795,24 @@ export const jobService = {
         payloadKeys: Object.keys(row),
       });
       return null;
+    }
+    if (data.parts !== undefined) {
+      try {
+        await supabase.from('job_parts').delete().eq('job_id', jobId);
+        for (let i = 0; i < data.parts.length; i++) {
+          const link = data.parts[i];
+          await supabase.from('job_parts').insert({
+            job_id: jobId,
+            part_id: link.partId,
+            dash_quantities: link.dashQuantities ?? {},
+            sort_order: i,
+          });
+        }
+      } catch (jobPartsErr) {
+        if (!isMissingTableError(jobPartsErr as SupabaseErrorLike)) {
+          console.warn('updateJob job_parts sync failed:', (jobPartsErr as Error)?.message);
+        }
+      }
     }
     const expand = await fetchJobExpand(jobId);
     return mapJobRow(updated as Record<string, unknown>, expand);
@@ -793,6 +958,14 @@ export const jobService = {
             }
           );
           return false;
+        }
+      }
+
+      // Delete job_parts (multi-part links). FK cascade may do this; explicit delete for clarity.
+      {
+        const { error } = await supabase.from('job_parts').delete().eq('job_id', jobId);
+        if (error && !isMissingTableError(error)) {
+          console.warn('deleteJob job_parts cleanup:', error.message);
         }
       }
 

@@ -24,7 +24,12 @@ import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/va
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
-import { syncJobInventoryFromPart } from '@/lib/partsCalculations';
+import {
+  syncJobInventoryFromPart,
+  syncJobInventoryFromParts,
+  type PartWithDashQuantities,
+} from '@/lib/partsCalculations';
+import type { JobPartLink } from '@/core/types';
 
 interface AdminCreateJobProps {
   onCreate: (data: {
@@ -66,6 +71,7 @@ interface AdminCreateJobProps {
       }
     >;
     allocationSource?: 'variant' | 'total';
+    parts?: JobPartLink[];
   }) => Promise<Job | null>;
   onNavigate: (view: ViewState) => void;
   users: User[];
@@ -118,6 +124,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
   const [partNameEdit, setPartNameEdit] = useState('');
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>({});
+  /** Additional parts (multi-part jobs). Each has part + dashQuantities. */
+  const [additionalParts, setAdditionalParts] = useState<PartWithDashQuantities[]>([]);
+  /** When true, show PartSelector to add another part. */
+  const [addingPart, setAddingPart] = useState(false);
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     po: '',
@@ -220,6 +230,16 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       setPartNameEdit('');
       setDashQuantities({});
     }
+  };
+
+  const handleAddPartSelect = (part: Part, quantities: Record<string, number>) => {
+    setAdditionalParts((prev) => [...prev, { part, dashQuantities: quantities }]);
+    setAddingPart(false);
+    showToast(`Added part ${part.partNumber}`, 'success');
+  };
+
+  const removeAdditionalPart = (index: number) => {
+    setAdditionalParts((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Auto name for display and labor suggestion (Part → Part REV → EST # n → PO# n → fallback Job #code)
@@ -327,6 +347,26 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       ? buildPersistedVariantBreakdowns(computedBreakdown.entries)
       : null;
 
+    const partsForCreate: JobPartLink[] | undefined =
+      selectedPart || additionalParts.length > 0
+        ? [
+            ...(selectedPart
+              ? [
+                  {
+                    partId: selectedPart.id,
+                    partNumber: selectedPart.partNumber,
+                    dashQuantities: normalizedDashQuantities ?? {},
+                  },
+                ]
+              : []),
+            ...additionalParts.map(({ part, dashQuantities: dq }) => ({
+              partId: part.id,
+              partNumber: part.partNumber,
+              dashQuantities: dq ?? {},
+            })),
+          ]
+        : undefined;
+
     try {
       const job = await onCreate({
         jobCode: formData.jobCode,
@@ -356,6 +396,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         laborBreakdownByVariant: persistedBreakdowns?.persistedLaborBreakdown,
         machineBreakdownByVariant: persistedBreakdowns?.persistedMachineBreakdown,
         allocationSource: persistedBreakdowns ? 'variant' : undefined,
+        parts: partsForCreate,
       } as Partial<Job>);
 
       if (job) {
@@ -377,19 +418,38 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             showToast('Job created, but failed to create master part', 'warning');
           }
         }
-        // Auto-assign materials from part (variant dash quantities, or set qty fallback for master parts).
-        if (job.partNumber) {
+        // Auto-assign materials from part(s).
+        const allPartsWithQuantities: PartWithDashQuantities[] =
+          selectedPart && (normalizedDashQuantities || Object.keys(dashQuantities).length > 0)
+            ? [
+                {
+                  part: selectedPart,
+                  dashQuantities: normalizedDashQuantities ?? dashQuantities,
+                },
+                ...additionalParts,
+              ]
+            : additionalParts;
+        if (allPartsWithQuantities.length > 0) {
           try {
-            const found = await partsService.getPartByNumber(job.partNumber);
-            if (found) {
-              const fullPart = await partsService.getPartWithVariants(found.id);
-              if (fullPart) {
-                const effectiveQuantities = buildEffectiveQuantities(fullPart);
-                if (Object.values(effectiveQuantities).some((q) => q > 0)) {
-                  await syncJobInventoryFromPart(job.id, fullPart, effectiveQuantities);
-                  showToast('Job created; materials assigned from part.', 'success');
-                }
+            const hasAnyQty = allPartsWithQuantities.some((p) =>
+              Object.values(p.dashQuantities).some((q) => q > 0)
+            );
+            if (hasAnyQty) {
+              if (allPartsWithQuantities.length > 1) {
+                await syncJobInventoryFromParts(job.id, allPartsWithQuantities);
+              } else {
+                await syncJobInventoryFromPart(
+                  job.id,
+                  allPartsWithQuantities[0].part,
+                  allPartsWithQuantities[0].dashQuantities
+                );
               }
+              showToast(
+                allPartsWithQuantities.length > 1
+                  ? 'Job created; materials assigned from parts.'
+                  : 'Job created; materials assigned from part.',
+                'success'
+              );
             }
           } catch (syncErr) {
             console.error('Material sync after job create:', syncErr);
@@ -505,6 +565,64 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               isAdmin={currentUser.isAdmin}
               showPrices={currentUser.isAdmin}
             />
+            {additionalParts.length > 0 && (
+              <div className="mt-4 space-y-2 rounded-sm border border-[#4d3465] bg-[#261a32]/30 p-3">
+                <p className="text-xs font-medium text-slate-400">Additional parts</p>
+                <ul className="space-y-2">
+                  {additionalParts.map(({ part, dashQuantities: dq }, idx) => (
+                    <li
+                      key={`${part.id}-${idx}`}
+                      className="flex items-center justify-between gap-2 rounded border border-white/10 bg-white/5 px-3 py-2"
+                    >
+                      <span className="font-mono text-sm text-white">
+                        {part.partNumber}
+                        {Object.keys(dq).length > 0 && (
+                          <span className="ml-2 text-slate-400">
+                            {formatDashSummary(dq)} → {totalFromDashQuantities(dq)} total
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAdditionalPart(idx)}
+                        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                        title="Remove part"
+                      >
+                        <span className="material-symbols-outlined text-lg">close</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {addingPart && (
+              <div className="mt-4 rounded-sm border border-primary/40 bg-primary/10 p-3">
+                <p className="mb-2 text-xs font-medium text-primary">Select part to add</p>
+                <PartSelector
+                  onSelect={handleAddPartSelect}
+                  onPartNumberResolved={() => setAddingPart(false)}
+                  isAdmin={currentUser.isAdmin}
+                  showPrices={currentUser.isAdmin}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAddingPart(false)}
+                  className="mt-2 text-xs text-slate-400 underline hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {!addingPart && (
+              <button
+                type="button"
+                onClick={() => setAddingPart(true)}
+                className="mt-3 flex items-center gap-2 rounded border border-dashed border-[#4d3465] bg-transparent px-3 py-2 text-xs font-medium text-[#ad93c8] transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+                Add another part
+              </button>
+            )}
           </div>
 
           <div>

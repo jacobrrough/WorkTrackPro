@@ -145,6 +145,13 @@ export interface JobInventoryItem {
   unit: string;
 }
 
+/** One part linked to a job with its variant quantities. Used when job has multiple parts (job_parts). */
+export interface JobPartLink {
+  partId: string;
+  partNumber: string;
+  dashQuantities: Record<string, number>;
+}
+
 // Job
 export interface Job {
   id: string;
@@ -198,6 +205,8 @@ export interface Job {
   allocationSourceUpdatedAt?: string;
   revision?: string;
   partId?: string;
+  /** When present, full list of parts linked to this job (job_parts). partId/partNumber/dashQuantities are the primary/first part. */
+  parts?: JobPartLink[];
   /** User-estimated completion percent (0–100). When set, drives progress bar and at-risk if implied labor exceeds estimate. */
   progressEstimatePercent?: number | null;
   expand?: {

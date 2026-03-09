@@ -37,7 +37,12 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
-import { syncJobInventoryFromPart, computeRequiredMaterials } from '@/lib/partsCalculations';
+import {
+  syncJobInventoryFromPart,
+  syncJobInventoryFromParts,
+  computeRequiredMaterials,
+  type PartWithDashQuantities,
+} from '@/lib/partsCalculations';
 import { syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults } from '@/lib/variantAllocation';
 import {
@@ -49,7 +54,7 @@ import type { VariantDefaultOverrides } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
-import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
+import { calculateJobPriceFromPart, calculateJobPriceFromParts } from '@/lib/jobPriceFromPart';
 import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
 import {
   useMaterialCosts,
@@ -302,6 +307,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null);
   const editSeedRef = useRef<string | null>(null);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
+  /** When job.parts?.length > 1, loaded Part entities for each link (same order as job.parts). */
+  const [linkedParts, setLinkedParts] = useState<(Part | null)[] | null>(null);
   const [, setLoadingPart] = useState(false);
   const [partNumberSearch, setPartNumberSearch] = useState(job.partNumber || '');
   const [selectedVariant, setSelectedVariant] = useState<PartVariant | null>(null);
@@ -491,10 +498,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
     isAdmin: shouldComputeJobFinancials(currentUser.isAdmin),
   });
 
+  const partsWithPartData = useMemo((): PartWithDashQuantities[] | undefined => {
+    if (!job.parts?.length || job.parts.length <= 1 || !linkedParts?.length) return undefined;
+    const out: PartWithDashQuantities[] = [];
+    for (let i = 0; i < job.parts.length && i < linkedParts.length; i++) {
+      const part = linkedParts[i];
+      if (part) out.push({ part, dashQuantities: job.parts![i].dashQuantities ?? {} });
+    }
+    return out.length > 0 ? out : undefined;
+  }, [job.parts, linkedParts]);
+
   const { isMaterialAuto } = useMaterialSync({
     jobId: job.id,
     linkedPart,
     dashQuantities: effectiveMaterialQuantities,
+    partsWithPartData,
     onReloadJob,
   });
 
@@ -575,6 +593,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
       loadLinkedPart(job.partNumber ?? '', job.partId);
     }
   }, [job.partNumber, job.partId, loadLinkedPart]);
+
+  // When job has multiple parts, load Part entity for each
+  useEffect(() => {
+    if (!job.parts?.length || job.parts.length <= 1) {
+      setLinkedParts(null);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      job.parts.map((link) =>
+        partsService.getPartWithVariants(link.partId).then((p) => (cancelled ? null : p))
+      )
+    ).then((parts) => {
+      if (!cancelled) setLinkedParts(parts);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [job.parts?.length, job.parts?.map((p) => p.partId)?.join(',') ?? '']);
 
   useEffect(() => {
     if (!job.partNumber && !job.partId) return;
@@ -802,10 +839,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
     ]
   );
 
-  const partDerivedPrice = useMemo(
-    () => (linkedPart ? calculateJobPriceFromPart(linkedPart, effectiveMaterialQuantities) : null),
-    [linkedPart, effectiveMaterialQuantities]
-  );
+  const partDerivedPrice = useMemo(() => {
+    if (partsWithPartData?.length) {
+      return calculateJobPriceFromParts(
+        partsWithPartData.map(({ part, dashQuantities }) => ({ part, dashQuantities }))
+      );
+    }
+    return linkedPart ? calculateJobPriceFromPart(linkedPart, effectiveMaterialQuantities) : null;
+  }, [linkedPart, effectiveMaterialQuantities, partsWithPartData]);
 
   const {
     variantAllocation,
@@ -1220,9 +1261,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       if (updated) {
         showToast('Job updated successfully', 'success');
-        if (linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0)) {
+        const hasSinglePartQty =
+          linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0);
+        const hasMultiPartQty = partsWithPartData?.some((p) =>
+          Object.values(p.dashQuantities).some((q) => q > 0)
+        );
+        if (hasMultiPartQty && partsWithPartData?.length) {
           try {
-            await syncJobInventoryFromPart(job.id, linkedPart, effectiveMaterialQuantities, {
+            await syncJobInventoryFromParts(job.id, partsWithPartData, { replace: true });
+            await onReloadJob?.();
+          } catch (syncErr) {
+            console.error('Material sync after save (multi-part):', syncErr);
+            showToast(
+              'Job saved; material sync failed. Use Auto-assign materials to retry.',
+              'warning'
+            );
+          }
+        } else if (hasSinglePartQty) {
+          try {
+            await syncJobInventoryFromPart(job.id, linkedPart!, effectiveMaterialQuantities, {
               replace: true,
             });
             await onReloadJob?.();
@@ -1288,14 +1345,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
   };
 
   const handleAutoAssignMaterials = async () => {
-    if (!linkedPart || !Object.values(effectiveMaterialQuantities).some((q) => q > 0)) return;
+    const hasMultiPartQty =
+      partsWithPartData?.length &&
+      partsWithPartData.some((p) => Object.values(p.dashQuantities).some((q) => q > 0));
+    const hasSinglePartQty =
+      linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0);
+    if (!hasMultiPartQty && !hasSinglePartQty) return;
     setSyncingMaterials(true);
     try {
-      await syncJobInventoryFromPart(job.id, linkedPart, effectiveMaterialQuantities, {
-        replace: true,
-      });
+      if (hasMultiPartQty && partsWithPartData?.length) {
+        await syncJobInventoryFromParts(job.id, partsWithPartData, { replace: true });
+      } else {
+        await syncJobInventoryFromPart(job.id, linkedPart!, effectiveMaterialQuantities, {
+          replace: true,
+        });
+      }
       await onReloadJob?.();
-      showToast('Materials auto-assigned from part', 'success');
+      showToast('Materials auto-assigned from part(s)', 'success');
     } catch (err) {
       console.error('Auto-assign materials:', err);
       showToast('Failed to auto-assign materials', 'error');
@@ -1664,28 +1730,34 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               )}
 
-            {linkedPart && Object.values(dashQuantities).some((q) => q > 0) && (
+            {((linkedPart && Object.values(dashQuantities).some((q) => q > 0)) ||
+              (partsWithPartData?.length &&
+                partsWithPartData.some((p) =>
+                  Object.values(p.dashQuantities).some((q) => q > 0)
+                ))) && (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-400">
                     Source: <span className="font-semibold text-primary">{allocationSource}</span>
                   </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleFillFullSet}
-                      className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
-                    >
-                      Fill full set
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleApplyFromPart}
-                      className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
-                    >
-                      Apply from part
-                    </button>
-                  </div>
+                  {linkedPart && Object.keys(dashQuantities).length > 0 && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleFillFullSet}
+                        className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
+                      >
+                        Fill full set
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyFromPart}
+                        className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
+                      >
+                        Apply from part
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -1696,7 +1768,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <span className="material-symbols-outlined text-base">
                     {syncingMaterials ? 'hourglass_empty' : 'inventory_2'}
                   </span>
-                  {syncingMaterials ? 'Syncing…' : 'Auto-assign materials from part'}
+                  {syncingMaterials
+                    ? 'Syncing…'
+                    : partsWithPartData && partsWithPartData.length > 1
+                      ? 'Auto-assign materials from parts'
+                      : 'Auto-assign materials from part'}
                 </button>
               </div>
             )}
@@ -2363,9 +2439,28 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
               )}
 
+              {job.parts && job.parts.length > 1 && (
+                <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
+                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Parts</p>
+                  <ul className="space-y-1 text-sm text-white">
+                    {job.parts.map((link, idx) => (
+                      <li key={link.partId}>
+                        <span className="font-medium">{link.partNumber}</span>
+                        {Object.keys(link.dashQuantities ?? {}).length > 0 && (
+                          <span className="ml-2 text-slate-400">
+                            {formatDashSummary(link.dashQuantities!)} →{' '}
+                            {totalFromDashQuantities(link.dashQuantities!)} total
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {job.partNumber &&
                 job.dashQuantities &&
-                Object.keys(job.dashQuantities).length > 0 && (
+                Object.keys(job.dashQuantities).length > 0 &&
+                !(job.parts && job.parts.length > 1) && (
                   <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-3">
                     <p className="mb-1 text-xs font-bold uppercase text-slate-400">Variant qty</p>
                     <p className="text-sm font-medium text-white">

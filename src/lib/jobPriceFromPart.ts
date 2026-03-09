@@ -175,3 +175,34 @@ export function calculateJobPriceFromPart(
 
   return null;
 }
+
+/** Aggregate price from multiple parts (e.g. job.parts). Sums totalPrice and concatenates missingVariantPrices. */
+export function calculateJobPriceFromParts(
+  parts: Array<{
+    part: Part & { variants?: PartVariant[] };
+    dashQuantities: Record<string, number> | null | undefined;
+  }>
+): JobPriceFromPartResult | null {
+  if (parts.length === 0) return null;
+  let totalPrice = 0;
+  const missingVariantPrices: string[] = [];
+  let source: JobPriceFromPartResult['source'] = 'set_price';
+  let setCount: number | undefined;
+  let hasAny = false;
+  for (const { part, dashQuantities } of parts) {
+    const result = calculateJobPriceFromPart(part, dashQuantities);
+    if (!result) continue;
+    hasAny = true;
+    totalPrice += result.totalPrice;
+    missingVariantPrices.push(...result.missingVariantPrices);
+    source = result.source;
+    if (result.setCount != null) setCount = (setCount ?? 0) + result.setCount;
+  }
+  if (!hasAny) return null;
+  return {
+    totalPrice: Math.round(totalPrice * 100) / 100,
+    source,
+    setCount,
+    missingVariantPrices,
+  };
+}

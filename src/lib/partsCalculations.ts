@@ -19,6 +19,7 @@ import type { Part, PartVariant, PartMaterial, InventoryItem } from '@/core/type
 import {
   computeRequiredMaterials as computeRequiredMaterialsRaw,
   syncJobInventoryFromPart as syncJobInventoryFromPartRaw,
+  syncJobInventoryFromRequiredMap,
 } from '@/lib/materialFromPart';
 import { calculateSetCompletion } from '@/lib/formatJob';
 import {
@@ -72,6 +73,48 @@ export async function syncJobInventoryFromPart(
 ): Promise<void> {
   const sanitized = sanitizePartQuantities(part);
   return syncJobInventoryFromPartRaw(jobId, sanitized, dashQuantities);
+}
+
+/** Part + dash quantities for multi-part aggregation. */
+export type PartWithDashQuantities = {
+  part: Part & { variants?: PartVariant[]; setComposition?: Record<string, number> | null };
+  dashQuantities: Record<string, number>;
+};
+
+/**
+ * Compute required materials for a job from multiple parts. Merges requirements by inventoryId (sums quantities).
+ * Used when job has job.parts.length > 1.
+ */
+export function computeRequiredMaterialsForParts(
+  parts: PartWithDashQuantities[]
+): Map<string, { quantity: number; unit: string }> {
+  const merged = new Map<string, { quantity: number; unit: string }>();
+  for (const { part, dashQuantities } of parts) {
+    const sanitized = sanitizePartQuantities(part);
+    const required = computeRequiredMaterialsRaw(sanitized, dashQuantities);
+    for (const [inventoryId, { quantity, unit }] of required.entries()) {
+      const existing = merged.get(inventoryId);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        merged.set(inventoryId, { quantity, unit });
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Sync job_inventory from multiple parts. Merges required materials then adds/updates job inventory.
+ * When replace is true, removes job inventory lines not in the merged BOM.
+ */
+export async function syncJobInventoryFromParts(
+  jobId: string,
+  parts: PartWithDashQuantities[],
+  options?: { replace?: boolean }
+): Promise<void> {
+  const required = computeRequiredMaterialsForParts(parts);
+  return syncJobInventoryFromRequiredMap(jobId, required, options);
 }
 
 export { calculateSetCompletion };

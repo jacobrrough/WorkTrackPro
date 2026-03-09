@@ -27,6 +27,7 @@ export function usePartJobs(part: Part | null, allJobs: Job[]): Job[] {
     if (!part) return [];
     const matched = allJobs.filter((j) => {
       if (j.partId && j.partId === part.id) return true;
+      if (j.parts?.some((link) => link.partId === part.id)) return true;
       if (
         j.partNumber &&
         (j.partNumber === part.partNumber ||
