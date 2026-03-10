@@ -19,9 +19,10 @@ interface AddInventoryItemProps {
     reorderPoint?: number;
   }) => Promise<boolean>;
   onCancel: () => void;
+  isAdmin?: boolean;
 }
 
-const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) => {
+const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, isAdmin = true }) => {
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,7 +70,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
         category,
         inStock,
         unit: unit.trim(),
-        price: price || undefined,
+        ...(isAdmin && { price: price || undefined }),
         barcode: barcode.trim() || undefined,
         binLocation: binLocation.trim() || undefined,
         vendor: vendor.trim() || undefined,
@@ -186,21 +187,23 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel }) 
             />
           </FormField>
 
-          <FormField label="Price Per Unit" htmlFor="price" error={errors.price}>
-            <input
-              id="price"
-              type="number"
-              step="0.01"
-              value={price}
-              onChange={(e) => {
-                setPrice(parseFloat(e.target.value) || 0);
-                if (errors.price) setErrors({ ...errors, price: null });
-              }}
-              placeholder="0.00"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-invalid={!!errors.price}
-            />
-          </FormField>
+          {isAdmin && (
+            <FormField label="Price Per Unit" htmlFor="price" error={errors.price}>
+              <input
+                id="price"
+                type="number"
+                step="0.01"
+                value={price}
+                onChange={(e) => {
+                  setPrice(parseFloat(e.target.value) || 0);
+                  if (errors.price) setErrors({ ...errors, price: null });
+                }}
+                placeholder="0.00"
+                className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-invalid={!!errors.price}
+              />
+            </FormField>
+          )}
         </Card>
 
         {/* Stock */}

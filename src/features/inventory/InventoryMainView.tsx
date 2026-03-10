@@ -107,10 +107,6 @@ export default function InventoryMainView({
   }, [baseFiltered, calculateAllocated, calculateAvailable]);
 
   const handleQuickAdjust = async (item: InventoryItem, delta: number) => {
-    if (!isAdmin) {
-      showToast('Only admins can adjust stock', 'error');
-      return;
-    }
     const next = Math.max(0, item.inStock + delta);
     await onQuickAdjust(item, next - item.inStock);
   };
@@ -209,7 +205,7 @@ export default function InventoryMainView({
           >
             Allocate To Job
           </button>
-          {isAdmin && onMarkOrdered && (
+          {onMarkOrdered && (
             <button
               type="button"
               onClick={() => {
@@ -226,7 +222,7 @@ export default function InventoryMainView({
               On order
             </button>
           )}
-          {isAdmin && onReceiveOrder && (item.onOrder ?? 0) > 0 && (
+          {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
             <button
               type="button"
               onClick={() => {
@@ -243,7 +239,7 @@ export default function InventoryMainView({
               Receive
             </button>
           )}
-          {isAdmin && (
+          {
             <div className="ml-auto flex gap-2">
               <button
                 type="button"
@@ -262,7 +258,7 @@ export default function InventoryMainView({
                 <span className="material-symbols-outlined">add</span>
               </button>
             </div>
-          )}
+          }
         </div>
       </div>
     );
@@ -469,7 +465,7 @@ export default function InventoryMainView({
                             >
                               Allocate
                             </button>
-                            {isAdmin && onMarkOrdered && (
+                            {onMarkOrdered && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -485,7 +481,7 @@ export default function InventoryMainView({
                                 </span>
                               </button>
                             )}
-                            {isAdmin && onReceiveOrder && (item.onOrder ?? 0) > 0 && (
+                            {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -501,7 +497,7 @@ export default function InventoryMainView({
                                 </span>
                               </button>
                             )}
-                            {isAdmin && (
+                            {
                               <>
                                 <button
                                   type="button"
@@ -522,7 +518,7 @@ export default function InventoryMainView({
                                   <span className="material-symbols-outlined text-base">add</span>
                                 </button>
                               </>
-                            )}
+                            }
                           </div>
                         </td>
                       </tr>
@@ -537,7 +533,7 @@ export default function InventoryMainView({
         )}
       </div>
 
-      {isAdmin && (
+      {
         <button
           type="button"
           onClick={onAddItem}
@@ -546,7 +542,7 @@ export default function InventoryMainView({
           <span className="material-symbols-outlined">add</span>
           Add Part
         </button>
-      )}
+      }
 
       {allocatingItem && (
         <AllocateToJobModal

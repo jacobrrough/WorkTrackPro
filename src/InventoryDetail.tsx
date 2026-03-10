@@ -463,8 +463,6 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   };
 
   const handleSave = async () => {
-    if (!isAdmin) return;
-
     // Validate
     if (!editName.trim()) {
       showToast('Name is required', 'error');
@@ -482,18 +480,21 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
     setIsSaving(true);
     try {
-      const updated = await onUpdateItem(currentItem.id, {
+      const payload: Partial<InventoryItem> = {
         name: editName.trim(),
         description: editDescription.trim() || undefined,
         category: editCategory,
-        price: editPrice || undefined,
         unit: editUnit.trim(),
         barcode: editBarcode.trim() || undefined,
         binLocation: editBinLocation.trim() || undefined,
         vendor: editVendor.trim() || undefined,
         reorderPoint: editReorderPoint > 0 ? editReorderPoint : undefined,
         onOrder: editOnOrder || 0,
-      });
+      };
+      if (isAdmin) {
+        payload.price = editPrice || undefined;
+      }
+      const updated = await onUpdateItem(currentItem.id, payload);
 
       if (!updated) {
         showToast('Failed to update item', 'error');
@@ -639,19 +640,21 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-400">
-                  Price Per Unit
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editPrice || ''}
-                  onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
-                />
-              </div>
+              {isAdmin && (
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-400">
+                    Price Per Unit
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editPrice || ''}
+                    onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Stock */}
@@ -850,15 +853,14 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 </p>
               </div>
             </div>
-            {isAdmin && (
+            {
               <button
                 onClick={handleStartEdit}
                 className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
               >
                 Edit
               </button>
-            )}
-            {!isAdmin && <div className="text-sm text-slate-500">View Only</div>}
+            }
           </div>
         </div>
 

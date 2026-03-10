@@ -74,20 +74,15 @@ const Inventory: React.FC<InventoryProps> = ({
   };
 
   const handleAddItem = () => {
-    if (!isAdmin) {
-      showToast('Only admins can add inventory items', 'error');
-      return;
-    }
     setView('add');
   };
 
   const handleAddComplete = async (data: Partial<InventoryItem>) => {
-    if (!isAdmin) {
-      showToast('Only admins can add inventory items', 'error');
-      setView('main');
-      return false;
+    const payload = { ...data };
+    if (!isAdmin && 'price' in payload) {
+      delete (payload as Record<string, unknown>).price;
     }
-    const newItem = await onCreateItem(data);
+    const newItem = await onCreateItem(payload);
     if (newItem) {
       setView('main');
       return true;
@@ -96,7 +91,7 @@ const Inventory: React.FC<InventoryProps> = ({
   };
 
   if (view === 'add') {
-    return <AddInventoryItem onAdd={handleAddComplete} onCancel={handleBack} />;
+    return <AddInventoryItem onAdd={handleAddComplete} onCancel={handleBack} isAdmin={isAdmin} />;
   }
 
   if (showingDetail && selectedItem) {
