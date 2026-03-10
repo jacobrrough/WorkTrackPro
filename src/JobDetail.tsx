@@ -572,10 +572,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const out: PartWithDashQuantities[] = [];
     for (let i = 0; i < job.parts.length && i < linkedParts.length; i++) {
       const part = linkedParts[i];
-      if (part) out.push({ part, dashQuantities: job.parts![i].dashQuantities ?? {} });
+      const dq =
+        isEditing && editingParts.length > i
+          ? (editingParts[i].dashQuantities ?? {})
+          : (job.parts![i].dashQuantities ?? {});
+      if (part) out.push({ part, dashQuantities: dq });
     }
     return out.length > 0 ? out : undefined;
-  }, [job.parts, linkedParts]);
+  }, [job.parts, linkedParts, isEditing, editingParts]);
 
   const { isMaterialAuto } = useMaterialSync({
     jobId: job.id,
@@ -1082,7 +1086,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
     if (isEditing) return;
     setLaborHoursFromPart(false);
     setAllocationSource(job.allocationSource ?? 'variant');
-    setDashQuantities(normalizeDashQuantities(job.dashQuantities || {}));
+    setDashQuantities(
+      normalizeDashQuantities(job.parts?.[0]?.dashQuantities ?? job.dashQuantities ?? {})
+    );
     setLaborPerUnitOverrides(() => {
       const out: Record<string, number> = {};
       for (const [suffix, entry] of Object.entries(job.laborBreakdownByVariant ?? {})) {
@@ -1196,6 +1202,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     job.owrNumber,
     job.allocationSource,
     job.dashQuantities,
+    job.parts,
     job.laborBreakdownByVariant,
     job.machineBreakdownByVariant,
     machineTotals.cncHours,
@@ -1428,7 +1435,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       progressEstimatePercent:
         job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
     });
-    setDashQuantities(normalizeDashQuantities(job.dashQuantities || {}));
+    setDashQuantities(
+      normalizeDashQuantities(job.parts?.[0]?.dashQuantities ?? job.dashQuantities ?? {})
+    );
     setAllocationSource(job.allocationSource ?? 'variant');
     setLaborPerUnitOverrides(() => {
       const out: Record<string, number> = {};
@@ -2525,24 +2534,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
               {canViewFinancials && (
                 <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                  Total $
-                  {(partDerivedPrice ? partDerivedPrice.totalPrice : computedCostTotal).toFixed(2)}
-                  {linkedPart?.pricePerSet != null && (
-                    <span
-                      className="ml-2 text-[10px] font-medium text-primary/80"
-                      title="From linked part (matches Part detail Set price)"
-                    >
-                      Set price ${Number(linkedPart.pricePerSet).toFixed(2)}/set
-                    </span>
-                  )}
-                  {partDerivedPrice && (
-                    <span
-                      className="ml-2 text-[10px] font-medium text-primary/80"
-                      title="From linked part (set price × sets or variant prices)"
-                    >
-                      from part
-                    </span>
-                  )}
+                  Total ${computedCostTotal.toFixed(2)}
+                  <span className="ml-2 text-[10px] font-normal text-primary/80">
+                    (Labor + Materials + CNC + 3D)
+                  </span>
                 </div>
               )}
               {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
