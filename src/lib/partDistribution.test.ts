@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { PartVariant } from '@/core/types';
-import { distributeSetMaterialToVariants } from './partDistribution';
+import type { Part, PartVariant } from '@/core/types';
+import {
+  distributeSetMaterialToVariants,
+  getEffectiveSetPricingForDisplay,
+} from './partDistribution';
 
-const makeVariant = (id: string, suffix: string): PartVariant => ({
+const makeVariant = (
+  id: string,
+  suffix: string,
+  overrides: Partial<PartVariant> = {}
+): PartVariant => ({
   id,
   partId: 'part-1',
   variantSuffix: suffix,
+  ...overrides,
 });
 
 describe('distributeSetMaterialToVariants', () => {
@@ -38,5 +46,47 @@ describe('distributeSetMaterialToVariants', () => {
     }, 0);
 
     expect(totalPerSet).toBeCloseTo(9, 3);
+  });
+});
+
+describe('getEffectiveSetPricingForDisplay', () => {
+  it('returns part row values for part with no variants', () => {
+    const part: Part = {
+      id: 'p1',
+      partNumber: 'P-001',
+      name: 'Single',
+      pricePerSet: 100,
+      laborHours: 2,
+      requiresCNC: true,
+      cncTimeHours: 0.5,
+      variants: [],
+    };
+    const out = getEffectiveSetPricingForDisplay(part);
+    expect(out.pricePerSet).toBe(100);
+    expect(out.laborHours).toBe(2);
+    expect(out.cncTimeHours).toBe(0.5);
+    expect(out.requiresCNC).toBe(true);
+  });
+
+  it('returns variant-derived set price and labor when part has variants and set composition', () => {
+    const part: Part = {
+      id: 'p1',
+      partNumber: 'P-002',
+      name: 'Set',
+      setComposition: { '-01': 1, '-02': 2 },
+      variants: [
+        makeVariant('v1', '01', { pricePerVariant: 60, laborHours: 1 }),
+        makeVariant('v2', '02', { pricePerVariant: 40, laborHours: 0.5 }),
+      ],
+    };
+    const out = getEffectiveSetPricingForDisplay(part);
+    expect(out.pricePerSet).toBe(60 * 1 + 40 * 2);
+    expect(out.laborHours).toBe(1 * 1 + 0.5 * 2);
+  });
+
+  it('returns undefined values for null part', () => {
+    const out = getEffectiveSetPricingForDisplay(null);
+    expect(out.pricePerSet).toBeUndefined();
+    expect(out.laborHours).toBeUndefined();
   });
 });

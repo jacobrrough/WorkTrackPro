@@ -29,6 +29,7 @@ import { calculatePartQuote, calculateVariantQuote } from '@/lib/partsCalculatio
 import { useSettings } from '@/contexts/SettingsContext';
 import {
   calculateSetPriceFromVariants,
+  getEffectiveSetPricingForDisplay,
   variantPricesFromSetPrice,
   calculateSetLaborFromVariants,
   variantLaborFromSetComposition,
@@ -154,33 +155,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
       part?.setComposition,
       part?.variantsAreCopies,
     ]);
-
-  const setInfoDerivedQuote = useMemo(() => {
-    if (!part || !part.variants?.length) return null;
-    const partForSetQuote: Part = {
-      ...part,
-      laborHours: effectiveSetLaborHours ?? 0,
-      requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
-      cncTimeHours: effectiveSetCncHours ?? 0,
-      requires3DPrint: (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
-      printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
-    };
-    return calculatePartQuote(partForSetQuote, 1, inventoryItems, {
-      laborRate: settings.laborRate,
-      cncRate: settings.cncRate,
-      printer3DRate: settings.printer3DRate,
-      overrideLaborHours: effectiveSetLaborHours ?? 0,
-    });
-  }, [
-    part,
-    inventoryItems,
-    settings.laborRate,
-    settings.cncRate,
-    settings.printer3DRate,
-    effectiveSetLaborHours,
-    effectiveSetCncHours,
-    effectiveSetPrinter3DHours,
-  ]);
 
   useEffect(() => {
     if (!part) {
@@ -1342,83 +1316,35 @@ const PartDetail: React.FC<PartDetailProps> = ({
           </div>
         )}
 
-        {/* Section 3: Set Information — read-only aggregate when variants exist, editable when no variants */}
-        {!isVirtualPart && (
-          <Accordion title="Set Information" defaultExpanded={false}>
+        {/* Section 3: Quote calculator — replaces former Set Information */}
+        {!isVirtualPart && canViewFinancials && (
+          <Accordion title="Quote calculator" defaultExpanded={true}>
             <div className="space-y-3">
               {part.variants && part.variants.length > 0 ? (
-                <>
-                  <p className="text-sm text-slate-400">
-                    Set totals are derived from variants and set composition. Edit variants above to
-                    change materials and costs.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {canViewFinancials && (
-                      <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                        <p className="text-[10px] font-bold uppercase text-slate-400">Set price</p>
-                        <p className="text-lg font-semibold text-white">
-                          $
-                          {(
-                            calculateSetPriceFromVariants(
-                              part.variants,
-                              part.setComposition ?? undefined,
-                              part.variantsAreCopies
-                            ) ??
-                            setInfoDerivedQuote?.total ??
-                            part.pricePerSet ??
-                            0
-                          ).toFixed(2)}
-                        </p>
-                      </div>
-                    )}
-                    <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                      <p className="text-[10px] font-bold uppercase text-slate-400">Set labor</p>
-                      <p className="text-lg font-semibold text-white">
-                        {(
-                          calculateSetLaborFromVariants(
-                            part.variants,
-                            part.setComposition ?? undefined,
-                            part.variantsAreCopies
-                          ) ?? 0
-                        ).toFixed(2)}
-                        h
-                      </p>
-                    </div>
-                  </div>
-                  {part.setComposition &&
-                    typeof part.setComposition === 'object' &&
-                    Object.keys(part.setComposition).length > 0 && (
-                      <p className="text-sm text-white">
-                        One set: {formatSetComposition(part.setComposition)}
-                      </p>
-                    )}
-                  {canViewFinancials && (
-                    <QuoteCalculator
-                      part={{
-                        ...part,
-                        laborHours: effectiveSetLaborHours ?? 0,
-                        requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
-                        cncTimeHours: effectiveSetCncHours ?? 0,
-                        requires3DPrint:
-                          (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
-                        printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
-                      }}
-                      inventoryItems={inventoryItems}
-                      variants={part.variants ?? []}
-                      setComposition={part.setComposition}
-                      laborRate={settings.laborRate}
-                      cncRate={settings.cncRate}
-                      printer3DRate={settings.printer3DRate}
-                      autoSetLaborHours={effectiveSetLaborHours ?? 0}
-                      readOnly={true}
-                      variantsAreCopies={!!part.variantsAreCopies}
-                    />
-                  )}
-                </>
+                <QuoteCalculator
+                  part={{
+                    ...part,
+                    ...getEffectiveSetPricingForDisplay(part),
+                    laborHours: effectiveSetLaborHours ?? 0,
+                    cncTimeHours: effectiveSetCncHours ?? 0,
+                    printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
+                    requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
+                    requires3DPrint:
+                      (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
+                  }}
+                  inventoryItems={inventoryItems}
+                  variants={part.variants ?? []}
+                  setComposition={part.setComposition}
+                  laborRate={settings.laborRate}
+                  cncRate={settings.cncRate}
+                  printer3DRate={settings.printer3DRate}
+                  autoSetLaborHours={effectiveSetLaborHours ?? 0}
+                  readOnly={true}
+                  variantsAreCopies={!!part.variantsAreCopies}
+                />
               ) : (
                 <>
                   <div className="space-y-2">
-                    {/* CNC Toggle - only when no variants */}
                     <div className="flex flex-wrap items-center gap-3">
                       <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
                         <input
@@ -1544,35 +1470,15 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       <p className="text-sm text-slate-500">No materials defined for this part.</p>
                     )}
                   </div>
-                  {canViewFinancials && (
-                    <QuoteCalculator
-                      part={part}
-                      inventoryItems={inventoryItems}
-                      variants={part.variants ?? []}
-                      setComposition={part.setComposition}
-                      laborRate={settings.laborRate}
-                      cncRate={settings.cncRate}
-                      printer3DRate={settings.printer3DRate}
-                      autoSetLaborHours={undefined}
-                      onLaborHoursChange={async (laborHours) => {
-                        if (
-                          laborHours == null ||
-                          Math.abs((part.laborHours ?? 0) - laborHours) <= 0.01
-                        ) {
-                          return;
-                        }
-                        await handleUpdatePart({ laborHours });
-                      }}
-                      onSetPriceChange={async (price) => {
-                        if (price !== undefined) {
-                          const roundedPrice = Number(price.toFixed(2));
-                          if (Math.abs((part.pricePerSet ?? 0) - roundedPrice) > 0.01) {
-                            await handleUpdatePart({ pricePerSet: roundedPrice });
-                          }
-                        }
-                      }}
-                    />
-                  )}
+                  <QuoteCalculator
+                    part={part}
+                    inventoryItems={inventoryItems}
+                    variants={part.variants ?? []}
+                    setComposition={part.setComposition}
+                    laborRate={settings.laborRate}
+                    cncRate={settings.cncRate}
+                    printer3DRate={settings.printer3DRate}
+                  />
                 </>
               )}
             </div>

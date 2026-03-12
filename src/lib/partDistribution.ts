@@ -1,6 +1,67 @@
-import type { PartVariant, PartMaterial } from '@/core/types';
+import type { Part, PartVariant, PartMaterial } from '@/core/types';
 
 const norm = (s: string) => s.replace(/^-/, '');
+
+/**
+ * Effective set-level pricing/labor for display. Single source of truth:
+ * - Part with variants + set composition: use variant-derived values only.
+ * - Part without variants: use part row (pricePerSet, laborHours, etc.).
+ * Use this for Set Information summary and for the part object passed into QuoteCalculator.
+ */
+export function getEffectiveSetPricingForDisplay(part: Part | null): {
+  pricePerSet: number | undefined;
+  laborHours: number | undefined;
+  cncTimeHours: number | undefined;
+  printer3DTimeHours: number | undefined;
+  requiresCNC: boolean;
+  requires3DPrint: boolean;
+} {
+  if (!part) {
+    return {
+      pricePerSet: undefined,
+      laborHours: undefined,
+      cncTimeHours: undefined,
+      printer3DTimeHours: undefined,
+      requiresCNC: false,
+      requires3DPrint: false,
+    };
+  }
+  const variants = part.variants ?? [];
+  const hasVariantsAndComposition =
+    variants.length > 0 && part.setComposition && Object.keys(part.setComposition).length > 0;
+
+  if (hasVariantsAndComposition) {
+    const price = calculateSetPriceFromVariants(
+      variants,
+      part.setComposition,
+      part.variantsAreCopies
+    );
+    const labor = calculateSetLaborFromVariants(
+      variants,
+      part.setComposition,
+      part.variantsAreCopies
+    );
+    const cnc = calculateSetCncFromVariants(variants, part.setComposition);
+    const printer3D = calculateSetPrinter3DFromVariants(variants, part.setComposition);
+    return {
+      pricePerSet: price,
+      laborHours: labor,
+      cncTimeHours: cnc,
+      printer3DTimeHours: printer3D,
+      requiresCNC: (cnc ?? 0) > 0 || part.requiresCNC === true,
+      requires3DPrint: (printer3D ?? 0) > 0 || part.requires3DPrint === true,
+    };
+  }
+
+  return {
+    pricePerSet: part.pricePerSet,
+    laborHours: part.laborHours,
+    cncTimeHours: part.cncTimeHours,
+    printer3DTimeHours: part.printer3DTimeHours,
+    requiresCNC: part.requiresCNC === true,
+    requires3DPrint: part.requires3DPrint === true,
+  };
+}
 
 /**
  * Calculate set price from variant prices and set composition.

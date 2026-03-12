@@ -27,6 +27,7 @@ export function computePartDerivedMaterialTotal(
       variantSuffix: string;
       materials?: Array<{ inventoryId: string; quantityPerUnit?: number; quantity?: number }>;
     }>;
+    materials?: Array<{ inventoryId: string; quantityPerUnit?: number; quantity?: number }>;
   },
   dashQuantities: Record<string, number> | null | undefined,
   inventoryById: Map<string, InventoryItem>,
@@ -34,7 +35,21 @@ export function computePartDerivedMaterialTotal(
 ): number | null {
   const normalizedDash = normalizeDashQuantities(dashQuantities);
   const variants = part?.variants ?? [];
-  if (variants.length === 0) return null;
+
+  if (variants.length === 0) {
+    const partMaterials = part?.materials ?? [];
+    if (partMaterials.length === 0) return null;
+    const totalQty = Object.values(normalizedDash).reduce((s, q) => s + q, 0);
+    if (totalQty <= 0) return null;
+    let total = 0;
+    for (const mat of partMaterials) {
+      const inv = inventoryById.get(mat.inventoryId);
+      const price = inv?.price ?? 0;
+      const qtyPerUnit = quantityPerUnit(mat as { quantityPerUnit?: number; quantity?: number });
+      total += totalQty * qtyPerUnit * price * materialUpcharge;
+    }
+    return total > 0 ? Math.round(total * 100) / 100 : null;
+  }
 
   const useFirstVariantForAll =
     part.variantsAreCopies === true &&

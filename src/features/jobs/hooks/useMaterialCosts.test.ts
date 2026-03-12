@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { InventoryItem, JobInventoryItem } from '@/core/types';
-import { computeMaterialCosts } from './materialCostUtils';
+import type { InventoryItem, JobInventoryItem, Part } from '@/core/types';
+import { computeMaterialCosts, computePartDerivedMaterialTotal } from './materialCostUtils';
 
 const inventoryItem = (id: string, price: number): InventoryItem => ({
   id,
@@ -118,5 +118,86 @@ describe('computeMaterialCosts', () => {
       isAdmin: false,
     });
     expect(costs.size).toBe(0);
+  });
+});
+
+describe('computePartDerivedMaterialTotal', () => {
+  const inventoryById = new Map<string, InventoryItem>([
+    ['inv-1', inventoryItem('inv-1', 10)],
+    ['inv-2', inventoryItem('inv-2', 5)],
+  ]);
+  const materialUpcharge = 1.2;
+
+  it('computes material total for no-variant part from part.materials × totalQty', () => {
+    const part: Part & { materials?: Array<{ inventoryId: string; quantityPerUnit?: number }> } = {
+      id: 'p1',
+      partNumber: 'P-001',
+      name: 'Single part',
+      variants: [],
+      materials: [
+        { id: 'm1', inventoryId: 'inv-1', quantityPerUnit: 2, unit: 'ea' },
+        { id: 'm2', inventoryId: 'inv-2', quantityPerUnit: 1, unit: 'ea' },
+      ] as Part['materials'],
+    };
+    const dashQuantities = { '-01': 3 };
+    const total = computePartDerivedMaterialTotal(
+      part,
+      dashQuantities,
+      inventoryById,
+      materialUpcharge
+    );
+    expect(total).not.toBeNull();
+    expect(total).toBeCloseTo(3 * (2 * 10 + 1 * 5) * materialUpcharge, 2);
+  });
+
+  it('returns null for no-variant part with no materials', () => {
+    const part: Part = {
+      id: 'p1',
+      partNumber: 'P-002',
+      name: 'No materials',
+      variants: [],
+    };
+    const total = computePartDerivedMaterialTotal(
+      part,
+      { '-01': 5 },
+      inventoryById,
+      materialUpcharge
+    );
+    expect(total).toBeNull();
+  });
+
+  it('computes material total for variant part from variant materials × dash quantities', () => {
+    const part = {
+      id: 'p1',
+      partNumber: 'P-003',
+      name: 'Variant part',
+      variants: [
+        {
+          id: 'v1',
+          partId: 'p1',
+          variantSuffix: '01',
+          materials: [
+            { id: 'm1', inventoryId: 'inv-1', quantityPerUnit: 1, unit: 'ea' },
+          ] as Part['materials'],
+        },
+        {
+          id: 'v2',
+          partId: 'p1',
+          variantSuffix: '02',
+          materials: [
+            { id: 'm2', inventoryId: 'inv-2', quantityPerUnit: 2, unit: 'ea' },
+          ] as Part['materials'],
+        },
+      ],
+    };
+    const dashQuantities = { '-01': 2, '-02': 3 };
+    const total = computePartDerivedMaterialTotal(
+      part,
+      dashQuantities,
+      inventoryById,
+      materialUpcharge
+    );
+    expect(total).not.toBeNull();
+    expect(total).toBeCloseTo((2 * 1 * 10 + 3 * 2 * 5) * materialUpcharge, 2);
   });
 });

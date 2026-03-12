@@ -4,9 +4,21 @@ import { quantityPerUnit } from './variantMath';
 const DEFAULT_LABOR_RATE = 175;
 const MATERIAL_MARKUP_MULTIPLIER = 2.25;
 
+export interface MaterialQuoteLine {
+  inventoryId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  lineTotalOur: number;
+  lineTotalCustomer: number;
+}
+
 export interface PartQuoteResult {
   materialCostOur: number;
   materialCostCustomer: number;
+  /** Per-line material breakdown for display */
+  materialLineItems: MaterialQuoteLine[];
   laborHours: number;
   laborCost: number;
   /** CNC time (hours) for the quoted quantity */
@@ -71,8 +83,16 @@ function materialRequirementsForOneSet(
     }
   }
 
-  // When variantsAreCopies and we used first variant for all, skip part-level per_set (single source is variants).
-  if (useFirstVariantForAll) return map;
+  // When set is defined by variants (with or without variantsAreCopies), do not add part-level per_set
+  // — the set is fully defined by variant BOMs × setComposition. Adding part.materials per_set would
+  // double-count when variants already contribute those same inventory items.
+  const setDefinedByVariants =
+    useFirstVariantForAll ||
+    (part.variants != null &&
+      part.variants.length > 0 &&
+      setComposition &&
+      Object.keys(setComposition).length > 0);
+  if (setDefinedByVariants) return map;
 
   if (part.materials) {
     for (const mat of part.materials) {
@@ -127,13 +147,37 @@ export function calculatePartQuote(
 
   let materialCostOur = 0;
   const priceById = new Map(inventoryItems.map((i) => [i.id, i.price ?? 0]));
+  const nameById = new Map(inventoryItems.map((i) => [i.id, i.name ?? i.id]));
 
-  for (const [invId, { quantity: qty }] of requirementsOneSet.entries()) {
+  const materialLineItems: Array<{
+    inventoryId: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    price: number;
+    lineTotalOur: number;
+    lineTotalCustomer: number;
+  }> = [];
+
+  for (const [invId, { quantity: qty, unit }] of requirementsOneSet.entries()) {
     const price = priceById.get(invId) ?? 0;
-    materialCostOur += qty * totalQtyMultiplier * price;
+    const totalQty = qty * totalQtyMultiplier;
+    const lineOur = totalQty * price;
+    const lineCustomer = lineOur * multiplier;
+    materialCostOur += lineOur;
+    materialLineItems.push({
+      inventoryId: invId,
+      name: nameById.get(invId) ?? invId,
+      quantity: totalQty,
+      unit: unit ?? 'units',
+      price,
+      lineTotalOur: lineOur,
+      lineTotalCustomer: lineCustomer,
+    });
   }
 
   const materialCostCustomer = materialCostOur * multiplier;
+
   const baseLaborHours = (part.laborHours ?? 0) * quantity;
   const cncHours = part.requiresCNC ? (part.cncTimeHours ?? 0) * quantity : 0;
   const cncCost = cncHours * cncRate;
@@ -171,6 +215,7 @@ export function calculatePartQuote(
   return {
     materialCostOur,
     materialCostCustomer,
+    materialLineItems,
     laborHours,
     laborCost,
     cncHours,
@@ -218,12 +263,24 @@ export function calculateVariantQuote(
 
   let materialCostOur = 0;
   const priceById = new Map(inventoryItems.map((i) => [i.id, i.price ?? 0]));
+  const nameById = new Map(inventoryItems.map((i) => [i.id, i.name ?? i.id]));
+  const materialLineItems: MaterialQuoteLine[] = [];
 
   for (const mat of variant.materials ?? []) {
     const qtyPerUnit = quantityPerUnit(mat as { quantityPerUnit?: number; quantity?: number });
     const totalQty = qtyPerUnit * quantity;
     const price = priceById.get(mat.inventoryId) ?? 0;
-    materialCostOur += totalQty * price;
+    const lineOur = totalQty * price;
+    materialCostOur += lineOur;
+    materialLineItems.push({
+      inventoryId: mat.inventoryId,
+      name: nameById.get(mat.inventoryId) ?? mat.inventoryId,
+      quantity: totalQty,
+      unit: mat.unit ?? 'units',
+      price,
+      lineTotalOur: lineOur,
+      lineTotalCustomer: lineOur * multiplier,
+    });
   }
 
   const materialCostCustomer = materialCostOur * multiplier;
@@ -268,6 +325,7 @@ export function calculateVariantQuote(
   return {
     materialCostOur,
     materialCostCustomer,
+    materialLineItems,
     laborHours,
     laborCost,
     cncHours,
