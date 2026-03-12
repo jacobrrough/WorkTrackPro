@@ -148,11 +148,10 @@ export function calculatePartQuote(
     Number.isFinite(overrideLaborHours) &&
     overrideLaborHours >= 0
   ) {
-    // Use explicit labor (e.g. from part or "Use Auto") so UI can show editable labor field.
+    // Use explicit labor from part/variants so set labor represents total labor from parts
     laborHours = overrideLaborHours * quantity;
     isLaborAutoAdjusted = false;
   } else if (isReverseCalculated) {
-    // Reverse calculation for set totals: solve labor hours directly.
     const targetTotal = manualSetPrice * quantity;
     const fixedNonLaborSubtotal = materialCostCustomer + cncCost + printer3DCost;
     const targetLaborCost = Math.max(0, targetTotal - fixedNonLaborSubtotal);
@@ -161,12 +160,11 @@ export function calculatePartQuote(
   }
   const laborCost = laborHours * laborRate;
 
-  // Always calculate subtotal from actual costs (materials, labor, machine time)
-  // Materials and quantities are NEVER auto-adjusted - they stay fixed
   const subtotal = materialCostCustomer + laborCost + cncCost + printer3DCost;
 
   const markupPercent = 0;
   const markupAmount = 0;
+  // When using override labor (from variants), total = subtotal so they stay in sync
   const total =
     isReverseCalculated && manualSetPrice != null ? manualSetPrice * quantity : subtotal;
 

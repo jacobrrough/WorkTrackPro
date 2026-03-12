@@ -137,15 +137,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
       );
       const derivedCnc = calculateSetCncFromVariants(part.variants, part.setComposition);
       const derived3D = calculateSetPrinter3DFromVariants(part.variants, part.setComposition);
-      const partLabor = Number(part.laborHours);
-      const partCnc = Number(part.cncTimeHours);
-      const part3D = Number(part.printer3DTimeHours);
+      // When part has variants + set composition, always use variant-derived set totals so summary and Quote Calculator match
       return {
-        effectiveSetLaborHours:
-          Number.isFinite(partLabor) && partLabor > 0 ? partLabor : (derivedLabor ?? 0),
-        effectiveSetCncHours: Number.isFinite(partCnc) && partCnc > 0 ? partCnc : (derivedCnc ?? 0),
-        effectiveSetPrinter3DHours:
-          Number.isFinite(part3D) && part3D > 0 ? part3D : (derived3D ?? 0),
+        effectiveSetLaborHours: derivedLabor ?? 0,
+        effectiveSetCncHours: derivedCnc ?? 0,
+        effectiveSetPrinter3DHours: derived3D ?? 0,
       };
     }, [
       part?.id,

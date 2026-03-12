@@ -92,6 +92,12 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     }
   }, [manualSetPrice, isManualPrice, hasUserEdited]);
 
+  const useVariantDerivedOnly =
+    readOnly &&
+    (variants?.length ?? 0) > 0 &&
+    setComposition &&
+    Object.keys(setComposition).length > 0;
+
   const result = useMemo(() => {
     const manualParsed = manualSetPrice.trim() ? parseFloat(manualSetPrice) : undefined;
     const effectiveSetPrice =
@@ -102,11 +108,12 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           : part.pricePerSet != null && Number.isFinite(part.pricePerSet) && part.pricePerSet > 0
             ? part.pricePerSet
             : undefined;
+    const priceForQuote = useVariantDerivedOnly ? undefined : effectiveSetPrice;
     return calculatePartQuote(part, quantity, inventoryItems, {
       laborRate,
       cncRate,
       printer3DRate,
-      manualSetPrice: effectiveSetPrice,
+      manualSetPrice: priceForQuote,
       overrideLaborHours:
         part.laborHours != null && Number.isFinite(part.laborHours) ? part.laborHours : undefined,
     });
@@ -120,6 +127,9 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     manualSetPrice,
     isManualPrice,
     autoSetPrice,
+    readOnly,
+    variants?.length,
+    setComposition,
   ]);
 
   const AutoBadge = () => (
@@ -133,11 +143,17 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     onSetPriceChange?.(undefined);
   };
 
-  const displayValue = isManualPrice
-    ? manualSetPrice
-    : autoSetPrice != null
-      ? autoSetPrice.toString()
-      : '';
+  const displayValue = useVariantDerivedOnly
+    ? autoSetPrice != null
+      ? autoSetPrice.toFixed(2)
+      : result != null
+        ? result.total.toFixed(2)
+        : ''
+    : isManualPrice
+      ? manualSetPrice
+      : autoSetPrice != null
+        ? autoSetPrice.toString()
+        : '';
   const isLaborAutoFromTarget = !!result?.isLaborAutoAdjusted;
   const laborDisplayValue = isLaborAutoFromTarget
     ? (result?.laborHours?.toFixed(2) ?? laborHoursInput)

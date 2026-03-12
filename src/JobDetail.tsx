@@ -895,7 +895,37 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return hours * laborRate;
   }, [editForm.laborHours, laborRate]);
 
-  // Total = sum of displayed components (Materials + Labor + CNC + 3D) so Total matches breakdown
+  const partDerivedPrice = useMemo(() => {
+    if (partsWithPartData?.length) {
+      return calculateJobPriceFromParts(
+        partsWithPartData.map(({ part, dashQuantities }) => ({ part, dashQuantities }))
+      );
+    }
+    return linkedPart ? calculateJobPriceFromPart(linkedPart, effectiveMaterialQuantities) : null;
+  }, [linkedPart, effectiveMaterialQuantities, partsWithPartData]);
+
+  // Total = part-derived (set price × qty) when linked so Edit Job reflects part info × qty; else sum of components
+  const displayCostTotal = useMemo(() => {
+    if (linkedPart && partDerivedPrice?.totalPrice != null && partDerivedPrice.totalPrice > 0) {
+      return partDerivedPrice.totalPrice;
+    }
+    return (
+      laborCost +
+      displayMaterialTotal +
+      (parseFloat(editForm.cncHours) || 0) * cncRate +
+      (parseFloat(editForm.printer3DHours) || 0) * printer3DRate
+    );
+  }, [
+    linkedPart,
+    partDerivedPrice?.totalPrice,
+    laborCost,
+    displayMaterialTotal,
+    editForm.cncHours,
+    editForm.printer3DHours,
+    cncRate,
+    printer3DRate,
+  ]);
+
   const computedCostTotal = useMemo(
     () =>
       laborCost +
@@ -911,15 +941,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
       printer3DRate,
     ]
   );
-
-  const partDerivedPrice = useMemo(() => {
-    if (partsWithPartData?.length) {
-      return calculateJobPriceFromParts(
-        partsWithPartData.map(({ part, dashQuantities }) => ({ part, dashQuantities }))
-      );
-    }
-    return linkedPart ? calculateJobPriceFromPart(linkedPart, effectiveMaterialQuantities) : null;
-  }, [linkedPart, effectiveMaterialQuantities, partsWithPartData]);
 
   const {
     variantAllocation,
@@ -2534,7 +2555,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
               {canViewFinancials && (
                 <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                  Total ${computedCostTotal.toFixed(2)}
+                  Total ${displayCostTotal.toFixed(2)}
                   <span className="ml-2 text-[10px] font-normal text-primary/80">
                     (Labor + Materials + CNC + 3D)
                   </span>
