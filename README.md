@@ -69,13 +69,13 @@ npm install
 
 3. Environment variables (Supabase only):
 
-Copy `.env.template` to `.env.local` and set your Supabase credentials:
+Copy `.env.example` to `.env.local` and set your Supabase credentials:
 
 ```bash
-cp .env.template .env.local
+cp .env.example .env.local
 ```
 
-Edit `.env.local` and set:
+Edit `.env.local` and set at least:
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -109,7 +109,7 @@ Output is in `dist/`. Netlify builds this automatically when you connect the rep
 
 ### Deploy to Railway
 
-The repo includes a root `railway.toml`. Use the **project root** as the Railway service root (not PocketBaseServer).
+The repo includes a root `railway.toml`. Use the **project root** as the Railway service root.
 
 1. In Railway, create a new service from this repo (root directory).
 2. Build and start use: `npm ci && npm run build` and `npm start` (see `railway.toml`). `npm start` serves the `dist/` folder via `scripts/static-serve.mjs` and respects the `PORT` variable.
@@ -164,6 +164,10 @@ npm run test:watch    # Watch mode
 ```
 
 Tests include: validation, time utils, inventory calculations, offline queue, price visibility, schema compat, and others.
+
+## Backups and data safety
+
+Data is stored in **Supabase** (Postgres + storage). See [docs/BACKUP.md](docs/BACKUP.md) for backup options, PITR, and manual exports so you’re not dependent on a single point of failure.
 
 ## Security and Auth
 

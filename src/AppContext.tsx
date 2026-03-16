@@ -1,42 +1,33 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
-// AppContext.tsx - FIXED VERSION
 import React, {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
+  useContext,
+  useEffect,
   useMemo,
-  ReactNode,
+  useState,
+  type ReactNode,
 } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { User, Job, Shift, InventoryItem, JobStatus, Comment } from '@/core/types';
-import {
-  authService,
-  userService,
-  jobService,
-  shiftService,
-  inventoryService,
-  inventoryHistoryService,
-  checklistService,
-  partsService,
-  subscriptions,
-} from './pocketbase';
-import { supabase } from './services/api/supabaseClient';
-import {
-  calculateAllocated as calcAllocated,
-  calculateAvailable as calcAvailable,
-} from './lib/inventoryCalculations';
-import { buildJobNameFromConvention } from './lib/formatJob';
-import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
-import { stripInventoryFinancials } from '@/lib/priceVisibility';
-import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import type { Comment, Job, JobStatus, InventoryItem, Shift, User } from '@/core/types';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useActiveShift } from '@/hooks/useActiveShift';
+import { useAppQueries } from '@/hooks/useAppQueries';
+import { useJobMutations } from '@/hooks/useJobMutations';
+import { useClockMutations } from '@/hooks/useClockMutations';
+import { useInventoryMutations } from '@/hooks/useInventoryMutations';
+import { useAttachmentMutations } from '@/hooks/useAttachmentMutations';
+import { useInventoryAllocation } from '@/hooks/useInventoryAllocation';
+import { dedupeJobsById } from '@/lib/jobUtils';
 import { withComputedInventory } from '@/lib/inventoryState';
-import { buildReconciliationMutations } from '@/lib/inventoryReconciliation';
-import { enqueueClockPunch, getQueue, clearPunchFromQueue } from '@/lib/offlineQueue';
-import { useToast } from './Toast';
+import { stripInventoryFinancials } from '@/lib/priceVisibility';
+import { getQueue, clearPunchFromQueue } from '@/lib/offlineQueue';
+import { jobService } from '@/services/api/jobs';
+import { shiftService } from '@/services/api/shifts';
+import { subscriptions } from '@/services/api/subscriptions';
+import { useToast } from '@/Toast';
 
-interface AppContextType {
+export interface AppContextType {
   currentUser: User | null;
   isLoading: boolean;
   authError: string | null;
@@ -57,12 +48,12 @@ interface AppContextType {
   createJob: (data: Partial<Job>) => Promise<Job | null>;
   updateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
   deleteJob: (jobId: string) => Promise<boolean>;
-  updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>; // FIXED: Return boolean
+  updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>;
   advanceJobToNextStatus: (jobId: string, currentStatus: JobStatus) => Promise<boolean>;
-  addJobComment: (jobId: string, text: string) => Promise<Comment | null>; // FIXED: Renamed and return Comment
-  getJobByCode: (code: number) => Promise<Job | null>; // ADDED: Missing function
+  addJobComment: (jobId: string, text: string) => Promise<Comment | null>;
+  getJobByCode: (code: number) => Promise<Job | null>;
   clockIn: (jobId: string) => Promise<boolean>;
-  clockOut: () => Promise<boolean>; // FIXED: Return boolean
+  clockOut: () => Promise<boolean>;
   startLunch: () => Promise<boolean>;
   endLunch: () => Promise<boolean>;
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
@@ -93,1033 +84,70 @@ interface AppContextType {
   ) => Promise<boolean>;
   deleteInventoryAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   refreshJobs: () => Promise<void>;
-  /** Refetch a single job and update it in the list (avoids full refresh overwriting unsaved or just-saved data). */
   refreshJob: (jobId: string) => Promise<void>;
   refreshShifts: () => Promise<void>;
   refreshUsers: () => Promise<void>;
   refreshInventory: () => Promise<void>;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
-  /** Number of clock punches waiting to sync (offline queue). */
   pendingOfflinePunchCount: number;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-function dedupeJobsById(items: Job[]): Job[] {
-  const seen = new Set<string>();
-  const unique: Job[] = [];
-  for (const item of items) {
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    unique.push(item);
-  }
-  return unique;
-}
-
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+function AppProviderInner({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
+  const auth = useAuth();
+  const { currentUser, login, signUp, resetPasswordForEmail, logout } = auth;
 
   const enabled = !!currentUser && currentUser.isApproved !== false;
+  const queries = useAppQueries(enabled);
+  const { activeShift, activeJob } = useActiveShift(currentUser, queries.shifts, queries.jobs);
+  const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
-  const { data: jobsData = [] } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: async () => {
-      const list = await jobService.getAllJobs();
-      list.sort((a, b) => {
-        const dateA = a.dueDate || a.ecd || '9999-12-31';
-        const dateB = b.dueDate || b.ecd || '9999-12-31';
-        return dateA.localeCompare(dateB);
-      });
-      return dedupeJobsById(list);
-    },
-    enabled,
-  });
-
-  const { data: shiftsData = [] } = useQuery({
-    queryKey: ['shifts'],
-    queryFn: () => shiftService.getAllShifts(),
-    enabled,
-  });
-
-  const { data: usersData = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => userService.getAllUsers(),
-    enabled,
-  });
-
-  const { data: inventoryData = [] } = useQuery({
-    queryKey: ['inventory'],
-    queryFn: () => inventoryService.getAllInventory(),
-    enabled,
-  });
-
-  const jobs = jobsData;
-  const shifts = shiftsData;
-  const users = usersData;
-  const inventory = inventoryData;
-
+  const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
 
-  const activeShift = useMemo(() => {
-    if (!currentUser) return null;
-    return shifts.find((s) => s.user === currentUser.id && !s.clockOutTime) || null;
-  }, [shifts, currentUser]);
-
-  const activeJob = useMemo(() => {
-    if (!activeShift) return null;
-    return jobs.find((j) => j.id === activeShift.job) || null;
-  }, [activeShift, jobs]);
-
-  const refreshJobs = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['jobs'] });
-  }, [queryClient]);
-
-  /** Refetch a single job and replace it in the list. Also update the single-job cache so Job Detail (detailJob) and progress bar reflect CNC/bin updates. */
-  const refreshJob = useCallback(
-    async (jobId: string) => {
-      try {
-        const job = await jobService.getJobById(jobId);
-        if (job) {
-          // Preserve parts from cache when API returns none (e.g. getJobById doesn't expand job_parts)
-          let jobToSet = job;
-          const existing = queryClient.getQueryData<Job>(['job', jobId]);
-          if (
-            (job.parts == null || job.parts.length === 0) &&
-            existing?.parts != null &&
-            existing.parts.length > 0
-          ) {
-            jobToSet = { ...job, parts: existing.parts };
-          }
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? jobToSet : j)) : [jobToSet]
-          );
-          queryClient.setQueryData(['job', jobId], jobToSet);
-        }
-      } catch (error) {
-        console.error('Failed to refresh job:', error);
-        await queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      }
-    },
-    [queryClient]
-  );
-
-  const refreshShifts = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['shifts'] });
-  }, [queryClient]);
-
-  const refreshInventory = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['inventory'] });
-  }, [queryClient]);
-
-  const refreshUsers = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['users'] });
-  }, [queryClient]);
-
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    setAuthError(null);
-    setIsLoading(true);
-    try {
-      const user = await authService.login(email, password);
-      setCurrentUser(user);
-      // Queries will refetch automatically when enabled (currentUser is set)
-      return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      setAuthError(errorMessage);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      options?: { name?: string }
-    ): Promise<boolean | 'needs_email_confirmation'> => {
-      setAuthError(null);
-      setIsLoading(true);
-      try {
-        const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
-        if (user) {
-          setCurrentUser(user);
-          return true;
-        }
-        return needsEmailConfirmation ? 'needs_email_confirmation' : false;
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
-        setAuthError(errorMessage);
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
-  const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
-    setAuthError(null);
-    await authService.resetPasswordForEmail(email);
-  }, []);
-
-  const logout = useCallback(() => {
-    authService.logout();
-    setCurrentUser(null);
-    // Query cache is left as-is; queries are disabled when !currentUser
-  }, []);
-
-  const calculateAllocated = useCallback(
-    (inventoryId: string): number => calcAllocated(inventoryId, jobs),
-    [jobs]
-  );
-
-  const calculateAvailable = useCallback(
-    (item: InventoryItem): number => calcAvailable(item, calcAllocated(item.id, jobs)),
-    [jobs]
-  );
-
-  const createJob = useCallback(
-    async (data: Partial<Job>): Promise<Job | null> => {
-      try {
-        const job = await jobService.createJob(data);
-        if (!job) {
-          console.error('Job creation returned null');
-          return null;
-        }
-        if (job) {
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? dedupeJobsById([job, ...prev]) : [job]
-          );
-        }
-        return job;
-      } catch (error) {
-        console.error('Create job error:', error);
-        return null;
-      }
-    },
-    [queryClient]
-  );
-
-  const updateJob = useCallback(
-    async (jobId: string, data: Partial<Job>): Promise<Job | null> => {
-      try {
-        // If marking job as inactive, clear the bin location to free up the space
-        if (data.active === false) {
-          data.binLocation = undefined;
-        }
-
-        const updatedJob = await jobService.updateJob(jobId, data);
-        if (updatedJob) {
-          // Merge payload into cache so UI updates immediately even if API omits columns (e.g. cnc_completed_at, progress_estimate_percent)
-          let jobForCache = { ...updatedJob, ...data };
-          // Preserve parts from cache when this update did not send parts and API returned none (e.g. labor-only update)
-          if (
-            data.parts === undefined &&
-            (updatedJob.parts == null || updatedJob.parts.length === 0)
-          ) {
-            const existing = queryClient.getQueryData<Job>(['job', jobId]);
-            if (existing?.parts != null && existing.parts.length > 0) {
-              jobForCache = { ...jobForCache, parts: existing.parts };
-            }
-          }
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? jobForCache : j)) : []
-          );
-          queryClient.setQueryData(['job', jobId], jobForCache);
-        }
-        return updatedJob;
-      } catch (error) {
-        console.error('Update job error:', error);
-        return null;
-      }
-    },
-    [queryClient]
-  );
-
-  const deleteJob = useCallback(
-    async (jobId: string): Promise<boolean> => {
-      try {
-        const deleted = await jobService.deleteJob(jobId);
-        if (!deleted) return false;
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? prev.filter((j) => j.id !== jobId) : []
-        );
-        await refreshJobs();
-        await refreshInventory();
-        await refreshShifts();
-        return true;
-      } catch (error) {
-        console.error('Delete job error:', error);
-        return false;
-      }
-    },
-    [queryClient, refreshInventory, refreshJobs, refreshShifts]
-  );
-
-  // FIXED: Now returns boolean for success/failure
-  const updateJobStatus = useCallback(
-    async (jobId: string, status: JobStatus): Promise<boolean> => {
-      try {
-        const job = jobs.find((j) => j.id === jobId);
-        const wasDelivered = job?.status === 'delivered';
-        const isDelivered = status === 'delivered';
-        const nextJobs = jobs.map((j) => (j.id === jobId ? { ...j, status } : j));
-
-        // When marking as paid, rename job to Part REV per convention
-        if (status === 'paid' && job) {
-          const name = buildJobNameFromConvention({ ...job, status: 'paid' });
-          const updated = await jobService.updateJob(jobId, { status: 'paid', name });
-          if (!updated) {
-            await refreshJobs();
-            return false;
-          }
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)) : []
-          );
-        } else {
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev
-              ? prev.map((j) =>
-                  j.id === jobId
-                    ? {
-                        ...j,
-                        status,
-                        ...(status === 'delivered' ? { binLocation: undefined } : {}),
-                      }
-                    : j
-                )
-              : []
-          );
-          const ok = await jobService.updateJobStatus(jobId, status);
-          if (!ok) {
-            await refreshJobs();
-            return false;
-          }
-        }
-
-        // Ensure checklist is ready for the destination status.
-        // This keeps checklist provisioning aligned with card column entry.
-        if (status !== 'paid' && status !== 'projectCompleted') {
-          await checklistService.ensureJobChecklistForStatus(jobId, status);
-        }
-
-        // Reconcile stock when entering delivered, and restore when leaving delivered.
-        if (job && isDelivered !== wasDelivered) {
-          const direction = isDelivered ? 'consume' : 'restore';
-          const action = isDelivered ? 'reconcile_job' : 'reconcile_job_reversal';
-          const reason = isDelivered
-            ? `Materials used for Job #${job.jobCode} (Delivered)`
-            : `Delivered status reversed for Job #${job.jobCode}; stock restored`;
-
-          const updates = buildReconciliationMutations({
-            job,
-            inventory,
-            jobsAfterStatusUpdate: nextJobs,
-            direction,
-          });
-
-          let reconciliationFailed = false;
-          for (const entry of updates) {
-            try {
-              await inventoryService.updateStock(entry.inventoryId, entry.newInStock);
-              if (currentUser) {
-                await inventoryHistoryService.createHistory({
-                  inventory: entry.inventoryId,
-                  user: currentUser.id,
-                  action,
-                  reason,
-                  previousInStock: entry.previousInStock,
-                  newInStock: entry.newInStock,
-                  previousAvailable: entry.previousAvailable,
-                  newAvailable: entry.newAvailable,
-                  changeAmount: entry.changeAmount,
-                  relatedJob: jobId,
-                });
-              }
-            } catch (err) {
-              console.error('Reconciliation updateStock failed:', err);
-              reconciliationFailed = true;
-            }
-          }
-          if (reconciliationFailed) {
-            showToast(
-              'Failed to update inventory stock for one or more items. Check permissions and try again.',
-              'error'
-            );
-          }
-        }
-
-        await refreshJobs();
-        await refreshInventory(); // Refresh to update available calculations
-        return true;
-      } catch (error) {
-        console.error('Update job status error:', error);
-        await refreshJobs();
-        await refreshInventory();
-        return false;
-      }
-    },
-    [refreshJobs, refreshInventory, jobs, inventory, currentUser, queryClient, showToast]
-  );
-
-  const advanceJobToNextStatus = useCallback(
-    async (jobId: string, currentStatus: JobStatus): Promise<boolean> => {
-      // On Hold is intentionally excluded from auto-flow.
-      if (currentStatus === 'onHold' || !isAutoFlowStatus(currentStatus)) return false;
-      const next = getNextWorkflowStatus(currentStatus);
-      if (!next) return false;
-      return updateJobStatus(jobId, next);
-    },
-    [updateJobStatus]
-  );
-
-  // FIXED: Renamed to addJobComment and returns Comment
-  const addJobComment = useCallback(
-    async (jobId: string, text: string): Promise<Comment | null> => {
-      if (!currentUser) return null;
-      try {
-        const comment = await jobService.addComment(jobId, text, currentUser.id);
-        await refreshJobs();
-        return comment;
-      } catch (error) {
-        console.error('Add comment error:', error);
-        return null;
-      }
-    },
-    [currentUser, refreshJobs]
-  );
-
-  const getJobByCode = useCallback(
-    async (code: number): Promise<Job | null> => {
-      const fromMemory = jobs.find((j) => j.jobCode === code);
-      if (fromMemory) return fromMemory;
-      const fromApi = await jobService.getJobByCode(code);
-      if (fromApi) {
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
-          if (!prev) return [fromApi];
-          const exists = prev.some((j) => j.id === fromApi.id);
-          return exists ? prev.map((j) => (j.id === fromApi.id ? fromApi : j)) : [fromApi, ...prev];
-        });
-        return fromApi;
-      }
-      return null;
-    },
-    [jobs, queryClient]
-  );
-
-  const clockIn = useCallback(
-    async (jobId: string): Promise<boolean> => {
-      if (!currentUser) return false;
-
-      // Auto-switch behavior: if user is already clocked into another job, clock out first.
-      const existingActiveShift = shifts.find((s) => s.user === currentUser.id && !s.clockOutTime);
-      if (existingActiveShift) {
-        if (existingActiveShift.job === jobId) return true;
-        if (existingActiveShift.lunchStartTime && !existingActiveShift.lunchEndTime) {
-          const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(existingActiveShift));
-          await shiftService.endLunch(existingActiveShift.id, totalBreakMinutes);
-        }
-        await shiftService.clockOut(existingActiveShift.id);
-        await refreshShifts();
-      }
-      try {
-        let success = await shiftService.clockIn(jobId, currentUser.id);
-        if (!success) {
-          // Recovery path for stale client state (e.g. active shift created elsewhere).
-          const latestShifts = await shiftService.getAllShifts();
-          const latestActiveShift = latestShifts.find(
-            (s) => s.user === currentUser.id && !s.clockOutTime
-          );
-          if (latestActiveShift && latestActiveShift.job !== jobId) {
-            if (latestActiveShift.lunchStartTime && !latestActiveShift.lunchEndTime) {
-              const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(latestActiveShift));
-              await shiftService.endLunch(latestActiveShift.id, totalBreakMinutes);
-            }
-            await shiftService.clockOut(latestActiveShift.id);
-            await refreshShifts();
-            success = await shiftService.clockIn(jobId, currentUser.id);
-          }
-        }
-        if (success) {
-          await refreshShifts();
-          const job = jobs.find((j) => j.id === jobId);
-          const shouldMoveToInProgress = job?.status === 'pending' || job?.status === 'rush';
-
-          if (shouldMoveToInProgress) {
-            await updateJobStatus(jobId, 'inProgress');
-          } else {
-            await refreshJobs();
-          }
-        }
-        return success;
-      } catch (error) {
-        console.error('Clock in error:', error);
-        if (currentUser && jobId) {
-          enqueueClockPunch({
-            type: 'clock_in',
-            userId: currentUser.id,
-            jobId,
-            timestamp: new Date().toISOString(),
-          });
-          setOfflineQueueVersion((v) => v + 1);
-        }
-        return false;
-      }
-    },
-    [currentUser, shifts, refreshShifts, refreshJobs, jobs, updateJobStatus]
-  );
-
-  // FIXED: Now returns boolean for success/failure
-  const clockOut = useCallback(async (): Promise<boolean> => {
-    if (!activeShift) return false;
-    try {
-      if (activeShift.lunchStartTime && !activeShift.lunchEndTime) {
-        const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
-        await shiftService.endLunch(activeShift.id, totalBreakMinutes);
-      }
-      await shiftService.clockOut(activeShift.id);
-      await refreshShifts();
-      await refreshJobs();
-      return true;
-    } catch (error) {
-      console.error('Clock out error:', error);
-      if (activeShift && currentUser) {
-        enqueueClockPunch({
-          type: 'clock_out',
-          userId: currentUser.id,
-          timestamp: new Date().toISOString(),
-          shiftId: activeShift.id,
-        });
-        setOfflineQueueVersion((v) => v + 1);
-      }
-      return false;
-    }
-  }, [activeShift, refreshShifts, refreshJobs, currentUser]);
-
-  const startLunch = useCallback(async (): Promise<boolean> => {
-    if (!activeShift) return false;
-    if (activeShift.lunchStartTime && !activeShift.lunchEndTime) return true;
-    if (getRemainingBreakMs(activeShift) <= 0) return false;
-    const shiftId = activeShift.id;
-    const nowIso = new Date().toISOString();
-    queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-      prev
-        ? prev.map((s) =>
-            s.id === shiftId ? { ...s, lunchStartTime: nowIso, lunchEndTime: undefined } : s
-          )
-        : []
-    );
-    try {
-      const success = await shiftService.startLunch(shiftId);
-      if (!success) {
-        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev
-            ? prev.map((s) =>
-                s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
-              )
-            : []
-        );
-        return false;
-      }
-      await refreshShifts();
-      return true;
-    } catch (error) {
-      console.error('Start lunch error:', error);
-      queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-        prev
-          ? prev.map((s) =>
-              s.id === shiftId ? { ...s, lunchStartTime: undefined, lunchEndTime: undefined } : s
-            )
-          : []
-      );
-      return false;
-    }
-  }, [activeShift, refreshShifts, queryClient]);
-
-  const endLunch = useCallback(async (): Promise<boolean> => {
-    if (!activeShift?.lunchStartTime || activeShift.lunchEndTime) return false;
-    const shiftId = activeShift.id;
-    const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
-    const nowIso = new Date().toISOString();
-    queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-      prev
-        ? prev.map((s) =>
-            s.id === shiftId
-              ? {
-                  ...s,
-                  lunchStartTime: undefined,
-                  lunchEndTime: nowIso,
-                  lunchMinutesUsed: totalBreakMinutes,
-                }
-              : s
-          )
-        : []
-    );
-    try {
-      const success = await shiftService.endLunch(shiftId, totalBreakMinutes);
-      if (!success) {
-        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev
-            ? prev.map((s) =>
-                s.id === shiftId
-                  ? {
-                      ...s,
-                      lunchStartTime: activeShift.lunchStartTime,
-                      lunchEndTime: undefined,
-                      lunchMinutesUsed: activeShift.lunchMinutesUsed,
-                    }
-                  : s
-              )
-            : []
-        );
-        return false;
-      }
-      await refreshShifts();
-      return true;
-    } catch (error) {
-      console.error('End lunch error:', error);
-      queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-        prev
-          ? prev.map((s) =>
-              s.id === shiftId
-                ? {
-                    ...s,
-                    lunchStartTime: activeShift.lunchStartTime,
-                    lunchEndTime: undefined,
-                    lunchMinutesUsed: activeShift.lunchMinutesUsed,
-                  }
-                : s
-            )
-          : []
-      );
-      return false;
-    }
-  }, [activeShift, refreshShifts, queryClient]);
-
-  const createInventory = useCallback(
-    async (data: Partial<InventoryItem>): Promise<InventoryItem | null> => {
-      try {
-        const inStock = data.inStock ?? 0;
-        const item = await inventoryService.createInventory({
-          ...data,
-          inStock,
-          available: inStock,
-          onOrder: data.onOrder ?? 0,
-        });
-        if (item) {
-          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-            prev ? [item, ...prev] : [item]
-          );
-        }
-        return item;
-      } catch (error) {
-        console.error('Create inventory error:', error);
-        return null;
-      }
-    },
-    [queryClient]
-  );
-
-  const updateInventoryItem = useCallback(
-    async (id: string, data: Partial<InventoryItem>): Promise<InventoryItem | null> => {
-      try {
-        const updatedItem = await inventoryService.updateInventory(id, data);
-        if (updatedItem) {
-          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-            prev ? prev.map((i) => (i.id === id ? updatedItem : i)) : []
-          );
-          if ('price' in data) {
-            // Clear stored variant totals only so recalc uses new material cost; labor hours are never changed.
-            try {
-              await partsService.clearVariantPricesForInventory(id);
-            } catch (cascadeErr) {
-              console.warn('Clear variant prices after inventory price update:', cascadeErr);
-            }
-          }
-        }
-        return updatedItem;
-      } catch (error) {
-        console.error('Update inventory error:', error);
-        return null;
-      }
-    },
-    [queryClient]
-  );
-
-  const updateInventoryStock = useCallback(
-    async (id: string, inStock: number, reason?: string): Promise<void> => {
-      try {
-        // Get current item to calculate previous values
-        const currentItem = inventory.find((i) => i.id === id);
-        if (!currentItem) {
-          console.error('Inventory item not found');
-          return;
-        }
-
-        const previousInStock = currentItem.inStock;
-        const previousAvailable = calculateAvailable(currentItem);
-        const changeAmount = inStock - previousInStock;
-
-        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.map((i) => (i.id === id ? { ...i, inStock } : i)) : []
-        );
-
-        // Update in database (only inStock)
-        await inventoryService.updateStock(id, inStock);
-
-        // Create history entry if user is logged in
-        if (currentUser && changeAmount !== 0) {
-          await inventoryHistoryService.createHistory({
-            inventory: id,
-            user: currentUser.id,
-            action: 'manual_adjust',
-            reason: reason || 'Stock adjusted manually',
-            previousInStock,
-            newInStock: inStock,
-            previousAvailable,
-            newAvailable: Math.max(0, inStock - calculateAllocated(id)),
-            changeAmount,
-          });
-        }
-
-        await refreshInventory();
-      } catch (error) {
-        console.error('Update inventory stock error:', error);
-        await refreshInventory();
-      }
-    },
-    [refreshInventory, inventory, calculateAvailable, calculateAllocated, currentUser, queryClient]
-  );
-
-  const addJobInventory = useCallback(
-    async (jobId: string, inventoryId: string, quantity: number, unit: string): Promise<void> => {
-      try {
-        const item = inventory.find((i) => i.id === inventoryId);
-        if (item) {
-          const available = calculateAvailable(item);
-          if (quantity > available) {
-            return;
-          }
-        }
-        await jobService.addJobInventory(jobId, inventoryId, quantity, unit);
-        await refreshJobs();
-        await refreshInventory();
-      } catch (error) {
-        console.error('Add job inventory error:', error);
-      }
-    },
-    [inventory, calculateAvailable, refreshJobs, refreshInventory]
-  );
-
-  const allocateInventoryToJob = useCallback(
-    async (
-      jobId: string,
-      inventoryId: string,
-      quantity: number,
-      notes?: string
-    ): Promise<boolean> => {
-      try {
-        const item = inventory.find((inv) => inv.id === inventoryId);
-        const job = jobs.find((j) => j.id === jobId);
-        if (!item || !job || quantity <= 0) return false;
-
-        const previousAvailable = calculateAvailable(item);
-        if (quantity > previousAvailable) {
-          return false;
-        }
-        const currentAllocated = calculateAllocated(inventoryId);
-        const nextAllocated = currentAllocated + quantity;
-        const newAvailable = Math.max(0, item.inStock - nextAllocated);
-
-        const ok = await jobService.addJobInventory(
-          jobId,
-          inventoryId,
-          quantity,
-          item.unit || 'units'
-        );
-        if (!ok) return false;
-
-        if (currentUser) {
-          await inventoryHistoryService.createHistory({
-            inventory: inventoryId,
-            user: currentUser.id,
-            action: 'allocated_to_job',
-            reason: notes?.trim() || `Allocated ${quantity} ${item.unit} to Job #${job.jobCode}`,
-            previousInStock: item.inStock,
-            newInStock: item.inStock,
-            previousAvailable,
-            newAvailable,
-            changeAmount: 0,
-            relatedJob: jobId,
-            relatedPO: job.po,
-          });
-        }
-
-        await refreshJobs();
-        await refreshInventory();
-        return true;
-      } catch (error) {
-        console.error('Allocate inventory to job error:', error);
-        return false;
-      }
-    },
-    [
-      inventory,
-      jobs,
-      currentUser,
-      calculateAvailable,
-      calculateAllocated,
-      refreshJobs,
-      refreshInventory,
-    ]
-  );
-
-  const removeJobInventory = useCallback(
-    async (jobId: string, jobInventoryId: string): Promise<void> => {
-      try {
-        await jobService.removeJobInventory(jobId, jobInventoryId);
-        await refreshJobs();
-        await refreshInventory();
-      } catch (error) {
-        console.error('Remove job inventory error:', error);
-      }
-    },
-    [refreshJobs, refreshInventory]
-  );
-
-  const markInventoryOrdered = useCallback(
-    async (id: string, quantity: number): Promise<boolean> => {
-      try {
-        const item = inventory.find((i) => i.id === id);
-        if (!item) {
-          console.error('Inventory item not found');
-          return false;
-        }
-        const newOnOrder = (item.onOrder || 0) + quantity;
-        await inventoryService.updateInventory(id, { onOrder: newOnOrder });
-        if (currentUser) {
-          await inventoryHistoryService.createHistory({
-            inventory: id,
-            user: currentUser.id,
-            action: 'order_placed',
-            reason: `Ordered ${quantity} ${item.unit}`,
-            previousInStock: item.inStock,
-            newInStock: item.inStock,
-            previousAvailable: calculateAvailable(item),
-            newAvailable: calculateAvailable(item),
-            changeAmount: 0,
-          });
-        }
-        await refreshInventory();
-        return true;
-      } catch (error) {
-        console.error('Mark inventory ordered error:', error);
-        await refreshInventory();
-        return false;
-      }
-    },
-    [inventory, currentUser, refreshInventory, calculateAvailable]
-  );
-
-  const receiveInventoryOrder = useCallback(
-    async (id: string, receivedQuantity: number): Promise<boolean> => {
-      try {
-        const item = inventory.find((i) => i.id === id);
-        if (!item) {
-          console.error('Inventory item not found');
-          return false;
-        }
-        const previousAvailable = calculateAvailable(item);
-        const newInStock = item.inStock + receivedQuantity;
-        const newOnOrder = Math.max(0, (item.onOrder || 0) - receivedQuantity);
-        await inventoryService.updateInventory(id, { inStock: newInStock, onOrder: newOnOrder });
-        if (currentUser) {
-          await inventoryHistoryService.createHistory({
-            inventory: id,
-            user: currentUser.id,
-            action: 'order_received',
-            reason: `Received ${receivedQuantity} ${item.unit}`,
-            previousInStock: item.inStock,
-            newInStock: newInStock,
-            previousAvailable: previousAvailable,
-            newAvailable: Math.max(0, newInStock - calculateAllocated(id)),
-            changeAmount: receivedQuantity,
-          });
-        }
-        await refreshInventory();
-        return true;
-      } catch (error) {
-        console.error('Receive inventory order error:', error);
-        await refreshInventory();
-        return false;
-      }
-    },
-    [inventory, currentUser, refreshInventory, calculateAvailable, calculateAllocated]
-  );
-
-  const addAttachment = useCallback(
-    async (jobId: string, file: File, isAdminOnly = false): Promise<boolean> => {
-      try {
-        const success = await jobService.addAttachment(jobId, file, isAdminOnly);
-        if (success) {
-          await refreshJobs();
-        }
-        return success;
-      } catch (error) {
-        console.error('Add attachment error:', error);
-        return false;
-      }
-    },
-    [refreshJobs]
-  );
-
-  const deleteAttachment = useCallback(
-    async (attachmentId: string): Promise<boolean> => {
-      try {
-        const success = await jobService.deleteAttachment(attachmentId);
-        if (success) {
-          await refreshJobs();
-        }
-        return success;
-      } catch (error) {
-        console.error('Delete attachment error:', error);
-        return false;
-      }
-    },
-    [refreshJobs]
-  );
-
-  const updateAttachmentAdminOnly = useCallback(
-    async (attachmentId: string, isAdminOnly: boolean): Promise<boolean> => {
-      try {
-        const success = await jobService.updateAttachmentAdminOnly(attachmentId, isAdminOnly);
-        if (success) {
-          await refreshJobs();
-        }
-        return success;
-      } catch (error) {
-        console.error('Update attachment admin-only error:', error);
-        return false;
-      }
-    },
-    [refreshJobs]
-  );
-
-  const addInventoryAttachment = useCallback(
-    async (inventoryId: string, file: File, isAdminOnly = false): Promise<boolean> => {
-      try {
-        const success = await inventoryService.addAttachment(inventoryId, file, isAdminOnly);
-        if (success) {
-          await refreshInventory();
-        }
-        return success;
-      } catch (error) {
-        console.error('Add inventory attachment error:', error);
-        return false;
-      }
-    },
-    [refreshInventory]
-  );
-
-  const deleteInventoryAttachment = useCallback(
-    async (attachmentId: string, inventoryId: string): Promise<boolean> => {
-      try {
-        const success = await inventoryService.deleteAttachment(attachmentId, inventoryId);
-        if (success) {
-          await refreshInventory();
-        }
-        return success;
-      } catch (error) {
-        console.error('Delete inventory attachment error:', error);
-        return false;
-      }
-    },
-    [refreshInventory]
-  );
-
-  useEffect(() => {
-    const initApp = async () => {
-      setIsLoading(true);
-      try {
-        const user = await authService.checkAuth();
-        if (user) {
-          setCurrentUser(user);
-          // Server data (jobs, shifts, inventory, users) is now loaded via useQuery when enabled
-        }
-      } catch (error) {
-        console.error('App initialization error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    initApp();
-  }, []);
-
-  // Auto-refresh auth token + idle timeout (resilient to avoid constant logouts)
-  useEffect(() => {
-    if (!currentUser) return;
-
-    let lastActivity = Date.now();
-
-    const refreshAuthWithRetry = async (retries = 2): Promise<boolean> => {
-      for (let i = 0; i <= retries; i++) {
-        try {
-          const user = await authService.checkAuth();
-          if (user) return true;
-        } catch (error) {
-          if (i === retries) {
-            console.error('Auth refresh failed after retries:', error);
-            return false;
-          }
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-      }
-      return false;
-    };
-
-    // Refresh auth token every 20 minutes; only logout if refresh fails after retries
-    const authRefreshInterval = setInterval(
-      async () => {
-        const ok = await refreshAuthWithRetry();
-        if (!ok) logout();
-      },
-      20 * 60 * 1000
-    );
-
-    const updateActivity = () => {
-      lastActivity = Date.now();
-    };
-
-    window.addEventListener('mousedown', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('touchstart', updateActivity);
-    window.addEventListener('scroll', updateActivity);
-
-    // Idle timeout: 60 minutes (was 30) to reduce unexpected logouts
-    const idleCheckInterval = setInterval(() => {
-      const idleTime = Date.now() - lastActivity;
-      const idleLimit = 60 * 60 * 1000;
-      if (idleTime >= idleLimit) logout();
-    }, 60 * 1000);
-
-    return () => {
-      clearInterval(authRefreshInterval);
-      clearInterval(idleCheckInterval);
-      window.removeEventListener('mousedown', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('touchstart', updateActivity);
-      window.removeEventListener('scroll', updateActivity);
-    };
-  }, [currentUser, logout]);
-
-  // Offline clock queue: sync when back online
+  const jobMutations = useJobMutations({
+    jobs: queries.jobs,
+    inventory: queries.inventory,
+    currentUser,
+    refreshJobs: queries.refreshJobs,
+    refreshInventory: queries.refreshInventory,
+    refreshShifts: queries.refreshShifts,
+    showToast,
+  });
+
+  const clockMutations = useClockMutations({
+    currentUser,
+    shifts: queries.shifts,
+    jobs: queries.jobs,
+    activeShift,
+    activeJob,
+    refreshShifts: queries.refreshShifts,
+    refreshJobs: queries.refreshJobs,
+    updateJobStatus: jobMutations.updateJobStatus,
+    onOfflinePunchEnqueued: () => setOfflineQueueVersion((v) => v + 1),
+  });
+
+  const inventoryMutations = useInventoryMutations({
+    inventory: queries.inventory,
+    jobs: queries.jobs,
+    currentUser,
+    refreshJobs: queries.refreshJobs,
+    refreshInventory: queries.refreshInventory,
+    calculateAvailable,
+    calculateAllocated,
+    showToast,
+  });
+
+  const attachmentMutations = useAttachmentMutations({
+    refreshJobs: queries.refreshJobs,
+    refreshInventory: queries.refreshInventory,
+  });
+
+  // Offline clock queue sync when back online
   useEffect(() => {
     const syncQueue = async () => {
       if (!navigator.onLine) return;
@@ -1130,7 +158,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             await shiftService.clockIn(punch.jobId, punch.userId);
             clearPunchFromQueue(punch.id);
             setOfflineQueueVersion((v) => v + 1);
-            await refreshShifts();
+            await queries.refreshShifts();
           } else if (punch.type === 'clock_out') {
             let shiftId = punch.shiftId;
             if (!shiftId) {
@@ -1142,37 +170,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               await shiftService.clockOut(shiftId);
               clearPunchFromQueue(punch.id);
               setOfflineQueueVersion((v) => v + 1);
-              await refreshShifts();
-              await refreshJobs();
+              await queries.refreshShifts();
+              await queries.refreshJobs();
             }
           }
         } catch {
-          // Leave in queue, try again next cycle
+          // Leave in queue
         }
       }
     };
     window.addEventListener('online', syncQueue);
     syncQueue();
     return () => window.removeEventListener('online', syncQueue);
-  }, [refreshShifts, refreshJobs]);
+  }, [queries.refreshShifts, queries.refreshJobs]);
 
-  // Auth state listener: handle session expiry and token refresh so UI stays in sync
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        setCurrentUser(null);
-      }
-      if (event === 'TOKEN_REFRESHED' && session?.user) {
-        authService.checkAuth().then((user) => {
-          if (user) setCurrentUser(user);
-        });
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
+  // Realtime subscriptions
   useEffect(() => {
     if (!currentUser) return;
 
@@ -1181,7 +193,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
           prev ? dedupeJobsById([record as Job, ...prev]) : [record as Job]
         );
-        refreshInventory();
+        queries.refreshInventory();
       } else if (action === 'update') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
           if (!prev) return [record as Job];
@@ -1191,12 +203,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             : ([record as Job, ...prev] as Job[]);
           return dedupeJobsById(next);
         });
-        refreshInventory();
+        queries.refreshInventory();
       } else if (action === 'delete') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
           prev ? prev.filter((j) => j.id !== record.id) : []
         );
-        refreshInventory();
+        queries.refreshInventory();
       }
     });
 
@@ -1237,29 +249,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       unsubShifts();
       unsubInventory();
     };
-    // refreshInventory intentionally omitted to avoid re-subscribing on every refresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, queryClient]);
 
-  // Single source of truth: inventory with available/allocated computed from jobs (never use DB .available for display)
   const inventoryWithComputed = useMemo(
-    () => withComputedInventory(inventory, jobs),
-    [inventory, jobs]
+    () => withComputedInventory(queries.inventory, queries.jobs),
+    [queries.inventory, queries.jobs]
   );
-
-  // Defense in depth: never expose inventory pricing to non-admin UI consumers.
-  const inventoryForRole = useMemo(() => {
-    return stripInventoryFinancials(inventoryWithComputed, currentUser?.isAdmin === true);
-  }, [inventoryWithComputed, currentUser?.isAdmin]);
+  const inventoryForRole = useMemo(
+    () => stripInventoryFinancials(inventoryWithComputed, currentUser?.isAdmin === true),
+    [inventoryWithComputed, currentUser?.isAdmin]
+  );
 
   const contextValue = useMemo<AppContextType>(
     () => ({
-      currentUser,
-      isLoading,
-      authError,
-      jobs,
-      shifts,
-      users,
+      currentUser: auth.currentUser,
+      isLoading: auth.isLoading,
+      authError: auth.authError,
+      jobs: queries.jobs,
+      shifts: queries.shifts,
+      users: queries.users,
       inventory: inventoryForRole,
       activeShift,
       activeJob,
@@ -1267,46 +275,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       signUp,
       resetPasswordForEmail,
       logout,
-      createJob,
-      updateJob,
-      deleteJob,
-      updateJobStatus,
-      advanceJobToNextStatus,
-      addJobComment, // FIXED: Renamed from addComment
-      getJobByCode, // ADDED
-      clockIn,
-      clockOut,
-      startLunch,
-      endLunch,
-      createInventory,
-      updateInventoryItem,
-      updateInventoryStock,
-      addJobInventory,
-      allocateInventoryToJob,
-      removeJobInventory,
-      markInventoryOrdered, // ADDED
-      receiveInventoryOrder, // ADDED
-      addAttachment,
-      deleteAttachment,
-      updateAttachmentAdminOnly,
-      addInventoryAttachment,
-      deleteInventoryAttachment,
-      refreshJobs,
-      refreshJob,
-      refreshShifts,
-      refreshUsers,
-      refreshInventory,
+      createJob: jobMutations.createJob,
+      updateJob: jobMutations.updateJob,
+      deleteJob: jobMutations.deleteJob,
+      updateJobStatus: jobMutations.updateJobStatus,
+      advanceJobToNextStatus: jobMutations.advanceJobToNextStatus,
+      addJobComment: jobMutations.addJobComment,
+      getJobByCode: jobMutations.getJobByCode,
+      clockIn: clockMutations.clockIn,
+      clockOut: clockMutations.clockOut,
+      startLunch: clockMutations.startLunch,
+      endLunch: clockMutations.endLunch,
+      createInventory: inventoryMutations.createInventory,
+      updateInventoryItem: inventoryMutations.updateInventoryItem,
+      updateInventoryStock: inventoryMutations.updateInventoryStock,
+      addJobInventory: inventoryMutations.addJobInventory,
+      allocateInventoryToJob: inventoryMutations.allocateInventoryToJob,
+      removeJobInventory: inventoryMutations.removeJobInventory,
+      markInventoryOrdered: inventoryMutations.markInventoryOrdered,
+      receiveInventoryOrder: inventoryMutations.receiveInventoryOrder,
+      addAttachment: attachmentMutations.addAttachment,
+      deleteAttachment: attachmentMutations.deleteAttachment,
+      updateAttachmentAdminOnly: attachmentMutations.updateAttachmentAdminOnly,
+      addInventoryAttachment: attachmentMutations.addInventoryAttachment,
+      deleteInventoryAttachment: attachmentMutations.deleteInventoryAttachment,
+      refreshJobs: queries.refreshJobs,
+      refreshJob: queries.refreshJob,
+      refreshShifts: queries.refreshShifts,
+      refreshUsers: queries.refreshUsers,
+      refreshInventory: queries.refreshInventory,
       calculateAvailable,
       calculateAllocated,
       pendingOfflinePunchCount,
     }),
     [
-      currentUser,
-      isLoading,
-      authError,
-      jobs,
-      shifts,
-      users,
+      auth.currentUser,
+      auth.isLoading,
+      auth.authError,
+      queries.jobs,
+      queries.shifts,
+      queries.users,
       inventoryForRole,
       activeShift,
       activeJob,
@@ -1314,35 +322,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       signUp,
       resetPasswordForEmail,
       logout,
-      createJob,
-      updateJob,
-      deleteJob,
-      updateJobStatus,
-      advanceJobToNextStatus,
-      addJobComment,
-      getJobByCode,
-      clockIn,
-      clockOut,
-      startLunch,
-      endLunch,
-      createInventory,
-      updateInventoryItem,
-      updateInventoryStock,
-      addJobInventory,
-      allocateInventoryToJob,
-      removeJobInventory,
-      markInventoryOrdered,
-      receiveInventoryOrder,
-      addAttachment,
-      deleteAttachment,
-      updateAttachmentAdminOnly,
-      addInventoryAttachment,
-      deleteInventoryAttachment,
-      refreshJobs,
-      refreshJob,
-      refreshShifts,
-      refreshUsers,
-      refreshInventory,
+      jobMutations,
+      clockMutations,
+      inventoryMutations,
+      attachmentMutations,
+      queries.refreshJobs,
+      queries.refreshJob,
+      queries.refreshShifts,
+      queries.refreshUsers,
+      queries.refreshInventory,
       calculateAvailable,
       calculateAllocated,
       pendingOfflinePunchCount,
@@ -1350,12 +338,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   );
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
-};
+}
 
-export const useApp = () => {
+export function AppProvider({ children }: { children: ReactNode }) {
+  return (
+    <AuthProvider>
+      <AppProviderInner>{children}</AppProviderInner>
+    </AuthProvider>
+  );
+}
+
+export function useApp(): AppContextType {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('useApp must be used within AppProvider');
   }
   return context;
-};
+}

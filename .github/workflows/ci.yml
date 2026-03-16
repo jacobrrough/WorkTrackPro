@@ -1,3 +1,5 @@
+# Single CI workflow: lint, format check, build, test.
+# Runs on push to main/develop and on PRs targeting main/develop.
 name: CI
 
 on:
@@ -7,26 +9,27 @@ on:
     branches: [main, develop]
 
 jobs:
-  lint-and-test:
+  ci:
+    name: Lint, build, test
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
-      - name: Install dependencies
+      - name: Install
         run: npm ci
 
-      - name: Run ESLint
+      - name: Lint
         run: npm run lint
 
-      - name: Check formatting
+      - name: Format check
         run: npx prettier --check "src/**/*.{ts,tsx,css,json}"
 
       - name: Build
@@ -35,5 +38,5 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder-anon-key
 
-      - name: Run tests
+      - name: Test
         run: npm run test -- --run

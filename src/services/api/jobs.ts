@@ -1052,7 +1052,8 @@ export const jobService = {
       quantity,
       unit: unit || 'units',
     });
-    return !error;
+    if (error) throw error;
+    return true;
   },
 
   async updateJobInventory(

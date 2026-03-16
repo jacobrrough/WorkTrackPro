@@ -138,8 +138,43 @@ export const authService = {
         data: { name: name || undefined, initials: initials || undefined },
       },
     });
-    if (error) throw error;
+    if (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/420c3f8e-a11f-4fdd-8f0d-e05619cdd04d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f7ffcc' },
+        body: JSON.stringify({
+          sessionId: 'f7ffcc',
+          location: 'auth.ts:signUp',
+          message: 'signUp error',
+          data: { msg: error.message, code: error.code },
+          timestamp: Date.now(),
+          hypothesisId: 'signUp-fails',
+        }),
+      }).catch(() => {});
+      // #endregion
+      throw error;
+    }
     const needsEmailConfirmation = !data.session && !!data.user;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/420c3f8e-a11f-4fdd-8f0d-e05619cdd04d', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f7ffcc' },
+      body: JSON.stringify({
+        sessionId: 'f7ffcc',
+        location: 'auth.ts:signUp',
+        message: 'signUp success',
+        data: {
+          hasSession: !!data.session,
+          hasUser: !!data.user,
+          needsEmailConfirmation,
+          userId: data.user?.id,
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'signUp-flow',
+      }),
+    }).catch(() => {});
+    // #endregion
     if (data.session?.user) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -147,6 +182,20 @@ export const authService = {
         .eq('id', data.user.id)
         .maybeSingle();
       if (profileError) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/420c3f8e-a11f-4fdd-8f0d-e05619cdd04d', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f7ffcc' },
+          body: JSON.stringify({
+            sessionId: 'f7ffcc',
+            location: 'auth.ts:signUp-profile',
+            message: 'profile fetch after signUp',
+            data: { error: profileError.message, userId: data.user?.id },
+            timestamp: Date.now(),
+            hypothesisId: 'profile-missing-after-signup',
+          }),
+        }).catch(() => {});
+        // #endregion
         const msg = profileError.message ?? '';
         const missingApprovalColumn = /column .*is_approved.* does not exist/i.test(msg);
         if (missingApprovalColumn) {
@@ -164,14 +213,30 @@ export const authService = {
       }
       const user = profile
         ? mapProfileToUser(profile)
-        : mapProfileToUser({
-            id: data.user.id,
-            email: data.user.email ?? null,
-            name: data.user.user_metadata?.name ?? name ?? null,
-            initials: data.user.user_metadata?.initials ?? initials ?? null,
-            is_admin: false,
-            is_approved: false,
-          });
+        : (() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/420c3f8e-a11f-4fdd-8f0d-e05619cdd04d', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f7ffcc' },
+              body: JSON.stringify({
+                sessionId: 'f7ffcc',
+                location: 'auth.ts:signUp',
+                message: 'no profile row after signUp',
+                data: { userId: data.user.id },
+                timestamp: Date.now(),
+                hypothesisId: 'profile-not-created',
+              }),
+            }).catch(() => {});
+            // #endregion
+            return mapProfileToUser({
+              id: data.user.id,
+              email: data.user.email ?? null,
+              name: data.user.user_metadata?.name ?? name ?? null,
+              initials: data.user.user_metadata?.initials ?? initials ?? null,
+              is_admin: false,
+              is_approved: false,
+            });
+          })();
       return { user, needsEmailConfirmation: false };
     }
     return { user: null, needsEmailConfirmation };
