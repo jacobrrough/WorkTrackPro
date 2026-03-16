@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Attachment } from '@/core/types';
+import { useToast } from '@/Toast';
 
 interface AttachmentsListProps {
   attachments: Attachment[];
@@ -9,6 +10,9 @@ interface AttachmentsListProps {
   /** When true, show an "Admin only" toggle per attachment (admin review) */
   showAdminOnlyToggle?: boolean;
   onToggleAdminOnly?: (attachmentId: string, isAdminOnly: boolean) => Promise<void>;
+  /** When true, show a delete button per file. Requires onDeleteAttachment. */
+  canDelete?: boolean;
+  onDeleteAttachment?: (attachmentId: string) => Promise<boolean>;
 }
 
 const AttachmentsList: React.FC<AttachmentsListProps> = ({
@@ -18,7 +22,29 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
   showUploadButton = true,
   showAdminOnlyToggle = false,
   onToggleAdminOnly,
+  canDelete = false,
+  onDeleteAttachment,
 }) => {
+  const { showToast } = useToast();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (e: React.MouseEvent, attachment: Attachment) => {
+    e.stopPropagation();
+    if (!onDeleteAttachment || !canDelete) return;
+    setDeletingId(attachment.id);
+    try {
+      const success = await onDeleteAttachment(attachment.id);
+      if (success) {
+        showToast('File deleted', 'success');
+      } else {
+        showToast('Failed to delete file', 'error');
+      }
+    } catch {
+      showToast('Failed to delete file', 'error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const getFileIcon = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '')) return 'image';
@@ -103,6 +129,20 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
                   className="h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary"
                 />
               </label>
+            )}
+
+            {canDelete && onDeleteAttachment && (
+              <button
+                type="button"
+                onClick={(e) => handleDelete(e, attachment)}
+                disabled={deletingId === attachment.id}
+                className="flex size-10 flex-shrink-0 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
+                aria-label={`Delete ${attachment.filename}`}
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {deletingId === attachment.id ? 'hourglass_empty' : 'delete'}
+                </span>
+              </button>
             )}
           </div>
         ))

@@ -3385,6 +3385,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   onToggleAdminOnly={
                     onUpdateAttachmentAdminOnly ? handleToggleAttachmentAdminOnly : undefined
                   }
+                  canDelete={currentUser.isAdmin}
+                  onDeleteAttachment={
+                    currentUser.isAdmin
+                      ? async (id) => {
+                          const ok = await onDeleteAttachment(id);
+                          if (ok && onReloadJob) await onReloadJob();
+                          return ok;
+                        }
+                      : undefined
+                  }
                 />
               </div>
             )}
@@ -3415,6 +3425,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 onToggleAdminOnly={
                   currentUser.isAdmin && onUpdateAttachmentAdminOnly
                     ? handleToggleAttachmentAdminOnly
+                    : undefined
+                }
+                canDelete={currentUser.isAdmin}
+                onDeleteAttachment={
+                  currentUser.isAdmin
+                    ? async (id) => {
+                        const ok = await onDeleteAttachment(id);
+                        if (ok && onReloadJob) await onReloadJob();
+                        return ok;
+                      }
                     : undefined
                 }
               />

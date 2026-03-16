@@ -223,6 +223,20 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
     }
   };
 
+  const handleDeleteAttachmentFromList = async (attachmentId: string): Promise<boolean> => {
+    try {
+      const success = await onDeleteAttachment(attachmentId, currentItem.id);
+      if (success) {
+        await loadItemWithAttachments();
+        if (onReloadItem) await onReloadItem();
+      }
+      return success;
+    } catch (error) {
+      console.error('Error deleting attachment:', error);
+      return false;
+    }
+  };
+
   // Filter attachments by type
   const adminAttachments = (currentItem.attachments || []).filter((a) => a.isAdminOnly);
   const regularAttachments = (currentItem.attachments || []).filter((a) => !a.isAdminOnly);
@@ -1245,6 +1259,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 onViewAttachment={handleViewAttachment}
                 canUpload={true}
                 showUploadButton={false}
+                canDelete={isAdmin}
+                onDeleteAttachment={isAdmin ? handleDeleteAttachmentFromList : undefined}
               />
             </div>
           )}
@@ -1269,6 +1285,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               onViewAttachment={handleViewAttachment}
               canUpload={isAdmin}
               showUploadButton={false}
+              canDelete={isAdmin}
+              onDeleteAttachment={isAdmin ? handleDeleteAttachmentFromList : undefined}
             />
           </div>
 
