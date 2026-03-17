@@ -1472,6 +1472,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 partId: job.partId,
                 partNumber: job.partNumber ?? '',
                 dashQuantities: job.dashQuantities ?? {},
+                rev: job.partRev,
               },
             ]
           : []
@@ -3057,6 +3058,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           partId: job.partId,
                           partNumber: job.partNumber ?? '',
                           dashQuantities: job.dashQuantities ?? {},
+                          rev: job.partRev,
                         },
                       ]
                     : [];
@@ -3089,10 +3091,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           </div>
                           <div>
                             <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
-                              Rev
+                              Part Rev
                             </p>
                             <p className="text-sm font-medium text-white">
-                              {idx === 0 ? job.revision || '—' : '—'}
+                              {link.rev ?? (idx === 0 ? job.partRev : null) ?? '—'}
                             </p>
                           </div>
                         </div>

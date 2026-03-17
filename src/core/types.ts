@@ -154,6 +154,8 @@ export interface JobPartLink {
   partId: string;
   partNumber: string;
   dashQuantities: Record<string, number>;
+  /** Part drawing rev this link was built to (from parts.rev). */
+  rev?: string;
 }
 
 // Job
@@ -209,6 +211,8 @@ export interface Job {
   allocationSourceUpdatedAt?: string;
   revision?: string;
   partId?: string;
+  /** Part drawing rev this job was built to (when linked to a part). */
+  partRev?: string;
   /** When present, full list of parts linked to this job (job_parts). partId/partNumber/dashQuantities are the primary/first part. */
   parts?: JobPartLink[];
   /** User-estimated completion percent (0–100). When set, drives progress bar and at-risk if implied labor exceeds estimate. */
@@ -246,6 +250,8 @@ export interface Part {
   id: string;
   partNumber: string;
   name: string;
+  /** Drawing revision (letters, numbers, or symbols). Default '--'. */
+  rev: string;
   description?: string;
   pricePerSet?: number;
   laborHours?: number;

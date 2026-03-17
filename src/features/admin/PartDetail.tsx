@@ -101,9 +101,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
   const [partInfoDraft, setPartInfoDraft] = useState({
     partNumber: '',
     name: '',
+    rev: '--',
     description: '',
     showOnStore: false,
   });
+  const [revChangedBanner, setRevChangedBanner] = useState<{ from: string; to: string } | null>(
+    null
+  );
   const [productImages, setProductImages] = useState<Attachment[]>([]);
   const [savingPartInfo, setSavingPartInfo] = useState(false);
   const [confirmDeletePart, setConfirmDeletePart] = useState(false);
@@ -135,6 +139,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     return (
       partInfoDraft.partNumber !== (part.partNumber ?? '') ||
       partInfoDraft.name !== (part.name ?? '') ||
+      partInfoDraft.rev !== (part.rev ?? '--') ||
       partInfoDraft.description !== (part.description ?? '') ||
       partInfoDraft.showOnStore !== (part.showOnStore ?? false)
     );
@@ -198,12 +203,19 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
   useEffect(() => {
     if (!part) {
-      setPartInfoDraft({ partNumber: '', name: '', description: '', showOnStore: false });
+      setPartInfoDraft({
+        partNumber: '',
+        name: '',
+        rev: '--',
+        description: '',
+        showOnStore: false,
+      });
       return;
     }
     setPartInfoDraft({
       partNumber: part.partNumber ?? '',
       name: part.name ?? '',
+      rev: part.rev ?? '--',
       description: part.description ?? '',
       showOnStore: part.showOnStore ?? false,
     });
@@ -304,6 +316,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           id: partId,
           partNumber: partNumberFromJob,
           name: partNumberFromJob,
+          rev: '--',
           description: latestJob?.description ?? undefined,
           pricePerSet: undefined,
           laborHours: latestJob?.laborHours,
@@ -881,6 +894,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
     const nextPartNumber = partInfoDraft.partNumber.trim();
     const nextName = partInfoDraft.name.trim();
+    const nextRev = (partInfoDraft.rev ?? '').trim() || '--';
     const nextDescription = partInfoDraft.description.trim();
 
     if (!nextPartNumber) {
@@ -891,6 +905,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
       showToast('Part name is required', 'error');
       return;
     }
+    if (!nextRev) {
+      showToast('Rev is required', 'error');
+      return;
+    }
 
     const updates: Partial<Part> = {};
     if (nextPartNumber !== (part.partNumber ?? '')) {
@@ -898,6 +916,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
     }
     if (nextName !== (part.name ?? '')) {
       updates.name = nextName;
+    }
+    if (nextRev !== (part.rev ?? '--')) {
+      updates.rev = nextRev;
     }
     if (nextDescription !== (part.description ?? '')) {
       updates.description = nextDescription;
@@ -911,15 +932,20 @@ const PartDetail: React.FC<PartDetailProps> = ({
       return;
     }
 
+    const previousRev = part.rev ?? '--';
     setSavingPartInfo(true);
     try {
       await handleUpdatePart(updates);
       setPartInfoDraft({
         partNumber: nextPartNumber,
         name: nextName,
+        rev: nextRev,
         description: nextDescription,
         showOnStore: partInfoDraft.showOnStore,
       });
+      if (updates.rev !== undefined && nextRev !== previousRev) {
+        setRevChangedBanner({ from: previousRev, to: nextRev });
+      }
     } finally {
       setSavingPartInfo(false);
     }
@@ -930,6 +956,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     setPartInfoDraft({
       partNumber: part.partNumber ?? '',
       name: part.name ?? '',
+      rev: part.rev ?? '--',
       description: part.description ?? '',
       showOnStore: part.showOnStore ?? false,
     });
@@ -970,6 +997,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       const created = await partsService.createPart({
         partNumber: part.partNumber,
         name: part.name || part.partNumber,
+        rev: part.rev ?? '--',
         description: part.description,
         laborHours: part.laborHours,
         pricePerSet: part.pricePerSet,
@@ -1059,7 +1087,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
             </button>
             <div className="min-w-0">
               <h1 className="font-mono text-xl font-bold text-white">{part.partNumber}</h1>
-              <p className="text-sm text-slate-400">{part.name || part.partNumber}</p>
+              <p className="text-sm text-slate-400">
+                {part.name || part.partNumber}
+                {(part.rev ?? '--') !== '--' && (
+                  <span className="ml-2 font-mono text-primary">Rev {part.rev}</span>
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -1113,6 +1146,17 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 onChange={(e) => setPartInfoDraft((prev) => ({ ...prev, name: e.target.value }))}
                 className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
                 placeholder={partInfoDraft.partNumber || part.partNumber}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Rev (required)</label>
+              <input
+                type="text"
+                value={partInfoDraft.rev}
+                onChange={(e) => setPartInfoDraft((prev) => ({ ...prev, rev: e.target.value }))}
+                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 font-mono text-white focus:border-primary/50 focus:outline-none"
+                placeholder="--"
                 required
               />
             </div>
@@ -1228,6 +1272,22 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 )}
               </div>
             </div>
+            {revChangedBanner && (
+              <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-3">
+                <p className="text-sm text-amber-200">
+                  Rev changed from <span className="font-mono">{revChangedBanner.from}</span> to{' '}
+                  <span className="font-mono">{revChangedBanner.to}</span>. Review materials and
+                  labor below; update and save if needed.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setRevChangedBanner(null)}
+                  className="mt-2 text-xs text-amber-400 underline hover:text-amber-300"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
             {!isVirtualPart && (
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-sm text-slate-400">Part Drawings</label>
@@ -3452,6 +3512,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       const created = await partsService.createPart({
         partNumber: pn,
         name: n,
+        rev: '--',
         description: description.trim() || undefined,
       });
       if (!created || !created.id) {

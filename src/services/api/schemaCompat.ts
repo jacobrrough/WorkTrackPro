@@ -90,6 +90,7 @@ function loadKnownMissing(tableName: string): Set<string> {
   if (tableName === 'jobs') {
     const jobColumnsToHeal = [
       'part_id',
+      'part_rev',
       'bin_location',
       'cnc_completed_at',
       'cnc_completed_by',

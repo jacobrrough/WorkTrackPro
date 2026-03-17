@@ -48,6 +48,7 @@ type JobPartRow = {
   part_number: string | null;
   dash_quantities: Record<string, number> | null;
   sort_order: number;
+  rev?: string | null;
 };
 
 function mapJobRow(
@@ -111,6 +112,7 @@ function mapJobRow(
     allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,
     partId: row.part_id as string | undefined,
+    partRev: row.part_rev as string | undefined,
     ...(expand?.job_parts && expand.job_parts.length > 0
       ? {
           parts: expand.job_parts
@@ -120,6 +122,7 @@ function mapJobRow(
                 partId: jp.part_id,
                 partNumber: jp.part_number ?? '',
                 dashQuantities: (jp.dash_quantities as Record<string, number>) ?? {},
+                rev: jp.rev ?? undefined,
               })
             ),
         }
@@ -298,11 +301,18 @@ async function resolvePartForJob(params: {
   return { partNumber: normalizedPartNumber, partId: null };
 }
 
+/** Fetch part rev by part_id (for jobs.part_rev and job_parts.rev). Returns null if part not found or column missing. */
+async function getPartRev(partId: string): Promise<string | null> {
+  const { data } = await supabase.from('parts').select('rev').eq('id', partId).maybeSingle();
+  const rev = (data as { rev?: string } | null)?.rev;
+  return rev != null && String(rev).trim() !== '' ? String(rev).trim() : null;
+}
+
 /** Fetch job_parts for one job; returns rows with part_number (from parts lookup). Graceful if table missing. */
 async function fetchJobPartsForJob(jobId: string): Promise<JobPartRow[]> {
   const { data: rows, error } = await supabase
     .from('job_parts')
-    .select('id, job_id, part_id, dash_quantities, sort_order')
+    .select('id, job_id, part_id, dash_quantities, sort_order, rev')
     .eq('job_id', jobId)
     .order('sort_order', { ascending: true });
   if (error) {
@@ -315,6 +325,7 @@ async function fetchJobPartsForJob(jobId: string): Promise<JobPartRow[]> {
     part_id: string;
     dash_quantities: Record<string, number> | null;
     sort_order: number;
+    rev?: string | null;
   }>;
   if (list.length === 0) return [];
   const partIds = [...new Set(list.map((r) => r.part_id))];
@@ -338,7 +349,7 @@ async function fetchJobPartsBatch(jobIds: string[]): Promise<Map<string, JobPart
   if (jobIds.length === 0) return out;
   const { data: rows, error } = await supabase
     .from('job_parts')
-    .select('id, job_id, part_id, dash_quantities, sort_order')
+    .select('id, job_id, part_id, dash_quantities, sort_order, rev')
     .in('job_id', jobIds)
     .order('sort_order', { ascending: true });
   if (error) {
@@ -351,6 +362,7 @@ async function fetchJobPartsBatch(jobIds: string[]): Promise<Map<string, JobPart
     part_id: string;
     dash_quantities: Record<string, number> | null;
     sort_order: number;
+    rev?: string | null;
   }>;
   const partIds = [...new Set(list.map((r) => r.part_id))];
   const { data: partsData } = await supabase
@@ -639,6 +651,10 @@ export const jobService = {
       part_id: primaryFromParts
         ? primaryFromParts.partId
         : (data.partId ?? resolvedPart?.partId ?? null),
+      part_rev:
+        primaryFromParts?.partId || data.partId || resolvedPart?.partId
+          ? await getPartRev(primaryFromParts?.partId ?? data.partId ?? resolvedPart?.partId ?? '')
+          : null,
       progress_estimate_percent:
         data.progressEstimatePercent != null
           ? Math.max(0, Math.min(100, Number(data.progressEstimatePercent)))
@@ -667,19 +683,23 @@ export const jobService = {
       if (data.parts?.length) {
         for (let i = 0; i < data.parts.length; i++) {
           const link = data.parts[i];
+          const rev = link.rev ?? (await getPartRev(link.partId));
           await supabase.from('job_parts').insert({
             job_id: newJobId,
             part_id: link.partId,
             dash_quantities: link.dashQuantities ?? {},
             sort_order: i,
+            ...(rev != null && { rev }),
           });
         }
       } else if (createdRow.part_id) {
+        const rev = await getPartRev(createdRow.part_id as string);
         await supabase.from('job_parts').insert({
           job_id: newJobId,
           part_id: createdRow.part_id,
           dash_quantities: createdRow.dash_quantities ?? {},
           sort_order: 0,
+          ...(rev != null && { rev }),
         });
       }
     } catch (jobPartsErr) {
@@ -742,6 +762,7 @@ export const jobService = {
       } else {
         row.part_number = null;
         row.part_id = null;
+        row.part_rev = null;
       }
     }
     if (data.variantSuffix !== undefined) row.variant_suffix = data.variantSuffix;
@@ -768,6 +789,8 @@ export const jobService = {
       row.part_number = primary?.partNumber ?? null;
       row.dash_quantities = primary?.dashQuantities ?? null;
     }
+    if (data.partRev !== undefined) row.part_rev = data.partRev;
+    else if (row.part_id) row.part_rev = await getPartRev(row.part_id as string);
     if (data.progressEstimatePercent !== undefined) {
       const p =
         typeof data.progressEstimatePercent === 'number'
@@ -809,11 +832,13 @@ export const jobService = {
         await supabase.from('job_parts').delete().eq('job_id', jobId);
         for (let i = 0; i < data.parts.length; i++) {
           const link = data.parts[i];
+          const rev = link.rev ?? (await getPartRev(link.partId));
           await supabase.from('job_parts').insert({
             job_id: jobId,
             part_id: link.partId,
             dash_quantities: link.dashQuantities ?? {},
             sort_order: i,
+            ...(rev != null && { rev }),
           });
         }
       } catch (jobPartsErr) {

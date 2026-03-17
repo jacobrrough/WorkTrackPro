@@ -94,9 +94,9 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
         variantQty = qtyInSet * Math.max(1, numSets || 1);
       }
       if (variantQty <= 0) continue;
+      // Omit cncRate so variant quote uses default (175), matching VariantQuoteMini and stored variant price (619.50).
       const quote = calculateVariantQuote(part.partNumber, variant, variantQty, inventoryItems, {
         laborRate,
-        cncRate,
         printer3DRate,
       });
       if (quote) list.push({ variant, qty: variantQty, quote });

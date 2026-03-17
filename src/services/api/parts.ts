@@ -9,12 +9,34 @@ type SupabaseErrorLike = {
   details?: string;
 };
 
+/** Record a part revision change in part_revision_history (best-effort; ignores if table missing). */
+async function recordPartRevisionHistory(
+  partId: string,
+  rev: string,
+  previousRev: string | undefined
+): Promise<void> {
+  if (previousRev !== undefined && rev === previousRev) return;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData?.data?.session?.user?.id ?? null;
+  await supabase
+    .from('part_revision_history')
+    .insert({
+      part_id: partId,
+      rev,
+      previous_rev: previousRev ?? null,
+      changed_by: userId,
+    })
+    .then(() => {})
+    .catch(() => {});
+}
+
 function mapRowToPart(row: Record<string, unknown>): Part {
   const setComp = row.set_composition;
   return {
     id: row.id as string,
     partNumber: (row.part_number as string) ?? '',
     name: (row.name as string) ?? '',
+    rev: (row.rev as string) ?? '--',
     description: row.description as string | undefined,
     pricePerSet: row.price_per_set != null ? Number(row.price_per_set) : undefined,
     laborHours: row.labor_hours != null ? Number(row.labor_hours) : undefined,
@@ -325,6 +347,7 @@ export const partsService = {
     const row: Record<string, unknown> = {
       part_number: data.partNumber ?? '',
       name: data.name ?? '',
+      rev: data.rev != null && String(data.rev).trim() !== '' ? String(data.rev).trim() : '--',
       description: data.description ?? null,
     };
     if (data.pricePerSet != null) row.price_per_set = data.pricePerSet;
@@ -344,8 +367,10 @@ export const partsService = {
   async updatePart(id: string, data: Partial<Part>): Promise<Part | null> {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     const nextPartNumber = data.partNumber != null ? data.partNumber.trim() : undefined;
+    const nextRev = data.rev != null ? String(data.rev).trim() || '--' : undefined;
     if (data.partNumber != null) row.part_number = nextPartNumber;
     if (data.name != null) row.name = data.name;
+    if (data.rev != null) row.rev = nextRev;
     if (data.description != null) row.description = data.description;
     if (data.pricePerSet !== undefined) row.price_per_set = data.pricePerSet;
     if (data.laborHours !== undefined) row.labor_hours = data.laborHours;
@@ -356,6 +381,17 @@ export const partsService = {
     if (data.setComposition !== undefined) row.set_composition = data.setComposition;
     if (data.variantsAreCopies !== undefined) row.variants_are_copies = data.variantsAreCopies;
     if (data.showOnStore !== undefined) row.show_on_store = data.showOnStore;
+
+    let previousRev: string | undefined;
+    if (nextRev !== undefined) {
+      const { data: current } = await supabase
+        .from('parts')
+        .select('rev')
+        .eq('id', id)
+        .maybeSingle();
+      previousRev = (current as { rev?: string } | null)?.rev;
+    }
+
     const { data: updated, error } = await supabase
       .from('parts')
       .update(row)
@@ -437,7 +473,11 @@ export const partsService = {
             }
           }
 
-          return mapRowToPart(retryResult.data as unknown as Record<string, unknown>);
+          const resultPart = mapRowToPart(retryResult.data as unknown as Record<string, unknown>);
+          if (nextRev !== undefined && nextRev !== previousRev) {
+            recordPartRevisionHistory(id, nextRev, previousRev).catch(() => {});
+          }
+          return resultPart;
         }
       }
 
@@ -494,6 +534,9 @@ export const partsService = {
       }
       console.error('updatePart error:', error.message, error.code, error.details);
       return null;
+    }
+    if (nextRev !== undefined && nextRev !== previousRev) {
+      recordPartRevisionHistory(id, nextRev, previousRev).catch(() => {});
     }
     return mapRowToPart(updated as unknown as Record<string, unknown>);
   },

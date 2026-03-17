@@ -302,6 +302,9 @@ const Parts: React.FC<PartsProps> = ({
                     <div className="flex min-w-0 flex-col items-start gap-0.5">
                       <span className="font-mono text-base font-semibold text-white">
                         {part.partNumber}
+                        {(part.rev ?? '--') !== '--' && (
+                          <span className="ml-1.5 font-normal text-primary">Rev {part.rev}</span>
+                        )}
                       </span>
                       <span className="text-sm text-slate-400">{part.name || part.partNumber}</span>
                     </div>
