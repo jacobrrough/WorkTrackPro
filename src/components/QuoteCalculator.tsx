@@ -94,10 +94,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
         variantQty = qtyInSet * Math.max(1, numSets || 1);
       }
       if (variantQty <= 0) continue;
-      // Omit cncRate so variant quote uses default (175), matching VariantQuoteMini and stored variant price (619.50).
+      const manualVariantPrice =
+        typeof variant.pricePerVariant === 'number' && Number.isFinite(variant.pricePerVariant)
+          ? variant.pricePerVariant
+          : undefined;
       const quote = calculateVariantQuote(part.partNumber, variant, variantQty, inventoryItems, {
         laborRate,
         printer3DRate,
+        manualVariantPrice,
       });
       if (quote) list.push({ variant, qty: variantQty, quote });
     }
@@ -117,7 +121,12 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
 
   const totalFromVariants = variantQuotes.reduce((sum, { quote }) => sum + quote.total, 0);
   const effectiveResult =
-    result ?? (variantQuotes.length > 0 ? { total: totalFromVariants, quantity: 0 } : null);
+    quoteBy === 'sets' && variantQuotes.length > 0
+      ? ({ total: totalFromVariants, quantity: numSets || 1 } as PartQuoteResult)
+      : (result ??
+        (variantQuotes.length > 0
+          ? ({ total: totalFromVariants, quantity: 0 } as PartQuoteResult)
+          : null));
   const displayQty = result?.quantity ?? (quoteBy === 'sets' ? Math.max(1, numSets || 1) : 0);
   const showPerVariant = variantQuotes.length > 0;
 

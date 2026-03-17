@@ -2666,8 +2666,14 @@ function VariantQuoteMini({
       printer3DTimeHours:
         printer3DHoursForQuote > 0 ? printer3DHoursForQuote : variant.printer3DTimeHours,
     };
-    const manualPrice =
-      hasUserEditedTotal && totalInput.trim() ? parseFloat(totalInput) : undefined;
+    let manualPrice: number | undefined;
+    if (totalInput.trim()) {
+      const p = parseFloat(totalInput);
+      manualPrice = Number.isFinite(p) && p >= 0 ? p : undefined;
+    } else if (typeof variant.pricePerVariant === 'number') {
+      const p = variant.pricePerVariant;
+      manualPrice = Number.isFinite(p) && p >= 0 ? p : undefined;
+    }
     return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
       laborRate: settings.laborRate,
       printer3DRate: settings.printer3DRate,
