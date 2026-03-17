@@ -35,6 +35,11 @@ export default defineConfig({
     }),
     proxy: {
       // Trello attachment proxy is handled by trelloProxyPlugin (no separate server needed)
+      // Proposal API: when using npm run dev, forward /api to Netlify Dev (run "netlify dev" in another terminal on port 8888)
+      '/api': {
+        target: 'http://127.0.0.1:8888',
+        changeOrigin: true,
+      },
     },
     host: '0.0.0.0',
     port: 3000,

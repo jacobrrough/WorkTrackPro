@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/services/api/supabaseClient';
+import PublicHeader from './PublicHeader';
 
 declare global {
   interface Window {
@@ -26,7 +27,6 @@ interface PublicHomeProps {
 const MAX_FILES = 10;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB per file (common portal default)
 const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined)?.trim();
-const LOGO_CANDIDATES = ['/logo.png', '/logo.svg', '/logo'];
 
 const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   const [contactName, setContactName] = useState('');
@@ -38,9 +38,21 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [logoIndex, setLogoIndex] = useState(0);
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Prefill proposal description from store "Request quote" link (?product= & ?variant=)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const product = params.get('product')?.trim();
+    if (!product) return;
+    const variant = params.get('variant')?.trim();
+    const prefill = variant
+      ? `Requesting quote for product: ${product}-${variant}`
+      : `Requesting quote for product: ${product}`;
+    setDescription((prev) => (prev.trim() ? prev : prefill));
+  }, []);
 
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) return;
@@ -178,7 +190,8 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
       const submissionId = crypto.randomUUID();
       const uploadedFiles = await uploadFiles(submissionId);
 
-      const response = await fetch('/api/submit-proposal', {
+      const apiOrigin = (import.meta.env.VITE_API_ORIGIN as string) || '';
+      const response = await fetch(`${apiOrigin}/api/submit-proposal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,48 +324,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
 
   return (
     <div className="max-h-[100dvh] min-h-[100dvh] overflow-y-auto overscroll-y-contain bg-[#08090f] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090f]/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-white/95">
-              {logoIndex < LOGO_CANDIDATES.length ? (
-                <img
-                  src={LOGO_CANDIDATES[logoIndex]}
-                  alt="Rough Cut Manufacturing logo"
-                  className="h-12 w-12 object-contain"
-                  onError={() => setLogoIndex((prev) => prev + 1)}
-                />
-              ) : (
-                <span className="material-symbols-outlined text-primary">
-                  precision_manufacturing
-                </span>
-              )}
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-wide">Rough Cut Manufacturing</h1>
-              <p className="text-xs uppercase tracking-wider text-slate-300">
-                Fabrication | Foam | Plastics | CNC | 3D Printing | FOD Protection
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="#submit-proposal"
-              onClick={handleSectionLinkClick}
-              className="hidden min-h-[44px] items-center rounded-sm border border-white/20 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10 sm:inline-flex"
-            >
-              Submit Proposal
-            </a>
-            <button
-              type="button"
-              onClick={onEmployeeLogin}
-              className="min-h-[44px] rounded-sm border border-primary/50 bg-primary/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/30"
-            >
-              Employee Login
-            </button>
-          </div>
-        </div>
-      </header>
+      <PublicHeader onEmployeeLogin={onEmployeeLogin} currentPath="home" />
 
       <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
         {renderHero()}

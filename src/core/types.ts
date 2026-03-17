@@ -121,7 +121,9 @@ export interface Comment {
   createdAt: string;
 }
 
-// Attachment (can be linked to job, inventory item, or part drawing)
+// Attachment (can be linked to job, inventory item, or part drawing/product image)
+export type AttachmentType = 'general' | 'drawing' | 'product_image';
+
 export interface Attachment {
   id: string;
   jobId?: string;
@@ -130,6 +132,8 @@ export interface Attachment {
   filename: string;
   storagePath: string;
   isAdminOnly: boolean;
+  /** For part attachments: drawing (technical) or product_image (storefront) */
+  attachmentType?: AttachmentType;
   url?: string;
   created?: string;
 }
@@ -256,6 +260,8 @@ export interface Part {
   setComposition?: Record<string, number> | null;
   /** When true, only first variant holds materials/costs; all variants treated as copies for BOM and quote */
   variantsAreCopies?: boolean;
+  /** When true, part is visible on the public storefront */
+  showOnStore?: boolean;
   createdAt?: string;
   updatedAt?: string;
   variants?: PartVariant[];
@@ -264,6 +270,8 @@ export interface Part {
   drawingAttachments?: Attachment[];
   /** Backward-compat first drawing file for this part */
   drawingAttachment?: Attachment | null;
+  /** Product images for storefront (attachment_type = product_image) */
+  productImages?: Attachment[];
 }
 
 export interface PartVariant {

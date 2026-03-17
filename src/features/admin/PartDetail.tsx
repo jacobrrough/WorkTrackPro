@@ -8,6 +8,7 @@ import {
   Shift,
   InventoryCategory,
   getCategoryDisplayName,
+  Attachment,
 } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { inventoryService } from '@/services/api/inventory';
@@ -83,10 +84,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
     partNumber: '',
     name: '',
     description: '',
+    showOnStore: false,
   });
+  const [productImages, setProductImages] = useState<Attachment[]>([]);
   const [savingPartInfo, setSavingPartInfo] = useState(false);
   const [confirmDeletePart, setConfirmDeletePart] = useState(false);
   const [deletingPart, setDeletingPart] = useState(false);
+  const [pushingQuoteToStorefront, setPushingQuoteToStorefront] = useState(false);
   const { showToast } = useToast();
   const loadPartRequestIdRef = useRef(0);
   // Guards against stale reloads briefly returning old variant totals after manual edits.
@@ -113,7 +117,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
     return (
       partInfoDraft.partNumber !== (part.partNumber ?? '') ||
       partInfoDraft.name !== (part.name ?? '') ||
-      partInfoDraft.description !== (part.description ?? '')
+      partInfoDraft.description !== (part.description ?? '') ||
+      partInfoDraft.showOnStore !== (part.showOnStore ?? false)
     );
   }, [part, partInfoDraft]);
 
@@ -158,16 +163,31 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
   useEffect(() => {
     if (!part) {
-      setPartInfoDraft({ partNumber: '', name: '', description: '' });
+      setPartInfoDraft({ partNumber: '', name: '', description: '', showOnStore: false });
       return;
     }
     setPartInfoDraft({
       partNumber: part.partNumber ?? '',
       name: part.name ?? '',
       description: part.description ?? '',
+      showOnStore: part.showOnStore ?? false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keep draft stable while editing; reset only when switching parts
   }, [part?.id]);
+
+  useEffect(() => {
+    if (!part?.id || isVirtualPart) {
+      setProductImages([]);
+      return;
+    }
+    let cancelled = false;
+    partsService.getPartProductImages(part.id).then((list) => {
+      if (!cancelled) setProductImages(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [part?.id, isVirtualPart]);
 
   useEffect(() => {
     let cancelled = false;
@@ -816,6 +836,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
     if (nextDescription !== (part.description ?? '')) {
       updates.description = nextDescription;
     }
+    if (partInfoDraft.showOnStore !== (part.showOnStore ?? false)) {
+      updates.showOnStore = partInfoDraft.showOnStore;
+    }
 
     if (Object.keys(updates).length === 0) {
       showToast('No part info changes to save', 'warning');
@@ -829,6 +852,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         partNumber: nextPartNumber,
         name: nextName,
         description: nextDescription,
+        showOnStore: partInfoDraft.showOnStore,
       });
     } finally {
       setSavingPartInfo(false);
@@ -841,6 +865,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
       partNumber: part.partNumber ?? '',
       name: part.name ?? '',
       description: part.description ?? '',
+      showOnStore: part.showOnStore ?? false,
     });
   };
 
@@ -1036,6 +1061,22 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 rows={2}
               />
             </div>
+            <div className="flex min-h-[44px] items-center">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={partInfoDraft.showOnStore}
+                  onChange={(e) =>
+                    setPartInfoDraft((prev) => ({ ...prev, showOnStore: e.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-white">Show on store</span>
+              </label>
+              <span className="ml-2 text-xs text-slate-500">
+                (visible on public storefront when saved)
+              </span>
+            </div>
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="flex flex-wrap gap-2">
                 <button
@@ -1191,6 +1232,77 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 )}
               </div>
             )}
+            {!isVirtualPart && (
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm text-slate-400">
+                  Product pictures (storefront)
+                </label>
+                <p className="mb-2 text-xs text-slate-500">
+                  Images shown on the public store for this part. Upload one or more.
+                </p>
+                {productImages.length > 0 ? (
+                  <div className="space-y-2">
+                    {productImages.map((img) => (
+                      <div key={img.id} className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={img.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-[44px] items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+                        >
+                          <span className="material-symbols-outlined text-primary">image</span>
+                          {img.filename}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await partsService.deletePartProductImage(img.id);
+                            if (ok) {
+                              setProductImages((prev) => prev.filter((a) => a.id !== img.id));
+                              showToast('Product image removed', 'success');
+                            } else {
+                              showToast('Failed to remove image', 'error');
+                            }
+                          }}
+                          className="min-h-[44px] rounded-sm border border-red-500/30 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <FileUploadButton
+                      label="Upload more"
+                      multiple
+                      onUpload={async (file) => {
+                        const result = await partsService.addPartProductImage(part.id, file);
+                        if (result.success) {
+                          const list = await partsService.getPartProductImages(part.id);
+                          setProductImages(list);
+                          showToast(`Uploaded "${file.name}"`, 'success');
+                          return true;
+                        }
+                        throw new Error(result.error || 'Upload failed');
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <FileUploadButton
+                    label="Upload product images"
+                    multiple
+                    onUpload={async (file) => {
+                      const result = await partsService.addPartProductImage(part.id, file);
+                      if (result.success) {
+                        const list = await partsService.getPartProductImages(part.id);
+                        setProductImages(list);
+                        showToast(`Uploaded "${file.name}"`, 'success');
+                        return true;
+                      }
+                      throw new Error(result.error || 'Upload failed');
+                    }}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1321,27 +1433,89 @@ const PartDetail: React.FC<PartDetailProps> = ({
           <Accordion title="Quote calculator" defaultExpanded={true}>
             <div className="space-y-3">
               {part.variants && part.variants.length > 0 ? (
-                <QuoteCalculator
-                  part={{
-                    ...part,
-                    ...getEffectiveSetPricingForDisplay(part),
-                    laborHours: effectiveSetLaborHours ?? 0,
-                    cncTimeHours: effectiveSetCncHours ?? 0,
-                    printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
-                    requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
-                    requires3DPrint:
-                      (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
-                  }}
-                  inventoryItems={inventoryItems}
-                  variants={part.variants ?? []}
-                  setComposition={part.setComposition}
-                  laborRate={settings.laborRate}
-                  cncRate={settings.cncRate}
-                  printer3DRate={settings.printer3DRate}
-                  autoSetLaborHours={effectiveSetLaborHours ?? 0}
-                  readOnly={true}
-                  variantsAreCopies={!!part.variantsAreCopies}
-                />
+                <>
+                  <QuoteCalculator
+                    part={{
+                      ...part,
+                      ...getEffectiveSetPricingForDisplay(part),
+                      laborHours: effectiveSetLaborHours ?? 0,
+                      cncTimeHours: effectiveSetCncHours ?? 0,
+                      printer3DTimeHours: effectiveSetPrinter3DHours ?? 0,
+                      requiresCNC: (effectiveSetCncHours ?? 0) > 0 || part.requiresCNC === true,
+                      requires3DPrint:
+                        (effectiveSetPrinter3DHours ?? 0) > 0 || part.requires3DPrint === true,
+                    }}
+                    inventoryItems={inventoryItems}
+                    variants={part.variants ?? []}
+                    setComposition={part.setComposition}
+                    laborRate={settings.laborRate}
+                    cncRate={settings.cncRate}
+                    printer3DRate={settings.printer3DRate}
+                    autoSetLaborHours={effectiveSetLaborHours ?? 0}
+                    readOnly={true}
+                    variantsAreCopies={!!part.variantsAreCopies}
+                  />
+                  {part.showOnStore && (
+                    <div className="border-t border-white/10 pt-3">
+                      <button
+                        type="button"
+                        disabled={pushingQuoteToStorefront}
+                        onClick={async () => {
+                          if (!part?.variants?.length) return;
+                          setPushingQuoteToStorefront(true);
+                          try {
+                            let success = 0;
+                            for (const variant of part.variants) {
+                              const quote = calculateVariantQuote(
+                                part.partNumber,
+                                variant,
+                                1,
+                                inventoryItems,
+                                {
+                                  laborRate: settings.laborRate,
+                                  cncRate: settings.cncRate,
+                                  printer3DRate: settings.printer3DRate,
+                                }
+                              );
+                              if (quote != null && Number.isFinite(quote.total)) {
+                                const rounded = Number(quote.total.toFixed(2));
+                                const saved = await partsService.updateVariant(variant.id, {
+                                  pricePerVariant: rounded,
+                                });
+                                if (saved) success += 1;
+                              }
+                            }
+                            await loadPart(true);
+                            if (success > 0) {
+                              showToast(
+                                success === part.variants.length
+                                  ? 'Storefront prices updated from quote totals.'
+                                  : `Updated ${success} of ${part.variants.length} variant prices.`,
+                                'success'
+                              );
+                            } else {
+                              showToast(
+                                'Could not compute or save quote totals. Check materials and labor.',
+                                'error'
+                              );
+                            }
+                          } catch {
+                            showToast('Failed to update storefront prices.', 'error');
+                          } finally {
+                            setPushingQuoteToStorefront(false);
+                          }
+                        }}
+                        className="min-h-[44px] rounded-sm border border-primary/50 bg-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
+                      >
+                        {pushingQuoteToStorefront ? 'Updating…' : 'Use quote totals on storefront'}
+                      </button>
+                      <p className="mt-1.5 text-xs text-slate-400">
+                        Saves the current quote total for each variant (qty 1) so the public shop
+                        shows these prices.
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <>
                   <div className="space-y-2">

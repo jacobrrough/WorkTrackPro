@@ -238,40 +238,9 @@ const toggleMinimalView = () => {
 
 ---
 
-## React Router Integration
+## App view-state routing
 
-### Pattern: Back Navigation with State
-
-```typescript
-import { useLocation, useNavigate } from 'react-router-dom';
-
-const location = useLocation();
-const navigate = useNavigate();
-const { state: navState, updateState } = useNavigation();
-
-// Navigate forward, storing return path
-const navigateToJob = (jobId: string) => {
-  updateState({ lastViewedJobId: jobId });
-  navigate(`/jobs/${jobId}`, {
-    state: { returnView: 'jobs-list', returnTo: location.pathname },
-  });
-};
-
-// Navigate back using stored return path
-const navigateBack = () => {
-  const returnTo = location.state?.returnTo;
-  if (returnTo) {
-    navigate(returnTo);
-  } else {
-    // Fallback to last viewed job or default view
-    if (navState.lastViewedJobId) {
-      navigate(`/jobs/${navState.lastViewedJobId}`);
-    } else {
-      navigate('/');
-    }
-  }
-};
-```
+Internal app uses **view-state** (e.g. `dashboard`, `job-detail`, `inventory-detail`), not React Router paths. `handleNavigate(view, id)` and `navigateBackFrom(detailView, fallback)` come from App and are passed down. Use NavigationContext for persistent UI state (search, filters, scroll, lastViewedJobId, minimalView, activeTab); use the navigate/back callbacks from props for moving between views.
 
 ---
 
@@ -380,18 +349,10 @@ const filteredJobs = jobs.filter(job =>
 );
 ```
 
-### NavigationContext vs React Router
+### NavigationContext vs view-state (App)
 
-- **NavigationContext**: Persists across refreshes (localStorage)
-- **React Router location.state**: Temporary navigation state (lost on refresh)
-
-```typescript
-// NavigationContext - Persistent
-updateState({ lastViewedJobId: jobId });
-
-// React Router - Temporary
-navigate('/jobs/123', { state: { returnTo: '/inventory' } });
-```
+- **NavigationContext**: Persists across refreshes (localStorage) — search, filters, scroll, lastViewedJobId, minimalView, activeTab.
+- **App view + id**: Current view is in App state; `handleNavigate(view, id)` and `navigateBackFrom(detailView, fallback)` are passed as props. No URL path per internal view.
 
 ---
 

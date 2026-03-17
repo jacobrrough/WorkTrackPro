@@ -82,7 +82,7 @@ When implementing features, always include reminders like:
 
 This skill complements the existing WorkTrack Pro skill which covers:
 - Local-first development patterns
-- Environment variables (`.env.local`)
-- Netlify auto-deploy workflow
+- **Single env template**: `.env.example` → copy to `.env.local`; no server/ or PocketBase in repo
+- Netlify auto-deploy from GitHub main
 
 The Guardian enforces these patterns by **always reminding** and **warning before push**.

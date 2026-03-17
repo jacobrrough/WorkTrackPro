@@ -19,22 +19,13 @@ description: Specialized expertise for WorkTrack Pro SaaS development. Covers Su
 
 ### Authentication Pattern
 
-```typescript
-// Always check profiles.is_admin from Supabase
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('id, email, name, initials, is_admin')
-  .eq('id', session.user.id)
-  .single();
+- Auth lives in **AuthContext** (`useAuth()`). App composes it inside **AppProvider** and re-exposes via `useApp()`.
+- Profiles: `profiles.is_admin`, `profiles.is_approved` (approval gate for new sign-ups).
 
-// Map to User type
-interface User {
-  id: string;
-  email: string | null;
-  name: string | null;
-  initials: string | null;
-  isAdmin: boolean; // from profiles.is_admin
-}
+```typescript
+// In components, use useApp() or useAuth()
+const { currentUser } = useApp();
+// currentUser.isAdmin, currentUser.isApproved
 ```
 
 ### Row-Level Security (RLS)
@@ -67,9 +58,7 @@ interface User {
 1. **Always develop locally first**: `npm run dev` → test at `http://localhost:3000`
 2. **Never push untested code**: Only push to GitHub when feature works locally
 3. **Minimize Netlify builds**: Netlify auto-deploys from GitHub main - avoid unnecessary pushes
-4. **Environment variables**: Use `.env.local` for development (gitignored)
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
+4. **Single env template**: Copy `.env.example` to `.env.local` (gitignored). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. No server/ or PocketBase in repo.
 
 ### When to Push
 
@@ -139,53 +128,19 @@ const handleAutoAssign = async () => {
 
 ## Navigation Persistence Master
 
+### View-state routing
+
+Internal app navigation is **view-state** (no URL path per view). `App.tsx` holds `view` and `id`; `handleNavigate(nextView, nextId)` and `navigateBackFrom(detailView, fallback)` are passed down. Routes: `/` = public landing, `/app` = employee app (SPA).
+
 ### NavigationContext Pattern
 
 ```typescript
 // src/contexts/NavigationContext.tsx
-interface NavigationState {
-  searchTerm: string;
-  filters: string[];
-  expandedCategories: string[];
-  scrollPositions: Record<string, number>;
-  lastViewedJobId: string | null;
-  minimalView: boolean;
-  activeTab: string;
-}
+import { useNavigation } from '@/contexts/NavigationContext';
 
-// Persist to localStorage automatically
-const [state, setState] = useState<NavigationState>(() => {
-  const saved = localStorage.getItem('navigationState');
-  return saved ? JSON.parse(saved) : defaultState;
-});
-
-useEffect(() => {
-  localStorage.setItem('navigationState', JSON.stringify(state));
-}, [state]);
-```
-
-### React Router Integration
-
-```typescript
-// Use useLocation and useNavigate from react-router-dom
-const location = useLocation();
-const navigate = useNavigate();
-
-// Store return path in navigation state
-const navigateTo = (view: ViewState, id?: string) => {
-  const path = getPath(view, id);
-  navigate(path, { 
-    state: { returnView: currentView, returnTo: location.pathname } 
-  });
-};
-
-// Restore from location.state on back navigation
-const navigateBack = () => {
-  const state = location.state;
-  if (state?.returnTo) {
-    navigate(state.returnTo);
-  }
-};
+const { state, updateState } = useNavigation();
+// state: searchTerm, filters, expandedCategories, scrollPositions, lastViewedJobId, minimalView, activeTab
+// Persists to localStorage automatically
 ```
 
 ### What to Persist
@@ -324,23 +279,21 @@ showToast('Failed to save job', 'error');
 ### Toast Patterns
 
 ```typescript
-// Success feedback
+import { useToast } from '@/Toast';
+const { showToast } = useToast();
+
 showToast('Job updated successfully', 'success');
-
-// Error feedback
 showToast('Failed to update job: ' + error.message, 'error');
-
-// Loading state (optional)
-showToast('Saving...', 'info');
+showToast('File deleted', 'success'); // e.g. AttachmentsList delete
 ```
 
 ### When to Show Toasts
 
 - ✅ Every mutation (create, update, delete)
 - ✅ Form submissions
-- ✅ File uploads
+- ✅ File uploads and file delete (AttachmentsList)
 - ✅ Status changes
-- ✅ Navigation actions (if significant)
+- ✅ Allocation failures (e.g. "Someone else allocated this stock first")
 - ❌ Don't toast on every keystroke or minor UI interaction
 
 ---
@@ -351,8 +304,8 @@ showToast('Saving...', 'info');
 
 ```typescript
 import { useState, useEffect, useCallback } from 'react';
-import { useToast } from './hooks/useToast';
-import { useNavigation } from './contexts/NavigationContext';
+import { useToast } from '@/Toast';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface ComponentProps {
   // Props here
@@ -446,17 +399,10 @@ export const Component: React.FC<ComponentProps> = ({ isAdmin }) => {
 
 ```typescript
 // From job detail → inventory detail
-onNavigate('inventory-detail', inventoryId, { 
-  returnView: 'job-detail', 
-  returnTo: `/jobs/${jobId}` 
-});
+onNavigate('inventory-detail', inventoryId);
 
-// Back button returns to job detail
-const navigateBack = () => {
-  if (location.state?.returnTo) {
-    navigate(location.state.returnTo);
-  }
-};
+// Back: use the navigateBackFrom / onBack passed from App
+onBack(); // e.g. navigateBackFrom('inventory-detail', 'inventory')
 ```
 
 ---
@@ -467,10 +413,11 @@ When implementing a feature, verify:
 
 - [ ] **Role-based**: Pricing hidden for shop-floor users?
 - [ ] **Local-first**: Tested with `npm run dev`?
-- [ ] **Navigation**: State persists across refresh?
+- [ ] **Navigation**: State persists via NavigationContext?
 - [ ] **Toast feedback**: Every mutation shows toast?
 - [ ] **Mobile-friendly**: Large tap targets, minimal scrolling?
 - [ ] **Inventory links**: Material names are clickable?
 - [ ] **Dash quantities**: Multi-variant jobs handled correctly?
 - [ ] **Auto-assignment**: Materials calculated from Part?
 - [ ] **RLS**: Database policies allow appropriate access?
+- [ ] **Allocation**: Server-side guard prevents over-allocate (Supabase trigger); client shows friendly toast on conflict.

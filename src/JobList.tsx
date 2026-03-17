@@ -4,6 +4,7 @@ import { formatDateOnly } from '@/core/date';
 import {
   formatJobCode,
   formatDashSummary,
+  totalFromDashQuantities,
   getJobDisplayName,
   formatJobIdentityLine,
 } from '@/lib/formatJob';
@@ -219,7 +220,16 @@ const JobList: React.FC<JobListProps> = ({
                         {jobHours > 0 && (
                           <span className="text-xs text-slate-400">{jobHours.toFixed(1)}h</span>
                         )}
-                        {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 ? (
+                        {job.parts != null && job.parts.length > 1 ? (
+                          <span className="text-xs text-slate-500">
+                            {job.parts.length} parts,{' '}
+                            {job.parts.reduce(
+                              (s, p) => s + totalFromDashQuantities(p.dashQuantities),
+                              0
+                            )}{' '}
+                            total
+                          </span>
+                        ) : job.dashQuantities && Object.keys(job.dashQuantities).length > 0 ? (
                           <span className="text-xs text-slate-500">
                             Variant: {formatDashSummary(job.dashQuantities)}
                           </span>

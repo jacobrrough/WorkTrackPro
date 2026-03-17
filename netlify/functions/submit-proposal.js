@@ -12,7 +12,6 @@ const corsHeaders = {
 const requiredBaseEnv = [
   'VITE_SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'TURNSTILE_SECRET_KEY',
   'RESEND_API_KEY',
 ];
 
@@ -270,12 +269,53 @@ export async function handler(event) {
     const contactName = sanitizeText(payload.contactName);
     const email = sanitizeText(payload.email);
     const phone = sanitizeText(payload.phone);
-    const description = sanitizeText(payload.description);
+    let description = sanitizeText(payload.description);
     const submissionId = sanitizeText(payload.submissionId);
     const turnstileToken = sanitizeText(payload.turnstileToken);
     const files = Array.isArray(payload.files) ? payload.files : [];
+    const partId = sanitizeText(payload.partId) || null;
+    const partNumber = sanitizeText(payload.partNumber) || null;
+    const quantity = payload.quantity != null ? Math.max(1, Math.floor(Number(payload.quantity)) || 1) : null;
+    const variantSuffix = sanitizeText(payload.variantSuffix) || null;
+    const cart = Array.isArray(payload.cart) ? payload.cart : null;
 
-    if (!contactName || !email || !phone || !description || !turnstileToken) {
+    const isCartQuote = cart && cart.length > 0;
+    const isStoreQuote = !isCartQuote && !!(partId && partNumber && quantity != null);
+
+    if (isStoreQuote) {
+      const partLabel = variantSuffix ? `${partNumber}-${variantSuffix}` : partNumber;
+      description = [
+        'Store quote request',
+        '',
+        `Part: ${partLabel}`,
+        `Quantity: ${quantity}`,
+        '',
+        `Contact: ${contactName}`,
+        `Email: ${email}`,
+        `Phone: ${phone}`,
+      ].join('\n');
+    }
+    if (isCartQuote) {
+      const lines = ['Store quote request (cart)', '', 'Items:'];
+      for (const item of cart) {
+        const pn = sanitizeText(item.partNumber) || '—';
+        const name = sanitizeText(item.partName) || '';
+        const suf = item.variantSuffix != null && item.variantSuffix !== '' ? `-${item.variantSuffix}` : '';
+        const q = Math.max(1, Math.floor(Number(item.quantity)) || 1);
+        lines.push(`  ${pn}${suf} ${name ? `(${name})` : ''} — Qty: ${q}`);
+      }
+      lines.push('', `Contact: ${contactName}`, `Email: ${email}`, `Phone: ${phone}`);
+      description = lines.join('\n');
+    }
+
+    if (!contactName || !email || !phone) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Missing required proposal fields.' }),
+      };
+    }
+    if (!isCartQuote && !description) {
       return {
         statusCode: 400,
         headers: corsHeaders,
@@ -283,16 +323,26 @@ export async function handler(event) {
       };
     }
 
-    const turnstileValid = await verifyTurnstile(
-      turnstileToken,
-      event.headers['x-nf-client-connection-ip']
-    );
-    if (!turnstileValid) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Anti-spam validation failed. Please try again.' }),
-      };
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    if (turnstileSecret) {
+      if (!turnstileToken) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Missing required proposal fields.' }),
+        };
+      }
+      const turnstileValid = await verifyTurnstile(
+        turnstileToken,
+        event.headers['x-nf-client-connection-ip']
+      );
+      if (!turnstileValid) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Anti-spam validation failed. Please try again.' }),
+        };
+      }
     }
 
     const supabase = createClient(
@@ -335,17 +385,62 @@ export async function handler(event) {
       .filter(Boolean)
       .join('\n');
 
+    let firstPartId = null;
+    let firstPartNumber = null;
+    let jobQty = 'Proposal';
+
+    if (isCartQuote) {
+      const first = cart[0];
+      firstPartId = sanitizeText(first.partId) || null;
+      firstPartNumber = sanitizeText(first.partNumber) || null;
+      jobQty = String(cart.reduce((sum, i) => sum + (Math.max(1, Math.floor(Number(i.quantity)) || 1)), 0));
+    } else if (isStoreQuote) {
+      firstPartId = partId;
+      firstPartNumber = partNumber;
+      jobQty = String(quantity);
+    }
+
+    const jobInsert = {
+      job_code: nextJobCode,
+      name: isCartQuote
+        ? `Store quote - ${cart.length} part(s)`
+        : isStoreQuote
+          ? `Store quote - ${partNumber}${variantSuffix ? `-${variantSuffix}` : ''}`
+          : `Proposal - ${contactName}`,
+      description: descriptionWithContact,
+      status: 'toBeQuoted',
+      board_type: 'admin',
+      qty: jobQty,
+      active: true,
+    };
+    if (firstPartId) jobInsert.part_id = firstPartId;
+    if (firstPartNumber) jobInsert.part_number = firstPartNumber;
+
+    // Build byPart for cart so we can set job.dash_quantities from first part and insert job_parts after
+    let cartByPart = null;
+    if (isCartQuote && Array.isArray(cart) && cart.length > 0) {
+      cartByPart = new Map();
+      for (const item of cart) {
+        const pid = sanitizeText(item.partId);
+        if (!pid) continue;
+        const suffix = item.variantSuffix != null && item.variantSuffix !== '' ? String(item.variantSuffix) : '';
+        const q = Math.max(1, Math.floor(Number(item.quantity)) || 1);
+        const rec = cartByPart.get(pid) || {};
+        rec[suffix] = (rec[suffix] || 0) + q;
+        cartByPart.set(pid, rec);
+      }
+      const firstEntry = cartByPart.entries().next();
+      if (!firstEntry.done && firstEntry.value) {
+        const [, firstDash] = firstEntry.value;
+        if (firstDash && typeof firstDash === 'object' && Object.keys(firstDash).length > 0) {
+          jobInsert.dash_quantities = firstDash;
+        }
+      }
+    }
+
     const { data: insertedJob, error: jobError } = await supabase
       .from('jobs')
-      .insert({
-        job_code: nextJobCode,
-        name: `Proposal - ${contactName}`,
-        description: descriptionWithContact,
-        status: 'toBeQuoted',
-        board_type: 'admin',
-        qty: 'Proposal',
-        active: true,
-      })
+      .insert(jobInsert)
       .select('id, job_code')
       .single();
 
@@ -355,6 +450,21 @@ export async function handler(event) {
         headers: corsHeaders,
         body: JSON.stringify({ error: 'Unable to route proposal to admin board.' }),
       };
+    }
+
+    if (isCartQuote && insertedJob.id && cartByPart) {
+      let sortOrder = 0;
+      for (const [partIdKey, dashQuantities] of cartByPart) {
+        const { error: jpErr } = await supabase.from('job_parts').insert({
+          job_id: insertedJob.id,
+          part_id: partIdKey,
+          dash_quantities: dashQuantities,
+          sort_order: sortOrder++,
+        });
+        if (jpErr) {
+          console.error('job_parts insert failed:', jpErr.message);
+        }
+      }
     }
 
     const { data: proposalRow, error: proposalError } = await supabase

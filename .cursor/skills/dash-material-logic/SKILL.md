@@ -402,10 +402,11 @@ Create/update JobInventory:
 
 ### Service Methods
 
-- `partsService.getPartWithVariants(partId)` - Load part with variants and materials
-- `jobService.addJobInventory(jobId, inventoryId, quantity, unit)` - Create entry
-- `jobService.updateJobInventory(id, quantity, unit)` - Update entry (if exists)
-- `jobService.updateJob(jobId, { dashQuantities })` - Save quantities to job
+- `partsService.getPartWithVariants(partId)` — Load part with variants and materials (from `@/services/api/parts` or `useApp()`)
+- `jobService.addJobInventory(jobId, inventoryId, quantity, unit)` — Create entry (may throw if allocation guard rejects; show toast on insufficient_stock)
+- `jobService.updateJobInventory(id, quantity, unit)` — Update entry (if exists)
+- `jobService.updateJob(jobId, { dashQuantities })` — Save quantities to job
+- `jobService.getJobById(jobId)` — Fetch single job (not `getJob`)
 
 ---
 

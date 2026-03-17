@@ -15,12 +15,15 @@ export function getInventoryImagePublicUrl(storagePath: string): string {
 
 export type UploadAttachmentResult = { id: string } | { id: null; error: string };
 
+export type PartAttachmentType = 'drawing' | 'product_image';
+
 export async function uploadAttachment(
   jobId: string | undefined,
   inventoryId: string | undefined,
   partId: string | undefined,
   file: File,
-  isAdminOnly: boolean
+  isAdminOnly: boolean,
+  partAttachmentType?: PartAttachmentType
 ): Promise<UploadAttachmentResult> {
   if (!jobId && !inventoryId && !partId) {
     const msg = 'One of jobId, inventoryId, or partId must be provided';
@@ -48,7 +51,10 @@ export async function uploadAttachment(
   };
   if (jobId) insertData.job_id = jobId;
   if (inventoryId) insertData.inventory_id = inventoryId;
-  if (partId) insertData.part_id = partId;
+  if (partId) {
+    insertData.part_id = partId;
+    insertData.attachment_type = partAttachmentType ?? 'drawing';
+  }
 
   const { data: row, error: insertErr } = await supabase
     .from('attachments')

@@ -28,6 +28,7 @@ function mapRowToPart(row: Record<string, unknown>): Part {
         ? (setComp as Record<string, number>)
         : undefined,
     variantsAreCopies: row.variants_are_copies === true,
+    showOnStore: row.show_on_store === true,
     createdAt: row.created_at as string | undefined,
     updatedAt: row.updated_at as string | undefined,
   };
@@ -57,16 +58,24 @@ type AttachmentRow = {
   filename: string;
   storage_path: string;
   is_admin_only: boolean;
+  attachment_type?: string | null;
   created_at?: string;
 };
 
 function mapAttachmentRow(a: AttachmentRow): Attachment {
+  const attachmentType =
+    a.attachment_type === 'product_image' || a.attachment_type === 'drawing'
+      ? (a.attachment_type as 'product_image' | 'drawing')
+      : a.attachment_type != null
+        ? ('general' as const)
+        : undefined;
   return {
     id: a.id,
     partId: a.part_id,
     filename: a.filename,
     storagePath: a.storage_path,
     isAdminOnly: a.is_admin_only,
+    attachmentType,
     url: getAttachmentPublicUrl(a.storage_path),
     created: a.created_at,
   };
@@ -234,13 +243,26 @@ export const partsService = {
     return part;
   },
 
-  /** Get all drawing files for this part (visible on job cards). */
+  /** Get all drawing files for this part (visible on job cards). Excludes product_image. */
   async getPartDrawings(partId: string): Promise<Attachment[]> {
     const { data, error } = await supabase
       .from('attachments')
-      .select('id, part_id, filename, storage_path, is_admin_only, created_at')
+      .select('id, part_id, filename, storage_path, is_admin_only, attachment_type, created_at')
       .eq('part_id', partId)
+      .or('attachment_type.eq.drawing,attachment_type.eq.general,attachment_type.is.null')
       .order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return (data as unknown as AttachmentRow[]).map(mapAttachmentRow);
+  },
+
+  /** Get product images for this part (storefront). */
+  async getPartProductImages(partId: string): Promise<Attachment[]> {
+    const { data, error } = await supabase
+      .from('attachments')
+      .select('id, part_id, filename, storage_path, is_admin_only, attachment_type, created_at')
+      .eq('part_id', partId)
+      .eq('attachment_type', 'product_image')
+      .order('created_at', { ascending: true });
     if (error || !data) return [];
     return (data as unknown as AttachmentRow[]).map(mapAttachmentRow);
   },
@@ -254,7 +276,7 @@ export const partsService = {
   /** Add a drawing file to a part. Part drawings are always visible to standard users. */
   async addPartDrawing(partId: string, file: File): Promise<{ success: boolean; error?: string }> {
     try {
-      const result = await uploadAttachment(undefined, undefined, partId, file, false);
+      const result = await uploadAttachment(undefined, undefined, partId, file, false, 'drawing');
       if (result.id == null) {
         return { success: false, error: result.error || 'Part drawing upload failed' };
       }
@@ -267,6 +289,35 @@ export const partsService = {
 
   /** Remove part drawing by attachment id. */
   async deletePartDrawing(attachmentId: string): Promise<boolean> {
+    return deleteAttachmentRecord(attachmentId);
+  },
+
+  /** Add a product image for storefront. */
+  async addPartProductImage(
+    partId: string,
+    file: File
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await uploadAttachment(
+        undefined,
+        undefined,
+        partId,
+        file,
+        false,
+        'product_image'
+      );
+      if (result.id == null) {
+        return { success: false, error: result.error || 'Product image upload failed' };
+      }
+      return { success: true };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Product image upload failed';
+      return { success: false, error: message };
+    }
+  },
+
+  /** Remove product image by attachment id. */
+  async deletePartProductImage(attachmentId: string): Promise<boolean> {
     return deleteAttachmentRecord(attachmentId);
   },
 
@@ -284,6 +335,7 @@ export const partsService = {
     if (data.printer3DTimeHours != null) row.printer_3d_time_hours = data.printer3DTimeHours;
     if (data.setComposition != null) row.set_composition = data.setComposition;
     if (data.variantsAreCopies != null) row.variants_are_copies = data.variantsAreCopies;
+    if (data.showOnStore != null) row.show_on_store = data.showOnStore;
     const { data: created, error } = await supabase.from('parts').insert(row).select('*').single();
     if (error) return null;
     return mapRowToPart(created as unknown as Record<string, unknown>);
@@ -303,6 +355,7 @@ export const partsService = {
     if (data.printer3DTimeHours !== undefined) row.printer_3d_time_hours = data.printer3DTimeHours;
     if (data.setComposition !== undefined) row.set_composition = data.setComposition;
     if (data.variantsAreCopies !== undefined) row.variants_are_copies = data.variantsAreCopies;
+    if (data.showOnStore !== undefined) row.show_on_store = data.showOnStore;
     const { data: updated, error } = await supabase
       .from('parts')
       .update(row)

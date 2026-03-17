@@ -4,13 +4,13 @@
 
 ### Project overview
 
-WorkTrack Pro is a job, inventory & time-tracking SaaS for manufacturing. Single-package Vite + React 19 + TypeScript + Tailwind CSS frontend backed by hosted Supabase (auth, DB, storage). See `README.md` for full feature list and available npm scripts.
+WorkTrack Pro is a job, inventory & time-tracking SaaS for manufacturing. Single-package Vite + React 19 + TypeScript + Tailwind CSS frontend backed by **hosted Supabase only** (auth, DB, storage). No PocketBase or local server in repo. Hosting: Netlify (auto-deploy from GitHub). See `README.md` for full feature list and available npm scripts.
 
 ### Environment variables
 
-The app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` (gitignored). These are injected as Cursor Cloud secrets.
+**Single template:** `.env.example` (copy to `.env.local` for local dev). The app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` (gitignored). Cursor Cloud injects these via the update script.
 
-The update script writes these from the injected shell env vars into `.env.local`. A `sed` strip removes any accidental `VITE_SUPABASE_URL=` prefix in the value (safe no-op if the secret is already correctly formatted).
+The update script writes from injected shell env vars into `.env.local`. A `sed` strip removes any accidental `VITE_SUPABASE_URL=` prefix (safe no-op if already correct).
 
 **Vite env priority:** Shell environment variables override `.env.local`. The update script unsets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the shell after writing `.env.local` so Vite reads the file values.
 
@@ -64,14 +64,29 @@ Internal app navigation is view-state (not URL path). Main views:
 | `admin-settings` | Org settings, labor rates, on-site rules (admin) |
 | `trello-import` | Trello import (admin) |
 
-Sign-up is available from the login page. Navigation state (search, filters, scroll, last job, minimal view) is persisted via `NavigationContext`.
+Sign-up is available from the login page. **Navigation:** Internal app uses view-state (e.g. `dashboard`, `job-detail`, `inventory`) and `handleNavigate` from App; no URL path per view. State (search, filters, scroll, last job, minimal view, active tab) is persisted via `NavigationContext`.
+
+### Architecture (refactored)
+
+- **Auth:** `AuthContext` (`useAuth()`) — currentUser, login, signUp, logout, auth refresh, idle timeout.
+- **Server state:** `useAppQueries(enabled)` — jobs, shifts, users, inventory + refresh fns.
+- **Derived:** `useActiveShift`, `useInventoryAllocation` — activeShift, activeJob, calculateAvailable/Allocated.
+- **Mutations:** `useJobMutations`, `useClockMutations`, `useInventoryMutations`, `useAttachmentMutations` — composed in `AppContext`; public API remains `useApp()`.
+- **Attachments:** Job and inventory file lists support delete (admin) via `AttachmentsList` `canDelete` / `onDeleteAttachment`; toast feedback.
+- **Allocation guard:** Supabase trigger `job_inventory_allocate_guard` prevents allocating more than `in_stock` (race-safe). Migration: `supabase/migrations/20260313000001_job_inventory_allocate_guard.sql`.
+- **Backups:** See `docs/BACKUP.md` for Supabase backup and PITR notes.
 
 ### Notes
 
-- TypeScript type-checking (`tsc --noEmit`) is intentionally disabled in CI (see `.github/workflows/ci.yml`). Only ESLint + Vite build are used for validation.
-- The Vite config conditionally enables HTTPS and PocketBase proxy only when `key.pem`/`cert.pem` exist; in Cloud Agent environments these files don't exist, so the dev server runs on plain HTTP — this is fine.
-- Supabase is cloud-hosted (no local Supabase CLI setup needed). Migrations in `supabase/migrations/` are reference only.
-- The Trello proxy (`npm run trello-proxy`) is optional and only needed for Trello import features.
+- TypeScript type-checking (`tsc --noEmit`) is intentionally disabled in CI. Only ESLint + Vite build are used for validation.
+- Vite may enable HTTPS/proxy when `key.pem`/`cert.pem` exist; in Cloud Agent these don't exist, so dev server runs on plain HTTP — fine.
+- Supabase is cloud-hosted (no local Supabase CLI required). Migrations in `supabase/migrations/` are reference only; apply in Supabase SQL Editor or via CLI.
+- Trello proxy (`npm run trello-proxy`) is optional and only needed for Trello import.
+
+### When to use explore / agents
+
+- **Broad exploration** (e.g. “how does X work?”, “find all usages of Y”): use the **explore** agent with a clear prompt.
+- **Specific lookups** (known file or symbol): use grep, read_file, or codebase search directly.
 
 ### Troubleshooting: Jobs not linking to parts (BOM / labor gone)
 

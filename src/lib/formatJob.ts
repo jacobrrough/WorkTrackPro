@@ -75,8 +75,15 @@ export function sanitizeReferenceValue(value: string | undefined | null): string
   return cleaned;
 }
 
+/** Minimal type for job.parts entries used in identity/fields */
+export interface JobPartForDisplay {
+  partNumber: string;
+  dashQuantities: Record<string, number>;
+}
+
 /**
  * Returns job identity fields in standard order for display. Only includes entries with a value.
+ * When job.parts has multiple entries, part number and qty are derived from parts.
  */
 export function getJobFieldsInOrder(job: {
   partNumber?: string;
@@ -89,21 +96,35 @@ export function getJobFieldsInOrder(job: {
   invNumber?: string;
   dashQuantities?: Record<string, number>;
   laborBreakdownByVariant?: Record<string, { qty: number }>;
+  parts?: JobPartForDisplay[];
 }): { label: string; value: string }[] {
+  const isMultiPart = job.parts != null && job.parts.length > 1;
+  const partNumberValue = isMultiPart
+    ? (job.parts ?? [])
+        .map((p) => (p.partNumber ?? '').trim())
+        .filter(Boolean)
+        .join(', ')
+    : (job.partNumber ?? '').trim();
   const variantQtyTotal = Object.values(job.laborBreakdownByVariant ?? {}).reduce(
     (sum, entry) => sum + (Number(entry.qty) || 0),
     0
   );
-  const qtyDisplay =
-    job.dashQuantities && Object.keys(job.dashQuantities).length > 0
-      ? formatDashSummary(job.dashQuantities)
-      : variantQtyTotal > 0
-        ? String(variantQtyTotal)
-        : (job.qty ?? '').trim();
+  let qtyDisplay: string;
+  if (isMultiPart && job.parts!.length > 0) {
+    const total = job.parts!.reduce((s, p) => s + totalFromDashQuantities(p.dashQuantities), 0);
+    qtyDisplay = total > 0 ? `${total} total` : (job.qty ?? '').trim();
+  } else {
+    qtyDisplay =
+      job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+        ? formatDashSummary(job.dashQuantities)
+        : variantQtyTotal > 0
+          ? String(variantQtyTotal)
+          : (job.qty ?? '').trim();
+  }
   const entries: { label: string; value: string }[] = [];
   for (const { key, label } of JOB_FIELD_ORDER) {
     let value = '';
-    if (key === 'partNumber') value = (job.partNumber ?? '').trim();
+    if (key === 'partNumber') value = partNumberValue;
     else if (key === 'revision') value = (job.revision ?? '').trim();
     else if (key === 'name') value = (job.name ?? '').trim();
     else if (key === 'qty') value = qtyDisplay;
@@ -118,6 +139,7 @@ export function getJobFieldsInOrder(job: {
 
 /**
  * Single line for cards: "Part# Rev Name Qty EST# RFQ# PO# INV#" (only non-empty).
+ * Supports multi-part jobs via job.parts.
  */
 export function formatJobIdentityLine(job: {
   partNumber?: string;
@@ -129,6 +151,7 @@ export function formatJobIdentityLine(job: {
   po?: string;
   invNumber?: string;
   dashQuantities?: Record<string, number>;
+  parts?: JobPartForDisplay[];
 }): string {
   const fields = getJobFieldsInOrder(job);
   return fields.map((f) => f.value).join(' · ');

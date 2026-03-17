@@ -1,4 +1,5 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApp } from './AppContext';
 import { jobService } from './pocketbase';
@@ -11,6 +12,7 @@ import { NotificationsProvider } from './contexts/NotificationsContext';
 import { NotificationTrigger } from './components/NotificationTrigger';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
+import Storefront from './public/Storefront';
 import BottomNavigation from './BottomNavigation';
 import { CommandPalette } from './components/CommandPalette';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -219,13 +221,16 @@ export default function App() {
     [getJobByCode, clockIn]
   );
 
-  const isEmployeeAppPath =
-    typeof window !== 'undefined'
-      ? window.location.pathname === '/app' || window.location.pathname.startsWith('/app/')
-      : true;
+  const location = useLocation();
+  const pathname = location.pathname;
+  const isEmployeeAppPath = pathname === '/app' || pathname.startsWith('/app/');
 
   if (!isEmployeeAppPath) {
-    return <PublicHome onEmployeeLogin={() => window.location.assign('/app')} />;
+    const onEmployeeLogin = () => window.location.assign('/app');
+    if (pathname === '/shop' || pathname.startsWith('/shop/')) {
+      return <Storefront onEmployeeLogin={onEmployeeLogin} />;
+    }
+    return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
   }
 
   if (!currentUser && !isLoading) {

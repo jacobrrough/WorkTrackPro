@@ -7,6 +7,58 @@ import { useThrottle } from '@/useThrottle';
 
 const PARTS_VIEW_KEY = '/admin/parts';
 
+function PartsListStoreToggle({
+  part,
+  onToggle,
+  showToast,
+}: {
+  part: Part;
+  onToggle: () => void;
+  showToast: (msg: string, type: 'success' | 'error') => void;
+}) {
+  const [updating, setUpdating] = useState(false);
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (updating) return;
+    setUpdating(true);
+    try {
+      const next = !part.showOnStore;
+      const updated = await partsService.updatePart(part.id, { showOnStore: next });
+      if (updated) {
+        showToast(next ? 'Part shown on store' : 'Part removed from store', 'success');
+        onToggle();
+      } else {
+        showToast('Failed to update part', 'error');
+      }
+    } catch {
+      showToast('Failed to update part', 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={updating}
+      title={
+        part.showOnStore ? 'Shown on store (click to hide)' : 'Hidden from store (click to show)'
+      }
+      className={`flex min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center rounded-sm border transition-colors ${
+        part.showOnStore
+          ? 'border-primary/50 bg-primary/20 text-primary'
+          : 'border-white/10 bg-white/5 text-slate-500 hover:bg-white/10'
+      } ${updating ? 'opacity-60' : ''}`}
+      aria-label={part.showOnStore ? 'Hide from store' : 'Show on store'}
+    >
+      <span className="material-symbols-outlined text-xl">
+        {part.showOnStore ? 'storefront' : 'storefront'}
+      </span>
+    </button>
+  );
+}
+
 type PartsTab = 'all' | 'needs-attention' | 'in-jobs';
 
 interface PartsProps {
@@ -241,29 +293,32 @@ const Parts: React.FC<PartsProps> = ({
           <ul className="space-y-0 divide-y divide-white/10">
             {filteredParts.map((part) => (
               <li key={part.id}>
-                <button
-                  type="button"
-                  onClick={() => handlePartClick(part.id)}
-                  className="flex w-full items-center justify-between gap-3 py-4 text-left transition-colors hover:bg-white/5 active:bg-white/10"
-                >
-                  <div className="flex min-w-0 flex-col items-start gap-0.5">
-                    <span className="font-mono text-base font-semibold text-white">
-                      {part.partNumber}
+                <div className="flex w-full items-center justify-between gap-3 py-4">
+                  <button
+                    type="button"
+                    onClick={() => handlePartClick(part.id)}
+                    className="-m-2 flex min-w-0 flex-1 items-center gap-3 rounded-sm p-2 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                  >
+                    <div className="flex min-w-0 flex-col items-start gap-0.5">
+                      <span className="font-mono text-base font-semibold text-white">
+                        {part.partNumber}
+                      </span>
+                      <span className="text-sm text-slate-400">{part.name || part.partNumber}</span>
+                    </div>
+                    {partIdsInJobs.has(part.id) && (
+                      <span
+                        className="shrink-0 rounded bg-primary/20 px-2 py-0.5 text-xs text-primary"
+                        title="Used in jobs"
+                      >
+                        In use
+                      </span>
+                    )}
+                    <span className="material-symbols-outlined shrink-0 text-slate-500">
+                      chevron_right
                     </span>
-                    <span className="text-sm text-slate-400">{part.name || part.partNumber}</span>
-                  </div>
-                  {partIdsInJobs.has(part.id) && (
-                    <span
-                      className="rounded bg-primary/20 px-2 py-0.5 text-xs text-primary"
-                      title="Used in jobs"
-                    >
-                      In use
-                    </span>
-                  )}
-                  <span className="material-symbols-outlined shrink-0 text-slate-500">
-                    chevron_right
-                  </span>
-                </button>
+                  </button>
+                  <PartsListStoreToggle part={part} onToggle={loadParts} showToast={showToast} />
+                </div>
               </li>
             ))}
           </ul>

@@ -60,7 +60,16 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
 
   // Standard users: only part drawing. Admins: part drawing or first non-admin job attachment.
   const drawingUrl = partDrawingUrl ?? (currentUser.isAdmin ? getViewDrawingUrl(job) : null);
-  const totalQty = totalFromDashQuantities(job.dashQuantities);
+  const isMultiPart = job.parts != null && job.parts.length > 1;
+  const totalQty = isMultiPart
+    ? (job.parts ?? []).reduce((s, p) => s + totalFromDashQuantities(p.dashQuantities), 0)
+    : totalFromDashQuantities(job.dashQuantities);
+  const displayPartNumber = isMultiPart
+    ? (job.parts ?? [])
+        .map((p) => p.partNumber?.trim())
+        .filter(Boolean)
+        .join(', ')
+    : job.partNumber?.trim() || '';
 
   const handleBack = () => {
     if (onBack) onBack();
@@ -87,7 +96,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-bold text-white">
               {formatJobCode(job.jobCode)}
-              {job.partNumber ? ` – ${job.partNumber}` : ''}
+              {displayPartNumber ? ` – ${displayPartNumber}` : ''}
             </h1>
             <p className="text-xs text-slate-400">Job summary</p>
           </div>
@@ -95,20 +104,41 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
       </header>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-3">
-        {/* Dash quantities - prominent */}
-        {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 && (
+        {/* Dash quantities - prominent (single-part from job row, multi-part from job.parts) */}
+        {(isMultiPart &&
+          (job.parts ?? []).some((p) => Object.keys(p.dashQuantities ?? {}).length > 0)) ||
+        (job.dashQuantities && Object.keys(job.dashQuantities).length > 0) ? (
           <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
             <p className="mb-1 text-xs font-bold uppercase text-slate-400">Quantities</p>
-            <p className="text-xl font-bold text-white">
-              {formatDashSummary(job.dashQuantities)}
-              {totalQty > 0 && (
-                <span className="ml-2 text-base font-medium text-slate-300">
-                  ({totalQty} total)
-                </span>
-              )}
-            </p>
+            {isMultiPart ? (
+              <div className="space-y-1">
+                {(job.parts ?? []).map((p, idx) => {
+                  const summary = formatDashSummary(p.dashQuantities);
+                  if (!summary) return null;
+                  return (
+                    <p key={idx} className="text-base font-medium text-white">
+                      {p.partNumber?.trim() || 'Part'}: {summary}
+                    </p>
+                  );
+                })}
+                {totalQty > 0 && (
+                  <p className="text-xl font-bold text-white">
+                    <span className="text-base font-medium text-slate-300">({totalQty} total)</span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xl font-bold text-white">
+                {formatDashSummary(job.dashQuantities)}
+                {totalQty > 0 && (
+                  <span className="ml-2 text-base font-medium text-slate-300">
+                    ({totalQty} total)
+                  </span>
+                )}
+              </p>
+            )}
           </div>
-        )}
+        ) : null}
 
         {/* Due date */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-3">
