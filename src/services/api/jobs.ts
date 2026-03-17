@@ -6,6 +6,8 @@ import { runMutationWithSchemaFallback } from './schemaCompat';
 type SupabaseErrorLike = {
   code?: string;
   message?: string;
+  status?: number;
+  statusCode?: number;
 };
 
 type JobInventoryRow = {
@@ -177,7 +179,13 @@ function mapJobRow(
 
 function isPartsTableUnavailable(error: SupabaseErrorLike | null | undefined): boolean {
   if (!error) return false;
-  return error.code === 'PGRST205' || error.code === '42P01';
+  if (error.code === 'PGRST205' || error.code === '42P01') return true;
+  const status =
+    (error as { status?: number }).status ?? (error as { statusCode?: number }).statusCode;
+  if (status === 404) return true;
+  const msg = (error.message ?? '').toLowerCase();
+  if (/not found|404|relation.*does not exist|undefined table/.test(msg)) return true;
+  return false;
 }
 
 function isMissingTableError(error: SupabaseErrorLike | null | undefined): boolean {
@@ -298,7 +306,7 @@ async function fetchJobPartsForJob(jobId: string): Promise<JobPartRow[]> {
     .eq('job_id', jobId)
     .order('sort_order', { ascending: true });
   if (error) {
-    if (isPartsTableUnavailable(error) || error.code === '42P01') return [];
+    if (isPartsTableUnavailable(error)) return [];
     throw error;
   }
   const list = (rows ?? []) as Array<{
@@ -334,7 +342,7 @@ async function fetchJobPartsBatch(jobIds: string[]): Promise<Map<string, JobPart
     .in('job_id', jobIds)
     .order('sort_order', { ascending: true });
   if (error) {
-    if (isPartsTableUnavailable(error) || error.code === '42P01') return out;
+    if (isPartsTableUnavailable(error)) return out;
     throw error;
   }
   const list = (rows ?? []) as Array<{

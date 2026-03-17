@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { useToast } from '@/Toast';
+import { useNavigation } from '@/contexts/NavigationContext';
 import AllocateToJobModal from './AllocateToJobModal';
+
+const INVENTORY_LIST_SCROLL_KEY = 'inventory-list';
 import {
   InventoryFilters,
   InventoryTab,
@@ -21,7 +24,10 @@ interface InventoryMainViewProps {
   filters: InventoryFilters;
   onFiltersChange: (patch: Partial<InventoryFilters>) => void;
   onAddItem: () => void;
+  onCreateItem?: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
+  onReloadInventory?: () => Promise<void>;
   onOpenDetail: (itemId: string) => void;
+  onKanbanView?: () => void;
   onQuickAdjust: (item: InventoryItem, delta: number) => Promise<void>;
   onMarkOrdered?: (itemId: string, quantity: number) => Promise<boolean>;
   onReceiveOrder?: (itemId: string, quantity: number) => Promise<boolean>;
@@ -54,7 +60,10 @@ export default function InventoryMainView({
   filters,
   onFiltersChange,
   onAddItem,
+  onCreateItem,
+  onReloadInventory,
   onOpenDetail,
+  onKanbanView,
   onQuickAdjust,
   onMarkOrdered,
   onReceiveOrder,
@@ -63,11 +72,29 @@ export default function InventoryMainView({
   calculateAllocated,
 }: InventoryMainViewProps) {
   const { showToast } = useToast();
-  const [tab, setTab] = useState<InventoryTab>('allParts');
+  const { state: navState, updateState } = useNavigation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollPositionsRef = useRef(navState.scrollPositions);
+  scrollPositionsRef.current = navState.scrollPositions;
+
+  const [tab, setTabState] = useState<InventoryTab>(
+    () => (navState.inventoryTab as InventoryTab) || 'allParts'
+  );
+  const setTab = (t: InventoryTab) => {
+    setTabState(t);
+    updateState({ inventoryTab: t });
+  };
   const [allocatingItem, setAllocatingItem] = useState<InventoryItem | null>(null);
   const [orderModalItem, setOrderModalItem] = useState<InventoryItem | null>(null);
   const [orderModalMode, setOrderModalMode] = useState<'add' | 'receive' | null>(null);
   const [orderModalQty, setOrderModalQty] = useState(0);
+  const [rowMenuItemId, setRowMenuItemId] = useState<string | null>(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddName, setQuickAddName] = useState('');
+  const [quickAddCategory, setQuickAddCategory] = useState<InventoryCategory>('material');
+  const [quickAddStock, setQuickAddStock] = useState(0);
+  const [quickAddUnit, setQuickAddUnit] = useState('');
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
 
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
   const baseFiltered = useMemo(
@@ -106,6 +133,26 @@ export default function InventoryMainView({
     return { total: baseFiltered.length, needsReorder, lowStock };
   }, [baseFiltered, calculateAllocated, calculateAvailable]);
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const saved = scrollPositionsRef.current[INVENTORY_LIST_SCROLL_KEY] ?? 0;
+    el.scrollTop = saved;
+  }, []);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const next = el.scrollTop;
+    if ((scrollPositionsRef.current[INVENTORY_LIST_SCROLL_KEY] ?? 0) === next) return;
+    updateState({
+      scrollPositions: {
+        ...scrollPositionsRef.current,
+        [INVENTORY_LIST_SCROLL_KEY]: next,
+      },
+    });
+  };
+
   const handleQuickAdjust = async (item: InventoryItem, delta: number) => {
     const next = Math.max(0, item.inStock + delta);
     await onQuickAdjust(item, next - item.inStock);
@@ -140,125 +187,133 @@ export default function InventoryMainView({
     showToast('Inventory exported to CSV', 'success');
   };
 
+  const closeRowMenu = () => setRowMenuItemId(null);
+
   const renderRow = (item: InventoryItem) => {
     const stock = computeStock(item, calculateAvailable, calculateAllocated);
     const availColor =
       stock.available <= 0 ? 'text-red-400' : stock.lowStock ? 'text-yellow-400' : 'text-green-400';
+    const menuOpen = rowMenuItemId === item.id;
     return (
       <div key={item.id} className="rounded-sm border border-white/10 bg-card-dark p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-bold text-white">{item.name}</p>
-            <p className="text-xs text-slate-400">SKU: {getSku(item)}</p>
-          </div>
-          {stock.needsReorder && (
-            <span className="rounded-sm border border-red-500/40 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300">
-              Min Stock
-            </span>
-          )}
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <p className="text-xs text-slate-500">In Stock</p>
-            <p className="font-bold text-white">{item.inStock}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Allocated</p>
-            <p className="font-bold text-yellow-300">{stock.allocated}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Available</p>
-            <p className={`font-bold ${availColor}`}>{stock.available}</p>
-          </div>
-        </div>
-        <div className="mt-2 text-xs text-slate-400">
-          Bin: {item.binLocation || 'Unassigned'} • {getCategoryDisplayName(item.category)}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onOpenDetail(item.id)}
-            className="min-h-[44px] rounded-sm border border-white/10 px-3 text-xs font-bold text-white"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenDetail(item.id)}
-            className="min-h-[44px] rounded-sm border border-white/10 px-3 text-xs font-bold text-white"
-          >
-            View History
-          </button>
-          {stock.needsReorder && (
-            <button
-              type="button"
-              onClick={() => onOpenDetail(item.id)}
-              className="min-h-[44px] rounded-sm border border-amber-500/50 bg-amber-500/20 px-3 text-xs font-bold text-amber-200"
-            >
-              Reorder
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setAllocatingItem(item)}
-            className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-xs font-bold text-primary"
-          >
-            Allocate To Job
-          </button>
-          {onMarkOrdered && (
-            <button
-              type="button"
-              onClick={() => {
-                setOrderModalItem(item);
-                setOrderModalMode('add');
-                setOrderModalQty(0);
-              }}
-              className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-slate-200"
-              title="Add to order"
-            >
-              <span className="material-symbols-outlined mr-1 align-middle text-base">
-                pending_actions
-              </span>
-              On order
-            </button>
-          )}
-          {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setOrderModalItem(item);
-                setOrderModalMode('receive');
-                setOrderModalQty(item.onOrder ?? 0);
-              }}
-              className="min-h-[44px] rounded-sm border border-green-500/30 bg-green-500/10 px-3 text-xs font-bold text-green-400"
-              title="Receive order"
-            >
-              <span className="material-symbols-outlined mr-1 align-middle text-base">
-                local_shipping
-              </span>
-              Receive
-            </button>
-          )}
-          {
-            <div className="ml-auto flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickAdjust(item, -1)}
-                className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
-                aria-label={`Decrease stock for ${item.name}`}
-              >
-                <span className="material-symbols-outlined">remove</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickAdjust(item, 1)}
-                className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
-                aria-label={`Increase stock for ${item.name}`}
-              >
-                <span className="material-symbols-outlined">add</span>
-              </button>
+        <button
+          type="button"
+          onClick={() => onOpenDetail(item.id)}
+          className="w-full text-left focus:outline-none focus:ring-0"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-bold text-white">{item.name}</p>
+              <p className="text-xs text-slate-400">SKU: {getSku(item)}</p>
             </div>
-          }
+            {stock.needsReorder && (
+              <span className="rounded-sm border border-red-500/40 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300">
+                Min Stock
+              </span>
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+            <div>
+              <p className="text-xs text-slate-500">In Stock</p>
+              <p className="font-bold text-white">{item.inStock}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Allocated</p>
+              <p className="font-bold text-yellow-300">{stock.allocated}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Available</p>
+              <p className={`font-bold ${availColor}`}>{stock.available}</p>
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-slate-400">
+            Bin: {item.binLocation || 'Unassigned'} • {getCategoryDisplayName(item.category)}
+          </div>
+        </button>
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRowMenuItemId(menuOpen ? null : item.id);
+              }}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm border border-white/10 text-white"
+              aria-label="More actions"
+            >
+              <span className="material-symbols-outlined">more_vert</span>
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" aria-hidden onClick={closeRowMenu} />
+                <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-sm border border-white/10 bg-card-dark py-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAllocatingItem(item);
+                      closeRowMenu();
+                    }}
+                    className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-primary"
+                  >
+                    <span className="material-symbols-outlined text-lg">assignment</span>
+                    Allocate to job
+                  </button>
+                  {onMarkOrdered && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderModalItem(item);
+                        setOrderModalMode('add');
+                        setOrderModalQty(0);
+                        closeRowMenu();
+                      }}
+                      className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-200"
+                    >
+                      <span className="material-symbols-outlined text-lg">pending_actions</span>
+                      On order
+                    </button>
+                  )}
+                  {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderModalItem(item);
+                        setOrderModalMode('receive');
+                        setOrderModalQty(item.onOrder ?? 0);
+                        closeRowMenu();
+                      }}
+                      className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400"
+                    >
+                      <span className="material-symbols-outlined text-lg">local_shipping</span>
+                      Receive
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickAdjust(item, -1);
+            }}
+            className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
+            aria-label={`Decrease stock for ${item.name}`}
+          >
+            <span className="material-symbols-outlined">remove</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickAdjust(item, 1);
+            }}
+            className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
+            aria-label={`Increase stock for ${item.name}`}
+          >
+            <span className="material-symbols-outlined">add</span>
+          </button>
         </div>
       </div>
     );
@@ -293,13 +348,33 @@ export default function InventoryMainView({
             </button>
             <h1 className="text-xl font-bold text-white">Parts Inventory</h1>
           </div>
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="min-h-[44px] rounded-sm border border-white/10 px-3 text-xs font-bold text-white"
-          >
-            Export CSV
-          </button>
+          <div className="flex gap-2">
+            {onKanbanView && (
+              <button
+                type="button"
+                onClick={onKanbanView}
+                className="min-h-[44px] rounded-sm border border-white/20 bg-white/5 px-3 text-xs font-bold text-slate-300"
+              >
+                Kanban
+              </button>
+            )}
+            {onCreateItem && (
+              <button
+                type="button"
+                onClick={() => setShowQuickAdd(true)}
+                className="min-h-[44px] rounded-sm border border-primary/40 bg-primary/20 px-3 text-xs font-bold text-primary"
+              >
+                Quick add
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="min-h-[44px] rounded-sm border border-white/10 px-3 text-xs font-bold text-white"
+            >
+              Export CSV
+            </button>
+          </div>
         </div>
 
         <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -386,7 +461,11 @@ export default function InventoryMainView({
         </div>
       </div>
 
-      <div className="content-above-nav flex-1 overflow-y-auto p-3">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="content-above-nav flex-1 overflow-y-auto p-3"
+      >
         {tab === 'byBin' ? (
           <div className="space-y-3">
             {bins.map((group) => (
@@ -443,82 +522,98 @@ export default function InventoryMainView({
                           {item.binLocation || 'Unassigned'}
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex flex-wrap items-center gap-1">
+                          <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => onOpenDetail(item.id)}
-                              className="rounded-sm border border-white/10 px-2 py-1 text-xs text-white"
+                              className="min-h-[36px] rounded-sm border border-primary/40 bg-primary/20 px-3 text-xs font-bold text-primary"
                             >
                               View
                             </button>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setRowMenuItemId(rowMenuItemId === item.id ? null : item.id)
+                                }
+                                className="flex size-9 items-center justify-center rounded-sm border border-white/10 text-white"
+                                aria-label="More actions"
+                              >
+                                <span className="material-symbols-outlined text-lg">more_vert</span>
+                              </button>
+                              {rowMenuItemId === item.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    aria-hidden
+                                    onClick={closeRowMenu}
+                                  />
+                                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-sm border border-white/10 bg-card-dark py-1 shadow-lg">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setAllocatingItem(item);
+                                        closeRowMenu();
+                                      }}
+                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-primary"
+                                    >
+                                      <span className="material-symbols-outlined">assignment</span>
+                                      Allocate
+                                    </button>
+                                    {onMarkOrdered && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOrderModalItem(item);
+                                          setOrderModalMode('add');
+                                          setOrderModalQty(0);
+                                          closeRowMenu();
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-200"
+                                      >
+                                        <span className="material-symbols-outlined">
+                                          pending_actions
+                                        </span>
+                                        On order
+                                      </button>
+                                    )}
+                                    {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOrderModalItem(item);
+                                          setOrderModalMode('receive');
+                                          setOrderModalQty(item.onOrder ?? 0);
+                                          closeRowMenu();
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-green-400"
+                                      >
+                                        <span className="material-symbols-outlined">
+                                          local_shipping
+                                        </span>
+                                        Receive
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                             <button
                               type="button"
-                              onClick={() => onOpenDetail(item.id)}
-                              className="rounded-sm border border-white/10 px-2 py-1 text-xs text-white"
+                              onClick={() => handleQuickAdjust(item, -1)}
+                              className="flex size-9 items-center justify-center rounded-sm border border-white/10 text-white"
+                              aria-label={`Decrease stock for ${item.name}`}
                             >
-                              History
+                              <span className="material-symbols-outlined text-base">remove</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => setAllocatingItem(item)}
-                              className="rounded-sm border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary"
+                              onClick={() => handleQuickAdjust(item, 1)}
+                              className="flex size-9 items-center justify-center rounded-sm border border-white/10 text-white"
+                              aria-label={`Increase stock for ${item.name}`}
                             >
-                              Allocate
+                              <span className="material-symbols-outlined text-base">add</span>
                             </button>
-                            {onMarkOrdered && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOrderModalItem(item);
-                                  setOrderModalMode('add');
-                                  setOrderModalQty(0);
-                                }}
-                                className="rounded-sm border border-white/20 px-2 py-1 text-xs text-slate-200"
-                                title="Add to order"
-                              >
-                                <span className="material-symbols-outlined text-base">
-                                  pending_actions
-                                </span>
-                              </button>
-                            )}
-                            {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOrderModalItem(item);
-                                  setOrderModalMode('receive');
-                                  setOrderModalQty(item.onOrder ?? 0);
-                                }}
-                                className="rounded-sm border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400"
-                                title="Receive order"
-                              >
-                                <span className="material-symbols-outlined text-base">
-                                  local_shipping
-                                </span>
-                              </button>
-                            )}
-                            {
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickAdjust(item, -1)}
-                                  className="flex size-8 items-center justify-center rounded-sm border border-white/10 text-white"
-                                  aria-label={`Decrease stock for ${item.name}`}
-                                >
-                                  <span className="material-symbols-outlined text-base">
-                                    remove
-                                  </span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickAdjust(item, 1)}
-                                  className="flex size-8 items-center justify-center rounded-sm border border-white/10 text-white"
-                                  aria-label={`Increase stock for ${item.name}`}
-                                >
-                                  <span className="material-symbols-outlined text-base">add</span>
-                                </button>
-                              </>
-                            }
                           </div>
                         </td>
                       </tr>
@@ -556,6 +651,123 @@ export default function InventoryMainView({
             onAllocateToJob(jobId, allocatingItem.id, quantity, notes)
           }
         />
+      )}
+
+      {showQuickAdd && onCreateItem && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+            <h3 className="mb-3 text-lg font-bold text-white">Quick add part</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-400">Name *</label>
+                <input
+                  type="text"
+                  value={quickAddName}
+                  onChange={(e) => setQuickAddName(e.target.value)}
+                  placeholder="Part name"
+                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-400">Category</label>
+                <select
+                  value={quickAddCategory}
+                  onChange={(e) => setQuickAddCategory(e.target.value as InventoryCategory)}
+                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+                >
+                  {CATEGORY_OPTIONS.filter((c) => c !== 'all').map((cat) => (
+                    <option key={cat} value={cat}>
+                      {getCategoryDisplayName(cat)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-400">
+                    Initial stock
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={quickAddStock}
+                    onChange={(e) => setQuickAddStock(Math.max(0, parseFloat(e.target.value) || 0))}
+                    className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-400">Unit *</label>
+                  <input
+                    type="text"
+                    value={quickAddUnit}
+                    onChange={(e) => setQuickAddUnit(e.target.value)}
+                    placeholder="ea, ft, lbs"
+                    className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={quickAddSaving || !quickAddName.trim() || !quickAddUnit.trim()}
+                onClick={async () => {
+                  if (!quickAddName.trim() || !quickAddUnit.trim()) {
+                    showToast('Name and unit are required', 'warning');
+                    return;
+                  }
+                  setQuickAddSaving(true);
+                  try {
+                    const created = await onCreateItem({
+                      name: quickAddName.trim(),
+                      category: quickAddCategory,
+                      inStock: quickAddStock,
+                      unit: quickAddUnit.trim(),
+                    });
+                    if (created) {
+                      showToast('Part added', 'success');
+                      setShowQuickAdd(false);
+                      setQuickAddName('');
+                      setQuickAddCategory('material');
+                      setQuickAddStock(0);
+                      setQuickAddUnit('');
+                    } else {
+                      showToast('Failed to add part', 'error');
+                    }
+                  } finally {
+                    setQuickAddSaving(false);
+                  }
+                }}
+                className="min-h-[44px] flex-1 rounded-sm bg-primary px-3 font-bold text-white disabled:opacity-50"
+              >
+                {quickAddSaving ? 'Creating...' : 'Create'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickAdd(false);
+                  onAddItem();
+                }}
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm font-bold text-slate-300"
+              >
+                Full form
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickAdd(false);
+                  setQuickAddName('');
+                  setQuickAddCategory('material');
+                  setQuickAddStock(0);
+                  setQuickAddUnit('');
+                }}
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 font-bold text-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {orderModalItem && orderModalMode && (

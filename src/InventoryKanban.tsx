@@ -13,6 +13,8 @@ interface InventoryKanbanProps {
   onBack: () => void; // Navigate back to dashboard
   onAddItem: () => void;
   onUpdateItem?: (itemId: string, updates: Partial<InventoryItem>) => Promise<void>;
+  /** Switch back to list view (when used as alternative view from main inventory) */
+  onSwitchToList?: () => void;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated?: (inventoryId: string) => number;
@@ -37,6 +39,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
   onBack,
   onAddItem,
   onUpdateItem,
+  onSwitchToList,
   isAdmin,
   calculateAvailable,
   calculateAllocated,
@@ -135,7 +138,16 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
             </button>
             <h1 className="text-2xl font-bold text-white">Inventory</h1>
           </div>
-          {
+          <div className="flex items-center gap-2">
+            {onSwitchToList && (
+              <button
+                type="button"
+                onClick={onSwitchToList}
+                className="min-h-[44px] rounded-sm border border-white/20 bg-white/5 px-3 text-sm font-bold text-slate-300"
+              >
+                List view
+              </button>
+            )}
             <button
               onClick={onAddItem}
               className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2 font-bold text-white"
@@ -143,7 +155,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
               <span className="material-symbols-outlined">add</span>
               Add Item
             </button>
-          }
+          </div>
         </div>
         <div className="flex gap-2">
           <button onClick={expandAll} className="text-sm font-bold text-primary">

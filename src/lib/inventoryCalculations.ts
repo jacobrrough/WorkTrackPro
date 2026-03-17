@@ -17,6 +17,18 @@ export function isAllocationActiveStatus(status: string): boolean {
   return ACTIVE_ALLOCATION_STATUSES.has(status);
 }
 
+/** Statuses that allow writing job_inventory (allocate materials). Only PO'd and later. */
+export const ALLOW_MATERIAL_ALLOCATION_STATUSES: Set<string> = new Set([
+  'pod',
+  'waitingForPayment',
+  'projectCompleted',
+  'paid',
+]);
+
+export function allowMaterialAllocation(status: string): boolean {
+  return ALLOW_MATERIAL_ALLOCATION_STATUSES.has(status);
+}
+
 export function buildAllocatedByInventoryId(jobs: Job[]): Map<string, number> {
   const allocatedByInventoryId = new Map<string, number>();
 

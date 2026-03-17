@@ -473,7 +473,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             showToast('Job created, but failed to create master part', 'warning');
           }
         }
-        // Auto-assign materials from part(s).
+        // Auto-assign materials from part(s) only when job is PO'd (new jobs are typically not).
         const allPartsWithQuantities: PartWithDashQuantities[] =
           selectedPart && (normalizedDashQuantities || Object.keys(dashQuantities).length > 0)
             ? [
@@ -484,7 +484,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 ...additionalParts,
               ]
             : additionalParts;
-        if (allPartsWithQuantities.length > 0) {
+        const statusAllowsAllocation = job.status === 'pod';
+        if (allPartsWithQuantities.length > 0 && statusAllowsAllocation) {
           try {
             const hasAnyQty = allPartsWithQuantities.some((p) =>
               Object.values(p.dashQuantities).some((q) => q > 0)
@@ -507,7 +508,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               );
             }
           } catch (syncErr) {
-            console.error('Material sync after job create:', syncErr);
+            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
+            console.error('Material sync after job create:', msg);
             showToast(
               'Job created; material assignment failed. Assign from job detail.',
               'warning'

@@ -1343,6 +1343,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
       if (updated) {
         showToast('Job updated successfully', 'success');
+        const statusAllowsAllocation = editForm.status === 'pod';
         const partsForSync: PartWithDashQuantities[] =
           partsToSave && partsToSave.length > 0
             ? (partsToSave
@@ -1357,18 +1358,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
         const hasAnyPartQty = partsForSync.some((p) =>
           Object.values(p.dashQuantities).some((q) => q > 0)
         );
-        if (partsForSync.length > 1 && hasAnyPartQty) {
+        if (statusAllowsAllocation && partsForSync.length > 1 && hasAnyPartQty) {
           try {
             await syncJobInventoryFromParts(job.id, partsForSync, { replace: true });
             await onReloadJob?.();
           } catch (syncErr) {
+            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save (multi-part):', syncErr);
             showToast(
               'Job saved; material sync failed. Use Auto-assign materials to retry.',
               'warning'
             );
           }
-        } else if (partsForSync.length === 1 && partsForSync[0].part && hasAnyPartQty) {
+        } else if (
+          statusAllowsAllocation &&
+          partsForSync.length === 1 &&
+          partsForSync[0].part &&
+          hasAnyPartQty
+        ) {
           try {
             await syncJobInventoryFromPart(
               job.id,
@@ -1378,20 +1385,26 @@ const JobDetail: React.FC<JobDetailProps> = ({
             );
             await onReloadJob?.();
           } catch (syncErr) {
-            console.error('Material sync after save:', syncErr);
+            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
+            console.error('Material sync after save:', msg);
             showToast(
               'Job saved; material sync failed. Use Auto-assign materials to retry.',
               'warning'
             );
           }
-        } else if (linkedPart && Object.values(effectiveMaterialQuantities).some((q) => q > 0)) {
+        } else if (
+          statusAllowsAllocation &&
+          linkedPart &&
+          Object.values(effectiveMaterialQuantities).some((q) => q > 0)
+        ) {
           try {
             await syncJobInventoryFromPart(job.id, linkedPart!, effectiveMaterialQuantities, {
               replace: true,
             });
             await onReloadJob?.();
           } catch (syncErr) {
-            console.error('Material sync after save:', syncErr);
+            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
+            console.error('Material sync after save:', msg);
             showToast(
               'Job saved; material sync failed. Use Auto-assign materials to retry.',
               'warning'
@@ -1467,6 +1480,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
   };
 
   const handleAutoAssignMaterials = async () => {
+    if (job.status !== 'pod') {
+      showToast("Set job status to PO'd to assign materials", 'warning');
+      return;
+    }
     const hasMultiPartQty =
       partsWithPartData?.length &&
       partsWithPartData.some((p) => Object.values(p.dashQuantities).some((q) => q > 0));
@@ -1532,19 +1549,20 @@ const JobDetail: React.FC<JobDetailProps> = ({
             }
           }
           if (partsWithPartData.length > 0) {
-            try {
-              const hasAnyQty = partsWithPartData.some((p) =>
-                Object.values(p.dashQuantities).some((q) => q > 0)
-              );
-              if (hasAnyQty) {
-                await syncJobInventoryFromParts(job.id, partsWithPartData, { replace: true });
-                showToast('Materials combined from all parts', 'success');
+            if (job.status === 'pod') {
+              try {
+                const hasAnyQty = partsWithPartData.some((p) =>
+                  Object.values(p.dashQuantities).some((q) => q > 0)
+                );
+                if (hasAnyQty) {
+                  await syncJobInventoryFromParts(job.id, partsWithPartData, { replace: true });
+                  showToast('Materials combined from all parts', 'success');
+                }
+              } catch (syncErr) {
+                console.error('Material sync after add part:', syncErr);
+                showToast('Part added; sync materials from job if needed', 'warning');
               }
-            } catch (syncErr) {
-              console.error('Material sync after add part:', syncErr);
-              showToast('Part added; sync materials from job if needed', 'warning');
             }
-
             // Combined labor for scheduling: sum labor from each part × quantities
             let combinedLabor = 0;
             for (const { part: p, dashQuantities: dq } of partsWithPartData) {
@@ -1995,7 +2013,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <button
                   type="button"
                   onClick={handleAutoAssignMaterials}
-                  disabled={syncingMaterials}
+                  disabled={syncingMaterials || job.status !== 'pod'}
+                  title={
+                    job.status !== 'pod' ? "Set job status to PO'd to assign materials" : undefined
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-base">

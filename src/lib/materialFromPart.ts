@@ -2,6 +2,7 @@ import type { Part, PartVariant } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
 import { partsService } from '@/services/api/parts';
 import { calculateSetCompletion } from '@/lib/formatJob';
+import { allowMaterialAllocation } from '@/lib/inventoryCalculations';
 import {
   normalizeVariantSuffix,
   normalizeDashQuantities,
@@ -155,7 +156,7 @@ export async function syncJobInventoryFromRequiredMap(
   const replace = options?.replace === true;
   const job = await jobService.getJobById(jobId);
   if (!job) throw new Error('Job not found');
-
+  if (!allowMaterialAllocation(job.status)) return;
   if (replace) {
     const requiredIds = new Set(required.keys());
     for (const ji of job.inventoryItems ?? []) {

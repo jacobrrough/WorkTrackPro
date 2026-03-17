@@ -15,6 +15,14 @@ interface NavigationState {
   minimalView: boolean;
   /** Inventory list search (view-scoped). */
   inventorySearchTerm: string;
+  /** Inventory list category filter (view-scoped). */
+  inventoryCategory: string;
+  /** Inventory list supplier filter (view-scoped). */
+  inventorySupplier: string;
+  /** Inventory list active tab: allParts | needsReordering | lowStock | byBin */
+  inventoryTab: string;
+  /** Inventory list view mode: list | kanban */
+  inventoryListView: 'list' | 'kanban';
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
 }
@@ -26,6 +34,10 @@ const defaultState: NavigationState = {
   lastViewedJobId: null,
   minimalView: false,
   inventorySearchTerm: '',
+  inventoryCategory: 'all',
+  inventorySupplier: 'all',
+  inventoryTab: 'allParts',
+  inventoryListView: 'list',
   partsSearchTerm: '',
 };
 
