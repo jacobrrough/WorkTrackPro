@@ -58,6 +58,24 @@ interface PartDetailProps {
   onNavigateBack: () => void;
 }
 
+const SYNTHETIC_VARIANT_PREFIX = 'synthetic-set-';
+
+function syntheticVariantFromPart(part: Part): PartVariant {
+  return {
+    id: SYNTHETIC_VARIANT_PREFIX + part.id,
+    partId: part.id,
+    variantSuffix: '01',
+    name: part.name,
+    laborHours: part.laborHours,
+    cncTimeHours: part.cncTimeHours,
+    requiresCNC: part.requiresCNC,
+    printer3DTimeHours: part.printer3DTimeHours,
+    requires3DPrint: part.requires3DPrint,
+    pricePerVariant: part.pricePerSet,
+    materials: part.materials ?? [],
+  };
+}
+
 const PartDetail: React.FC<PartDetailProps> = ({
   partId,
   jobs: allJobs = [],
@@ -160,6 +178,23 @@ const PartDetail: React.FC<PartDetailProps> = ({
       part?.setComposition,
       part?.variantsAreCopies,
     ]);
+
+  /** When part has no variants, treat as one variant for display so labor/CNC/3D inputs appear. */
+  const displayVariants = useMemo(
+    () => (part?.variants?.length ? part.variants : part ? [syntheticVariantFromPart(part)] : []),
+    [
+      part?.id,
+      part?.variants,
+      part?.laborHours,
+      part?.cncTimeHours,
+      part?.printer3DTimeHours,
+      part?.requiresCNC,
+      part?.requires3DPrint,
+      part?.pricePerSet,
+      part?.name,
+      part?.materials,
+    ]
+  );
 
   useEffect(() => {
     if (!part) {
@@ -352,9 +387,36 @@ const PartDetail: React.FC<PartDetailProps> = ({
       laborHours?: number;
       cncTimeHours?: number;
       requiresCNC?: boolean;
+      printer3DTimeHours?: number;
+      requires3DPrint?: boolean;
     }
   ) => {
     try {
+      if (variantId.startsWith(SYNTHETIC_VARIANT_PREFIX) && part) {
+        const partUpdates: Partial<Part> = {};
+        if (updates.laborHours !== undefined) partUpdates.laborHours = updates.laborHours;
+        if (updates.cncTimeHours !== undefined) partUpdates.cncTimeHours = updates.cncTimeHours;
+        if (updates.requiresCNC !== undefined) partUpdates.requiresCNC = updates.requiresCNC;
+        if (updates.printer3DTimeHours !== undefined)
+          partUpdates.printer3DTimeHours = updates.printer3DTimeHours;
+        if (updates.requires3DPrint !== undefined)
+          partUpdates.requires3DPrint = updates.requires3DPrint;
+        if (
+          canViewFinancials &&
+          updates.pricePerVariant !== undefined &&
+          Number.isFinite(updates.pricePerVariant)
+        ) {
+          partUpdates.pricePerSet = updates.pricePerVariant;
+        }
+        if (Object.keys(partUpdates).length > 0) {
+          await handleUpdatePart(partUpdates);
+          showToast('Part updated successfully', 'success');
+          setEditingVariant(null);
+          await loadPart(true);
+          notifyPartUpdated();
+        }
+        return;
+      }
       const hasPriceInPayload = Object.prototype.hasOwnProperty.call(updates, 'pricePerVariant');
       if (hasPriceInPayload) {
         manualVariantPriceOverridesRef.current[variantId] =
@@ -546,6 +608,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
   const handleDeleteVariant = async (variantId: string, variantSuffix: string) => {
     if (!part) return;
+    if (variantId.startsWith(SYNTHETIC_VARIANT_PREFIX)) {
+      showToast('Cannot remove the only variant.', 'warning');
+      return;
+    }
     try {
       const ok = await partsService.deleteVariant(variantId);
       if (!ok) {
@@ -1331,31 +1397,39 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 showToast={showToast}
               />
             </div>
-            {part.variants && part.variants.length > 0 && (
+            {displayVariants.length > 0 && (
               <>
                 <div>
                   <p className="mb-1 text-xs font-bold uppercase text-slate-400">Set composition</p>
-                  <SetCompositionEditor
-                    part={part}
-                    variants={part.variants}
-                    setComposition={
-                      part.setComposition &&
-                      typeof part.setComposition === 'object' &&
-                      !Array.isArray(part.setComposition)
-                        ? part.setComposition
-                        : {}
-                    }
-                    onUpdate={(composition) => handleUpdatePart({ setComposition: composition })}
-                  />
-                  {part.setComposition &&
-                    typeof part.setComposition === 'object' &&
-                    Object.keys(part.setComposition).length > 0 && (
-                      <p className="mt-2 text-sm text-white">
-                        One set: {formatSetComposition(part.setComposition)}
-                      </p>
-                    )}
+                  {part.variants?.length === 0 ? (
+                    <p className="mt-2 text-sm text-white">One set: 1× -01</p>
+                  ) : (
+                    <>
+                      <SetCompositionEditor
+                        part={part}
+                        variants={part.variants!}
+                        setComposition={
+                          part.setComposition &&
+                          typeof part.setComposition === 'object' &&
+                          !Array.isArray(part.setComposition)
+                            ? part.setComposition
+                            : {}
+                        }
+                        onUpdate={(composition) =>
+                          handleUpdatePart({ setComposition: composition })
+                        }
+                      />
+                      {part.setComposition &&
+                        typeof part.setComposition === 'object' &&
+                        Object.keys(part.setComposition).length > 0 && (
+                          <p className="mt-2 text-sm text-white">
+                            One set: {formatSetComposition(part.setComposition)}
+                          </p>
+                        )}
+                    </>
+                  )}
                 </div>
-                {part.variants.length >= 2 && (
+                {part.variants && part.variants.length >= 2 && (
                   <div className="flex flex-wrap items-center gap-2 rounded-sm border border-white/10 bg-white/5 p-3">
                     <button
                       type="button"
@@ -1387,41 +1461,54 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   </div>
                 )}
                 <div className="space-y-2">
-                  {part.variants.map((variant) => (
-                    <Accordion
-                      key={variant.id}
-                      title={`${part.partNumber}-${variant.variantSuffix}${variant.name ? ` — ${variant.name}` : ''}`}
-                      defaultExpanded={false}
-                    >
-                      <VariantCard
-                        variant={variant}
-                        allVariants={part.variants ?? []}
-                        partNumber={part.partNumber}
-                        inventoryItems={inventoryItems}
-                        onNavigate={onNavigate}
-                        isEditing={editingVariant === variant.id}
-                        onEdit={() => setEditingVariant(variant.id)}
-                        onCancel={() => setEditingVariant(null)}
-                        onUpdate={handleUpdateVariant}
-                        onDelete={handleDeleteVariant}
-                        onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
-                        onMaterialAdded={() => loadPart(true)}
-                        onVariantMaterialChanged={(inventoryId) =>
-                          syncSetMaterialFromVariants(inventoryId)
-                        }
-                        showFinancials={canViewFinancials}
-                        partLaborHours={effectiveSetLaborHours}
-                        partCncHours={effectiveSetCncHours}
-                        partPrinter3DHours={effectiveSetPrinter3DHours}
-                        setComposition={part.setComposition}
-                        isAddingMaterial={showAddMaterial?.variantId === variant.id}
-                        onAddMaterialCancel={() => setShowAddMaterial(null)}
-                        onAddMaterialSave={(id, qty, unit, addToAllVariants) =>
-                          handleAddMaterial(id, qty, unit, 'per_variant', addToAllVariants)
-                        }
-                      />
-                    </Accordion>
-                  ))}
+                  {displayVariants.map((variant) => {
+                    const effectiveSetComposition =
+                      part.variants?.length === 0
+                        ? (part.setComposition ?? { '01': 1 })
+                        : part.setComposition;
+                    return (
+                      <Accordion
+                        key={variant.id}
+                        title={`${part.partNumber}-${variant.variantSuffix}${variant.name ? ` — ${variant.name}` : ''}`}
+                        defaultExpanded={false}
+                      >
+                        <VariantCard
+                          variant={variant}
+                          allVariants={displayVariants}
+                          partNumber={part.partNumber}
+                          inventoryItems={inventoryItems}
+                          onNavigate={onNavigate}
+                          isEditing={editingVariant === variant.id}
+                          onEdit={() => setEditingVariant(variant.id)}
+                          onCancel={() => setEditingVariant(null)}
+                          onUpdate={handleUpdateVariant}
+                          onDelete={handleDeleteVariant}
+                          onAddMaterial={() => setShowAddMaterial({ variantId: variant.id })}
+                          onMaterialAdded={() => loadPart(true)}
+                          onVariantMaterialChanged={(inventoryId) =>
+                            syncSetMaterialFromVariants(inventoryId)
+                          }
+                          showFinancials={canViewFinancials}
+                          partLaborHours={effectiveSetLaborHours}
+                          partCncHours={effectiveSetCncHours}
+                          partPrinter3DHours={effectiveSetPrinter3DHours}
+                          setComposition={
+                            effectiveSetComposition &&
+                            typeof effectiveSetComposition === 'object' &&
+                            !Array.isArray(effectiveSetComposition)
+                              ? effectiveSetComposition
+                              : { '01': 1 }
+                          }
+                          isAddingMaterial={showAddMaterial?.variantId === variant.id}
+                          onAddMaterialCancel={() => setShowAddMaterial(null)}
+                          onAddMaterialSave={(id, qty, unit, addToAllVariants) =>
+                            handleAddMaterial(id, qty, unit, 'per_variant', addToAllVariants)
+                          }
+                          canDelete={!variant.id.startsWith(SYNTHETIC_VARIANT_PREFIX)}
+                        />
+                      </Accordion>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -1861,6 +1948,8 @@ interface VariantCardProps {
     unit: string,
     addToAllVariants?: boolean
   ) => void;
+  /** When false, hide Delete button (e.g. for synthetic single variant). Default true. */
+  canDelete?: boolean;
 }
 
 const VariantCard: React.FC<VariantCardProps> = ({
@@ -1885,6 +1974,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   isAddingMaterial,
   onAddMaterialCancel,
   onAddMaterialSave,
+  canDelete = true,
 }) => {
   const { showToast } = useToast();
   const [name, setName] = useState(variant.name || '');
@@ -1989,14 +2079,16 @@ const VariantCard: React.FC<VariantCardProps> = ({
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={() => onDelete(variant.id, variant.variantSuffix)}
-              className="rounded border border-red-500/50 bg-red-500/20 px-3 py-1 text-sm text-red-400 transition-colors hover:bg-red-500/30"
-              aria-label={`Delete variant -${variant.variantSuffix}`}
-            >
-              Delete
-            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(variant.id, variant.variantSuffix)}
+                className="rounded border border-red-500/50 bg-red-500/20 px-3 py-1 text-sm text-red-400 transition-colors hover:bg-red-500/30"
+                aria-label={`Delete variant -${variant.variantSuffix}`}
+              >
+                Delete
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -2006,14 +2098,16 @@ const VariantCard: React.FC<VariantCardProps> = ({
             >
               Edit
             </button>
-            <button
-              type="button"
-              onClick={() => onDelete(variant.id, variant.variantSuffix)}
-              className="min-h-[44px] rounded border border-red-500/30 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/20"
-              aria-label={`Delete variant -${variant.variantSuffix}`}
-            >
-              <span className="material-symbols-outlined text-lg">delete</span>
-            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(variant.id, variant.variantSuffix)}
+                className="min-h-[44px] rounded border border-red-500/30 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/20"
+                aria-label={`Delete variant -${variant.variantSuffix}`}
+              >
+                <span className="material-symbols-outlined text-lg">delete</span>
+              </button>
+            )}
           </div>
         )}
       </div>
