@@ -422,6 +422,42 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           ]
         : undefined;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/420c3f8e-a11f-4fdd-8f0d-e05619cdd04d', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'ce86d6',
+      },
+      body: JSON.stringify({
+        sessionId: 'ce86d6',
+        runId: 'jobs-pre-fix',
+        hypothesisId: 'H1',
+        location: 'AdminCreateJob.tsx:handleSubmit',
+        message: 'job create payload and part-derived price',
+        data: {
+          partNumberForCreate,
+          dashQuantities: normalizedDashQuantities ?? {},
+          additionalParts: additionalParts.map(({ part, dashQuantities: dq }) => ({
+            partId: part.id,
+            partNumber: part.partNumber,
+            dashQuantities: dq ?? {},
+          })),
+          autoPriceFromPart: autoPriceForSubmit
+            ? {
+                totalPrice: autoPriceForSubmit.totalPrice,
+                source: autoPriceForSubmit.source,
+                setCount: autoPriceForSubmit.setCount ?? null,
+                missingVariantPrices: autoPriceForSubmit.missingVariantPrices,
+              }
+            : null,
+          partsForCreate,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion agent log
+
     try {
       const job = await onCreate({
         jobCode: formData.jobCode,

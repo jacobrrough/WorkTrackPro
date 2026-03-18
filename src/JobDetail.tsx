@@ -2555,7 +2555,17 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
               {canViewFinancials && (
                 <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                  Total ${computedCostTotal.toFixed(2)}
+                  {(() => {
+                    const totalFromPart =
+                      linkedPart && partDerivedPrice?.totalPrice
+                        ? partDerivedPrice.totalPrice
+                        : null;
+                    const effectiveTotal =
+                      totalFromPart != null && totalFromPart > 0
+                        ? totalFromPart
+                        : computedCostTotal;
+                    return <>Total ${effectiveTotal.toFixed(2)}</>;
+                  })()}
                   <span className="ml-2 text-[10px] font-normal text-primary/80">
                     (Labor + Materials + CNC + 3D)
                   </span>
