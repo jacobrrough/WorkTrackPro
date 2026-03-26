@@ -1,14 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import type { Comment, Job, JobStatus, InventoryItem, Shift, User } from '@/core/types';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useActiveShift } from '@/hooks/useActiveShift';
@@ -21,9 +14,8 @@ import { useInventoryAllocation } from '@/hooks/useInventoryAllocation';
 import { dedupeJobsById } from '@/lib/jobUtils';
 import { withComputedInventory } from '@/lib/inventoryState';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
-import { getQueue, clearPunchFromQueue } from '@/lib/offlineQueue';
-import { jobService } from '@/services/api/jobs';
-import { shiftService } from '@/services/api/shifts';
+import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
+import { syncOfflineClockQueue } from '@/lib/syncOfflineClockQueue';
 import { subscriptions } from '@/services/api/subscriptions';
 import { useToast } from '@/Toast';
 
@@ -52,8 +44,8 @@ export interface AppContextType {
   advanceJobToNextStatus: (jobId: string, currentStatus: JobStatus) => Promise<boolean>;
   addJobComment: (jobId: string, text: string) => Promise<Comment | null>;
   getJobByCode: (code: number) => Promise<Job | null>;
-  clockIn: (jobId: string) => Promise<boolean>;
-  clockOut: () => Promise<boolean>;
+  clockIn: (jobId: string) => Promise<ClockPunchResult>;
+  clockOut: () => Promise<ClockPunchResult>;
   startLunch: () => Promise<boolean>;
   endLunch: () => Promise<boolean>;
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
@@ -91,6 +83,8 @@ export interface AppContextType {
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
   pendingOfflinePunchCount: number;
+  /** True when some queued punches exceeded sync retries (needs admin attention). */
+  staleOfflinePunch: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -108,6 +102,10 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
+  const staleOfflinePunch = useMemo(
+    () => hasQueuedPunchAtMaxAttempts(),
+    [offlineQueueVersion]
+  );
 
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
@@ -124,7 +122,6 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     shifts: queries.shifts,
     jobs: queries.jobs,
     activeShift,
-    activeJob,
     refreshShifts: queries.refreshShifts,
     refreshJobs: queries.refreshJobs,
     updateJobStatus: jobMutations.updateJobStatus,
@@ -147,42 +144,47 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     refreshInventory: queries.refreshInventory,
   });
 
-  // Offline clock queue sync when back online
+  // Offline clock queue: sync on reconnect, tab focus, and periodic while pending
   useEffect(() => {
-    const syncQueue = async () => {
-      if (!navigator.onLine) return;
-      const queue = getQueue();
-      for (const punch of queue) {
-        try {
-          if (punch.type === 'clock_in' && punch.jobId) {
-            await shiftService.clockIn(punch.jobId, punch.userId);
-            clearPunchFromQueue(punch.id);
-            setOfflineQueueVersion((v) => v + 1);
-            await queries.refreshShifts();
-          } else if (punch.type === 'clock_out') {
-            let shiftId = punch.shiftId;
-            if (!shiftId) {
-              const allShifts = await shiftService.getAllShifts();
-              const active = allShifts.find((s) => s.user === punch.userId && !s.clockOutTime);
-              shiftId = active?.id;
-            }
-            if (shiftId) {
-              await shiftService.clockOut(shiftId);
-              clearPunchFromQueue(punch.id);
-              setOfflineQueueVersion((v) => v + 1);
-              await queries.refreshShifts();
-              await queries.refreshJobs();
-            }
-          }
-        } catch {
-          // Leave in queue
-        }
+    const runSync = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (getQueue().length === 0) return;
+      const synced = await syncOfflineClockQueue({
+        refreshShifts: queries.refreshShifts,
+        refreshJobs: queries.refreshJobs,
+      });
+      if (synced > 0) {
+        setOfflineQueueVersion((v) => v + 1);
+        showToast(
+          `Synced ${synced} clock punch${synced === 1 ? '' : 'es'}`,
+          'success'
+        );
       }
     };
-    window.addEventListener('online', syncQueue);
-    syncQueue();
-    return () => window.removeEventListener('online', syncQueue);
-  }, [queries.refreshShifts, queries.refreshJobs]);
+
+    const onOnline = () => {
+      void runSync();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void runSync();
+    };
+
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
+    const intervalId = window.setInterval(() => {
+      if (typeof navigator !== 'undefined' && navigator.onLine && getQueue().length > 0) {
+        void runSync();
+      }
+    }, 90_000);
+
+    void runSync();
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(intervalId);
+    };
+  }, [queries.refreshShifts, queries.refreshJobs, showToast, offlineQueueVersion]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -307,6 +309,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       calculateAvailable,
       calculateAllocated,
       pendingOfflinePunchCount,
+      staleOfflinePunch,
     }),
     [
       auth.currentUser,
@@ -334,6 +337,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       calculateAvailable,
       calculateAllocated,
       pendingOfflinePunchCount,
+      staleOfflinePunch,
     ]
   );
 

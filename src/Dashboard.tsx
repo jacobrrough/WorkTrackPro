@@ -151,9 +151,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const handleClockOutFromPopup = async () => {
     setIsClockOutLoading(true);
-    const success = await clockOut();
-    if (success) {
+    const result = await clockOut();
+    if (result.ok) {
       showToast('Clocked out successfully', 'success');
+      setIsTrackerOpen(false);
+    } else if (result.queued) {
+      showToast('Saved offline — will sync when connected', 'warning');
       setIsTrackerOpen(false);
     } else {
       showToast('Failed to clock out', 'error');

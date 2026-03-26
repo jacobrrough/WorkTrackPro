@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import { ViewState, Shift, Job } from '@/core/types';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useToast } from './Toast';
@@ -6,10 +7,14 @@ import { useToast } from './Toast';
 interface ClockInScreenProps {
   onNavigate: (view: ViewState) => void;
   onBack?: () => void;
-  onClockInByCode: (code: number) => Promise<{ success: boolean; message: string }>;
+  onClockInByCode: (code: number) => Promise<{
+    success: boolean;
+    message: string;
+    queued?: boolean;
+  }>;
   activeShift: Shift | null;
   activeJob: Job | null;
-  onClockOut: () => void;
+  onClockOut: () => void | Promise<ClockPunchResult>;
 }
 
 const ClockInScreen: React.FC<ClockInScreenProps> = ({
@@ -28,7 +33,11 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   );
   const [jobCode, setJobCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+    queued?: boolean;
+  } | null>(null);
 
   const handleNumberClick = (num: string) => {
     if (jobCode.length < 6) {
@@ -66,8 +75,18 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
     if (res.success) {
       setJobCode('');
       setTimeout(() => onNavigate('dashboard'), 1000);
-    } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      showToast('Clocked in offline — will sync when connected', 'warning');
+    } else if (res.queued) {
+      showToast('Saved offline — will sync when connected', 'warning');
+    }
+  };
+
+  const handleClockOut = async () => {
+    const r = await onClockOut();
+    if (r && typeof r === 'object' && 'ok' in r) {
+      const result = r as ClockPunchResult;
+      if (result.ok) showToast('Clocked out successfully', 'success');
+      else if (result.queued) showToast('Saved offline — will sync when connected', 'warning');
+      else showToast('Failed to clock out', 'error');
     }
   };
 
@@ -102,7 +121,8 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
                 </p>
               </div>
               <button
-                onClick={onClockOut}
+                type="button"
+                onClick={() => void handleClockOut()}
                 className="rounded-sm bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600"
               >
                 Clock Out
@@ -124,10 +144,18 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
         {/* Result Message */}
         {result && (
           <div
-            className={`mb-4 w-full max-w-sm rounded-sm p-3 ${result.success ? 'border border-green-500/30 bg-green-500/10' : 'border border-red-500/30 bg-red-500/10'}`}
+            className={`mb-4 w-full max-w-sm rounded-sm p-3 ${
+              result.success
+                ? 'border border-green-500/30 bg-green-500/10'
+                : result.queued
+                  ? 'border border-amber-500/30 bg-amber-500/10'
+                  : 'border border-red-500/30 bg-red-500/10'
+            }`}
           >
             <p
-              className={`text-center font-semibold ${result.success ? 'text-green-400' : 'text-red-400'}`}
+              className={`text-center font-semibold ${
+                result.success ? 'text-green-400' : result.queued ? 'text-amber-400' : 'text-red-400'
+              }`}
             >
               {result.message}
             </p>

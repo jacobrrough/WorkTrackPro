@@ -210,13 +210,21 @@ export default function App() {
   );
 
   const onClockInByCode = useCallback(
-    async (code: number): Promise<{ success: boolean; message: string }> => {
+    async (
+      code: number
+    ): Promise<{ success: boolean; message: string; queued?: boolean }> => {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
-      const ok = await clockIn(job.id);
-      return ok
-        ? { success: true, message: 'Clocked in' }
-        : { success: false, message: 'Failed to clock in' };
+      const { ok, queued } = await clockIn(job.id);
+      if (ok) return { success: true, message: 'Clocked in' };
+      if (queued) {
+        return {
+          success: false,
+          message: 'Saved offline — will sync when connected',
+          queued: true,
+        };
+      }
+      return { success: false, message: 'Failed to clock in' };
     },
     [getJobByCode, clockIn]
   );

@@ -4,6 +4,9 @@ import {
   getQueue,
   clearPunchFromQueue,
   getPendingPunchCount,
+  bumpQueueAttempt,
+  hasQueuedPunchAtMaxAttempts,
+  MAX_SYNC_ATTEMPTS_PER_PUNCH,
 } from './offlineQueue';
 
 const QUEUE_KEY = 'wtp_offline_clock_queue';
@@ -70,5 +73,48 @@ describe('offlineQueue', () => {
     expect(getQueue()).toEqual([]);
     storage[QUEUE_KEY] = 'invalid json';
     expect(getQueue()).toEqual([]);
+  });
+
+  it('dedupes duplicate clock_in for same user and job', () => {
+    const ts = new Date().toISOString();
+    enqueueClockPunch({
+      type: 'clock_in',
+      userId: 'user-1',
+      jobId: 'job-1',
+      timestamp: ts,
+    });
+    enqueueClockPunch({
+      type: 'clock_in',
+      userId: 'user-1',
+      jobId: 'job-1',
+      timestamp: ts,
+    });
+    expect(getQueue()).toHaveLength(1);
+  });
+
+  it('bumpQueueAttempt increments attemptCount', () => {
+    enqueueClockPunch({
+      type: 'clock_out',
+      userId: 'user-1',
+      timestamp: new Date().toISOString(),
+      shiftId: 'shift-1',
+    });
+    const id = getQueue()[0].id;
+    bumpQueueAttempt(id);
+    expect(getQueue()[0].attemptCount).toBe(1);
+  });
+
+  it('hasQueuedPunchAtMaxAttempts is true when a punch reaches the cap', () => {
+    enqueueClockPunch({
+      type: 'clock_in',
+      userId: 'user-1',
+      jobId: 'job-1',
+      timestamp: new Date().toISOString(),
+    });
+    const id = getQueue()[0].id;
+    for (let i = 0; i < MAX_SYNC_ATTEMPTS_PER_PUNCH; i++) {
+      bumpQueueAttempt(id);
+    }
+    expect(hasQueuedPunchAtMaxAttempts()).toBe(true);
   });
 });

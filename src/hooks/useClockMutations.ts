@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import type { JobStatus, Shift } from '@/core/types';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 import { enqueueClockPunch } from '@/lib/offlineQueue';
@@ -16,6 +17,9 @@ export interface UseClockMutationsParams {
   onOfflinePunchEnqueued: () => void;
 }
 
+const success = (): ClockPunchResult => ({ ok: true, queued: false });
+const failure = (queued: boolean): ClockPunchResult => ({ ok: false, queued });
+
 export function useClockMutations({
   currentUser,
   shifts,
@@ -29,47 +33,83 @@ export function useClockMutations({
   const queryClient = useQueryClient();
 
   const clockIn = useCallback(
-    async (jobId: string): Promise<boolean> => {
-      if (!currentUser) return false;
+    async (jobId: string): Promise<ClockPunchResult> => {
+      if (!currentUser) return failure(false);
 
       const existingActiveShift = shifts.find((s) => s.user === currentUser.id && !s.clockOutTime);
       if (existingActiveShift) {
-        if (existingActiveShift.job === jobId) return true;
-        if (existingActiveShift.lunchStartTime && !existingActiveShift.lunchEndTime) {
-          const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(existingActiveShift));
-          await shiftService.endLunch(existingActiveShift.id, totalBreakMinutes);
+        if (existingActiveShift.job === jobId) return success();
+        try {
+          if (existingActiveShift.lunchStartTime && !existingActiveShift.lunchEndTime) {
+            const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(existingActiveShift));
+            await shiftService.endLunch(existingActiveShift.id, totalBreakMinutes);
+          }
+          await shiftService.clockOut(existingActiveShift.id);
+          await refreshShifts();
+        } catch (error) {
+          console.error('Clock in (switch job) error:', error);
+          enqueueClockPunch({
+            type: 'clock_out',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString(),
+            shiftId: existingActiveShift.id,
+          });
+          onOfflinePunchEnqueued();
+          return failure(true);
         }
-        await shiftService.clockOut(existingActiveShift.id);
-        await refreshShifts();
       }
+
+      const applyJobProgressAfterClockIn = async () => {
+        await refreshShifts();
+        const job = jobs.find((j) => j.id === jobId);
+        const shouldMoveToInProgress = job?.status === 'pending' || job?.status === 'rush';
+        if (shouldMoveToInProgress) {
+          await updateJobStatus(jobId, 'inProgress');
+        } else {
+          await refreshJobs();
+        }
+      };
+
       try {
-        let success = await shiftService.clockIn(jobId, currentUser.id);
-        if (!success) {
+        let clockInSucceeded = await shiftService.clockIn(jobId, currentUser.id);
+
+        if (!clockInSucceeded) {
           const latestShifts = await shiftService.getAllShifts();
           const latestActiveShift = latestShifts.find(
             (s) => s.user === currentUser.id && !s.clockOutTime
           );
+          if (latestActiveShift && latestActiveShift.job === jobId) {
+            await applyJobProgressAfterClockIn();
+            return success();
+          }
           if (latestActiveShift && latestActiveShift.job !== jobId) {
-            if (latestActiveShift.lunchStartTime && !latestActiveShift.lunchEndTime) {
-              const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(latestActiveShift));
-              await shiftService.endLunch(latestActiveShift.id, totalBreakMinutes);
+            try {
+              if (latestActiveShift.lunchStartTime && !latestActiveShift.lunchEndTime) {
+                const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(latestActiveShift));
+                await shiftService.endLunch(latestActiveShift.id, totalBreakMinutes);
+              }
+              await shiftService.clockOut(latestActiveShift.id);
+              await refreshShifts();
+              clockInSucceeded = await shiftService.clockIn(jobId, currentUser.id);
+            } catch (retryErr) {
+              console.error('Clock in retry path error:', retryErr);
+              enqueueClockPunch({
+                type: 'clock_in',
+                userId: currentUser.id,
+                jobId,
+                timestamp: new Date().toISOString(),
+              });
+              onOfflinePunchEnqueued();
+              return failure(true);
             }
-            await shiftService.clockOut(latestActiveShift.id);
-            await refreshShifts();
-            success = await shiftService.clockIn(jobId, currentUser.id);
           }
         }
-        if (success) {
-          await refreshShifts();
-          const job = jobs.find((j) => j.id === jobId);
-          const shouldMoveToInProgress = job?.status === 'pending' || job?.status === 'rush';
-          if (shouldMoveToInProgress) {
-            await updateJobStatus(jobId, 'inProgress');
-          } else {
-            await refreshJobs();
-          }
+
+        if (clockInSucceeded) {
+          await applyJobProgressAfterClockIn();
+          return success();
         }
-        return success;
+        return failure(false);
       } catch (error) {
         console.error('Clock in error:', error);
         if (currentUser && jobId) {
@@ -81,23 +121,33 @@ export function useClockMutations({
           });
           onOfflinePunchEnqueued();
         }
-        return false;
+        return failure(true);
       }
     },
     [currentUser, shifts, refreshShifts, refreshJobs, jobs, updateJobStatus, onOfflinePunchEnqueued]
   );
 
-  const clockOut = useCallback(async (): Promise<boolean> => {
-    if (!activeShift) return false;
+  const clockOut = useCallback(async (): Promise<ClockPunchResult> => {
+    if (!activeShift) return failure(false);
     try {
       if (activeShift.lunchStartTime && !activeShift.lunchEndTime) {
         const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
-        await shiftService.endLunch(activeShift.id, totalBreakMinutes);
+        const lunchOk = await shiftService.endLunch(activeShift.id, totalBreakMinutes);
+        if (!lunchOk) {
+          enqueueClockPunch({
+            type: 'clock_out',
+            userId: currentUser.id,
+            timestamp: new Date().toISOString(),
+            shiftId: activeShift.id,
+          });
+          onOfflinePunchEnqueued();
+          return failure(true);
+        }
       }
       await shiftService.clockOut(activeShift.id);
       await refreshShifts();
       await refreshJobs();
-      return true;
+      return success();
     } catch (error) {
       console.error('Clock out error:', error);
       if (activeShift && currentUser) {
@@ -109,7 +159,7 @@ export function useClockMutations({
         });
         onOfflinePunchEnqueued();
       }
-      return false;
+      return failure(true);
     }
   }, [activeShift, refreshShifts, refreshJobs, currentUser, onOfflinePunchEnqueued]);
 
@@ -127,8 +177,8 @@ export function useClockMutations({
         : []
     );
     try {
-      const success = await shiftService.startLunch(shiftId);
-      if (!success) {
+      const lunchSuccess = await shiftService.startLunch(shiftId);
+      if (!lunchSuccess) {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
           prev
             ? prev.map((s) =>
@@ -173,8 +223,8 @@ export function useClockMutations({
         : []
     );
     try {
-      const success = await shiftService.endLunch(shiftId, totalBreakMinutes);
-      if (!success) {
+      const lunchSuccess = await shiftService.endLunch(shiftId, totalBreakMinutes);
+      if (!lunchSuccess) {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
           prev
             ? prev.map((s) =>

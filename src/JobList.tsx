@@ -9,12 +9,14 @@ import {
   formatJobIdentityLine,
 } from '@/lib/formatJob';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import { useClockIn } from '@/contexts/ClockInContext';
+import { useToast } from '@/Toast';
 
 interface JobListProps {
   jobs: Job[];
   onNavigate: (view: ViewState, jobId?: string) => void;
-  onClockIn: (jobId: string) => void;
+  onClockIn: (jobId: string) => void | Promise<ClockPunchResult>;
   activeJobId?: string;
   shifts: Shift[];
   users: User[];
@@ -35,15 +37,23 @@ const JobList: React.FC<JobListProps> = ({
   isAdmin = false,
 }) => {
   const clockInCtx = useClockIn();
+  const { showToast } = useToast();
   const handleClockIn = useCallback(
     (jobId: string) => {
+      const apply = (r: ClockPunchResult) => {
+        if (r.ok) showToast('Clocked in', 'success');
+        else if (r.queued) showToast('Saved offline — will sync when connected', 'warning');
+        else showToast('Failed to clock in', 'error');
+      };
       if (clockInCtx?.clockIn) {
-        clockInCtx.clockIn(jobId);
+        void clockInCtx.clockIn(jobId).then(apply);
         return;
       }
-      onClockIn(jobId);
+      void Promise.resolve(onClockIn(jobId)).then((r) => {
+        if (r && typeof r === 'object' && 'ok' in r) apply(r as ClockPunchResult);
+      });
     },
-    [clockInCtx, onClockIn]
+    [clockInCtx, onClockIn, showToast]
   );
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'inProgress'>('all');

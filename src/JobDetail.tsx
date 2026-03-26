@@ -35,6 +35,7 @@ import { partsService } from './services/api/parts';
 import { Part, PartVariant } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import { useClockIn } from '@/contexts/ClockInContext';
 import { useLocation } from 'react-router-dom';
 import { useThrottle } from '@/useThrottle';
@@ -75,8 +76,8 @@ interface JobDetailProps {
   onNavigate: (view: ViewState, id?: string) => void;
   onBack?: () => void;
   isClockedIn: boolean;
-  onClockIn: () => void;
-  onClockOut: () => void;
+  onClockIn: () => void | Promise<ClockPunchResult>;
+  onClockOut: () => void | Promise<ClockPunchResult>;
   activeShift: Shift | null;
   inventory: InventoryItem[];
   jobs: Job[]; // For labor hours suggestion
@@ -267,13 +268,32 @@ const JobDetail: React.FC<JobDetailProps> = ({
 }) => {
   const clockInCtx = useClockIn();
   const { advanceJobToNextStatus } = useApp();
-  const handleClockIn = useCallback(() => {
+  const { showToast } = useToast();
+  const handleClockIn = useCallback(async () => {
+    const applyResult = (r: ClockPunchResult) => {
+      if (r.ok) showToast('Clocked in', 'success');
+      else if (r.queued) showToast('Saved offline — will sync when connected', 'warning');
+      else showToast('Failed to clock in', 'error');
+    };
     if (clockInCtx?.clockIn) {
-      clockInCtx.clockIn(job.id);
+      const r = await clockInCtx.clockIn(job.id);
+      applyResult(r);
       return;
     }
-    onClockIn();
-  }, [clockInCtx, job.id, onClockIn]);
+    const r = await onClockIn();
+    if (r && typeof r === 'object' && 'ok' in r) applyResult(r as ClockPunchResult);
+  }, [clockInCtx, job.id, onClockIn, showToast]);
+
+  const handleClockOut = useCallback(async () => {
+    const r = await onClockOut();
+    if (r && typeof r === 'object' && 'ok' in r) {
+      const result = r as ClockPunchResult;
+      if (result.ok) showToast('Clocked out successfully', 'success');
+      else if (result.queued) showToast('Saved offline — will sync when connected', 'warning');
+      else showToast('Failed to clock out', 'error');
+    }
+  }, [onClockOut, showToast]);
+
   const handleChecklistComplete = useCallback(async () => {
     await advanceJobToNextStatus(job.id, job.status);
     await onReloadJob?.();
@@ -292,7 +312,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const pendingAttachmentTogglesRef = useRef<Set<Promise<void>>>(new Set());
   /** True when labor hours were auto-filled from part (show "auto" marker until user edits) */
   const [laborHoursFromPart, setLaborHoursFromPart] = useState(false);
-  const { showToast } = useToast();
   const canViewFinancials = canViewJobFinancials(currentUser.isAdmin);
   // File viewing state
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
@@ -3499,7 +3518,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
           <div className="flex gap-3">
             {isClockedIn ? (
               <button
-                onClick={onClockOut}
+                onClick={() => void handleClockOut()}
                 className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined mr-2 align-middle">logout</span>

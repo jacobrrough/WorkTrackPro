@@ -84,6 +84,10 @@ export const shiftService = {
     });
   },
 
+  /**
+   * Clock in: returns false only when the user already has an open shift (business rule).
+   * Throws on network/DB/RLS errors so callers can retry or offline-queue.
+   */
   async clockIn(jobId: string, userId: string): Promise<boolean> {
     const { data: activeShift, error: activeShiftError } = await supabase
       .from('shifts')
@@ -95,7 +99,7 @@ export const shiftService = {
 
     if (activeShiftError) {
       console.error('Shift active-check failed:', activeShiftError);
-      return false;
+      throw activeShiftError;
     }
 
     // Enforce exactly one active shift per user.
@@ -110,16 +114,33 @@ export const shiftService = {
     });
     if (error) {
       console.error('Shift clockIn failed:', error);
-      return false;
+      throw error;
     }
     return true;
   },
 
+  /** Throws on failure. Idempotent sync can use getShiftOpenState first. */
   async clockOut(shiftId: string): Promise<void> {
-    await supabase
+    const { error } = await supabase
       .from('shifts')
       .update({ clock_out_time: new Date().toISOString() })
       .eq('id', shiftId);
+    if (error) {
+      console.error('Shift clockOut failed:', error);
+      throw error;
+    }
+  },
+
+  /** For offline sync: already clocked out or row missing → do not call clockOut again. */
+  async getShiftOpenState(shiftId: string): Promise<{ exists: boolean; open: boolean }> {
+    const { data, error } = await supabase
+      .from('shifts')
+      .select('clock_out_time')
+      .eq('id', shiftId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return { exists: false, open: false };
+    return { exists: true, open: data.clock_out_time == null };
   },
 
   async startLunch(shiftId: string): Promise<boolean> {

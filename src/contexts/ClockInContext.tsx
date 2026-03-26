@@ -1,13 +1,14 @@
 /* eslint-disable react-refresh/only-export-components -- exports hook + provider for this context */
 import React, { createContext, useContext, useCallback } from 'react';
 import { useApp } from '@/AppContext';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import { useClockInWithOnSiteCheck } from '@/hooks/useClockInWithOnSiteCheck';
 import { useSettings } from '@/contexts/SettingsContext';
 import { OnSiteGate } from '@/components/OnSiteGate';
 
 interface ClockInContextValue {
-  clockIn: (jobId: string) => Promise<boolean>;
-  onClockInByCode: (code: number) => Promise<{ success: boolean; message: string }>;
+  clockIn: (jobId: string) => Promise<ClockPunchResult>;
+  onClockInByCode: (code: number) => Promise<{ success: boolean; message: string; queued?: boolean }>;
 }
 
 const ClockInContext = createContext<ClockInContextValue | null>(null);
@@ -31,13 +32,21 @@ export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) =>
   const { settings } = useSettings();
 
   const onClockInByCode = useCallback(
-    async (code: number): Promise<{ success: boolean; message: string }> => {
+    async (
+      code: number
+    ): Promise<{ success: boolean; message: string; queued?: boolean }> => {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
-      const ok = await wrappedClockIn(job.id);
-      return ok
-        ? { success: true, message: 'Clocked in' }
-        : { success: false, message: 'Failed to clock in' };
+      const { ok, queued } = await wrappedClockIn(job.id);
+      if (ok) return { success: true, message: 'Clocked in' };
+      if (queued) {
+        return {
+          success: false,
+          message: 'Saved offline — will sync when connected',
+          queued: true,
+        };
+      }
+      return { success: false, message: 'Failed to clock in' };
     },
     [getJobByCode, wrappedClockIn]
   );

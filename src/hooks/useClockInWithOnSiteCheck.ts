@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useApp } from '@/AppContext';
+import type { ClockPunchResult } from '@/core/clockPunch';
 import { useSettings } from '@/contexts/SettingsContext';
 import { checkOnSite } from '@/lib/geoUtils';
 import { useToast } from '@/Toast';
@@ -8,14 +9,14 @@ import { useToast } from '@/Toast';
  * Returns a clock-in function that runs the on-site geofence check when required by org settings.
  * Applies only to standard (non-admin) users; admins can clock in from anywhere.
  */
-export function useClockInWithOnSiteCheck(): (jobId: string) => Promise<boolean> {
+export function useClockInWithOnSiteCheck(): (jobId: string) => Promise<ClockPunchResult> {
   const { clockIn, currentUser } = useApp();
   const { settings } = useSettings();
   const { showToast } = useToast();
   const { requireOnSite, siteLat, siteLng, siteRadiusMeters } = settings;
 
   return useCallback(
-    async (jobId: string): Promise<boolean> => {
+    async (jobId: string): Promise<ClockPunchResult> => {
       const skipCheck = currentUser?.isAdmin === true;
       if (
         !skipCheck &&
@@ -40,7 +41,7 @@ export function useClockInWithOnSiteCheck(): (jobId: string) => Promise<boolean>
                   ? 'Location timed out. Try again.'
                   : 'Location required to clock in.';
           showToast(msg, 'error');
-          return false;
+          return { ok: false, queued: false };
         }
       }
       return clockIn(jobId);
