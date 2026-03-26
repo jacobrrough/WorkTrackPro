@@ -815,13 +815,10 @@ export const partsService = {
     }
 
     if (error) {
-      console.error(
-        'Error adding part material:',
-        error.message,
-        error.code,
-        error.details,
-        { partVariantId, inventoryId }
-      );
+      console.error('Error adding part material:', error.message, error.code, error.details, {
+        partVariantId,
+        inventoryId,
+      });
       return null;
     }
     return data ? mapRowToPartMaterial(data as unknown as Record<string, unknown>) : null;
