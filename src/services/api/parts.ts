@@ -815,7 +815,13 @@ export const partsService = {
     }
 
     if (error) {
-      console.error('Error adding part material:', error);
+      console.error(
+        'Error adding part material:',
+        error.message,
+        error.code,
+        error.details,
+        { partVariantId, inventoryId }
+      );
       return null;
     }
     return data ? mapRowToPartMaterial(data as unknown as Record<string, unknown>) : null;
@@ -891,7 +897,24 @@ export const partsService = {
     unit: string;
     usageType?: 'per_set' | 'per_variant';
   }): Promise<PartMaterial | null> {
-    const { variantId, partId, inventoryId, quantity, unit, usageType } = params;
+    const { variantId, partId, inventoryId, quantity, unit, usageType: usageTypeParam } = params;
+    const usageType = usageTypeParam ?? 'per_variant';
+
+    // PartDetail shows a synthetic variant when the part has zero DB variants (id = synthetic-set-{partId}).
+    // That string is not a valid UUID for part_variant_id / variant_id — store as part-level per_set instead.
+    const SYNTHETIC_VARIANT_PREFIX = 'synthetic-set-';
+    if (variantId?.startsWith(SYNTHETIC_VARIANT_PREFIX)) {
+      const resolvedPartId = partId ?? variantId.slice(SYNTHETIC_VARIANT_PREFIX.length);
+      if (!resolvedPartId) return null;
+      return this.addMaterial({
+        partId: resolvedPartId,
+        variantId: undefined,
+        inventoryId,
+        quantity,
+        unit,
+        usageType: 'per_set',
+      });
+    }
 
     if (usageType === 'per_set' && partId) {
       // Part-level row: part_id set, no variant. Try quantity_per_unit first, then quantity (legacy).
