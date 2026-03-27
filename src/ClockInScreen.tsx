@@ -154,7 +154,11 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
           >
             <p
               className={`text-center font-semibold ${
-                result.success ? 'text-green-400' : result.queued ? 'text-amber-400' : 'text-red-400'
+                result.success
+                  ? 'text-green-400'
+                  : result.queued
+                    ? 'text-amber-400'
+                    : 'text-red-400'
               }`}
             >
               {result.message}

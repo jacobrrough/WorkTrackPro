@@ -8,7 +8,9 @@ import { OnSiteGate } from '@/components/OnSiteGate';
 
 interface ClockInContextValue {
   clockIn: (jobId: string) => Promise<ClockPunchResult>;
-  onClockInByCode: (code: number) => Promise<{ success: boolean; message: string; queued?: boolean }>;
+  onClockInByCode: (
+    code: number
+  ) => Promise<{ success: boolean; message: string; queued?: boolean }>;
 }
 
 const ClockInContext = createContext<ClockInContextValue | null>(null);
@@ -32,9 +34,7 @@ export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) =>
   const { settings } = useSettings();
 
   const onClockInByCode = useCallback(
-    async (
-      code: number
-    ): Promise<{ success: boolean; message: string; queued?: boolean }> => {
+    async (code: number): Promise<{ success: boolean; message: string; queued?: boolean }> => {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
       const { ok, queued } = await wrappedClockIn(job.id);

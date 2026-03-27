@@ -98,6 +98,8 @@ interface TimeReportsProps {
   onRefreshShifts?: () => Promise<void>;
   /** When set, filter shifts to this job and show a "Show all" banner. */
   initialJobId?: string | null;
+  /** Standard users: only their shifts, no edit/export of others, no admin actions. */
+  readOnly?: boolean;
 }
 
 const TimeReports: React.FC<TimeReportsProps> = ({
@@ -109,6 +111,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   currentUser,
   onRefreshShifts,
   initialJobId,
+  readOnly = false,
 }) => {
   const { showToast } = useToast();
   /** When set, show only shifts for this job (from initialJobId or user cleared "Show all"). */
@@ -117,6 +120,14 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   React.useEffect(() => {
     if (initialJobId) setJobFilter(initialJobId);
   }, [initialJobId]);
+
+  React.useEffect(() => {
+    if (readOnly) {
+      setFilter('mine');
+      setSelectedUser(null);
+      setViewMode('shifts');
+    }
+  }, [readOnly]);
   const [filter, setFilter] = useState<'all' | 'mine'>('mine');
   const [dateRange, setDateRange] = useState<DateRange>('week');
   const [periodOffset, setPeriodOffset] = useState(0);
@@ -194,7 +205,9 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   const filteredShifts = useMemo(() => {
     let result = shifts;
 
-    if (filter === 'mine') {
+    if (readOnly) {
+      result = result.filter((s) => s.user === currentUser.id);
+    } else if (filter === 'mine') {
       result = result.filter((s) => s.user === currentUser.id);
     } else if (selectedUser) {
       result = result.filter((s) => s.user === selectedUser);
@@ -216,7 +229,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
     return result.sort(
       (a, b) => new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime()
     );
-  }, [shifts, filter, periodWindow, currentUser.id, selectedUser, jobFilter]);
+  }, [shifts, readOnly, filter, periodWindow, currentUser.id, selectedUser, jobFilter]);
 
   const totalsByJob = useMemo(() => {
     const map: Record<string, number> = {};
@@ -516,14 +529,18 @@ const TimeReports: React.FC<TimeReportsProps> = ({
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="text-xl font-bold uppercase tracking-wider text-white">Time Reports</h1>
-          <button
-            onClick={exportToCSV}
-            className="text-primary transition-colors hover:text-primary/80"
-            title="Export to CSV"
-          >
-            <span className="material-symbols-outlined">download</span>
-          </button>
+          <h1 className="text-xl font-bold uppercase tracking-wider text-white">
+            {readOnly ? 'My Time' : 'Time Reports'}
+          </h1>
+          {!readOnly && (
+            <button
+              onClick={exportToCSV}
+              className="text-primary transition-colors hover:text-primary/80"
+              title="Export to CSV"
+            >
+              <span className="material-symbols-outlined">download</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -616,8 +633,8 @@ const TimeReports: React.FC<TimeReportsProps> = ({
             </div>
           )}
 
-          {/* On-Time Delivery */}
-          {onTimeDelivery.total > 0 && (
+          {/* On-Time Delivery (admin org metric) */}
+          {!readOnly && onTimeDelivery.total > 0 && (
             <div className="mb-4 rounded-sm border border-white/10 bg-card-dark p-3">
               <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">
                 On-Time Delivery
@@ -760,23 +777,25 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-widest text-primary">
                 Hours by Project
               </h3>
-              <button
-                type="button"
-                onClick={() =>
-                  exportToCsv(
-                    `labor-by-job-${periodWindow.label.replace(/\s+/g, '-')}.csv`,
-                    totalsByJob.map(([jobId, hours]) => ({
-                      jobCode: getJobCode(jobId),
-                      jobName: getJobName(jobId),
-                      po: getJobPO(jobId) ?? '',
-                      hours: hours.toFixed(1),
-                    }))
-                  )
-                }
-                className="rounded-sm border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
-              >
-                Export CSV
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    exportToCsv(
+                      `labor-by-job-${periodWindow.label.replace(/\s+/g, '-')}.csv`,
+                      totalsByJob.map(([jobId, hours]) => ({
+                        jobCode: getJobCode(jobId),
+                        jobName: getJobName(jobId),
+                        po: getJobPO(jobId) ?? '',
+                        hours: hours.toFixed(1),
+                      }))
+                    )
+                  }
+                  className="rounded-sm border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+                >
+                  Export CSV
+                </button>
+              )}
             </div>
             <div className="space-y-4">
               {totalsByJob.slice(0, 8).map(([jobId, hours]) => {
@@ -786,7 +805,8 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   <div key={jobId} className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tight">
                       <span className="flex-1 truncate text-slate-300">
-                        #{getJobCode(jobId)} {po && `• PO: ${po}`} • {getJobName(jobId)}
+                        #{getJobCode(jobId)}
+                        {!readOnly && po && ` • PO: ${po}`} • {getJobName(jobId)}
                       </span>
                       <span className="ml-2 text-white">{hours.toFixed(1)}h</span>
                     </div>
@@ -803,8 +823,35 @@ const TimeReports: React.FC<TimeReportsProps> = ({
           </div>
         )}
 
+        {/* Active Shifts — your current clock-in (standard user) */}
+        {readOnly && activeShifts.length > 0 && viewMode === 'shifts' && (
+          <div className="mb-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-green-400">
+              <span className="h-2 w-2 animate-pulse rounded-sm bg-green-500"></span>
+              Currently working
+            </h3>
+            <div className="space-y-2">
+              {activeShifts.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-sm border border-green-500/20 bg-green-500/10 p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white">
+                      #{s.jobCode || getJobCode(s.job)} • {s.jobName || getJobName(s.job)}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Since {formatTime(s.clockInTime)} · {formatShiftHours(s)} so far
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Active Shifts (Admin) */}
-        {currentUser.isAdmin && activeShifts.length > 0 && viewMode === 'shifts' && (
+        {!readOnly && currentUser.isAdmin && activeShifts.length > 0 && viewMode === 'shifts' && (
           <div className="mb-4">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-green-400">
               <span className="h-2 w-2 animate-pulse rounded-sm bg-green-500"></span>
@@ -864,7 +911,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   </button>
                 )}
               </h3>
-              {currentUser.isAdmin && onRefreshShifts && (
+              {!readOnly && currentUser.isAdmin && onRefreshShifts && (
                 <button
                   onClick={openAddShiftModal}
                   className="flex shrink-0 items-center gap-2 rounded-sm border border-primary/50 bg-primary/20 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/30"
@@ -990,7 +1037,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                         </div>
 
                         {/* Admin action buttons - separate row */}
-                        {currentUser.isAdmin && onRefreshShifts && (
+                        {!readOnly && currentUser.isAdmin && onRefreshShifts && (
                           <div className="mt-3 flex gap-2 border-t border-white/10 pt-3">
                             <button
                               onClick={(e) => {

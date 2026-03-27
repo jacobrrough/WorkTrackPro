@@ -1117,27 +1117,23 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           )}
                         </p>
 
-                        {/* Time logged + link to Time Reports (admin) */}
-                        {(jobHours > 0 || isAdmin) && (
+                        {/* Time logged + link to Time Reports */}
+                        {jobHours > 0 && (
                           <div className="mb-1.5 flex items-center justify-between gap-2">
-                            {jobHours > 0 && (
-                              <span className="text-[10px] text-slate-400">
-                                {jobHours.toFixed(1)}h logged
-                              </span>
-                            )}
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  onNavigate('time-reports', job.id);
-                                }}
-                                className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
-                              >
-                                Time
-                              </button>
-                            )}
+                            <span className="text-[10px] text-slate-400">
+                              {jobHours.toFixed(1)}h logged
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onNavigate('time-reports', job.id);
+                              }}
+                              className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+                            >
+                              Time
+                            </button>
                           </div>
                         )}
 

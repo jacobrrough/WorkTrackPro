@@ -2931,32 +2931,41 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                     Time
                   </p>
-                  {currentUser.isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('time-reports', job.id)}
-                      className="rounded border border-primary/40 bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary transition-colors hover:bg-primary/30"
-                    >
-                      View in Time Reports
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('time-reports', job.id)}
+                    className="rounded border border-primary/40 bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary transition-colors hover:bg-primary/30"
+                  >
+                    View in Time Reports
+                  </button>
                 </div>
                 {(() => {
-                  const jobShifts = shifts
+                  const jobShiftsAll = shifts
                     .filter((s) => s.job === job.id)
                     .sort(
                       (a, b) =>
                         new Date(b.clockInTime).getTime() - new Date(a.clockInTime).getTime()
                     );
+                  const jobShifts = currentUser.isAdmin
+                    ? jobShiftsAll
+                    : jobShiftsAll.filter((s) => s.user === currentUser.id);
+                  const hoursSummary = currentUser.isAdmin
+                    ? loggedLaborHours
+                    : calculateJobHoursFromShifts(
+                        job.id,
+                        shifts.filter((s) => s.job === job.id && s.user === currentUser.id)
+                      );
                   if (jobShifts.length === 0) {
                     return (
                       <p className="text-xs text-slate-500">
-                        No time logged yet.
-                        {currentUser.isAdmin && ' Use Time Reports to add or view shifts.'}
+                        {currentUser.isAdmin
+                          ? 'No time logged yet. Use Time Reports to add or view shifts.'
+                          : 'No time logged on this job for you yet.'}
                       </p>
                     );
                   }
                   const estRemaining =
+                    currentUser.isAdmin &&
                     job.progressEstimatePercent != null &&
                     job.progressEstimatePercent > 0 &&
                     job.progressEstimatePercent < 100 &&
@@ -2970,24 +2979,29 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   return (
                     <div className="space-y-1">
                       <p className="mb-1.5 text-xs text-slate-400">
-                        {loggedLaborHours.toFixed(1)}h total · {jobShifts.length} shift
-                        {jobShifts.length !== 1 ? 's' : ''}
-                        {estRemaining != null && (
-                          <span className="ml-1.5 font-medium text-primary">
-                            · Est. remaining: {estRemaining.toFixed(1)}h
-                          </span>
+                        {currentUser.isAdmin ? (
+                          <>
+                            {hoursSummary.toFixed(1)}h total · {jobShifts.length} shift
+                            {jobShifts.length !== 1 ? 's' : ''}
+                            {estRemaining != null && (
+                              <span className="ml-1.5 font-medium text-primary">
+                                · Est. remaining: {estRemaining.toFixed(1)}h
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {hoursSummary.toFixed(1)}h your time · {jobShifts.length} shift
+                            {jobShifts.length !== 1 ? 's' : ''}
+                          </>
                         )}
                       </p>
                       {jobShifts.slice(0, 5).map((s) => (
                         <button
                           key={s.id}
                           type="button"
-                          onClick={() => currentUser.isAdmin && onNavigate('time-reports', job.id)}
-                          className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[10px] transition-colors ${
-                            currentUser.isAdmin
-                              ? 'cursor-pointer hover:bg-white/10'
-                              : 'cursor-default'
-                          }`}
+                          onClick={() => onNavigate('time-reports', job.id)}
+                          className="flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-left text-[10px] transition-colors hover:bg-white/10"
                         >
                           <span className="text-slate-300">
                             {formatDateOnly(s.clockInTime)} · {s.userName || s.userInitials || '—'}
@@ -2998,9 +3012,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </button>
                       ))}
                       {jobShifts.length > 5 && (
-                        <p className="pt-1 text-[10px] text-slate-500">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('time-reports', job.id)}
+                          className="w-full pt-1 text-left text-[10px] text-slate-500 transition-colors hover:text-primary"
+                        >
                           +{jobShifts.length - 5} more · View in Time Reports
-                        </p>
+                        </button>
                       )}
                     </div>
                   );

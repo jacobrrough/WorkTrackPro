@@ -210,9 +210,7 @@ export default function App() {
   );
 
   const onClockInByCode = useCallback(
-    async (
-      code: number
-    ): Promise<{ success: boolean; message: string; queued?: boolean }> => {
+    async (code: number): Promise<{ success: boolean; message: string; queued?: boolean }> => {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
       const { ok, queued } = await clockIn(job.id);
@@ -554,20 +552,19 @@ export default function App() {
 
   if (view === 'time-reports' && currentUser) {
     return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <TimeReports
-            shifts={shifts}
-            users={users}
-            jobs={jobs}
-            currentUser={currentUser}
-            onNavigate={handleNavigate}
-            onBack={() => handleNavigate('dashboard')}
-            onRefreshShifts={refreshShifts}
-            initialJobId={id}
-          />
-        </AppShell>
-      </AdminRoute>
+      <AppShell>
+        <TimeReports
+          shifts={shifts}
+          users={users}
+          jobs={jobs}
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
+          onRefreshShifts={refreshShifts}
+          initialJobId={id}
+          readOnly={!currentUser.isAdmin}
+        />
+      </AppShell>
     );
   }
 

@@ -1,5 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
-import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ClockPunchResult } from '@/core/clockPunch';
 import type { Comment, Job, JobStatus, InventoryItem, Shift, User } from '@/core/types';
@@ -102,10 +109,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
-  const staleOfflinePunch = useMemo(
-    () => hasQueuedPunchAtMaxAttempts(),
-    [offlineQueueVersion]
-  );
+  const staleOfflinePunch = useMemo(() => hasQueuedPunchAtMaxAttempts(), [offlineQueueVersion]);
 
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
@@ -155,10 +159,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       });
       if (synced > 0) {
         setOfflineQueueVersion((v) => v + 1);
-        showToast(
-          `Synced ${synced} clock punch${synced === 1 ? '' : 'es'}`,
-          'success'
-        );
+        showToast(`Synced ${synced} clock punch${synced === 1 ? '' : 'es'}`, 'success');
       }
     };
 

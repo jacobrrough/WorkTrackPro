@@ -20,8 +20,6 @@ interface JobListProps {
   activeJobId?: string;
   shifts: Shift[];
   users: User[];
-  /** When true, show "Time" link to Time Reports on each card. */
-  isAdmin?: boolean;
 }
 
 const normalizeLegacyRushStatus = (status: Job['status']): Job['status'] =>
@@ -34,7 +32,6 @@ const JobList: React.FC<JobListProps> = ({
   activeJobId,
   shifts,
   users,
-  isAdmin = false,
 }) => {
   const clockInCtx = useClockIn();
   const { showToast } = useToast();
@@ -265,7 +262,7 @@ const JobList: React.FC<JobListProps> = ({
 
                   <div className="flex items-center justify-between gap-2 border-t border-white/5 pt-2">
                     <div className="flex items-center gap-2">
-                      {isAdmin && jobHours > 0 && (
+                      {jobHours > 0 && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

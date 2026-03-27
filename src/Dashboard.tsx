@@ -270,13 +270,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     {
       key: 'time-reports',
       title: 'Time Reports',
-      subtitle: 'View hours',
+      subtitle: isAdmin ? 'View hours' : 'Your shifts',
       icon: 'analytics',
       iconClassName: 'text-green-500',
       cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
       ariaLabel: 'Open time reports',
       onClick: () => onNavigate('time-reports'),
-      adminOnly: true,
     },
     {
       key: 'admin-settings',
