@@ -49,7 +49,7 @@ export function buildPersistedVariantBreakdowns(entries: VariantBreakdownEntryLi
 export function buildNoVariantMachineBreakdown(
   cncHoursPerUnit: number,
   printer3DHoursPerUnit: number,
-  qty: number,
+  qty: number
 ): Record<
   string,
   {

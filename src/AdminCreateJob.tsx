@@ -409,13 +409,13 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     const noVariantMachineBreakdown =
       !persistedBreakdowns && selectedPart && noVariantQty > 0
         ? buildNoVariantMachineBreakdown(
-            (selectedPart.requiresCNC || (selectedPart.cncTimeHours ?? 0) > 0)
+            selectedPart.requiresCNC || (selectedPart.cncTimeHours ?? 0) > 0
               ? (selectedPart.cncTimeHours ?? 0)
               : 0,
-            (selectedPart.requires3DPrint || (selectedPart.printer3DTimeHours ?? 0) > 0)
+            selectedPart.requires3DPrint || (selectedPart.printer3DTimeHours ?? 0) > 0
               ? (selectedPart.printer3DTimeHours ?? 0)
               : 0,
-            noVariantQty,
+            noVariantQty
           )
         : null;
 
