@@ -18,7 +18,10 @@ import {
   getJobNameForSave,
 } from '@/lib/formatJob';
 import { computeVariantBreakdown } from '@/lib/variantAllocation';
-import { buildPersistedVariantBreakdowns } from '@/features/jobs/hooks/variantBreakdownUtils';
+import {
+  buildPersistedVariantBreakdowns,
+  buildNoVariantMachineBreakdown,
+} from '@/features/jobs/hooks/variantBreakdownUtils';
 import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { partsService } from '@/services/api/parts';
@@ -402,6 +405,20 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       ? buildPersistedVariantBreakdowns(computedBreakdown.entries)
       : null;
 
+    const noVariantQty = parseFloat(formData.qty) || 0;
+    const noVariantMachineBreakdown =
+      !persistedBreakdowns && selectedPart && noVariantQty > 0
+        ? buildNoVariantMachineBreakdown(
+            (selectedPart.requiresCNC || (selectedPart.cncTimeHours ?? 0) > 0)
+              ? (selectedPart.cncTimeHours ?? 0)
+              : 0,
+            (selectedPart.requires3DPrint || (selectedPart.printer3DTimeHours ?? 0) > 0)
+              ? (selectedPart.printer3DTimeHours ?? 0)
+              : 0,
+            noVariantQty,
+          )
+        : null;
+
     const partsForCreate: JobPartLink[] | undefined =
       selectedPart || additionalParts.length > 0
         ? [
@@ -449,8 +466,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         revision: formData.revision.trim() || undefined,
         dashQuantities: normalizedDashQuantities,
         laborBreakdownByVariant: persistedBreakdowns?.persistedLaborBreakdown,
-        machineBreakdownByVariant: persistedBreakdowns?.persistedMachineBreakdown,
-        allocationSource: persistedBreakdowns ? 'variant' : undefined,
+        machineBreakdownByVariant:
+          persistedBreakdowns?.persistedMachineBreakdown ?? noVariantMachineBreakdown ?? undefined,
+        allocationSource: persistedBreakdowns || noVariantMachineBreakdown ? 'variant' : undefined,
         parts: partsForCreate,
       } as Partial<Job>);
 

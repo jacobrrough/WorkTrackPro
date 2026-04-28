@@ -45,3 +45,29 @@ export function buildPersistedVariantBreakdowns(entries: VariantBreakdownEntryLi
 
   return { persistedLaborBreakdown, persistedMachineBreakdown };
 }
+
+export function buildNoVariantMachineBreakdown(
+  cncHoursPerUnit: number,
+  printer3DHoursPerUnit: number,
+  qty: number,
+): Record<
+  string,
+  {
+    qty: number;
+    cncHoursPerUnit: number;
+    cncHoursTotal: number;
+    printer3DHoursPerUnit: number;
+    printer3DHoursTotal: number;
+  }
+> | null {
+  if (qty <= 0 || (cncHoursPerUnit === 0 && printer3DHoursPerUnit === 0)) return null;
+  return {
+    '-': {
+      qty,
+      cncHoursPerUnit,
+      cncHoursTotal: cncHoursPerUnit * qty,
+      printer3DHoursPerUnit,
+      printer3DHoursTotal: printer3DHoursPerUnit * qty,
+    },
+  };
+}

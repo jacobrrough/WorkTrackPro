@@ -151,10 +151,10 @@ export function computeVariantBreakdown(params: {
 
     const requiresCNC = variantDefinesCnc
       ? (variant?.requiresCNC ?? false)
-      : (part?.requiresCNC ?? false);
+      : (part?.requiresCNC ?? false) || (part?.cncTimeHours ?? 0) > 0;
     const requires3DPrint = variantDefines3d
       ? (variant?.requires3DPrint ?? false)
-      : (part?.requires3DPrint ?? false);
+      : (part?.requires3DPrint ?? false) || (part?.printer3DTimeHours ?? 0) > 0;
 
     const partCncPerUnit =
       typeof part?.cncTimeHours === 'number' &&

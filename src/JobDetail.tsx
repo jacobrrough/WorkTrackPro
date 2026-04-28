@@ -63,6 +63,7 @@ import {
   computePartDerivedMaterialTotal,
 } from '@/features/jobs/hooks/useMaterialCosts';
 import { useVariantBreakdown } from '@/features/jobs/hooks/useVariantBreakdown';
+import { buildNoVariantMachineBreakdown } from '@/features/jobs/hooks/variantBreakdownUtils';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
 import JobComments from '@/features/jobs/components/JobComments';
@@ -1308,6 +1309,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
             i === 0 ? { ...p, dashQuantities: normalizedDashQuantities } : p
           )
         : undefined;
+    const editQty = parseFloat(editForm.qty) || 1;
+    const noVariantMachineBreakdown =
+      Object.keys(persistedMachineBreakdown).length === 0 &&
+      linkedPart &&
+      !linkedPart.variants?.length
+        ? buildNoVariantMachineBreakdown(
+            (parseFloat(editForm.cncHours) || 0) / editQty,
+            (parseFloat(editForm.printer3DHours) || 0) / editQty,
+            editQty,
+          )
+        : null;
+
     const payload = {
       ...(partsToSave && partsToSave.length > 0 ? { parts: partsToSave } : {}),
       partNumber,
@@ -1345,7 +1358,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       laborBreakdownByVariant:
         Object.keys(persistedLaborBreakdown).length > 0 ? persistedLaborBreakdown : undefined,
       machineBreakdownByVariant:
-        Object.keys(persistedMachineBreakdown).length > 0 ? persistedMachineBreakdown : undefined,
+        Object.keys(persistedMachineBreakdown).length > 0
+          ? persistedMachineBreakdown
+          : (noVariantMachineBreakdown ?? undefined),
       allocationSource,
     };
     const nameToSave = getJobNameForSave(

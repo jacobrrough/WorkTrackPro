@@ -4,6 +4,7 @@ import { quoteService } from './services/api/quotes';
 import { useToast } from './Toast';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { getJobDisplayName } from './lib/formatJob';
+import { getMachineTotalsFromJob } from './lib/machineHours';
 
 interface QuotesProps {
   jobs: Job[];
@@ -40,6 +41,9 @@ const Quotes: React.FC<QuotesProps> = ({
     laborHours: number;
     laborRate: number;
     laborCost: number;
+    cncHours: number;
+    cncRate: number;
+    cncCost: number;
     markupPercent: number;
     subtotal: number;
     markupAmount: number;
@@ -113,6 +117,9 @@ const Quotes: React.FC<QuotesProps> = ({
           laborHours: 0,
           laborRate: DEFAULT_LABOR_RATE,
           laborCost: 0,
+          cncHours: 0,
+          cncRate: DEFAULT_LABOR_RATE,
+          cncCost: 0,
           markupPercent: DEFAULT_MARKUP_PERCENT,
           subtotal: 0,
           markupAmount: 0,
@@ -130,6 +137,7 @@ const Quotes: React.FC<QuotesProps> = ({
         { name: string; quantity: number; unit: string; price: number }
       >();
       let totalHours = 0;
+      let totalCncHours = 0;
       const referenceJobIds: string[] = [];
 
       for (const job of similarJobs) {
@@ -138,6 +146,7 @@ const Quotes: React.FC<QuotesProps> = ({
         // Calculate hours for this job
         const jobHours = calculateJobHours(job.id);
         totalHours += jobHours;
+        totalCncHours += getMachineTotalsFromJob(job).cncHours;
 
         // Aggregate materials
         const jobInventory = job.expand?.job_inventory_via_job || job.expand?.job_inventory || [];
@@ -186,7 +195,10 @@ const Quotes: React.FC<QuotesProps> = ({
       const materialCost = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const laborRate = DEFAULT_LABOR_RATE;
       const laborCost = avgHours * laborRate;
-      const subtotal = materialCost + laborCost;
+      const avgCncHours = similarJobs.length > 0 ? totalCncHours / similarJobs.length : 0;
+      const cncRate = DEFAULT_LABOR_RATE;
+      const cncCost = avgCncHours * cncRate;
+      const subtotal = materialCost + laborCost + cncCost;
       const markupPercent = DEFAULT_MARKUP_PERCENT;
       const markupAmount = subtotal * (markupPercent / 100);
       const total = subtotal + markupAmount;
@@ -196,6 +208,9 @@ const Quotes: React.FC<QuotesProps> = ({
         laborHours: avgHours,
         laborRate,
         laborCost,
+        cncHours: avgCncHours,
+        cncRate,
+        cncCost,
         markupPercent,
         subtotal,
         markupAmount,
@@ -222,7 +237,8 @@ const Quotes: React.FC<QuotesProps> = ({
 
       // Recalculate dependent values
       updated.laborCost = updated.laborHours * updated.laborRate;
-      updated.subtotal = updated.materialCost + updated.laborCost;
+      updated.cncCost = updated.cncHours * updated.cncRate;
+      updated.subtotal = updated.materialCost + updated.laborCost + updated.cncCost;
       updated.markupAmount = updated.subtotal * (updated.markupPercent / 100);
       updated.total = updated.subtotal + updated.markupAmount;
 
@@ -561,6 +577,38 @@ const Quotes: React.FC<QuotesProps> = ({
                 <span className="font-bold text-white">Labor Cost:</span>
                 <span className="font-bold text-white">${quoteData.laborCost.toFixed(2)}</span>
               </div>
+              {quoteData.cncHours > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/60">CNC Hours:</span>
+                    <input
+                      type="number"
+                      value={quoteData.cncHours}
+                      onChange={(e) =>
+                        updateQuoteCalculations({ cncHours: parseFloat(e.target.value) || 0 })
+                      }
+                      className="w-32 rounded border border-white/10 bg-background-dark px-3 py-2 text-sm text-white"
+                      step="0.1"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/60">CNC Rate ($/hr):</span>
+                    <input
+                      type="number"
+                      value={quoteData.cncRate}
+                      onChange={(e) =>
+                        updateQuoteCalculations({ cncRate: parseFloat(e.target.value) || 0 })
+                      }
+                      className="w-32 rounded border border-white/10 bg-background-dark px-3 py-2 text-sm text-white"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                    <span className="font-bold text-white">CNC Cost:</span>
+                    <span className="font-bold text-white">${quoteData.cncCost.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-white/60">Material Cost:</span>
                 <span className="font-bold text-white">${quoteData.materialCost.toFixed(2)}</span>
