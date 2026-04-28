@@ -64,7 +64,7 @@ function syntheticVariantFromPart(part: Part): PartVariant {
   return {
     id: SYNTHETIC_VARIANT_PREFIX + part.id,
     partId: part.id,
-    variantSuffix: '01',
+    variantSuffix: '',
     name: part.name,
     laborHours: part.laborHours,
     cncTimeHours: part.cncTimeHours,
@@ -1462,7 +1462,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 <div>
                   <p className="mb-1 text-xs font-bold uppercase text-slate-400">Set composition</p>
                   {part.variants?.length === 0 ? (
-                    <p className="mt-2 text-sm text-white">One set: 1× -01</p>
+                    <p className="mt-2 text-sm text-white">One set: 1× unit (no variants)</p>
                   ) : (
                     <>
                       <SetCompositionEditor
@@ -1869,7 +1869,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-black/20 px-3 py-2 text-xs"
                       >
                         <div className="font-mono font-semibold text-primary">
-                          -{row.variantSuffix}
+                          {row.variantSuffix ? `-${row.variantSuffix}` : 'All units'}
                         </div>
                         <div className="text-slate-300">Units: {row.completedUnits.toFixed(1)}</div>
                         <div className="text-slate-300">
@@ -2111,7 +2111,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
       <div className="mb-3 flex items-center justify-between">
         <div>
           <span className="font-mono font-semibold text-primary">
-            {partNumber}-{variant.variantSuffix}
+            {variant.variantSuffix ? `${partNumber}-${variant.variantSuffix}` : partNumber}
           </span>
           {isEditing ? (
             <input
