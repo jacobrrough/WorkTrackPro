@@ -370,6 +370,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [job, loggedLaborHours]
   );
   const isCncRequired = completionProgress.plannedCncHours > 0;
+  const is3DPrintRequired = completionProgress.plannedPrinter3DHours > 0;
 
   /** In edit mode, local copy of job.parts (or [primary]) for editing part list and per-part dash quantities. */
   const [editingParts, setEditingParts] = useState<JobPartLink[]>(() =>
@@ -1303,6 +1304,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const normalizedDashQuantities = normalizeDashQuantities(dashQuantities);
     const shouldAutoMarkCncDone =
       Boolean(normalizedBinLocation) && isCncRequired && !job.cncCompletedAt;
+    const shouldAutoMark3DPrintDone =
+      Boolean(normalizedBinLocation) && is3DPrintRequired && !job.printer3DCompletedAt;
     const partsToSave =
       editingParts.length > 0
         ? editingParts.map((p, i) =>
@@ -1346,6 +1349,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       binLocation: normalizedBinLocation,
       cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
       cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
+      printer3DCompletedAt: shouldAutoMark3DPrintDone ? new Date().toISOString() : undefined,
+      printer3DCompletedBy: shouldAutoMark3DPrintDone ? currentUser.id : undefined,
       variantSuffix: selectedVariant
         ? selectedVariant.variantSuffix
         : editForm.variantSuffix?.trim() || undefined,
@@ -1881,10 +1886,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
       const normalizedLocation = location?.trim() || undefined;
       const shouldAutoMarkCncDone =
         Boolean(normalizedLocation) && isCncRequired && !job.cncCompletedAt;
+      const shouldAutoMark3DPrintDone =
+        Boolean(normalizedLocation) && is3DPrintRequired && !job.printer3DCompletedAt;
       const updated = await onUpdateJob(job.id, {
         binLocation: normalizedLocation,
         cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
         cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
+        printer3DCompletedAt: shouldAutoMark3DPrintDone ? new Date().toISOString() : undefined,
+        printer3DCompletedBy: shouldAutoMark3DPrintDone ? currentUser.id : undefined,
       });
 
       if (updated && onReloadJob) {
@@ -1921,6 +1930,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
     } catch (error) {
       console.error('Error updating CNC status:', error);
       showToast('Failed to update CNC status', 'error');
+    }
+  };
+
+  const handleToggle3DPrintDone = async () => {
+    if (!currentUser.isAdmin || !is3DPrintRequired) return;
+    try {
+      const markDone = !job.printer3DCompletedAt;
+      const updated = await onUpdateJob(job.id, {
+        printer3DCompletedAt: markDone ? new Date().toISOString() : null,
+        printer3DCompletedBy: markDone ? currentUser.id : null,
+      });
+      if (updated) {
+        showToast(markDone ? '3D print marked done' : '3D print marked pending', 'success');
+      } else {
+        showToast('Failed to update 3D print status', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating 3D print status:', error);
+      showToast('Failed to update 3D print status', 'error');
     }
   };
 
@@ -3068,6 +3096,39 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       }`}
                     >
                       {job.cncCompletedAt ? 'Mark Pending' : 'Mark Done'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {currentUser.isAdmin && is3DPrintRequired && (
+                <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        3D Print Status
+                      </p>
+                      <p
+                        className={`text-sm font-semibold ${job.printer3DCompletedAt ? 'text-green-300' : 'text-blue-300'}`}
+                      >
+                        {job.printer3DCompletedAt ? '3D Print Done' : '3D Print Pending'}
+                      </p>
+                      {job.printer3DCompletedAt && (
+                        <p className="text-[10px] text-slate-400">
+                          Marked {formatDateOnly(job.printer3DCompletedAt)}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggle3DPrintDone}
+                      className={`h-11 touch-manipulation rounded-sm border px-3 text-xs font-semibold ${
+                        job.printer3DCompletedAt
+                          ? 'border-green-500/40 bg-green-500/20 text-green-200'
+                          : 'border-blue-500/40 bg-blue-500/20 text-blue-200'
+                      }`}
+                    >
+                      {job.printer3DCompletedAt ? 'Mark Pending' : 'Mark Done'}
                     </button>
                   </div>
                 </div>

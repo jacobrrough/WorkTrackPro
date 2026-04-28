@@ -40,7 +40,7 @@ export function computeJobCompletionProgress(
       ? clampPercent((Math.max(0, loggedLaborHours) / plannedLaborHours) * 100)
       : 0;
   const cncPercent = job.cncCompletedAt ? 100 : 0;
-  const printer3DPercent = TERMINAL_STATUSES.has(job.status) ? 100 : 0;
+  const printer3DPercent = job.printer3DCompletedAt || TERMINAL_STATUSES.has(job.status) ? 100 : 0;
 
   const plannedTotal = plannedLaborHours + plannedCncHours + plannedPrinter3DHours;
   const productionPercent =

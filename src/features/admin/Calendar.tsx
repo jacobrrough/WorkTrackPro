@@ -961,6 +961,7 @@ const Calendar: React.FC<CalendarProps> = ({
                       >
                         {tl.job.isRush && '⚡ '}
                         {tl.job.cncCompletedAt && '✓ '}
+                        {tl.job.printer3DCompletedAt && '🖨 '}
                         {tl.scheduleRisk === 'overdue' && '! '}
                         {isAtRisk && tl.scheduleRisk !== 'overdue' && '⚠ '}#{tl.job.jobCode}
                       </button>
@@ -1025,6 +1026,17 @@ const Calendar: React.FC<CalendarProps> = ({
                             (machine?.cncHours ?? 0) > 0 && (
                               <span className="text-[11px] font-semibold text-amber-300">
                                 CNC Pending
+                              </span>
+                            )
+                          )}
+                          {tl.job.printer3DCompletedAt ? (
+                            <span className="text-[11px] font-semibold text-green-300">
+                              3D Done
+                            </span>
+                          ) : (
+                            (machine?.printer3DHours ?? 0) > 0 && (
+                              <span className="text-[11px] font-semibold text-blue-300">
+                                3D Pending
                               </span>
                             )
                           )}
