@@ -792,6 +792,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         (v) => (v?.cncHoursTotal ?? 0) > 0
                       );
                     const cncDone = !!job.cncCompletedAt;
+                    const has3DPrint =
+                      job.machineBreakdownByVariant &&
+                      Object.values(job.machineBreakdownByVariant).some(
+                        (v) => (v?.printer3DHoursTotal ?? 0) > 0
+                      );
+                    const print3DDone = !!job.printer3DCompletedAt;
 
                     return (
                       <div
@@ -868,6 +874,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                   {cncDone ? 'check_circle' : 'schedule'}
                                 </span>
                                 CNC {cncDone ? 'Done' : 'Pending'}
+                              </span>
+                            )}
+                            {has3DPrint && (
+                              <span
+                                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${print3DDone ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}
+                                title={print3DDone ? '3D printing done' : '3D printing pending'}
+                              >
+                                <span className="material-symbols-outlined text-[10px]">
+                                  {print3DDone ? 'check_circle' : 'schedule'}
+                                </span>
+                                3D {print3DDone ? 'Done' : 'Pending'}
                               </span>
                             )}
                           </div>

@@ -207,6 +207,8 @@ export interface Job {
   >;
   cncCompletedAt?: string | null;
   cncCompletedBy?: string | null;
+  printer3DCompletedAt?: string | null;
+  printer3DCompletedBy?: string | null;
   allocationSource?: 'variant' | 'total';
   allocationSourceUpdatedAt?: string;
   revision?: string;
