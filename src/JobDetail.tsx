@@ -1317,7 +1317,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         ? buildNoVariantMachineBreakdown(
             (parseFloat(editForm.cncHours) || 0) / editQty,
             (parseFloat(editForm.printer3DHours) || 0) / editQty,
-            editQty,
+            editQty
           )
         : null;
 
