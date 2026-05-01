@@ -104,6 +104,18 @@ export default function App() {
   const [backStack, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Read a one-time flag set by hardLogout before the page reloaded.
+  // sessionStorage survives location.reload() but is cleared on tab close,
+  // so the message only ever shows once — right after an expiry reload.
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState<string | null>(() => {
+    const flag = sessionStorage.getItem('wtp_session_expired');
+    if (flag) {
+      sessionStorage.removeItem('wtp_session_expired');
+      return 'Your session expired. Please log in again.';
+    }
+    return null;
+  });
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
 
   // Fetch job by id when on job-detail so we always have the repaired job (partId) and materials don't flash away when the list refetches
@@ -197,6 +209,7 @@ export default function App() {
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
+      setSessionExpiredNotice(null); // clear expiry notice as soon as worker attempts login
       await login(email, password);
     },
     [login]
@@ -210,11 +223,21 @@ export default function App() {
   );
 
   const onClockInByCode = useCallback(
-    async (code: number): Promise<{ success: boolean; message: string; queued?: boolean }> => {
+    async (
+      code: number
+    ): Promise<{ success: boolean; message: string; queued?: boolean; authExpired?: boolean }> => {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
-      const { ok, queued } = await clockIn(job.id);
+      const { ok, queued, authExpired } = await clockIn(job.id);
       if (ok) return { success: true, message: 'Clocked in' };
+      if (authExpired) {
+        logout();
+        return {
+          success: false,
+          message: 'Session expired — please log in again',
+          authExpired: true,
+        };
+      }
       if (queued) {
         return {
           success: false,
@@ -224,7 +247,7 @@ export default function App() {
       }
       return { success: false, message: 'Failed to clock in' };
     },
-    [getJobByCode, clockIn]
+    [getJobByCode, clockIn, logout]
   );
 
   const location = useLocation();
@@ -245,7 +268,7 @@ export default function App() {
         onLogin={handleLogin}
         onSignUp={handleSignUp}
         onResetPassword={resetPasswordForEmail}
-        error={authError}
+        error={authError ?? sessionExpiredNotice}
         isLoading={isLoading}
       />
     );
