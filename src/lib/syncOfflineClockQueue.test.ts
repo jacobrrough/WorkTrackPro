@@ -14,6 +14,17 @@ vi.mock('@/services/api/shifts', () => ({
   },
 }));
 
+// Prevent Supabase client initialization (requires env vars not present in CI).
+// syncOfflineClockQueue calls supabase.auth.getSession() as a session guard;
+// mock it to return a live session so the queue logic runs normally in tests.
+vi.mock('@/services/api/supabaseClient', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'test' } } } }),
+    },
+  },
+}));
+
 import { syncOfflineClockQueue } from './syncOfflineClockQueue';
 import { enqueueClockPunch, getQueue } from './offlineQueue';
 
