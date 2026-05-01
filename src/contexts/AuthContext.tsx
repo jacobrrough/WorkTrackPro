@@ -24,6 +24,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // --- Session expiry guards ---
+  // True once Supabase confirms a valid session this page load.
+  // Prevents a false hard-reload on the login screen when the app first loads
+  // with an already-expired token and Supabase fires SIGNED_OUT immediately.
+  const hasBeenAuthenticated = React.useRef(false);
+  // True when the worker clicked the Logout button themselves.
+  // Keeps the onAuthStateChange handler from treating a user-initiated signOut
+  // as an unexpected session death and triggering a page reload.
+  const userInitiatedLogout = React.useRef(false);
+  // True once a reload has been scheduled — prevents a race condition where
+  // both the idle timeout and onAuthStateChange try to reload simultaneously.
+  const reloadPending = React.useRef(false);
+
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
     setIsLoading(true);
@@ -71,7 +84,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authService.resetPasswordForEmail(email);
   }, []);
 
+  // Hard logout: used when the system forces a sign-out (idle timeout, token
+  // refresh failure, or Supabase killing the session unexpectedly).
+  // Wipes login tokens from browser storage, then reloads the page so there
+  // is zero stale state left in memory. A flag in sessionStorage tells the
+  // login screen to show "Your session expired."
+  const hardLogout = useCallback(async () => {
+    if (reloadPending.current) return;
+    reloadPending.current = true;
+    userInitiatedLogout.current = true; // prevents onAuthStateChange from scheduling a second reload
+    sessionStorage.setItem('wtp_session_expired', '1');
+    await supabase.auth.signOut({ scope: 'local' }); // clears tokens from localStorage, no server call needed
+    window.location.reload();
+  }, []);
+
   const logout = useCallback(() => {
+    // Flag that this logout came from the worker — not from the session dying.
+    // The onAuthStateChange SIGNED_OUT handler checks this to decide whether
+    // to do a hard page reload or a clean React-only transition.
+    userInitiatedLogout.current = true;
     authService.logout();
     setCurrentUser(null);
   }, []);
@@ -97,9 +128,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      // Mark that a valid session exists so we know the worker was logged in.
+      // This guards against hard-reloading on the login screen when the app
+      // first loads and Supabase immediately fires SIGNED_OUT for a dead token.
+      if (session) hasBeenAuthenticated.current = true;
+
       if (event === 'SIGNED_OUT' || !session) {
+        if (!userInitiatedLogout.current && hasBeenAuthenticated.current) {
+          // Session died on its own (expired, revoked, network cleared it).
+          // Hard reload so there is zero stale state left in the app.
+          void hardLogout();
+          return;
+        }
+        // Worker clicked Logout, or app loaded with no session — clean transition only.
+        userInitiatedLogout.current = false;
+        hasBeenAuthenticated.current = false;
         setCurrentUser(null);
       }
+
       if (event === 'TOKEN_REFRESHED' && session?.user) {
         authService.checkAuth().then((user) => {
           if (user) setCurrentUser(user);
@@ -107,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [hardLogout]);
 
   // Auth refresh + idle timeout
   useEffect(() => {
@@ -134,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const authRefreshInterval = setInterval(
       async () => {
         const ok = await refreshAuthWithRetry();
-        if (!ok) logout();
+        if (!ok) void hardLogout();
       },
       20 * 60 * 1000
     );
@@ -150,8 +196,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const idleCheckInterval = setInterval(() => {
       const idleTime = Date.now() - lastActivity;
-      const idleLimit = 60 * 60 * 1000;
-      if (idleTime >= idleLimit) logout();
+      const idleLimit = 60 * 60 * 1000; // 1 hour
+      if (idleTime >= idleLimit) void hardLogout();
     }, 60 * 1000);
 
     return () => {
@@ -162,7 +208,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchstart', updateActivity);
       window.removeEventListener('scroll', updateActivity);
     };
-  }, [currentUser, logout]);
+  }, [currentUser, logout, hardLogout]);
+
+  // Visibility check: fires when the worker brings the tab into focus.
+  // Reads the session from the browser's local cache (no network call unless
+  // the token needs refreshing). If the session is dead, hard-reloads the page.
+  // Guards prevent it from firing before the worker has ever logged in.
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!hasBeenAuthenticated.current) return; // not logged in this session
+      if (reloadPending.current) return; // reload already on its way
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) await hardLogout();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [hardLogout]);
 
   const value: AuthContextType = {
     currentUser,

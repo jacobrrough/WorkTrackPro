@@ -10,7 +10,7 @@ interface ClockInContextValue {
   clockIn: (jobId: string) => Promise<ClockPunchResult>;
   onClockInByCode: (
     code: number
-  ) => Promise<{ success: boolean; message: string; queued?: boolean }>;
+  ) => Promise<{ success: boolean; message: string; queued?: boolean; authExpired?: boolean }>;
 }
 
 const ClockInContext = createContext<ClockInContextValue | null>(null);
@@ -33,12 +33,34 @@ export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) =>
   const wrappedClockIn = useClockInWithOnSiteCheck();
   const { settings } = useSettings();
 
+  // Wraps wrappedClockIn so every consumer (JobDetail, JobList, ClockInScreen)
+  // automatically gets the logout() call when authExpired is true — no need to
+  // repeat that logic in every component that has a clock-in button.
+  const clockInWithAuth = useCallback(
+    async (jobId: string): Promise<ClockPunchResult> => {
+      const result = await wrappedClockIn(jobId);
+      if (result.authExpired) logout();
+      return result;
+    },
+    [wrappedClockIn, logout]
+  );
+
   const onClockInByCode = useCallback(
-    async (code: number): Promise<{ success: boolean; message: string; queued?: boolean }> => {
+    async (
+      code: number
+    ): Promise<{ success: boolean; message: string; queued?: boolean; authExpired?: boolean }> => {
       const job = await getJobByCode(code);
       if (!job) return { success: false, message: 'Job not found' };
-      const { ok, queued } = await wrappedClockIn(job.id);
+      const { ok, queued, authExpired } = await clockInWithAuth(job.id);
       if (ok) return { success: true, message: 'Clocked in' };
+      if (authExpired) {
+        // logout() already called inside clockInWithAuth above
+        return {
+          success: false,
+          message: 'Session expired — please log in again',
+          authExpired: true,
+        };
+      }
       if (queued) {
         return {
           success: false,
@@ -48,11 +70,11 @@ export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) =>
       }
       return { success: false, message: 'Failed to clock in' };
     },
-    [getJobByCode, wrappedClockIn]
+    [getJobByCode, clockInWithAuth]
   );
 
   const value: ClockInContextValue = {
-    clockIn: wrappedClockIn,
+    clockIn: clockInWithAuth,
     onClockInByCode,
   };
 

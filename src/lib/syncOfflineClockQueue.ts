@@ -4,6 +4,8 @@ import {
   getQueue,
   MAX_SYNC_ATTEMPTS_PER_PUNCH,
 } from '@/lib/offlineQueue';
+import { isAuthError } from '@/lib/authErrors';
+import { supabase } from '@/services/api/supabaseClient';
 import { shiftService } from '@/services/api/shifts';
 
 export interface SyncOfflineClockQueueOptions {
@@ -19,6 +21,13 @@ export async function syncOfflineClockQueue(opts: SyncOfflineClockQueueOptions):
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return 0;
   }
+
+  // Guard: don't attempt sync if the session is dead. This prevents burning
+  // retry attempt counts on punches that will 100% fail until the worker logs in again.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return 0;
 
   let synced = 0;
   const snapshot = [...getQueue()];
@@ -77,7 +86,10 @@ export async function syncOfflineClockQueue(opts: SyncOfflineClockQueueOptions):
         await opts.refreshShifts();
         await opts.refreshJobs();
       }
-    } catch {
+    } catch (err) {
+      // If the error is auth-related, stop the whole loop — every remaining
+      // punch will fail for the same reason. Attempt counts are NOT incremented.
+      if (isAuthError(err)) break;
       bumpQueueAttempt(punch.id);
     }
   }

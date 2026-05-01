@@ -273,6 +273,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleClockIn = useCallback(async () => {
     const applyResult = (r: ClockPunchResult) => {
       if (r.ok) showToast('Clocked in', 'success');
+      else if (r.authExpired) showToast('Session expired — please log in again', 'error');
       else if (r.queued) showToast('Saved offline — will sync when connected', 'warning');
       else showToast('Failed to clock in', 'error');
     };

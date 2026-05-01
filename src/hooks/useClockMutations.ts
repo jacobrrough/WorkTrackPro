@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ClockPunchResult } from '@/core/clockPunch';
 import type { JobStatus, Shift } from '@/core/types';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
+import { isAuthError } from '@/lib/authErrors';
 import { enqueueClockPunch } from '@/lib/offlineQueue';
 import { shiftService } from '@/services/api/shifts';
 
@@ -48,6 +49,7 @@ export function useClockMutations({
           await refreshShifts();
         } catch (error) {
           console.error('Clock in (switch job) error:', error);
+          if (isAuthError(error)) return { ok: false, queued: false, authExpired: true };
           enqueueClockPunch({
             type: 'clock_out',
             userId: currentUser.id,
@@ -93,6 +95,7 @@ export function useClockMutations({
               clockInSucceeded = await shiftService.clockIn(jobId, currentUser.id);
             } catch (retryErr) {
               console.error('Clock in retry path error:', retryErr);
+              if (isAuthError(retryErr)) return { ok: false, queued: false, authExpired: true };
               enqueueClockPunch({
                 type: 'clock_in',
                 userId: currentUser.id,
@@ -112,6 +115,7 @@ export function useClockMutations({
         return failure(false);
       } catch (error) {
         console.error('Clock in error:', error);
+        if (isAuthError(error)) return { ok: false, queued: false, authExpired: true };
         if (currentUser && jobId) {
           enqueueClockPunch({
             type: 'clock_in',
