@@ -16,7 +16,6 @@ export {
   checklistHistoryService,
   partsService,
   adminSettingsService,
-  boardService,
   subscriptions,
 } from './services/api';
 export { supabase as default } from './services/api';

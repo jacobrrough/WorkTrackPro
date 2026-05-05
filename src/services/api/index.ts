@@ -11,4 +11,3 @@ export { quoteService } from './quotes';
 export { checklistService, checklistHistoryService } from './checklists';
 export { subscriptions } from './subscriptions';
 export { adminSettingsService } from './adminSettings';
-export { boardService } from './boards';
