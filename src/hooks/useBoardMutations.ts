@@ -193,6 +193,36 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     [queryClient]
   );
 
+  // ── Card attachments ───────────────────────────────────
+
+  const addCardAttachment = useCallback(
+    async (boardId: string, cardId: string, file: File) => {
+      const att = await boardService.addCardAttachment(cardId, file);
+      if (att) {
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        showToast('Attachment uploaded', 'success');
+      } else {
+        showToast('Upload failed', 'error');
+      }
+      return att;
+    },
+    [queryClient, showToast]
+  );
+
+  const deleteCardAttachment = useCallback(
+    async (boardId: string, attachmentId: string) => {
+      const ok = await boardService.deleteCardAttachment(attachmentId);
+      if (ok) {
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        showToast('Attachment deleted', 'success');
+      } else {
+        showToast('Failed to delete attachment', 'error');
+      }
+      return ok;
+    },
+    [queryClient, showToast]
+  );
+
   return {
     createBoard,
     updateBoard,
@@ -208,5 +238,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     addMember,
     removeMember,
     updateMemberRole,
+    addCardAttachment,
+    deleteCardAttachment,
   };
 }

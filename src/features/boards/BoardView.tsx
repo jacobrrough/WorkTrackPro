@@ -50,7 +50,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
   const mutations = useBoardMutations({ currentUser: currentUser ?? null, showToast });
 
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  const [editingCard, setEditingCard] = useState<BoardCard | null>(null);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [localCards, setLocalCards] = useState<BoardCard[] | null>(null);
@@ -59,6 +59,12 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
   const cards = localCards ?? data?.cards ?? [];
   const members = data?.members ?? [];
   const columns = board?.columns ?? [];
+
+  // Keep editor reactive: look up the current card by id so attachments
+  // refresh after upload/delete.
+  const editingCard = editingCardId
+    ? (data?.cards ?? []).find((c) => c.id === editingCardId) ?? null
+    : null;
 
   const isOwner = board?.createdBy === currentUser?.id;
   const memberEntry = members.find((m) => m.userId === currentUser?.id);
@@ -169,13 +175,13 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
   const handleUpdateCard = async (data: CardSaveData) => {
     if (!editingCard) return;
     await mutations.updateCard(boardId, editingCard.id, data);
-    setEditingCard(null);
+    setEditingCardId(null);
   };
 
   const handleDeleteCard = async () => {
     if (!editingCard) return;
     await mutations.deleteCard(boardId, editingCard.id);
-    setEditingCard(null);
+    setEditingCardId(null);
   };
 
   if (isLoading) {
@@ -257,7 +263,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
                         card={card}
                         users={users}
                         readOnly={readOnly}
-                        onClick={() => !readOnly && setEditingCard(card)}
+                        onClick={() => !readOnly && setEditingCardId(card.id)}
                       />
                     ))}
                   </DroppableColumn>
@@ -298,9 +304,16 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
         <CardEditorModal
           card={editingCard}
           users={users}
-          onClose={() => setEditingCard(null)}
+          canManageAttachments={!readOnly}
+          onClose={() => setEditingCardId(null)}
           onSave={handleUpdateCard}
           onDelete={handleDeleteCard}
+          onUploadAttachment={(cardId, file) =>
+            mutations.addCardAttachment(boardId, cardId, file)
+          }
+          onDeleteAttachment={(attachmentId) =>
+            mutations.deleteCardAttachment(boardId, attachmentId)
+          }
         />
       )}
 

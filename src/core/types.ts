@@ -131,6 +131,7 @@ export interface Attachment {
   jobId?: string;
   inventoryId?: string;
   partId?: string;
+  boardCardId?: string;
   filename: string;
   storagePath: string;
   isAdminOnly: boolean;
@@ -480,6 +481,8 @@ export interface BoardCard {
   color?: string;
   sortOrder: number;
   createdAt?: string;
+  attachments?: Attachment[];
+  attachmentCount?: number;
 }
 
 export interface BoardMember {

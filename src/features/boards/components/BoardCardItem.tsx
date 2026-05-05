@@ -50,6 +50,12 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
             {card.dueDate}
           </span>
         )}
+        {(card.attachmentCount ?? card.attachments?.length ?? 0) > 0 && (
+          <span className="flex items-center gap-0.5 text-[10px] text-slate-500">
+            <span className="material-symbols-outlined text-xs">attach_file</span>
+            {card.attachmentCount ?? card.attachments?.length}
+          </span>
+        )}
         {assignee && (
           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary/30 text-[10px] font-medium text-primary">
             {assignee.initials ?? assignee.name?.slice(0, 2)?.toUpperCase() ?? '?'}

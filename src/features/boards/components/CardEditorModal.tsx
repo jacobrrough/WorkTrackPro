@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import type { BoardCard, User } from '@/core/types';
+import type { Attachment, BoardCard, User } from '@/core/types';
+import AttachmentsList from '@/AttachmentsList';
+import FileUploadButton from '@/FileUploadButton';
 
 const CARD_COLORS = [
   'bg-pink-500',
@@ -25,17 +27,23 @@ export interface CardSaveData {
 interface CardEditorModalProps {
   card?: BoardCard;
   users: User[];
+  canManageAttachments?: boolean;
   onClose: () => void;
   onSave: (data: CardSaveData) => Promise<unknown>;
   onDelete?: () => Promise<unknown>;
+  onUploadAttachment?: (cardId: string, file: File) => Promise<Attachment | null>;
+  onDeleteAttachment?: (attachmentId: string) => Promise<boolean>;
 }
 
 const CardEditorModal: React.FC<CardEditorModalProps> = ({
   card,
   users,
+  canManageAttachments = false,
   onClose,
   onSave,
   onDelete,
+  onUploadAttachment,
+  onDeleteAttachment,
 }) => {
   const isEdit = !!card;
   const [title, setTitle] = useState(card?.title ?? '');
@@ -59,87 +67,135 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
     setSaving(false);
   };
 
+  const handleUpload = async (file: File): Promise<boolean> => {
+    if (!card || !onUploadAttachment) return false;
+    const att = await onUploadAttachment(card.id, file);
+    return att != null;
+  };
+
+  const handleViewAttachment = (att: Attachment) => {
+    if (att.url) window.open(att.url, '_blank', 'noopener,noreferrer');
+  };
+
+  const attachments = card?.attachments ?? [];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg border border-white/10 bg-surface-dark p-6"
+        className="flex w-full max-w-md flex-col rounded-lg border border-white/10 bg-surface-dark"
+        style={{ maxHeight: '90vh' }}
       >
-        <h2 className="mb-4 text-lg font-semibold text-white">
-          {isEdit ? 'Edit Card' : 'New Card'}
-        </h2>
+        <header className="border-b border-white/10 px-6 py-4">
+          <h2 className="text-lg font-semibold text-white">{isEdit ? 'Edit Card' : 'New Card'}</h2>
+        </header>
 
-        <label className="mb-1 block text-sm text-slate-400">Title</label>
-        <input
-          autoFocus
-          className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Card title"
-          maxLength={200}
-        />
+        <div className="flex-1 overflow-y-auto p-6">
+          <label className="mb-1 block text-sm text-slate-400">Title</label>
+          <input
+            autoFocus
+            className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Card title"
+            maxLength={200}
+          />
 
-        <label className="mb-1 block text-sm text-slate-400">Description</label>
-        <textarea
-          className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add details..."
-          maxLength={2000}
-        />
+          <label className="mb-1 block text-sm text-slate-400">Description</label>
+          <textarea
+            className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Add details..."
+            maxLength={2000}
+          />
 
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm text-slate-400">Assignee</label>
-            <select
-              className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name ?? u.email}
-                </option>
-              ))}
-            </select>
+          {isEdit ? (
+            <div className="mb-4">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-sm text-slate-400">
+                  Attachments
+                  {attachments.length > 0 && (
+                    <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-slate-300">
+                      {attachments.length}
+                    </span>
+                  )}
+                </label>
+                {canManageAttachments && onUploadAttachment && (
+                  <FileUploadButton
+                    onUpload={handleUpload}
+                    label="Upload"
+                  />
+                )}
+              </div>
+              <AttachmentsList
+                attachments={attachments}
+                onViewAttachment={handleViewAttachment}
+                canUpload={false}
+                showUploadButton={false}
+                canDelete={canManageAttachments && !!onDeleteAttachment}
+                onDeleteAttachment={onDeleteAttachment}
+              />
+            </div>
+          ) : (
+            <p className="mb-4 rounded border border-dashed border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-500">
+              Save the card to upload files.
+            </p>
+          )}
+
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Assignee</label>
+              <select
+                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name ?? u.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-slate-400">Due date</label>
+              <input
+                type="date"
+                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
           </div>
-          <div>
-            <label className="mb-1 block text-sm text-slate-400">Due date</label>
-            <input
-              type="date"
-              className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
-          </div>
-        </div>
 
-        <label className="mb-1 block text-sm text-slate-400">Label color</label>
-        <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setColor('')}
-            className={`flex h-6 w-6 items-center justify-center rounded-full border border-white/20 ${
-              !color ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark' : ''
-            }`}
-          >
-            <span className="material-symbols-outlined text-xs text-slate-400">close</span>
-          </button>
-          {CARD_COLORS.map((c) => (
+          <label className="mb-1 block text-sm text-slate-400">Label color</label>
+          <div className="flex flex-wrap gap-2">
             <button
-              key={c}
               type="button"
-              onClick={() => setColor(c)}
-              className={`h-6 w-6 rounded-full ${c} ${
-                color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark' : ''
+              onClick={() => setColor('')}
+              className={`flex h-6 w-6 items-center justify-center rounded-full border border-white/20 ${
+                !color ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark' : ''
               }`}
-            />
-          ))}
+            >
+              <span className="material-symbols-outlined text-xs text-slate-400">close</span>
+            </button>
+            {CARD_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                className={`h-6 w-6 rounded-full ${c} ${
+                  color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark' : ''
+                }`}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3">
           <div>
             {isEdit && onDelete && (
               <button
@@ -167,7 +223,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               {saving ? 'Saving...' : isEdit ? 'Save' : 'Add Card'}
             </button>
           </div>
-        </div>
+        </footer>
       </form>
     </div>
   );

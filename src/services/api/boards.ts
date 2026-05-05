@@ -1,4 +1,5 @@
 import type {
+  Attachment,
   Board,
   BoardColumn,
   BoardCard,
@@ -7,6 +8,11 @@ import type {
   BoardMemberRole,
 } from '../../core/types';
 import { supabase } from './supabaseClient';
+import {
+  deleteAttachmentRecord,
+  getAttachmentPublicUrl,
+  uploadAttachment,
+} from './storage';
 
 function mapBoardRow(row: Record<string, unknown>, columns: BoardColumn[] = []): Board {
   return {
@@ -45,6 +51,19 @@ function mapCardRow(row: Record<string, unknown>): BoardCard {
     color: (row.color as string) ?? undefined,
     sortOrder: (row.sort_order as number) ?? 0,
     createdAt: row.created_at as string,
+  };
+}
+
+function mapAttachmentRow(row: Record<string, unknown>): Attachment {
+  const storagePath = (row.storage_path as string) ?? '';
+  return {
+    id: row.id as string,
+    boardCardId: (row.board_card_id as string) ?? undefined,
+    filename: (row.filename as string) ?? '',
+    storagePath,
+    isAdminOnly: (row.is_admin_only as boolean) ?? false,
+    url: storagePath ? getAttachmentPublicUrl(storagePath) : undefined,
+    created: (row.created_at as string) ?? undefined,
   };
 }
 
@@ -117,9 +136,46 @@ export const boardService = {
       return mapMemberRow({ ...r, user_name: profile?.name, user_email: profile?.email });
     });
 
+    // Fetch attachments for these cards in a single query and group by card.
+    const cardIds = cards.map((c) => c.id);
+    if (cardIds.length > 0) {
+      const { data: attRows } = await supabase
+        .from('attachments')
+        .select('*')
+        .in('board_card_id', cardIds);
+      const byCard = new Map<string, Attachment[]>();
+      for (const row of attRows ?? []) {
+        const att = mapAttachmentRow(row as Record<string, unknown>);
+        if (!att.boardCardId) continue;
+        const list = byCard.get(att.boardCardId) ?? [];
+        list.push(att);
+        byCard.set(att.boardCardId, list);
+      }
+      for (const card of cards) {
+        const list = byCard.get(card.id) ?? [];
+        card.attachments = list;
+        card.attachmentCount = list.length;
+      }
+    }
+
     const board = mapBoardRow(boardRow as Record<string, unknown>, columns);
     board.memberCount = members.length;
     return { board, cards, members };
+  },
+
+  async addCardAttachment(cardId: string, file: File): Promise<Attachment | null> {
+    const result = await uploadAttachment(undefined, undefined, undefined, file, false, undefined, cardId);
+    if (result.id == null) return null;
+    const { data: row } = await supabase
+      .from('attachments')
+      .select('*')
+      .eq('id', result.id)
+      .single();
+    return row ? mapAttachmentRow(row as Record<string, unknown>) : null;
+  },
+
+  async deleteCardAttachment(attachmentId: string): Promise<boolean> {
+    return deleteAttachmentRecord(attachmentId);
   },
 
   async createBoard(data: {
