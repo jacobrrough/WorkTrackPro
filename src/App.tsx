@@ -34,14 +34,8 @@ const AdminSettings = lazyWithRetry(
 );
 const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
 const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
-const BoardList = lazyWithRetry(
-  () => import('./features/boards/BoardList'),
-  'BoardList'
-);
-const BoardView = lazyWithRetry(
-  () => import('./features/boards/BoardView'),
-  'BoardView'
-);
+const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
+const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
 
 function AppViewFallback() {
   return (

@@ -86,7 +86,9 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
                 >
                   <div className="mb-2 flex w-full items-start justify-between">
                     <h3 className="font-semibold text-white">{board.name}</h3>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}
+                    >
                       {badge.label}
                     </span>
                   </div>
@@ -112,7 +114,9 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
         )}
       </main>
 
-      {showCreate && <CreateBoardModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {showCreate && (
+        <CreateBoardModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+      )}
     </div>
   );
 };

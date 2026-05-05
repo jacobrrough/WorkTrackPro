@@ -95,11 +95,7 @@ export const boardService = {
     if (boardErr || !boardRow) return null;
 
     const [colRes, cardRes, memRes] = await Promise.all([
-      supabase
-        .from('board_columns')
-        .select('*')
-        .eq('board_id', boardId)
-        .order('sort_order'),
+      supabase.from('board_columns').select('*').eq('board_id', boardId).order('sort_order'),
       supabase
         .from('board_cards')
         .select('*, profiles!board_cards_assignee_id_fkey(name)')
@@ -340,10 +336,7 @@ export const boardService = {
   },
 
   async updateMemberRole(memberId: string, role: BoardMemberRole): Promise<boolean> {
-    const { error } = await supabase
-      .from('board_members')
-      .update({ role })
-      .eq('id', memberId);
+    const { error } = await supabase.from('board_members').update({ role }).eq('id', memberId);
     return !error;
   },
 };

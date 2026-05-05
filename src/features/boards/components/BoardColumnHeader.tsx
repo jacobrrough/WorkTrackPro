@@ -130,7 +130,9 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                         setShowMenu(false);
                       }}
                       className={`h-5 w-5 rounded-full ${c} ${
-                        column.color === c ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark' : ''
+                        column.color === c
+                          ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark'
+                          : ''
                       }`}
                     />
                   ))}

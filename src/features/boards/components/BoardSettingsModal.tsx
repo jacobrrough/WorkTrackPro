@@ -7,7 +7,11 @@ interface BoardSettingsModalProps {
   members: BoardMember[];
   users: User[];
   onClose: () => void;
-  onUpdate: (data: { name?: string; description?: string; visibility?: BoardVisibility }) => Promise<unknown>;
+  onUpdate: (data: {
+    name?: string;
+    description?: string;
+    visibility?: BoardVisibility;
+  }) => Promise<unknown>;
   onDelete: () => Promise<void>;
   onAddMember: (userId: string, role: BoardMemberRole) => Promise<unknown>;
   onRemoveMember: (userId: string) => Promise<unknown>;
@@ -52,11 +56,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
       <div className="w-full max-w-md rounded-lg border border-white/10 bg-surface-dark p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Board Settings</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white"
-            aria-label="Close"
-          >
+          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="Close">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>

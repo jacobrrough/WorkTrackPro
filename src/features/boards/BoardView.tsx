@@ -29,13 +29,7 @@ interface BoardViewProps {
   onBack: () => void;
 }
 
-function DroppableColumn({
-  column,
-  children,
-}: {
-  column: BoardColumn;
-  children: React.ReactNode;
-}) {
+function DroppableColumn({ column, children }: { column: BoardColumn; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${column.id}` });
   return (
     <div
@@ -82,11 +76,9 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
     return map;
   }, [columns, cards]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const activeCard = activeCardId ? cards.find((c) => c.id === activeCardId) ?? null : null;
+  const activeCard = activeCardId ? (cards.find((c) => c.id === activeCardId) ?? null) : null;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
@@ -141,8 +133,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
       targetColumnId = overId.replace('col-', '');
     }
 
-    const colCards = localCards
-      .filter((c) => c.columnId === targetColumnId && c.id !== activeId);
+    const colCards = localCards.filter((c) => c.columnId === targetColumnId && c.id !== activeId);
     const overIdx = overId.startsWith('col-')
       ? colCards.length
       : colCards.findIndex((c) => c.id === overId);
@@ -250,12 +241,8 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
                     column={col}
                     cardCount={colCards.length}
                     readOnly={readOnly}
-                    onRename={(name) =>
-                      mutations.updateColumn(boardId, col.id, { name })
-                    }
-                    onChangeColor={(color) =>
-                      mutations.updateColumn(boardId, col.id, { color })
-                    }
+                    onRename={(name) => mutations.updateColumn(boardId, col.id, { name })}
+                    onChangeColor={(color) => mutations.updateColumn(boardId, col.id, { color })}
                     onDelete={() => mutations.deleteColumn(boardId, col.id)}
                   />
                 </div>
@@ -293,12 +280,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
         <DragOverlay>
           {activeCard && (
             <div className="w-72 opacity-90">
-              <BoardCardItem
-                card={activeCard}
-                users={users}
-                readOnly
-                onClick={() => {}}
-              />
+              <BoardCardItem card={activeCard} users={users} readOnly onClick={() => {}} />
             </div>
           )}
         </DragOverlay>

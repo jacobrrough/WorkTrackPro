@@ -23,8 +23,7 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
   };
 
   const assignee = card.assigneeId ? users.find((u) => u.id === card.assigneeId) : null;
-  const overdue =
-    card.dueDate && new Date(card.dueDate + 'T23:59:59') < new Date();
+  const overdue = card.dueDate && new Date(card.dueDate + 'T23:59:59') < new Date();
 
   return (
     <div
@@ -35,9 +34,7 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
       onClick={onClick}
       className="cursor-pointer rounded border border-white/10 bg-white/5 p-3 transition-colors hover:border-white/20 hover:bg-white/10"
     >
-      {card.color && (
-        <div className={`mb-2 h-1 w-8 rounded-full ${card.color}`} />
-      )}
+      {card.color && <div className={`mb-2 h-1 w-8 rounded-full ${card.color}`} />}
       <p className="text-sm font-medium text-white">{card.title}</p>
       {card.description && (
         <p className="mt-1 line-clamp-2 text-xs text-slate-400">{card.description}</p>

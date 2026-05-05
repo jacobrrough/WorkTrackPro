@@ -5,7 +5,11 @@ import { boardService } from '@/services/api/boards';
 
 export interface UseBoardMutationsParams {
   currentUser: User | null;
-  showToast: (message: string, type: 'info' | 'success' | 'error' | 'warning', duration?: number) => void;
+  showToast: (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning',
+    duration?: number
+  ) => void;
 }
 
 export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsParams) {
