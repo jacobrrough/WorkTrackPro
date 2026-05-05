@@ -34,6 +34,14 @@ const AdminSettings = lazyWithRetry(
 );
 const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
 const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
+const BoardList = lazyWithRetry(
+  () => import('./features/boards/BoardList'),
+  'BoardList'
+);
+const BoardView = lazyWithRetry(
+  () => import('./features/boards/BoardView'),
+  'BoardView'
+);
 
 function AppViewFallback() {
   return (
@@ -502,6 +510,28 @@ export default function App() {
             onUpdateJob={updateJob}
           />
         </div>
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'boards') {
+    return (
+      <AppShell>
+        <BoardList onNavigate={handleNavigate} />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'board-detail' && id) {
+    return (
+      <AppShell>
+        <BoardView
+          boardId={id}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('boards')}
+        />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
