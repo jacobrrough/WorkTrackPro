@@ -410,6 +410,30 @@ export interface InventoryHistoryEntry {
   createdAt: string;
 }
 
+// Job deliveries (packing slip / partial shipments)
+export interface DeliveryLineItem {
+  description: string;
+  partNumber?: string;
+  variantSuffix?: string;
+  quantity: number;
+  unit?: string;
+}
+
+export interface Delivery {
+  id: string;
+  jobId: string;
+  deliveryNumber: number;
+  deliveredAt: string;
+  carrier?: string;
+  trackingNumber?: string;
+  recipientName?: string;
+  notes?: string;
+  lineItems: DeliveryLineItem[];
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
