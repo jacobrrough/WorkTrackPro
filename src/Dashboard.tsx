@@ -9,8 +9,8 @@ import { NotificationBell } from './components/NotificationBell';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
-import type { Job } from './core/types';
 import BinResultsView from './components/BinResultsView';
+import SearchAutocomplete from './components/SearchAutocomplete';
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
 
@@ -64,10 +64,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       ? navState.lastViewedJobId
       : null;
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateState({ searchTerm: searchInput.trim() });
-    onNavigate('board-shop');
+  const handleSearchSubmit = (term: string) => {
+    updateState({ searchTerm: term });
+    onNavigate(isAdmin ? 'board-admin' : 'board-shop');
   };
 
   useEffect(() => {
@@ -362,28 +361,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           Dashboard
         </h1>
 
-        <form onSubmit={handleSearchSubmit} className="mb-4" role="search" aria-label="Search jobs">
-          <label htmlFor="dashboard-search" className="sr-only">
-            Search jobs, PO, description, bin location, or status
-          </label>
-          <div className="relative">
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            >
-              search
-            </span>
-            <input
-              id="dashboard-search"
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search jobs, PO, description, bin, status..."
-              className="w-full rounded-sm border border-white/10 bg-[#261a32] py-2.5 pl-10 pr-3 text-white placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-label="Search"
-            />
-          </div>
-        </form>
+        <SearchAutocomplete
+          jobs={jobs}
+          inventory={inventory}
+          isAdmin={isAdmin}
+          searchInput={searchInput}
+          onSearchInputChange={setSearchInput}
+          onSubmit={handleSearchSubmit}
+          onNavigateDirect={onNavigate}
+        />
 
         <section aria-labelledby="quick-actions-heading">
           <h2
