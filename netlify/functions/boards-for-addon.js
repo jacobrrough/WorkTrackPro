@@ -103,10 +103,44 @@ export async function handler(event) {
       columns: colsByBoard[b.id] || [],
     }));
 
+    // ── Job boards (Admin + Shop Floor) ────────────────
+    // These use the jobs table with status values as columns.
+    const ADMIN_COLUMNS = [
+      { id: 'toBeQuoted', name: 'To Be Quoted' },
+      { id: 'quoted', name: 'Quoted' },
+      { id: 'rfqReceived', name: 'RFQ Received' },
+      { id: 'rfqSent', name: 'RFQ Sent' },
+      { id: 'pod', name: "PO'd" },
+      { id: 'pending', name: 'Pending' },
+      { id: 'inProgress', name: 'In Progress' },
+      { id: 'qualityControl', name: 'Quality Control' },
+      { id: 'onHold', name: 'On Hold' },
+      { id: 'finished', name: 'Finished' },
+      { id: 'delivered', name: 'Delivered' },
+      { id: 'waitingForPayment', name: 'Waiting For Payment' },
+      { id: 'projectCompleted', name: 'Project Completed' },
+    ];
+    const SHOP_COLUMNS = [
+      { id: 'pending', name: 'Pending' },
+      { id: 'inProgress', name: 'In Progress' },
+      { id: 'qualityControl', name: 'Quality Control' },
+      { id: 'finished', name: 'Finished' },
+      { id: 'delivered', name: 'Delivered' },
+      { id: 'onHold', name: 'On Hold' },
+    ];
+
+    const jobBoards = [
+      { id: 'job-admin', name: 'Admin Board (Jobs)', columns: ADMIN_COLUMNS },
+      { id: 'job-shopFloor', name: 'Shop Floor Board (Jobs)', columns: SHOP_COLUMNS },
+    ];
+
+    // Put job boards first since they're the primary boards.
+    const allBoards = [...jobBoards, ...boards];
+
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ ok: true, boards }),
+      body: JSON.stringify({ ok: true, boards: allBoards }),
     };
   } catch (error) {
     console.error('boards-for-addon: unexpected error:', error);
