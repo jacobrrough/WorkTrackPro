@@ -257,6 +257,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       adminOnly: true,
     },
     {
+      key: 'chat',
+      title: 'Chat',
+      subtitle: 'Team messenger',
+      icon: 'chat_bubble',
+      iconClassName: 'text-indigo-400',
+      cardClassName: 'border-indigo-500/30 bg-gradient-to-br from-indigo-600/20 to-blue-700/20',
+      ariaLabel: 'Open team chat',
+      onClick: () => onNavigate('chat'),
+    },
+    {
       key: 'boards',
       title: 'Boards',
       subtitle: 'Custom Kanban',

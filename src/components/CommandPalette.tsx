@@ -1,4 +1,3 @@
-import React from 'react';
 import { Command } from 'cmdk';
 import type { Job, InventoryItem, User } from '@/core/types';
 import type { ViewState } from '@/core/types';

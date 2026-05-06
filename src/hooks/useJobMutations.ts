@@ -18,7 +18,11 @@ export interface UseJobMutationsParams {
   refreshJobs: () => Promise<void>;
   refreshInventory: () => Promise<void>;
   refreshShifts: () => Promise<void>;
-  showToast: (message: string, type?: 'info' | 'success' | 'error') => void;
+  showToast: (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning',
+    duration?: number
+  ) => void;
 }
 
 export function useJobMutations({

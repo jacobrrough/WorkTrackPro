@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import type { AppNotification, AppNotificationType } from '@/lib/notifications';
+import type { ViewState } from '@/core/types';
 
 const TYPE_LABELS: Record<AppNotificationType, string> = {
   low_stock: 'Low stock',
@@ -10,7 +11,7 @@ const TYPE_LABELS: Record<AppNotificationType, string> = {
 };
 
 interface NotificationBellProps {
-  onNavigate?: (view: string, id?: string) => void;
+  onNavigate?: (view: ViewState, id?: string) => void;
 }
 
 export function NotificationBell({ onNavigate }: NotificationBellProps) {

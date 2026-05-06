@@ -8,15 +8,17 @@ const SESSION_ID = '7c14cd';
 
 export function debugLog(payload: Record<string, unknown>): void {
   const body = JSON.stringify(payload);
-  Promise.any(
-    DEBUG_LOG_PORTS.map((port) =>
-      fetch(`http://127.0.0.1:${port}${INGEST_PATH}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION_ID },
-        body,
-      }).then((r) => (r.ok ? r : Promise.reject(new Error('not ok'))))
+  (Promise as unknown as { any: (p: Promise<unknown>[]) => Promise<unknown> })
+    .any(
+      DEBUG_LOG_PORTS.map((port) =>
+        fetch(`http://127.0.0.1:${port}${INGEST_PATH}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': SESSION_ID },
+          body,
+        }).then((r) => (r.ok ? r : Promise.reject(new Error('not ok'))))
+      )
     )
-  ).catch(() => {});
+    .catch(() => {});
   /* eslint-disable no-console */
   if (typeof console !== 'undefined' && console.log) {
     console.log('[WTP_DEBUG]', body);

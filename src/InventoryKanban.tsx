@@ -282,7 +282,7 @@ const InventoryKanban: React.FC<InventoryKanbanProps> = ({
                               {shouldShowInventoryKanbanPrice(item, isAdmin) && (
                                 <div>
                                   <p className="text-xs text-slate-400">Price</p>
-                                  <p className="font-bold text-white">${item.price.toFixed(2)}</p>
+                                  <p className="font-bold text-white">${item.price?.toFixed(2)}</p>
                                 </div>
                               )}
                             </div>

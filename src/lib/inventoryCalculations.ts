@@ -40,7 +40,7 @@ export function buildAllocatedByInventoryId(jobs: Job[]): Map<string, number> {
         typeof ji.inventory === 'string'
           ? ji.inventory
           : ((ji as { inventory_id?: string }).inventory_id ??
-            (ji.inventory as { id?: string })?.id);
+            (ji.inventory as unknown as { id?: string })?.id);
       if (!invId) continue;
       allocatedByInventoryId.set(
         invId,

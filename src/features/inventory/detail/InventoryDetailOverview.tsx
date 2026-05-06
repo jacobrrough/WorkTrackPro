@@ -57,7 +57,6 @@ export function InventoryDetailOverview({
   setReceiveOrderQty,
   onConfirmAddToOrder,
   onConfirmReceiveOrder,
-  _showToast,
   onScanBarcode,
 }: InventoryDetailOverviewProps) {
   const minStock = item.reorderPoint ?? 0;

@@ -132,7 +132,7 @@ export function useClockMutations({
   );
 
   const clockOut = useCallback(async (): Promise<ClockPunchResult> => {
-    if (!activeShift) return failure(false);
+    if (!activeShift || !currentUser) return failure(false);
     try {
       if (activeShift.lunchStartTime && !activeShift.lunchEndTime) {
         const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));

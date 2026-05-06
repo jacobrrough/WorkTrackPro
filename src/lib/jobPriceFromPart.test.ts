@@ -15,6 +15,7 @@ const makePart = (
   id: 'part-1',
   partNumber: 'SK-1000',
   name: 'Seat Kit',
+  rev: '01',
   pricePerSet: 100,
   setComposition: { '-01': 1, '-02': 1 },
   variants: [makeVariant('v1', '01', 60), makeVariant('v2', '02', 40)],

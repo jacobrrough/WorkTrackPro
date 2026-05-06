@@ -498,10 +498,10 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         previous_clock_in: shift.clockInTime,
         new_clock_in: newClockIn,
         previous_clock_out: shift.clockOutTime ?? undefined,
-        new_clock_out: newClockOut,
+        new_clock_out: newClockOut ?? undefined,
         reason: editingShiftData.reason,
       });
-      await shiftService.updateShiftTimes(editingShiftId, newClockIn, newClockOut);
+      await shiftService.updateShiftTimes(editingShiftId, newClockIn, newClockOut ?? undefined);
 
       showToast('Shift times updated successfully', 'success');
       setEditingShiftId(null);

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { InventoryHistoryEntry } from '@/core/types';
 
 function formatHistoryDate(dateString: string | null | undefined): string {

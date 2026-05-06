@@ -122,7 +122,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
   const [selectedPartNumber, setSelectedPartNumber] = useState('');
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
   const [partNameEdit, setPartNameEdit] = useState('');
@@ -471,7 +471,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           persistedBreakdowns?.persistedMachineBreakdown ?? noVariantMachineBreakdown ?? undefined,
         allocationSource: persistedBreakdowns || noVariantMachineBreakdown ? 'variant' : undefined,
         parts: partsForCreate,
-      } as Partial<Job>);
+      });
 
       if (job) {
         // If part number was selected but not found, create master part

@@ -9,6 +9,7 @@ import { validateRequired, validateQuantity, validatePrice } from '@/core/valida
 interface AddInventoryItemProps {
   onAdd: (data: {
     name: string;
+    description?: string;
     category: InventoryCategory;
     inStock: number;
     unit: string;

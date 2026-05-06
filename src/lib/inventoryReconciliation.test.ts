@@ -24,6 +24,7 @@ const mockJob = (
   name: 'Test Job',
   active: true,
   status,
+  boardType: 'shopFloor' as const,
   attachments: [],
   attachmentCount: 0,
   comments: [],

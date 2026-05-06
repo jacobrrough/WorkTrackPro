@@ -14,7 +14,11 @@ export interface UseInventoryMutationsParams {
   refreshInventory: () => Promise<void>;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
-  showToast: (message: string, type?: 'info' | 'success' | 'error') => void;
+  showToast: (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning',
+    duration?: number
+  ) => void;
 }
 
 export function useInventoryMutations({

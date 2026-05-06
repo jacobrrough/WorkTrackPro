@@ -21,7 +21,7 @@ function getClient(): SupabaseClient {
 /** Lazy-initialized Supabase client so invalid env shows setup screen instead of throwing at import time */
 export const supabase = new Proxy({} as SupabaseClient, {
   get(_, prop) {
-    return (getClient() as Record<string | symbol, unknown>)[prop];
+    return (getClient() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 

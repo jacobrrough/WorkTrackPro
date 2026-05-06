@@ -7,6 +7,7 @@ describe('buildPartVariantDefaults', () => {
     id: 'part-1',
     partNumber: 'PN-100',
     name: 'Panel Set',
+    rev: '01',
     laborHours: 6,
     requiresCNC: true,
     cncTimeHours: 2,

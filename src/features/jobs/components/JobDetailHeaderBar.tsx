@@ -1,11 +1,10 @@
-import React from 'react';
 import type { JobStatus } from '@/core/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatJobCode } from '@/lib/formatJob';
 
 interface JobDetailHeaderBarProps {
   isEditing: boolean;
-  jobCode: string;
+  jobCode: number;
   status: JobStatus;
   isAdmin: boolean;
   minimalView: boolean;

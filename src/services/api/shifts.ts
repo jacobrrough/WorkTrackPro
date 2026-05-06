@@ -46,7 +46,7 @@ export const shiftService = {
       .select(SHIFTS_SELECT_WITH_LUNCH)
       .order('clock_in_time', { ascending: false });
 
-    let list = withLunch.data ?? [];
+    let list: any[] = withLunch.data ?? [];
     if (withLunch.error) {
       if (!isMissingLunchColumnsError(withLunch.error)) {
         throw withLunch.error;

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApp } from './AppContext';
 import { jobService } from './pocketbase';
-import type { Job } from './core/types';
+import type { Job, ViewState } from './core/types';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
@@ -102,9 +102,9 @@ export default function App() {
     receiveInventoryOrder,
   } = useApp();
 
-  const [view, setView] = useState<string>('dashboard');
+  const [view, setView] = useState<ViewState>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
-  const [, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
+  const [, setBackStack] = useState<Array<{ view: ViewState; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -163,7 +163,7 @@ export default function App() {
   }, [isLoading]);
 
   const handleNavigate = useCallback(
-    (nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
+    (nextView: ViewState, nextId?: string | { jobId?: string; partId?: string }) => {
       const isDetailView =
         nextView === 'job-detail' || nextView === 'inventory-detail' || nextView === 'part-detail';
 
@@ -193,7 +193,7 @@ export default function App() {
   );
 
   const navigateBackFrom = useCallback(
-    (_detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: string) => {
+    (_detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: ViewState) => {
       setBackStack((prev) => {
         const entry = prev[prev.length - 1];
         const nextStack = prev.slice(0, -1);
@@ -501,6 +501,7 @@ export default function App() {
             onDeleteAttachment={deleteAttachment}
             boardType={boardType}
             isAdmin={isAdmin}
+            currentUser={currentUser!}
             onUpdateJobStatus={updateJobStatus}
             onUpdateJob={updateJob}
           />

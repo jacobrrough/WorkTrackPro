@@ -142,7 +142,7 @@ export const authService = {
       throw error;
     }
     const needsEmailConfirmation = !data.session && !!data.user;
-    if (data.session?.user) {
+    if (data.session?.user && data.user) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, name, initials, is_admin, is_approved')

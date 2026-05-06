@@ -156,7 +156,9 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
   } else if (next.workWeekSchedule) {
     Object.assign(mergedScheduleRaw, next.workWeekSchedule);
   }
-  next.workWeekSchedule = normalizeWorkWeekSchedule(mergedScheduleRaw);
+  next.workWeekSchedule = normalizeWorkWeekSchedule(
+    mergedScheduleRaw as Record<number, unknown> as any
+  );
 
   if (typeof next.requireOnSite !== 'boolean') next.requireOnSite = base.requireOnSite;
   if (partial.siteLat !== undefined)

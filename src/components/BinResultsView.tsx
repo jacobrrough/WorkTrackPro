@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { formatJobCode, getJobDisplayName } from '@/lib/formatJob';
-import type { Job } from '@/core/types';
+import type { Job, ViewState } from '@/core/types';
 import type { InventoryItem } from '@/core/types';
 import { useToast } from '@/Toast';
 
@@ -15,7 +15,7 @@ export interface BinResultsViewProps {
   ) => Promise<InventoryItem | null>;
   onRefreshJobs: () => Promise<void>;
   onRefreshInventory: () => Promise<void>;
-  onNavigate: (view: string, id?: string) => void;
+  onNavigate: (view: ViewState, id?: string) => void;
   onClose: () => void;
   onAddJobToBin?: () => void;
 }

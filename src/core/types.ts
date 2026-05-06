@@ -150,6 +150,7 @@ export interface JobInventoryItem {
   job?: string;
   inventoryId?: string;
   inventory?: string;
+  inventoryName?: string;
   quantity: number;
   unit: string;
 }
@@ -356,7 +357,11 @@ export interface QuoteLineItem {
   quantity: number;
   unit: string;
   unitCost?: number;
+  unitPrice?: number;
   total?: number;
+  totalPrice?: number;
+  inventoryName?: string;
+  isManual?: boolean;
 }
 
 export interface Quote {
