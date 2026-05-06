@@ -1,4 +1,5 @@
 import type { Shift } from '../../core/types';
+import { AuthSessionError } from '@/lib/authErrors';
 import { supabase } from './supabaseClient';
 
 const SHIFTS_SELECT_WITH_LUNCH =
@@ -89,6 +90,13 @@ export const shiftService = {
    * Throws on network/DB/RLS errors so callers can retry or offline-queue.
    */
   async clockIn(jobId: string, userId: string): Promise<boolean> {
+    // Pre-check: verify the session is alive before touching the DB.
+    // getSession() uses the locally-cached token — no network call unless refresh is needed.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new AuthSessionError();
+
     const { data: activeShift, error: activeShiftError } = await supabase
       .from('shifts')
       .select('id')

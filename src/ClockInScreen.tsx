@@ -11,6 +11,7 @@ interface ClockInScreenProps {
     success: boolean;
     message: string;
     queued?: boolean;
+    authExpired?: boolean;
   }>;
   activeShift: Shift | null;
   activeJob: Job | null;
@@ -37,6 +38,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
     success: boolean;
     message: string;
     queued?: boolean;
+    authExpired?: boolean;
   } | null>(null);
 
   const handleNumberClick = (num: string) => {
@@ -75,6 +77,10 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
     if (res.success) {
       setJobCode('');
       setTimeout(() => onNavigate('dashboard'), 1000);
+    } else if (res.authExpired) {
+      // logout() was already called upstream in ClockInContext.clockInWithAuth.
+      // App.tsx will switch to the Login screen automatically once currentUser clears.
+      showToast('Session expired — please log in again', 'error');
     } else if (res.queued) {
       showToast('Saved offline — will sync when connected', 'warning');
     }

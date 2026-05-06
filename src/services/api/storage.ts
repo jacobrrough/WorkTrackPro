@@ -23,10 +23,11 @@ export async function uploadAttachment(
   partId: string | undefined,
   file: File,
   isAdminOnly: boolean,
-  partAttachmentType?: PartAttachmentType
+  partAttachmentType?: PartAttachmentType,
+  boardCardId?: string
 ): Promise<UploadAttachmentResult> {
-  if (!jobId && !inventoryId && !partId) {
-    const msg = 'One of jobId, inventoryId, or partId must be provided';
+  if (!jobId && !inventoryId && !partId && !boardCardId) {
+    const msg = 'One of jobId, inventoryId, partId, or boardCardId must be provided';
     console.error(msg);
     return { id: null, error: msg };
   }
@@ -35,7 +36,9 @@ export async function uploadAttachment(
     ? `jobs/${jobId}`
     : inventoryId
       ? `inventory/${inventoryId}`
-      : `parts/${partId}`;
+      : partId
+        ? `parts/${partId}`
+        : `board-cards/${boardCardId}`;
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(BUCKET_ATTACHMENTS)
@@ -55,6 +58,7 @@ export async function uploadAttachment(
     insertData.part_id = partId;
     insertData.attachment_type = partAttachmentType ?? 'drawing';
   }
+  if (boardCardId) insertData.board_card_id = boardCardId;
 
   const { data: row, error: insertErr } = await supabase
     .from('attachments')

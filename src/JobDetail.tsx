@@ -67,6 +67,7 @@ import { buildNoVariantMachineBreakdown } from '@/features/jobs/hooks/variantBre
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
 import JobComments from '@/features/jobs/components/JobComments';
+import DeliveriesSection from '@/features/deliveries/DeliveriesSection';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import ConfirmDialog from './ConfirmDialog';
@@ -273,6 +274,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleClockIn = useCallback(async () => {
     const applyResult = (r: ClockPunchResult) => {
       if (r.ok) showToast('Clocked in', 'success');
+      else if (r.authExpired) showToast('Session expired — please log in again', 'error');
       else if (r.queued) showToast('Saved offline — will sync when connected', 'warning');
       else showToast('Failed to clock in', 'error');
     };
@@ -3585,6 +3587,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 }
               />
             </div>
+
+            <DeliveriesSection job={job} currentUser={currentUser} />
 
             <div>
               <JobComments

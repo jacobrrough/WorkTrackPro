@@ -79,7 +79,9 @@ export type ViewState =
   | 'time-reports'
   | 'calendar'
   | 'admin-settings'
-  | 'trello-import';
+  | 'trello-import'
+  | 'boards'
+  | 'board-detail';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -129,6 +131,7 @@ export interface Attachment {
   jobId?: string;
   inventoryId?: string;
   partId?: string;
+  boardCardId?: string;
   filename: string;
   storagePath: string;
   isAdminOnly: boolean;
@@ -408,6 +411,30 @@ export interface InventoryHistoryEntry {
   createdAt: string;
 }
 
+// Job deliveries (packing slip / partial shipments)
+export interface DeliveryLineItem {
+  description: string;
+  partNumber?: string;
+  variantSuffix?: string;
+  quantity: number;
+  unit?: string;
+}
+
+export interface Delivery {
+  id: string;
+  jobId: string;
+  deliveryNumber: number;
+  deliveredAt: string;
+  carrier?: string;
+  trackingNumber?: string;
+  recipientName?: string;
+  notes?: string;
+  lineItems: DeliveryLineItem[];
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
@@ -417,3 +444,52 @@ export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }
   { id: 'delivered', title: 'Delivered', color: 'bg-cyan-500' },
   { id: 'onHold', title: 'On Hold', color: 'bg-gray-500' },
 ];
+
+// Custom boards
+export type BoardVisibility = 'private' | 'members' | 'everyone';
+export type BoardMemberRole = 'editor' | 'viewer';
+
+export interface Board {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy: string;
+  visibility: BoardVisibility;
+  columns: BoardColumn[];
+  memberCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BoardColumn {
+  id: string;
+  boardId: string;
+  name: string;
+  color?: string;
+  sortOrder: number;
+}
+
+export interface BoardCard {
+  id: string;
+  boardId: string;
+  columnId: string;
+  title: string;
+  description?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  dueDate?: string;
+  color?: string;
+  sortOrder: number;
+  createdAt?: string;
+  attachments?: Attachment[];
+  attachmentCount?: number;
+}
+
+export interface BoardMember {
+  id: string;
+  boardId: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  role: BoardMemberRole;
+}

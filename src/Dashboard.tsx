@@ -257,6 +257,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       adminOnly: true,
     },
     {
+      key: 'boards',
+      title: 'Boards',
+      subtitle: 'Custom Kanban',
+      icon: 'dashboard_customize',
+      iconClassName: 'text-teal-500',
+      cardClassName: 'border-teal-500/30 bg-gradient-to-br from-teal-600/20 to-cyan-600/20',
+      ariaLabel: 'Open custom boards',
+      onClick: () => onNavigate('boards'),
+    },
+    {
       key: 'board-admin',
       title: 'Admin Board',
       subtitle: 'Kanban view',
