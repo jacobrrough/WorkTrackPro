@@ -40,7 +40,11 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const getEffectiveSetComposition = useCallback(
     (targetPart: Part & { variants?: PartVariant[] }): Record<string, number> | null => {
       if (targetPart.setComposition && Object.keys(targetPart.setComposition).length > 0) {
-        return targetPart.setComposition;
+        // Strip '_' sentinel (no-variant units-per-set) — not a real dash quantity
+        const real = Object.fromEntries(
+          Object.entries(targetPart.setComposition).filter(([k]) => k !== '_')
+        );
+        if (Object.keys(real).length > 0) return real;
       }
       if (!targetPart.variants?.length) return null;
       const fallback: Record<string, number> = {};
