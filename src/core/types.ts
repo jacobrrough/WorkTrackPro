@@ -81,7 +81,9 @@ export type ViewState =
   | 'admin-settings'
   | 'trello-import'
   | 'boards'
-  | 'board-detail';
+  | 'board-detail'
+  | 'chat'
+  | 'chat-conversation';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -503,4 +505,86 @@ export interface BoardMember {
   userName?: string;
   userEmail?: string;
   role: BoardMemberRole;
+}
+
+// ── E2E Encrypted Chat ──────────────────────────────
+
+export type ConversationType = 'direct' | 'group';
+export type ConversationMemberRole = 'admin' | 'member';
+export type MessageType = 'text' | 'file' | 'system';
+
+export interface UserEncryptionKeys {
+  id: string;
+  userId: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+  keySalt: string;
+  keyIv: string;
+  algorithm: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  type: ConversationType;
+  name?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  members?: ConversationMember[];
+  lastMessage?: Message;
+  unreadCount?: number;
+}
+
+export interface ConversationMember {
+  id: string;
+  conversationId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  encryptedConversationKey?: string;
+  keyIv?: string;
+  role: ConversationMemberRole;
+  joinedAt: string;
+  leftAt?: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName?: string;
+  senderInitials?: string;
+  encryptedContent: string;
+  contentIv: string;
+  messageType: MessageType;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  decryptedContent?: string;
+  attachments?: MessageAttachment[];
+  receipts?: MessageReceipt[];
+}
+
+export interface MessageReceipt {
+  id: string;
+  messageId: string;
+  userId: string;
+  userName?: string;
+  deliveredAt?: string;
+  readAt?: string;
+}
+
+export interface MessageAttachment {
+  id: string;
+  messageId: string;
+  storagePath: string;
+  encryptedFileKey: string;
+  fileKeyIv: string;
+  fileIv: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  decryptedUrl?: string;
 }
