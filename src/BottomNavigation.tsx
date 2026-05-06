@@ -11,6 +11,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
   const isHome = currentView === 'dashboard';
   const isJobs = currentView === 'board-shop';
   const isStock = currentView === 'inventory' || currentView === 'inventory-detail';
+  const isChat = currentView === 'chat' || currentView === 'chat-conversation';
   const isScanner = currentView === 'scanner';
 
   const navToJobs = () => onNavigate('board-shop');
@@ -46,6 +47,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavi
             inventory_2
           </span>
           <span className="text-[10px] font-bold uppercase">Stock</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('chat')}
+          className={`flex flex-col items-center gap-1 transition-colors ${isChat ? 'text-primary' : 'text-slate-400'}`}
+        >
+          <span className={`material-symbols-outlined ${isChat ? 'fill-1' : ''}`}>chat_bubble</span>
+          <span className="text-[10px] font-bold uppercase">Chat</span>
         </button>
         <button
           type="button"

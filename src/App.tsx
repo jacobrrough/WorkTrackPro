@@ -36,6 +36,7 @@ const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport
 const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
 const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
 const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
+const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
 
 function AppViewFallback() {
   return (
@@ -526,6 +527,15 @@ export default function App() {
           onNavigate={handleNavigate}
           onBack={() => handleNavigate('boards')}
         />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'chat' || view === 'chat-conversation') {
+    return (
+      <AppShell>
+        <ChatView conversationId={view === 'chat-conversation' ? id : undefined} />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );

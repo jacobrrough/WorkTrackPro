@@ -1,4 +1,13 @@
-import type { Job, Shift, InventoryItem } from '../../core/types';
+import type {
+  Job,
+  Shift,
+  InventoryItem,
+  Message,
+  MessageReceipt,
+  ConversationMember,
+  ConversationMemberRole,
+  MessageType,
+} from '../../core/types';
 import { supabase } from './supabaseClient';
 
 type JobCallback = (action: string, record: Job) => void;
@@ -122,6 +131,142 @@ export const subscriptions = {
         const record = (payload.new ?? payload.old) as Record<string, unknown>;
         if (record) callback(action, mapInventoryRow(record));
       })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  // ── Chat subscriptions ─────────────────────────────
+
+  subscribeToChatMessages(
+    conversationId: string,
+    callback: (action: string, record: Message) => void
+  ): () => void {
+    const channel = supabase
+      .channel(`chat-messages:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const action =
+            payload.eventType === 'INSERT'
+              ? 'create'
+              : payload.eventType === 'UPDATE'
+                ? 'update'
+                : 'delete';
+          const record = (payload.new ?? payload.old) as Record<string, unknown>;
+          if (record) {
+            const msg: Message = {
+              id: record.id as string,
+              conversationId: record.conversation_id as string,
+              senderId: record.sender_id as string,
+              encryptedContent: record.encrypted_content as string,
+              contentIv: record.content_iv as string,
+              messageType: ((record.message_type as string) ?? 'text') as MessageType,
+              createdAt: record.created_at as string,
+              updatedAt: record.updated_at as string,
+              deletedAt: (record.deleted_at as string) ?? undefined,
+            };
+            callback(action, msg);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToChatReceipts(
+    conversationId: string,
+    callback: (action: string, record: MessageReceipt) => void
+  ): () => void {
+    const channel = supabase
+      .channel(`chat-receipts:${conversationId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'message_receipts' },
+        (payload) => {
+          const record = (payload.new ?? payload.old) as Record<string, unknown>;
+          if (record) {
+            const receipt: MessageReceipt = {
+              id: record.id as string,
+              messageId: record.message_id as string,
+              userId: record.user_id as string,
+              deliveredAt: (record.delivered_at as string) ?? undefined,
+              readAt: (record.read_at as string) ?? undefined,
+            };
+            const action = payload.eventType === 'INSERT' ? 'create' : 'update';
+            callback(action, receipt);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToChatMembers(
+    conversationId: string,
+    callback: (action: string, record: ConversationMember) => void
+  ): () => void {
+    const channel = supabase
+      .channel(`chat-members:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_members',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const action =
+            payload.eventType === 'INSERT'
+              ? 'create'
+              : payload.eventType === 'UPDATE'
+                ? 'update'
+                : 'delete';
+          const record = (payload.new ?? payload.old) as Record<string, unknown>;
+          if (record) {
+            const member: ConversationMember = {
+              id: record.id as string,
+              conversationId: record.conversation_id as string,
+              userId: record.user_id as string,
+              encryptedConversationKey: (record.encrypted_conversation_key as string) ?? undefined,
+              keyIv: (record.key_iv as string) ?? undefined,
+              role: ((record.role as string) ?? 'member') as ConversationMemberRole,
+              joinedAt: record.joined_at as string,
+              leftAt: (record.left_at as string) ?? undefined,
+            };
+            callback(action, member);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToConversationUpdates(callback: (conversationId: string) => void): () => void {
+    const channel = supabase
+      .channel('chat-conversation-updates')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversations' },
+        (payload) => {
+          const record = payload.new as Record<string, unknown>;
+          if (record?.id) callback(record.id as string);
+        }
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
