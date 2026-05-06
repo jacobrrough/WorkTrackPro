@@ -25,6 +25,10 @@ interface NavigationState {
   inventoryListView: 'list' | 'kanban';
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
+  /** Custom ordering of dashboard quick-action keys. */
+  quickActionOrder: string[];
+  /** Quick-action keys the user has chosen to hide. */
+  hiddenQuickActions: string[];
 }
 
 const defaultState: NavigationState = {
@@ -39,6 +43,8 @@ const defaultState: NavigationState = {
   inventoryTab: 'allParts',
   inventoryListView: 'list',
   partsSearchTerm: '',
+  quickActionOrder: [],
+  hiddenQuickActions: [],
 };
 
 const NavigationContext = createContext<{
