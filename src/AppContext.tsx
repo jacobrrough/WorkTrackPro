@@ -275,8 +275,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       } else {
         const boardId = record.board_id as string | undefined;
         if (boardId) {
-          debounce(`board-${boardId}`, () =>
-            void queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+          debounce(
+            `board-${boardId}`,
+            () => void queryClient.invalidateQueries({ queryKey: ['board', boardId] })
           );
         }
       }

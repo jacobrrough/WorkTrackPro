@@ -28,7 +28,14 @@ import { supabase } from './supabaseClient';
 
 type JobScalars = Omit<
   Job,
-  'attachments' | 'attachmentCount' | 'comments' | 'commentCount' | 'inventoryItems' | 'parts' | 'checklists' | 'expand'
+  | 'attachments'
+  | 'attachmentCount'
+  | 'comments'
+  | 'commentCount'
+  | 'inventoryItems'
+  | 'parts'
+  | 'checklists'
+  | 'expand'
 >;
 
 function mapJobScalars(row: Record<string, unknown>): JobScalars & { id: string } {
@@ -122,7 +129,11 @@ function eventAction(eventType: string): RealtimeAction {
 type JobScalarCallback = (action: RealtimeAction, record: JobScalars & { id: string }) => void;
 type ShiftCallback = (action: string, record: Shift) => void;
 type InventoryCallback = (action: string, record: InventoryItem) => void;
-type RelatedTableCallback = (table: string, action: RealtimeAction, record: Record<string, unknown>) => void;
+type RelatedTableCallback = (
+  table: string,
+  action: RealtimeAction,
+  record: Record<string, unknown>
+) => void;
 
 // ── Subscriptions ────────────────────────────────────────────────────
 
@@ -173,7 +184,14 @@ export const subscriptions = {
    * consumer can extract foreign keys (job_id, etc.) and refresh caches.
    */
   subscribeToJobRelated(callback: RelatedTableCallback): () => void {
-    const tables = ['comments', 'attachments', 'job_parts', 'job_inventory', 'checklists', 'deliveries'] as const;
+    const tables = [
+      'comments',
+      'attachments',
+      'job_parts',
+      'job_inventory',
+      'checklists',
+      'deliveries',
+    ] as const;
     let channel = supabase.channel('job-related-changes');
     for (const table of tables) {
       channel = channel.on(
