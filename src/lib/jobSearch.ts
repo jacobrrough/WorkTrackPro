@@ -30,7 +30,13 @@ export function matchesInventorySearch(item: InventoryItem, normalizedQuery: str
   const query = normalizedQuery.trim().toLowerCase();
   if (!query) return true;
 
-  const searchableFields = [item.name, item.description, item.category, item.barcode, item.binLocation];
+  const searchableFields = [
+    item.name,
+    item.description,
+    item.category,
+    item.barcode,
+    item.binLocation,
+  ];
 
   return searchableFields.some((field) => toSearchable(field).includes(query));
 }
