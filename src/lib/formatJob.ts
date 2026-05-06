@@ -43,7 +43,13 @@ export function formatSetComposition(
   setComposition: Record<string, number> | undefined | null
 ): string {
   if (!setComposition || Object.keys(setComposition).length === 0) return '';
-  return Object.entries(setComposition)
+  // '_' is the sentinel key for no-variant parts (units per set) — show as plain count
+  const realEntries = Object.entries(setComposition).filter(([k]) => k !== '_');
+  if (realEntries.length === 0) {
+    const qty = setComposition['_'] ?? 0;
+    return qty > 0 ? `${qty}× unit` : '';
+  }
+  return realEntries
     .filter(([, qty]) => qty > 0)
     .map(([suffix, qty]) => {
       const dash = suffix.startsWith('-') ? suffix : `-${suffix}`;
@@ -270,6 +276,7 @@ export function calculateSetCompletion(
 
   let minSets = Infinity;
   for (const [suffix, requiredPerSet] of Object.entries(setComposition)) {
+    if (suffix === '_') continue; // no-variant sentinel, not a real dash number
     if (requiredPerSet <= 0) continue;
     const ordered = getDashQuantity(dashQuantities, suffix);
     const setsPossible = Math.floor(ordered / requiredPerSet);
@@ -280,7 +287,9 @@ export function calculateSetCompletion(
 
   // Calculate percentage: sum of ordered quantities / sum of required quantities for one set
   const totalOrdered = Object.values(dashQuantities).reduce((sum, q) => sum + q, 0);
-  const totalRequiredPerSet = Object.values(setComposition).reduce((sum, q) => sum + q, 0);
+  const totalRequiredPerSet = Object.entries(setComposition)
+    .filter(([k]) => k !== '_')
+    .reduce((sum, [, q]) => sum + q, 0);
   const percentage =
     totalRequiredPerSet > 0 ? Math.min(100, (totalOrdered / totalRequiredPerSet) * 100) : 0;
 

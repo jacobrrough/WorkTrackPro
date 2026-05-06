@@ -8,11 +8,7 @@ import type {
   BoardMemberRole,
 } from '../../core/types';
 import { supabase } from './supabaseClient';
-import {
-  deleteAttachmentRecord,
-  getAttachmentPublicUrl,
-  uploadAttachment,
-} from './storage';
+import { deleteAttachmentRecord, getAttachmentPublicUrl, uploadAttachment } from './storage';
 
 function mapBoardRow(row: Record<string, unknown>, columns: BoardColumn[] = []): Board {
   return {
@@ -164,7 +160,15 @@ export const boardService = {
   },
 
   async addCardAttachment(cardId: string, file: File): Promise<Attachment | null> {
-    const result = await uploadAttachment(undefined, undefined, undefined, file, false, undefined, cardId);
+    const result = await uploadAttachment(
+      undefined,
+      undefined,
+      undefined,
+      file,
+      false,
+      undefined,
+      cardId
+    );
     if (result.id == null) return null;
     const { data: row } = await supabase
       .from('attachments')

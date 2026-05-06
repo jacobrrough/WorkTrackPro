@@ -2028,7 +2028,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             {/* Set comparison + Auto-assign in one strip */}
             {linkedPart &&
               linkedPart.setComposition &&
-              Object.keys(linkedPart.setComposition).length > 0 &&
+              Object.keys(linkedPart.setComposition).filter((k) => k !== '_').length > 0 &&
               Object.keys(dashQuantities).length > 0 && (
                 <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2335,7 +2335,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       )}
                       {partIdx === 0 &&
                       linkedPart.setComposition &&
-                      Object.keys(linkedPart.setComposition).length > 0 ? (
+                      Object.keys(linkedPart.setComposition).filter((k) => k !== '_').length > 0 ? (
                         <div className="mb-2 flex flex-wrap items-center gap-3">
                           <span className="text-[11px] text-slate-400">Input by:</span>
                           <label className="flex cursor-pointer items-center gap-1.5">

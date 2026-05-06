@@ -123,10 +123,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
                   )}
                 </label>
                 {canManageAttachments && onUploadAttachment && (
-                  <FileUploadButton
-                    onUpload={handleUpload}
-                    label="Upload"
-                  />
+                  <FileUploadButton onUpload={handleUpload} label="Upload" />
                 )}
               </div>
               <AttachmentsList
