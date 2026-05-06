@@ -342,7 +342,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       [keys[idx], keys[target]] = [keys[target], keys[idx]];
       updateState({ quickActionOrder: keys });
     },
-    [orderedActions, updateState],
+    [orderedActions, updateState]
   );
 
   const toggleHidden = useCallback(
@@ -351,7 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const next = hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key];
       updateState({ hiddenQuickActions: next });
     },
-    [navState.hiddenQuickActions, updateState],
+    [navState.hiddenQuickActions, updateState]
   );
 
   const resetCustomization = useCallback(() => {
@@ -419,10 +419,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
         <section aria-labelledby="quick-actions-heading">
           <div className="mb-4 flex items-center justify-between">
-            <h2
-              id="quick-actions-heading"
-              className="text-lg font-bold tracking-tight text-white"
-            >
+            <h2 id="quick-actions-heading" className="text-lg font-bold tracking-tight text-white">
               Quick Actions
             </h2>
             <div className="flex items-center gap-2">
