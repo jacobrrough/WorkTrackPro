@@ -18,7 +18,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { keyState, generateKeys, unlock, lock: _lock } = useCryptoKeys(currentUser?.id);
+  const { keyState, generateKeys, unlock } = useCryptoKeys(currentUser?.id);
 
   const isReady = keyState.status === 'unlocked' && !!currentUser?.isApproved;
   const conversations = useChatConversations(isReady);
@@ -44,6 +44,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useChat(): ChatContextType {
   const context = useContext(ChatContext);
   if (!context) throw new Error('useChat must be used within ChatProvider');

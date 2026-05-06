@@ -56,9 +56,11 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
   const [localCards, setLocalCards] = useState<BoardCard[] | null>(null);
 
   const board = data?.board ?? null;
-  const cards = localCards ?? data?.cards ?? [];
+  const dataCards = data?.cards;
+  const cards = useMemo(() => localCards ?? dataCards ?? [], [localCards, dataCards]);
   const members = data?.members ?? [];
-  const columns = board?.columns ?? [];
+  const boardColumns = board?.columns;
+  const columns = useMemo(() => boardColumns ?? [], [boardColumns]);
 
   // Keep editor reactive: look up the current card by id so attachments
   // refresh after upload/delete.

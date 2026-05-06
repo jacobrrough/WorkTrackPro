@@ -238,6 +238,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       map[s.job] = (map[s.job] || 0) + h;
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredShifts]);
 
   const totalsByUser = useMemo(() => {
@@ -252,10 +253,12 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       if (!s.clockOutTime) map[s.user].active = true;
     });
     return Object.entries(map).sort((a, b) => b[1].hours - a[1].hours);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredShifts]);
 
   const totalHours = useMemo(() => {
     return filteredShifts.reduce((sum, s) => sum + getHoursAsNumber(s), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredShifts]);
 
   const activeShifts = filteredShifts.filter((s) => !s.clockOutTime);
@@ -301,6 +304,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       });
     }
     return days;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredShifts, periodWindow.end]);
 
   const maxDailyHours = Math.max(...dailyBreakdown.map((d) => d.hours), 1);

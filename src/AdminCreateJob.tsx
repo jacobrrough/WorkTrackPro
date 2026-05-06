@@ -260,6 +260,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const autoPriceFromPart = useMemo(() => {
     if (!selectedPart) return null;
     return calculateJobPriceFromPart(selectedPart, buildEffectiveQuantities(selectedPart));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPart, dashQuantities, formData.qty]);
 
   // Calculate labor hours suggestion from similar jobs (using auto name)
@@ -999,7 +1000,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   )}
                 </div>
               )}
-              {additionalParts.map(({ part, dashQuantities: dq }, idx) => (
+              {additionalParts.map(({ part, dashQuantities: dq }, _idx) => (
                 <div
                   key={part.id}
                   className="rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 p-3"

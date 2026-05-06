@@ -105,6 +105,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
   useEffect(() => {
     setEditFormState(buildEditForm(currentItem));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentItem.id]);
 
   const setEditForm = useCallback((patch: Partial<InventoryDetailEditFormState>) => {
