@@ -2367,7 +2367,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       Object.keys(linkedPart.setComposition).filter((k) => k !== '_').length > 0 ? (
                         <div className="mb-2 flex flex-wrap items-center gap-3">
                           <span className="text-[11px] text-slate-400">Input by:</span>
-                          <label className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                          <label
+                            className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          >
                             <input
                               type="radio"
                               name="quantity-input-mode"
@@ -2378,7 +2380,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             />
                             <span className="text-sm text-white">Full sets</span>
                           </label>
-                          <label className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                          <label
+                            className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          >
                             <input
                               type="radio"
                               name="quantity-input-mode"
