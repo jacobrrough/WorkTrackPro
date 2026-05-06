@@ -256,10 +256,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
               </p>
             ) : (
               lines.map((line, idx) => (
-                <div
-                  key={idx}
-                  className="rounded border border-white/10 bg-white/5 p-2"
-                >
+                <div key={idx} className="rounded border border-white/10 bg-white/5 p-2">
                   <div className="mb-1 flex items-baseline justify-between gap-2">
                     <span className="text-xs font-medium text-slate-300">
                       {line.partNumber
@@ -284,9 +281,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                       min={0}
                       step="any"
                       value={line.quantity}
-                      onChange={(e) =>
-                        updateLine(idx, { quantity: Number(e.target.value) || 0 })
-                      }
+                      onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) || 0 })}
                       className="col-span-3 rounded border border-white/10 bg-transparent px-2 py-1 text-right text-sm text-white focus:border-primary focus:outline-none"
                     />
                     <input

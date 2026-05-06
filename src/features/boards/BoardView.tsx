@@ -63,7 +63,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
   // Keep editor reactive: look up the current card by id so attachments
   // refresh after upload/delete.
   const editingCard = editingCardId
-    ? (data?.cards ?? []).find((c) => c.id === editingCardId) ?? null
+    ? ((data?.cards ?? []).find((c) => c.id === editingCardId) ?? null)
     : null;
 
   const isOwner = board?.createdBy === currentUser?.id;
@@ -308,9 +308,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
           onClose={() => setEditingCardId(null)}
           onSave={handleUpdateCard}
           onDelete={handleDeleteCard}
-          onUploadAttachment={(cardId, file) =>
-            mutations.addCardAttachment(boardId, cardId, file)
-          }
+          onUploadAttachment={(cardId, file) => mutations.addCardAttachment(boardId, cardId, file)}
           onDeleteAttachment={(attachmentId) =>
             mutations.deleteCardAttachment(boardId, attachmentId)
           }

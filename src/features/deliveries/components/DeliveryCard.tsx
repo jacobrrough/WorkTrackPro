@@ -88,9 +88,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
           </div>
         ))}
         {delivery.lineItems.length > 4 && (
-          <p className="text-[10px] text-slate-500">
-            …and {delivery.lineItems.length - 4} more
-          </p>
+          <p className="text-[10px] text-slate-500">…and {delivery.lineItems.length - 4} more</p>
         )}
       </div>
       {delivery.notes && (

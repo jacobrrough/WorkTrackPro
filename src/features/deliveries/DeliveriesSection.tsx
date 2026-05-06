@@ -80,7 +80,9 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
   const remaining = ordered > 0 ? Math.max(0, ordered - totalDelivered) : null;
   const progressPercent = ordered > 0 ? Math.min(100, (totalDelivered / ordered) * 100) : 0;
 
-  const handleRecord = async (data: Parameters<typeof createDelivery>[0] | Parameters<typeof updateDelivery>[2]) => {
+  const handleRecord = async (
+    data: Parameters<typeof createDelivery>[0] | Parameters<typeof updateDelivery>[2]
+  ) => {
     if (editing) {
       await updateDelivery(job.id, editing.id, data);
       setEditing(null);
@@ -173,11 +175,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
       )}
 
       {previewing && (
-        <PackingSlipPreview
-          delivery={previewing}
-          job={job}
-          onClose={() => setPreviewing(null)}
-        />
+        <PackingSlipPreview delivery={previewing} job={job} onClose={() => setPreviewing(null)} />
       )}
 
       {confirmDeleteId && (
