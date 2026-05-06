@@ -435,6 +435,17 @@ export interface Delivery {
   updatedAt?: string;
 }
 
+export interface JobStatusHistoryEntry {
+  id: string;
+  jobId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  previousStatus: JobStatus;
+  newStatus: JobStatus;
+  createdAt: string;
+}
+
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
