@@ -711,6 +711,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.parts?.length, job.parts?.map((p) => p.partId)?.join(',') ?? '']);
 
   useEffect(() => {
@@ -994,6 +995,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     });
   }, [
     laborBreakdownTotal,
+    laborBreakdownByDash,
     allocationSource,
     variantAllocation.totals,
     variantAllocation.totals?.laborHours,
@@ -1415,7 +1417,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
             await syncJobInventoryFromParts(job.id, partsForSync, { replace: true });
             await onReloadJob?.();
           } catch (syncErr) {
-            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save (multi-part):', syncErr);
             showToast(
               'Job saved; material sync failed. Use Auto-assign materials to retry.',
@@ -1639,7 +1640,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               if (typeof hours === 'number' && hours > 0) combinedLabor += hours;
             }
             if (combinedLabor > 0) {
-              const laborUpdated = await onUpdateJob(job.id, { laborHours: combinedLabor });
+              await onUpdateJob(job.id, { laborHours: combinedLabor });
             }
           }
 
@@ -1660,8 +1661,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       job.partNumber,
       job.dashQuantities,
       job.parts,
+      job.status,
       onUpdateJob,
-      onReloadJob,
       showToast,
     ]
   );
@@ -2984,7 +2985,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             num != null ? 'Progress estimate set' : 'Progress estimate cleared',
                             'success'
                           );
-                        } catch (e) {
+                        } catch {
                           showToast('Failed to update progress estimate', 'error');
                         }
                       }}
@@ -3000,7 +3001,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           await onUpdateJob(job.id, { progressEstimatePercent: null });
                           // Do not refetch – cache merge keeps UI in sync; refetch can revert if server omits column
                           showToast('Progress estimate cleared', 'success');
-                        } catch (e) {
+                        } catch {
                           showToast('Failed to clear', 'error');
                         }
                       }}

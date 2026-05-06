@@ -109,7 +109,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const staleOfflinePunch = useMemo(() => hasQueuedPunchAtMaxAttempts(), [offlineQueueVersion]);
 
   const jobMutations = useJobMutations({
@@ -296,6 +298,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       unsubBoards();
       unsubParts();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, queryClient, queries.refreshJob, queries.refreshJobs, queries.refreshInventory]);
 
   const inventoryWithComputed = useMemo(

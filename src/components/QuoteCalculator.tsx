@@ -49,9 +49,9 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   cncRate = 150,
   printer3DRate = 100,
   className = '',
-  readOnly = false,
-  variantsAreCopies = false,
-  autoSetLaborHours,
+  _readOnly = false,
+  _variantsAreCopies = false,
+  _autoSetLaborHours,
 }) => {
   const [quantityInput, setQuantityInput] = useState('1');
   const [quoteBy, setQuoteBy] = useState<'sets' | 'variants'>('sets');
@@ -115,7 +115,6 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     variantQtyInputs,
     inventoryItems,
     laborRate,
-    cncRate,
     printer3DRate,
   ]);
 

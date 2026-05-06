@@ -31,7 +31,6 @@ import { useSettings } from '@/contexts/SettingsContext';
 import {
   calculateSetPriceFromVariants,
   getEffectiveSetPricingForDisplay,
-  variantPricesFromSetPrice,
   calculateSetLaborFromVariants,
   variantLaborFromSetComposition,
   variantCncFromSetComposition,
@@ -236,7 +235,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
         effectiveSetPrinter3DHours: derived3D ?? 0,
       };
     }, [
-      part?.id,
       part?.laborHours,
       part?.cncTimeHours,
       part?.requiresCNC,
@@ -250,6 +248,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
   /** When part has no variants, treat as one variant for display so labor/CNC/3D inputs appear. */
   const displayVariants = useMemo(
     () => (part?.variants?.length ? part.variants : part ? [syntheticVariantFromPart(part)] : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       part?.id,
       part?.variants,
@@ -2755,7 +2754,6 @@ function VariantQuoteMini({
     settings.laborRate,
     settings.printer3DRate,
     totalInput,
-    hasUserEditedTotal,
     laborHoursInput,
     hasUserEditedLabor,
     cncHoursInput,

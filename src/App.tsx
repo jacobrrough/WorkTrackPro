@@ -104,7 +104,7 @@ export default function App() {
 
   const [view, setView] = useState<string>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
-  const [backStack, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
+  const [, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 

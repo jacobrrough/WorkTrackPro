@@ -140,19 +140,6 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const handleSectionLinkClick = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
-      const href = event.currentTarget.getAttribute('href') ?? '';
-      if (!href.startsWith('#')) return;
-      event.preventDefault();
-      if (window.location.hash !== href) {
-        window.history.pushState(null, '', href);
-      }
-      navigateToSection(href);
-    },
-    [navigateToSection]
-  );
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.location.hash) {
