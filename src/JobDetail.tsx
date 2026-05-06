@@ -69,6 +69,7 @@ import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
 import JobComments from '@/features/jobs/components/JobComments';
 import DeliveriesSection from '@/features/deliveries/DeliveriesSection';
+import JobStatusHistory from '@/features/jobs/components/JobStatusHistory';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import ConfirmDialog from './ConfirmDialog';
@@ -3631,6 +3632,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             <DeliveriesSection job={job} currentUser={currentUser} />
+
+            {currentUser.isAdmin && (
+              <JobStatusHistory jobId={job.id} isAdmin={currentUser.isAdmin} />
+            )}
 
             <div>
               <JobComments
