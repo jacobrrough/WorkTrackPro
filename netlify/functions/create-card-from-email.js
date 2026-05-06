@@ -107,6 +107,107 @@ export async function handler(event) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // ── Detect job board vs custom board ─────────────────
+    const isJobBoard = boardId === 'job-admin' || boardId === 'job-shopFloor';
+
+    if (isJobBoard) {
+      // Create a job instead of a board card.
+      const boardType = boardId === 'job-admin' ? 'admin' : 'shopFloor';
+      const jobStatus = columnId; // columnId is the status string (e.g. 'toBeQuoted')
+
+      // Auto-generate next job code.
+      const { data: latestJob } = await supabase
+        .from('jobs')
+        .select('job_code')
+        .order('job_code', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const nextJobCode = (latestJob?.job_code ?? 0) + 1;
+
+      const { data: jobRow, error: jobErr } = await supabase
+        .from('jobs')
+        .insert({
+          job_code: nextJobCode,
+          name: title,
+          description: description || null,
+          status: jobStatus,
+          board_type: boardType,
+          active: true,
+        })
+        .select('id, job_code')
+        .single();
+
+      if (jobErr || !jobRow) {
+        console.error('create-card-from-email: job insert failed:', jobErr?.message);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to create job.' }),
+        };
+      }
+
+      const jobId = jobRow.id;
+
+      // Upload attachments to the job.
+      const attachmentResults = [];
+      const warnings = [];
+
+      for (const [idx, att] of validAttachments.entries()) {
+        const filename = sanitizeText(att.filename) || `attachment-${idx + 1}`;
+        const mimeType = sanitizeText(att.mimeType) || 'application/octet-stream';
+        const base64Data = sanitizeText(att.base64Data);
+
+        if (!base64Data) { warnings.push(`Skipped ${filename}: no data`); continue; }
+
+        let buffer;
+        try { buffer = Buffer.from(base64Data, 'base64'); } catch {
+          warnings.push(`Skipped ${filename}: invalid base64`); continue;
+        }
+        if (buffer.length > MAX_ATTACHMENT_SIZE) {
+          warnings.push(`Skipped ${filename}: exceeds 5 MB limit`); continue;
+        }
+
+        const safeName = sanitizeFileName(filename);
+        const ext = safeName.includes('.') ? safeName.split('.').pop() : 'bin';
+        const storagePath = `jobs/${jobId}/${crypto.randomUUID()}.${ext}`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('attachments')
+          .upload(storagePath, buffer, { upsert: false, contentType: mimeType });
+
+        if (uploadErr) {
+          console.error(`Attachment upload failed (${filename}):`, uploadErr.message);
+          warnings.push(`Failed to upload ${filename}`); continue;
+        }
+
+        const { error: insertErr } = await supabase.from('attachments').insert({
+          job_id: jobId,
+          filename,
+          storage_path: storagePath,
+          is_admin_only: true,
+        });
+
+        if (insertErr) {
+          console.error(`Attachment record insert failed (${filename}):`, insertErr.message);
+          warnings.push(`Uploaded ${filename} but failed to save record`); continue;
+        }
+        attachmentResults.push({ filename, storagePath });
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          ok: true,
+          jobId,
+          jobCode: jobRow.job_code,
+          attachmentCount: attachmentResults.length,
+          warnings: warnings.length > 0 ? warnings : undefined,
+        }),
+      };
+    }
+
+    // ── Custom board card flow ───────────────────────────
     // Verify board and column exist.
     const { data: boardRow, error: boardErr } = await supabase
       .from('boards')
