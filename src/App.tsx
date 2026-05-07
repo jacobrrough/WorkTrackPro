@@ -265,6 +265,21 @@ export default function App() {
     return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
   }
 
+  // Safety net: if the session expired and we already have the notice, show Login
+  // immediately regardless of isLoading. Prevents the spinner from getting stuck
+  // if checkAuth somehow never resolves (slow network, Supabase hiccup, etc.).
+  if (!currentUser && sessionExpiredNotice) {
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        onResetPassword={resetPasswordForEmail}
+        error={sessionExpiredNotice}
+        isLoading={false}
+      />
+    );
+  }
+
   if (!currentUser && !isLoading) {
     return (
       <Login

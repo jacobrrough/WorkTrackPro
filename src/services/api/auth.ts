@@ -1,6 +1,18 @@
 import type { User } from '../../core/types';
 import { supabase } from './supabaseClient';
 
+// Prevents Supabase network calls from hanging the loading screen indefinitely.
+// On timeout the promise rejects with an error — callers decide how to handle it
+// (initApp catches and clears isLoading; refreshAuthWithRetry retries then hard-logs out).
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Auth call timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 function mapProfileToUser(profile: {
   id: string;
   email: string | null;
@@ -25,7 +37,7 @@ export const authService = {
     try {
       const {
         data: { session: activeSession },
-      } = await supabase.auth.getSession();
+      } = await withTimeout(supabase.auth.getSession(), 5000);
       session = activeSession;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -39,11 +51,14 @@ export const authService = {
     }
 
     if (!session?.user) return null;
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, name, initials, is_admin, is_approved')
-      .eq('id', session.user.id)
-      .maybeSingle();
+    const { data: profile, error: profileError } = await withTimeout(
+      supabase
+        .from('profiles')
+        .select('id, email, name, initials, is_admin, is_approved')
+        .eq('id', session.user.id)
+        .maybeSingle(),
+      5000
+    );
     if (profileError) {
       // Backwards compatibility: if migration hasn't been applied yet, don't block login.
       const msg = profileError.message ?? '';
