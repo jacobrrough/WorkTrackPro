@@ -390,7 +390,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
               dashQuantities: job.dashQuantities ?? {},
             },
           ]
-        : []
+        : [
+            {
+              partId: '',
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ]
   );
   useEffect(() => {
     const next = job.parts?.length
@@ -403,7 +409,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
               dashQuantities: job.dashQuantities ?? {},
             },
           ]
-        : [];
+        : [
+            {
+              partId: '',
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ];
     setEditingParts(next);
   }, [job.parts, job.partId, job.partNumber, job.dashQuantities]);
 
@@ -1341,9 +1353,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       Boolean(normalizedBinLocation) && is3DPrintRequired && !job.printer3DCompletedAt;
     const partsToSave =
       editingParts.length > 0
-        ? editingParts.map((p, i) =>
-            i === 0 ? { ...p, dashQuantities: normalizedDashQuantities } : p
-          )
+        ? editingParts
+            .filter((p) => p.partId)
+            .map((p, i) => (i === 0 ? { ...p, dashQuantities: normalizedDashQuantities } : p))
         : undefined;
     const editQty = parseFloat(editForm.qty) || 1;
     const noVariantMachineBreakdown =
