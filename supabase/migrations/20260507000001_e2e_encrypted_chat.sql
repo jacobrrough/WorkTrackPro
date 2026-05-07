@@ -180,6 +180,7 @@ create or replace function public.is_conversation_member(conv_id uuid)
 returns boolean
 language sql
 stable
+security definer
 as $$
   select exists (
     select 1 from public.conversation_members
@@ -196,6 +197,7 @@ create or replace function public.find_direct_conversation(user_a uuid, user_b u
 returns uuid
 language sql
 stable
+security definer
 as $$
   select cm1.conversation_id
   from public.conversation_members cm1
@@ -213,7 +215,9 @@ $$;
 -- 9. TRIGGER: bump conversation.updated_at on new message
 -- =============================================
 create or replace function public.update_conversation_timestamp()
-returns trigger as $$
+returns trigger
+security definer
+as $$
 begin
   update public.conversations
   set updated_at = now()

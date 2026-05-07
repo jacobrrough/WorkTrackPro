@@ -1,6 +1,58 @@
 -- Fix: Re-apply RLS policies for chat tables.
 -- The original migration may have partially applied, leaving RLS enabled
 -- but without the necessary policies (which blocks all access).
+--
+-- Also fixes infinite recursion: is_conversation_member() queries
+-- conversation_members, whose SELECT policy called is_conversation_member()
+-- again → stack overflow. Adding SECURITY DEFINER bypasses RLS inside
+-- the helper function.
+
+-- =============================================
+-- Fix helper functions: must be SECURITY DEFINER to avoid RLS recursion
+-- =============================================
+create or replace function public.is_conversation_member(conv_id uuid)
+returns boolean
+language sql
+stable
+security definer
+as $$
+  select exists (
+    select 1 from public.conversation_members
+    where conversation_id = conv_id
+      and user_id = auth.uid()
+      and left_at is null
+  );
+$$;
+
+create or replace function public.find_direct_conversation(user_a uuid, user_b uuid)
+returns uuid
+language sql
+stable
+security definer
+as $$
+  select cm1.conversation_id
+  from public.conversation_members cm1
+  join public.conversation_members cm2 on cm1.conversation_id = cm2.conversation_id
+  join public.conversations c on c.id = cm1.conversation_id
+  where cm1.user_id = user_a
+    and cm2.user_id = user_b
+    and c.type = 'direct'
+    and cm1.left_at is null
+    and cm2.left_at is null
+  limit 1;
+$$;
+
+create or replace function public.update_conversation_timestamp()
+returns trigger
+security definer
+as $$
+begin
+  update public.conversations
+  set updated_at = now()
+  where id = new.conversation_id;
+  return new;
+end;
+$$ language plpgsql;
 
 -- =============================================
 -- conversations
