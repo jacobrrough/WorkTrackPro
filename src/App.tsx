@@ -8,8 +8,6 @@ import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
 import { AdminRoute } from './components/AdminRoute';
-import { NotificationsProvider } from './contexts/NotificationsContext';
-import { NotificationTrigger } from './components/NotificationTrigger';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
@@ -551,7 +549,10 @@ export default function App() {
   if (view === 'chat' || view === 'chat-conversation') {
     return (
       <AppShell>
-        <ChatView conversationId={view === 'chat-conversation' ? id : undefined} />
+        <ChatView
+          conversationId={view === 'chat-conversation' ? id : undefined}
+          onNavigate={handleNavigate}
+        />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );
@@ -700,8 +701,7 @@ export default function App() {
   }
 
   return (
-    <NotificationsProvider>
-      <NotificationTrigger />
+    <>
       {currentUser && (
         <CommandPalette
           open={commandPaletteOpen}
@@ -716,6 +716,6 @@ export default function App() {
         <Dashboard onNavigate={handleNavigate} />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
-    </NotificationsProvider>
+    </>
   );
 }
