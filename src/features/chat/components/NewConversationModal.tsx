@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from '@/core/types';
+import { encryptionKeyService } from '@/services/api/encryptionKeys';
 
 interface NewConversationModalProps {
   users: User[];
@@ -21,22 +22,44 @@ export function NewConversationModal({
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'direct' | 'group'>('direct');
+  const [encryptionReadyIds, setEncryptionReadyIds] = useState<Set<string> | null>(null);
 
   const otherUsers = useMemo(
     () => users.filter((u) => u.id !== currentUserId && u.isApproved !== false),
     [users, currentUserId]
   );
 
+  // Fetch which users have encryption keys set up
+  useEffect(() => {
+    const ids = otherUsers.map((u) => u.id);
+    if (ids.length === 0) {
+      setEncryptionReadyIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    encryptionKeyService.getUserIdsWithKeys(ids).then((result) => {
+      if (!cancelled) setEncryptionReadyIds(result);
+    });
+    return () => { cancelled = true; };
+  }, [otherUsers]);
+
+  // Only show users who have set up encryption keys
+  const chatReadyUsers = useMemo(
+    () =>
+      encryptionReadyIds ? otherUsers.filter((u) => encryptionReadyIds.has(u.id)) : [],
+    [otherUsers, encryptionReadyIds]
+  );
+
   const filtered = useMemo(
     () =>
       search.trim()
-        ? otherUsers.filter(
+        ? chatReadyUsers.filter(
             (u) =>
               (u.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
               u.email.toLowerCase().includes(search.toLowerCase())
           )
-        : otherUsers,
-    [otherUsers, search]
+        : chatReadyUsers,
+    [chatReadyUsers, search]
   );
 
   const handleToggleUser = useCallback((userId: string) => {
@@ -137,8 +160,21 @@ export function NewConversationModal({
         </div>
 
         <div className="max-h-64 overflow-y-auto px-2 py-1">
-          {filtered.length === 0 && (
-            <p className="py-4 text-center text-sm text-slate-500">No users found</p>
+          {encryptionReadyIds === null && (
+            <p className="py-4 text-center text-sm text-slate-500">Loading users...</p>
+          )}
+          {encryptionReadyIds !== null && filtered.length === 0 && (
+            <div className="py-4 text-center">
+              <p className="text-sm text-slate-500">
+                {search ? 'No users found' : 'No users available for chat'}
+              </p>
+              {!search && otherUsers.length > chatReadyUsers.length && (
+                <p className="mt-1 text-xs text-slate-600">
+                  {otherUsers.length - chatReadyUsers.length} user(s) haven't set up encryption yet.
+                  They need to log in and visit Chat first.
+                </p>
+              )}
+            </div>
           )}
           {filtered.map((user) => {
             const isSelected = selectedIds.includes(user.id);
