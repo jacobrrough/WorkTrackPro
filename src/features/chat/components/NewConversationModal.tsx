@@ -40,13 +40,14 @@ export function NewConversationModal({
     encryptionKeyService.getUserIdsWithKeys(ids).then((result) => {
       if (!cancelled) setEncryptionReadyIds(result);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [otherUsers]);
 
   // Only show users who have set up encryption keys
   const chatReadyUsers = useMemo(
-    () =>
-      encryptionReadyIds ? otherUsers.filter((u) => encryptionReadyIds.has(u.id)) : [],
+    () => (encryptionReadyIds ? otherUsers.filter((u) => encryptionReadyIds.has(u.id)) : []),
     [otherUsers, encryptionReadyIds]
   );
 
