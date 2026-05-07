@@ -79,7 +79,11 @@ export type ViewState =
   | 'time-reports'
   | 'calendar'
   | 'admin-settings'
-  | 'trello-import';
+  | 'trello-import'
+  | 'boards'
+  | 'board-detail'
+  | 'chat'
+  | 'chat-conversation';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -129,6 +133,7 @@ export interface Attachment {
   jobId?: string;
   inventoryId?: string;
   partId?: string;
+  boardCardId?: string;
   filename: string;
   storagePath: string;
   isAdminOnly: boolean;
@@ -408,6 +413,41 @@ export interface InventoryHistoryEntry {
   createdAt: string;
 }
 
+// Job deliveries (packing slip / partial shipments)
+export interface DeliveryLineItem {
+  description: string;
+  partNumber?: string;
+  variantSuffix?: string;
+  quantity: number;
+  unit?: string;
+}
+
+export interface Delivery {
+  id: string;
+  jobId: string;
+  deliveryNumber: number;
+  deliveredAt: string;
+  carrier?: string;
+  trackingNumber?: string;
+  recipientName?: string;
+  notes?: string;
+  lineItems: DeliveryLineItem[];
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JobStatusHistoryEntry {
+  id: string;
+  jobId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  previousStatus: JobStatus;
+  newStatus: JobStatus;
+  createdAt: string;
+}
+
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
@@ -417,3 +457,134 @@ export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }
   { id: 'delivered', title: 'Delivered', color: 'bg-cyan-500' },
   { id: 'onHold', title: 'On Hold', color: 'bg-gray-500' },
 ];
+
+// Custom boards
+export type BoardVisibility = 'private' | 'members' | 'everyone';
+export type BoardMemberRole = 'editor' | 'viewer';
+
+export interface Board {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy: string;
+  visibility: BoardVisibility;
+  columns: BoardColumn[];
+  memberCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BoardColumn {
+  id: string;
+  boardId: string;
+  name: string;
+  color?: string;
+  sortOrder: number;
+}
+
+export interface BoardCard {
+  id: string;
+  boardId: string;
+  columnId: string;
+  title: string;
+  description?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  dueDate?: string;
+  color?: string;
+  sortOrder: number;
+  createdAt?: string;
+  attachments?: Attachment[];
+  attachmentCount?: number;
+}
+
+export interface BoardMember {
+  id: string;
+  boardId: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  role: BoardMemberRole;
+}
+
+// ── E2E Encrypted Chat ──────────────────────────────
+
+export type ConversationType = 'direct' | 'group';
+export type ConversationMemberRole = 'admin' | 'member';
+export type MessageType = 'text' | 'file' | 'system';
+
+export interface UserEncryptionKeys {
+  id: string;
+  userId: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+  keySalt: string;
+  keyIv: string;
+  algorithm: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  type: ConversationType;
+  name?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  members?: ConversationMember[];
+  lastMessage?: Message;
+  unreadCount?: number;
+}
+
+export interface ConversationMember {
+  id: string;
+  conversationId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  encryptedConversationKey?: string;
+  keyIv?: string;
+  role: ConversationMemberRole;
+  joinedAt: string;
+  leftAt?: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName?: string;
+  senderInitials?: string;
+  encryptedContent: string;
+  contentIv: string;
+  messageType: MessageType;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  decryptedContent?: string;
+  attachments?: MessageAttachment[];
+  receipts?: MessageReceipt[];
+}
+
+export interface MessageReceipt {
+  id: string;
+  messageId: string;
+  userId: string;
+  userName?: string;
+  deliveredAt?: string;
+  readAt?: string;
+}
+
+export interface MessageAttachment {
+  id: string;
+  messageId: string;
+  storagePath: string;
+  encryptedFileKey: string;
+  fileKeyIv: string;
+  fileIv: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  decryptedUrl?: string;
+}

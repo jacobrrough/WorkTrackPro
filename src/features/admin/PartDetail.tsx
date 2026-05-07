@@ -31,7 +31,6 @@ import { useSettings } from '@/contexts/SettingsContext';
 import {
   calculateSetPriceFromVariants,
   getEffectiveSetPricingForDisplay,
-  variantPricesFromSetPrice,
   calculateSetLaborFromVariants,
   variantLaborFromSetComposition,
   variantCncFromSetComposition,
@@ -74,6 +73,69 @@ function syntheticVariantFromPart(part: Part): PartVariant {
     pricePerVariant: part.pricePerSet,
     materials: part.materials ?? [],
   };
+}
+
+/** Inline editor for units-per-set on no-variant parts. Stored as setComposition['_']. */
+function NoVariantSetQtyEditor({ qty, onSave }: { qty: number; onSave: (n: number) => void }) {
+  const [editing, setEditing] = React.useState(false);
+  const [value, setValue] = React.useState(qty);
+
+  const handleSave = () => {
+    const n = Math.max(1, Math.round(value));
+    onSave(n);
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setValue(qty);
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <div className="mt-2 flex items-center gap-3">
+        <p className="text-sm text-white">One set: {qty}× unit</p>
+        <button
+          type="button"
+          onClick={() => {
+            setValue(qty);
+            setEditing(true);
+          }}
+          className="rounded-sm border border-primary/30 bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/30"
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <span className="text-sm text-slate-400">One set:</span>
+      <input
+        type="number"
+        min={1}
+        value={value}
+        onChange={(e) => setValue(parseInt(e.target.value, 10) || 1)}
+        className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <span className="text-sm text-slate-400">× unit</span>
+      <button
+        type="button"
+        onClick={handleSave}
+        className="rounded-sm border border-green-500/40 bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-300 hover:bg-green-500/30"
+      >
+        Save
+      </button>
+      <button
+        type="button"
+        onClick={handleCancel}
+        className="rounded-sm border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-medium text-slate-400 hover:bg-white/10"
+      >
+        Cancel
+      </button>
+    </div>
+  );
 }
 
 const PartDetail: React.FC<PartDetailProps> = ({
@@ -173,7 +235,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
         effectiveSetPrinter3DHours: derived3D ?? 0,
       };
     }, [
-      part?.id,
       part?.laborHours,
       part?.cncTimeHours,
       part?.requiresCNC,
@@ -187,6 +248,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
   /** When part has no variants, treat as one variant for display so labor/CNC/3D inputs appear. */
   const displayVariants = useMemo(
     () => (part?.variants?.length ? part.variants : part ? [syntheticVariantFromPart(part)] : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       part?.id,
       part?.variants,
@@ -1462,7 +1524,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 <div>
                   <p className="mb-1 text-xs font-bold uppercase text-slate-400">Set composition</p>
                   {part.variants?.length === 0 ? (
-                    <p className="mt-2 text-sm text-white">One set: 1× unit (no variants)</p>
+                    <NoVariantSetQtyEditor
+                      qty={part.setComposition?.['_'] ?? 1}
+                      onSave={(n) => handleUpdatePart({ setComposition: { _: n } })}
+                    />
                   ) : (
                     <>
                       <SetCompositionEditor
@@ -2689,7 +2754,6 @@ function VariantQuoteMini({
     settings.laborRate,
     settings.printer3DRate,
     totalInput,
-    hasUserEditedTotal,
     laborHoursInput,
     hasUserEditedLabor,
     cncHoursInput,

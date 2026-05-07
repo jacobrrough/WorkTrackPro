@@ -34,6 +34,9 @@ const AdminSettings = lazyWithRetry(
 );
 const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
 const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
+const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
+const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
+const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
 
 function AppViewFallback() {
   return (
@@ -101,7 +104,7 @@ export default function App() {
 
   const [view, setView] = useState<string>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
-  const [backStack, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
+  const [, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -260,6 +263,21 @@ export default function App() {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
     }
     return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
+  }
+
+  // Safety net: if the session expired and we already have the notice, show Login
+  // immediately regardless of isLoading. Prevents the spinner from getting stuck
+  // if checkAuth somehow never resolves (slow network, Supabase hiccup, etc.).
+  if (!currentUser && sessionExpiredNotice) {
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        onResetPassword={resetPasswordForEmail}
+        error={sessionExpiredNotice}
+        isLoading={false}
+      />
+    );
   }
 
   if (!currentUser && !isLoading) {
@@ -502,6 +520,37 @@ export default function App() {
             onUpdateJob={updateJob}
           />
         </div>
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'boards') {
+    return (
+      <AppShell>
+        <BoardList onNavigate={handleNavigate} />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'board-detail' && id) {
+    return (
+      <AppShell>
+        <BoardView
+          boardId={id}
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('boards')}
+        />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'chat' || view === 'chat-conversation') {
+    return (
+      <AppShell>
+        <ChatView conversationId={view === 'chat-conversation' ? id : undefined} />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
     );

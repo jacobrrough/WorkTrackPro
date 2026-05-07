@@ -9,6 +9,7 @@ import { jobService } from '@/services/api/jobs';
 import { checklistService } from '@/services/api/checklists';
 import { inventoryService } from '@/services/api/inventory';
 import { inventoryHistoryService } from '@/services/api/inventoryHistory';
+import { jobStatusHistoryService } from '@/services/api/jobStatusHistory';
 
 export interface UseJobMutationsParams {
   jobs: Job[];
@@ -57,8 +58,19 @@ export function useJobMutations({
         if (data.active === false) {
           data.binLocation = undefined;
         }
+        const previousJob = jobs.find((j) => j.id === jobId);
         const updatedJob = await jobService.updateJob(jobId, data);
         if (updatedJob) {
+          if (currentUser && data.status && previousJob && previousJob.status !== data.status) {
+            jobStatusHistoryService
+              .createHistory({
+                jobId,
+                userId: currentUser.id,
+                previousStatus: previousJob.status,
+                newStatus: data.status,
+              })
+              .catch((err) => console.error('Job status history insert failed:', err));
+          }
           let jobForCache = { ...updatedJob, ...data };
           if (
             data.parts === undefined &&
@@ -80,7 +92,7 @@ export function useJobMutations({
         return null;
       }
     },
-    [queryClient]
+    [queryClient, jobs, currentUser]
   );
 
   const deleteJob = useCallback(
@@ -140,6 +152,17 @@ export function useJobMutations({
             await refreshJobs();
             return false;
           }
+        }
+
+        if (currentUser && job && job.status !== status) {
+          jobStatusHistoryService
+            .createHistory({
+              jobId,
+              userId: currentUser.id,
+              previousStatus: job.status,
+              newStatus: status,
+            })
+            .catch((err) => console.error('Job status history insert failed:', err));
         }
 
         if (status !== 'paid' && status !== 'projectCompleted') {

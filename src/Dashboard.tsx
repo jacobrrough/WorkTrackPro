@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
@@ -9,8 +9,8 @@ import { NotificationBell } from './components/NotificationBell';
 import { durationMs, formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
-import type { Job } from './core/types';
 import BinResultsView from './components/BinResultsView';
+import SearchAutocomplete from './components/SearchAutocomplete';
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
 
@@ -53,6 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [addingJobToBin, setAddingJobToBin] = useState(false);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
+  const [isEditingActions, setIsEditingActions] = useState(false);
   const [shiftTimer, setShiftTimer] = useState('00:00:00');
   const shiftClockInTime = activeShift?.clockInTime ?? null;
   const shiftClockOutTime = activeShift?.clockOutTime ?? null;
@@ -64,10 +65,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       ? navState.lastViewedJobId
       : null;
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateState({ searchTerm: searchInput.trim() });
-    onNavigate('board-shop');
+  const handleSearchSubmit = (term: string) => {
+    updateState({ searchTerm: term });
+    onNavigate(isAdmin ? 'board-admin' : 'board-shop');
   };
 
   useEffect(() => {
@@ -257,6 +257,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       adminOnly: true,
     },
     {
+      key: 'boards',
+      title: 'Boards',
+      subtitle: 'Custom Kanban',
+      icon: 'dashboard_customize',
+      iconClassName: 'text-teal-500',
+      cardClassName: 'border-teal-500/30 bg-gradient-to-br from-teal-600/20 to-cyan-600/20',
+      ariaLabel: 'Open custom boards',
+      onClick: () => onNavigate('boards'),
+    },
+    {
       key: 'board-admin',
       title: 'Admin Board',
       subtitle: 'Kanban view',
@@ -301,7 +311,52 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     },
   ];
 
-  const visibleQuickActions = quickActions.filter((action) => isAdmin || !action.adminOnly);
+  const roleFilteredActions = quickActions.filter((action) => isAdmin || !action.adminOnly);
+
+  const orderedActions = useMemo(() => {
+    const order = navState.quickActionOrder;
+    if (order.length === 0) return roleFilteredActions;
+    const indexed = new Map(roleFilteredActions.map((a) => [a.key, a]));
+    const sorted: DashboardQuickAction[] = [];
+    for (const key of order) {
+      const action = indexed.get(key);
+      if (action) {
+        sorted.push(action);
+        indexed.delete(key);
+      }
+    }
+    for (const action of indexed.values()) sorted.push(action);
+    return sorted;
+  }, [roleFilteredActions, navState.quickActionOrder]);
+
+  const visibleQuickActions = isEditingActions
+    ? orderedActions
+    : orderedActions.filter((a) => !navState.hiddenQuickActions.includes(a.key));
+
+  const moveAction = useCallback(
+    (key: string, direction: -1 | 1) => {
+      const keys = orderedActions.map((a) => a.key);
+      const idx = keys.indexOf(key);
+      const target = idx + direction;
+      if (target < 0 || target >= keys.length) return;
+      [keys[idx], keys[target]] = [keys[target], keys[idx]];
+      updateState({ quickActionOrder: keys });
+    },
+    [orderedActions, updateState]
+  );
+
+  const toggleHidden = useCallback(
+    (key: string) => {
+      const hidden = navState.hiddenQuickActions;
+      const next = hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key];
+      updateState({ hiddenQuickActions: next });
+    },
+    [navState.hiddenQuickActions, updateState]
+  );
+
+  const resetCustomization = useCallback(() => {
+    updateState({ quickActionOrder: [], hiddenQuickActions: [] });
+  }, [updateState]);
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
@@ -352,60 +407,130 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           Dashboard
         </h1>
 
-        <form onSubmit={handleSearchSubmit} className="mb-4" role="search" aria-label="Search jobs">
-          <label htmlFor="dashboard-search" className="sr-only">
-            Search jobs, PO, description, bin location, or status
-          </label>
-          <div className="relative">
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            >
-              search
-            </span>
-            <input
-              id="dashboard-search"
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search jobs, PO, description, bin, status..."
-              className="w-full rounded-sm border border-white/10 bg-[#261a32] py-2.5 pl-10 pr-3 text-white placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-              aria-label="Search"
-            />
-          </div>
-        </form>
+        <SearchAutocomplete
+          jobs={jobs}
+          inventory={inventory}
+          isAdmin={isAdmin}
+          searchInput={searchInput}
+          onSearchInputChange={setSearchInput}
+          onSubmit={handleSearchSubmit}
+          onNavigateDirect={onNavigate}
+        />
 
         <section aria-labelledby="quick-actions-heading">
-          <h2
-            id="quick-actions-heading"
-            className="mb-4 text-lg font-bold tracking-tight text-white"
-          >
-            Quick Actions
-          </h2>
-          <ul className="grid grid-cols-2 gap-3" role="list">
-            {visibleQuickActions.map((action) => (
-              <li key={action.key} className="min-w-0">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="quick-actions-heading" className="text-lg font-bold tracking-tight text-white">
+              Quick Actions
+            </h2>
+            <div className="flex items-center gap-2">
+              {isEditingActions && (
                 <button
                   type="button"
-                  onClick={action.onClick}
-                  className={`${quickActionButtonBaseClassName} ${action.cardClassName}`}
-                  aria-label={action.ariaLabel}
+                  onClick={resetCustomization}
+                  className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`material-symbols-outlined text-3xl ${action.iconClassName}`}
-                  >
-                    {action.icon}
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">
+                    restart_alt
                   </span>
-                  <div>
-                    <p className="font-bold text-white">{action.title}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                      {action.subtitle}
-                    </p>
-                  </div>
+                  Reset
                 </button>
-              </li>
-            ))}
+              )}
+              <button
+                type="button"
+                onClick={() => setIsEditingActions(!isEditingActions)}
+                className={`flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium transition-colors hover:bg-white/10 ${isEditingActions ? 'text-primary' : 'text-slate-400 hover:text-white'}`}
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">
+                  {isEditingActions ? 'check' : 'edit'}
+                </span>
+                {isEditingActions ? 'Done' : 'Edit'}
+              </button>
+            </div>
+          </div>
+          <ul
+            className={isEditingActions ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'}
+            role="list"
+          >
+            {visibleQuickActions.map((action, idx) => {
+              const isHidden = navState.hiddenQuickActions.includes(action.key);
+
+              if (isEditingActions) {
+                return (
+                  <li
+                    key={action.key}
+                    className={`flex items-center gap-2 rounded-sm border p-2 transition-colors ${isHidden ? 'border-white/5 bg-white/[0.02] opacity-50' : `${action.cardClassName}`}`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`material-symbols-outlined text-xl ${isHidden ? 'text-slate-500' : action.iconClassName}`}
+                    >
+                      {action.icon}
+                    </span>
+                    <span
+                      className={`flex-1 text-sm font-bold ${isHidden ? 'text-slate-500 line-through' : 'text-white'}`}
+                    >
+                      {action.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleHidden(action.key)}
+                      className="flex size-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                      aria-label={isHidden ? `Show ${action.title}` : `Hide ${action.title}`}
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-lg">
+                        {isHidden ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveAction(action.key, -1)}
+                      disabled={idx === 0}
+                      className="flex size-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
+                      aria-label={`Move ${action.title} up`}
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-lg">
+                        arrow_upward
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveAction(action.key, 1)}
+                      disabled={idx === visibleQuickActions.length - 1}
+                      className="flex size-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
+                      aria-label={`Move ${action.title} down`}
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-lg">
+                        arrow_downward
+                      </span>
+                    </button>
+                  </li>
+                );
+              }
+
+              return (
+                <li key={action.key} className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={action.onClick}
+                    className={`${quickActionButtonBaseClassName} ${action.cardClassName}`}
+                    aria-label={action.ariaLabel}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`material-symbols-outlined text-3xl ${action.iconClassName}`}
+                    >
+                      {action.icon}
+                    </span>
+                    <div>
+                      <p className="font-bold text-white">{action.title}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                        {action.subtitle}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </main>

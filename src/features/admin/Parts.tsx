@@ -94,6 +94,7 @@ const Parts: React.FC<PartsProps> = ({
 
   useEffect(() => {
     loadParts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

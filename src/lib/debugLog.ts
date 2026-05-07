@@ -17,6 +17,7 @@ export function debugLog(payload: Record<string, unknown>): void {
       }).then((r) => (r.ok ? r : Promise.reject(new Error('not ok'))))
     )
   ).catch(() => {});
+  /* eslint-disable no-console */
   if (typeof console !== 'undefined' && console.log) {
     console.log('[WTP_DEBUG]', body);
   }

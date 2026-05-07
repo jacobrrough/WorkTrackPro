@@ -91,8 +91,8 @@ export function computePartDerivedMaterialTotal(
  * materialUpcharge comes from Admin Settings (Organization) and controls the displayed total.
  */
 export function computeMaterialCosts({
-  linkedPart,
-  dashQuantities,
+  _linkedPart,
+  _dashQuantities,
   inventoryById,
   jobInventoryItems,
   materialUpcharge,
