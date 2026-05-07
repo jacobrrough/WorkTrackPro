@@ -98,6 +98,27 @@ export const encryptionKeyService = {
     return new Set((data ?? []).map((r: Record<string, unknown>) => r.user_id as string));
   },
 
+  async updateWrappedKey(wrappedData: {
+    encryptedPrivateKey: string;
+    keySalt: string;
+    keyIv: string;
+  }): Promise<void> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    const { error } = await supabase
+      .from('user_encryption_keys')
+      .update({
+        encrypted_private_key: wrappedData.encryptedPrivateKey,
+        key_salt: wrappedData.keySalt,
+        key_iv: wrappedData.keyIv,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id);
+    if (error) throw error;
+  },
+
   async hasKeys(): Promise<boolean> {
     const {
       data: { user },

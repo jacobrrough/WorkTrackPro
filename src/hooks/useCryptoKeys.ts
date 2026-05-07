@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
+import {
+  generateAndWrapKeyPair,
+  unlockPrivateKey,
+  rewrapPrivateKey,
+  importPublicKey,
+} from '@/lib/crypto';
 import { cryptoKeyCache } from '@/lib/crypto/keyCache';
 import { encryptionKeyService } from '@/services/api/encryptionKeys';
 
@@ -72,10 +77,59 @@ export function useCryptoKeys(userId: string | undefined) {
     }
   }, []);
 
+  const recoverWithOldPassword = useCallback(
+    async (oldPassword: string, currentPassword: string) => {
+      try {
+        const keys = await encryptionKeyService.getMyKeys();
+        if (!keys) {
+          setKeyState({ status: 'not_setup' });
+          return false;
+        }
+        const privateKey = await unlockPrivateKey(
+          keys.encryptedPrivateKey,
+          keys.keySalt,
+          keys.keyIv,
+          oldPassword
+        );
+        const newWrapped = await rewrapPrivateKey(privateKey, currentPassword);
+        await encryptionKeyService.updateWrappedKey(newWrapped);
+        const publicKey = await importPublicKey(keys.publicKey);
+        cryptoKeyCache.setIdentityKeys(privateKey, publicKey);
+        setKeyState({ status: 'unlocked' });
+        return true;
+      } catch {
+        setKeyState({ status: 'error', message: 'Recovery failed — check your previous password' });
+        return false;
+      }
+    },
+    []
+  );
+
+  const regenerateKeys = useCallback(async (password: string) => {
+    try {
+      const keyData = await generateAndWrapKeyPair(password);
+      await encryptionKeyService.upsertKeyPair(keyData);
+      const privateKey = await unlockPrivateKey(
+        keyData.encryptedPrivateKey,
+        keyData.keySalt,
+        keyData.keyIv,
+        password
+      );
+      const publicKey = await importPublicKey(keyData.publicKey);
+      cryptoKeyCache.setIdentityKeys(privateKey, publicKey);
+      setKeyState({ status: 'unlocked' });
+    } catch (e) {
+      setKeyState({
+        status: 'error',
+        message: e instanceof Error ? e.message : 'Key regeneration failed',
+      });
+    }
+  }, []);
+
   const lock = useCallback(() => {
     cryptoKeyCache.clear();
     setKeyState({ status: 'locked' });
   }, []);
 
-  return { keyState, generateKeys, unlock, lock };
+  return { keyState, generateKeys, unlock, lock, recoverWithOldPassword, regenerateKeys };
 }
