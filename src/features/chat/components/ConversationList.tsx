@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { Conversation } from '@/core/types';
+import { useUnreadNotificationCount } from '@/hooks/useSystemNotifications';
 import { ConversationItem } from './ConversationItem';
+
+export const SYSTEM_NOTIFICATIONS_ID = '__system_notifications__';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -20,6 +23,8 @@ export function ConversationList({
   onNewConversation,
 }: ConversationListProps) {
   const [search, setSearch] = useState('');
+
+  const { data: unreadCount } = useUnreadNotificationCount(true);
 
   const filtered = search.trim()
     ? conversations.filter((c) => (c.name ?? '').toLowerCase().includes(search.toLowerCase()))
@@ -55,6 +60,34 @@ export function ConversationList({
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* Pinned system notifications entry */}
+        <button
+          type="button"
+          onClick={() => onSelect(SYSTEM_NOTIFICATIONS_ID)}
+          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+            activeConversationId === SYSTEM_NOTIFICATIONS_ID
+              ? 'border-l-2 border-primary bg-primary/10'
+              : 'border-l-2 border-transparent hover:bg-white/5'
+          }`}
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+            <span className="material-symbols-outlined text-xl">notifications</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-medium text-white">Notifications</span>
+              {(unreadCount ?? 0) > 0 && (
+                <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+                  {(unreadCount ?? 0) > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className="truncate text-xs text-slate-400">System alerts &amp; mentions</span>
+          </div>
+        </button>
+
+        <div className="mx-4 border-b border-white/5" />
+
         {isLoading && (
           <div className="flex items-center justify-center py-8">
             <p className="text-sm text-slate-400">Loading conversations...</p>

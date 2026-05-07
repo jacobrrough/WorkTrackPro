@@ -392,6 +392,31 @@ export const subscriptions = {
     };
   },
 
+  subscribeToSystemNotifications(
+    userId: string,
+    callback: (action: string, record: Record<string, unknown>) => void
+  ): () => void {
+    const channel = supabase
+      .channel(`system-notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'system_notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const record = payload.new as Record<string, unknown>;
+          if (record) callback('create', record);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
   unsubscribeAll(): void {
     supabase.removeAllChannels();
   },

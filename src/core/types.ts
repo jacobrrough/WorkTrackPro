@@ -593,3 +593,28 @@ export interface MessageAttachment {
   mimeType: string;
   decryptedUrl?: string;
 }
+
+// ── System Notifications ───────────────────────────────
+
+export type SystemNotificationType =
+  | 'mention'
+  | 'status_change'
+  | 'assignment'
+  | 'unassignment'
+  | 'low_stock'
+  | 'rush'
+  | 'overdue'
+  | 'delivery'
+  | 'po_received';
+
+export interface SystemNotification {
+  id: string;
+  userId: string;
+  type: SystemNotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  metadata?: Record<string, unknown>;
+  readAt?: string;
+  createdAt: string;
+}

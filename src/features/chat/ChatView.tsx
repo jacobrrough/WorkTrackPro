@@ -3,16 +3,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/AppContext';
 import { ChatProvider, useChat } from './ChatContext';
 import { EncryptionSetup } from './components/EncryptionSetup';
-import { ConversationList } from './components/ConversationList';
+import { ConversationList, SYSTEM_NOTIFICATIONS_ID } from './components/ConversationList';
 import { ChatWindow } from './components/ChatWindow';
+import { SystemNotificationsView } from './components/SystemNotificationsView';
 import { NewConversationModal } from './components/NewConversationModal';
 import { useChatMutations } from '@/hooks/useChatMutations';
+import { useSystemNotificationSubscription } from '@/hooks/useSystemNotifications';
+import type { ViewState } from '@/core/types';
 
 interface ChatViewInnerProps {
   conversationId?: string;
+  onNavigate?: (view: ViewState, id?: string) => void;
 }
 
-function ChatViewInner({ conversationId: initialConversationId }: ChatViewInnerProps) {
+function ChatViewInner({ conversationId: initialConversationId, onNavigate }: ChatViewInnerProps) {
   const { currentUser } = useAuth();
   const { users } = useApp();
   const {
@@ -27,6 +31,8 @@ function ChatViewInner({ conversationId: initialConversationId }: ChatViewInnerP
   } = useChat();
   const { createDirectConversation, createGroupConversation } = useChatMutations();
   const [showNewModal, setShowNewModal] = useState(false);
+
+  useSystemNotificationSubscription(currentUser?.id ?? null, keyState.status === 'unlocked');
 
   React.useEffect(() => {
     if (initialConversationId && !activeConversationId) {
@@ -95,7 +101,17 @@ function ChatViewInner({ conversationId: initialConversationId }: ChatViewInnerP
 
       {/* Chat window — always visible on desktop, replaces list on mobile */}
       <main className={`flex-1 flex-col ${showChat ? 'flex' : 'hidden md:flex'}`}>
-        {activeConversationId ? (
+        {activeConversationId === SYSTEM_NOTIFICATIONS_ID ? (
+          <SystemNotificationsView
+            onBack={() => setActiveConversationId(null)}
+            onNavigate={(link) => {
+              if (onNavigate && link) {
+                const [linkView, linkId] = link.split(':');
+                if (linkView && linkId) onNavigate(linkView as ViewState, linkId);
+              }
+            }}
+          />
+        ) : activeConversationId ? (
           <ChatWindow
             conversationId={activeConversationId}
             currentUserId={currentUser.id}
@@ -131,12 +147,13 @@ function ChatViewInner({ conversationId: initialConversationId }: ChatViewInnerP
 
 interface ChatViewProps {
   conversationId?: string;
+  onNavigate?: (view: ViewState, id?: string) => void;
 }
 
-export default function ChatView({ conversationId }: ChatViewProps) {
+export default function ChatView({ conversationId, onNavigate }: ChatViewProps) {
   return (
     <ChatProvider>
-      <ChatViewInner conversationId={conversationId} />
+      <ChatViewInner conversationId={conversationId} onNavigate={onNavigate} />
     </ChatProvider>
   );
 }

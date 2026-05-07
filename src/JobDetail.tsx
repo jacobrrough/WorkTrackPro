@@ -271,7 +271,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   calculateAvailable,
 }) => {
   const clockInCtx = useClockIn();
-  const { advanceJobToNextStatus } = useApp();
+  const { advanceJobToNextStatus, users } = useApp();
   const { showToast } = useToast();
   const handleClockIn = useCallback(async () => {
     const applyResult = (r: ClockPunchResult) => {
@@ -1257,11 +1257,34 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleSubmitComment = async () => {
     if (!newComment.trim() || isSubmitting) return;
     setIsSubmitting(true);
+    const commentText = newComment.trim();
     try {
-      const comment = await onAddComment(job.id, newComment.trim());
+      const comment = await onAddComment(job.id, commentText);
       if (comment) {
         setNewComment('');
-        // Comment added successfully - the parent will refresh the job data
+        const mentionPattern = /@([\w][\w\s]*[\w]|[\w]+)/g;
+        let match: RegExpExecArray | null;
+        const mentionedNames = new Set<string>();
+        while ((match = mentionPattern.exec(commentText)) !== null) {
+          mentionedNames.add(match[1].toLowerCase());
+        }
+        if (mentionedNames.size > 0 && users.length > 0) {
+          const { systemNotificationService } = await import('@/services/api/systemNotifications');
+          for (const user of users) {
+            const name = (user.name ?? user.email).toLowerCase();
+            if (user.id !== currentUser.id && mentionedNames.has(name)) {
+              systemNotificationService
+                .notifyMention({
+                  mentionedUserId: user.id,
+                  jobId: job.id,
+                  commenterName: currentUser.name ?? currentUser.email,
+                  jobCode: job.jobCode,
+                  commentPreview: commentText,
+                })
+                .catch((err) => console.error('Mention notification failed:', err));
+            }
+          }
+        }
       } else {
         console.error('Failed to add comment - no comment returned');
       }
@@ -3660,6 +3683,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 onUpdateComment={handleUpdateComment}
                 onDeleteComment={handleDeleteComment}
                 formatCommentTime={formatCommentTime}
+                users={users}
               />
             </div>
           </>
