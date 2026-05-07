@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const user = await authService.login(email, password);
         setCurrentUser(user);
-        void tryUnlockKeys(password);
+        await tryUnlockKeys(password);
         return true;
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Login failed';

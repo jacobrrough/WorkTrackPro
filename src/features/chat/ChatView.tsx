@@ -21,6 +21,8 @@ function ChatViewInner({ conversationId: initialConversationId }: ChatViewInnerP
     keyState,
     generateKeys,
     unlockKeys,
+    recoverKeys,
+    regenerateKeys,
     conversations,
   } = useChat();
   const { createDirectConversation, createGroupConversation } = useChatMutations();
@@ -49,7 +51,13 @@ function ChatViewInner({ conversationId: initialConversationId }: ChatViewInnerP
   ) {
     return (
       <div className="min-h-screen bg-background-dark">
-        <EncryptionSetup keyState={keyState} onGenerate={generateKeys} onUnlock={unlockKeys} />
+        <EncryptionSetup
+          keyState={keyState}
+          onGenerate={generateKeys}
+          onUnlock={unlockKeys}
+          onRecover={recoverKeys}
+          onRegenerate={regenerateKeys}
+        />
       </div>
     );
   }

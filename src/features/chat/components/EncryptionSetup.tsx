@@ -5,15 +5,35 @@ interface EncryptionSetupProps {
   keyState: KeyState;
   onGenerate: (password: string) => Promise<void>;
   onUnlock: (password: string) => Promise<boolean>;
+  onRecover: (oldPassword: string, currentPassword: string) => Promise<boolean>;
+  onRegenerate: (password: string) => Promise<void>;
 }
 
-export function EncryptionSetup({ keyState, onGenerate, onUnlock }: EncryptionSetupProps) {
+export function EncryptionSetup({
+  keyState,
+  onGenerate,
+  onUnlock,
+  onRecover,
+  onRegenerate,
+}: EncryptionSetupProps) {
   const [password, setPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'normal' | 'recover' | 'regenerate'>('normal');
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   const isSetup = keyState.status === 'not_setup';
   const isLocked = keyState.status === 'locked';
+  const isError = keyState.status === 'error';
+
+  const switchMode = (newMode: 'normal' | 'recover' | 'regenerate') => {
+    setMode(newMode);
+    setError(null);
+    setPassword('');
+    setOldPassword('');
+    setConfirmRegenerate(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +41,16 @@ export function EncryptionSetup({ keyState, onGenerate, onUnlock }: EncryptionSe
     setLoading(true);
     setError(null);
     try {
-      if (isSetup) {
+      if (mode === 'recover') {
+        if (!oldPassword.trim()) return;
+        const ok = await onRecover(oldPassword, password);
+        if (!ok) setError('Could not decrypt with that password. Please check and try again.');
+      } else if (mode === 'regenerate') {
+        if (!confirmRegenerate) return;
+        await onRegenerate(password);
+      } else if (isSetup) {
         await onGenerate(password);
-      } else if (isLocked) {
+      } else if (isLocked || isError) {
         const ok = await onUnlock(password);
         if (!ok) setError('Incorrect password. Please try again.');
       }
@@ -34,27 +61,69 @@ export function EncryptionSetup({ keyState, onGenerate, onUnlock }: EncryptionSe
     }
   };
 
+  const title =
+    mode === 'recover'
+      ? 'Recover Chat Keys'
+      : mode === 'regenerate'
+        ? 'Regenerate Chat Keys'
+        : isSetup
+          ? 'Set Up Encryption'
+          : 'Unlock Chat';
+
+  const subtitle =
+    mode === 'recover'
+      ? 'Enter your previous password to recover your encryption keys, then re-encrypt them with your current password.'
+      : mode === 'regenerate'
+        ? 'Generate new encryption keys using your current password. You will lose access to previous messages.'
+        : isSetup
+          ? 'Enter your account password to enable end-to-end encrypted messaging.'
+          : 'Enter your password to decrypt your chat keys.';
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-lg border border-white/10 bg-white/5 p-6">
         <div className="mb-4 flex items-center gap-3">
-          <span className="material-symbols-outlined text-3xl text-primary">lock</span>
+          <span className="material-symbols-outlined text-3xl text-primary">
+            {mode === 'regenerate' ? 'restart_alt' : 'lock'}
+          </span>
           <div>
-            <h2 className="text-lg font-bold text-white">
-              {isSetup ? 'Set Up Encryption' : 'Unlock Chat'}
-            </h2>
-            <p className="text-sm text-slate-400">
-              {isSetup
-                ? 'Enter your account password to enable end-to-end encrypted messaging.'
-                : 'Enter your password to decrypt your chat keys.'}
-            </p>
+            <h2 className="text-lg font-bold text-white">{title}</h2>
+            <p className="text-sm text-slate-400">{subtitle}</p>
           </div>
         </div>
 
+        {mode !== 'normal' && (
+          <button
+            type="button"
+            onClick={() => switchMode('normal')}
+            className="mb-3 flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+          >
+            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            Back
+          </button>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'recover' && (
+            <div>
+              <label htmlFor="old-password" className="mb-1 block text-sm text-slate-300">
+                Previous Password
+              </label>
+              <input
+                id="old-password"
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                placeholder="Password before the reset"
+                autoFocus
+              />
+            </div>
+          )}
+
           <div>
             <label htmlFor="encryption-password" className="mb-1 block text-sm text-slate-300">
-              Password
+              {mode === 'recover' ? 'Current Password' : 'Password'}
             </label>
             <input
               id="encryption-password"
@@ -62,24 +131,76 @@ export function EncryptionSetup({ keyState, onGenerate, onUnlock }: EncryptionSe
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
-              placeholder="Your account password"
-              autoFocus
+              placeholder={
+                mode === 'recover' ? 'Your new account password' : 'Your account password'
+              }
+              autoFocus={mode !== 'recover'}
             />
           </div>
 
+          {mode === 'regenerate' && (
+            <label className="flex items-start gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={confirmRegenerate}
+                onChange={(e) => setConfirmRegenerate(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              I understand I will lose access to old messages
+            </label>
+          )}
+
           {error && <p className="text-sm text-red-400">{error}</p>}
-          {keyState.status === 'error' && (
+          {isError && mode === 'normal' && (
             <p className="text-sm text-red-400">{keyState.message}</p>
           )}
 
           <button
             type="submit"
-            disabled={loading || !password.trim()}
+            disabled={
+              loading ||
+              !password.trim() ||
+              (mode === 'recover' && !oldPassword.trim()) ||
+              (mode === 'regenerate' && !confirmRegenerate)
+            }
             className="w-full rounded-sm bg-primary px-4 py-2 font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? 'Processing...' : isSetup ? 'Enable Encryption' : 'Unlock'}
+            {loading
+              ? 'Processing...'
+              : mode === 'recover'
+                ? 'Recover Keys'
+                : mode === 'regenerate'
+                  ? 'Regenerate Keys'
+                  : isSetup
+                    ? 'Enable Encryption'
+                    : 'Unlock'}
           </button>
         </form>
+
+        {isError && mode === 'normal' && (
+          <div className="mt-4 space-y-3 rounded-sm border border-amber-500/20 bg-amber-500/5 p-3">
+            <p className="text-sm text-amber-300">
+              This usually happens after a password reset. Your chat keys were encrypted with your
+              previous password.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => switchMode('recover')}
+                className="w-full rounded-sm border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary hover:bg-primary/20"
+              >
+                I know my previous password
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode('regenerate')}
+                className="w-full rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
+              >
+                Start fresh (lose old message access)
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 flex items-start gap-2 rounded-sm border border-primary/20 bg-primary/5 p-3">
           <span className="material-symbols-outlined text-sm text-primary">shield</span>

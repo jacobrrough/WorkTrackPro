@@ -10,6 +10,8 @@ interface ChatContextType {
   keyState: KeyState;
   generateKeys: (password: string) => Promise<void>;
   unlockKeys: (password: string) => Promise<boolean>;
+  recoverKeys: (oldPassword: string, currentPassword: string) => Promise<boolean>;
+  regenerateKeys: (password: string) => Promise<void>;
   conversations: ReturnType<typeof useChatConversations>;
 }
 
@@ -18,7 +20,9 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const { keyState, generateKeys, unlock } = useCryptoKeys(currentUser?.id);
+  const { keyState, generateKeys, unlock, recoverWithOldPassword, regenerateKeys } = useCryptoKeys(
+    currentUser?.id
+  );
 
   const isReady = keyState.status === 'unlocked' && !!currentUser?.isApproved;
   const conversations = useChatConversations(isReady);
@@ -36,9 +40,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       keyState,
       generateKeys,
       unlockKeys: unlock,
+      recoverKeys: recoverWithOldPassword,
+      regenerateKeys,
       conversations,
     }),
-    [activeConversationId, handleSetActive, keyState, generateKeys, unlock, conversations]
+    [
+      activeConversationId,
+      handleSetActive,
+      keyState,
+      generateKeys,
+      unlock,
+      recoverWithOldPassword,
+      regenerateKeys,
+      conversations,
+    ]
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
