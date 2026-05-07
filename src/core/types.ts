@@ -82,6 +82,7 @@ export type ViewState =
   | 'trello-import'
   | 'boards'
   | 'board-detail'
+  | 'board-card-detail'
   | 'chat'
   | 'chat-conversation';
 
