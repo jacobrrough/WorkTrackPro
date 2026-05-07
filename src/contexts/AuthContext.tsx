@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { User } from '@/core/types';
-import { authService } from '@/services/api/auth';
+import { authService, withTimeout } from '@/services/api/auth';
 import { supabase } from '@/services/api/supabaseClient';
 import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
 import { cryptoKeyCache } from '@/lib/crypto/keyCache';
@@ -136,8 +136,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     reloadPending.current = true;
     userInitiatedLogout.current = true; // prevents onAuthStateChange from scheduling a second reload
     sessionStorage.setItem('wtp_session_expired', '1');
-    await supabase.auth.signOut({ scope: 'local' }); // clears tokens from localStorage, no server call needed
-    window.location.reload();
+    try {
+      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 3000); // clears tokens from localStorage, no server call needed
+    } catch (e) {
+      console.warn('hardLogout: signOut failed, reloading anyway', e);
+    } finally {
+      window.location.reload();
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -187,9 +192,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'TOKEN_REFRESHED' && session?.user) {
-        authService.checkAuth().then((user) => {
-          if (user) setCurrentUser(user);
-        });
+        authService
+          .checkAuth()
+          .then((user) => {
+            if (user) setCurrentUser(user);
+          })
+          .catch((e) => console.warn('checkAuth after TOKEN_REFRESHED failed:', e));
       }
     });
     return () => subscription.unsubscribe();
@@ -248,7 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchstart', updateActivity);
       window.removeEventListener('scroll', updateActivity);
     };
-  }, [currentUser, logout, hardLogout]);
+  }, [currentUser, hardLogout]);
 
   // Visibility check: fires when the worker brings the tab into focus.
   // Reads the session from the browser's local cache (no network call unless
@@ -259,10 +267,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState !== 'visible') return;
       if (!hasBeenAuthenticated.current) return; // not logged in this session
       if (reloadPending.current) return; // reload already on its way
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) await hardLogout();
+      try {
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession(), 5000);
+        if (!session) await hardLogout();
+      } catch {
+        // Timeout or network error on visibility check — treat as session lost.
+        await hardLogout();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
