@@ -3114,53 +3114,6 @@ function VariantQuoteMini({
   );
 }
 
-interface MaterialsListProps {
-  materials: PartMaterial[];
-  onUpdate: () => void;
-}
-
-// Unused alternate list component; kept for potential future use
-export const _MaterialsList: React.FC<MaterialsListProps> = ({ materials, onUpdate }) => {
-  const { showToast } = useToast();
-  const handleDelete = async (id: string) => {
-    try {
-      await partsService.deleteMaterial(id);
-      showToast('Material removed', 'success');
-      onUpdate();
-    } catch {
-      showToast('Failed to delete material', 'error');
-    }
-  };
-  const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 1;
-  return (
-    <div className="space-y-2">
-      {materials.map((material) => (
-        <div
-          key={material.id}
-          className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2"
-        >
-          <div>
-            <span className="text-sm font-medium text-white">
-              {material.inventoryName || 'Unknown'}
-            </span>
-            <span className="ml-2 text-xs text-slate-400">
-              {qty(material)} {material.unit}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleDelete(material.id)}
-            className="text-red-400 hover:text-red-300"
-            aria-label="Remove material"
-          >
-            <span className="material-symbols-outlined text-lg">delete</span>
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-};
-
 interface AddVariantInlineProps {
   existingSuffixes: string[];
   onAdd: (

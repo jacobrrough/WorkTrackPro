@@ -1853,8 +1853,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     setAttachmentAdminOverrides((prev) => ({ ...prev, [attachmentId]: isAdminOnly }));
     setPendingAttachmentToggleCount((prev) => prev + 1);
 
-    let operation!: Promise<void>;
-    operation = (async () => {
+    const ref: { p?: Promise<void> } = {};
+    const operation: Promise<void> = (async () => {
       try {
         const success = await onUpdateAttachmentAdminOnly(attachmentId, isAdminOnly);
         if (success && onReloadJob) {
@@ -1886,10 +1886,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         });
         showToast('Failed to update Admin-only setting', 'error');
       } finally {
-        pendingAttachmentTogglesRef.current.delete(operation);
+        if (ref.p) pendingAttachmentTogglesRef.current.delete(ref.p);
         setPendingAttachmentToggleCount((prev) => Math.max(0, prev - 1));
       }
     })();
+    ref.p = operation;
 
     pendingAttachmentTogglesRef.current.add(operation);
     await operation;
