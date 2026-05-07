@@ -25,13 +25,16 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
   const { sendTextMessage, sendFileMessage, markRead } = useChatMutations();
 
   const ensureConversationKey = useCallback(async (): Promise<string> => {
+    // To decrypt our copy of the conversation key we need the conversation
+    // creator's public key. The creator encrypted every member's copy using
+    // ECDH(creatorPrivate, memberPublic), so to decrypt we derive the same
+    // shared secret via ECDH(myPrivate, creatorPublic).
+    const creatorId = convData?.conversation.createdBy;
+
     const cached = cryptoKeyCache.getConversationKey(conversationId);
     if (cached) {
-      const members = convData?.members ?? [];
-      const creator = members.find((m) => m.userId !== currentUserId);
-      const creatorPubKey =
-        creator?.userId && (await encryptionKeyService.getPublicKey(creator.userId));
-      return creatorPubKey ?? '';
+      const pubKey = creatorId ? await encryptionKeyService.getPublicKey(creatorId) : null;
+      return pubKey ?? '';
     }
 
     const privateKey = cryptoKeyCache.getPrivateKey();
@@ -42,11 +45,8 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
     ).chatService.getMyConversationKey(conversationId);
     if (!keyData) throw new Error('No conversation key');
 
-    const members = convData?.members ?? [];
-    const otherMember = members.find((m) => m.userId !== currentUserId);
-    const creatorPubKey = otherMember
-      ? await encryptionKeyService.getPublicKey(otherMember.userId)
-      : null;
+    if (!creatorId) throw new Error('Cannot determine conversation creator');
+    const creatorPubKey = await encryptionKeyService.getPublicKey(creatorId);
     if (!creatorPubKey) throw new Error('Cannot find creator public key');
 
     const convKey = await decryptConversationKey(
