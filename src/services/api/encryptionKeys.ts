@@ -84,6 +84,20 @@ export const encryptionKeyService = {
     return mapKeyRow(row as Record<string, unknown>);
   },
 
+  /** Returns the set of user IDs (from the given list) that have encryption keys. */
+  async getUserIdsWithKeys(userIds: string[]): Promise<Set<string>> {
+    if (userIds.length === 0) return new Set();
+    const { data, error } = await supabase
+      .from('user_encryption_keys')
+      .select('user_id')
+      .in('user_id', userIds);
+    if (error) {
+      console.error('encryptionKeyService.getUserIdsWithKeys:', error.message);
+      return new Set();
+    }
+    return new Set((data ?? []).map((r: Record<string, unknown>) => r.user_id as string));
+  },
+
   async hasKeys(): Promise<boolean> {
     const {
       data: { user },
