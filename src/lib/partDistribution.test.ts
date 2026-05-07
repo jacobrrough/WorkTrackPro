@@ -55,6 +55,7 @@ describe('getEffectiveSetPricingForDisplay', () => {
       id: 'p1',
       partNumber: 'P-001',
       name: 'Single',
+      rev: '01',
       pricePerSet: 100,
       laborHours: 2,
       requiresCNC: true,
@@ -73,6 +74,7 @@ describe('getEffectiveSetPricingForDisplay', () => {
       id: 'p1',
       partNumber: 'P-002',
       name: 'Set',
+      rev: '01',
       setComposition: { '-01': 1, '-02': 2 },
       variants: [
         makeVariant('v1', '01', { pricePerVariant: 60, laborHours: 1 }),

@@ -205,30 +205,18 @@ export const checklistHistoryService = {
       return [];
     }
 
-    return (data ?? []).map(
-      (row: {
-        id: string;
-        checklist_id: string;
-        user_id: string;
-        item_index: number;
-        item_text?: string;
-        checked: boolean;
-        created_at: string;
-        checklists?: { status?: JobStatus };
-        profiles?: { name?: string; initials?: string };
-      }) => ({
-        id: row.id,
-        checklist: row.checklist_id,
-        user: row.user_id,
-        userName: row.profiles?.name,
-        userInitials: row.profiles?.initials,
-        itemIndex: row.item_index,
-        itemText: row.item_text ?? '',
-        checked: row.checked,
-        timestamp: row.created_at,
-        status: row.checklists?.status,
-      })
-    );
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      checklist: row.checklist_id,
+      user: row.user_id,
+      userName: row.profiles?.name,
+      userInitials: row.profiles?.initials,
+      itemIndex: row.item_index,
+      itemText: row.item_text ?? '',
+      checked: row.checked,
+      timestamp: row.created_at,
+      status: row.checklists?.status,
+    }));
   },
 
   async create(data: {

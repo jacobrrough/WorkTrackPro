@@ -237,7 +237,7 @@ export function calculatePartQuote(
  * Calculate quote for a single variant (e.g. quantity of -01).
  */
 export function calculateVariantQuote(
-  partNumber: string,
+  _partNumber: string,
   variant: PartVariant & { materials?: PartMaterial[] },
   quantity: number,
   inventoryItems: InventoryItem[],

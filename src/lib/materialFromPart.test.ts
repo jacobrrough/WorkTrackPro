@@ -22,6 +22,7 @@ const makeMasterPart = (
   id: 'part-master',
   partNumber: 'SK-9000',
   name: 'Master Part',
+  rev: '01',
   materials,
   variants: [],
 });

@@ -1004,8 +1004,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   ]);
 
   // Search for part by part number (reserved for future part search UI)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handlePartNumberSearch = useCallback(async () => {
+  const _handlePartNumberSearch = useCallback(async () => {
     if (!partNumberSearch.trim()) {
       setLinkedPart(null);
       setEditForm((prev) => ({ ...prev, partNumber: '', variantSuffix: '' }));
@@ -1037,6 +1036,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             description: partDescription,
             laborHours: laborHours,
           });
+          if (!part) throw new Error('Failed to create part');
           showToast(`Created new part: ${part.name}`, 'success');
         } catch (createError: unknown) {
           const err = createError as { message?: string; code?: string };
@@ -1105,6 +1105,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     autoJobName,
     showToast,
   ]);
+
+  void _handlePartNumberSearch;
 
   // Reset edit form when job changes (use stable deps to avoid infinite loop).
   // Skip when user is editing so we never overwrite in-progress edits (e.g. after save, job updates and we want to show saved values only when not editing).
@@ -1570,7 +1572,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         return;
       }
       const currentParts: JobPartLink[] =
-        job.parts?.length > 0
+        job.parts && job.parts.length > 0
           ? job.parts
           : job.partId
             ? [
@@ -1851,7 +1853,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     setAttachmentAdminOverrides((prev) => ({ ...prev, [attachmentId]: isAdminOnly }));
     setPendingAttachmentToggleCount((prev) => prev + 1);
 
-    const operation = (async () => {
+    const ref: { p?: Promise<void> } = {};
+    const operation: Promise<void> = (async () => {
       try {
         const success = await onUpdateAttachmentAdminOnly(attachmentId, isAdminOnly);
         if (success && onReloadJob) {
@@ -1883,10 +1886,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         });
         showToast('Failed to update Admin-only setting', 'error');
       } finally {
-        pendingAttachmentTogglesRef.current.delete(operation);
+        if (ref.p) pendingAttachmentTogglesRef.current.delete(ref.p);
         setPendingAttachmentToggleCount((prev) => Math.max(0, prev - 1));
       }
     })();
+    ref.p = operation;
 
     pendingAttachmentTogglesRef.current.add(operation);
     await operation;
@@ -2365,7 +2369,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </h3>
                       )}
                       {partIdx === 0 &&
-                      linkedPart.setComposition &&
+                      linkedPart?.setComposition &&
                       Object.keys(linkedPart.setComposition).filter((k) => k !== '_').length > 0 ? (
                         <div className="mb-2 flex flex-wrap items-center gap-3">
                           <span className="text-[11px] text-slate-400">Input by:</span>
@@ -2399,7 +2403,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       ) : null}
                       {partIdx === 0 &&
                       quantityInputMode === 'sets' &&
-                      linkedPart.setComposition &&
+                      linkedPart?.setComposition &&
                       Object.keys(linkedPart.setComposition).length > 0 ? (
                         <div>
                           <label className="mb-0.5 block text-[11px] text-slate-400">
@@ -2712,7 +2716,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   ) : (
                     <ul className="space-y-1.5">
                       {job.inventoryItems.map((item) => {
-                        const invItem = inventoryById.get(item.inventoryId);
+                        const invItem = item.inventoryId
+                          ? inventoryById.get(item.inventoryId)
+                          : undefined;
                         return (
                           <li
                             key={item.id}
@@ -2731,11 +2737,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               <span className="ml-2 text-[10px] text-slate-400">
                                 {item.quantity} {item.unit}
                               </span>
-                              {isMaterialAuto(item.inventoryId, item.quantity) && (
-                                <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                                  auto
-                                </span>
-                              )}
+                              {item.inventoryId &&
+                                isMaterialAuto(item.inventoryId, item.quantity) && (
+                                  <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                    auto
+                                  </span>
+                                )}
                             </div>
                             <button
                               type="button"
@@ -3218,7 +3225,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             {/* Part section(s) - one block per part */}
             {(() => {
               const viewParts: JobPartLink[] =
-                job.parts?.length > 0
+                job.parts && job.parts.length > 0
                   ? job.parts
                   : job.partId
                     ? [

@@ -37,7 +37,8 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
       // Always ensure checklist exists for current column/status.
       // If no template exists, service creates fallback checklist with one "MOVE" item.
       if (!matchingChecklist) {
-        matchingChecklist = await checklistService.ensureJobChecklistForStatus(jobId, jobStatus);
+        matchingChecklist =
+          (await checklistService.ensureJobChecklistForStatus(jobId, jobStatus)) ?? undefined;
       }
 
       if (matchingChecklist) {
@@ -245,7 +246,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                           <p className="text-xs text-slate-400">
                             {new Date(record.timestamp).toLocaleString()}
                             {'status' in record && record.status
-                              ? ` · ${getStatusDisplayName(record.status)}`
+                              ? ` · ${getStatusDisplayName((record as any).status)}`
                               : ''}
                           </p>
                         </div>

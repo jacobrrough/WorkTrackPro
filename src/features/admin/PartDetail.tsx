@@ -9,6 +9,7 @@ import {
   InventoryCategory,
   getCategoryDisplayName,
   Attachment,
+  ViewState,
 } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { inventoryService } from '@/services/api/inventory';
@@ -53,7 +54,7 @@ interface PartDetailProps {
   partId: string;
   jobs?: Job[];
   shifts?: Shift[];
-  onNavigate: (view: string, params?: Record<string, string>) => void;
+  onNavigate: (view: ViewState, id?: string) => void;
   onNavigateBack: () => void;
 }
 
@@ -1064,8 +1065,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
         laborHours: part.laborHours,
         pricePerSet: part.pricePerSet,
       });
+      if (!created) throw new Error('Failed to create part');
       showToast('Part created in repository. You can now add variants and materials.', 'success');
-      onNavigate('part-detail', { partId: created.id });
+      onNavigate('part-detail', created.id);
     } catch (error) {
       showToast('Failed to create part in repository', 'error');
       console.error('Error creating part:', error);
@@ -1109,7 +1111,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     if (partId === 'new') {
       return (
         <CreatePartForm
-          onCreated={(createdId) => onNavigate('part-detail', { partId: createdId })}
+          onCreated={(createdId) => onNavigate('part-detail', createdId)}
           onCancel={onNavigateBack}
           showToast={showToast}
         />
@@ -1515,7 +1517,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
               <AddVariantInline
                 existingSuffixes={part.variants?.map((v) => v.variantSuffix) || []}
                 onAdd={handleAddVariant}
-                onRefresh={() => loadPart(true)}
+                onRefresh={() => {
+                  loadPart(true);
+                }}
                 showToast={showToast}
               />
             </div>
@@ -1970,7 +1974,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     <button
                       key={row.jobId}
                       type="button"
-                      onClick={() => onNavigate('job-detail', { jobId: row.jobId })}
+                      onClick={() => onNavigate('job-detail', row.jobId)}
                       className="flex w-full items-center justify-between rounded border border-white/10 bg-black/20 px-3 py-2 text-left text-xs transition-colors hover:border-primary/30 hover:bg-black/30"
                     >
                       <span className="font-semibold text-white">{formatJobCode(row.jobCode)}</span>
@@ -2001,7 +2005,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   <button
                     key={job.id}
                     type="button"
-                    onClick={() => onNavigate('job-detail', { jobId: job.id })}
+                    onClick={() => onNavigate('job-detail', job.id)}
                     className="flex w-full items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-white/10"
                   >
                     <div className="min-w-0 flex-1">
@@ -2051,7 +2055,7 @@ interface VariantCardProps {
   partNumber: string;
   allVariants?: PartVariant[];
   inventoryItems: InventoryItem[];
-  onNavigate?: (view: string, id?: string) => void;
+  onNavigate?: (view: ViewState, id?: string) => void;
   isEditing: boolean;
   onEdit: () => void;
   onCancel: () => void;
@@ -3109,54 +3113,6 @@ function VariantQuoteMini({
     </div>
   );
 }
-
-interface MaterialsListProps {
-  materials: PartMaterial[];
-  onUpdate: () => void;
-}
-
-// Unused alternate list component; kept for potential future use
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MaterialsList: React.FC<MaterialsListProps> = ({ materials, onUpdate }) => {
-  const { showToast } = useToast();
-  const handleDelete = async (id: string) => {
-    try {
-      await partsService.deleteMaterial(id);
-      showToast('Material removed', 'success');
-      onUpdate();
-    } catch {
-      showToast('Failed to delete material', 'error');
-    }
-  };
-  const qty = (m: PartMaterial) => m.quantityPerUnit ?? (m as { quantity?: number }).quantity ?? 1;
-  return (
-    <div className="space-y-2">
-      {materials.map((material) => (
-        <div
-          key={material.id}
-          className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2"
-        >
-          <div>
-            <span className="text-sm font-medium text-white">
-              {material.inventoryName || 'Unknown'}
-            </span>
-            <span className="ml-2 text-xs text-slate-400">
-              {qty(material)} {material.unit}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleDelete(material.id)}
-            className="text-red-400 hover:text-red-300"
-            aria-label="Remove material"
-          >
-            <span className="material-symbols-outlined text-lg">delete</span>
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 interface AddVariantInlineProps {
   existingSuffixes: string[];

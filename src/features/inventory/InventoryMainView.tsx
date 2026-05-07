@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { useToast } from '@/Toast';
@@ -55,13 +55,11 @@ const CATEGORY_OPTIONS: Array<InventoryCategory | 'all'> = [
 export default function InventoryMainView({
   inventory,
   jobs,
-  _isAdmin,
   onBack,
   filters,
   onFiltersChange,
   onAddItem,
   onCreateItem,
-  _onReloadInventory,
   onOpenDetail,
   onKanbanView,
   onQuickAdjust,

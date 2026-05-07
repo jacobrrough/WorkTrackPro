@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import { formatJobCode } from '@/lib/formatJob';
-import { getStatusDisplayName } from '@/core/types';
+import { getStatusDisplayName, type JobStatus } from '@/core/types';
 
 interface PartSuggestion {
   suggestedPartNumber: string;
@@ -192,7 +192,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                             {formatJobCode(job.jobCode)}
                           </span>
                           <span className="text-xs text-slate-400">
-                            {getStatusDisplayName(job.status)}
+                            {getStatusDisplayName(job.status as JobStatus)}
                           </span>
                         </div>
                         <p className="text-sm text-slate-300">{job.name}</p>

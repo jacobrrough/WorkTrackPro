@@ -20,7 +20,7 @@ function getJobInventoryTotals(job: Job): Map<string, number> {
       (line as { inventory_id?: string }).inventory_id ??
       (typeof line.inventory === 'string'
         ? line.inventory
-        : (line.inventory as { id?: string })?.id);
+        : (line.inventory as unknown as { id?: string })?.id);
     if (!inventoryId) continue;
     totals.set(inventoryId, (totals.get(inventoryId) ?? 0) + (line.quantity ?? 0));
   }

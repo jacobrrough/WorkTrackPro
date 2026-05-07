@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Part, Job, User } from '@/core/types';
+import { Part, Job, User, ViewState } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
@@ -64,7 +64,7 @@ type PartsTab = 'all' | 'needs-attention' | 'in-jobs';
 interface PartsProps {
   jobs: Job[];
   currentUser: User;
-  onNavigate: (view: string, params?: { partId?: string } | string) => void;
+  onNavigate: (view: ViewState, params?: { partId?: string } | string) => void;
   onNavigateBack: () => void;
 }
 

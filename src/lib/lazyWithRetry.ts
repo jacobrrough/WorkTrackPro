@@ -14,7 +14,7 @@ function getLazyReloadKey(moduleName: string): string {
   return `${LAZY_RELOAD_KEY_PREFIX}${moduleName}`;
 }
 
-export function lazyWithRetry<T extends ComponentType<unknown>>(
+export function lazyWithRetry<T extends ComponentType<any>>(
   importer: () => Promise<{ default: T }>,
   moduleName: string
 ): LazyExoticComponent<T> {

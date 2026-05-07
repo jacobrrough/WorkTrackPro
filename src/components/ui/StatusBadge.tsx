@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   JobStatus,
   InventoryCategory,
@@ -28,6 +27,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
   pod: 'bg-green-500/20 text-green-400 border-green-500/30',
   waitingForPayment: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   projectCompleted: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  paid: 'bg-green-600/20 text-green-400 border-green-600/30',
 };
 
 const CATEGORY_COLORS: Record<InventoryCategory, string> = {

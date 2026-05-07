@@ -92,9 +92,9 @@ export const ClockInProvider: React.FC<ClockInProviderProps> = ({ children }) =>
     <OnSiteGate
       onLogout={logout}
       enforceAtLogin
-      siteLat={settings.siteLat}
-      siteLng={settings.siteLng}
-      radiusMeters={settings.siteRadiusMeters}
+      siteLat={settings.siteLat ?? 0}
+      siteLng={settings.siteLng ?? 0}
+      radiusMeters={settings.siteRadiusMeters ?? 100}
     >
       {children}
     </OnSiteGate>

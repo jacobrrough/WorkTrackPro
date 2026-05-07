@@ -172,7 +172,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         materialMatchCacheRef.current = {};
       }
     }
-    return materialMatchCacheRef.current;
+    return materialMatchCacheRef.current!;
   };
 
   const saveMaterialMatch = (material: string, inventoryId: string) => {
@@ -1954,7 +1954,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           onOrder: 0,
           price: price > 0 ? price : undefined,
           unit,
-          vendor: vendor,
+          vendor: vendor ?? undefined,
           hasImage: false,
         });
 

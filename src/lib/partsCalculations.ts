@@ -69,10 +69,11 @@ export function computeRequiredMaterials(
 export async function syncJobInventoryFromPart(
   jobId: string,
   part: Part & { variants?: PartVariant[] },
-  dashQuantities: Record<string, number>
+  dashQuantities: Record<string, number>,
+  options?: { replace?: boolean }
 ): Promise<void> {
   const sanitized = sanitizePartQuantities(part);
-  return syncJobInventoryFromPartRaw(jobId, sanitized, dashQuantities);
+  return syncJobInventoryFromPartRaw(jobId, sanitized, dashQuantities, options);
 }
 
 /** Part + dash quantities for multi-part aggregation. */
