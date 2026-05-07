@@ -259,11 +259,14 @@ create policy "Members read conversations" on public.conversations
   for select to authenticated
   using (
     public.is_approved_user()
-    and exists (
-      select 1 from public.conversation_members
-      where conversation_id = id
-        and user_id = auth.uid()
-        and left_at is null
+    and (
+      created_by = auth.uid()
+      or exists (
+        select 1 from public.conversation_members
+        where conversation_id = id
+          and user_id = auth.uid()
+          and left_at is null
+      )
     )
   );
 
