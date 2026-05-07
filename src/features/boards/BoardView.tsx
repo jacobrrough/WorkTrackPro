@@ -43,7 +43,7 @@ function DroppableColumn({ column, children }: { column: BoardColumn; children: 
   );
 }
 
-const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
+const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) => {
   const { currentUser, users } = useApp();
   const { showToast } = useToast();
   const { data, isLoading } = useBoardDetail(boardId);
@@ -265,7 +265,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onBack }) => {
                         card={card}
                         users={users}
                         readOnly={readOnly}
-                        onClick={() => !readOnly && setEditingCardId(card.id)}
+                        onClick={() => onNavigate('board-card-detail', `${boardId}:${card.id}`)}
                       />
                     ))}
                   </DroppableColumn>

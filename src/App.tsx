@@ -34,6 +34,10 @@ const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport
 const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
 const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
 const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
+const CardDetailView = lazyWithRetry(
+  () => import('./features/boards/CardDetailView'),
+  'CardDetailView'
+);
 const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
 
 function AppViewFallback() {
@@ -163,7 +167,10 @@ export default function App() {
   const handleNavigate = useCallback(
     (nextView: ViewState, nextId?: string | { jobId?: string; partId?: string }) => {
       const isDetailView =
-        nextView === 'job-detail' || nextView === 'inventory-detail' || nextView === 'part-detail';
+        nextView === 'job-detail' ||
+        nextView === 'inventory-detail' ||
+        nextView === 'part-detail' ||
+        nextView === 'board-card-detail';
 
       if (isDetailView) {
         setBackStack((prev) => {
@@ -191,7 +198,10 @@ export default function App() {
   );
 
   const navigateBackFrom = useCallback(
-    (_detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: ViewState) => {
+    (
+      _detailView: 'job-detail' | 'inventory-detail' | 'part-detail' | 'board-card-detail',
+      fallback: ViewState
+    ) => {
       setBackStack((prev) => {
         const entry = prev[prev.length - 1];
         const nextStack = prev.slice(0, -1);
@@ -540,6 +550,37 @@ export default function App() {
           boardId={id}
           onNavigate={handleNavigate}
           onBack={() => handleNavigate('boards')}
+        />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'board-card-detail' && id) {
+    const [boardId, cardId] = id.split(':');
+    if (!boardId || !cardId) {
+      return (
+        <AppShell>
+          <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 bg-background-dark">
+            <p className="text-slate-400">Card not found.</p>
+            <button
+              onClick={() => handleNavigate('boards')}
+              className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
+            >
+              Back to boards
+            </button>
+          </div>
+          <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+        </AppShell>
+      );
+    }
+    return (
+      <AppShell>
+        <CardDetailView
+          boardId={boardId}
+          cardId={cardId}
+          onNavigate={handleNavigate}
+          onBack={() => navigateBackFrom('board-card-detail', 'boards')}
         />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
