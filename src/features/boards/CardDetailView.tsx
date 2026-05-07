@@ -118,9 +118,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
             {card.dueDate && (
               <span
                 className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium ${
-                  overdue
-                    ? 'bg-red-500/20 text-red-400'
-                    : 'bg-white/10 text-slate-300'
+                  overdue ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-slate-300'
                 }`}
               >
                 <span className="material-symbols-outlined text-sm">schedule</span>
