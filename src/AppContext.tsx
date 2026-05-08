@@ -199,10 +199,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     const debounce = debouncerRef.current.debounce;
 
     // ── Jobs channel (merge scalars, preserve relation arrays) ──────
+    // refreshInventory() is NOT called here — the subscribeToJobRelated
+    // channel handles job_inventory changes with debouncing.
     const unsubJobs = subscriptions.subscribeToJobs((action, scalars) => {
       if (action === 'create') {
         void queries.refreshJob(scalars.id);
-        void queries.refreshInventory();
       } else if (action === 'update') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
           if (!prev) return prev;
@@ -214,13 +215,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         if (existing) {
           queryClient.setQueryData<Job>(['job', scalars.id], { ...existing, ...scalars });
         }
-        void queries.refreshInventory();
       } else if (action === 'delete') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
           prev ? prev.filter((j) => j.id !== scalars.id) : []
         );
         queryClient.removeQueries({ queryKey: ['job', scalars.id] });
-        void queries.refreshInventory();
       }
     });
 

@@ -35,7 +35,7 @@ import { supabase } from './supabaseClient';
 
 // ── Scalar-only mappers (preserve relation arrays in cache) ──────────
 
-type JobScalars = Omit<
+export type JobScalars = Omit<
   Job,
   | 'attachments'
   | 'attachmentCount'
@@ -58,6 +58,7 @@ function mapJobScalars(row: Record<string, unknown>): JobScalars & { id: string 
     ecd: row.ecd as string | undefined,
     dueDate: row.due_date as string | undefined,
     plannedCompletionDate: (row.planned_completion_date as string | null | undefined) ?? null,
+    laborHours: row.labor_hours as number | undefined,
     active: (row.active as boolean) ?? true,
     status: row.status as Job['status'],
     boardType: row.board_type as Job['boardType'],
@@ -85,7 +86,6 @@ function mapJobScalars(row: Record<string, unknown>): JobScalars & { id: string 
     partId: row.part_id as string | undefined,
     partRev: row.part_rev as string | undefined,
     progressEstimatePercent: row.progress_estimate_percent as number | null | undefined,
-    laborHours: row.labor_hours as number | undefined,
   };
 }
 

@@ -13,7 +13,8 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1 min
+      staleTime: 1000 * 60 * 5, // 5 min — realtime subscriptions keep caches fresh
+      refetchOnWindowFocus: false, // opt-in per query to avoid thundering-herd refetch on tab return
       retry: 2,
     },
   },

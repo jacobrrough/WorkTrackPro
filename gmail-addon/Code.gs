@@ -60,7 +60,7 @@ function onGmailMessage(event) {
 }
 
 /**
- * Builds the main sidebar Card with board/column dropdowns and a create button.
+ * Builds the main sidebar Card with a single board>column dropdown and create button.
  */
 function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
   var card = CardService.newCardBuilder();
@@ -92,48 +92,38 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
   }
   card.addSection(emailSection);
 
-  // ── Board + column selector ──────────────────────────
-  var boardSection = CardService.newCardSection().setHeader('Destination');
+  // ── Single combined board + column dropdown ──────────
+  // Google Apps Script Card dropdowns can't dynamically filter,
+  // so we use one dropdown with "Board > Column" entries.
+  var destSection = CardService.newCardSection().setHeader('Destination');
 
   if (boards.length === 0) {
-    boardSection.addWidget(
+    destSection.addWidget(
       CardService.newTextParagraph().setText(
         '<b>No boards found.</b> Check your API key and base URL in Script Properties.'
       )
     );
   } else {
-    // Board dropdown.
-    var boardDropdown = CardService.newSelectionInput()
+    var dropdown = CardService.newSelectionInput()
       .setType(CardService.SelectionInputType.DROPDOWN)
-      .setTitle('Board')
-      .setFieldName('boardId');
-    for (var i = 0; i < boards.length; i++) {
-      boardDropdown.addItem(boards[i].name, boards[i].id, i === 0);
-    }
-    boardSection.addWidget(boardDropdown);
+      .setTitle('Board > Column')
+      .setFieldName('destination');
 
-    // Column dropdown — shows ALL columns from ALL boards, the create action
-    // validates the selected column belongs to the selected board.
-    // Format value as "boardId|columnId" so we can filter in the action.
-    var columnDropdown = CardService.newSelectionInput()
-      .setType(CardService.SelectionInputType.DROPDOWN)
-      .setTitle('Column')
-      .setFieldName('columnSelection');
-    var firstColumn = true;
+    var isFirst = true;
     for (var b = 0; b < boards.length; b++) {
       var board = boards[b];
       for (var c = 0; c < board.columns.length; c++) {
         var col = board.columns[c];
-        var label = board.name + ' > ' + col.name;
+        var label = board.name + '  >  ' + col.name;
         var value = board.id + '|' + col.id;
-        columnDropdown.addItem(label, value, firstColumn);
-        firstColumn = false;
+        dropdown.addItem(label, value, isFirst);
+        isFirst = false;
       }
     }
-    boardSection.addWidget(columnDropdown);
+    destSection.addWidget(dropdown);
   }
 
-  card.addSection(boardSection);
+  card.addSection(destSection);
 
   // ── Attachments section ──────────────────────────────
   if (attachmentInfo.length > 0) {
@@ -180,30 +170,23 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
 function onCreateCard(event) {
   var formInputs = event.commonEventObject.formInputs || {};
 
-  // Parse board and column selection.
+  // Parse the single combined destination dropdown (boardId|columnId).
   var boardId = '';
   var columnId = '';
 
-  if (formInputs.boardId && formInputs.boardId.stringInputs) {
-    boardId = formInputs.boardId.stringInputs.value[0] || '';
-  }
-  if (formInputs.columnSelection && formInputs.columnSelection.stringInputs) {
-    var colValue = formInputs.columnSelection.stringInputs.value[0] || '';
-    var parts = colValue.split('|');
+  if (formInputs.destination && formInputs.destination.stringInputs) {
+    var destValue = formInputs.destination.stringInputs.value[0] || '';
+    var parts = destValue.split('|');
     if (parts.length === 2) {
-      // Validate the column belongs to the selected board.
-      if (parts[0] === boardId) {
-        columnId = parts[1];
-      }
+      boardId = parts[0];
+      columnId = parts[1];
     }
   }
 
   if (!boardId || !columnId) {
     return CardService.newActionResponseBuilder()
       .setNotification(
-        CardService.newNotification().setText(
-          'Please select a board and a matching column.'
-        )
+        CardService.newNotification().setText('Please select a destination.')
       )
       .build();
   }
@@ -224,27 +207,32 @@ function onCreateCard(event) {
   }
 
   var attachmentPayloads = [];
+  var attachmentError = '';
   if (selectedIndexes.length > 0 && gmailId) {
     try {
-      var token = ScriptApp.getOAuthToken();
-      GmailApp.setCurrentMessageAccessToken(token);
+      // Use gmail.readonly scope to access the full message directly.
       var message = GmailApp.getMessageById(gmailId);
-      var rawAttachments = message.getAttachments();
-      for (var i = 0; i < selectedIndexes.length; i++) {
-        var idx = selectedIndexes[i];
-        if (idx >= 0 && idx < rawAttachments.length) {
-          var att = rawAttachments[idx];
-          if (att.getSize() <= 5 * 1024 * 1024) {
-            attachmentPayloads.push({
-              filename: att.getName(),
-              mimeType: att.getContentType(),
-              base64Data: Utilities.base64Encode(att.getBytes())
-            });
+      if (message) {
+        var rawAttachments = message.getAttachments();
+        for (var i = 0; i < selectedIndexes.length; i++) {
+          var idx = selectedIndexes[i];
+          if (idx >= 0 && idx < rawAttachments.length) {
+            var att = rawAttachments[idx];
+            if (att.getSize() <= 5 * 1024 * 1024) {
+              attachmentPayloads.push({
+                filename: att.getName(),
+                mimeType: att.getContentType(),
+                base64Data: Utilities.base64Encode(att.getBytes())
+              });
+            }
           }
         }
+      } else {
+        attachmentError = 'Could not re-read email.';
       }
     } catch (e) {
       Logger.log('Failed to read attachments: ' + e.message);
+      attachmentError = e.message;
     }
   }
 
@@ -268,6 +256,13 @@ function onCreateCard(event) {
     var msg = 'Card created!';
     if (result.attachmentCount > 0) {
       msg += ' (' + result.attachmentCount + ' file' + (result.attachmentCount > 1 ? 's' : '') + ' attached)';
+    } else if (selectedIndexes.length > 0 && result.attachmentCount === 0) {
+      msg += ' (attachments failed';
+      if (attachmentError) msg += ': ' + attachmentError;
+      msg += ')';
+    }
+    if (result.jobCode) {
+      msg += ' Job #' + result.jobCode;
     }
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification().setText(msg))
