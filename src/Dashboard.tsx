@@ -6,11 +6,37 @@ import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { NotificationBell } from './components/NotificationBell';
-import { durationMs, formatDurationHMS } from './lib/timeUtils';
+import { formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { lazyWithRetry } from './lib/lazyWithRetry';
-import type { Job } from './core/types';
+import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
+
+/**
+ * Isolated timer component — owns its own 1-second interval so that ticking
+ * only re-renders this small subtree, not the entire Dashboard.
+ */
+const ShiftTimerDisplay: React.FC<{ activeShift: Shift }> = React.memo(function ShiftTimerDisplay({
+  activeShift,
+}) {
+  const [display, setDisplay] = useState(() => formatDurationHMS(getWorkedShiftMs(activeShift)));
+
+  useEffect(() => {
+    const tick = () => setDisplay(formatDurationHMS(getWorkedShiftMs(activeShift)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [
+    activeShift,
+    activeShift.lunchStartTime,
+    activeShift.lunchEndTime,
+    activeShift.lunchMinutesUsed,
+    activeShift.clockInTime,
+    activeShift.clockOutTime,
+  ]);
+
+  return <p className="font-mono text-3xl font-bold text-green-400">{display}</p>;
+});
 
 const QRScanner = lazyWithRetry(() => import('./components/QRScanner'), 'QRScanner');
 
@@ -53,9 +79,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [addingJobToBin, setAddingJobToBin] = useState(false);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
-  const [shiftTimer, setShiftTimer] = useState('00:00:00');
-  const shiftClockInTime = activeShift?.clockInTime ?? null;
-  const shiftClockOutTime = activeShift?.clockOutTime ?? null;
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
@@ -119,35 +142,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (!activeShift?.id) {
       setIsTrackerOpen(false);
       setIsClockOutLoading(false);
-      setShiftTimer('00:00:00');
     }
   }, [activeShift?.id]);
-
-  useEffect(() => {
-    if (!shiftClockInTime) {
-      setShiftTimer('00:00:00');
-      return undefined;
-    }
-
-    const updateShiftTimer = () => {
-      if (activeShift) {
-        setShiftTimer(formatDurationHMS(getWorkedShiftMs(activeShift)));
-      } else {
-        setShiftTimer(formatDurationHMS(durationMs(shiftClockInTime, shiftClockOutTime)));
-      }
-    };
-
-    updateShiftTimer();
-    const interval = setInterval(updateShiftTimer, 1000);
-    return () => clearInterval(interval);
-  }, [
-    activeShift,
-    activeShift?.lunchStartTime,
-    activeShift?.lunchEndTime,
-    activeShift?.lunchMinutesUsed,
-    shiftClockInTime,
-    shiftClockOutTime,
-  ]);
 
   const handleClockOutFromPopup = async () => {
     setIsClockOutLoading(true);
@@ -470,7 +466,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Shift Timer
               </p>
-              <p className="font-mono text-3xl font-bold text-green-400">{shiftTimer}</p>
+              {activeShift && <ShiftTimerDisplay activeShift={activeShift} />}
               <p className="mt-2 text-xs text-slate-300">Tracking active job time.</p>
             </div>
 

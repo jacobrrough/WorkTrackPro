@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem, Shift } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import { formatJobCode, formatDashSummary, totalFromDashQuantities } from '@/lib/formatJob';
@@ -118,6 +118,487 @@ function getPartMetaForJob(
   if (basePartNumber !== partNumber.trim()) return partsByNumber[basePartNumber];
   return undefined;
 }
+
+/* ---------------------------------------------------------------------------
+ * KanbanJobCard — memoized card component.
+ *
+ * The custom `arePropsEqual` checks only the data-driven props that determine
+ * what the card *looks like*.  Callback props (handlers, navigate, etc.) are
+ * intentionally excluded because React state-setters are referentially stable
+ * and the parent callbacks rarely change identity.
+ *
+ * Net effect: when a realtime update changes ONE job, only that card re-renders;
+ * every other card's `job` reference is unchanged and React.memo skips it.
+ * --------------------------------------------------------------------------- */
+
+interface KanbanJobCardProps {
+  job: Job;
+  checklistState?: { completed: number; total: number; completedByName?: string };
+  isAdmin: boolean;
+  bulkSelectMode: boolean;
+  isSelected: boolean;
+  canDragCards: boolean;
+  isDragged: boolean;
+  isMenuOpen: boolean;
+  isMoveColumnOpen: boolean;
+  jobHours: number;
+  atRiskFromProgress: boolean;
+  partsByNumber: Record<string, { name: string; setComposition?: Record<string, number> }>;
+  columns: { id: JobStatus; title: string; color: string }[];
+  // Callbacks — stable (useState setters or parent-prop callbacks).
+  onCardClick: (jobId: string) => void;
+  onBulkToggle: (jobId: string) => void;
+  onDragStart: (e: React.DragEvent, job: Job) => void;
+  onNavigate: (view: ViewState, id?: string) => void;
+  onMenuClick: (e: React.MouseEvent, jobId: string) => void;
+  onScanBin: (jobId: string) => void;
+  onMoveColumnForJob: (jobId: string | null) => void;
+  onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
+  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<void>;
+  onFilesClick: (jobId: string) => void;
+  onDeleteClick: (jobId: string) => void;
+  showToast: (
+    message: string,
+    type: 'success' | 'error' | 'info' | 'warning',
+    duration?: number
+  ) => void;
+  didScrollRef: React.RefObject<boolean>;
+  setMenuOpenFor: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+const KanbanJobCard = React.memo<KanbanJobCardProps>(
+  function KanbanJobCard({
+    job,
+    checklistState,
+    isAdmin,
+    bulkSelectMode,
+    isSelected,
+    canDragCards,
+    isDragged,
+    isMenuOpen,
+    isMoveColumnOpen,
+    jobHours,
+    atRiskFromProgress,
+    partsByNumber,
+    columns,
+    onCardClick,
+    onBulkToggle,
+    onDragStart,
+    onNavigate,
+    onMenuClick,
+    onScanBin,
+    onMoveColumnForJob,
+    onUpdateJobStatus,
+    onUpdateJob,
+    onFilesClick,
+    onDeleteClick,
+    showToast,
+    didScrollRef,
+    setMenuOpenFor,
+  }) {
+    // Per-card computed values (only recomputed when this specific card re-renders)
+    const hasChecklist = checklistState != null && checklistState.total > 0;
+    const checklistComplete = hasChecklist && checklistState!.completed === checklistState!.total;
+    const isMultiPart = job.parts != null && job.parts.length > 1;
+    const partNumber = isMultiPart
+      ? job
+          .parts!.map((l) => l.partNumber?.trim())
+          .filter(Boolean)
+          .join(', ')
+      : job.partNumber?.trim() || '';
+    const partMeta = !isMultiPart ? getPartMetaForJob(partNumber, partsByNumber) : null;
+    const partNameFromMap = partMeta?.name || '';
+    const fallbackName = (job.name ?? '').trim();
+    const partName = isMultiPart
+      ? job
+          .parts!.map((l) => getPartMetaForJob(l.partNumber?.trim() || '', partsByNumber)?.name)
+          .filter(Boolean)
+          .join(', ') || 'Multi-part'
+      : partNameFromMap || (fallbackName.startsWith('PO#') ? '—' : fallbackName || '—');
+    const primaryPartMeta =
+      partMeta ??
+      (isMultiPart && job.parts!.length > 0
+        ? getPartMetaForJob(job.parts![0].partNumber?.trim() || '', partsByNumber)
+        : null);
+    const exactSetCount = getExactSetCount(job.dashQuantities, primaryPartMeta?.setComposition);
+    const qtyDisplay = isMultiPart
+      ? (() => {
+          const total = job.parts!.reduce(
+            (sum, l) => sum + totalFromDashQuantities(l.dashQuantities),
+            0
+          );
+          return total > 0 ? `${total} total` : (job.qty ?? '—');
+        })()
+      : exactSetCount != null
+        ? `${exactSetCount} ${exactSetCount === 1 ? 'set' : 'sets'}`
+        : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+          ? formatDashSummary(job.dashQuantities)
+          : (job.qty ?? '—');
+    const qtyLabel = isMultiPart
+      ? 'Total'
+      : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
+        ? 'Variant qty'
+        : 'Sets';
+    const overdue = isJobOverdue(job);
+    const hasCnc =
+      job.machineBreakdownByVariant &&
+      Object.values(job.machineBreakdownByVariant).some((v) => (v?.cncHoursTotal ?? 0) > 0);
+    const cncDone = !!job.cncCompletedAt;
+    const has3DPrint =
+      job.machineBreakdownByVariant &&
+      Object.values(job.machineBreakdownByVariant).some((v) => (v?.printer3DHoursTotal ?? 0) > 0);
+    const print3DDone = !!job.printer3DCompletedAt;
+
+    return (
+      <div
+        key={job.id}
+        draggable={canDragCards && !bulkSelectMode}
+        onDragStart={(e) => canDragCards && !bulkSelectMode && onDragStart(e, job)}
+        onClick={(e) => {
+          if (didScrollRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          if (bulkSelectMode) {
+            e.stopPropagation();
+            onBulkToggle(job.id);
+            return;
+          }
+          if (isMenuOpen || (e.target as HTMLElement).closest('[aria-label="Job menu"]')) return;
+          onCardClick(job.id);
+        }}
+        className={`relative cursor-pointer rounded-sm border p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${job.isRush ? 'border-red-500/70 bg-red-500/5' : 'border-white/5 bg-[#2a1f35]'} ${isDragged ? 'opacity-50' : ''} ${isMenuOpen ? 'z-40' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
+      >
+        {bulkSelectMode && (
+          <div className="absolute left-2 top-2.5 z-10">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {}}
+              onClick={(e) => e.stopPropagation()}
+              className="size-4 rounded border-white/30"
+            />
+          </div>
+        )}
+        <div className="mb-1 flex items-start gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            <span className="text-sm font-bold text-white">{formatJobCode(job.jobCode)}</span>
+            {job.isRush && (
+              <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                Rush
+              </span>
+            )}
+            {overdue && (
+              <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                Overdue
+              </span>
+            )}
+            {atRiskFromProgress && !overdue && (
+              <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                At risk
+              </span>
+            )}
+            {hasCnc && (
+              <span
+                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${cncDone ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'}`}
+                title={cncDone ? 'CNC machining done' : 'CNC machining pending'}
+              >
+                <span className="material-symbols-outlined text-[10px]">
+                  {cncDone ? 'check_circle' : 'schedule'}
+                </span>
+                CNC {cncDone ? 'Done' : 'Pending'}
+              </span>
+            )}
+            {has3DPrint && (
+              <span
+                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${print3DDone ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}
+                title={print3DDone ? '3D printing done' : '3D printing pending'}
+              >
+                <span className="material-symbols-outlined text-[10px]">
+                  {print3DDone ? 'check_circle' : 'schedule'}
+                </span>
+                3D {print3DDone ? 'Done' : 'Pending'}
+              </span>
+            )}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onScanBin(job.id);
+              }}
+              className="flex size-7 items-center justify-center rounded border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:bg-primary/40"
+              title="Scan bin location"
+            >
+              <span className="material-symbols-outlined text-base">qr_code_scanner</span>
+            </button>
+            {isAdmin && (
+              <div className="relative z-10">
+                <button
+                  onClick={(e) => onMenuClick(e, job.id)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white/10 hover:text-white active:bg-white/20"
+                  aria-label="Job menu"
+                >
+                  <span className="material-symbols-outlined text-base">more_vert</span>
+                </button>
+                {isMenuOpen && (
+                  <div
+                    className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-2xl backdrop-blur-sm"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {isMoveColumnOpen ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onMoveColumnForJob(null);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-400 hover:text-white"
+                        >
+                          <span className="material-symbols-outlined text-base">arrow_back</span>
+                          Back
+                        </button>
+                        <div className="my-1 max-h-[min(60vh,320px)] overflow-y-auto border-t border-white/10">
+                          {columns
+                            .filter((col) => col.id !== normalizeLegacyRushStatus(job.status))
+                            .map((col) => (
+                              <button
+                                key={col.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  onMoveColumnForJob(null);
+                                  setMenuOpenFor(null);
+                                  onUpdateJobStatus(job.id, col.id);
+                                  showToast(`Moved to ${col.title}`, 'success');
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                              >
+                                <span className={`size-2 shrink-0 rounded-full ${col.color}`} />
+                                {col.title}
+                              </button>
+                            ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setMenuOpenFor(null);
+                            localStorage.setItem('wtp-open-job-edit', job.id);
+                            onNavigate('job-detail', job.id);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                        >
+                          <span className="material-symbols-outlined text-base">edit</span>Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setMenuOpenFor(null);
+                            onFilesClick(job.id);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                        >
+                          <span className="material-symbols-outlined text-base">attach_file</span>
+                          Files
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onMoveColumnForJob(job.id);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                        >
+                          <span className="material-symbols-outlined text-base">swap_horiz</span>
+                          Move to column
+                        </button>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setMenuOpenFor(null);
+                            if (onUpdateJob) {
+                              await onUpdateJob(job.id, { isRush: !job.isRush });
+                              showToast(job.isRush ? 'Rush removed' : 'Marked as Rush', 'success');
+                            }
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                        >
+                          <span className="material-symbols-outlined text-base">priority_high</span>
+                          {job.isRush ? 'Remove Rush' : 'Mark as Rush'}
+                        </button>
+                        {job.status === 'waitingForPayment' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setMenuOpenFor(null);
+                              onUpdateJobStatus(job.id, 'paid');
+                              showToast('Job marked as Paid and reconciled', 'success');
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
+                          >
+                            <span className="material-symbols-outlined text-base">payments</span>
+                            Mark as Paid
+                          </button>
+                        )}
+                        <div className="my-1 border-t border-white/10" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setMenuOpenFor(null);
+                            onDeleteClick(job.id);
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-1 space-y-0.5 text-xs">
+          <p className="truncate text-slate-200">
+            <span className="text-slate-500">Part# </span>
+            {partNumber || '—'}
+          </p>
+          <p className="truncate text-slate-200">
+            <span className="text-slate-500">Part Name </span>
+            {partName}
+          </p>
+          <p className="truncate text-slate-200">
+            <span className="text-slate-500">{qtyLabel} </span>
+            {qtyDisplay}
+          </p>
+          <p className="truncate text-slate-200">
+            <span className="text-slate-500">PO# </span>
+            {job.po || '—'}
+          </p>
+          {job.binLocation && (
+            <p className="flex items-center gap-1 truncate text-slate-200">
+              <span className="material-symbols-outlined text-[10px] text-primary">
+                location_on
+              </span>
+              <span className="text-slate-500">Bin </span>
+              <span className="font-mono font-medium text-primary">{job.binLocation}</span>
+            </p>
+          )}
+        </div>
+
+        <p className="mb-1.5 flex flex-wrap items-center gap-1.5 gap-y-1">
+          {job.dueDate && (
+            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
+              Due {formatDateOnly(job.dueDate).replace(/, \d{4}/, '')}
+            </span>
+          )}
+          {job.ecd && (
+            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
+              ECD {formatDateOnly(job.ecd).replace(/, \d{4}/, '')}
+            </span>
+          )}
+          {job.plannedCompletionDate && (
+            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
+              Planned {formatDateOnly(job.plannedCompletionDate).replace(/, \d{4}/, '')}
+            </span>
+          )}
+        </p>
+
+        {jobHours > 0 && (
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-slate-400">{jobHours.toFixed(1)}h logged</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onNavigate('time-reports', job.id);
+              }}
+              className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+            >
+              Time
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
+          <div className="flex items-center gap-1">
+            {hasChecklist && (
+              <span
+                className={`flex items-center gap-0.5 text-[9px] ${checklistComplete ? 'text-green-400' : 'text-slate-400'}`}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>
+                  checklist
+                </span>
+                {checklistState!.completed}/{checklistState!.total}
+                {checklistComplete && checklistState!.completedByName && (
+                  <span className="ml-1 truncate text-[8px] text-green-300">
+                    by {checklistState!.completedByName}
+                  </span>
+                )}
+              </span>
+            )}
+            {job.commentCount > 0 && (
+              <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
+                <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>
+                  comment
+                </span>
+                {job.commentCount}
+              </span>
+            )}
+            {job.attachmentCount > 0 && (
+              <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
+                <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>
+                  attach_file
+                </span>
+                {job.attachmentCount}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  },
+  // Custom comparator: only re-render when visible data changes.
+  // Callback props are NOT compared — React state-setters are referentially
+  // stable, and parent callbacks rarely change identity.
+  (prev, next) =>
+    prev.job === next.job &&
+    prev.checklistState === next.checklistState &&
+    prev.isMenuOpen === next.isMenuOpen &&
+    prev.isMoveColumnOpen === next.isMoveColumnOpen &&
+    prev.isSelected === next.isSelected &&
+    prev.isDragged === next.isDragged &&
+    prev.bulkSelectMode === next.bulkSelectMode &&
+    prev.isAdmin === next.isAdmin &&
+    prev.jobHours === next.jobHours &&
+    prev.atRiskFromProgress === next.atRiskFromProgress
+);
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({
   jobs: allJobs,
@@ -539,6 +1020,35 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   };
 
+  // Stable callbacks for KanbanJobCard (avoids breaking React.memo)
+  const handleCardClick = useCallback(
+    (jobId: string) => {
+      onNavigate('job-detail', jobId);
+    },
+    [onNavigate]
+  );
+
+  const handleBulkToggle = useCallback((jobId: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  }, []);
+
+  const handleScanBinForCard = useCallback((jobId: string) => {
+    setScanningBinForJob(jobId);
+  }, []);
+
+  const handleFilesForCard = useCallback((jobId: string) => {
+    setFilesForJob(jobId);
+  }, []);
+
+  const handleDeleteClickForCard = useCallback((jobId: string) => {
+    setDeleteConfirm(jobId);
+  }, []);
+
   // Close menus on outside click
   useEffect(() => {
     if (menuOpenFor || columnMenuOpen || moveColumnForJobId) {
@@ -728,478 +1238,38 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   }}
                 >
                   {columnJobs.map((job) => {
-                    const checklistState = checklistStates[job.id];
-                    const hasChecklist = checklistState && checklistState.total > 0;
-                    const checklistComplete =
-                      hasChecklist && checklistState.completed === checklistState.total;
-                    const isMultiPart = job.parts != null && job.parts.length > 1;
-                    const partNumber = isMultiPart
-                      ? job
-                          .parts!.map((l) => l.partNumber?.trim())
-                          .filter(Boolean)
-                          .join(', ')
-                      : job.partNumber?.trim() || '';
-                    const partMeta = !isMultiPart
-                      ? getPartMetaForJob(partNumber, partsByNumber)
-                      : null;
-                    const partNameFromMap = partMeta?.name || '';
-                    const fallbackName = (job.name ?? '').trim();
-                    const partName = isMultiPart
-                      ? job
-                          .parts!.map(
-                            (l) =>
-                              getPartMetaForJob(l.partNumber?.trim() || '', partsByNumber)?.name
-                          )
-                          .filter(Boolean)
-                          .join(', ') || 'Multi-part'
-                      : partNameFromMap ||
-                        (fallbackName.startsWith('PO#') ? '—' : fallbackName || '—');
-                    const primaryPartMeta =
-                      partMeta ??
-                      (isMultiPart && job.parts!.length > 0
-                        ? getPartMetaForJob(job.parts![0].partNumber?.trim() || '', partsByNumber)
-                        : null);
-                    const exactSetCount = getExactSetCount(
-                      job.dashQuantities,
-                      primaryPartMeta?.setComposition
-                    );
-                    const qtyDisplay = isMultiPart
-                      ? (() => {
-                          const total = job.parts!.reduce(
-                            (sum, l) => sum + totalFromDashQuantities(l.dashQuantities),
-                            0
-                          );
-                          return total > 0 ? `${total} total` : (job.qty ?? '—');
-                        })()
-                      : exactSetCount != null
-                        ? `${exactSetCount} ${exactSetCount === 1 ? 'set' : 'sets'}`
-                        : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
-                          ? formatDashSummary(job.dashQuantities)
-                          : (job.qty ?? '—');
-                    const qtyLabel = isMultiPart
-                      ? 'Total'
-                      : job.dashQuantities && Object.keys(job.dashQuantities).length > 0
-                        ? 'Variant qty'
-                        : 'Sets';
-                    const overdue = isJobOverdue(job);
-                    const isSelected = selectedJobIds.has(job.id);
-                    const jobHours = calculateJobHoursFromShifts(job.id, shiftsProp);
                     const progress = jobProgressByJobId.get(job.id);
-                    const atRiskFromProgress = progress?.atRiskFromProgressEstimate ?? false;
-                    const hasCnc =
-                      job.machineBreakdownByVariant &&
-                      Object.values(job.machineBreakdownByVariant).some(
-                        (v) => (v?.cncHoursTotal ?? 0) > 0
-                      );
-                    const cncDone = !!job.cncCompletedAt;
-                    const has3DPrint =
-                      job.machineBreakdownByVariant &&
-                      Object.values(job.machineBreakdownByVariant).some(
-                        (v) => (v?.printer3DHoursTotal ?? 0) > 0
-                      );
-                    const print3DDone = !!job.printer3DCompletedAt;
-
                     return (
-                      <div
+                      <KanbanJobCard
                         key={job.id}
-                        draggable={canDragCards && !bulkSelectMode}
-                        onDragStart={(e) =>
-                          canDragCards && !bulkSelectMode && handleDragStart(e, job)
-                        }
-                        onClick={(e) => {
-                          if (didScrollRef.current) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            return;
-                          }
-                          if (bulkSelectMode) {
-                            e.stopPropagation();
-                            setSelectedJobIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(job.id)) next.delete(job.id);
-                              else next.add(job.id);
-                              return next;
-                            });
-                            return;
-                          }
-                          // Don't navigate if clicking on menu or menu is open
-                          if (
-                            menuOpenFor === job.id ||
-                            (e.target as HTMLElement).closest('[aria-label="Job menu"]')
-                          ) {
-                            return;
-                          }
-                          onNavigate('job-detail', job.id);
-                        }}
-                        className={`relative cursor-pointer rounded-sm border p-2.5 transition-all hover:border-primary/30 hover:bg-[#3a2f45] active:scale-[0.98] ${job.isRush ? 'border-red-500/70 bg-red-500/5' : 'border-white/5 bg-[#2a1f35]'} ${draggedJob?.id === job.id ? 'opacity-50' : ''} ${menuOpenFor === job.id ? 'z-40' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
-                      >
-                        {bulkSelectMode && (
-                          <div className="absolute left-2 top-2.5 z-10">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              onClick={(e) => e.stopPropagation()}
-                              className="size-4 rounded border-white/30"
-                            />
-                          </div>
-                        )}
-                        <div className="mb-1 flex items-start gap-2">
-                          {/* Job identity: Part Number, Rev, Part Name, Qty, EST #, RFQ #, PO #, INV# */}
-                          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-                            <span className="text-sm font-bold text-white">
-                              {formatJobCode(job.jobCode)}
-                            </span>
-                            {job.isRush && (
-                              <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                Rush
-                              </span>
-                            )}
-                            {overdue && (
-                              <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                Overdue
-                              </span>
-                            )}
-                            {atRiskFromProgress && !overdue && (
-                              <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                At risk
-                              </span>
-                            )}
-                            {hasCnc && (
-                              <span
-                                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${cncDone ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'}`}
-                                title={cncDone ? 'CNC machining done' : 'CNC machining pending'}
-                              >
-                                <span className="material-symbols-outlined text-[10px]">
-                                  {cncDone ? 'check_circle' : 'schedule'}
-                                </span>
-                                CNC {cncDone ? 'Done' : 'Pending'}
-                              </span>
-                            )}
-                            {has3DPrint && (
-                              <span
-                                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${print3DDone ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}
-                                title={print3DDone ? '3D printing done' : '3D printing pending'}
-                              >
-                                <span className="material-symbols-outlined text-[10px]">
-                                  {print3DDone ? 'check_circle' : 'schedule'}
-                                </span>
-                                3D {print3DDone ? 'Done' : 'Pending'}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-1">
-                            {/* Scan Bin Location Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setScanningBinForJob(job.id);
-                              }}
-                              className="flex size-7 items-center justify-center rounded border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30 active:bg-primary/40"
-                              title="Scan bin location"
-                            >
-                              <span className="material-symbols-outlined text-base">
-                                qr_code_scanner
-                              </span>
-                            </button>
-
-                            {/* Admin Menu Button */}
-                            {isAdmin && (
-                              <div className="relative z-10">
-                                <button
-                                  onClick={(e) => handleMenuClick(e, job.id)}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white/10 hover:text-white active:bg-white/20"
-                                  aria-label="Job menu"
-                                >
-                                  <span className="material-symbols-outlined text-base">
-                                    more_vert
-                                  </span>
-                                </button>
-
-                                {menuOpenFor === job.id && (
-                                  <div
-                                    className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-2xl backdrop-blur-sm"
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {moveColumnForJobId === job.id ? (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            setMoveColumnForJobId(null);
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-400 hover:text-white"
-                                        >
-                                          <span className="material-symbols-outlined text-base">
-                                            arrow_back
-                                          </span>
-                                          Back
-                                        </button>
-                                        <div className="my-1 max-h-[min(60vh,320px)] overflow-y-auto border-t border-white/10">
-                                          {columns
-                                            .filter(
-                                              (col) =>
-                                                col.id !== normalizeLegacyRushStatus(job.status)
-                                            )
-                                            .map((col) => (
-                                              <button
-                                                key={col.id}
-                                                type="button"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  e.preventDefault();
-                                                  setMoveColumnForJobId(null);
-                                                  setMenuOpenFor(null);
-                                                  onUpdateJobStatus(job.id, col.id);
-                                                  showToast(`Moved to ${col.title}`, 'success');
-                                                }}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                              >
-                                                <span
-                                                  className={`size-2 shrink-0 rounded-full ${col.color}`}
-                                                />
-                                                {col.title}
-                                              </button>
-                                            ))}
-                                        </div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            setMenuOpenFor(null);
-                                            localStorage.setItem('wtp-open-job-edit', job.id);
-                                            onNavigate('job-detail', job.id);
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                        >
-                                          <span className="material-symbols-outlined text-base">
-                                            edit
-                                          </span>
-                                          Edit
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            setMenuOpenFor(null);
-                                            setFilesForJob(job.id);
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                        >
-                                          <span className="material-symbols-outlined text-base">
-                                            attach_file
-                                          </span>
-                                          Files
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            setMoveColumnForJobId(job.id);
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                        >
-                                          <span className="material-symbols-outlined text-base">
-                                            swap_horiz
-                                          </span>
-                                          Move to column
-                                        </button>
-                                        <button
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            setMenuOpenFor(null);
-                                            if (onUpdateJob) {
-                                              await onUpdateJob(job.id, { isRush: !job.isRush });
-                                              showToast(
-                                                job.isRush ? 'Rush removed' : 'Marked as Rush',
-                                                'success'
-                                              );
-                                            }
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-                                        >
-                                          <span className="material-symbols-outlined text-base">
-                                            priority_high
-                                          </span>
-                                          {job.isRush ? 'Remove Rush' : 'Mark as Rush'}
-                                        </button>
-                                        {job.status === 'waitingForPayment' && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              e.preventDefault();
-                                              setMenuOpenFor(null);
-                                              onUpdateJobStatus(job.id, 'paid');
-                                              showToast(
-                                                'Job marked as Paid and reconciled',
-                                                'success'
-                                              );
-                                            }}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400 transition-colors hover:bg-green-500/10 active:bg-green-500/20"
-                                          >
-                                            <span className="material-symbols-outlined text-base">
-                                              payments
-                                            </span>
-                                            Mark as Paid
-                                          </button>
-                                        )}
-                                        <div className="my-1 border-t border-white/10" />
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            setMenuOpenFor(null);
-                                            setDeleteConfirm(job.id);
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 active:bg-red-500/20"
-                                        >
-                                          <span className="material-symbols-outlined text-base">
-                                            delete
-                                          </span>
-                                          Delete
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mb-1 space-y-0.5 text-xs">
-                          <p className="truncate text-slate-200">
-                            <span className="text-slate-500">Part# </span>
-                            {partNumber || '—'}
-                          </p>
-                          <p className="truncate text-slate-200">
-                            <span className="text-slate-500">Part Name </span>
-                            {partName}
-                          </p>
-                          <p className="truncate text-slate-200">
-                            <span className="text-slate-500">{qtyLabel} </span>
-                            {qtyDisplay}
-                          </p>
-                          <p className="truncate text-slate-200">
-                            <span className="text-slate-500">PO# </span>
-                            {job.po || '—'}
-                          </p>
-                          {job.binLocation && (
-                            <p className="flex items-center gap-1 truncate text-slate-200">
-                              <span className="material-symbols-outlined text-[10px] text-primary">
-                                location_on
-                              </span>
-                              <span className="text-slate-500">Bin </span>
-                              <span className="font-mono font-medium text-primary">
-                                {job.binLocation}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Due / ECD / Planned — ECD is reference only, never edited from card */}
-                        <p className="mb-1.5 flex flex-wrap items-center gap-1.5 gap-y-1">
-                          {job.dueDate && (
-                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
-                              Due {formatDateOnly(job.dueDate).replace(/, \d{4}/, '')}
-                            </span>
-                          )}
-                          {job.ecd && (
-                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
-                              ECD {formatDateOnly(job.ecd).replace(/, \d{4}/, '')}
-                            </span>
-                          )}
-                          {job.plannedCompletionDate && (
-                            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
-                              Planned{' '}
-                              {formatDateOnly(job.plannedCompletionDate).replace(/, \d{4}/, '')}
-                            </span>
-                          )}
-                        </p>
-
-                        {/* Time logged + link to Time Reports */}
-                        {jobHours > 0 && (
-                          <div className="mb-1.5 flex items-center justify-between gap-2">
-                            <span className="text-[10px] text-slate-400">
-                              {jobHours.toFixed(1)}h logged
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                onNavigate('time-reports', job.id);
-                              }}
-                              className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
-                            >
-                              Time
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Footer - checklist / comment / attachment counts */}
-                        <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
-                          <div className="flex items-center gap-1">
-                            {hasChecklist && (
-                              <span
-                                className={`flex items-center gap-0.5 text-[9px] ${checklistComplete ? 'text-green-400' : 'text-slate-400'}`}
-                              >
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '11px' }}
-                                >
-                                  checklist
-                                </span>
-                                {checklistState.completed}/{checklistState.total}
-                                {checklistComplete && checklistState.completedByName && (
-                                  <span className="ml-1 truncate text-[8px] text-green-300">
-                                    by {checklistState.completedByName}
-                                  </span>
-                                )}
-                              </span>
-                            )}
-                            {job.commentCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '11px' }}
-                                >
-                                  comment
-                                </span>
-                                {job.commentCount}
-                              </span>
-                            )}
-                            {job.attachmentCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-[9px] text-slate-500">
-                                <span
-                                  className="material-symbols-outlined"
-                                  style={{ fontSize: '11px' }}
-                                >
-                                  attach_file
-                                </span>
-                                {job.attachmentCount}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        job={job}
+                        checklistState={checklistStates[job.id]}
+                        isAdmin={isAdmin}
+                        bulkSelectMode={bulkSelectMode}
+                        isSelected={selectedJobIds.has(job.id)}
+                        canDragCards={canDragCards}
+                        isDragged={draggedJob?.id === job.id}
+                        isMenuOpen={menuOpenFor === job.id}
+                        isMoveColumnOpen={moveColumnForJobId === job.id}
+                        jobHours={calculateJobHoursFromShifts(job.id, shiftsProp)}
+                        atRiskFromProgress={progress?.atRiskFromProgressEstimate ?? false}
+                        partsByNumber={partsByNumber}
+                        columns={columns}
+                        onCardClick={handleCardClick}
+                        onBulkToggle={handleBulkToggle}
+                        onDragStart={handleDragStart}
+                        onNavigate={onNavigate}
+                        onMenuClick={handleMenuClick}
+                        onScanBin={handleScanBinForCard}
+                        onMoveColumnForJob={setMoveColumnForJobId}
+                        onUpdateJobStatus={onUpdateJobStatus}
+                        onUpdateJob={onUpdateJob}
+                        onFilesClick={handleFilesForCard}
+                        onDeleteClick={handleDeleteClickForCard}
+                        showToast={showToast}
+                        didScrollRef={didScrollRef}
+                        setMenuOpenFor={setMenuOpenFor}
+                      />
                     );
                   })}
                 </div>

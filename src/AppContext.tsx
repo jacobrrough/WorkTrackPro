@@ -18,7 +18,6 @@ import { useClockMutations } from '@/hooks/useClockMutations';
 import { useInventoryMutations } from '@/hooks/useInventoryMutations';
 import { useAttachmentMutations } from '@/hooks/useAttachmentMutations';
 import { useInventoryAllocation } from '@/hooks/useInventoryAllocation';
-import { dedupeJobsById } from '@/lib/jobUtils';
 import { withComputedInventory } from '@/lib/inventoryState';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
@@ -191,27 +190,53 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!currentUser) return;
 
-    const unsubJobs = subscriptions.subscribeToJobs((action, record) => {
+    const unsubJobs = subscriptions.subscribeToJobs((action, scalars) => {
       if (action === 'create') {
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? dedupeJobsById([record as Job, ...prev]) : [record as Job]
-        );
-        queries.refreshInventory();
-      } else if (action === 'update') {
+        // Optimistically add the scalars so the job appears immediately,
+        // then fetch the full record (with attachments, comments, etc.).
         queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
-          if (!prev) return [record as Job];
-          const exists = prev.some((j) => j.id === record.id);
-          const next = exists
-            ? prev.map((j) => (j.id === record.id ? (record as Job) : j))
-            : ([record as Job, ...prev] as Job[]);
-          return dedupeJobsById(next);
+          if (!prev)
+            return [
+              {
+                attachments: [],
+                attachmentCount: 0,
+                comments: [],
+                commentCount: 0,
+                inventoryItems: [],
+                ...scalars,
+              } as Job,
+            ];
+          if (prev.some((j) => j.id === scalars.id)) return prev; // already present (our own mutation)
+          return [
+            {
+              attachments: [],
+              attachmentCount: 0,
+              comments: [],
+              commentCount: 0,
+              inventoryItems: [],
+              ...scalars,
+            } as Job,
+            ...prev,
+          ];
         });
-        queries.refreshInventory();
+        void queries.refreshJob(scalars.id);
+      } else if (action === 'update') {
+        // Merge scalars into the existing cached job, preserving relational
+        // data (attachments, comments, inventoryItems, parts) that the
+        // realtime payload does not include.
+        queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
+          if (!prev) return prev;
+          return prev.map((j) => (j.id === scalars.id ? { ...j, ...scalars } : j));
+        });
+        // Also update the single-job cache if it exists (JobDetail view).
+        const existing = queryClient.getQueryData<Job>(['job', scalars.id]);
+        if (existing) {
+          queryClient.setQueryData<Job>(['job', scalars.id], { ...existing, ...scalars });
+        }
       } else if (action === 'delete') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? prev.filter((j) => j.id !== record.id) : []
+          prev ? prev.filter((j) => j.id !== scalars.id) : []
         );
-        queries.refreshInventory();
       }
     });
 
