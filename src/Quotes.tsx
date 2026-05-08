@@ -152,7 +152,9 @@ const Quotes: React.FC<QuotesProps> = ({
         const jobInventory = job.expand?.job_inventory_via_job || job.expand?.job_inventory || [];
         for (const ji of jobInventory) {
           const invId =
-            typeof ji.inventory === 'string' ? ji.inventory : (ji.inventory as { id?: string })?.id;
+            typeof ji.inventory === 'string'
+              ? ji.inventory
+              : (ji.inventory as unknown as { id?: string })?.id;
           if (!invId) continue;
 
           const invItem = inventory.find((i) => i.id === invId);
@@ -183,6 +185,7 @@ const Quotes: React.FC<QuotesProps> = ({
       const lineItems: QuoteLineItem[] = Array.from(materialMap.values()).map((item) => {
         const unitPrice = item.price * MATERIAL_MARKUP_MULTIPLIER; // Our cost × 2.25
         return {
+          name: item.name,
           inventoryName: item.name,
           quantity: item.quantity,
           unit: item.unit,
@@ -192,7 +195,7 @@ const Quotes: React.FC<QuotesProps> = ({
         };
       });
 
-      const materialCost = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const materialCost = lineItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
       const laborRate = DEFAULT_LABOR_RATE;
       const laborCost = avgHours * laborRate;
       const avgCncHours = similarJobs.length > 0 ? totalCncHours / similarJobs.length : 0;
@@ -257,10 +260,10 @@ const Quotes: React.FC<QuotesProps> = ({
 
       if (updates.quantity !== undefined || updates.unitPrice !== undefined) {
         updatedItems[index].totalPrice =
-          updatedItems[index].quantity * updatedItems[index].unitPrice;
+          updatedItems[index].quantity * (updatedItems[index].unitPrice ?? 0);
       }
 
-      const materialCost = updatedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const materialCost = updatedItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
       updateQuoteCalculations({ lineItems: updatedItems, materialCost });
     },
     [quoteData, updateQuoteCalculations]
@@ -271,6 +274,7 @@ const Quotes: React.FC<QuotesProps> = ({
     if (!quoteData) return;
 
     const newItem: QuoteLineItem = {
+      name: '',
       inventoryName: '',
       quantity: 1,
       unit: 'units',
@@ -290,7 +294,7 @@ const Quotes: React.FC<QuotesProps> = ({
       if (!quoteData) return;
 
       const updatedItems = quoteData.lineItems.filter((_, i) => i !== index);
-      const materialCost = updatedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const materialCost = updatedItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
       updateQuoteCalculations({ lineItems: updatedItems, materialCost });
     },
     [quoteData, updateQuoteCalculations]
@@ -531,7 +535,9 @@ const Quotes: React.FC<QuotesProps> = ({
                         />
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white">${item.totalPrice.toFixed(2)}</span>
+                        <span className="font-bold text-white">
+                          ${(item.totalPrice ?? 0).toFixed(2)}
+                        </span>
                         {item.isManual && (
                           <button
                             onClick={() => removeLineItem(index)}

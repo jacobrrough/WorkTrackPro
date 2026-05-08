@@ -1,9 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
-import React, {
+import {
   createContext,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -23,6 +24,7 @@ import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
 import { syncOfflineClockQueue } from '@/lib/syncOfflineClockQueue';
 import { subscriptions } from '@/services/api/subscriptions';
+import { createRealtimeDebouncer } from '@/lib/realtimeDebounce';
 import { useToast } from '@/Toast';
 
 export interface AppContextType {
@@ -107,7 +109,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const staleOfflinePunch = useMemo(() => hasQueuedPunchAtMaxAttempts(), [offlineQueueVersion]);
 
   const jobMutations = useJobMutations({
@@ -187,48 +191,26 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   }, [queries.refreshShifts, queries.refreshJobs, showToast, offlineQueueVersion]);
 
   // Realtime subscriptions
+  const debouncerRef = useRef(createRealtimeDebouncer(300));
+  useEffect(() => () => debouncerRef.current.cleanup(), []);
+
   useEffect(() => {
     if (!currentUser) return;
+    const debounce = debouncerRef.current.debounce;
 
+    // ── Jobs channel (merge scalars, preserve relation arrays) ──────
+    // refreshInventory() is NOT called here — the subscribeToJobRelated
+    // channel handles job_inventory changes with debouncing.
     const unsubJobs = subscriptions.subscribeToJobs((action, scalars) => {
       if (action === 'create') {
-        // Optimistically add the scalars so the job appears immediately,
-        // then fetch the full record (with attachments, comments, etc.).
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
-          if (!prev)
-            return [
-              {
-                attachments: [],
-                attachmentCount: 0,
-                comments: [],
-                commentCount: 0,
-                inventoryItems: [],
-                ...scalars,
-              } as Job,
-            ];
-          if (prev.some((j) => j.id === scalars.id)) return prev; // already present (our own mutation)
-          return [
-            {
-              attachments: [],
-              attachmentCount: 0,
-              comments: [],
-              commentCount: 0,
-              inventoryItems: [],
-              ...scalars,
-            } as Job,
-            ...prev,
-          ];
-        });
         void queries.refreshJob(scalars.id);
       } else if (action === 'update') {
-        // Merge scalars into the existing cached job, preserving relational
-        // data (attachments, comments, inventoryItems, parts) that the
-        // realtime payload does not include.
         queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
           if (!prev) return prev;
+          const exists = prev.some((j) => j.id === scalars.id);
+          if (!exists) return prev;
           return prev.map((j) => (j.id === scalars.id ? { ...j, ...scalars } : j));
         });
-        // Also update the single-job cache if it exists (JobDetail view).
         const existing = queryClient.getQueryData<Job>(['job', scalars.id]);
         if (existing) {
           queryClient.setQueryData<Job>(['job', scalars.id], { ...existing, ...scalars });
@@ -237,9 +219,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
           prev ? prev.filter((j) => j.id !== scalars.id) : []
         );
+        queryClient.removeQueries({ queryKey: ['job', scalars.id] });
       }
     });
 
+    // ── Shifts channel (unchanged) ─────────────────────────────────
     const unsubShifts = subscriptions.subscribeToShifts((action, record) => {
       if (action === 'create') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
@@ -256,6 +240,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       }
     });
 
+    // ── Inventory channel (unchanged) ──────────────────────────────
     const unsubInventory = subscriptions.subscribeToInventory((action, record) => {
       if (action === 'create') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
@@ -272,12 +257,48 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       }
     });
 
+    // ── Job-related tables (comments, attachments, job_parts, etc.) ─
+    const unsubJobRelated = subscriptions.subscribeToJobRelated((table, _action, record) => {
+      const jobId = record.job_id as string | undefined;
+      if (!jobId) return;
+      debounce(`job-${jobId}`, () => void queries.refreshJob(jobId));
+      if (table === 'job_inventory') {
+        debounce('inventory-refresh', () => void queries.refreshInventory());
+      }
+    });
+
+    // ── Board-related tables ───────────────────────────────────────
+    const unsubBoards = subscriptions.subscribeToBoardRelated((table, _action, record) => {
+      if (table === 'boards') {
+        void queryClient.invalidateQueries({ queryKey: ['boards'] });
+        const boardId = record.id as string | undefined;
+        if (boardId) void queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      } else {
+        const boardId = record.board_id as string | undefined;
+        if (boardId) {
+          debounce(
+            `board-${boardId}`,
+            () => void queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+          );
+        }
+      }
+    });
+
+    // ── Parts table ────────────────────────────────────────────────
+    const unsubParts = subscriptions.subscribeToParts(() => {
+      debounce('parts-jobs', () => void queries.refreshJobs());
+    });
+
     return () => {
       unsubJobs();
       unsubShifts();
       unsubInventory();
+      unsubJobRelated();
+      unsubBoards();
+      unsubParts();
     };
-  }, [currentUser, queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, queryClient, queries.refreshJob, queries.refreshJobs, queries.refreshInventory]);
 
   const inventoryWithComputed = useMemo(
     () => withComputedInventory(queries.inventory, queries.jobs),

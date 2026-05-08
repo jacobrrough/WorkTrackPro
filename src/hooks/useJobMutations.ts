@@ -9,6 +9,8 @@ import { jobService } from '@/services/api/jobs';
 import { checklistService } from '@/services/api/checklists';
 import { inventoryService } from '@/services/api/inventory';
 import { inventoryHistoryService } from '@/services/api/inventoryHistory';
+import { jobStatusHistoryService } from '@/services/api/jobStatusHistory';
+import { systemNotificationService } from '@/services/api/systemNotifications';
 
 export interface UseJobMutationsParams {
   jobs: Job[];
@@ -17,7 +19,11 @@ export interface UseJobMutationsParams {
   refreshJobs: () => Promise<void>;
   refreshInventory: () => Promise<void>;
   refreshShifts: () => Promise<void>;
-  showToast: (message: string, type?: 'info' | 'success' | 'error') => void;
+  showToast: (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning',
+    duration?: number
+  ) => void;
 }
 
 export function useJobMutations({
@@ -57,8 +63,19 @@ export function useJobMutations({
         if (data.active === false) {
           data.binLocation = undefined;
         }
+        const previousJob = jobs.find((j) => j.id === jobId);
         const updatedJob = await jobService.updateJob(jobId, data);
         if (updatedJob) {
+          if (currentUser && data.status && previousJob && previousJob.status !== data.status) {
+            jobStatusHistoryService
+              .createHistory({
+                jobId,
+                userId: currentUser.id,
+                previousStatus: previousJob.status,
+                newStatus: data.status,
+              })
+              .catch((err) => console.error('Job status history insert failed:', err));
+          }
           let jobForCache = { ...updatedJob, ...data };
           if (
             data.parts === undefined &&
@@ -73,6 +90,61 @@ export function useJobMutations({
             prev ? prev.map((j) => (j.id === jobId ? jobForCache : j)) : []
           );
           queryClient.setQueryData(['job', jobId], jobForCache);
+
+          if (currentUser && previousJob) {
+            const changerName = currentUser.name ?? currentUser.email;
+            const jobLabel = `Job #${previousJob.jobCode}`;
+
+            if (data.assignedUsers) {
+              const prevSet = new Set(previousJob.assignedUsers ?? []);
+              const newSet = new Set(data.assignedUsers);
+              for (const uid of data.assignedUsers) {
+                if (!prevSet.has(uid) && uid !== currentUser.id) {
+                  systemNotificationService
+                    .createNotification({
+                      userId: uid,
+                      type: 'assignment',
+                      title: 'Assigned to Job',
+                      message: `${changerName} assigned you to ${jobLabel}`,
+                      link: `job-detail:${jobId}`,
+                      metadata: { job_id: jobId, job_code: previousJob.jobCode },
+                    })
+                    .catch((err) => console.error('Assignment notification failed:', err));
+                }
+              }
+              for (const uid of previousJob.assignedUsers ?? []) {
+                if (!newSet.has(uid) && uid !== currentUser.id) {
+                  systemNotificationService
+                    .createNotification({
+                      userId: uid,
+                      type: 'unassignment',
+                      title: 'Removed from Job',
+                      message: `${changerName} removed you from ${jobLabel}`,
+                      link: `job-detail:${jobId}`,
+                      metadata: { job_id: jobId, job_code: previousJob.jobCode },
+                    })
+                    .catch((err) => console.error('Unassignment notification failed:', err));
+                }
+              }
+            }
+
+            if (data.isRush === true && !previousJob.isRush) {
+              for (const uid of previousJob.assignedUsers ?? []) {
+                if (uid !== currentUser.id) {
+                  systemNotificationService
+                    .createNotification({
+                      userId: uid,
+                      type: 'rush',
+                      title: 'Rush Job',
+                      message: `${jobLabel} has been marked as RUSH by ${changerName}`,
+                      link: `job-detail:${jobId}`,
+                      metadata: { job_id: jobId, job_code: previousJob.jobCode },
+                    })
+                    .catch((err) => console.error('Rush notification failed:', err));
+                }
+              }
+            }
+          }
         }
         return updatedJob;
       } catch (error) {
@@ -80,7 +152,7 @@ export function useJobMutations({
         return null;
       }
     },
-    [queryClient]
+    [queryClient, jobs, currentUser]
   );
 
   const deleteJob = useCallback(
@@ -140,6 +212,17 @@ export function useJobMutations({
             await refreshJobs();
             return false;
           }
+        }
+
+        if (currentUser && job && job.status !== status) {
+          jobStatusHistoryService
+            .createHistory({
+              jobId,
+              userId: currentUser.id,
+              previousStatus: job.status,
+              newStatus: status,
+            })
+            .catch((err) => console.error('Job status history insert failed:', err));
         }
 
         if (status !== 'paid' && status !== 'projectCompleted') {

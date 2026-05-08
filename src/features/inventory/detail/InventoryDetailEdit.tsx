@@ -1,4 +1,3 @@
-import React from 'react';
 import type { InventoryItem, InventoryCategory } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 

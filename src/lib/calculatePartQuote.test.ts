@@ -6,11 +6,15 @@ const makeInventory = (id: string, price: number): InventoryItem =>
   ({
     id,
     name: `INV-${id}`,
-    category: 'rawMaterial',
+    category: 'material',
     currentStock: 100,
     minStockLevel: 1,
     unit: 'ea',
     price,
+    inStock: 100,
+    available: 100,
+    disposed: 0,
+    onOrder: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }) as InventoryItem;

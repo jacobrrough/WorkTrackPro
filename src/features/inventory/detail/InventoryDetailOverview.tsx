@@ -4,6 +4,7 @@ import { getCategoryDisplayName } from '@/core/types';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
 import { isAllocationActiveStatus } from '@/lib/inventoryCalculations';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatStockDisplay(value: number): string {
   if (Number.isInteger(value)) return String(value);
   const rounded = Math.round(value * 100) / 100;
@@ -56,7 +57,6 @@ export function InventoryDetailOverview({
   setReceiveOrderQty,
   onConfirmAddToOrder,
   onConfirmReceiveOrder,
-  showToast,
   onScanBarcode,
 }: InventoryDetailOverviewProps) {
   const minStock = item.reorderPoint ?? 0;

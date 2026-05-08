@@ -133,6 +133,7 @@ describe('computePartDerivedMaterialTotal', () => {
       id: 'p1',
       partNumber: 'P-001',
       name: 'Single part',
+      rev: '01',
       variants: [],
       materials: [
         { id: 'm1', inventoryId: 'inv-1', quantityPerUnit: 2, unit: 'ea' },
@@ -155,6 +156,7 @@ describe('computePartDerivedMaterialTotal', () => {
       id: 'p1',
       partNumber: 'P-002',
       name: 'No materials',
+      rev: '01',
       variants: [],
     };
     const total = computePartDerivedMaterialTotal(
@@ -171,6 +173,7 @@ describe('computePartDerivedMaterialTotal', () => {
       id: 'p1',
       partNumber: 'P-003',
       name: 'Variant part',
+      rev: '01',
       variants: [
         {
           id: 'v1',

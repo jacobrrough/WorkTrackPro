@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import type { PartMaterial, InventoryItem } from '@/core/types';
+import type { PartMaterial, InventoryItem, ViewState } from '@/core/types';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import MaterialCostDisplay from '@/components/MaterialCostDisplay';
@@ -13,7 +13,7 @@ export interface PartMaterialLinkProps {
   material: PartMaterial;
   inventoryItem?: InventoryItem | null;
   onUpdate: () => void;
-  onNavigate?: (view: string, id?: string) => void;
+  onNavigate?: (view: ViewState, id?: string) => void;
   showFinancials?: boolean;
   className?: string;
 }

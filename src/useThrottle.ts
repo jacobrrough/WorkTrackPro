@@ -13,7 +13,8 @@ import { useRef, useCallback } from 'react';
  *   return () => window.removeEventListener('scroll', handleScroll);
  * }, [handleScroll]);
  */
-export function useThrottle<T extends (...args: unknown[]) => unknown>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function useThrottle<T extends (...args: any[]) => any>(
   callback: T,
   delay: number
 ): (...args: Parameters<T>) => void {

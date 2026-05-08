@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Attachment } from '@/core/types';
 import AttachmentsList from '@/AttachmentsList';
 import FileUploadButton from '@/FileUploadButton';

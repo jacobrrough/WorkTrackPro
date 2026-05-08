@@ -5,7 +5,8 @@ import type { CartItem } from './storefrontCart';
 declare global {
   interface Window {
     turnstile?: {
-      render: (el: string | HTMLElement, options: Record<string, unknown>) => string;
+      render: (selector: string | HTMLElement, options: Record<string, unknown>) => string;
+      reset: (widgetId?: string) => void;
       remove: (widgetId?: string) => void;
     };
   }

@@ -1,7 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { User } from '@/core/types';
-import { authService } from '@/services/api/auth';
+import { authService, withTimeout } from '@/services/api/auth';
 import { supabase } from '@/services/api/supabaseClient';
+import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
+import { cryptoKeyCache } from '@/lib/crypto/keyCache';
+import { encryptionKeyService } from '@/services/api/encryptionKeys';
 
 export interface AuthContextType {
   currentUser: User | null;
@@ -37,21 +40,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // both the idle timeout and onAuthStateChange try to reload simultaneously.
   const reloadPending = React.useRef(false);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    setAuthError(null);
-    setIsLoading(true);
+  const tryUnlockKeys = useCallback(async (password: string) => {
     try {
-      const user = await authService.login(email, password);
-      setCurrentUser(user);
-      return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      setAuthError(errorMessage);
-      return false;
-    } finally {
-      setIsLoading(false);
+      const keys = await encryptionKeyService.getMyKeys();
+      if (!keys) return;
+      const privateKey = await unlockPrivateKey(
+        keys.encryptedPrivateKey,
+        keys.keySalt,
+        keys.keyIv,
+        password
+      );
+      const publicKey = await importPublicKey(keys.publicKey);
+      cryptoKeyCache.setIdentityKeys(privateKey, publicKey);
+    } catch (e) {
+      console.warn('E2E key unlock deferred — will prompt in chat:', e);
     }
   }, []);
+
+  const tryGenerateKeys = useCallback(async (password: string) => {
+    try {
+      const keyData = await generateAndWrapKeyPair(password);
+      await encryptionKeyService.upsertKeyPair(keyData);
+      const privateKey = await unlockPrivateKey(
+        keyData.encryptedPrivateKey,
+        keyData.keySalt,
+        keyData.keyIv,
+        password
+      );
+      const publicKey = await importPublicKey(keyData.publicKey);
+      cryptoKeyCache.setIdentityKeys(privateKey, publicKey);
+    } catch (e) {
+      console.warn('E2E key generation deferred — will prompt in chat:', e);
+    }
+  }, []);
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      setAuthError(null);
+      setIsLoading(true);
+      try {
+        const user = await authService.login(email, password);
+        setCurrentUser(user);
+        await tryUnlockKeys(password);
+        return true;
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Login failed';
+        setAuthError(errorMessage);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [tryUnlockKeys]
+  );
 
   const signUp = useCallback(
     async (
@@ -65,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { user, needsEmailConfirmation } = await authService.signUp(email, password, options);
         if (user) {
           setCurrentUser(user);
+          void tryGenerateKeys(password);
           return true;
         }
         return needsEmailConfirmation ? 'needs_email_confirmation' : false;
@@ -76,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     },
-    []
+    [tryGenerateKeys]
   );
 
   const resetPasswordForEmail = useCallback(async (email: string): Promise<void> => {
@@ -94,15 +136,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     reloadPending.current = true;
     userInitiatedLogout.current = true; // prevents onAuthStateChange from scheduling a second reload
     sessionStorage.setItem('wtp_session_expired', '1');
-    await supabase.auth.signOut({ scope: 'local' }); // clears tokens from localStorage, no server call needed
-    window.location.reload();
+    try {
+      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 3000); // clears tokens from localStorage, no server call needed
+    } catch (e) {
+      console.warn('hardLogout: signOut failed, reloading anyway', e);
+    } finally {
+      window.location.reload();
+    }
   }, []);
 
   const logout = useCallback(() => {
-    // Flag that this logout came from the worker — not from the session dying.
-    // The onAuthStateChange SIGNED_OUT handler checks this to decide whether
-    // to do a hard page reload or a clean React-only transition.
     userInitiatedLogout.current = true;
+    cryptoKeyCache.clear();
     authService.logout();
     setCurrentUser(null);
   }, []);
@@ -147,9 +192,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'TOKEN_REFRESHED' && session?.user) {
-        authService.checkAuth().then((user) => {
-          if (user) setCurrentUser(user);
-        });
+        authService
+          .checkAuth()
+          .then((user) => {
+            if (user) setCurrentUser(user);
+          })
+          .catch((e) => console.warn('checkAuth after TOKEN_REFRESHED failed:', e));
       }
     });
     return () => subscription.unsubscribe();
@@ -208,7 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('touchstart', updateActivity);
       window.removeEventListener('scroll', updateActivity);
     };
-  }, [currentUser, logout, hardLogout]);
+  }, [currentUser, hardLogout]);
 
   // Visibility check: fires when the worker brings the tab into focus.
   // Reads the session from the browser's local cache (no network call unless
@@ -219,10 +267,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState !== 'visible') return;
       if (!hasBeenAuthenticated.current) return; // not logged in this session
       if (reloadPending.current) return; // reload already on its way
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) await hardLogout();
+      try {
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession(), 5000);
+        if (!session) await hardLogout();
+      } catch {
+        // Timeout or network error on visibility check — treat as session lost.
+        await hardLogout();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -241,6 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {

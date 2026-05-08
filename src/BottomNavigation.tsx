@@ -6,11 +6,12 @@ interface BottomNavigationProps {
   onNavigate: (view: ViewState) => void;
 }
 
-/** Persistent bottom tab bar for shop floor: Home | Jobs | Stock | Scanner */
+/** Persistent bottom tab bar for shop floor: Home | Jobs | Stock | Scan */
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView, onNavigate }) => {
   const isHome = currentView === 'dashboard';
   const isJobs = currentView === 'board-shop';
   const isStock = currentView === 'inventory' || currentView === 'inventory-detail';
+
   const isScanner = currentView === 'scanner';
 
   const navToJobs = () => onNavigate('board-shop');

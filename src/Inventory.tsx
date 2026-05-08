@@ -4,7 +4,7 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import InventoryDetail from './InventoryDetail';
 import AddInventoryItem from './AddInventoryItem';
 import InventoryKanban from './InventoryKanban';
-import { useToast } from './Toast';
+
 import InventoryMainView from '@/features/inventory/InventoryMainView';
 import type { InventoryFilters } from '@/features/inventory/inventoryViewModel';
 
@@ -54,7 +54,6 @@ const Inventory: React.FC<InventoryProps> = ({
   initialItemId,
   onBackFromDetail,
 }) => {
-  const { showToast } = useToast();
   const { state: navState, updateState } = useNavigation();
   const [view, setView] = useState<InventoryView>('main');
   const listView = navState.inventoryListView ?? 'list';

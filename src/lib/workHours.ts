@@ -348,14 +348,14 @@ export function getWeeklyWorkHours(
   options: { includeOvertime?: boolean } = {}
 ): number {
   const normalized = normalizeWorkWeekSchedule(schedule);
-  return DAY_INDICES.reduce((sum, day) => {
+  return DAY_INDICES.reduce((sum: number, day) => {
     const dayHours = getDayScheduleHours(normalized[day]);
     return (
       sum +
       dayHours.regularHoursPerEmployee +
       (options.includeOvertime ? dayHours.overtimeHoursPerEmployee : 0)
     );
-  }, 0);
+  }, 0 as number);
 }
 
 export function getWeeklyCapacityHours(

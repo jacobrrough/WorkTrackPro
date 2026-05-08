@@ -81,7 +81,10 @@ export type ViewState =
   | 'admin-settings'
   | 'trello-import'
   | 'boards'
-  | 'board-detail';
+  | 'board-detail'
+  | 'board-card-detail'
+  | 'chat'
+  | 'chat-conversation';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -148,6 +151,7 @@ export interface JobInventoryItem {
   job?: string;
   inventoryId?: string;
   inventory?: string;
+  inventoryName?: string;
   quantity: number;
   unit: string;
 }
@@ -354,7 +358,11 @@ export interface QuoteLineItem {
   quantity: number;
   unit: string;
   unitCost?: number;
+  unitPrice?: number;
   total?: number;
+  totalPrice?: number;
+  inventoryName?: string;
+  isManual?: boolean;
 }
 
 export interface Quote {
@@ -435,6 +443,17 @@ export interface Delivery {
   updatedAt?: string;
 }
 
+export interface JobStatusHistoryEntry {
+  id: string;
+  jobId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  previousStatus: JobStatus;
+  newStatus: JobStatus;
+  createdAt: string;
+}
+
 // Kanban columns (shop floor)
 export const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
   { id: 'pending', title: 'Pending', color: 'bg-pink-500' },
@@ -492,4 +511,111 @@ export interface BoardMember {
   userName?: string;
   userEmail?: string;
   role: BoardMemberRole;
+}
+
+// ── E2E Encrypted Chat ──────────────────────────────
+
+export type ConversationType = 'direct' | 'group';
+export type ConversationMemberRole = 'admin' | 'member';
+export type MessageType = 'text' | 'file' | 'system';
+
+export interface UserEncryptionKeys {
+  id: string;
+  userId: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+  keySalt: string;
+  keyIv: string;
+  algorithm: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  type: ConversationType;
+  name?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  members?: ConversationMember[];
+  lastMessage?: Message;
+  unreadCount?: number;
+}
+
+export interface ConversationMember {
+  id: string;
+  conversationId: string;
+  userId: string;
+  userName?: string;
+  userInitials?: string;
+  encryptedConversationKey?: string;
+  keyIv?: string;
+  role: ConversationMemberRole;
+  joinedAt: string;
+  leftAt?: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName?: string;
+  senderInitials?: string;
+  encryptedContent: string;
+  contentIv: string;
+  messageType: MessageType;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+  decryptedContent?: string;
+  attachments?: MessageAttachment[];
+  receipts?: MessageReceipt[];
+}
+
+export interface MessageReceipt {
+  id: string;
+  messageId: string;
+  userId: string;
+  userName?: string;
+  deliveredAt?: string;
+  readAt?: string;
+}
+
+export interface MessageAttachment {
+  id: string;
+  messageId: string;
+  storagePath: string;
+  encryptedFileKey: string;
+  fileKeyIv: string;
+  fileIv: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  decryptedUrl?: string;
+}
+
+// ── System Notifications ───────────────────────────────
+
+export type SystemNotificationType =
+  | 'mention'
+  | 'status_change'
+  | 'assignment'
+  | 'unassignment'
+  | 'low_stock'
+  | 'rush'
+  | 'overdue'
+  | 'delivery'
+  | 'po_received';
+
+export interface SystemNotification {
+  id: string;
+  userId: string;
+  type: SystemNotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  metadata?: Record<string, unknown>;
+  readAt?: string;
+  createdAt: string;
 }

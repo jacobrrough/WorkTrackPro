@@ -3,13 +3,11 @@ import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApp } from './AppContext';
 import { jobService } from './pocketbase';
-import type { Job } from './core/types';
+import type { Job, ViewState } from './core/types';
 import { NavigationProvider } from './contexts/NavigationContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { ClockInProvider } from './contexts/ClockInContext';
 import { AdminRoute } from './components/AdminRoute';
-import { NotificationsProvider } from './contexts/NotificationsContext';
-import { NotificationTrigger } from './components/NotificationTrigger';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
@@ -36,6 +34,11 @@ const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport
 const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
 const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
 const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
+const CardDetailView = lazyWithRetry(
+  () => import('./features/boards/CardDetailView'),
+  'CardDetailView'
+);
+const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
 
 function AppViewFallback() {
   return (
@@ -101,9 +104,9 @@ export default function App() {
     receiveInventoryOrder,
   } = useApp();
 
-  const [view, setView] = useState<string>('dashboard');
+  const [view, setView] = useState<ViewState>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
-  const [backStack, setBackStack] = useState<Array<{ view: string; id?: string }>>([]);
+  const [, setBackStack] = useState<Array<{ view: ViewState; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -162,9 +165,12 @@ export default function App() {
   }, [isLoading]);
 
   const handleNavigate = useCallback(
-    (nextView: string, nextId?: string | { jobId?: string; partId?: string }) => {
+    (nextView: ViewState, nextId?: string | { jobId?: string; partId?: string }) => {
       const isDetailView =
-        nextView === 'job-detail' || nextView === 'inventory-detail' || nextView === 'part-detail';
+        nextView === 'job-detail' ||
+        nextView === 'inventory-detail' ||
+        nextView === 'part-detail' ||
+        nextView === 'board-card-detail';
 
       if (isDetailView) {
         setBackStack((prev) => {
@@ -192,7 +198,10 @@ export default function App() {
   );
 
   const navigateBackFrom = useCallback(
-    (_detailView: 'job-detail' | 'inventory-detail' | 'part-detail', fallback: string) => {
+    (
+      _detailView: 'job-detail' | 'inventory-detail' | 'part-detail' | 'board-card-detail',
+      fallback: ViewState
+    ) => {
       setBackStack((prev) => {
         const entry = prev[prev.length - 1];
         const nextStack = prev.slice(0, -1);
@@ -262,6 +271,21 @@ export default function App() {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
     }
     return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
+  }
+
+  // Safety net: if the session expired and we already have the notice, show Login
+  // immediately regardless of isLoading. Prevents the spinner from getting stuck
+  // if checkAuth somehow never resolves (slow network, Supabase hiccup, etc.).
+  if (!currentUser && sessionExpiredNotice) {
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        onResetPassword={resetPasswordForEmail}
+        error={sessionExpiredNotice}
+        isLoading={false}
+      />
+    );
   }
 
   if (!currentUser && !isLoading) {
@@ -500,6 +524,7 @@ export default function App() {
             onDeleteAttachment={deleteAttachment}
             boardType={boardType}
             isAdmin={isAdmin}
+            currentUser={currentUser!}
             onUpdateJobStatus={updateJobStatus}
             onUpdateJob={updateJob}
           />
@@ -525,6 +550,49 @@ export default function App() {
           boardId={id}
           onNavigate={handleNavigate}
           onBack={() => handleNavigate('boards')}
+        />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'board-card-detail' && id) {
+    const [boardId, cardId] = id.split(':');
+    if (!boardId || !cardId) {
+      return (
+        <AppShell>
+          <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 bg-background-dark">
+            <p className="text-slate-400">Card not found.</p>
+            <button
+              onClick={() => handleNavigate('boards')}
+              className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
+            >
+              Back to boards
+            </button>
+          </div>
+          <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+        </AppShell>
+      );
+    }
+    return (
+      <AppShell>
+        <CardDetailView
+          boardId={boardId}
+          cardId={cardId}
+          onNavigate={handleNavigate}
+          onBack={() => navigateBackFrom('board-card-detail', 'boards')}
+        />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'chat' || view === 'chat-conversation') {
+    return (
+      <AppShell>
+        <ChatView
+          conversationId={view === 'chat-conversation' ? id : undefined}
+          onNavigate={handleNavigate}
         />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
@@ -674,8 +742,7 @@ export default function App() {
   }
 
   return (
-    <NotificationsProvider>
-      <NotificationTrigger />
+    <>
       {currentUser && (
         <CommandPalette
           open={commandPaletteOpen}
@@ -690,6 +757,6 @@ export default function App() {
         <Dashboard onNavigate={handleNavigate} />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
-    </NotificationsProvider>
+    </>
   );
 }

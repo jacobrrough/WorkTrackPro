@@ -679,7 +679,7 @@ export const jobService = {
         };
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message ?? 'Job creation failed');
     const createdRow = created as Record<string, unknown>;
     const newJobId = createdRow.id as string;
     // Sync job_parts: either from data.parts or a single row from primary part

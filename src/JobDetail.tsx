@@ -52,6 +52,7 @@ import {
   variantCncFromSetComposition,
   variantPrinter3DFromSetComposition,
 } from '@/lib/partDistribution';
+import { isPartsEditingAllowed, getPartsLockedReason } from '@/lib/jobWorkflow';
 import type { VariantDefaultOverrides } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
@@ -68,6 +69,7 @@ import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
 import JobComments from '@/features/jobs/components/JobComments';
 import DeliveriesSection from '@/features/deliveries/DeliveriesSection';
+import JobStatusHistory from '@/features/jobs/components/JobStatusHistory';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import ConfirmDialog from './ConfirmDialog';
@@ -269,7 +271,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   calculateAvailable,
 }) => {
   const clockInCtx = useClockIn();
-  const { advanceJobToNextStatus } = useApp();
+  const { advanceJobToNextStatus, users } = useApp();
   const { showToast } = useToast();
   const handleClockIn = useCallback(async () => {
     const applyResult = (r: ClockPunchResult) => {
@@ -344,6 +346,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const printer3DRate = settings.printer3DRate;
   const location = useLocation();
   const { state: navState, updateState } = useNavigation();
+  const partsLocked = !isPartsEditingAllowed(job.status);
+  const partsLockedReason = getPartsLockedReason(job.status);
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>(
     normalizeDashQuantities(job.dashQuantities || {})
   );
@@ -386,7 +390,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
               dashQuantities: job.dashQuantities ?? {},
             },
           ]
-        : []
+        : [
+            {
+              partId: '',
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ]
   );
   useEffect(() => {
     const next = job.parts?.length
@@ -399,7 +409,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
               dashQuantities: job.dashQuantities ?? {},
             },
           ]
-        : [];
+        : [
+            {
+              partId: '',
+              partNumber: job.partNumber ?? '',
+              dashQuantities: job.dashQuantities ?? {},
+            },
+          ];
     setEditingParts(next);
   }, [job.parts, job.partId, job.partNumber, job.dashQuantities]);
 
@@ -707,6 +723,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.parts?.length, job.parts?.map((p) => p.partId)?.join(',') ?? '']);
 
   useEffect(() => {
@@ -990,6 +1007,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     });
   }, [
     laborBreakdownTotal,
+    laborBreakdownByDash,
     allocationSource,
     variantAllocation.totals,
     variantAllocation.totals?.laborHours,
@@ -998,8 +1016,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   ]);
 
   // Search for part by part number (reserved for future part search UI)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handlePartNumberSearch = useCallback(async () => {
+  const _handlePartNumberSearch = useCallback(async () => {
     if (!partNumberSearch.trim()) {
       setLinkedPart(null);
       setEditForm((prev) => ({ ...prev, partNumber: '', variantSuffix: '' }));
@@ -1031,6 +1048,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             description: partDescription,
             laborHours: laborHours,
           });
+          if (!part) throw new Error('Failed to create part');
           showToast(`Created new part: ${part.name}`, 'success');
         } catch (createError: unknown) {
           const err = createError as { message?: string; code?: string };
@@ -1099,6 +1117,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     autoJobName,
     showToast,
   ]);
+
+  void _handlePartNumberSearch;
 
   // Reset edit form when job changes (use stable deps to avoid infinite loop).
   // Skip when user is editing so we never overwrite in-progress edits (e.g. after save, job updates and we want to show saved values only when not editing).
@@ -1249,11 +1269,34 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleSubmitComment = async () => {
     if (!newComment.trim() || isSubmitting) return;
     setIsSubmitting(true);
+    const commentText = newComment.trim();
     try {
-      const comment = await onAddComment(job.id, newComment.trim());
+      const comment = await onAddComment(job.id, commentText);
       if (comment) {
         setNewComment('');
-        // Comment added successfully - the parent will refresh the job data
+        const mentionPattern = /@([\w][\w\s]*[\w]|[\w]+)/g;
+        let match: RegExpExecArray | null;
+        const mentionedNames = new Set<string>();
+        while ((match = mentionPattern.exec(commentText)) !== null) {
+          mentionedNames.add(match[1].toLowerCase());
+        }
+        if (mentionedNames.size > 0 && users.length > 0) {
+          const { systemNotificationService } = await import('@/services/api/systemNotifications');
+          for (const user of users) {
+            const name = (user.name ?? user.email).toLowerCase();
+            if (user.id !== currentUser.id && mentionedNames.has(name)) {
+              systemNotificationService
+                .notifyMention({
+                  mentionedUserId: user.id,
+                  jobId: job.id,
+                  commenterName: currentUser.name ?? currentUser.email,
+                  jobCode: job.jobCode,
+                  commentPreview: commentText,
+                })
+                .catch((err) => console.error('Mention notification failed:', err));
+            }
+          }
+        }
       } else {
         console.error('Failed to add comment - no comment returned');
       }
@@ -1310,9 +1353,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
       Boolean(normalizedBinLocation) && is3DPrintRequired && !job.printer3DCompletedAt;
     const partsToSave =
       editingParts.length > 0
-        ? editingParts.map((p, i) =>
-            i === 0 ? { ...p, dashQuantities: normalizedDashQuantities } : p
-          )
+        ? editingParts
+            .filter((p) => p.partId)
+            .map((p, i) => (i === 0 ? { ...p, dashQuantities: normalizedDashQuantities } : p))
         : undefined;
     const editQty = parseFloat(editForm.qty) || 1;
     const noVariantMachineBreakdown =
@@ -1326,15 +1369,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
           )
         : null;
 
+    const canEditParts = isPartsEditingAllowed(job.status);
     const payload = {
-      ...(partsToSave && partsToSave.length > 0 ? { parts: partsToSave } : {}),
-      partNumber,
-      revision,
+      ...(canEditParts && partsToSave && partsToSave.length > 0 ? { parts: partsToSave } : {}),
+      ...(canEditParts ? { partNumber } : {}),
+      ...(canEditParts ? { revision } : {}),
       po,
       description: editForm.description?.trim() || undefined,
       dueDate: dateInputToISO(editForm.dueDate),
       ecd: dateInputToISO(editForm.ecd),
-      qty: editForm.qty?.trim() || undefined,
+      ...(canEditParts ? { qty: editForm.qty?.trim() || undefined } : {}),
       // Always persist labor hours when form has a value (fixes jobs without variants not registering)
       laborHours: (() => {
         const v = editForm.laborHours?.trim();
@@ -1360,8 +1404,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: editForm.invNumber?.trim() || undefined,
       rfqNumber: editForm.rfqNumber?.trim() || undefined,
       owrNumber: editForm.owrNumber?.trim() || undefined,
-      dashQuantities:
-        Object.keys(normalizedDashQuantities).length > 0 ? normalizedDashQuantities : undefined,
+      ...(canEditParts
+        ? {
+            dashQuantities:
+              Object.keys(normalizedDashQuantities).length > 0
+                ? normalizedDashQuantities
+                : undefined,
+          }
+        : {}),
       laborBreakdownByVariant:
         Object.keys(persistedLaborBreakdown).length > 0 ? persistedLaborBreakdown : undefined,
       machineBreakdownByVariant:
@@ -1404,7 +1454,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
             await syncJobInventoryFromParts(job.id, partsForSync, { replace: true });
             await onReloadJob?.();
           } catch (syncErr) {
-            const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save (multi-part):', syncErr);
             showToast(
               'Job saved; material sync failed. Use Auto-assign materials to retry.',
@@ -1553,8 +1602,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
   const handleAddPartToExistingJob = useCallback(
     async (part: Part, dashQuantitiesForPart: Record<string, number>) => {
+      if (!isPartsEditingAllowed(job.status)) {
+        showToast('Cannot modify parts after RFQ Sent', 'error');
+        return;
+      }
       const currentParts: JobPartLink[] =
-        job.parts?.length > 0
+        job.parts && job.parts.length > 0
           ? job.parts
           : job.partId
             ? [
@@ -1624,7 +1677,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               if (typeof hours === 'number' && hours > 0) combinedLabor += hours;
             }
             if (combinedLabor > 0) {
-              const laborUpdated = await onUpdateJob(job.id, { laborHours: combinedLabor });
+              await onUpdateJob(job.id, { laborHours: combinedLabor });
             }
           }
 
@@ -1645,8 +1698,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       job.partNumber,
       job.dashQuantities,
       job.parts,
+      job.status,
       onUpdateJob,
-      onReloadJob,
       showToast,
     ]
   );
@@ -1835,7 +1888,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
     setAttachmentAdminOverrides((prev) => ({ ...prev, [attachmentId]: isAdminOnly }));
     setPendingAttachmentToggleCount((prev) => prev + 1);
 
-    const operation = (async () => {
+    const ref: { p?: Promise<void> } = {};
+    const operation: Promise<void> = (async () => {
       try {
         const success = await onUpdateAttachmentAdminOnly(attachmentId, isAdminOnly);
         if (success && onReloadJob) {
@@ -1867,10 +1921,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         });
         showToast('Failed to update Admin-only setting', 'error');
       } finally {
-        pendingAttachmentTogglesRef.current.delete(operation);
+        if (ref.p) pendingAttachmentTogglesRef.current.delete(ref.p);
         setPendingAttachmentToggleCount((prev) => Math.max(0, prev - 1));
       }
     })();
+    ref.p = operation;
 
     pendingAttachmentTogglesRef.current.add(operation);
     await operation;
@@ -2061,7 +2116,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       <button
                         type="button"
                         onClick={handleFillFullSet}
-                        className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30"
+                        disabled={partsLocked}
+                        title={partsLockedReason ?? undefined}
+                        className="rounded border border-primary/30 bg-primary/20 px-2.5 py-1.5 text-[11px] font-medium text-primary hover:bg-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Fill full set
                       </button>
@@ -2101,6 +2158,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Part details
               </p>
+              {partsLocked && (
+                <p className="mb-2 flex items-center gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-300">
+                  <span className="material-symbols-outlined text-sm">lock</span>
+                  {partsLockedReason}
+                </p>
+              )}
               {editingParts.map((link, idx) => (
                 <div key={link.partId} className="mb-3 last:mb-0">
                   {editingParts.length > 1 && (
@@ -2117,10 +2180,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             setEditForm((prev) => ({ ...prev, partNumber: e.target.value }))
                           }
                           onBlur={(e) => {
+                            if (partsLocked) return;
                             const v = e.currentTarget.value?.trim();
                             if (v) loadLinkedPart(v);
                           }}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none"
+                          disabled={partsLocked}
+                          title={partsLockedReason ?? undefined}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="e.g., SK-F35-0911"
                         />
                       ) : (
@@ -2136,7 +2202,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           type="text"
                           value={editForm.revision}
                           onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          disabled={partsLocked}
+                          title={partsLockedReason ?? undefined}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="A, B, NC"
                         />
                       ) : (
@@ -2152,8 +2220,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           type="text"
                           value={partNameEdit}
                           onChange={(e) => setPartNameEdit(e.target.value)}
-                          onBlur={savePartName}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          onBlur={partsLocked ? undefined : savePartName}
+                          disabled={partsLocked}
+                          title={partsLockedReason ?? undefined}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Part name"
                         />
                       ) : linkedParts?.[idx] ? (
@@ -2334,26 +2404,32 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </h3>
                       )}
                       {partIdx === 0 &&
-                      linkedPart.setComposition &&
+                      linkedPart?.setComposition &&
                       Object.keys(linkedPart.setComposition).filter((k) => k !== '_').length > 0 ? (
                         <div className="mb-2 flex flex-wrap items-center gap-3">
                           <span className="text-[11px] text-slate-400">Input by:</span>
-                          <label className="flex cursor-pointer items-center gap-1.5">
+                          <label
+                            className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          >
                             <input
                               type="radio"
                               name="quantity-input-mode"
                               checked={quantityInputMode === 'sets'}
                               onChange={() => setQuantityInputMode('sets')}
+                              disabled={partsLocked}
                               className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-white">Full sets</span>
                           </label>
-                          <label className="flex cursor-pointer items-center gap-1.5">
+                          <label
+                            className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          >
                             <input
                               type="radio"
                               name="quantity-input-mode"
                               checked={quantityInputMode === 'variants'}
                               onChange={() => setQuantityInputMode('variants')}
+                              disabled={partsLocked}
                               className="h-4 w-4 border-white/20 bg-white/5 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-white">Variants</span>
@@ -2362,7 +2438,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       ) : null}
                       {partIdx === 0 &&
                       quantityInputMode === 'sets' &&
-                      linkedPart.setComposition &&
+                      linkedPart?.setComposition &&
                       Object.keys(linkedPart.setComposition).length > 0 ? (
                         <div>
                           <label className="mb-0.5 block text-[11px] text-slate-400">
@@ -2376,7 +2452,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               const v = parseInt(e.target.value, 10);
                               handleSetsQuantityChange(Number.isFinite(v) && v >= 0 ? v : 0);
                             }}
-                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                            disabled={partsLocked}
+                            title={partsLockedReason ?? undefined}
+                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Number of sets"
                           />
                           {derivedCompleteSets > 0 && (
@@ -2434,7 +2512,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                           setQtyForPart(next);
                                         }
                                       }}
-                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                                      disabled={partsLocked}
+                                      title={partsLockedReason ?? undefined}
+                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                       aria-label={`Quantity for ${label}`}
                                     />
                                     <span className="text-[10px] text-slate-400">Qty</span>
@@ -2464,7 +2544,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           type="text"
                           value={editForm.qty}
                           onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
-                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none"
+                          disabled={partsLocked}
+                          title={partsLockedReason ?? undefined}
+                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Sets"
                           aria-label="Quantity (sets)"
                         />
@@ -2669,7 +2751,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   ) : (
                     <ul className="space-y-1.5">
                       {job.inventoryItems.map((item) => {
-                        const invItem = inventoryById.get(item.inventoryId);
+                        const invItem = item.inventoryId
+                          ? inventoryById.get(item.inventoryId)
+                          : undefined;
                         return (
                           <li
                             key={item.id}
@@ -2688,11 +2772,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               <span className="ml-2 text-[10px] text-slate-400">
                                 {item.quantity} {item.unit}
                               </span>
-                              {isMaterialAuto(item.inventoryId, item.quantity) && (
-                                <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                                  auto
-                                </span>
-                              )}
+                              {item.inventoryId &&
+                                isMaterialAuto(item.inventoryId, item.quantity) && (
+                                  <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                                    auto
+                                  </span>
+                                )}
                             </div>
                             <button
                               type="button"
@@ -2942,7 +3027,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             num != null ? 'Progress estimate set' : 'Progress estimate cleared',
                             'success'
                           );
-                        } catch (e) {
+                        } catch {
                           showToast('Failed to update progress estimate', 'error');
                         }
                       }}
@@ -2958,7 +3043,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           await onUpdateJob(job.id, { progressEstimatePercent: null });
                           // Do not refetch – cache merge keeps UI in sync; refetch can revert if server omits column
                           showToast('Progress estimate cleared', 'success');
-                        } catch (e) {
+                        } catch {
                           showToast('Failed to clear', 'error');
                         }
                       }}
@@ -3175,7 +3260,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             {/* Part section(s) - one block per part */}
             {(() => {
               const viewParts: JobPartLink[] =
-                job.parts?.length > 0
+                job.parts && job.parts.length > 0
                   ? job.parts
                   : job.partId
                     ? [
@@ -3249,6 +3334,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     </div>
                   ))}
                   {currentUser.isAdmin &&
+                    !partsLocked &&
                     (job.partId || job.partNumber || (job.parts && job.parts.length > 0)) &&
                     !showAddPartToJob && (
                       <div className="px-4 pb-2">
@@ -3262,7 +3348,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </button>
                       </div>
                     )}
-                  {currentUser.isAdmin && showAddPartToJob && (
+                  {currentUser.isAdmin && !partsLocked && showAddPartToJob && (
                     <div className="mx-4 mb-2 rounded-sm border border-primary/40 bg-primary/10 p-3">
                       <p className="mb-2 text-xs font-medium text-primary">
                         Select part to add to this job
@@ -3590,6 +3676,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             <DeliveriesSection job={job} currentUser={currentUser} />
 
+            {currentUser.isAdmin && (
+              <JobStatusHistory jobId={job.id} isAdmin={currentUser.isAdmin} />
+            )}
+
             <div>
               <JobComments
                 comments={job.comments || []}
@@ -3605,6 +3695,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 onUpdateComment={handleUpdateComment}
                 onDeleteComment={handleDeleteComment}
                 formatCommentTime={formatCommentTime}
+                users={users}
               />
             </div>
           </>

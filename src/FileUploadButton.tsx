@@ -74,6 +74,7 @@ const FileUploadButton: React.FC<FileUploadButtonProps> = ({
         disabled={disabled || uploading}
       />
       <button
+        type="button"
         onClick={handleClick}
         disabled={disabled || uploading}
         className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"

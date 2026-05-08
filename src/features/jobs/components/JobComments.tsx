@@ -1,3 +1,4 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Comment, User } from '@/core/types';
 
 interface JobCommentsProps {
@@ -14,6 +15,152 @@ interface JobCommentsProps {
   onUpdateComment: (commentId: string) => void;
   onDeleteComment: (commentId: string) => void;
   formatCommentTime: (timestamp: string) => string;
+  users?: User[];
+}
+
+function MentionTextarea({
+  value,
+  onChange,
+  placeholder,
+  rows,
+  users,
+  currentUserId,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+  users: User[];
+  currentUserId: string;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionStart, setMentionStart] = useState(-1);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const otherUsers = users.filter((u) => u.id !== currentUserId && u.isApproved !== false);
+  const filteredUsers = mentionQuery
+    ? otherUsers.filter((u) =>
+        (u.name ?? u.email).toLowerCase().includes(mentionQuery.toLowerCase())
+      )
+    : otherUsers;
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const text = e.target.value;
+      const cursorPos = e.target.selectionStart ?? text.length;
+      onChange(text);
+
+      const textBeforeCursor = text.slice(0, cursorPos);
+      const atMatch = textBeforeCursor.match(/@([^\s@]*)$/);
+      if (atMatch) {
+        setShowDropdown(true);
+        setMentionQuery(atMatch[1]);
+        setMentionStart(cursorPos - atMatch[0].length);
+        setSelectedIndex(0);
+      } else {
+        setShowDropdown(false);
+      }
+    },
+    [onChange]
+  );
+
+  const insertMention = useCallback(
+    (user: User) => {
+      const name = user.name ?? user.email;
+      const before = value.slice(0, mentionStart);
+      const after = value.slice(mentionStart + mentionQuery.length + 1);
+      const newValue = `${before}@${name}${after ? after : ' '}`;
+      onChange(newValue);
+      setShowDropdown(false);
+      textareaRef.current?.focus();
+    },
+    [value, mentionStart, mentionQuery, onChange]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!showDropdown || filteredUsers.length === 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.min(i + 1, filteredUsers.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(filteredUsers[selectedIndex]);
+      } else if (e.key === 'Escape') {
+        setShowDropdown(false);
+      }
+    },
+    [showDropdown, filteredUsers, selectedIndex, insertMention]
+  );
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handle = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    window.addEventListener('mousedown', handle);
+    return () => window.removeEventListener('mousedown', handle);
+  }, [showDropdown]);
+
+  return (
+    <div className="relative">
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className="w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+        rows={rows}
+      />
+      {showDropdown && filteredUsers.length > 0 && (
+        <div
+          ref={dropdownRef}
+          className="absolute bottom-full left-0 z-50 mb-1 max-h-40 w-56 overflow-y-auto rounded-sm border border-white/10 bg-[#1a1122] shadow-xl"
+        >
+          {filteredUsers.slice(0, 8).map((user, i) => (
+            <button
+              key={user.id}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                insertMention(user);
+              }}
+              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                i === selectedIndex ? 'bg-primary/20 text-white' : 'text-slate-300 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-600 text-[10px] font-bold text-white">
+                {user.initials || '?'}
+              </div>
+              <span className="truncate">{user.name ?? user.email}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderCommentText(text: string): React.ReactNode {
+  const parts = text.split(/(@\w[\w\s]*\w|@\w+)/g);
+  return parts.map((part, i) =>
+    part.startsWith('@') ? (
+      <span key={i} className="font-medium text-primary">
+        {part}
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
 }
 
 export default function JobComments({
@@ -30,6 +177,7 @@ export default function JobComments({
   onUpdateComment,
   onDeleteComment,
   formatCommentTime,
+  users = [],
 }: JobCommentsProps) {
   return (
     <div className="p-3 pt-0">
@@ -44,12 +192,13 @@ export default function JobComments({
             {currentUser.initials}
           </div>
           <div className="flex-1">
-            <textarea
+            <MentionTextarea
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+              onChange={setNewComment}
+              placeholder="Write a comment... Use @ to mention"
               rows={2}
+              users={users}
+              currentUserId={currentUser.id}
             />
             <div className="flex justify-end">
               <button
@@ -139,7 +288,7 @@ export default function JobComments({
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-300">{comment.text}</p>
+                    <p className="text-sm text-slate-300">{renderCommentText(comment.text)}</p>
                   )}
                 </div>
               </div>

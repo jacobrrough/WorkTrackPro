@@ -98,7 +98,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
             {attachment.filename}
           </h3>
           <p className="text-xs text-slate-400 sm:text-sm">
-            {new Date(attachment.created).toLocaleDateString()}
+            {attachment.created ? new Date(attachment.created).toLocaleDateString() : ''}
           </p>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">

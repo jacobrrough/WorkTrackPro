@@ -91,8 +91,6 @@ export function computePartDerivedMaterialTotal(
  * materialUpcharge comes from Admin Settings (Organization) and controls the displayed total.
  */
 export function computeMaterialCosts({
-  linkedPart,
-  dashQuantities,
   inventoryById,
   jobInventoryItems,
   materialUpcharge,
@@ -103,6 +101,7 @@ export function computeMaterialCosts({
   if (!isAdmin) return costs;
 
   for (const jobMaterial of jobInventoryItems || []) {
+    if (!jobMaterial.inventoryId) continue;
     const invItem = inventoryById.get(jobMaterial.inventoryId);
     if (invItem?.price != null && jobMaterial.quantity > 0) {
       const lineCost = jobMaterial.quantity * invItem.price * materialUpcharge;

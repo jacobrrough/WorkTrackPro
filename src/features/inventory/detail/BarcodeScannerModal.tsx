@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import jsQR from 'jsqr';
 
 interface BarcodeScannerModalProps {

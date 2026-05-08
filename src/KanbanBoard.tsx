@@ -19,8 +19,8 @@ interface KanbanBoardProps {
   shifts?: Shift[];
   boardType: 'shopFloor' | 'admin';
   onNavigate: (view: ViewState, jobId?: string) => void;
-  onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
-  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<void>;
+  onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean | void>;
+  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<Job | null | void>;
   onCreateJob: () => void;
   onDeleteJob?: (jobId: string) => Promise<boolean>;
   onDeleteAttachment?: (attachmentId: string) => Promise<boolean>;
@@ -153,8 +153,8 @@ interface KanbanJobCardProps {
   onMenuClick: (e: React.MouseEvent, jobId: string) => void;
   onScanBin: (jobId: string) => void;
   onMoveColumnForJob: (jobId: string | null) => void;
-  onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<void>;
-  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<void>;
+  onUpdateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean | void>;
+  onUpdateJob?: (jobId: string, updates: Partial<Job>) => Promise<Job | null | void>;
   onFilesClick: (jobId: string) => void;
   onDeleteClick: (jobId: string) => void;
   showToast: (
@@ -609,6 +609,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onUpdateJob,
   onCreateJob,
   onDeleteJob,
+  onDeleteAttachment,
   isAdmin,
   currentUser: _currentUser,
   inventory: _inventory = [],
