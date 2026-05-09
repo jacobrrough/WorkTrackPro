@@ -2,7 +2,7 @@ import React from 'react';
 import type { InventoryItem, Job, ViewState } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
-import { isAllocationActiveStatus } from '@/lib/inventoryCalculations';
+import { isAllocationActiveStatus, isConsumedStatus } from '@/lib/inventoryCalculations';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function formatStockDisplay(value: number): string {
@@ -70,6 +70,19 @@ export function InventoryDetailOverview({
     const entries: Array<{ job: Job; quantity: number; jobInventoryId: string }> = [];
     for (const job of jobs) {
       if (!isAllocationActiveStatus(job.status)) continue;
+      for (const ji of job.inventoryItems ?? []) {
+        if (ji.inventoryId === item.id) {
+          entries.push({ job, quantity: ji.quantity, jobInventoryId: ji.id });
+        }
+      }
+    }
+    return entries;
+  }, [jobs, item.id]);
+
+  const consumedJobs = React.useMemo(() => {
+    const entries: Array<{ job: Job; quantity: number; jobInventoryId: string }> = [];
+    for (const job of jobs) {
+      if (!isConsumedStatus(job.status)) continue;
       for (const ji of job.inventoryItems ?? []) {
         if (ji.inventoryId === item.id) {
           entries.push({ job, quantity: ji.quantity, jobInventoryId: ji.id });
@@ -405,6 +418,36 @@ export function InventoryDetailOverview({
           </div>
         )}
       </div>
+
+      {consumedJobs.length > 0 && (
+        <div className="rounded-sm bg-card-dark p-3">
+          <h2 className="mb-3 text-lg font-bold text-white">Consumed Jobs</h2>
+          <p className="mb-2 text-xs text-slate-500">
+            Stock has already been deducted for these jobs.
+          </p>
+          <div className="space-y-2">
+            {consumedJobs.map(({ job, quantity, jobInventoryId }) => (
+              <button
+                type="button"
+                key={jobInventoryId}
+                onClick={() => onNavigate('job-detail', job.id)}
+                className="flex w-full items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
+              >
+                <div>
+                  <p className="font-bold text-white">Job #{job.jobCode}</p>
+                  <p className="text-xs text-slate-400">
+                    {job.name}{' '}
+                    <span className="ml-1 capitalize text-slate-500">({job.status})</span>
+                  </p>
+                </div>
+                <p className="text-sm font-bold text-slate-400">
+                  {quantity} {item.unit}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

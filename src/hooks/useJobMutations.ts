@@ -1,25 +1,21 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Comment, Job, JobStatus, User, InventoryItem } from '@/core/types';
+import type { Comment, Job, JobStatus, User } from '@/core/types';
 import { buildJobNameFromConvention } from '@/lib/formatJob';
 import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
-import { buildReconciliationMutations } from '@/lib/inventoryReconciliation';
 import { dedupeJobsById } from '@/lib/jobUtils';
 import { jobService } from '@/services/api/jobs';
 import { checklistService } from '@/services/api/checklists';
-import { inventoryService } from '@/services/api/inventory';
-import { inventoryHistoryService } from '@/services/api/inventoryHistory';
 import { jobStatusHistoryService } from '@/services/api/jobStatusHistory';
 import { systemNotificationService } from '@/services/api/systemNotifications';
 
 export interface UseJobMutationsParams {
   jobs: Job[];
-  inventory: InventoryItem[];
   currentUser: User | null;
   refreshJobs: () => Promise<void>;
   refreshInventory: () => Promise<void>;
   refreshShifts: () => Promise<void>;
-  showToast: (
+  showToast?: (
     message: string,
     type: 'info' | 'success' | 'error' | 'warning',
     duration?: number
@@ -28,7 +24,6 @@ export interface UseJobMutationsParams {
 
 export function useJobMutations({
   jobs,
-  inventory,
   currentUser,
   refreshJobs,
   refreshInventory,
@@ -177,12 +172,9 @@ export function useJobMutations({
 
   const updateJobStatus = useCallback(
     async (jobId: string, status: JobStatus): Promise<boolean> => {
+      // Captured before the try so the catch block can revert the optimistic write.
+      const job = jobs.find((j) => j.id === jobId);
       try {
-        const job = jobs.find((j) => j.id === jobId);
-        const wasDelivered = job?.status === 'delivered';
-        const isDelivered = status === 'delivered';
-        const nextJobs = jobs.map((j) => (j.id === jobId ? { ...j, status } : j));
-
         if (status === 'paid' && job) {
           const name = buildJobNameFromConvention({ ...job, status: 'paid' });
           const updated = await jobService.updateJob(jobId, { status: 'paid', name });
@@ -194,19 +186,25 @@ export function useJobMutations({
             prev ? prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)) : []
           );
         } else {
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev
-              ? prev.map((j) =>
-                  j.id === jobId
-                    ? {
-                        ...j,
-                        status,
-                        ...(status === 'delivered' ? { binLocation: undefined } : {}),
-                      }
-                    : j
-                )
-              : []
-          );
+          // Only write optimistically when the previous job state is known so
+          // the catch block can revert to the correct previous status.
+          // If job is undefined (not yet in cache), skip the optimistic write
+          // and let refreshJobs() sync the UI after the DB call resolves.
+          if (job) {
+            queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+              prev
+                ? prev.map((j) =>
+                    j.id === jobId
+                      ? {
+                          ...j,
+                          status,
+                          ...(status === 'delivered' ? { binLocation: undefined } : {}),
+                        }
+                      : j
+                  )
+                : []
+            );
+          }
           const ok = await jobService.updateJobStatus(jobId, status);
           if (!ok) {
             await refreshJobs();
@@ -229,62 +227,74 @@ export function useJobMutations({
           await checklistService.ensureJobChecklistForStatus(jobId, status);
         }
 
-        if (job && isDelivered !== wasDelivered) {
-          const direction = isDelivered ? 'consume' : 'restore';
-          const action = isDelivered ? 'reconcile_job' : 'reconcile_job_reversal';
-          const reason = isDelivered
-            ? `Materials used for Job #${job.jobCode} (Delivered)`
-            : `Delivered status reversed for Job #${job.jobCode}; stock restored`;
-
-          const updates = buildReconciliationMutations({
-            job,
-            inventory,
-            jobsAfterStatusUpdate: nextJobs,
-            direction,
-          });
-
-          let reconciliationFailed = false;
-          for (const entry of updates) {
-            try {
-              await inventoryService.updateStock(entry.inventoryId, entry.newInStock);
-              if (currentUser) {
-                await inventoryHistoryService.createHistory({
-                  inventory: entry.inventoryId,
-                  user: currentUser.id,
-                  action,
-                  reason,
-                  previousInStock: entry.previousInStock,
-                  newInStock: entry.newInStock,
-                  previousAvailable: entry.previousAvailable,
-                  newAvailable: entry.newAvailable,
-                  changeAmount: entry.changeAmount,
-                  relatedJob: jobId,
-                });
-              }
-            } catch (err) {
-              console.error('Reconciliation updateStock failed:', err);
-              reconciliationFailed = true;
-            }
-          }
-          if (reconciliationFailed) {
-            showToast(
-              'Failed to update inventory stock for one or more items. Check permissions and try again.',
-              'error'
-            );
-          }
-        }
+        // Inventory reconciliation is handled by the DB trigger
+        // jobs_reconcile_inventory_on_status_trg (migration 20260509000002).
+        // No app-layer reconciliation needed here.
 
         await refreshJobs();
         await refreshInventory();
         return true;
       } catch (error) {
+        // Revert the optimistic status write so the UI doesn't flash the wrong
+        // status while refreshJobs is in flight (~500ms–2s).
+        // Only revert when job was known pre-call (optimistic write only happens
+        // in that case). 'paid' is pessimistic above and never hits this branch.
+        // Also restore binLocation — the 'delivered' optimistic write clears it.
+        if (status !== 'paid' && job) {
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev
+              ? prev.map((j) =>
+                  j.id === jobId
+                    ? {
+                        ...j,
+                        status: job.status,
+                        ...(status === 'delivered' ? { binLocation: job.binLocation } : {}),
+                      }
+                    : j
+                )
+              : []
+          );
+        }
         console.error('Update job status error:', error);
+        const err = error as { message?: string; code?: string };
+        const msg = err?.message ?? '';
+        if (msg.includes('insufficient_stock') || err?.code === '23514') {
+          showToast?.(
+            'Not enough stock to complete this status change. Check inventory levels.',
+            'error'
+          );
+        } else if (msg.includes('consumed_at_race_reversal')) {
+          // Two sessions tried to restore the same finished job simultaneously (e.g., admin
+          // double-click on rework). The second restore was correctly blocked by the DB.
+          showToast?.(
+            'This job was already restored — refresh to see the current status.',
+            'warning'
+          );
+        } else if (msg.includes('consumed_at_race')) {
+          // Two sessions tried to finish the same job simultaneously (e.g., double-tap).
+          // The second write was correctly blocked; the job is already marked finished.
+          showToast?.('Job status was just updated — refreshing.', 'warning');
+        } else if (msg.includes('job_is_consumed')) {
+          // Status transition attempted on an already-consumed job (race or stale UI).
+          showToast?.('This job is already finished — status cannot be changed.', 'warning');
+        } else if (msg.includes('inventory_missing')) {
+          showToast?.(
+            'An inventory item linked to this job no longer exists. Contact an admin.',
+            'error'
+          );
+        } else if (err?.code === '40P01') {
+          // Deadlock between concurrent job-finish and inventory-allocation transactions.
+          // Postgres aborts one automatically — ask the user to retry.
+          showToast?.('A conflict occurred — please try again.', 'warning');
+        } else {
+          showToast?.('Failed to update status. Please try again.', 'error');
+        }
         await refreshJobs();
         await refreshInventory();
         return false;
       }
     },
-    [jobs, inventory, currentUser, queryClient, refreshJobs, refreshInventory, showToast]
+    [jobs, currentUser, queryClient, refreshJobs, refreshInventory, showToast]
   );
 
   const advanceJobToNextStatus = useCallback(
