@@ -34,24 +34,32 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
       return dedupeJobsById(list);
     },
     enabled,
+    staleTime: 1000 * 60 * 5, // 5 min — realtime subscription keeps cache fresh
+    refetchOnWindowFocus: 'always', // reconcile on tab return (cheap since cache is warm)
   });
 
   const { data: shiftsData = [] } = useQuery({
     queryKey: ['shifts'],
     queryFn: () => shiftService.getAllShifts(),
     enabled,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: usersData = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => userService.getAllUsers(),
     enabled,
+    staleTime: 1000 * 60 * 30, // 30 min — users rarely change
+    refetchOnWindowFocus: false, // no need to refetch on every tab return
   });
 
   const { data: inventoryData = [] } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => inventoryService.getAllInventory(),
     enabled,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: 'always',
   });
 
   const refreshJobs = useCallback(async () => {
