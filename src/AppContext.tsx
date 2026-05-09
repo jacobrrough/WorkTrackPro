@@ -116,7 +116,6 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
-    inventory: queries.inventory,
     currentUser,
     refreshJobs: queries.refreshJobs,
     refreshInventory: queries.refreshInventory,
@@ -131,8 +130,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     activeShift,
     refreshShifts: queries.refreshShifts,
     refreshJobs: queries.refreshJobs,
-    updateJobStatus: jobMutations.updateJobStatus,
     onOfflinePunchEnqueued: () => setOfflineQueueVersion((v) => v + 1),
+    showToast,
   });
 
   const inventoryMutations = useInventoryMutations({

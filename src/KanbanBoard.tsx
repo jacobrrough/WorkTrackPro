@@ -961,7 +961,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
 
     // Drag-and-drop always allows moving the card; checklist is not required.
-    await onUpdateJobStatus(draggedJob.id, columnId);
+    const dropOk = await onUpdateJobStatus(draggedJob.id, columnId);
+    if (!dropOk) {
+      showToast('Failed to move job. Please try again.', 'warning');
+    }
 
     // BOARD SYNC LOGIC: Sync is handled by backend; these branches reserved for future client-side side effects.
     if (columnId === 'pending' && boardType === 'admin') {
@@ -1312,16 +1315,26 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               disabled={!bulkTargetStatus}
               onClick={async () => {
                 if (!bulkTargetStatus) return;
-                await Promise.all(
-                  Array.from(selectedJobIds).map((id) => onUpdateJobStatus(id, bulkTargetStatus))
-                );
-                showToast(
-                  `Moved ${selectedJobIds.size} job(s) to ${columns.find((c) => c.id === bulkTargetStatus)?.title ?? bulkTargetStatus}`,
-                  'success'
-                );
-                setSelectedJobIds(new Set());
-                setBulkTargetStatus(null);
-                setBulkSelectMode(false);
+                const targetTitle =
+                  columns.find((c) => c.id === bulkTargetStatus)?.title ?? bulkTargetStatus;
+                const total = selectedJobIds.size;
+                try {
+                  const results = await Promise.allSettled(
+                    Array.from(selectedJobIds).map((id) => onUpdateJobStatus(id, bulkTargetStatus))
+                  );
+                  const moved = results.filter(
+                    (r) => r.status === 'fulfilled' && r.value !== false
+                  ).length;
+                  if (moved === total) {
+                    showToast(`Moved ${total} job(s) to ${targetTitle}`, 'success');
+                  } else {
+                    showToast(`Moved ${moved} of ${total} job(s) to ${targetTitle}`, 'warning');
+                  }
+                } finally {
+                  setSelectedJobIds(new Set());
+                  setBulkTargetStatus(null);
+                  setBulkSelectMode(false);
+                }
               }}
               className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
             >

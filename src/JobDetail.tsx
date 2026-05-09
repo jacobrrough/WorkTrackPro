@@ -247,6 +247,12 @@ function getPartDerivedDefaultsForJob(
   };
 }
 
+/** Returns the toast message shown when a BOM sync is skipped because the job is consumed. */
+function bomSyncSkippedMessage(job: { jobCode: number; status: string }): string {
+  const label = job.status === 'delivered' ? 'delivered' : 'finished';
+  return `BOM changes won't sync to Job #${job.jobCode} — it's already ${label}.`;
+}
+
 const JobDetail: React.FC<JobDetailProps> = ({
   job,
   onNavigate,
@@ -1454,11 +1460,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
             await syncJobInventoryFromParts(job.id, partsForSync, { replace: true });
             await onReloadJob?.();
           } catch (syncErr) {
+            const syncMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save (multi-part):', syncErr);
-            showToast(
-              'Job saved; material sync failed. Use Auto-assign materials to retry.',
-              'warning'
-            );
+            if (syncMsg.startsWith('material_sync_skipped:')) {
+              showToast(bomSyncSkippedMessage(job), 'info');
+            } else {
+              showToast(
+                'Job saved; material sync failed. Use Auto-assign materials to retry.',
+                'warning'
+              );
+            }
           }
         } else if (
           statusAllowsAllocation &&
@@ -1477,10 +1488,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
           } catch (syncErr) {
             const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save:', msg);
-            showToast(
-              'Job saved; material sync failed. Use Auto-assign materials to retry.',
-              'warning'
-            );
+            if (msg.startsWith('material_sync_skipped:')) {
+              showToast(bomSyncSkippedMessage(job), 'info');
+            } else {
+              showToast(
+                'Job saved; material sync failed. Use Auto-assign materials to retry.',
+                'warning'
+              );
+            }
           }
         } else if (
           statusAllowsAllocation &&
@@ -1495,10 +1510,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
           } catch (syncErr) {
             const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save:', msg);
-            showToast(
-              'Job saved; material sync failed. Use Auto-assign materials to retry.',
-              'warning'
-            );
+            if (msg.startsWith('material_sync_skipped:')) {
+              showToast(bomSyncSkippedMessage(job), 'info');
+            } else {
+              showToast(
+                'Job saved; material sync failed. Use Auto-assign materials to retry.',
+                'warning'
+              );
+            }
           }
         }
         setIsEditing(false);
@@ -1593,8 +1612,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
       await onReloadJob?.();
       showToast('Materials auto-assigned from part(s)', 'success');
     } catch (err) {
+      const autoMsg = err instanceof Error ? err.message : String(err);
       console.error('Auto-assign materials:', err);
-      showToast('Failed to auto-assign materials', 'error');
+      if (autoMsg.startsWith('material_sync_skipped:')) {
+        showToast(bomSyncSkippedMessage(job), 'warning');
+      } else {
+        showToast('Failed to auto-assign materials', 'error');
+      }
     } finally {
       setSyncingMaterials(false);
     }
@@ -1654,8 +1678,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   showToast('Materials combined from all parts', 'success');
                 }
               } catch (syncErr) {
+                const addPartMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
                 console.error('Material sync after add part:', syncErr);
-                showToast('Part added; sync materials from job if needed', 'warning');
+                if (addPartMsg.startsWith('material_sync_skipped:')) {
+                  showToast(bomSyncSkippedMessage(job), 'info');
+                } else {
+                  showToast('Part added; sync materials from job if needed', 'warning');
+                }
               }
             }
             // Combined labor for scheduling: sum labor from each part × quantities
@@ -1692,16 +1721,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         showToast('Failed to add part to job', 'error');
       }
     },
-    [
-      job.id,
-      job.partId,
-      job.partNumber,
-      job.dashQuantities,
-      job.parts,
-      job.status,
-      onUpdateJob,
-      showToast,
-    ]
+    [job, onUpdateJob, showToast]
   );
 
   const handleAddInventory = useCallback(

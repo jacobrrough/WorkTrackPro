@@ -5,6 +5,7 @@ import { inventoryService } from '@/services/api/inventory';
 import { inventoryHistoryService } from '@/services/api/inventoryHistory';
 import { jobService } from '@/services/api/jobs';
 import { partsService } from '@/services/api/parts';
+import { isConsumedStatus } from '@/lib/inventoryCalculations';
 
 export interface UseInventoryMutationsParams {
   inventory: InventoryItem[];
@@ -135,10 +136,16 @@ export function useInventoryMutations({
         await refreshJobs();
         await refreshInventory();
       } catch (error) {
-        console.error('Add job inventory error:', error);
+        const msg = (error as Error)?.message ?? '';
+        if (msg.includes('job_is_consumed')) {
+          showToast('This job is already finished — materials cannot be added.', 'warning');
+        } else {
+          console.error('Add job inventory error:', error);
+          showToast('Failed to add material. Please try again.', 'error');
+        }
       }
     },
-    [inventory, calculateAvailable, refreshJobs, refreshInventory]
+    [inventory, calculateAvailable, refreshJobs, refreshInventory, showToast]
   );
 
   const allocateInventoryToJob = useCallback(
@@ -152,6 +159,14 @@ export function useInventoryMutations({
         const item = inventory.find((inv) => inv.id === inventoryId);
         const job = jobs.find((j) => j.id === jobId);
         if (!item || !job || quantity <= 0) return false;
+
+        if (isConsumedStatus(job.status)) {
+          showToast(
+            'Cannot allocate materials to a job that is already finished or in payment.',
+            'error'
+          );
+          return false;
+        }
 
         const previousAvailable = calculateAvailable(item);
         if (quantity > previousAvailable) return false;
@@ -183,11 +198,15 @@ export function useInventoryMutations({
       } catch (error: unknown) {
         const err = error as { message?: string; code?: string };
         const msg = err?.message ?? '';
-        if (
+        if (msg.includes('job_is_consumed')) {
+          // Cache was stale — job finished by the time the allocation reached the server.
+          showToast('This job is already finished — materials cannot be added.', 'warning');
+        } else if (
           msg.includes('insufficient_stock') ||
-          err?.code === 'check_violation' ||
+          err?.code === '23514' ||
           msg.includes('cannot allocate')
         ) {
+          // Check violation from insufficient_stock (not consumed guard — that matches above).
           showToast(
             'Someone else allocated this stock first. Stock was updated — please refresh and try again.',
             'error'
@@ -218,10 +237,16 @@ export function useInventoryMutations({
         await refreshJobs();
         await refreshInventory();
       } catch (error) {
-        console.error('Remove job inventory error:', error);
+        const msg = (error as Error)?.message ?? '';
+        if (msg.includes('job_is_consumed')) {
+          showToast('This job is already finished — materials cannot be removed.', 'warning');
+        } else {
+          console.error('Remove job inventory error:', error);
+          showToast('Failed to remove material. Please try again.', 'error');
+        }
       }
     },
-    [refreshJobs, refreshInventory]
+    [refreshJobs, refreshInventory, showToast]
   );
 
   const markInventoryOrdered = useCallback(
