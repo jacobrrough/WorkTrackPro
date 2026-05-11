@@ -224,7 +224,7 @@ begin
   where id = new.conversation_id;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql;
 
 drop trigger if exists on_message_insert_update_conversation on public.messages;
 create trigger on_message_insert_update_conversation
