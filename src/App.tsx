@@ -39,6 +39,10 @@ const CardDetailView = lazyWithRetry(
   'CardDetailView'
 );
 const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
+const NotificationSettingsView = lazyWithRetry(
+  () => import('./features/notifications/NotificationSettingsView'),
+  'NotificationSettingsView'
+);
 
 function AppViewFallback() {
   return (
@@ -581,6 +585,18 @@ export default function App() {
           cardId={cardId}
           onNavigate={handleNavigate}
           onBack={() => navigateBackFrom('board-card-detail', 'boards')}
+        />
+        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+      </AppShell>
+    );
+  }
+
+  if (view === 'notification-settings') {
+    return (
+      <AppShell>
+        <NotificationSettingsView
+          onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
         />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>

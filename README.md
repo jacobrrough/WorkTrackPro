@@ -40,10 +40,19 @@ A comprehensive business management application for small to medium manufacturin
 - Material allocation, comments, attachments, checklists
 - Bin location, ECD, due dates; clickable material names link to inventory detail
 
+### Notifications & Preferences
+- Real-time in-app notification feed (job status, mentions, low stock, assignments, deliveries, chat, and more)
+- NotificationBell with unread badge, mark-read, and type-labeled dropdown
+- User-configurable notification preferences: per-type opt-in/out across 33 notification types in 8 groups
+- Server-side `should_notify()` gating on all Postgres triggers — notifications are only created when enabled
+- Settings UI with accordion groups, toggle switches, autosave with optimistic updates
+- Admin-only notification types hidden for non-admin users
+- Quick actions: Enable All, Disable All, Reset to Defaults
+- Email channel tab (coming soon)
+
 ### Other
 - Role-based access (Admin vs Employee); admin-only views guarded
 - Global search (Cmd/Ctrl+K) from dashboard: jobs, inventory, people
-- In-app notifications (overdue, rush, low stock)
 - Mobile bottom nav and large clock-in button on small screens
 - Netlify serverless function for customer proposal intake
 
@@ -138,9 +147,9 @@ src/
 ├── services/api/     # Supabase-backed API (jobs, shifts, inventory, auth, parts, quotes, etc.)
 ├── lib/              # Utilities (timeUtils, inventoryCalculations, inventoryState, offlineQueue, exportCsv, partDistribution, etc.)
 ├── components/       # Shared UI (Toast, ProtectedRoute, AdminRoute, NotificationBell, CommandPalette, QRScanner, etc.)
-├── contexts/         # Navigation, Settings, ClockIn, Notifications
+├── contexts/         # Navigation, Settings, ClockIn
 ├── core/             # types.ts, validation, imageHelper
-├── features/         # Feature modules (admin, dashboard, inventory, jobs, parts, quotes, time)
+├── features/         # Feature modules (admin, dashboard, inventory, jobs, notifications, parts, quotes, time)
 ├── hooks/            # useClockInWithOnSiteCheck, etc.
 ├── public/           # PublicHome (landing)
 ├── App.tsx           # View-state routing and shell
