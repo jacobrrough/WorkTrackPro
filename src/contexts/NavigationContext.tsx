@@ -77,6 +77,14 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [state]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('dashboardPrefs_updatedAt', new Date().toISOString());
+    } catch {
+      // best-effort timestamp
+    }
+  }, [state.quickActionOrder, state.hiddenQuickActions]);
+
   const updateState = useCallback((newState: Partial<NavigationState>) => {
     setState((prev) => ({ ...prev, ...newState }));
   }, []);
