@@ -673,3 +673,16 @@ export interface UserNotificationPreferences {
   preferences: NotificationPreferences;
   updatedAt: string;
 }
+
+// ── Dashboard Preferences ───────────────────────────────
+
+export interface DashboardPreferences {
+  quickActionOrder: string[];
+  hiddenQuickActions: string[];
+}
+
+export interface UserDashboardPreferences {
+  userId: string;
+  preferences: DashboardPreferences;
+  updatedAt: string;
+}

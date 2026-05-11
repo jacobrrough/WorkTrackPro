@@ -12,6 +12,7 @@ import { lazyWithRetry } from './lib/lazyWithRetry';
 import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
+import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
 
 /**
  * Isolated timer component — owns its own 1-second interval so that ticking
@@ -81,6 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
   const [isEditingActions, setIsEditingActions] = useState(false);
+  const { syncToServer } = useDashboardPreferencesSync(!!currentUser);
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
@@ -348,8 +350,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       if (target < 0 || target >= keys.length) return;
       [keys[idx], keys[target]] = [keys[target], keys[idx]];
       updateState({ quickActionOrder: keys });
+      syncToServer({ quickActionOrder: keys, hiddenQuickActions: navState.hiddenQuickActions });
     },
-    [orderedActions, updateState]
+    [orderedActions, updateState, syncToServer, navState.hiddenQuickActions]
   );
 
   const toggleHidden = useCallback(
@@ -357,13 +360,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const hidden = navState.hiddenQuickActions;
       const next = hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key];
       updateState({ hiddenQuickActions: next });
+      syncToServer({ quickActionOrder: navState.quickActionOrder, hiddenQuickActions: next });
     },
-    [navState.hiddenQuickActions, updateState]
+    [navState.hiddenQuickActions, navState.quickActionOrder, updateState, syncToServer]
   );
 
   const resetCustomization = useCallback(() => {
     updateState({ quickActionOrder: [], hiddenQuickActions: [] });
-  }, [updateState]);
+    syncToServer({ quickActionOrder: [], hiddenQuickActions: [] });
+  }, [updateState, syncToServer]);
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">

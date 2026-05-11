@@ -12,6 +12,7 @@ interface ConversationListProps {
   isLoading: boolean;
   onSelect: (id: string) => void;
   onNewConversation: () => void;
+  onBack?: () => void;
 }
 
 export function ConversationList({
@@ -21,6 +22,7 @@ export function ConversationList({
   isLoading,
   onSelect,
   onNewConversation,
+  onBack,
 }: ConversationListProps) {
   const [search, setSearch] = useState('');
 
@@ -33,7 +35,18 @@ export function ConversationList({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Messages</h2>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white md:flex"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+          )}
+          <h2 className="text-lg font-bold text-white">Messages</h2>
+        </div>
         <button
           type="button"
           onClick={onNewConversation}

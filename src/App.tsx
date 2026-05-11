@@ -609,6 +609,7 @@ export default function App() {
         <ChatView
           conversationId={view === 'chat-conversation' ? id : undefined}
           onNavigate={handleNavigate}
+          onBack={() => handleNavigate('dashboard')}
         />
         <BottomNavigation currentView={view} onNavigate={handleNavigate} />
       </AppShell>
