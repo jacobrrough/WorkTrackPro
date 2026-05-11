@@ -29,7 +29,7 @@ create table public.part_variants (
 create index idx_part_variants_part on public.part_variants(part_id);
 
 -- Part materials: per variant, which inventory item and how much per unit
-create table public.part_materials (
+create table if not exists public.part_materials (
   id uuid primary key default gen_random_uuid(),
   part_variant_id uuid not null references public.part_variants(id) on delete cascade,
   inventory_id uuid not null references public.inventory(id) on delete restrict,
@@ -40,8 +40,12 @@ create table public.part_materials (
   unique(part_variant_id, inventory_id)
 );
 
-create index idx_part_materials_variant on public.part_materials(part_variant_id);
-create index idx_part_materials_inventory on public.part_materials(inventory_id);
+-- Ensure columns exist (handles case where initial_schema created table with different columns)
+alter table public.part_materials add column if not exists part_variant_id uuid references public.part_variants(id) on delete cascade;
+alter table public.part_materials add column if not exists quantity_per_unit numeric not null default 1;
+
+create index if not exists idx_part_materials_variant on public.part_materials(part_variant_id);
+create index if not exists idx_part_materials_inventory on public.part_materials(inventory_id);
 
 -- Optional: link jobs to a part (for dash quantities and auto-assignment)
 alter table public.jobs add column if not exists part_id uuid references public.parts(id) on delete set null;
