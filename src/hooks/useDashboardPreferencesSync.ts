@@ -57,7 +57,14 @@ export function useDashboardPreferencesSync(enabled: boolean) {
       };
       updateServer(prefs);
     }
-  }, [isSuccess, serverData, navState.quickActionOrder, navState.hiddenQuickActions, updateState, updateServer]);
+  }, [
+    isSuccess,
+    serverData,
+    navState.quickActionOrder,
+    navState.hiddenQuickActions,
+    updateState,
+    updateServer,
+  ]);
 
   const syncToServer = useCallback(
     (prefs: DashboardPreferences) => {

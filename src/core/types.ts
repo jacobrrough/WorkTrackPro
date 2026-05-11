@@ -350,6 +350,7 @@ export interface ChecklistHistory {
   itemText?: string;
   checked?: boolean;
   timestamp: string;
+  status?: JobStatus;
 }
 
 // Quote

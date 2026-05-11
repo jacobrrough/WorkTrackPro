@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import {
   DEFAULT_WORK_WEEK_SCHEDULE,
+  type WorkDaySchedule,
   WorkWeekSchedule,
   normalizeWorkWeekSchedule,
 } from '@/lib/workHours';
@@ -157,7 +158,7 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
     Object.assign(mergedScheduleRaw, next.workWeekSchedule);
   }
   next.workWeekSchedule = normalizeWorkWeekSchedule(
-    mergedScheduleRaw as Record<number, unknown> as any
+    mergedScheduleRaw as Partial<Record<number, Partial<WorkDaySchedule> | number>>
   );
 
   if (typeof next.requireOnSite !== 'boolean') next.requireOnSite = base.requireOnSite;

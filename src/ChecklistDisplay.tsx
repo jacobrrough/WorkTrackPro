@@ -246,7 +246,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                           <p className="text-xs text-slate-400">
                             {new Date(record.timestamp).toLocaleString()}
                             {'status' in record && record.status
-                              ? ` · ${getStatusDisplayName((record as any).status)}`
+                              ? ` · ${getStatusDisplayName(record.status!)}`
                               : ''}
                           </p>
                         </div>
