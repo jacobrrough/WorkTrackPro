@@ -224,10 +224,7 @@ export const partsService = {
       // Retry with legacy column name if part_variant_id doesn't exist
       if (error && variantIds.length > 0) {
         const legacyFilter = [`part_id.eq.${id}`, `variant_id.in.(${joined})`];
-        const retry = await supabase
-          .from('part_materials')
-          .select('*')
-          .or(legacyFilter.join(','));
+        const retry = await supabase.from('part_materials').select('*').or(legacyFilter.join(','));
         data = retry.data;
         error = retry.error;
       }
