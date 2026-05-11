@@ -13,6 +13,12 @@ import {
 /** Epsilon for quantity comparison to avoid float drift and unnecessary updates; align with useMaterialSync isMaterialAuto. */
 const QTY_EPSILON = 1e-6;
 
+/**
+ * Sentinel key used in setComposition for no-variant parts (units-per-set on a master part).
+ * It has no meaning for variant parts and must be filtered out before set-completion math.
+ */
+const NO_VARIANT_SENTINEL = '_' as const;
+
 function qtyEqual(a: number, b: number): boolean {
   return Math.abs(a - b) < QTY_EPSILON;
 }
@@ -117,11 +123,28 @@ export function computeRequiredMaterials(
     return materialMap;
   }
 
-  const setComposition =
-    part.setComposition && Object.keys(part.setComposition).length > 0 ? part.setComposition : null;
-  const perSetMultiplier = setComposition
-    ? calculateSetCompletion(normalizedDash, setComposition).completeSets
-    : totalQty;
+  // Strip the no-variant sentinel from setComposition before any set-completion math.
+  // calculateSetCompletion currently also skips it internally, but we own the contract here:
+  // if the only key is the sentinel, the part effectively has no set composition.
+  const strippedComposition: Record<string, number> = Object.fromEntries(
+    Object.entries(part.setComposition ?? {}).filter(([k]) => k !== NO_VARIANT_SENTINEL)
+  );
+  const activeSetComposition =
+    Object.keys(strippedComposition).length > 0 ? strippedComposition : null;
+  const { completeSets } = activeSetComposition
+    ? calculateSetCompletion(normalizedDash, activeSetComposition)
+    : { completeSets: 0 };
+
+  // Three distinct states, made explicit:
+  //   1. No set composition defined  → use totalQty (legacy / single-variant behavior)
+  //   2. Set composition + all variants present (completeSets > 0) → use completeSets
+  //   3. Set composition + partial coverage (completeSets === 0) → fall back to totalQty.
+  //      Intentional overestimate so admins see a non-empty BOM while filling variants.
+  const perSetMultiplier = !activeSetComposition
+    ? totalQty
+    : completeSets > 0
+      ? completeSets
+      : totalQty;
 
   if (part.materials && perSetMultiplier > 0) {
     for (const material of part.materials) {
