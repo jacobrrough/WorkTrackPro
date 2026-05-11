@@ -14,9 +14,14 @@ import type { ViewState } from '@/core/types';
 interface ChatViewInnerProps {
   conversationId?: string;
   onNavigate?: (view: ViewState, id?: string) => void;
+  onBack?: () => void;
 }
 
-function ChatViewInner({ conversationId: initialConversationId, onNavigate }: ChatViewInnerProps) {
+function ChatViewInner({
+  conversationId: initialConversationId,
+  onNavigate,
+  onBack,
+}: ChatViewInnerProps) {
   const { currentUser } = useAuth();
   const { users } = useApp();
   const {
@@ -96,6 +101,7 @@ function ChatViewInner({ conversationId: initialConversationId, onNavigate }: Ch
           isLoading={conversations.isLoading}
           onSelect={setActiveConversationId}
           onNewConversation={() => setShowNewModal(true)}
+          onBack={onBack}
         />
       </aside>
 
@@ -148,12 +154,13 @@ function ChatViewInner({ conversationId: initialConversationId, onNavigate }: Ch
 interface ChatViewProps {
   conversationId?: string;
   onNavigate?: (view: ViewState, id?: string) => void;
+  onBack?: () => void;
 }
 
-export default function ChatView({ conversationId, onNavigate }: ChatViewProps) {
+export default function ChatView({ conversationId, onNavigate, onBack }: ChatViewProps) {
   return (
     <ChatProvider>
-      <ChatViewInner conversationId={conversationId} onNavigate={onNavigate} />
+      <ChatViewInner conversationId={conversationId} onNavigate={onNavigate} onBack={onBack} />
     </ChatProvider>
   );
 }
