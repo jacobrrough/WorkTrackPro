@@ -7,24 +7,8 @@ alter table public.attachments alter column job_id drop not null;
 -- Add inventory_id column
 alter table public.attachments add column if not exists inventory_id uuid references public.inventory(id) on delete cascade;
 
--- Add check constraint: either job_id or inventory_id must be set (but not both)
--- Wrapped in DO block: if part_id column already exists (from a later migration),
--- rows may have only part_id set, violating this constraint. Skip in that case —
--- the next migration (part_drawing_attachments) replaces it with the full check.
-DO $$
-BEGIN
-  ALTER TABLE public.attachments DROP CONSTRAINT IF EXISTS attachments_job_or_inventory_check;
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'attachments' AND column_name = 'part_id'
-  ) THEN
-    ALTER TABLE public.attachments ADD CONSTRAINT attachments_job_or_inventory_check
-      CHECK (
-        (job_id IS NOT NULL AND inventory_id IS NULL) OR
-        (job_id IS NULL AND inventory_id IS NOT NULL)
-      );
-  END IF;
-END $$;
+-- Note: constraint added in next migration (20250218000003) once part_id column exists,
+-- so we can express the full one-owner rule in one place without breaking existing rows.
 
 -- Add index for inventory_id lookups
 create index if not exists idx_attachments_inventory on public.attachments(inventory_id);

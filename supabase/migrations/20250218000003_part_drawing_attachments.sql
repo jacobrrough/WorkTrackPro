@@ -5,6 +5,7 @@ create index if not exists idx_attachments_part on public.attachments(part_id) w
 
 -- Allow part_id as alternative to job_id/inventory_id (exactly one of job_id, inventory_id, part_id)
 alter table public.attachments drop constraint if exists attachments_job_or_inventory_check;
+alter table public.attachments drop constraint if exists attachments_one_owner_check;
 alter table public.attachments add constraint attachments_one_owner_check check (
   (job_id is not null and inventory_id is null and part_id is null) or
   (job_id is null and inventory_id is not null and part_id is null) or
