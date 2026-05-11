@@ -201,27 +201,54 @@ export const partsService = {
 
     const variantIds = variants.map((v) => v.id);
 
-    // Load all part_materials: variant-level and part-level (part_id set, variant null)
-    const { data: allMaterialsData, error: matErr } = await supabase
-      .from('part_materials')
-      .select('*');
-    if (matErr) throw matErr;
-    const allMaterials = allMaterialsData ?? [];
-
-    // Part-level materials: part_id = id and no variant
     type PartMaterialRow = Record<string, unknown> & {
       part_id?: string;
       part_variant_id?: string;
       variant_id?: string;
       inventory_id?: string;
     };
+
+    let allMaterials: PartMaterialRow[] = [];
+    try {
+      const joined = variantIds.join(',');
+      const filterParts = [`part_id.eq.${id}`];
+      if (variantIds.length > 0) {
+        filterParts.push(`part_variant_id.in.(${joined})`);
+      }
+
+      let { data, error } = await supabase
+        .from('part_materials')
+        .select('*')
+        .or(filterParts.join(','));
+
+      // Retry with legacy column name if part_variant_id doesn't exist
+      if (error && variantIds.length > 0) {
+        const legacyFilter = [`part_id.eq.${id}`, `variant_id.in.(${joined})`];
+        const retry = await supabase
+          .from('part_materials')
+          .select('*')
+          .or(legacyFilter.join(','));
+        data = retry.data;
+        error = retry.error;
+      }
+
+      if (error) throw error;
+      allMaterials = (data ?? []) as PartMaterialRow[];
+    } catch (matError) {
+      console.warn('Failed to load part materials:', matError);
+      part.materials = [];
+      for (const v of part.variants) v.materials = [];
+      const drawings = await this.getPartDrawings(id);
+      part.drawingAttachments = drawings;
+      part.drawingAttachment = drawings[0] ?? null;
+      return part;
+    }
+
     const hasVariants = variantIds.length > 0;
     const partLevelRows = allMaterials.filter((r: PartMaterialRow) => {
       const partId = r.part_id;
       const variantId = r.part_variant_id ?? r.variant_id;
       if (partId !== id) return false;
-      // No-variant master parts: treat any part_id-linked row as part-level source.
-      // This recovers legacy rows that may still have a variant link populated.
       if (!hasVariants) return true;
       return !variantId;
     });
