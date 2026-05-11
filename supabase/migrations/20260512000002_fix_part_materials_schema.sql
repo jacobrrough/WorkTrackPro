@@ -1,7 +1,8 @@
 -- Fix part_materials dual-column schema inconsistency.
 -- When both initial_schema (quantity NOT NULL) and parts_schema (quantity_per_unit NOT NULL DEFAULT 1)
 -- have run, the table has both columns. Inserts using only quantity_per_unit fail with 23502 on quantity.
--- This migration syncs the two columns and adds a default to quantity so future inserts succeed.
+-- This migration adds a default to quantity and a sync trigger so future inserts succeed.
+-- Existing row values are NOT modified.
 
 DO $$
 BEGIN
@@ -13,17 +14,8 @@ BEGIN
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'part_materials' AND column_name = 'quantity_per_unit'
   ) THEN
-    -- Sync quantity_per_unit from quantity where quantity_per_unit still has the migration default
-    UPDATE public.part_materials
-       SET quantity_per_unit = quantity
-     WHERE quantity_per_unit = 1 AND quantity != 1 AND quantity IS NOT NULL;
-
-    -- Sync quantity from quantity_per_unit for any rows where they diverge
-    UPDATE public.part_materials
-       SET quantity = quantity_per_unit
-     WHERE quantity != quantity_per_unit;
-
-    -- Add default so inserts setting only quantity_per_unit don't violate NOT NULL on quantity
+    -- Add default so inserts setting only quantity_per_unit don't violate NOT NULL on quantity.
+    -- Existing rows keep their current values.
     ALTER TABLE public.part_materials ALTER COLUMN quantity SET DEFAULT 0;
 
     -- Create a trigger to keep quantity in sync with quantity_per_unit on insert/update
