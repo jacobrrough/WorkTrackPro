@@ -1,0 +1,475 @@
+import React, { useCallback, useState } from 'react';
+import type {
+  NotificationChannel,
+  NotificationPreferences,
+  SystemNotificationType,
+  ViewState,
+} from '@/core/types';
+import { useApp } from '@/AppContext';
+import { useToast } from '@/Toast';
+import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from '@/hooks/useNotificationPreferences';
+import { getDefaultPreferences } from '@/services/api/notificationPreferences';
+import Accordion from '@/components/Accordion';
+
+interface NotificationSettingsViewProps {
+  onNavigate: (view: ViewState, id?: string) => void;
+  onBack: () => void;
+}
+
+interface NotificationTypeConfig {
+  type: SystemNotificationType;
+  label: string;
+  description: string;
+  adminOnly?: boolean;
+}
+
+interface NotificationGroup {
+  key: string;
+  label: string;
+  icon: string;
+  adminOnly?: boolean;
+  types: NotificationTypeConfig[];
+}
+
+const NOTIFICATION_GROUPS: NotificationGroup[] = [
+  {
+    key: 'jobs',
+    label: 'Jobs & Boards',
+    icon: 'assignment',
+    types: [
+      {
+        type: 'status_change',
+        label: 'Status changes',
+        description: 'When a job moves to a new status',
+      },
+      { type: 'assignment', label: 'Assignments', description: 'When you are assigned to a job' },
+      {
+        type: 'unassignment',
+        label: 'Unassignments',
+        description: 'When you are removed from a job',
+      },
+      { type: 'rush', label: 'Rush jobs', description: 'When a job is marked as rush priority' },
+      { type: 'overdue', label: 'Overdue jobs', description: 'When a job passes its due date' },
+      {
+        type: 'comment_mention',
+        label: 'Comment mentions',
+        description: 'When someone @mentions you in a comment',
+      },
+      {
+        type: 'checklist_complete',
+        label: 'Checklist complete',
+        description: 'When a job checklist is fully completed',
+      },
+      {
+        type: 'delivery_update',
+        label: 'Delivery updates',
+        description: 'When a job delivery status changes',
+      },
+      {
+        type: 'variant_update',
+        label: 'Variant updates',
+        description: 'When a job variant is modified',
+      },
+    ],
+  },
+  {
+    key: 'inventory',
+    label: 'Inventory',
+    icon: 'inventory_2',
+    types: [
+      {
+        type: 'low_stock',
+        label: 'Low stock alerts',
+        description: 'When an item drops below reorder point',
+      },
+      {
+        type: 'critical_stock',
+        label: 'Critical stock',
+        description: 'When an item reaches critical levels',
+        adminOnly: true,
+      },
+      {
+        type: 'allocation_complete',
+        label: 'Allocation complete',
+        description: 'When inventory is allocated to a job',
+        adminOnly: true,
+      },
+      {
+        type: 'allocation_reversal',
+        label: 'Allocation reversed',
+        description: 'When a job allocation is reversed',
+        adminOnly: true,
+      },
+      {
+        type: 'reorder_point_hit',
+        label: 'Reorder point hit',
+        description: 'When stock hits the reorder threshold',
+      },
+    ],
+  },
+  {
+    key: 'time',
+    label: 'Time Clock & Shifts',
+    icon: 'schedule',
+    types: [
+      {
+        type: 'shift_edit_approved',
+        label: 'Shift edit approved',
+        description: 'When your shift edit request is approved',
+      },
+      {
+        type: 'shift_edit_requested',
+        label: 'Shift edit requested',
+        description: 'When an employee requests a shift edit',
+      },
+      {
+        type: 'clock_anomaly',
+        label: 'Clock anomalies',
+        description: 'When unusual clock-in/out patterns are detected',
+      },
+      {
+        type: 'lunch_break_reminder',
+        label: 'Lunch break reminder',
+        description: 'Reminder to take your lunch break',
+      },
+    ],
+  },
+  {
+    key: 'chat',
+    label: 'Chat',
+    icon: 'chat',
+    types: [
+      {
+        type: 'chat_mention',
+        label: 'Chat mentions',
+        description: 'When someone @mentions you in chat',
+      },
+      {
+        type: 'new_direct_message',
+        label: 'Direct messages',
+        description: 'When you receive a new direct message',
+      },
+      {
+        type: 'thread_reply',
+        label: 'Thread replies',
+        description: 'When someone replies to your thread',
+      },
+    ],
+  },
+  {
+    key: 'admin',
+    label: 'Admin & Users',
+    icon: 'admin_panel_settings',
+    adminOnly: true,
+    types: [
+      {
+        type: 'new_user_pending_approval',
+        label: 'New user pending',
+        description: 'When a new user signs up and needs approval',
+      },
+      {
+        type: 'user_approved',
+        label: 'User approved',
+        description: 'When a user account is approved',
+      },
+      {
+        type: 'user_rejected',
+        label: 'User rejected',
+        description: 'When a user account is rejected',
+      },
+      {
+        type: 'proposal_submitted',
+        label: 'Proposal submitted',
+        description: 'When a customer submits a new proposal',
+      },
+    ],
+  },
+  {
+    key: 'quotes',
+    label: 'Quotes & Proposals',
+    icon: 'request_quote',
+    types: [
+      {
+        type: 'new_customer_proposal',
+        label: 'New proposals',
+        description: 'When a customer submits a proposal via storefront',
+      },
+      {
+        type: 'quote_assigned',
+        label: 'Quote assigned',
+        description: 'When a quote is assigned to you',
+      },
+      {
+        type: 'quote_updated',
+        label: 'Quote updated',
+        description: 'When a quote you are involved with is updated',
+      },
+    ],
+  },
+  {
+    key: 'deliveries',
+    label: 'Deliveries',
+    icon: 'local_shipping',
+    types: [
+      {
+        type: 'delivery_scheduled',
+        label: 'Delivery scheduled',
+        description: 'When a delivery is scheduled',
+      },
+      {
+        type: 'delivery_completed',
+        label: 'Delivery completed',
+        description: 'When a delivery is marked complete',
+      },
+      {
+        type: 'delivery_delayed',
+        label: 'Delivery delayed',
+        description: 'When a delivery is delayed',
+      },
+    ],
+  },
+  {
+    key: 'system',
+    label: 'Dashboard & System',
+    icon: 'settings',
+    types: [
+      {
+        type: 'daily_summary',
+        label: 'Daily summary',
+        description: 'Daily overview of activity and stats',
+      },
+      {
+        type: 'system_alert',
+        label: 'System alerts',
+        description: 'Important system-wide announcements',
+      },
+      {
+        type: 'maintenance_notice',
+        label: 'Maintenance notices',
+        description: 'Planned maintenance and downtime alerts',
+      },
+    ],
+  },
+];
+
+function Toggle({
+  enabled,
+  disabled,
+  onToggle,
+  ariaLabel,
+}: {
+  enabled: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={onToggle}
+      className={`h-6 w-12 shrink-0 rounded-sm transition-colors ${
+        enabled ? 'bg-primary' : 'bg-white/20'
+      } ${disabled ? 'opacity-40' : ''}`}
+    >
+      <span
+        className={`block h-5 w-5 rounded-sm bg-white transition-transform ${
+          enabled ? 'translate-x-6' : 'translate-x-0.5'
+        }`}
+      />
+    </button>
+  );
+}
+
+const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onBack }) => {
+  const { currentUser } = useApp();
+  const { showToast } = useToast();
+  const isAdmin = currentUser?.isAdmin ?? false;
+  const [activeTab, setActiveTab] = useState<NotificationChannel>('in_app');
+
+  const { data: prefsData, isLoading } = useNotificationPreferences(true, isAdmin);
+  const updateMutation = useUpdateNotificationPreferences();
+
+  const preferences = prefsData?.preferences ?? getDefaultPreferences(isAdmin);
+
+  const handleToggle = useCallback(
+    (type: SystemNotificationType, channel: NotificationChannel) => {
+      const updated: NotificationPreferences = {
+        in_app: { ...preferences.in_app },
+        email: { ...preferences.email },
+      };
+      updated[channel][type] = !updated[channel][type];
+
+      updateMutation.mutate(updated, {
+        onSuccess: () => showToast('Preference saved', 'success'),
+        onError: () => showToast('Failed to save preference', 'error'),
+      });
+    },
+    [preferences, updateMutation, showToast]
+  );
+
+  const handleResetDefaults = useCallback(() => {
+    const defaults = getDefaultPreferences(isAdmin);
+    updateMutation.mutate(defaults, {
+      onSuccess: () => showToast('Reset to defaults', 'success'),
+      onError: () => showToast('Failed to reset preferences', 'error'),
+    });
+  }, [isAdmin, updateMutation, showToast]);
+
+  const visibleGroups = NOTIFICATION_GROUPS.filter((g) => !g.adminOnly || isAdmin);
+
+  return (
+    <div className="flex h-full flex-col bg-slate-950">
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex size-10 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+              aria-label="Go back"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 className="text-lg font-bold text-white">Notification Settings</h1>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetDefaults}
+            className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            Reset to Defaults
+          </button>
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <div className="flex border-b border-white/10 px-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('in_app')}
+          className={`px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTab === 'in_app'
+              ? 'border-b-2 border-primary text-white'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          In-App
+        </button>
+        <button
+          type="button"
+          disabled
+          className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-500"
+        >
+          Email
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+            Coming soon
+          </span>
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-sm bg-white/5" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleGroups.map((group) => {
+              const visibleTypes = group.types.filter((t) => !t.adminOnly || isAdmin);
+              if (visibleTypes.length === 0) return null;
+
+              return (
+                <Accordion
+                  key={group.key}
+                  title={group.label}
+                  defaultExpanded={group.key === 'jobs'}
+                >
+                  <div className="space-y-1">
+                    {visibleTypes.map((config) => {
+                      const isEnabled = preferences[activeTab][config.type] ?? true;
+                      const isEmailTab = activeTab === 'email';
+
+                      return (
+                        <div
+                          key={config.type}
+                          className="flex items-center justify-between gap-3 rounded-sm px-2 py-2.5 transition-colors hover:bg-white/5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-white">{config.label}</p>
+                            <p className="text-xs text-slate-400">{config.description}</p>
+                          </div>
+                          <Toggle
+                            enabled={isEnabled}
+                            disabled={isEmailTab}
+                            onToggle={() => handleToggle(config.type, activeTab)}
+                            ariaLabel={`${config.label} ${activeTab === 'in_app' ? 'in-app' : 'email'} notifications`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Accordion>
+              );
+            })}
+
+            {/* Group toggle helpers */}
+            <div className="mt-6 rounded-sm border border-white/10 bg-white/5 p-4">
+              <h3 className="text-sm font-semibold text-white">Quick Actions</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated: NotificationPreferences = {
+                      ...preferences,
+                      in_app: Object.fromEntries(
+                        Object.keys(preferences.in_app).map((k) => [k, true])
+                      ),
+                    };
+                    updateMutation.mutate(updated, {
+                      onSuccess: () => showToast('All in-app notifications enabled', 'success'),
+                      onError: () => showToast('Failed to update', 'error'),
+                    });
+                  }}
+                  className="rounded-sm bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/30"
+                >
+                  Enable All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated: NotificationPreferences = {
+                      ...preferences,
+                      in_app: Object.fromEntries(
+                        Object.keys(preferences.in_app).map((k) => [k, false])
+                      ),
+                    };
+                    updateMutation.mutate(updated, {
+                      onSuccess: () => showToast('All in-app notifications disabled', 'success'),
+                      onError: () => showToast('Failed to update', 'error'),
+                    });
+                  }}
+                  className="rounded-sm bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/20"
+                >
+                  Disable All
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default NotificationSettingsView;

@@ -84,7 +84,8 @@ export type ViewState =
   | 'board-detail'
   | 'board-card-detail'
   | 'chat'
-  | 'chat-conversation';
+  | 'chat-conversation'
+  | 'notification-settings';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -598,13 +599,50 @@ export interface MessageAttachment {
 // ── System Notifications ───────────────────────────────
 
 export type SystemNotificationType =
-  | 'mention'
+  // Jobs & Boards
   | 'status_change'
   | 'assignment'
   | 'unassignment'
-  | 'low_stock'
   | 'rush'
   | 'overdue'
+  | 'comment_mention'
+  | 'checklist_complete'
+  | 'delivery_update'
+  | 'variant_update'
+  // Inventory
+  | 'low_stock'
+  | 'critical_stock'
+  | 'allocation_complete'
+  | 'allocation_reversal'
+  | 'reorder_point_hit'
+  // Time Clock & Shifts
+  | 'shift_edit_approved'
+  | 'shift_edit_requested'
+  | 'clock_anomaly'
+  | 'lunch_break_reminder'
+  // Chat
+  | 'chat_mention'
+  | 'new_direct_message'
+  | 'thread_reply'
+  // Admin & Users
+  | 'new_user_pending_approval'
+  | 'user_approved'
+  | 'user_rejected'
+  | 'proposal_submitted'
+  // Quotes & Proposals
+  | 'new_customer_proposal'
+  | 'quote_assigned'
+  | 'quote_updated'
+  // Deliveries
+  | 'delivery_scheduled'
+  | 'delivery_completed'
+  | 'delivery_delayed'
+  // Dashboard & System
+  | 'daily_summary'
+  | 'system_alert'
+  | 'maintenance_notice'
+  // Legacy (backward compat with existing DB rows)
+  | 'mention'
   | 'delivery'
   | 'po_received';
 
@@ -618,4 +656,19 @@ export interface SystemNotification {
   metadata?: Record<string, unknown>;
   readAt?: string;
   createdAt: string;
+}
+
+// ── Notification Preferences ─────────────────────────────
+
+export type NotificationChannel = 'in_app' | 'email';
+
+export interface NotificationPreferences {
+  in_app: Partial<Record<SystemNotificationType, boolean>>;
+  email: Partial<Record<SystemNotificationType, boolean>>;
+}
+
+export interface UserNotificationPreferences {
+  userId: string;
+  preferences: NotificationPreferences;
+  updatedAt: string;
 }
