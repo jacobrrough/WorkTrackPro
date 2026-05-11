@@ -17,7 +17,7 @@ async function recordPartRevisionHistory(
 ): Promise<void> {
   if (previousRev !== undefined && rev === previousRev) return;
   const sessionData = await supabase.auth.getSession();
-  const userId = (sessionData as any)?.data?.session?.user?.id ?? null;
+  const userId = sessionData.data.session?.user?.id ?? null;
   await supabase
     .from('part_revision_history')
     .insert({
@@ -1163,7 +1163,7 @@ export const partsService = {
             )
             .in('status', ['paid', 'projectCompleted'])
             .is('part_id', null)
-            .order('due_date', { ascending: false }) as any;
+            .order('due_date', { ascending: false }) as unknown as typeof query;
         }
       } catch {
         // Column doesn't exist, continue without part_id filter
