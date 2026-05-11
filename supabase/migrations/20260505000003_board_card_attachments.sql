@@ -18,4 +18,4 @@ alter table public.attachments add constraint attachments_one_owner_check check 
   (job_id is null and inventory_id is not null and part_id is null and board_card_id is null) or
   (job_id is null and inventory_id is null and part_id is not null and board_card_id is null) or
   (job_id is null and inventory_id is null and part_id is null and board_card_id is not null)
-);
+) not valid;
