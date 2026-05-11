@@ -254,15 +254,15 @@ drop policy if exists "Admin variants write" on public.part_variants;
 create policy "Admin variants write" on public.part_variants
 for all to authenticated using (public.is_admin_approved()) with check (public.is_admin_approved());
 
--- Lock part_materials upfront to prevent deadlock with concurrent schema readers (PostgREST/Realtime).
-lock table public.part_materials in access exclusive mode;
-drop policy if exists "Authenticated part_materials" on public.part_materials;
-drop policy if exists "Authenticated materials read" on public.part_materials;
-create policy "Authenticated materials read" on public.part_materials
-for select to authenticated using (public.is_approved_user());
-drop policy if exists "Admin materials write" on public.part_materials;
-create policy "Admin materials write" on public.part_materials
-for all to authenticated using (public.is_admin_approved()) with check (public.is_admin_approved());
+do $$
+begin
+  lock table public.part_materials in access exclusive mode;
+  drop policy if exists "Authenticated part_materials" on public.part_materials;
+  drop policy if exists "Authenticated materials read" on public.part_materials;
+  execute 'create policy "Authenticated materials read" on public.part_materials for select to authenticated using (public.is_approved_user())';
+  drop policy if exists "Admin materials write" on public.part_materials;
+  execute 'create policy "Admin materials write" on public.part_materials for all to authenticated using (public.is_admin_approved()) with check (public.is_admin_approved())';
+end $$;
 
 -- Storage: attachments bucket should be approved-only
 drop policy if exists "Attachments bucket: authenticated insert" on storage.objects;
