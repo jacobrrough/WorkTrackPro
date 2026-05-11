@@ -19,7 +19,11 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
   - 1:N to `inventory_history.user_id`
   - 1:N to `quotes.created_by`
   - 1:N to `organization_settings.updated_by`
+  - 1:1 to `user_notification_preferences.user_id`
   - self-reference via `approved_by`
+- Triggers:
+  - `on_auth_user_created` → `handle_new_user()` (creates profile row)
+  - `trg_create_notification_preferences` → `create_default_notification_preferences()` (creates default prefs row after profile insert)
 
 ### Jobs, inventory, allocations
 
@@ -105,6 +109,40 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 #### `customer_proposal_files`
 - Fields: `id`, `proposal_id`, `filename`, `storage_path`, `content_type`, `size_bytes`, `public_url`, `created_at`
 
+### Notifications and preferences
+
+#### `system_notifications`
+- Fields: `id`, `user_id`, `type`, `title`, `message`, `link`, `metadata`, `read_at`, `created_at`
+- Relations: N:1 to `profiles`
+- RLS: users read/update own; approved users insert
+- Realtime: enabled for `supabase_realtime`
+- Triggers that insert into this table:
+  - `trg_notify_job_status_change` on `job_status_history` → notifies assigned users (type: `status_change`)
+  - `trg_notify_low_stock` on `inventory` → notifies admins (type: `low_stock`)
+  - `notify_mention()` RPC → called from frontend on @mention (type: `comment_mention`)
+- All triggers call `should_notify(user_id, type)` before inserting
+
+#### `user_notification_preferences`
+- Fields: `user_id` (PK), `preferences` (JSONB), `updated_at`
+- Relations: 1:1 to `profiles` (user_id is both PK and FK)
+- RLS: users read/update own; approved users insert own
+- JSONB structure: `{ "in_app": { "status_change": true, ... }, "email": { ... } }`
+- 33 notification types across 8 groups: Jobs & Boards, Inventory, Time Clock, Chat, Admin, Quotes, Deliveries, System
+- Admin-only types (disabled by default for employees): `new_user_pending_approval`, `user_approved`, `user_rejected`, `proposal_submitted`, `critical_stock`, `allocation_complete`, `allocation_reversal`
+
+#### `should_notify(user_id, notif_type, channel)`
+- SQL function (LANGUAGE sql, STABLE, SECURITY DEFINER) — inlineable by Postgres into trigger plans
+- Returns boolean: checks `user_notification_preferences.preferences -> channel ->> type`
+- Defaults to `true` via COALESCE if no row or key exists (new types are ON by default)
+
+#### `build_default_notification_preferences(is_admin)`
+- SQL function (IMMUTABLE) — returns default JSONB for admin or employee role
+- Used by auto-create trigger and backfill
+
+#### `job_status_history`
+- Fields: `id`, `job_id`, `user_id`, `previous_status`, `new_status`, `created_at`
+- Trigger: `trg_notify_job_status_change` fires AFTER INSERT
+
 ## Interaction flows and interconnectivity
 
 ### Inventory ↔ Jobs via `job_inventory`
@@ -138,8 +176,16 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - No direct quantity mutation from shifts to inventory.
 
 ### Realtime subscriptions
-- `src/services/api/subscriptions.ts` subscribes to `jobs`, `shifts`, `inventory` postgres changes.
+- `src/services/api/subscriptions.ts` subscribes to `jobs`, `shifts`, `inventory`, `system_notifications` postgres changes.
 - `AppContext` applies in-memory updates and triggers inventory refresh on job changes for allocation consistency.
+- `useSystemNotificationSubscription` prepends new notifications to the infinite query cache and increments the unread count.
+
+### Notification preferences flow
+- `notificationPreferencesService` (`src/services/api/notificationPreferences.ts`) handles get/update with defaults merging.
+- `useNotificationPreferences` hook uses TanStack Query with 5-min stale time (prefs change rarely).
+- `useUpdateNotificationPreferences` uses optimistic mutation with rollback on error.
+- `createNotificationIfEnabled` in `systemNotificationService` provides client-side preference gating (in addition to server-side `should_notify()` in triggers).
+- Settings page accessible to all users via gear icon in NotificationBell dropdown → `notification-settings` view.
 
 ### TanStack Query and server state
 - Jobs, shifts, users, and inventory are fetched via `useQuery` in `AppContext` (query keys: `['jobs']`, `['shifts']`, `['users']`, `['inventory']`), enabled when the user is approved.
@@ -182,16 +228,20 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
   - `dashboard`
   - `job-detail`
   - `clock-in`
+  - `scanner`
   - `inventory`
   - `inventory-detail`
   - `board-shop` / `board-admin`
+  - `boards` / `board-detail` / `board-card-detail`
   - `parts`
   - `part-detail`
   - `create-job`
   - `quotes`
   - `calendar`
   - `time-reports`
-  - `admin-settings`
+  - `admin-settings` (admin-only)
+  - `notification-settings` (all users)
+  - `chat` / `chat-conversation`
   - `trello-import`
 
 ## Inventory and parts pain points observed in code
@@ -215,3 +265,7 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - `src/lib/partDistribution.ts`
 - `src/lib/priceVisibility.ts`
 - `src/lib/jobWorkflow.ts`
+- `src/services/api/systemNotifications.ts`
+- `src/services/api/notificationPreferences.ts`
+- `src/hooks/useSystemNotifications.ts`
+- `src/hooks/useNotificationPreferences.ts`
