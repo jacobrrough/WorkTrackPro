@@ -822,6 +822,14 @@ export const partsService = {
 
     let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
 
+    // DB has both quantity and quantity_per_unit columns — satisfy both NOT NULL constraints
+    if (error && error.code === '23502') {
+      row.quantity = quantityPerUnit;
+      const result = await supabase.from('part_materials').insert(row).select('*').single();
+      data = result.data;
+      error = result.error;
+    }
+
     // Retry with legacy schema (variant_id, quantity) on unknown column or 400
     const isSchemaError =
       error &&
@@ -949,6 +957,13 @@ export const partsService = {
         usage_type: 'per_set',
       };
       let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
+      // DB has both quantity and quantity_per_unit columns — satisfy both NOT NULL constraints
+      if (error && error.code === '23502') {
+        row.quantity = quantity;
+        const result = await supabase.from('part_materials').insert(row).select('*').single();
+        data = result.data;
+        error = result.error;
+      }
       if (
         error &&
         (error.code === '42703' ||
