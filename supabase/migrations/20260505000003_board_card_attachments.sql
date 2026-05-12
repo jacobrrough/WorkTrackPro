@@ -7,7 +7,7 @@ alter table public.attachments
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_attachments_board_card') then
-    create index idx_attachments_board_card on public.attachments(board_card_id) where board_card_id is not null;
+    create index if not exists idx_attachments_board_card on public.attachments(board_card_id) where board_card_id is not null;
   end if;
 end $$;
 

@@ -51,13 +51,13 @@ create table if not exists public.jobs (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_jobs_status') then
-    create index idx_jobs_status on public.jobs(status);
+    create index if not exists idx_jobs_status on public.jobs(status);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_jobs_created_at') then
-    create index idx_jobs_created_at on public.jobs(created_at desc);
+    create index if not exists idx_jobs_created_at on public.jobs(created_at desc);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_jobs_board_type') then
-    create index idx_jobs_board_type on public.jobs(board_type);
+    create index if not exists idx_jobs_board_type on public.jobs(board_type);
   end if;
 end $$;
 
@@ -86,10 +86,10 @@ create table if not exists public.inventory (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_inventory_name') then
-    create index idx_inventory_name on public.inventory(name);
+    create index if not exists idx_inventory_name on public.inventory(name);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_inventory_category') then
-    create index idx_inventory_category on public.inventory(category);
+    create index if not exists idx_inventory_category on public.inventory(category);
   end if;
 end $$;
 
@@ -106,10 +106,10 @@ create table if not exists public.job_inventory (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_job_inventory_job') then
-    create index idx_job_inventory_job on public.job_inventory(job_id);
+    create index if not exists idx_job_inventory_job on public.job_inventory(job_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_job_inventory_inventory') then
-    create index idx_job_inventory_inventory on public.job_inventory(inventory_id);
+    create index if not exists idx_job_inventory_inventory on public.job_inventory(inventory_id);
   end if;
 end $$;
 
@@ -127,13 +127,13 @@ create table if not exists public.shifts (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_shifts_user') then
-    create index idx_shifts_user on public.shifts(user_id);
+    create index if not exists idx_shifts_user on public.shifts(user_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_shifts_job') then
-    create index idx_shifts_job on public.shifts(job_id);
+    create index if not exists idx_shifts_job on public.shifts(job_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_shifts_clock_in') then
-    create index idx_shifts_clock_in on public.shifts(clock_in_time desc);
+    create index if not exists idx_shifts_clock_in on public.shifts(clock_in_time desc);
   end if;
 end $$;
 
@@ -162,7 +162,7 @@ create table if not exists public.comments (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_comments_job') then
-    create index idx_comments_job on public.comments(job_id);
+    create index if not exists idx_comments_job on public.comments(job_id);
   end if;
 end $$;
 
@@ -179,7 +179,7 @@ create table if not exists public.attachments (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_attachments_job') then
-    create index idx_attachments_job on public.attachments(job_id);
+    create index if not exists idx_attachments_job on public.attachments(job_id);
   end if;
 end $$;
 
@@ -196,7 +196,7 @@ create table if not exists public.checklists (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_checklists_job') then
-    create index idx_checklists_job on public.checklists(job_id);
+    create index if not exists idx_checklists_job on public.checklists(job_id);
   end if;
 end $$;
 
@@ -235,7 +235,7 @@ create table if not exists public.quotes (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_quotes_created_at') then
-    create index idx_quotes_created_at on public.quotes(created_at desc);
+    create index if not exists idx_quotes_created_at on public.quotes(created_at desc);
   end if;
 end $$;
 
@@ -259,10 +259,10 @@ create table if not exists public.inventory_history (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_inventory_history_inventory') then
-    create index idx_inventory_history_inventory on public.inventory_history(inventory_id);
+    create index if not exists idx_inventory_history_inventory on public.inventory_history(inventory_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_inventory_history_created') then
-    create index idx_inventory_history_created on public.inventory_history(created_at desc);
+    create index if not exists idx_inventory_history_created on public.inventory_history(created_at desc);
   end if;
 end $$;
 
@@ -373,10 +373,10 @@ create table if not exists public.parts (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_parts_part_number') then
-    create index idx_parts_part_number on public.parts(part_number);
+    create index if not exists idx_parts_part_number on public.parts(part_number);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_parts_name') then
-    create index idx_parts_name on public.parts(name);
+    create index if not exists idx_parts_name on public.parts(name);
   end if;
 end $$;
 
@@ -397,7 +397,7 @@ create table if not exists public.part_variants (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_part_variants_part') then
-    create index idx_part_variants_part on public.part_variants(part_id);
+    create index if not exists idx_part_variants_part on public.part_variants(part_id);
   end if;
 end $$;
 
@@ -417,13 +417,13 @@ create table if not exists public.part_materials (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_part_materials_part') then
-    create index idx_part_materials_part on public.part_materials(part_id);
+    create index if not exists idx_part_materials_part on public.part_materials(part_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_part_materials_variant') then
-    create index idx_part_materials_variant on public.part_materials(variant_id);
+    create index if not exists idx_part_materials_variant on public.part_materials(variant_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_part_materials_inventory') then
-    create index idx_part_materials_inventory on public.part_materials(inventory_id);
+    create index if not exists idx_part_materials_inventory on public.part_materials(inventory_id);
   end if;
 end $$;
 

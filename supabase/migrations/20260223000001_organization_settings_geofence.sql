@@ -8,7 +8,7 @@ begin
     select 1 from information_schema.tables
     where table_schema = 'public' and table_name = 'organization_settings'
   ) then
-    create table public.organization_settings (
+    create table if not exists public.organization_settings (
       id uuid primary key default gen_random_uuid(),
       org_key text not null unique default 'default',
       labor_rate numeric not null default 175 check (labor_rate >= 0),

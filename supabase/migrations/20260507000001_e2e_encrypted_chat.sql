@@ -23,11 +23,12 @@ begin
     where conname = 'user_encryption_keys_user_unique'
   ) then
     alter table public.user_encryption_keys
+    alter table public.user_encryption_keys drop constraint if exists user_encryption_keys_user_unique;
     add constraint user_encryption_keys_user_unique unique (user_id);
   end if;
 
   if not exists (select 1 from pg_indexes where indexname = 'idx_encryption_keys_user') then
-    create index idx_encryption_keys_user on public.user_encryption_keys(user_id);
+    create index if not exists idx_encryption_keys_user on public.user_encryption_keys(user_id);
   end if;
 end $$;
 
@@ -46,13 +47,13 @@ create table if not exists public.conversations (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_conversations_type') then
-    create index idx_conversations_type on public.conversations(type);
+    create index if not exists idx_conversations_type on public.conversations(type);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_conversations_created_by') then
-    create index idx_conversations_created_by on public.conversations(created_by);
+    create index if not exists idx_conversations_created_by on public.conversations(created_by);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_conversations_updated_at') then
-    create index idx_conversations_updated_at on public.conversations(updated_at desc);
+    create index if not exists idx_conversations_updated_at on public.conversations(updated_at desc);
   end if;
 end $$;
 
@@ -77,17 +78,18 @@ begin
     where conname = 'conversation_members_conv_user_unique'
   ) then
     alter table public.conversation_members
+    alter table public.conversation_members drop constraint if exists conversation_members_conv_user_unique;
     add constraint conversation_members_conv_user_unique unique (conversation_id, user_id);
   end if;
 
   if not exists (select 1 from pg_indexes where indexname = 'idx_conv_members_conversation') then
-    create index idx_conv_members_conversation on public.conversation_members(conversation_id);
+    create index if not exists idx_conv_members_conversation on public.conversation_members(conversation_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_conv_members_user') then
-    create index idx_conv_members_user on public.conversation_members(user_id);
+    create index if not exists idx_conv_members_user on public.conversation_members(user_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_conv_members_active') then
-    create index idx_conv_members_active on public.conversation_members(user_id) where left_at is null;
+    create index if not exists idx_conv_members_active on public.conversation_members(user_id) where left_at is null;
   end if;
 end $$;
 
@@ -109,16 +111,16 @@ create table if not exists public.messages (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_messages_conversation') then
-    create index idx_messages_conversation on public.messages(conversation_id);
+    create index if not exists idx_messages_conversation on public.messages(conversation_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_messages_conv_created') then
-    create index idx_messages_conv_created on public.messages(conversation_id, created_at desc);
+    create index if not exists idx_messages_conv_created on public.messages(conversation_id, created_at desc);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_messages_sender') then
-    create index idx_messages_sender on public.messages(sender_id);
+    create index if not exists idx_messages_sender on public.messages(sender_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_messages_not_deleted') then
-    create index idx_messages_not_deleted on public.messages(conversation_id, created_at desc) where deleted_at is null;
+    create index if not exists idx_messages_not_deleted on public.messages(conversation_id, created_at desc) where deleted_at is null;
   end if;
 end $$;
 
@@ -140,14 +142,15 @@ begin
     where conname = 'message_receipts_msg_user_unique'
   ) then
     alter table public.message_receipts
+    alter table public.message_receipts drop constraint if exists message_receipts_msg_user_unique;
     add constraint message_receipts_msg_user_unique unique (message_id, user_id);
   end if;
 
   if not exists (select 1 from pg_indexes where indexname = 'idx_message_receipts_message') then
-    create index idx_message_receipts_message on public.message_receipts(message_id);
+    create index if not exists idx_message_receipts_message on public.message_receipts(message_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_message_receipts_user') then
-    create index idx_message_receipts_user on public.message_receipts(user_id);
+    create index if not exists idx_message_receipts_user on public.message_receipts(user_id);
   end if;
 end $$;
 
@@ -169,7 +172,7 @@ create table if not exists public.message_attachments (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_message_attachments_message') then
-    create index idx_message_attachments_message on public.message_attachments(message_id);
+    create index if not exists idx_message_attachments_message on public.message_attachments(message_id);
   end if;
 end $$;
 
