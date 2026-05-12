@@ -17,10 +17,10 @@ create table if not exists public.job_status_history (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_job_status_history_job') then
-    create index idx_job_status_history_job on public.job_status_history(job_id);
+    create index if not exists idx_job_status_history_job on public.job_status_history(job_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_job_status_history_created') then
-    create index idx_job_status_history_created on public.job_status_history(created_at desc);
+    create index if not exists idx_job_status_history_created on public.job_status_history(created_at desc);
   end if;
 end $$;
 
@@ -56,10 +56,10 @@ create table if not exists public.system_notifications (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_sn_user_created') then
-    create index idx_sn_user_created on public.system_notifications(user_id, created_at desc);
+    create index if not exists idx_sn_user_created on public.system_notifications(user_id, created_at desc);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_sn_user_unread') then
-    create index idx_sn_user_unread on public.system_notifications(user_id) where read_at is null;
+    create index if not exists idx_sn_user_unread on public.system_notifications(user_id) where read_at is null;
   end if;
 end $$;
 

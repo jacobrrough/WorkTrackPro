@@ -24,4 +24,5 @@ on conflict (job_id, part_id) do nothing;
 
 -- RLS: same as jobs (authenticated full access for now)
 alter table public.job_parts enable row level security;
+drop policy if exists "Authenticated job_parts" on public.job_parts;
 create policy "Authenticated job_parts" on public.job_parts for all to authenticated using (true) with check (true);

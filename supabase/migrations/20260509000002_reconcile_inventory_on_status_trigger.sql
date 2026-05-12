@@ -106,6 +106,7 @@ BEGIN
   RETURN NEW;
 END$$;
 
+drop trigger if exists jobs_reconcile_inventory_on_status_trg on public.jobs;
 CREATE TRIGGER jobs_reconcile_inventory_on_status_trg
   AFTER UPDATE OF status ON public.jobs
   FOR EACH ROW
