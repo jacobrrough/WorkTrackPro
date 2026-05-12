@@ -79,12 +79,14 @@ for select
 to authenticated
 using (auth.uid() = id);
 
+drop policy if exists "Approved users can read all profiles" on public.profiles;
 create policy "Approved users can read all profiles"
 on public.profiles
 for select
 to authenticated
 using (public.is_approved_user());
 
+drop policy if exists "Admin manage profiles" on public.profiles;
 create policy "Admin manage profiles"
 on public.profiles
 for update
@@ -92,6 +94,7 @@ to authenticated
 using (public.is_admin_approved())
 with check (public.is_admin_approved());
 
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
 on public.profiles
 for update
@@ -111,12 +114,14 @@ for select
 to authenticated
 using (public.is_approved_user());
 
+drop policy if exists "Authenticated insert jobs" on public.jobs;
 create policy "Authenticated insert jobs"
 on public.jobs
 for insert
 to authenticated
 with check (public.is_approved_user());
 
+drop policy if exists "Authenticated update jobs" on public.jobs;
 create policy "Authenticated update jobs"
 on public.jobs
 for update
@@ -124,6 +129,7 @@ to authenticated
 using (public.is_approved_user())
 with check (public.is_approved_user());
 
+drop policy if exists "Admin delete jobs" on public.jobs;
 create policy "Admin delete jobs"
 on public.jobs
 for delete
