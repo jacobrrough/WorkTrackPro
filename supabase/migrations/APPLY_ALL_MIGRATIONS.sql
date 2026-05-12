@@ -1137,6 +1137,10 @@ BEGIN
   END IF;
 END $$;
 
+-- Migration 40: Sync missing columns (preferred_worker_id, part_variants.description)
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS preferred_worker_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.part_variants ADD COLUMN IF NOT EXISTS description text;
+
 -- ============================================
 -- MIGRATIONS COMPLETE
 -- ============================================

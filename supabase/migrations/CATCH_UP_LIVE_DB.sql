@@ -20,6 +20,7 @@
 --   4. jobs.printer3d_completed_at/printer3d_completed_by columns missing
 --   5. jobs.status default is 'pending' instead of 'toBeQuoted'
 --   6. attachments.attachments_one_owner_check constraint missing
+--   7. jobs.preferred_worker_id and part_variants.description columns missing
 -- ============================================
 
 
@@ -194,6 +195,20 @@ BEGIN
     RAISE NOTICE 'attachments_one_owner_check constraint added successfully.';
   END IF;
 END $$;
+
+
+-- ============================================
+-- 7. Add missing columns (preferred_worker_id, part_variants.description)
+-- ============================================
+-- WHAT THIS DOES:
+--   - Adds two nullable columns that exist in the live schema but had no migration
+-- WHAT THIS DOES NOT DO:
+--   - Does NOT modify any existing data
+ALTER TABLE public.jobs
+  ADD COLUMN IF NOT EXISTS preferred_worker_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+ALTER TABLE public.part_variants
+  ADD COLUMN IF NOT EXISTS description text;
 
 
 -- ============================================

@@ -295,6 +295,7 @@ export interface PartVariant {
   partId: string;
   variantSuffix: string;
   name?: string;
+  description?: string;
   pricePerVariant?: number;
   laborHours?: number;
   requiresCNC?: boolean;
