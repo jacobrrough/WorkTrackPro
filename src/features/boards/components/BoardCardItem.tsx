@@ -20,6 +20,7 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    touchAction: 'manipulation',
   };
 
   const assignee = card.assigneeId ? users.find((u) => u.id === card.assigneeId) : null;

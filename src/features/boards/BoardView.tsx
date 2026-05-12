@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   DndContext,
   closestCorners,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -68,6 +69,30 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     ? ((data?.cards ?? []).find((c) => c.id === editingCardId) ?? null)
     : null;
 
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1280
+  );
+  const localCardsRef = useRef<BoardCard[] | null>(null);
+  const [moveMenuCardId, setMoveMenuCardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const isMobile = viewportWidth < 768;
+  const supportsFinePointer =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const canDrag = !isMobile && supportsFinePointer;
+
+  const columnWidth = useMemo(() => {
+    if (isMobile) return Math.max(280, Math.min(460, viewportWidth - 32));
+    return 288;
+  }, [isMobile, viewportWidth]);
+
   const isOwner = board?.createdBy === currentUser?.id;
   const memberEntry = members.find((m) => m.userId === currentUser?.id);
   const readOnly = !isOwner && memberEntry?.role === 'viewer';
@@ -84,13 +109,18 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     return map;
   }, [columns, cards]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   const activeCard = activeCardId ? (cards.find((c) => c.id === activeCardId) ?? null) : null;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
-    setLocalCards([...cards]);
+    const snapshot = [...cards];
+    setLocalCards(snapshot);
+    localCardsRef.current = snapshot;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -116,6 +146,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
       const updated = [...localCards];
       updated[activeIdx] = { ...updated[activeIdx], columnId: targetColumnId };
       setLocalCards(updated);
+      localCardsRef.current = updated;
     }
   };
 
@@ -123,25 +154,38 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     const { active, over } = event;
     setActiveCardId(null);
 
-    if (!over || !localCards) {
+    const currentLocal = localCardsRef.current;
+    localCardsRef.current = null;
+
+    if (!over || !currentLocal) {
       setLocalCards(null);
       return;
     }
 
     const activeId = active.id as string;
     const overId = over.id as string;
-    const card = localCards.find((c) => c.id === activeId);
-    if (!card) {
+
+    let targetColumnId: string;
+    if (overId.startsWith('col-')) {
+      targetColumnId = overId.replace('col-', '');
+    } else {
+      const overCard = currentLocal.find((c) => c.id === overId);
+      if (overCard) {
+        targetColumnId = overCard.columnId;
+      } else {
+        const draggedCard = currentLocal.find((c) => c.id === activeId);
+        targetColumnId = draggedCard?.columnId ?? '';
+      }
+    }
+
+    if (!targetColumnId) {
       setLocalCards(null);
       return;
     }
 
-    let targetColumnId = card.columnId;
-    if (overId.startsWith('col-')) {
-      targetColumnId = overId.replace('col-', '');
-    }
-
-    const colCards = localCards.filter((c) => c.columnId === targetColumnId && c.id !== activeId);
+    const colCards = currentLocal.filter(
+      (c) => c.columnId === targetColumnId && c.id !== activeId
+    );
     const overIdx = overId.startsWith('col-')
       ? colCards.length
       : colCards.findIndex((c) => c.id === overId);
@@ -149,6 +193,15 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
     setLocalCards(null);
     await mutations.moveCard(boardId, activeId, { columnId: targetColumnId, sortOrder });
+  };
+
+  const handleMoveCard = async (cardId: string, targetColumnId: string) => {
+    setMoveMenuCardId(null);
+    const colCards = cards.filter((c) => c.columnId === targetColumnId);
+    await mutations.moveCard(boardId, cardId, {
+      columnId: targetColumnId,
+      sortOrder: colCards.length,
+    });
   };
 
   const handleAddColumn = async (name: string) => {
@@ -232,17 +285,25 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
+        onDragStart={canDrag ? handleDragStart : undefined}
+        onDragOver={canDrag ? handleDragOver : undefined}
+        onDragEnd={canDrag ? handleDragEnd : undefined}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+        <div
+          className="flex min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden p-4 md:snap-none"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x',
+            overscrollBehavior: 'contain',
+          }}
+        >
           {columns.map((col) => {
             const colCards = cardsByColumn[col.id] ?? [];
             return (
               <div
                 key={col.id}
-                className="flex w-72 flex-shrink-0 flex-col rounded-lg border border-white/10 bg-surface-dark"
+                className="flex shrink-0 snap-center flex-col rounded-lg border border-white/10 bg-surface-dark"
+                style={{ width: columnWidth, minWidth: columnWidth }}
               >
                 <div className="p-3 pb-0">
                   <BoardColumnHeader
@@ -260,13 +321,51 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
                 >
                   <DroppableColumn column={col}>
                     {colCards.map((card) => (
-                      <BoardCardItem
-                        key={card.id}
-                        card={card}
-                        users={users}
-                        readOnly={readOnly}
-                        onClick={() => onNavigate('board-card-detail', `${boardId}:${card.id}`)}
-                      />
+                      <div key={card.id} className="relative">
+                        <BoardCardItem
+                          card={card}
+                          users={users}
+                          readOnly={readOnly || !canDrag}
+                          onClick={() => onNavigate('board-card-detail', `${boardId}:${card.id}`)}
+                        />
+                        {!readOnly && !canDrag && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMoveMenuCardId(
+                                moveMenuCardId === card.id ? null : card.id
+                              );
+                            }}
+                            className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white"
+                            aria-label="Move card"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              swap_horiz
+                            </span>
+                          </button>
+                        )}
+                        {moveMenuCardId === card.id && (
+                          <div className="absolute right-0 top-8 z-50 min-w-[140px] rounded border border-white/20 bg-[#2a1f35] py-1 shadow-xl">
+                            {columns
+                              .filter((c) => c.id !== col.id)
+                              .map((targetCol) => (
+                                <button
+                                  key={targetCol.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveCard(card.id, targetCol.id);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-white hover:bg-white/10"
+                                >
+                                  <span className="material-symbols-outlined text-sm">
+                                    arrow_forward
+                                  </span>
+                                  {targetCol.name}
+                                </button>
+                              ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </DroppableColumn>
                 </SortableContext>
@@ -287,7 +386,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
         <DragOverlay>
           {activeCard && (
-            <div className="w-72 opacity-90">
+            <div style={{ width: columnWidth }} className="opacity-90">
               <BoardCardItem card={activeCard} users={users} readOnly onClick={() => {}} />
             </div>
           )}

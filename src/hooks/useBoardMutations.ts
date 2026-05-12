@@ -143,10 +143,15 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const moveCard = useCallback(
     async (boardId: string, cardId: string, data: { columnId: string; sortOrder: number }) => {
       const card = await boardService.moveCard(cardId, data);
-      if (card) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (card) {
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        showToast('Failed to move card', 'error');
+      }
       return card;
     },
-    [queryClient]
+    [queryClient, showToast]
   );
 
   const deleteCard = useCallback(
