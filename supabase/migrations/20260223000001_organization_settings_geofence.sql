@@ -30,7 +30,9 @@ begin
     );
     create index if not exists idx_organization_settings_org_key on public.organization_settings(org_key);
     alter table public.organization_settings enable row level security;
+drop policy if exists "Authenticated read organization settings" on public.organization_settings;
     create policy "Authenticated read organization settings" on public.organization_settings for select to authenticated using (true);
+drop policy if exists "Admin write organization settings" on public.organization_settings;
     create policy "Admin write organization settings" on public.organization_settings for all to authenticated
       using (exists (select 1 from public.profiles where id = auth.uid() and is_admin = true))
       with check (exists (select 1 from public.profiles where id = auth.uid() and is_admin = true));
