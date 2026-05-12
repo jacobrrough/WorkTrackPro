@@ -87,9 +87,7 @@ begin
     where conname = 'board_members_board_user_unique'
     and conrelid = 'public.board_members'::regclass
   ) then
-    alter table public.board_members
-    alter table public.board_members drop constraint if exists board_members_board_user_unique;
-    add constraint board_members_board_user_unique unique (board_id, user_id);
+    alter table public.board_members add constraint board_members_board_user_unique unique (board_id, user_id);
   end if;
 end $$;
 

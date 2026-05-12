@@ -22,9 +22,7 @@ begin
     select 1 from pg_constraint
     where conname = 'user_encryption_keys_user_unique'
   ) then
-    alter table public.user_encryption_keys
-    alter table public.user_encryption_keys drop constraint if exists user_encryption_keys_user_unique;
-    add constraint user_encryption_keys_user_unique unique (user_id);
+    alter table public.user_encryption_keys add constraint user_encryption_keys_user_unique unique (user_id);
   end if;
 
   if not exists (select 1 from pg_indexes where indexname = 'idx_encryption_keys_user') then
@@ -77,9 +75,7 @@ begin
     select 1 from pg_constraint
     where conname = 'conversation_members_conv_user_unique'
   ) then
-    alter table public.conversation_members
-    alter table public.conversation_members drop constraint if exists conversation_members_conv_user_unique;
-    add constraint conversation_members_conv_user_unique unique (conversation_id, user_id);
+    alter table public.conversation_members add constraint conversation_members_conv_user_unique unique (conversation_id, user_id);
   end if;
 
   if not exists (select 1 from pg_indexes where indexname = 'idx_conv_members_conversation') then
@@ -141,9 +137,7 @@ begin
     select 1 from pg_constraint
     where conname = 'message_receipts_msg_user_unique'
   ) then
-    alter table public.message_receipts
-    alter table public.message_receipts drop constraint if exists message_receipts_msg_user_unique;
-    add constraint message_receipts_msg_user_unique unique (message_id, user_id);
+    alter table public.message_receipts add constraint message_receipts_msg_user_unique unique (message_id, user_id);
   end if;
 
   if not exists (select 1 from pg_indexes where indexname = 'idx_message_receipts_message') then

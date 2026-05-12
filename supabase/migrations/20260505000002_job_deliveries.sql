@@ -29,9 +29,7 @@ begin
     where conname = 'deliveries_job_number_unique'
     and conrelid = 'public.deliveries'::regclass
   ) then
-    alter table public.deliveries
-    alter table public.deliveries drop constraint if exists deliveries_job_number_unique;
-    add constraint deliveries_job_number_unique unique (job_id, delivery_number);
+    alter table public.deliveries add constraint deliveries_job_number_unique unique (job_id, delivery_number);
   end if;
 end $$;
 
