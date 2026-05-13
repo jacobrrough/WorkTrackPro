@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import {
   DndContext,
   closestCorners,
+  pointerWithin,
   DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -28,6 +30,12 @@ interface BoardViewProps {
   onNavigate: (view: ViewState, id?: string) => void;
   onBack: () => void;
 }
+
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  if (pointerCollisions.length > 0) return pointerCollisions;
+  return closestCorners(args);
+};
 
 function DroppableColumn({ column, children }: { column: BoardColumn; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${column.id}` });
@@ -253,7 +261,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
