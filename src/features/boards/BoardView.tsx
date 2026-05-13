@@ -113,8 +113,20 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     }
 
     if (localCards[activeIdx].columnId !== targetColumnId) {
-      const updated = [...localCards];
-      updated[activeIdx] = { ...updated[activeIdx], columnId: targetColumnId };
+      const updated = localCards.filter((c) => c.id !== activeId);
+      const movedCard = { ...localCards[activeIdx], columnId: targetColumnId };
+
+      if (overId.startsWith('col-')) {
+        updated.push(movedCard);
+      } else {
+        const overIdx = updated.findIndex((c) => c.id === overId);
+        if (overIdx === -1) {
+          updated.push(movedCard);
+        } else {
+          updated.splice(overIdx, 0, movedCard);
+        }
+      }
+
       setLocalCards(updated);
     }
   };
@@ -139,16 +151,26 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     let targetColumnId = card.columnId;
     if (overId.startsWith('col-')) {
       targetColumnId = overId.replace('col-', '');
+    } else {
+      const overCard = localCards.find((c) => c.id === overId);
+      if (overCard) targetColumnId = overCard.columnId;
     }
 
     const colCards = localCards.filter((c) => c.columnId === targetColumnId && c.id !== activeId);
-    const overIdx = overId.startsWith('col-')
-      ? colCards.length
-      : colCards.findIndex((c) => c.id === overId);
-    const sortOrder = overIdx >= 0 ? overIdx : colCards.length;
+
+    let insertIdx: number;
+    if (overId.startsWith('col-')) {
+      insertIdx = colCards.length;
+    } else {
+      const idx = colCards.findIndex((c) => c.id === overId);
+      insertIdx = idx >= 0 ? idx : colCards.length;
+    }
+
+    colCards.splice(insertIdx, 0, card);
+    const orderedCardIds = colCards.map((c) => c.id);
 
     setLocalCards(null);
-    await mutations.moveCard(boardId, activeId, { columnId: targetColumnId, sortOrder });
+    await mutations.reorderCards(boardId, targetColumnId, orderedCardIds);
   };
 
   const handleAddColumn = async (name: string) => {

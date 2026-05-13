@@ -149,6 +149,15 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     [queryClient]
   );
 
+  const reorderCards = useCallback(
+    async (boardId: string, columnId: string, cardIds: string[]) => {
+      const ok = await boardService.reorderCards(boardId, columnId, cardIds);
+      if (ok) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      return ok;
+    },
+    [queryClient]
+  );
+
   const deleteCard = useCallback(
     async (boardId: string, cardId: string) => {
       const ok = await boardService.deleteCard(cardId);
@@ -234,6 +243,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     addCard,
     updateCard,
     moveCard,
+    reorderCards,
     deleteCard,
     addMember,
     removeMember,
