@@ -404,6 +404,15 @@ async function fetchJobExpand(jobId: string): Promise<{
   ]);
 
   const job_inventory = (jiRes.data ?? []) as JobInventoryRow[];
+  if (comRes.error) {
+    console.error(
+      '[fetchJobExpand] comments query failed:',
+      comRes.error.message,
+      comRes.error.code,
+      comRes.error.hint,
+      { jobId }
+    );
+  }
   const commentsRaw = (comRes.data ?? []) as CommentRow[];
   const attachments = (attRes.data ?? []) as AttachmentRow[];
 
@@ -487,6 +496,15 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
   ]);
 
   const jobInventory = (jiRes.data ?? []) as JobInventoryRow[];
+  if (comRes.error) {
+    console.error(
+      '[fetchJobsExpandBatch] comments query failed:',
+      comRes.error.message,
+      comRes.error.code,
+      comRes.error.hint,
+      { jobIds }
+    );
+  }
   const commentsRaw = (comRes.data ?? []) as CommentRow[];
   const attachments = (attRes.data ?? []) as AttachmentRow[];
 
@@ -1104,7 +1122,13 @@ export const jobService = {
       .insert({ job_id: jobId, user_id: userId, text })
       .select('id, job_id, user_id, text, created_at')
       .single();
-    if (error) return null;
+    if (error) {
+      console.error('[addComment] insert failed:', error.message, error.code, error.hint, {
+        jobId,
+        userId,
+      });
+      throw error;
+    }
     const profiles = await supabase
       .from('profiles')
       .select('id, name, initials')
@@ -1124,11 +1148,21 @@ export const jobService = {
 
   async updateComment(commentId: string, text: string): Promise<boolean> {
     const { error } = await supabase.from('comments').update({ text }).eq('id', commentId);
+    if (error) {
+      console.error('[updateComment] failed:', error.message, error.code, error.hint, {
+        commentId,
+      });
+    }
     return !error;
   },
 
   async deleteComment(commentId: string): Promise<boolean> {
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (error) {
+      console.error('[deleteComment] failed:', error.message, error.code, error.hint, {
+        commentId,
+      });
+    }
     return !error;
   },
 

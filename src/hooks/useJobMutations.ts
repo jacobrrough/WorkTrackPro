@@ -316,10 +316,11 @@ export function useJobMutations({
         return comment;
       } catch (error) {
         console.error('Add comment error:', error);
+        showToast?.('Failed to post comment. Please try again.', 'error');
         return null;
       }
     },
-    [currentUser, refreshJobs]
+    [currentUser, refreshJobs, showToast]
   );
 
   const getJobByCode = useCallback(
