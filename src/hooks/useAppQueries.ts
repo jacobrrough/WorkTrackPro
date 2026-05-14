@@ -50,8 +50,8 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
     queryKey: ['users'],
     queryFn: () => userService.getAllUsers(),
     enabled,
-    staleTime: 1000 * 60 * 30, // 30 min — users rarely change
-    refetchOnWindowFocus: false, // no need to refetch on every tab return
+    staleTime: 1000 * 60 * 5, // 5 min — realtime subscription keeps cache fresh
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: inventoryData = [] } = useQuery({

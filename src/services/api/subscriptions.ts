@@ -2,6 +2,7 @@ import type {
   Job,
   Shift,
   InventoryItem,
+  User,
   Message,
   MessageReceipt,
   ConversationMember,
@@ -10,28 +11,8 @@ import type {
 } from '../../core/types';
 import { supabase } from './supabaseClient';
 
-/*
- * Realtime publication prerequisite — run this in the Supabase SQL editor
- * to enable change events on related tables (skips any that don't exist yet):
- *
- *   DO $$
- *   DECLARE t text;
- *   BEGIN
- *     FOR t IN SELECT unnest(ARRAY[
- *       'comments','attachments','job_parts','job_inventory',
- *       'checklists','deliveries',
- *       'boards','board_columns','board_cards',
- *       'parts'
- *     ]) LOOP
- *       IF EXISTS (SELECT 1 FROM pg_class
- *                  WHERE relname = t AND relnamespace = 'public'::regnamespace) THEN
- *         EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
- *       END IF;
- *     END LOOP;
- *   END $$;
- *
- * Without this, the new channels below connect silently but deliver zero events.
- */
+// Realtime publication for all subscribed tables is managed by
+// migration 20260514000001_enable_realtime_core_tables.sql — no manual SQL required.
 
 // ── Scalar-only mappers (preserve relation arrays in cache) ──────────
 
@@ -103,6 +84,17 @@ function mapShiftRow(row: Record<string, unknown>): Shift {
   };
 }
 
+function mapUserRow(row: Record<string, unknown>): User {
+  return {
+    id: row.id as string,
+    email: (row.email as string) ?? '',
+    name: row.name as string | undefined,
+    initials: row.initials as string | undefined,
+    isAdmin: (row.is_admin as boolean) ?? false,
+    isApproved: (row.is_approved as boolean) ?? false,
+  };
+}
+
 function mapInventoryRow(row: Record<string, unknown>): InventoryItem {
   return {
     id: row.id as string,
@@ -123,7 +115,7 @@ function mapInventoryRow(row: Record<string, unknown>): InventoryItem {
   };
 }
 
-// ── Helper to extract event action ───────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────
 
 type RealtimeAction = 'create' | 'update' | 'delete';
 
@@ -133,11 +125,24 @@ function eventAction(eventType: string): RealtimeAction {
   return 'delete';
 }
 
+// For DELETE events payload.new is {} (truthy) so ?? never falls back.
+// Use payload.old which carries at least the PK under default REPLICA IDENTITY.
+// With default REPLICA IDENTITY, DELETE payloads only carry the PK in old —
+// other fields are absent. Callers must not read non-id fields on delete.
+function pickRow(payload: {
+  eventType: string;
+  new?: Record<string, unknown>;
+  old?: Record<string, unknown>;
+}): Record<string, unknown> | undefined {
+  return payload.eventType === 'DELETE' ? payload.old : payload.new;
+}
+
 // ── Types ────────────────────────────────────────────────────────────
 
 type JobScalarCallback = (action: RealtimeAction, record: JobScalars & { id: string }) => void;
 type ShiftCallback = (action: string, record: Shift) => void;
 type InventoryCallback = (action: string, record: InventoryItem) => void;
+type UserCallback = (action: RealtimeAction, record: User) => void;
 type RelatedTableCallback = (
   table: string,
   action: RealtimeAction,
@@ -151,10 +156,13 @@ export const subscriptions = {
     const channel = supabase
       .channel('jobs-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
-        const record = (payload.new ?? payload.old) as Record<string, unknown>;
+        const record = pickRow(payload);
         if (record) callback(eventAction(payload.eventType), mapJobScalars(record));
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+          console.error(`[realtime:jobs-changes] ${status}`);
+      });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -164,10 +172,13 @@ export const subscriptions = {
     const channel = supabase
       .channel('shifts-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, (payload) => {
-        const record = (payload.new ?? payload.old) as Record<string, unknown>;
+        const record = pickRow(payload);
         if (record) callback(eventAction(payload.eventType), mapShiftRow(record));
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+          console.error(`[realtime:shifts-changes] ${status}`);
+      });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -177,10 +188,29 @@ export const subscriptions = {
     const channel = supabase
       .channel('inventory-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
-        const record = (payload.new ?? payload.old) as Record<string, unknown>;
+        const record = pickRow(payload);
         if (record) callback(eventAction(payload.eventType), mapInventoryRow(record));
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+          console.error(`[realtime:inventory-changes] ${status}`);
+      });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToUsers(callback: UserCallback): () => void {
+    const channel = supabase
+      .channel('users-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        const record = pickRow(payload);
+        if (record) callback(eventAction(payload.eventType), mapUserRow(record));
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+          console.error(`[realtime:users-changes] ${status}`);
+      });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -207,12 +237,18 @@ export const subscriptions = {
         'postgres_changes',
         { event: '*', schema: 'public', table },
         (payload) => {
-          const record = (payload.new ?? payload.old) as Record<string, unknown>;
+          // TODO(realtime-delete): DELETE payloads carry only the PK via payload.old —
+          // job_id is absent without REPLICA IDENTITY FULL, so deletes are silently
+          // dropped by the consumer (job_id guard). Fix requires schema change.
+          const record = pickRow(payload);
           if (record) callback(table, eventAction(payload.eventType), record);
         }
       );
     }
-    channel.subscribe();
+    channel.subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+        console.error(`[realtime:job-related-changes] ${status}`);
+    });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -229,12 +265,18 @@ export const subscriptions = {
         'postgres_changes',
         { event: '*', schema: 'public', table },
         (payload) => {
-          const record = (payload.new ?? payload.old) as Record<string, unknown>;
+          // TODO(realtime-delete): DELETE payloads carry only the PK via payload.old —
+          // board_id is absent without REPLICA IDENTITY FULL, so deletes are silently
+          // dropped by the consumer (board_id guard). Fix requires schema change.
+          const record = pickRow(payload);
           if (record) callback(table, eventAction(payload.eventType), record);
         }
       );
     }
-    channel.subscribe();
+    channel.subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+        console.error(`[realtime:board-changes] ${status}`);
+    });
     return () => {
       supabase.removeChannel(channel);
     };
@@ -247,10 +289,15 @@ export const subscriptions = {
     const channel = supabase
       .channel('parts-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'parts' }, (payload) => {
+        // DELETE events use payload.new ?? payload.old — safe here because the callback
+        // only triggers a full refresh (no id-based filtering on delete).
         const record = (payload.new ?? payload.old) as Record<string, unknown>;
         if (record) callback('parts', eventAction(payload.eventType), record);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+          console.error(`[realtime:parts-changes] ${status}`);
+      });
     return () => {
       supabase.removeChannel(channel);
     };

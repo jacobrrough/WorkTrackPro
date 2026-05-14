@@ -201,6 +201,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     // refreshInventory() is NOT called here — the subscribeToJobRelated
     // channel handles job_inventory changes with debouncing.
     const unsubJobs = subscriptions.subscribeToJobs((action, scalars) => {
+      if (typeof scalars.id !== 'string') return;
       if (action === 'create') {
         void queries.refreshJob(scalars.id);
       } else if (action === 'update') {
@@ -216,42 +217,44 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         }
       } else if (action === 'delete') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? prev.filter((j) => j.id !== scalars.id) : []
+          prev ? prev.filter((j) => j.id !== scalars.id) : prev
         );
         queryClient.removeQueries({ queryKey: ['job', scalars.id] });
       }
     });
 
-    // ── Shifts channel (unchanged) ─────────────────────────────────
+    // ── Shifts channel ─────────────────────────────────────────────
     const unsubShifts = subscriptions.subscribeToShifts((action, record) => {
+      if (typeof record.id !== 'string') return;
       if (action === 'create') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
           prev ? [record as Shift, ...prev] : [record as Shift]
         );
       } else if (action === 'update') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? prev.map((s) => (s.id === record.id ? (record as Shift) : s)) : []
+          prev ? prev.map((s) => (s.id === record.id ? record : s)) : prev
         );
       } else if (action === 'delete') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? prev.filter((s) => s.id !== record.id) : []
+          prev ? prev.filter((s) => s.id !== record.id) : prev
         );
       }
     });
 
-    // ── Inventory channel (unchanged) ──────────────────────────────
+    // ── Inventory channel ──────────────────────────────────────────
     const unsubInventory = subscriptions.subscribeToInventory((action, record) => {
+      if (typeof record.id !== 'string') return;
       if (action === 'create') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
           prev ? [record as InventoryItem, ...prev] : [record as InventoryItem]
         );
       } else if (action === 'update') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.map((i) => (i.id === record.id ? (record as InventoryItem) : i)) : []
+          prev ? prev.map((i) => (i.id === record.id ? record : i)) : prev
         );
       } else if (action === 'delete') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.filter((i) => i.id !== record.id) : []
+          prev ? prev.filter((i) => i.id !== record.id) : prev
         );
       }
     });
@@ -288,6 +291,27 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       debounce('parts-jobs', () => void queries.refreshJobs());
     });
 
+    // ── Users/profiles table ───────────────────────────────────────
+    // Note: DELETE payloads only carry the PK (id) from payload.old — other
+    // fields on `record` are defaults and must not be read in the delete branch.
+    const unsubUsers = subscriptions.subscribeToUsers((action, record) => {
+      if (typeof record.id !== 'string') return;
+      if (action === 'create') {
+        queryClient.setQueryData<User[]>(['users'], (prev) => {
+          if (!prev) return [record];
+          return prev.some((u) => u.id === record.id) ? prev : [record, ...prev];
+        });
+      } else if (action === 'update') {
+        queryClient.setQueryData<User[]>(['users'], (prev) =>
+          prev ? prev.map((u) => (u.id === record.id ? record : u)) : prev
+        );
+      } else if (action === 'delete') {
+        queryClient.setQueryData<User[]>(['users'], (prev) =>
+          prev ? prev.filter((u) => u.id !== record.id) : prev
+        );
+      }
+    });
+
     return () => {
       unsubJobs();
       unsubShifts();
@@ -295,6 +319,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       unsubJobRelated();
       unsubBoards();
       unsubParts();
+      unsubUsers();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, queryClient, queries.refreshJob, queries.refreshJobs, queries.refreshInventory]);
