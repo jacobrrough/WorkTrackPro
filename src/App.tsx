@@ -114,16 +114,17 @@ export default function App() {
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
-  // Read a one-time flag set by hardLogout before the page reloaded.
-  // sessionStorage survives location.reload() but is cleared on tab close,
-  // so the message only ever shows once — right after an expiry reload.
+  // Read the session-expiry flag set by hardLogout before navigating to /app.
+  // sessionStorage persists across navigations within the tab but is cleared
+  // on tab close. The flag (and this notice) persist across refreshes until
+  // login() removes it after successful re-authentication.
   const [sessionExpiredNotice, setSessionExpiredNotice] = useState<string | null>(() => {
+    // Read the flag but do NOT remove it here. initApp() in AuthContext bails
+    // without calling checkAuth() when the flag is present — it must still be
+    // in sessionStorage when the useEffect fires after this render. login()
+    // is the sole point that removes it after re-authentication.
     const flag = sessionStorage.getItem('wtp_session_expired');
-    if (flag) {
-      sessionStorage.removeItem('wtp_session_expired');
-      return 'Your session expired. Please log in again.';
-    }
-    return null;
+    return flag ? 'Your session expired. Please log in again.' : null;
   });
   const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
 
