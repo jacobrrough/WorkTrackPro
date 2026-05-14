@@ -3483,6 +3483,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 jobId={job.id}
                 jobStatus={job.status}
                 currentUser={currentUser}
+                jobInventoryItems={job.inventoryItems}
                 compact={false}
                 onChecklistComplete={handleChecklistComplete}
               />
