@@ -92,8 +92,7 @@ export const chatService = {
       .select('*')
       .order('updated_at', { ascending: false });
     if (error) {
-      console.error('chatService.getConversations:', error.message);
-      return [];
+      throw new Error(`Failed to load conversations: ${error.message}`);
     }
     return (data ?? []).map((r: Record<string, unknown>) => mapConversationRow(r));
   },
@@ -312,7 +311,7 @@ export const chatService = {
       .select('*, profiles(name, initials)')
       .eq('conversation_id', conversationId)
       .is('left_at', null);
-    if (error) return [];
+    if (error) throw new Error(`Failed to load members: ${error.message}`);
     return (data ?? []).map((r: Record<string, unknown>) => mapMemberRow(r));
   },
 
@@ -332,8 +331,7 @@ export const chatService = {
     if (options?.before) query = query.lt('created_at', options.before);
     const { data, error } = await query;
     if (error) {
-      console.error('chatService.getMessages:', error.message);
-      return [];
+      throw new Error(`Failed to load messages: ${error.message}`);
     }
     return (data ?? []).map((r: Record<string, unknown>) => {
       const msg = mapMessageRow(r);
