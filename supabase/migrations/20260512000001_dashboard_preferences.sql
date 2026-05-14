@@ -16,7 +16,7 @@ create table if not exists public.user_dashboard_preferences (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_udp_updated') then
-    create index idx_udp_updated on public.user_dashboard_preferences(updated_at desc);
+    create index if not exists idx_udp_updated on public.user_dashboard_preferences(updated_at desc);
   end if;
 end $$;
 

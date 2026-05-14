@@ -75,6 +75,7 @@ REVOKE EXECUTE ON FUNCTION public.job_inventory_no_mutate_on_consumed() FROM PUB
 -- Block inserting new rows against an already-consumed job.
 -- Without this guard a new allocation added post-consumption is never matched
 -- by a deduction, but is deducted on the next rework finish cycle.
+drop trigger if exists job_inventory_insert_consumed_guard_trg on public.job_inventory;
 CREATE TRIGGER job_inventory_insert_consumed_guard_trg
   BEFORE INSERT ON public.job_inventory
   FOR EACH ROW
@@ -84,6 +85,7 @@ CREATE TRIGGER job_inventory_insert_consumed_guard_trg
 -- quantity and inventory_id change what gets deducted/restored.
 -- job_id re-pointing a row to a consumed job bypasses the INSERT guard.
 -- unit-only updates are allowed (cosmetic, no stock impact).
+drop trigger if exists job_inventory_update_consumed_guard_trg on public.job_inventory;
 CREATE TRIGGER job_inventory_update_consumed_guard_trg
   BEFORE UPDATE OF quantity, inventory_id, job_id ON public.job_inventory
   FOR EACH ROW

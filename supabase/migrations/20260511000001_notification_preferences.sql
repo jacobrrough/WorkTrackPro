@@ -16,7 +16,7 @@ create table if not exists public.user_notification_preferences (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_unp_updated') then
-    create index idx_unp_updated on public.user_notification_preferences(updated_at desc);
+    create index if not exists idx_unp_updated on public.user_notification_preferences(updated_at desc);
   end if;
 end $$;
 

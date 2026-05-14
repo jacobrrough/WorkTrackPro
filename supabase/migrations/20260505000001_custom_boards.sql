@@ -15,10 +15,10 @@ create table if not exists public.boards (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_boards_created_by') then
-    create index idx_boards_created_by on public.boards(created_by);
+    create index if not exists idx_boards_created_by on public.boards(created_by);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_boards_visibility') then
-    create index idx_boards_visibility on public.boards(visibility);
+    create index if not exists idx_boards_visibility on public.boards(visibility);
   end if;
 end $$;
 
@@ -36,7 +36,7 @@ create table if not exists public.board_columns (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_board_columns_board') then
-    create index idx_board_columns_board on public.board_columns(board_id);
+    create index if not exists idx_board_columns_board on public.board_columns(board_id);
   end if;
 end $$;
 
@@ -58,10 +58,10 @@ create table if not exists public.board_cards (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_board_cards_column') then
-    create index idx_board_cards_column on public.board_cards(column_id);
+    create index if not exists idx_board_cards_column on public.board_cards(column_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_board_cards_board') then
-    create index idx_board_cards_board on public.board_cards(board_id);
+    create index if not exists idx_board_cards_board on public.board_cards(board_id);
   end if;
 end $$;
 
@@ -77,18 +77,17 @@ create table if not exists public.board_members (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_board_members_board') then
-    create index idx_board_members_board on public.board_members(board_id);
+    create index if not exists idx_board_members_board on public.board_members(board_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_board_members_user') then
-    create index idx_board_members_user on public.board_members(user_id);
+    create index if not exists idx_board_members_user on public.board_members(user_id);
   end if;
   if not exists (
     select 1 from pg_constraint
     where conname = 'board_members_board_user_unique'
     and conrelid = 'public.board_members'::regclass
   ) then
-    alter table public.board_members
-    add constraint board_members_board_user_unique unique (board_id, user_id);
+    alter table public.board_members add constraint board_members_board_user_unique unique (board_id, user_id);
   end if;
 end $$;
 

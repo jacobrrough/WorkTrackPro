@@ -24,7 +24,7 @@ begin
     from pg_indexes
     where indexname = 'idx_organization_settings_org_key'
   ) then
-    create index idx_organization_settings_org_key on public.organization_settings(org_key);
+    create index if not exists idx_organization_settings_org_key on public.organization_settings(org_key);
   end if;
 end $$;
 

@@ -64,6 +64,7 @@ function mapRowToVariant(row: Record<string, unknown>): PartVariant {
     partId: row.part_id as string,
     variantSuffix: (row.variant_suffix as string) ?? '',
     name: row.name as string | undefined,
+    description: row.description as string | undefined,
     pricePerVariant: row.price_per_variant != null ? Number(row.price_per_variant) : undefined,
     laborHours: row.labor_hours != null ? Number(row.labor_hours) : undefined,
     requiresCNC: row.requires_cnc === true,

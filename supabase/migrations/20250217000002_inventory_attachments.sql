@@ -7,12 +7,8 @@ alter table public.attachments alter column job_id drop not null;
 -- Add inventory_id column
 alter table public.attachments add column if not exists inventory_id uuid references public.inventory(id) on delete cascade;
 
--- Add check constraint: either job_id or inventory_id must be set (but not both)
-alter table public.attachments add constraint attachments_job_or_inventory_check 
-  check (
-    (job_id is not null and inventory_id is null) or 
-    (job_id is null and inventory_id is not null)
-  );
+-- Note: constraint added in next migration (20250218000003) once part_id column exists,
+-- so we can express the full one-owner rule in one place without breaking existing rows.
 
 -- Add index for inventory_id lookups
 create index if not exists idx_attachments_inventory on public.attachments(inventory_id);
