@@ -172,6 +172,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
             jobId={job.id}
             jobStatus={job.status}
             currentUser={currentUser}
+            jobInventoryItems={job.inventoryItems}
             compact={false}
             onChecklistComplete={handleChecklistComplete}
           />

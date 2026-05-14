@@ -133,6 +133,13 @@ export const inventoryService = {
     return mapRowToItem(updated as unknown as Record<string, unknown>);
   },
 
+  async getByIds(ids: string[]): Promise<InventoryItem[]> {
+    if (!ids.length) return [];
+    const { data, error } = await supabase.from('inventory').select('*').in('id', ids);
+    if (error) throw error;
+    return (data ?? []).map((row) => mapRowToItem(row as unknown as Record<string, unknown>));
+  },
+
   async updateStock(id: string, inStock: number): Promise<void> {
     const { error } = await supabase
       .from('inventory')
