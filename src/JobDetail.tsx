@@ -1305,9 +1305,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         }
       } else {
         console.error('Failed to add comment - no comment returned');
+        showToast('Failed to post comment', 'error');
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      showToast('Failed to post comment', 'error');
     }
     setIsSubmitting(false);
   };
@@ -3483,6 +3485,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 jobId={job.id}
                 jobStatus={job.status}
                 currentUser={currentUser}
+                jobInventoryItems={job.inventoryItems}
                 compact={false}
                 onChecklistComplete={handleChecklistComplete}
               />

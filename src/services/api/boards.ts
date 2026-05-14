@@ -286,6 +286,18 @@ export const boardService = {
     return results.every((r) => !r.error);
   },
 
+  async reorderCards(boardId: string, columnId: string, cardIds: string[]): Promise<boolean> {
+    const updates = cardIds.map((id, i) =>
+      supabase
+        .from('board_cards')
+        .update({ column_id: columnId, sort_order: i })
+        .eq('id', id)
+        .eq('board_id', boardId)
+    );
+    const results = await Promise.all(updates);
+    return results.every((r) => !r.error);
+  },
+
   // ── Cards ───────────────────────────────────────────────
 
   async addCard(data: {
