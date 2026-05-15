@@ -77,7 +77,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   };
 
   const handleChecklistComplete = async () => {
-    await advanceJobToNextStatus(job.id, job.status);
+    await advanceJobToNextStatus(job.id);
     await onReloadJob?.();
   };
 

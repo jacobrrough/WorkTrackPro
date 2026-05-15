@@ -306,9 +306,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [onClockOut, showToast]);
 
   const handleChecklistComplete = useCallback(async () => {
-    await advanceJobToNextStatus(job.id, job.status);
+    await advanceJobToNextStatus(job.id);
     await onReloadJob?.();
-  }, [advanceJobToNextStatus, job.id, job.status, onReloadJob]);
+  }, [advanceJobToNextStatus, job.id, onReloadJob]);
 
   const [timer, setTimer] = useState('00:00:00');
   const [newComment, setNewComment] = useState('');
