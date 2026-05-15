@@ -1,13 +1,83 @@
 import { useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Comment, Job, JobStatus, User } from '@/core/types';
 import { buildJobNameFromConvention } from '@/lib/formatJob';
-import { getNextWorkflowStatus, isAutoFlowStatus } from '@/lib/jobWorkflow';
+import { getNextWorkflowStatus, isTerminalStatus } from '@/lib/jobWorkflow';
 import { dedupeJobsById } from '@/lib/jobUtils';
 import { jobService } from '@/services/api/jobs';
 import { checklistService } from '@/services/api/checklists';
 import { jobStatusHistoryService } from '@/services/api/jobStatusHistory';
 import { systemNotificationService } from '@/services/api/systemNotifications';
+
+// ─── Module-level helpers ─────────────────────────────────────────────────────
+// Defined outside the hook so they are stable references and never need to
+// appear in useCallback dependency arrays.
+
+/** Patch a single job in the ['jobs'] query cache by spreading partial fields. */
+function patchJobInCache(queryClient: QueryClient, jobId: string, patch: Partial<Job>): void {
+  queryClient.setQueryData<Job[]>(
+    ['jobs'],
+    (prev) =>
+      // Return prev unchanged when the cache is cold (undefined) so we don't
+      // overwrite it with [] and blank the job list until refreshJobs resolves.
+      prev?.map((j) => (j.id === jobId ? { ...j, ...patch } : j)) ?? prev
+  );
+}
+
+/**
+ * Fire-and-forget status-history insert + cache invalidation.
+ * Invalidation is chained on .then() so it fires after the row commits,
+ * avoiding a refetch race where the new entry hasn't landed yet.
+ */
+function recordStatusChange(
+  queryClient: QueryClient,
+  jobId: string,
+  userId: string,
+  previousStatus: JobStatus,
+  newStatus: JobStatus
+): void {
+  jobStatusHistoryService
+    .createHistory({ jobId, userId, previousStatus, newStatus })
+    .then(() => queryClient.invalidateQueries({ queryKey: ['job-status-history', jobId] }))
+    .catch((err) => console.error('Job status history insert failed:', err));
+}
+
+/**
+ * Handle the special-case paid transition: rebuilds the job name via naming
+ * convention before persisting. Uses updateJob (full row write) rather than
+ * updateJobStatus because the name field also needs to change.
+ */
+async function finalizePaidJob(
+  queryClient: QueryClient,
+  jobId: string,
+  job: Job,
+  refreshJobs: () => Promise<void>
+): Promise<boolean> {
+  // Spread job then override status so buildJobNameFromConvention sees 'paid'
+  // even though job.status in the cache may still be 'projectCompleted'.
+  const name = buildJobNameFromConvention({ ...job, status: 'paid' });
+  const updated = await jobService.updateJob(jobId, { status: 'paid', name });
+  if (!updated) {
+    await refreshJobs();
+    return false;
+  }
+  patchJobInCache(queryClient, jobId, { status: 'paid', name });
+  return true;
+}
+
+/**
+ * Read the freshest copy of a job at call time.
+ * Prefers the live React Query cache; falls back to the `jobs` prop array
+ * when the cache is cold (undefined) OR empty ([]) — nullish coalescing alone
+ * is not sufficient because an initialized-but-empty cache is truthy and would
+ * suppress the fallback.
+ */
+function findJobLive(queryClient: QueryClient, jobs: Job[], jobId: string): Job | undefined {
+  const cached = queryClient.getQueryData<Job[]>(['jobs']);
+  return (cached?.length ? cached : jobs).find((j) => j.id === jobId);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface UseJobMutationsParams {
   jobs: Job[];
@@ -62,14 +132,7 @@ export function useJobMutations({
         const updatedJob = await jobService.updateJob(jobId, data);
         if (updatedJob) {
           if (currentUser && data.status && previousJob && previousJob.status !== data.status) {
-            jobStatusHistoryService
-              .createHistory({
-                jobId,
-                userId: currentUser.id,
-                previousStatus: previousJob.status,
-                newStatus: data.status,
-              })
-              .catch((err) => console.error('Job status history insert failed:', err));
+            recordStatusChange(queryClient, jobId, currentUser.id, previousJob.status, data.status);
           }
           let jobForCache = { ...updatedJob, ...data };
           if (
@@ -172,38 +235,35 @@ export function useJobMutations({
 
   const updateJobStatus = useCallback(
     async (jobId: string, status: JobStatus): Promise<boolean> => {
-      // Captured before the try so the catch block can revert the optimistic write.
-      const job = jobs.find((j) => j.id === jobId);
+      const job = findJobLive(queryClient, jobs, jobId);
+      // effectiveJob is updated to paidJob when the paid cold-cache path resolves a
+      // previously-missing job so that recordStatusChange sees the real snapshot.
+      let effectiveJob = job;
       try {
-        if (status === 'paid' && job) {
-          const name = buildJobNameFromConvention({ ...job, status: 'paid' });
-          const updated = await jobService.updateJob(jobId, { status: 'paid', name });
-          if (!updated) {
+        if (status === 'paid') {
+          // paid requires a name rebuild — delegate to finalizePaidJob.
+          // If the job isn't in cache yet, refresh to hydrate and re-read in-place
+          // rather than returning false (which would silently drop the transition
+          // if the caller doesn't retry, e.g. a checklist auto-advance handler).
+          let paidJob = job;
+          if (!paidJob) {
             await refreshJobs();
-            return false;
+            paidJob = (queryClient.getQueryData<Job[]>(['jobs']) ?? []).find((j) => j.id === jobId);
+            if (!paidJob) return false; // genuinely not found even after refresh
           }
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? { ...j, status: 'paid', name } : j)) : []
-          );
+          effectiveJob = paidJob; // ensure history guard below sees the resolved snapshot
+          const ok = await finalizePaidJob(queryClient, jobId, paidJob, refreshJobs);
+          if (!ok) return false;
         } else {
           // Only write optimistically when the previous job state is known so
           // the catch block can revert to the correct previous status.
           // If job is undefined (not yet in cache), skip the optimistic write
           // and let refreshJobs() sync the UI after the DB call resolves.
           if (job) {
-            queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-              prev
-                ? prev.map((j) =>
-                    j.id === jobId
-                      ? {
-                          ...j,
-                          status,
-                          ...(status === 'delivered' ? { binLocation: undefined } : {}),
-                        }
-                      : j
-                  )
-                : []
-            );
+            patchJobInCache(queryClient, jobId, {
+              status,
+              ...(status === 'delivered' ? { binLocation: undefined } : {}),
+            });
           }
           const ok = await jobService.updateJobStatus(jobId, status);
           if (!ok) {
@@ -212,18 +272,18 @@ export function useJobMutations({
           }
         }
 
-        if (currentUser && job && job.status !== status) {
-          jobStatusHistoryService
-            .createHistory({
-              jobId,
-              userId: currentUser.id,
-              previousStatus: job.status,
-              newStatus: status,
-            })
-            .catch((err) => console.error('Job status history insert failed:', err));
+        if (currentUser && effectiveJob && effectiveJob.status !== status) {
+          recordStatusChange(queryClient, jobId, currentUser.id, effectiveJob.status, status);
         }
 
-        if (status !== 'paid' && status !== 'projectCompleted') {
+        // Fallback: when a history row was attempted (currentUser present) but
+        // effectiveJob was unknown, invalidate so the panel re-fetches and shows the
+        // change. Skipped when currentUser is absent — no row was written, nothing to fetch.
+        if (currentUser && !effectiveJob) {
+          queryClient.invalidateQueries({ queryKey: ['job-status-history', jobId] });
+        }
+
+        if (!isTerminalStatus(status)) {
           await checklistService.ensureJobChecklistForStatus(jobId, status);
         }
 
@@ -238,22 +298,14 @@ export function useJobMutations({
         // Revert the optimistic status write so the UI doesn't flash the wrong
         // status while refreshJobs is in flight (~500ms–2s).
         // Only revert when job was known pre-call (optimistic write only happens
-        // in that case). 'paid' is pessimistic above and never hits this branch.
-        // Also restore binLocation — the 'delivered' optimistic write clears it.
+        // in that case). 'paid' uses finalizePaidJob (pessimistic) and never
+        // hits this branch. Also restore binLocation — the 'delivered' optimistic
+        // write clears it.
         if (status !== 'paid' && job) {
-          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev
-              ? prev.map((j) =>
-                  j.id === jobId
-                    ? {
-                        ...j,
-                        status: job.status,
-                        ...(status === 'delivered' ? { binLocation: job.binLocation } : {}),
-                      }
-                    : j
-                )
-              : []
-          );
+          patchJobInCache(queryClient, jobId, {
+            status: job.status,
+            ...(status === 'delivered' ? { binLocation: job.binLocation } : {}),
+          });
         }
         console.error('Update job status error:', error);
         const err = error as { message?: string; code?: string };
@@ -297,14 +349,26 @@ export function useJobMutations({
     [jobs, currentUser, queryClient, refreshJobs, refreshInventory, showToast]
   );
 
+  // Always read the live job from the cache/prop — refuses to advance when the
+  // job isn't found or its status is absent, rather than risk a wrong transition.
   const advanceJobToNextStatus = useCallback(
-    async (jobId: string, currentStatus: JobStatus): Promise<boolean> => {
-      if (currentStatus === 'onHold' || !isAutoFlowStatus(currentStatus)) return false;
-      const next = getNextWorkflowStatus(currentStatus);
+    async (jobId: string): Promise<boolean> => {
+      const liveJob = findJobLive(queryClient, jobs, jobId);
+      // Require a known status — if liveJob exists but status is missing (corrupt
+      // cache entry), refuse to advance.
+      const liveStatus = liveJob?.status;
+      if (!liveJob || !liveStatus) return false;
+      // Explicit guard: onHold and rush are not linear production steps and must
+      // never be auto-advanced by a checklist event. getNextWorkflowStatus also
+      // returns null for them (not in AUTO_WORKFLOW_STATUSES), but the explicit
+      // check makes the invariant load-bearing and visible to future editors.
+      if (liveStatus === 'onHold' || liveStatus === 'rush') return false;
+      // getNextWorkflowStatus returns null for non-flow statuses and for 'paid' (last entry).
+      const next = getNextWorkflowStatus(liveStatus);
       if (!next) return false;
       return updateJobStatus(jobId, next);
     },
-    [updateJobStatus]
+    [queryClient, jobs, updateJobStatus]
   );
 
   const addJobComment = useCallback(

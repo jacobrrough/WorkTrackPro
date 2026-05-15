@@ -2,7 +2,7 @@ import type { Job } from '@/core/types';
 import { getPlannedLaborHours } from '@/lib/laborSuggestion';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 
-const TERMINAL_STATUSES = new Set(['finished', 'delivered', 'projectCompleted', 'paid']);
+const PROGRESS_TERMINAL_STATUSES = new Set(['finished', 'delivered', 'projectCompleted', 'paid']);
 const QUALITY_CONTROL_STATUS = 'qualityControl';
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
@@ -40,7 +40,8 @@ export function computeJobCompletionProgress(
       ? clampPercent((Math.max(0, loggedLaborHours) / plannedLaborHours) * 100)
       : 0;
   const cncPercent = job.cncCompletedAt ? 100 : 0;
-  const printer3DPercent = job.printer3DCompletedAt || TERMINAL_STATUSES.has(job.status) ? 100 : 0;
+  const printer3DPercent =
+    job.printer3DCompletedAt || PROGRESS_TERMINAL_STATUSES.has(job.status) ? 100 : 0;
 
   const plannedTotal = plannedLaborHours + plannedCncHours + plannedPrinter3DHours;
   const productionPercent =
@@ -56,7 +57,7 @@ export function computeJobCompletionProgress(
   // Bar: 80% production, 20% QC. In QC = 80%; finished+ = 100%.
   // When user has set progressEstimatePercent, use it for the bar (adjusts scheduling accuracy).
   let weightedPercent: number;
-  if (TERMINAL_STATUSES.has(job.status)) {
+  if (PROGRESS_TERMINAL_STATUSES.has(job.status)) {
     weightedPercent = 100;
   } else if (job.status === QUALITY_CONTROL_STATUS) {
     weightedPercent = 80;
@@ -82,7 +83,7 @@ export function computeJobCompletionProgress(
     job.progressEstimatePercent != null &&
     job.progressEstimatePercent > 0 &&
     job.progressEstimatePercent < 100 &&
-    !TERMINAL_STATUSES.has(job.status) &&
+    !PROGRESS_TERMINAL_STATUSES.has(job.status) &&
     Math.max(0, loggedLaborHours) / (job.progressEstimatePercent / 100) > plannedLaborHours;
 
   return {

@@ -22,7 +22,9 @@ function formatRelativeTime(timestamp: string): string {
 }
 
 export default function JobStatusHistory({ jobId, isAdmin }: JobStatusHistoryProps) {
-  const { data: entries = [], isLoading } = useJobStatusHistory(jobId, isAdmin);
+  // Pass undefined when not admin so the query stays disabled — avoids a
+  // network request for data RLS will block anyway (defense-in-depth).
+  const { data: entries = [], isLoading } = useJobStatusHistory(isAdmin ? jobId : undefined);
 
   if (!isAdmin) return null;
 
