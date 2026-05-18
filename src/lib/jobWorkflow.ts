@@ -35,10 +35,12 @@ export function getNextWorkflowStatus(status: JobStatus): JobStatus | null {
  * No checklist is seeded for 'paid' (use isTerminalStatus() to guard that call).
  * 'projectCompleted' is NOT terminal: its checklist drives the final advance to 'paid'.
  */
-export const TERMINAL_STATUSES: readonly JobStatus[] = ['paid'];
+// Not exported — call isTerminalStatus() instead so the indirection is explicit.
+// Set for O(1) lookup, consistent with ALLOW_PARTS_EDIT_STATUSES and LABOR_COMPLETE_STATUSES.
+const TERMINAL_STATUSES = new Set<JobStatus>(['paid']);
 
 export function isTerminalStatus(status: JobStatus): boolean {
-  return TERMINAL_STATUSES.includes(status);
+  return TERMINAL_STATUSES.has(status);
 }
 
 export const ALLOW_PARTS_EDIT_STATUSES: Set<JobStatus> = new Set([
