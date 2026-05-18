@@ -48,8 +48,12 @@ export interface AppContextType {
   createJob: (data: Partial<Job>) => Promise<Job | null>;
   updateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
   deleteJob: (jobId: string) => Promise<boolean>;
-  updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>;
-  advanceJobToNextStatus: (jobId: string, currentStatus: JobStatus) => Promise<boolean>;
+  updateJobStatus: (
+    jobId: string,
+    status: JobStatus,
+    expectedCurrentStatus?: JobStatus
+  ) => Promise<boolean>;
+  advanceJobToNextStatus: (jobId: string) => Promise<boolean>;
   addJobComment: (jobId: string, text: string) => Promise<Comment | null>;
   getJobByCode: (code: number) => Promise<Job | null>;
   clockIn: (jobId: string) => Promise<ClockPunchResult>;

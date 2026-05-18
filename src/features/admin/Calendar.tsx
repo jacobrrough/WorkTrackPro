@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Shift } from '@/core/types';
 import {
   buildCapacityAwareBackwardSchedules,
@@ -8,7 +8,7 @@ import {
   getWeeklyWorkHours,
   planForwardFromDate,
 } from '@/lib/workHours';
-import { calculateJobHoursFromShifts, getPlannedLaborHours } from '@/lib/laborSuggestion';
+import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
 import { getJobDisplayName } from '@/lib/formatJob';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -52,6 +52,16 @@ const toDateKey = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+/** Strips any time component from a date string and returns a local-time Date object. */
+const parseDateStringLocal = (s: string) => new Date(s.split('T')[0] + 'T00:00:00');
+
+/**
+ * Threshold (in hours) below which the difference between remainingLaborHours and
+ * plannedLaborHours is considered insignificant — falls back to the scheduled hours
+ * display. 0.05 h = 3 minutes.
+ */
+const REMAINING_DISPLAY_THRESHOLD_HOURS = 0.05;
 
 const normalizeDateKey = (value: string) => {
   const datePart = value.split(/[T ]/)[0];
@@ -106,8 +116,30 @@ const Calendar: React.FC<CalendarProps> = ({
     refreshShifts?.();
   }, [refreshJobs, refreshShifts]);
 
+  // Signals handleApplySchedule to stop its loop if the component unmounts
+  // while waiting for user input on the past-ECD approval modal.
+  const cancelledRef = useRef(false);
+  // Stores the resolve of any in-flight modal approval promise so the cleanup
+  // can resolve it to false on unmount, unblocking the suspended loop so that
+  // the cancelledRef check fires and the loop exits cleanly.
+  const pendingModalResolveRef = useRef<((v: boolean) => void) | null>(null);
+  useEffect(() => {
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+      // Unblock any pending modal await — without this the loop is permanently
+      // suspended (the Promise never resolves) and the cancelledRef break never fires.
+      pendingModalResolveRef.current?.(false);
+      pendingModalResolveRef.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     const onFocus = () => {
+      // Only refresh when the tab becomes visible — not when it hides.
+      // Without this guard the handler fires on both hide and show, triggering
+      // an unnecessary refresh when the user switches away from the tab.
+      if (document.visibilityState !== 'visible') return;
       refreshJobs?.();
       refreshShifts?.();
     };
@@ -208,22 +240,59 @@ const Calendar: React.FC<CalendarProps> = ({
     return map;
   }, [cncCapacitySchedule.results]);
 
-  /** Labor inputs with earliest start = max(today, CNC completion). Front-loaded via forward scheduler. */
+  // Dev-only: warn once per render cycle (not inside useMemo) when a CNC completion date is malformed.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    for (const [jobId, date] of cncCompletionByJobId) {
+      if (Number.isNaN(parseDateStringLocal(date).getTime())) {
+        console.warn(`[Calendar] Invalid cncCompletion date for job ${jobId}: "${date}"`);
+      }
+    }
+  }, [cncCompletionByJobId]);
+
+  /** Single pass over shifts — jobProgressById and laborForwardInputs read from this map. */
+  const loggedHoursByJobId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const job of jobs) {
+      map.set(job.id, calculateJobHoursFromShifts(job.id, shifts));
+    }
+    return map;
+  }, [jobs, shifts]);
+
+  const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
+  const jobProgressById = useMemo(() => {
+    const next = new Map<string, ReturnType<typeof computeJobCompletionProgress>>();
+    for (const job of jobs) {
+      next.set(job.id, computeJobCompletionProgress(job, loggedHoursByJobId.get(job.id) ?? 0));
+    }
+    return next;
+  }, [jobs, loggedHoursByJobId]);
+  const jobMachineById = useMemo(() => {
+    const next = new Map<string, ReturnType<typeof getMachineTotalsFromJob>>();
+    for (const job of jobs) {
+      next.set(job.id, getMachineTotalsFromJob(job));
+    }
+    return next;
+  }, [jobs]);
+
+  /** Labor inputs — remainingLaborHours from jobProgressById drives adaptive completion dates. */
   const laborForwardInputs = useMemo(
     () =>
       jobs
         .filter((job) => job.dueDate && job.active)
         .map((job) => {
-          const fallbackHours = calculateJobHoursFromShifts(job.id, shifts);
-          const plannedHours = getPlannedLaborHours(job);
-          const requiredHours = plannedHours > 0 ? plannedHours : fallbackHours;
-          const cncHours = getMachineTotalsFromJob(job).cncHours;
+          const requiredHours = jobProgressById.get(job.id)?.remainingLaborHours ?? 0;
+          const cncHours = jobMachineById.get(job.id)?.cncHours ?? 0;
           const cncCompletion = cncHours > 0 ? cncCompletionByJobId.get(job.id) : null;
           // CNC must finish the day before labor starts
           let earliestStartDate = todayKey;
           if (cncCompletion) {
-            const [y, m, d] = cncCompletion.split('-').map(Number);
-            const laborStartDayAfterCnc = new Date(y, m - 1, d + 1);
+            // Strip any existing time component so a full ISO timestamp doesn't produce an invalid date.
+            const cncDate = parseDateStringLocal(cncCompletion);
+            const cncDateInvalid = Number.isNaN(cncDate.getTime());
+            const laborStartDayAfterCnc = cncDateInvalid
+              ? new Date(todayKey + 'T00:00:00')
+              : new Date(cncDate.getFullYear(), cncDate.getMonth(), cncDate.getDate() + 1);
             const laborStartKey = `${laborStartDayAfterCnc.getFullYear()}-${String(laborStartDayAfterCnc.getMonth() + 1).padStart(2, '0')}-${String(laborStartDayAfterCnc.getDate()).padStart(2, '0')}`;
             earliestStartDate = laborStartKey > todayKey ? laborStartKey : todayKey;
           }
@@ -236,7 +305,7 @@ const Calendar: React.FC<CalendarProps> = ({
           };
         })
         .filter((job) => job.requiredHours > 0),
-    [jobs, shifts, todayKey, cncCompletionByJobId]
+    [jobs, jobProgressById, jobMachineById, todayKey, cncCompletionByJobId]
   );
 
   const capacityAwareSchedule = useMemo(
@@ -247,23 +316,6 @@ const Calendar: React.FC<CalendarProps> = ({
       }),
     [laborForwardInputs, baseScheduleOptions, includeOvertimeInSchedule]
   );
-
-  const jobsById = useMemo(() => new Map(jobs.map((job) => [job.id, job])), [jobs]);
-  const jobProgressById = useMemo(() => {
-    const next = new Map<string, ReturnType<typeof computeJobCompletionProgress>>();
-    for (const job of jobs) {
-      const loggedLaborHours = calculateJobHoursFromShifts(job.id, shifts);
-      next.set(job.id, computeJobCompletionProgress(job, loggedLaborHours));
-    }
-    return next;
-  }, [jobs, shifts]);
-  const jobMachineById = useMemo(() => {
-    const next = new Map<string, ReturnType<typeof getMachineTotalsFromJob>>();
-    for (const job of jobs) {
-      next.set(job.id, getMachineTotalsFromJob(job));
-    }
-    return next;
-  }, [jobs]);
 
   const jobTimelines = useMemo((): JobTimeline[] => {
     const scheduledIds = new Set(capacityAwareSchedule.results.map((r) => r.id));
@@ -332,16 +384,52 @@ const Calendar: React.FC<CalendarProps> = ({
     });
   }, [capacityAwareSchedule.results, jobs, jobsById, todayKey]);
 
+  /** Pre-computed per-date lookup — replaces O(jobs × allocations) filter per calendar cell with O(1). */
+  const jobsByDateKey = useMemo(() => {
+    const map = new Map<string, JobTimeline[]>();
+    for (const tl of jobTimelines) {
+      // endDate is always the last allocation date (or the sole allocation for placeholders),
+      // so it is already in the allocation set — no need to add it separately.
+      const keys = new Set(tl.allocations.map((a) => a.date));
+      for (const key of keys) {
+        // Use spread to produce a new array reference on each insertion, preserving
+        // referential stability for any downstream consumer that caches by reference.
+        map.set(key, [...(map.get(key) ?? []), tl]);
+      }
+    }
+    return map;
+  }, [jobTimelines]);
+
   const handleApplySchedule = useCallback(async () => {
     if (!onUpdateJob || !refreshJobs) return;
     setApplySchedulePending(true);
     try {
       for (const tl of jobTimelines) {
-        const needsApproval = requiresPastEcdApproval(tl.job, tl.endDate);
+        // Check cancellation at the top of every iteration — not just inside the
+        // needsApproval block — so jobs that skip ECD approval also respect unmount.
+        if (cancelledRef.current) break;
+
+        // Re-validate against the live jobs list — the job may have moved out of
+        // calendar scope (e.g. to 'finished') while waiting for a past-ECD approval
+        // on an earlier entry. Applying a scheduled date to a terminal job would be
+        // a stale write.
+        const liveJob = jobs.find((j) => j.id === tl.job.id);
+        if (!liveJob) continue;
+
+        // Use liveJob for the ECD gate — tl.job is a snapshot from jobTimelines
+        // and its ECD field may be stale after a concurrent update during the loop.
+        const needsApproval = requiresPastEcdApproval(liveJob, tl.endDate);
         if (needsApproval) {
           const approved = await new Promise<boolean>((resolve) => {
-            setPastEcdApprovalModal({ job: tl.job, plannedDate: tl.endDate, resolve });
+            // Register the resolve so the cleanup effect can unblock this await
+            // if the component unmounts while the modal is waiting for input.
+            pendingModalResolveRef.current = resolve;
+            setPastEcdApprovalModal({ job: liveJob, plannedDate: tl.endDate, resolve });
           });
+          pendingModalResolveRef.current = null;
+          // Component unmounted while awaiting user response — stop writing
+          // planned dates on behalf of a destroyed calendar view.
+          if (cancelledRef.current) break;
           if (!approved) continue;
         }
         await onUpdateJob(tl.job.id, { plannedCompletionDate: tl.endDate });
@@ -355,12 +443,24 @@ const Calendar: React.FC<CalendarProps> = ({
       setApplySchedulePending(false);
       setPastEcdApprovalModal(null);
     }
-  }, [jobTimelines, onUpdateJob, refreshJobs, showToast]);
+  }, [jobs, jobTimelines, onUpdateJob, refreshJobs, showToast]);
 
   const handlePastEcdApproval = useCallback(
     (approved: boolean) => {
-      pastEcdApprovalModal?.resolve(approved);
+      if (!pastEcdApprovalModal) return;
+      // Guard against double-invocation: if two clicks arrive before the React state
+      // update clears pastEcdApprovalModal, only the first should call resolve().
+      // pendingModalResolveRef.current is nulled out on the first call, so subsequent
+      // calls from the same render cycle are no-ops before ever touching the Promise.
+      if (pendingModalResolveRef.current === null) return;
+      // Capture resolve before clearing the modal — then clear first to prevent a
+      // second click during the async settle from calling resolve() a second time.
+      const { resolve } = pastEcdApprovalModal;
       setPastEcdApprovalModal(null);
+      // Also clear the pending ref so the cleanup effect doesn't fire it a second
+      // time if the component unmounts before the next loop iteration runs.
+      pendingModalResolveRef.current = null;
+      resolve(approved);
     },
     [pastEcdApprovalModal]
   );
@@ -407,15 +507,6 @@ const Calendar: React.FC<CalendarProps> = ({
 
     return days;
   }, [currentMonth, daysInMonth, firstDayOfWeek]);
-
-  // Get jobs for a specific date
-  const getJobsForDate = (date: Date): JobTimeline[] => {
-    const dateKey = toDateKey(date);
-    return jobTimelines.filter((tl) => {
-      const hasAllocation = tl.allocations.some((allocation) => allocation.date === dateKey);
-      return hasAllocation || tl.endDate === dateKey;
-    });
-  };
 
   const dayLoadMap = useMemo(() => {
     const loadByDate = new Map<
@@ -884,13 +975,13 @@ const Calendar: React.FC<CalendarProps> = ({
 
           {/* Calendar days */}
           {calendarDays.map((dayData, idx) => {
-            const jobsForDay = getJobsForDate(dayData.date);
-            const isToday = dayData.date.toDateString() === new Date().toDateString();
             const dateKey = toDateKey(dayData.date);
+            const jobsForDay = jobsByDateKey.get(dateKey) ?? [];
+            const isToday = dayData.date.toDateString() === new Date().toDateString();
             const dayLoad = dayLoadMap.get(dateKey);
             const cncDayLoad = cncDayLoadMap.get(dateKey);
             const printer3DDayLoad = printer3DDayLoadMap.get(dateKey);
-            const dayCapacity = getDailyCapacityForDate(dayData.date, {
+            const dayCapacity = getDailyCapacityForDate(dateKey, {
               ...baseScheduleOptions,
               includeOvertime: includeOvertimeInSchedule,
             });
@@ -1048,7 +1139,24 @@ const Calendar: React.FC<CalendarProps> = ({
                           <span>
                             Planned: {formatDateOnly(tl.job.plannedCompletionDate ?? tl.endDate)}
                           </span>
-                          <span>{tl.hours.toFixed(1)}h</span>
+                          {/* Show true remaining vs plan when they diverge meaningfully;
+                              fall back to planned hours when remaining ≈ plan or nothing left.
+                              Uses plannedLaborHours (not tl.hours) so a scheduler-compressed
+                              allocation doesn't show a different number than the plan. */}
+                          {progress &&
+                          progress.remainingLaborHours > 0 &&
+                          progress.plannedLaborHours > 0 &&
+                          Math.abs(progress.remainingLaborHours - progress.plannedLaborHours) >
+                            REMAINING_DISPLAY_THRESHOLD_HOURS ? (
+                            <span>
+                              {progress.remainingLaborHours.toFixed(1)}h rem
+                              <span className="ml-1 text-slate-500">
+                                / {progress.plannedLaborHours.toFixed(1)}h plan
+                              </span>
+                            </span>
+                          ) : (
+                            <span>{(progress?.plannedLaborHours ?? tl.hours).toFixed(1)}h</span>
+                          )}
                           {tl.overtimeHours > 0 && (
                             <span className="text-amber-300">
                               OT {tl.overtimeHours.toFixed(1)}h
