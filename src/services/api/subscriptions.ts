@@ -139,10 +139,23 @@ function pickRow(payload: {
 
 // ── Broadcast ────────────────────────────────────────────────────────
 
-export type EntityKey = 'jobs' | 'shifts' | 'inventory' | 'users' | 'parts' | 'boards' | 'deliveries';
+export type EntityKey =
+  | 'jobs'
+  | 'shifts'
+  | 'inventory'
+  | 'users'
+  | 'parts'
+  | 'boards'
+  | 'deliveries';
 
 const VALID_ENTITIES = new Set<EntityKey>([
-  'jobs', 'shifts', 'inventory', 'users', 'parts', 'boards', 'deliveries',
+  'jobs',
+  'shifts',
+  'inventory',
+  'users',
+  'parts',
+  'boards',
+  'deliveries',
 ]);
 
 // Module-level ref — set when AppContext subscribes, cleared on unmount.
@@ -242,8 +255,7 @@ export const subscriptions = {
       .channel('app-changes')
       .on('broadcast', { event: 'change' }, ({ payload }) => {
         const e = payload?.entity;
-        if (typeof e === 'string' && VALID_ENTITIES.has(e as EntityKey))
-          callback(e as EntityKey);
+        if (typeof e === 'string' && VALID_ENTITIES.has(e as EntityKey)) callback(e as EntityKey);
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
