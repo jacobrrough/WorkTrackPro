@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Board, BoardMemberRole, BoardVisibility, User } from '@/core/types';
 import { boardService } from '@/services/api/boards';
+import { broadcastChange } from '@/services/api/subscriptions';
 
 export interface UseBoardMutationsParams {
   currentUser: User | null;
@@ -26,6 +27,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
           prev ? [board, ...prev] : [board]
         );
         showToast('Board created', 'success');
+        broadcastChange('boards');
       }
       return board;
     },
@@ -42,6 +44,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
         queryClient.invalidateQueries({ queryKey: ['boards'] });
         showToast('Board updated', 'success');
+        broadcastChange('boards');
       }
       return board;
     },
@@ -57,6 +60,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
         );
         queryClient.removeQueries({ queryKey: ['board', boardId] });
         showToast('Board deleted', 'success');
+        broadcastChange('boards');
       }
       return ok;
     },
@@ -68,7 +72,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const addColumn = useCallback(
     async (boardId: string, data: { name: string; color?: string; sortOrder: number }) => {
       const col = await boardService.addColumn(boardId, data);
-      if (col) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (col) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return col;
     },
     [queryClient]
@@ -77,7 +81,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const updateColumn = useCallback(
     async (boardId: string, columnId: string, data: { name?: string; color?: string }) => {
       const col = await boardService.updateColumn(columnId, data);
-      if (col) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (col) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return col;
     },
     [queryClient]
@@ -86,7 +90,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const deleteColumn = useCallback(
     async (boardId: string, columnId: string) => {
       const ok = await boardService.deleteColumn(columnId);
-      if (ok) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (ok) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return ok;
     },
     [queryClient]
@@ -95,7 +99,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const reorderColumns = useCallback(
     async (boardId: string, columnIds: string[]) => {
       const ok = await boardService.reorderColumns(boardId, columnIds);
-      if (ok) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (ok) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return ok;
     },
     [queryClient]
@@ -115,7 +119,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       sortOrder: number;
     }) => {
       const card = await boardService.addCard(data);
-      if (card) queryClient.invalidateQueries({ queryKey: ['board', data.boardId] });
+      if (card) { queryClient.invalidateQueries({ queryKey: ['board', data.boardId] }); broadcastChange('boards'); }
       return card;
     },
     [queryClient]
@@ -134,7 +138,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       }
     ) => {
       const card = await boardService.updateCard(cardId, data);
-      if (card) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (card) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return card;
     },
     [queryClient]
@@ -143,7 +147,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const moveCard = useCallback(
     async (boardId: string, cardId: string, data: { columnId: string; sortOrder: number }) => {
       const card = await boardService.moveCard(cardId, data);
-      if (card) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (card) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return card;
     },
     [queryClient]
@@ -152,7 +156,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const reorderCards = useCallback(
     async (boardId: string, columnId: string, cardIds: string[]) => {
       const ok = await boardService.reorderCards(boardId, columnId, cardIds);
-      if (ok) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (ok) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return ok;
     },
     [queryClient]
@@ -161,7 +165,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const deleteCard = useCallback(
     async (boardId: string, cardId: string) => {
       const ok = await boardService.deleteCard(cardId);
-      if (ok) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (ok) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return ok;
     },
     [queryClient]
@@ -175,6 +179,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       if (member) {
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
         showToast('Member added', 'success');
+        broadcastChange('boards');
       }
       return member;
     },
@@ -187,6 +192,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       if (ok) {
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
         showToast('Member removed', 'success');
+        broadcastChange('boards');
       }
       return ok;
     },
@@ -196,7 +202,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   const updateMemberRole = useCallback(
     async (boardId: string, memberId: string, role: BoardMemberRole) => {
       const ok = await boardService.updateMemberRole(memberId, role);
-      if (ok) queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+      if (ok) { queryClient.invalidateQueries({ queryKey: ['board', boardId] }); broadcastChange('boards'); }
       return ok;
     },
     [queryClient]
@@ -210,6 +216,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       if (att) {
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
         showToast('Attachment uploaded', 'success');
+        broadcastChange('boards');
       } else {
         showToast('Upload failed', 'error');
       }
@@ -224,6 +231,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       if (ok) {
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
         showToast('Attachment deleted', 'success');
+        broadcastChange('boards');
       } else {
         showToast('Failed to delete attachment', 'error');
       }
