@@ -115,6 +115,13 @@ export async function handler(event) {
       const boardType = boardId === 'job-admin' ? 'admin' : 'shopFloor';
       const jobStatus = columnId; // columnId is the status string (e.g. 'toBeQuoted')
 
+      // Fold the email subject into the description instead of the job name
+      // so the part name stays empty for the user to fill in manually.
+      let jobDescription = description || '';
+      if (title) {
+        jobDescription = title + (jobDescription ? '\n\n' + jobDescription : '');
+      }
+
       // Auto-generate next job code.
       const { data: latestJob } = await supabase
         .from('jobs')
@@ -128,8 +135,8 @@ export async function handler(event) {
         .from('jobs')
         .insert({
           job_code: nextJobCode,
-          name: title,
-          description: description || null,
+          name: '',
+          description: jobDescription || null,
           status: jobStatus,
           board_type: boardType,
           active: true,
