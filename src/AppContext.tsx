@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -23,7 +24,7 @@ import { withComputedInventory } from '@/lib/inventoryState';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
 import { syncOfflineClockQueue } from '@/lib/syncOfflineClockQueue';
-import { subscriptions } from '@/services/api/subscriptions';
+import { subscriptions, broadcastChange } from '@/services/api/subscriptions';
 import { createRealtimeDebouncer } from '@/lib/realtimeDebounce';
 import { useToast } from '@/Toast';
 
@@ -112,6 +113,23 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { activeShift, activeJob } = useActiveShift(currentUser, queries.shifts, queries.jobs);
   const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
+  // Wrapped refresh functions: broadcast to all other clients before refreshing locally.
+  const { refreshJobs, refreshShifts, refreshInventory } = queries;
+  const refreshJobsAndBroadcast = useCallback(async () => {
+    await refreshJobs();
+    broadcastChange('jobs');
+  }, [refreshJobs]);
+
+  const refreshShiftsAndBroadcast = useCallback(async () => {
+    await refreshShifts();
+    broadcastChange('shifts');
+  }, [refreshShifts]);
+
+  const refreshInventoryAndBroadcast = useCallback(async () => {
+    await refreshInventory();
+    broadcastChange('inventory');
+  }, [refreshInventory]);
+
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
@@ -121,9 +139,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
     currentUser,
-    refreshJobs: queries.refreshJobs,
-    refreshInventory: queries.refreshInventory,
-    refreshShifts: queries.refreshShifts,
+    refreshJobs: refreshJobsAndBroadcast,
+    refreshInventory: refreshInventoryAndBroadcast,
+    refreshShifts: refreshShiftsAndBroadcast,
     showToast,
   });
 
@@ -132,8 +150,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     shifts: queries.shifts,
     jobs: queries.jobs,
     activeShift,
-    refreshShifts: queries.refreshShifts,
-    refreshJobs: queries.refreshJobs,
+    refreshShifts: refreshShiftsAndBroadcast,
+    refreshJobs: refreshJobsAndBroadcast,
     onOfflinePunchEnqueued: () => setOfflineQueueVersion((v) => v + 1),
     showToast,
   });
@@ -142,16 +160,16 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     inventory: queries.inventory,
     jobs: queries.jobs,
     currentUser,
-    refreshJobs: queries.refreshJobs,
-    refreshInventory: queries.refreshInventory,
+    refreshJobs: refreshJobsAndBroadcast,
+    refreshInventory: refreshInventoryAndBroadcast,
     calculateAvailable,
     calculateAllocated,
     showToast,
   });
 
   const attachmentMutations = useAttachmentMutations({
-    refreshJobs: queries.refreshJobs,
-    refreshInventory: queries.refreshInventory,
+    refreshJobs: refreshJobsAndBroadcast,
+    refreshInventory: refreshInventoryAndBroadcast,
   });
 
   // Offline clock queue: sync on reconnect, tab focus, and periodic while pending
@@ -316,6 +334,13 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       }
     });
 
+    // ── Broadcast: cross-client invalidation ──────────────────────────
+    const unsubChanges = subscriptions.subscribeToChanges((entity) => {
+      void queryClient.invalidateQueries({ queryKey: [entity] });
+      // 'boards' list and individual board caches share different root keys
+      if (entity === 'boards') void queryClient.invalidateQueries({ queryKey: ['board'] });
+    });
+
     return () => {
       unsubJobs();
       unsubShifts();
@@ -324,6 +349,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       unsubBoards();
       unsubParts();
       unsubUsers();
+      unsubChanges();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, queryClient, queries.refreshJob, queries.refreshJobs, queries.refreshInventory]);

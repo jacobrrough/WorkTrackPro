@@ -137,6 +137,40 @@ function pickRow(payload: {
   return payload.eventType === 'DELETE' ? payload.old : payload.new;
 }
 
+// ── Broadcast ────────────────────────────────────────────────────────
+
+export type EntityKey =
+  | 'jobs'
+  | 'shifts'
+  | 'inventory'
+  | 'users'
+  | 'parts'
+  | 'boards'
+  | 'deliveries';
+
+const VALID_ENTITIES = new Set<EntityKey>([
+  'jobs',
+  'shifts',
+  'inventory',
+  'users',
+  'parts',
+  'boards',
+  'deliveries',
+]);
+
+// Module-level ref — set when AppContext subscribes, cleared on unmount.
+// Lets broadcastChange fire without threading a channel reference through the tree.
+let _appChannel: ReturnType<typeof supabase.channel> | null = null;
+
+const _lastBroadcast = new Map<EntityKey, number>();
+
+export function broadcastChange(entity: EntityKey): void {
+  const now = Date.now();
+  if (now - (_lastBroadcast.get(entity) ?? 0) < 150) return;
+  _lastBroadcast.set(entity, now);
+  void _appChannel?.send({ type: 'broadcast', event: 'change', payload: { entity } });
+}
+
 // ── Types ────────────────────────────────────────────────────────────
 
 type JobScalarCallback = (action: RealtimeAction, record: JobScalars & { id: string }) => void;
@@ -213,6 +247,24 @@ export const subscriptions = {
       });
     return () => {
       supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToChanges(callback: (entity: EntityKey) => void): () => void {
+    const ch = supabase
+      .channel('app-changes')
+      .on('broadcast', { event: 'change' }, ({ payload }) => {
+        const e = payload?.entity;
+        if (typeof e === 'string' && VALID_ENTITIES.has(e as EntityKey)) callback(e as EntityKey);
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+          console.error(`[realtime:app-changes] ${status}`);
+      });
+    _appChannel = ch;
+    return () => {
+      if (_appChannel === ch) _appChannel = null;
+      supabase.removeChannel(ch);
     };
   },
 
