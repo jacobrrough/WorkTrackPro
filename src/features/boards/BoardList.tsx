@@ -53,7 +53,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-4 pb-20">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <p className="text-slate-400">Loading boards...</p>

@@ -1,13 +1,13 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import fs from 'fs'
-import path from 'path'
-import { trelloProxyPlugin } from './vite/trelloProxyPlugin'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import fs from 'fs';
+import path from 'path';
+import { trelloProxyPlugin } from './vite/trelloProxyPlugin';
 
-const root = path.resolve(__dirname)
-const keyPath = path.resolve(root, 'key.pem')
-const certPath = path.resolve(__dirname, 'cert.pem')
-const hasHttps = fs.existsSync(keyPath) && fs.existsSync(certPath)
+const root = path.resolve(__dirname);
+const keyPath = path.resolve(root, 'key.pem');
+const certPath = path.resolve(__dirname, 'cert.pem');
+const hasHttps = fs.existsSync(keyPath) && fs.existsSync(certPath);
 
 export default defineConfig({
   plugins: [react(), trelloProxyPlugin()],
@@ -15,13 +15,15 @@ export default defineConfig({
     alias: { '@': path.resolve(root, 'src') },
   },
   build: {
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           scanner: ['jsqr'],
+          query: ['@tanstack/react-query'],
+          dnd: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
         },
       },
     },
@@ -44,4 +46,4 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
   },
-})
+});

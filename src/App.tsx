@@ -1,68 +1,13 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from './AppContext';
-import { jobService } from './pocketbase';
-import type { Job, ViewState } from './core/types';
-import { NavigationProvider } from './contexts/NavigationContext';
-import { SettingsProvider } from './contexts/SettingsContext';
-import { ClockInProvider } from './contexts/ClockInContext';
-import { AdminRoute } from './components/AdminRoute';
+import { AppShell } from './components/AppShell';
+import { AppRouter } from './AppRouter';
+import { useAppNavigate } from './hooks/useAppNavigate';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
-import BottomNavigation from './BottomNavigation';
 import { CommandPalette } from './components/CommandPalette';
-import { lazyWithRetry } from './lib/lazyWithRetry';
-
-const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
-const JobDetail = lazyWithRetry(() => import('./JobDetail'), 'JobDetail');
-const ClockInScreen = lazyWithRetry(() => import('./ClockInScreen'), 'ClockInScreen');
-const Inventory = lazyWithRetry(() => import('./Inventory'), 'Inventory');
-const KanbanBoard = lazyWithRetry(() => import('./KanbanBoard'), 'KanbanBoard');
-const Parts = lazyWithRetry(() => import('./features/admin/Parts'), 'Parts');
-const PartDetail = lazyWithRetry(() => import('./features/admin/PartDetail'), 'PartDetail');
-const AdminCreateJob = lazyWithRetry(() => import('./AdminCreateJob'), 'AdminCreateJob');
-const Quotes = lazyWithRetry(() => import('./Quotes'), 'Quotes');
-const Calendar = lazyWithRetry(() => import('./features/admin/Calendar'), 'Calendar');
-const TimeReports = lazyWithRetry(() => import('./TimeReports'), 'TimeReports');
-const AdminSettings = lazyWithRetry(
-  () => import('./features/admin/AdminSettings'),
-  'AdminSettings'
-);
-const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
-const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
-const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
-const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
-const CardDetailView = lazyWithRetry(
-  () => import('./features/boards/CardDetailView'),
-  'CardDetailView'
-);
-const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
-const NotificationSettingsView = lazyWithRetry(
-  () => import('./features/notifications/NotificationSettingsView'),
-  'NotificationSettingsView'
-);
-
-function AppViewFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background-dark">
-      <p className="text-slate-400">Loading view...</p>
-    </div>
-  );
-}
-
-function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <NavigationProvider>
-      <SettingsProvider>
-        <ClockInProvider>
-          <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
-        </ClockInProvider>
-      </SettingsProvider>
-    </NavigationProvider>
-  );
-}
 
 export default function App() {
   const {
@@ -74,43 +19,10 @@ export default function App() {
     resetPasswordForEmail,
     logout,
     jobs,
-    shifts,
-    users,
     inventory,
-    activeShift,
-    activeJob,
-    clockIn,
-    clockOut,
-    createJob,
-    updateJob,
-    deleteJob,
-    updateJobStatus,
-    addJobComment,
-    getJobByCode,
-    addJobInventory,
-    allocateInventoryToJob,
-    removeJobInventory,
-    addAttachment,
-    deleteAttachment,
-    updateAttachmentAdminOnly,
-    addInventoryAttachment,
-    deleteInventoryAttachment,
-    refreshJobs,
-    refreshJob,
-    refreshShifts,
-    refreshInventory,
-    calculateAvailable,
-    calculateAllocated,
-    createInventory,
-    updateInventoryItem,
-    updateInventoryStock,
-    markInventoryOrdered,
-    receiveInventoryOrder,
+    users,
   } = useApp();
 
-  const [view, setView] = useState<ViewState>('dashboard');
-  const [id, setId] = useState<string | undefined>(undefined);
-  const [, setBackStack] = useState<Array<{ view: ViewState; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -119,31 +31,27 @@ export default function App() {
   // on tab close. The flag (and this notice) persist across refreshes until
   // login() removes it after successful re-authentication.
   const [sessionExpiredNotice, setSessionExpiredNotice] = useState<string | null>(() => {
-    // Read the flag but do NOT remove it here. initApp() in AuthContext bails
-    // without calling checkAuth() when the flag is present — it must still be
-    // in sessionStorage when the useEffect fires after this render. login()
-    // is the sole point that removes it after re-authentication.
     const flag = sessionStorage.getItem('wtp_session_expired');
     return flag ? 'Your session expired. Please log in again.' : null;
   });
-  const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
 
-  // Fetch job by id when on job-detail so we always have the repaired job (partId) and materials don't flash away when the list refetches
-  const jobIdForDetail = view === 'job-detail' && id ? id : null;
-  const { data: detailJob } = useQuery({
-    queryKey: ['job', jobIdForDetail],
-    queryFn: () => jobService.getJobById(jobIdForDetail!),
-    enabled: !!jobIdForDetail,
-    staleTime: 2 * 60 * 1000, // 2 min – avoid refetch overwriting optimistic progress estimate / CNC updates
-  });
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    if (detailJob && jobIdForDetail) {
-      queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-        prev ? prev.map((j) => (j.id === jobIdForDetail ? detailJob : j)) : [detailJob]
-      );
-    }
-  }, [detailJob, jobIdForDetail, queryClient]);
+  const handleLogin = useCallback(
+    async (email: string, password: string) => {
+      setSessionExpiredNotice(null);
+      await login(email, password);
+    },
+    [login]
+  );
+
+  const handleSignUp = useCallback(
+    async (email: string, password: string, options?: { name?: string }) => {
+      return signUp(email, password, options);
+    },
+    [signUp]
+  );
+
+  const appNavigate = useAppNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -161,126 +69,27 @@ export default function App() {
       setShowLoadingHelp(false);
       return;
     }
-
     const timeout = window.setTimeout(() => {
       setShowLoadingHelp(true);
     }, 10_000);
-
     return () => window.clearTimeout(timeout);
   }, [isLoading]);
-
-  const handleNavigate = useCallback(
-    (nextView: ViewState, nextId?: string | { jobId?: string; partId?: string }) => {
-      const isDetailView =
-        nextView === 'job-detail' ||
-        nextView === 'inventory-detail' ||
-        nextView === 'part-detail' ||
-        nextView === 'board-card-detail';
-
-      if (isDetailView) {
-        setBackStack((prev) => {
-          const entry = id !== undefined ? { view, id } : { view };
-          return [...prev, entry];
-        });
-      } else {
-        setBackStack([]);
-      }
-
-      setView(nextView);
-      if (nextId === undefined) {
-        setId(undefined);
-      } else if (typeof nextId === 'string') {
-        setId(nextId);
-      } else if (nextId && 'jobId' in nextId && nextId.jobId) {
-        setId(nextId.jobId);
-      } else if (nextId && 'partId' in nextId && nextId.partId) {
-        setId(nextId.partId);
-      } else {
-        setId(undefined);
-      }
-    },
-    [view, id]
-  );
-
-  const navigateBackFrom = useCallback(
-    (
-      _detailView: 'job-detail' | 'inventory-detail' | 'part-detail' | 'board-card-detail',
-      fallback: ViewState
-    ) => {
-      setBackStack((prev) => {
-        const entry = prev[prev.length - 1];
-        const nextStack = prev.slice(0, -1);
-        if (entry != null) {
-          setView(entry.view);
-          setId(entry.id ?? undefined);
-        } else {
-          setView(fallback);
-          setId(undefined);
-        }
-        return nextStack;
-      });
-    },
-    []
-  );
-
-  const handleLogin = useCallback(
-    async (email: string, password: string) => {
-      setSessionExpiredNotice(null); // clear expiry notice as soon as worker attempts login
-      await login(email, password);
-    },
-    [login]
-  );
-
-  const handleSignUp = useCallback(
-    async (email: string, password: string, options?: { name?: string }) => {
-      return signUp(email, password, options);
-    },
-    [signUp]
-  );
-
-  const onClockInByCode = useCallback(
-    async (
-      code: number
-    ): Promise<{ success: boolean; message: string; queued?: boolean; authExpired?: boolean }> => {
-      const job = await getJobByCode(code);
-      if (!job) return { success: false, message: 'Job not found' };
-      const { ok, queued, authExpired } = await clockIn(job.id);
-      if (ok) return { success: true, message: 'Clocked in' };
-      if (authExpired) {
-        logout();
-        return {
-          success: false,
-          message: 'Session expired — please log in again',
-          authExpired: true,
-        };
-      }
-      if (queued) {
-        return {
-          success: false,
-          message: 'Saved offline — will sync when connected',
-          queued: true,
-        };
-      }
-      return { success: false, message: 'Failed to clock in' };
-    },
-    [getJobByCode, clockIn, logout]
-  );
 
   const location = useLocation();
   const pathname = location.pathname;
   const isEmployeeAppPath = pathname === '/app' || pathname.startsWith('/app/');
 
   if (!isEmployeeAppPath) {
-    const onEmployeeLogin = () => window.location.assign('/app');
+    // Replace (not push) so the public page doesn't sit in browser back-history
+    // under the employee app — otherwise pressing back from /app exits the app
+    // back to localhost:3000 (public home).
+    const onEmployeeLogin = () => navigate('/app', { replace: true });
     if (pathname === '/shop' || pathname.startsWith('/shop/')) {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
     }
     return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
   }
 
-  // Safety net: if the session expired and we already have the notice, show Login
-  // immediately regardless of isLoading. Prevents the spinner from getting stuck
-  // if checkAuth somehow never resolves (slow network, Supabase hiccup, etc.).
   if (!currentUser && sessionExpiredNotice) {
     return (
       <Login
@@ -352,413 +161,6 @@ export default function App() {
     );
   }
 
-  const isAdmin = currentUser?.isAdmin ?? false;
-  const renderDashboard = () => (
-    <AppShell>
-      <Dashboard onNavigate={handleNavigate} />
-    </AppShell>
-  );
-
-  if (view === 'dashboard') {
-    return renderDashboard();
-  }
-
-  if (view === 'job-detail' && id) {
-    const job = detailJob ?? jobs.find((j) => j.id === id);
-    if (!job) {
-      return (
-        <AppShell>
-          <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4">
-            <p className="text-slate-400">Job not found.</p>
-            <button
-              onClick={() => handleNavigate('dashboard')}
-              className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
-            >
-              Back to Home
-            </button>
-          </div>
-        </AppShell>
-      );
-    }
-    const isClockedIn = activeShift?.job === job.id;
-    return (
-      <AppShell>
-        <JobDetail
-          job={job}
-          onNavigate={handleNavigate}
-          onBack={() => navigateBackFrom('job-detail', 'dashboard')}
-          isClockedIn={!!isClockedIn}
-          onClockIn={() => clockIn(job.id)}
-          onClockOut={clockOut}
-          activeShift={activeShift}
-          inventory={inventory}
-          jobs={jobs}
-          shifts={shifts}
-          onAddComment={addJobComment}
-          onAddInventory={addJobInventory}
-          onRemoveInventory={removeJobInventory}
-          onUpdateJob={updateJob}
-          onDeleteJob={deleteJob}
-          onReloadJob={async () => {
-            await refreshJob(job.id);
-          }}
-          currentUser={currentUser!}
-          onAddAttachment={addAttachment}
-          onDeleteAttachment={deleteAttachment}
-          onUpdateAttachmentAdminOnly={updateAttachmentAdminOnly}
-          calculateAvailable={calculateAvailable}
-        />
-      </AppShell>
-    );
-  }
-
-  if (view === 'clock-in') {
-    return (
-      <AppShell>
-        <ClockInScreen
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-          onClockInByCode={onClockInByCode}
-          activeShift={activeShift}
-          activeJob={activeJob}
-          onClockOut={clockOut}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'scanner') {
-    return (
-      <AppShell>
-        <ScannerScreen
-          jobs={jobs}
-          inventory={inventory}
-          onNavigate={handleNavigate}
-          onUpdateJob={updateJob}
-          onUpdateInventoryItem={updateInventoryItem}
-          onRefreshJobs={refreshJobs}
-          onRefreshInventory={refreshInventory}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'inventory') {
-    return (
-      <AppShell>
-        <Inventory
-          inventory={inventory}
-          jobs={jobs}
-          onNavigate={handleNavigate}
-          onUpdateStock={updateInventoryStock}
-          onUpdateItem={updateInventoryItem}
-          onCreateItem={createInventory}
-          onMarkOrdered={markInventoryOrdered}
-          onReceiveOrder={receiveInventoryOrder}
-          onAddAttachment={addInventoryAttachment}
-          onDeleteAttachment={deleteInventoryAttachment}
-          onReloadInventory={refreshInventory}
-          isAdmin={isAdmin}
-          calculateAvailable={calculateAvailable}
-          calculateAllocated={calculateAllocated}
-          onAllocateToJob={allocateInventoryToJob}
-          initialItemId={id}
-          onBackFromDetail={() => setId(undefined)}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'inventory-detail' && id) {
-    const item = inventory.find((i) => i.id === id);
-    if (!item) {
-      return (
-        <AppShell>
-          <div className="flex min-h-screen items-center justify-center bg-background-dark p-4">
-            <p className="text-slate-400">Item not found.</p>
-            <button
-              onClick={() => navigateBackFrom('inventory-detail', 'inventory')}
-              className="mt-3 rounded-sm bg-primary px-4 py-2 font-bold text-white"
-            >
-              Back
-            </button>
-          </div>
-        </AppShell>
-      );
-    }
-    return (
-      <AppShell>
-        <Inventory
-          inventory={inventory}
-          jobs={jobs}
-          onNavigate={handleNavigate}
-          onUpdateStock={updateInventoryStock}
-          onUpdateItem={updateInventoryItem}
-          onCreateItem={createInventory}
-          onMarkOrdered={markInventoryOrdered}
-          onReceiveOrder={receiveInventoryOrder}
-          onAddAttachment={addInventoryAttachment}
-          onDeleteAttachment={deleteInventoryAttachment}
-          onReloadInventory={refreshInventory}
-          isAdmin={isAdmin}
-          calculateAvailable={calculateAvailable}
-          calculateAllocated={calculateAllocated}
-          onAllocateToJob={allocateInventoryToJob}
-          initialItemId={id}
-          onBackFromDetail={() => navigateBackFrom('inventory-detail', 'inventory')}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'board-shop' || view === 'board-admin') {
-    const boardType = view === 'board-admin' && isAdmin ? 'admin' : 'shopFloor';
-    return (
-      <AppShell>
-        <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
-          <KanbanBoard
-            jobs={jobs}
-            shifts={shifts}
-            onNavigate={handleNavigate}
-            onCreateJob={() => handleNavigate('create-job')}
-            onDeleteJob={deleteJob}
-            onDeleteAttachment={deleteAttachment}
-            boardType={boardType}
-            isAdmin={isAdmin}
-            currentUser={currentUser!}
-            onUpdateJobStatus={updateJobStatus}
-            onUpdateJob={updateJob}
-          />
-        </div>
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'boards') {
-    return (
-      <AppShell>
-        <BoardList onNavigate={handleNavigate} />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'board-detail' && id) {
-    return (
-      <AppShell>
-        <BoardView
-          boardId={id}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('boards')}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'board-card-detail' && id) {
-    const [boardId, cardId] = id.split(':');
-    if (!boardId || !cardId) {
-      return (
-        <AppShell>
-          <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 bg-background-dark">
-            <p className="text-slate-400">Card not found.</p>
-            <button
-              onClick={() => handleNavigate('boards')}
-              className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
-            >
-              Back to boards
-            </button>
-          </div>
-          <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-        </AppShell>
-      );
-    }
-    return (
-      <AppShell>
-        <CardDetailView
-          boardId={boardId}
-          cardId={cardId}
-          onNavigate={handleNavigate}
-          onBack={() => navigateBackFrom('board-card-detail', 'boards')}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'notification-settings') {
-    return (
-      <AppShell>
-        <NotificationSettingsView
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'chat' || view === 'chat-conversation') {
-    return (
-      <AppShell>
-        <ChatView
-          conversationId={view === 'chat-conversation' ? id : undefined}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-        />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
-      </AppShell>
-    );
-  }
-
-  if (view === 'parts') {
-    return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <Parts
-            jobs={jobs}
-            currentUser={currentUser!}
-            onNavigate={handleNavigate}
-            onNavigateBack={() => handleNavigate('dashboard')}
-          />
-        </AppShell>
-      </AdminRoute>
-    );
-  }
-
-  if (view === 'part-detail' && id) {
-    return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <PartDetail
-            partId={id}
-            jobs={jobs}
-            shifts={shifts}
-            onNavigate={handleNavigate}
-            onNavigateBack={() => navigateBackFrom('part-detail', 'parts')}
-          />
-        </AppShell>
-      </AdminRoute>
-    );
-  }
-
-  if (view === 'create-job' && currentUser) {
-    return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <AdminCreateJob
-            onCreate={createJob}
-            onNavigate={handleNavigate}
-            users={users}
-            existingJobCodes={existingJobCodes}
-            currentUser={currentUser}
-            jobs={jobs}
-            shifts={shifts}
-          />
-        </AppShell>
-      </AdminRoute>
-    );
-  }
-
-  if (view === 'quotes' && currentUser) {
-    return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <Quotes
-            jobs={jobs}
-            inventory={inventory}
-            shifts={shifts}
-            currentUser={currentUser}
-            onNavigate={handleNavigate}
-            onBack={() => handleNavigate('dashboard')}
-          />
-        </AppShell>
-      </AdminRoute>
-    );
-  }
-
-  if (view === 'time-reports' && currentUser) {
-    return (
-      <AppShell>
-        <TimeReports
-          shifts={shifts}
-          users={users}
-          jobs={jobs}
-          currentUser={currentUser}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-          onRefreshShifts={refreshShifts}
-          initialJobId={id}
-          readOnly={!currentUser.isAdmin}
-        />
-      </AppShell>
-    );
-  }
-
-  if (view === 'admin-settings') {
-    return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <AdminSettings onNavigate={handleNavigate} onBack={() => handleNavigate('dashboard')} />
-        </AppShell>
-      </AdminRoute>
-    );
-  }
-
-  if (view === 'trello-import') {
-    return (
-      <AdminRoute onRedirectToDashboard={() => handleNavigate('dashboard')}>
-        <AppShell>
-          <div className="flex min-h-screen flex-col bg-background-dark">
-            <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
-              <button
-                type="button"
-                onClick={() => handleNavigate('dashboard')}
-                className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
-              >
-                <span className="material-symbols-outlined">arrow_back</span>
-              </button>
-              <h1 className="text-lg font-bold text-white">Import Trello</h1>
-              <div className="size-10" />
-            </header>
-            <main className="flex-1 overflow-y-auto p-4">
-              <TrelloImport
-                onClose={() => handleNavigate('dashboard')}
-                onImportComplete={() => {
-                  refreshJobs();
-                  handleNavigate('dashboard');
-                }}
-              />
-            </main>
-          </div>
-        </AppShell>
-      </AdminRoute>
-    );
-  }
-
-  if (view === 'calendar' && currentUser) {
-    return (
-      <AppShell>
-        <Calendar
-          jobs={jobs}
-          shifts={shifts}
-          currentUser={currentUser}
-          onNavigate={handleNavigate}
-          onBack={() => handleNavigate('dashboard')}
-          refreshJobs={refreshJobs}
-          refreshShifts={refreshShifts}
-          onUpdateJob={updateJob}
-        />
-      </AppShell>
-    );
-  }
-
   return (
     <>
       {currentUser && (
@@ -768,12 +170,11 @@ export default function App() {
           jobs={jobs}
           inventory={inventory}
           users={users}
-          onNavigate={handleNavigate}
+          onNavigate={appNavigate}
         />
       )}
       <AppShell>
-        <Dashboard onNavigate={handleNavigate} />
-        <BottomNavigation currentView={view} onNavigate={handleNavigate} />
+        <AppRouter />
       </AppShell>
     </>
   );

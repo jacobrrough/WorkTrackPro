@@ -351,7 +351,7 @@ const Quotes: React.FC<QuotesProps> = ({
   }, [quoteData, jobs]);
 
   return (
-    <div className="flex h-screen flex-col bg-background-dark">
+    <div className="flex h-[100dvh] flex-col bg-background-dark">
       <header className="sticky top-0 z-50 flex-shrink-0 border-b border-primary/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

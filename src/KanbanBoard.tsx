@@ -1077,6 +1077,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   }, [menuOpenFor, columnMenuOpen, moveColumnForJobId]);
 
+  // Intercept browser back while the bin-scan overlay is open so back closes
+  // the overlay rather than navigating away from the board.
+  useEffect(() => {
+    if (!scanningBinForJob) return;
+    const handlePopState = () => setScanningBinForJob(null);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [scanningBinForJob]);
+
   return (
     <div className="content-above-nav flex h-full min-h-0 flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d]">
       {/* Header - Streamlined */}
@@ -1285,7 +1294,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Bulk action bar */}
       {bulkSelectMode && selectedJobIds.size > 0 && (
-        <div className="fixed bottom-20 left-0 right-0 z-40 flex items-center justify-between gap-3 border-t border-white/10 bg-[#1a1122] px-4 py-3 shadow-lg">
+        <div className="safe-area-pb fixed bottom-16 left-0 right-0 z-[45] flex items-center justify-between gap-3 border-t border-white/10 bg-[#1a1122] px-4 py-3 shadow-lg">
           <span className="text-sm font-medium text-white">{selectedJobIds.size} selected</span>
           <div className="flex flex-wrap items-center gap-2">
             <button
