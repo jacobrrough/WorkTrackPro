@@ -266,19 +266,20 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+        <div className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto p-4 md:snap-none md:gap-4">
           {columns.map((col) => {
             const colCards = cardsByColumn[col.id] ?? [];
             return (
               <div
                 key={col.id}
-                className="flex w-72 flex-shrink-0 flex-col rounded-lg border border-white/10 bg-surface-dark"
+                className="flex w-[calc(100vw-2rem)] flex-shrink-0 snap-center flex-col rounded-lg border border-white/10 bg-surface-dark md:w-72"
               >
                 <div className="p-3 pb-0">
                   <BoardColumnHeader
                     column={col}
                     cardCount={colCards.length}
                     readOnly={readOnly}
+                    onAddCard={() => setAddingToColumn(col.id)}
                     onRename={(name) => mutations.updateColumn(boardId, col.id, { name })}
                     onChangeColor={(color) => mutations.updateColumn(boardId, col.id, { color })}
                     onDelete={() => mutations.deleteColumn(boardId, col.id)}
@@ -300,15 +301,6 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
                     ))}
                   </DroppableColumn>
                 </SortableContext>
-                {!readOnly && (
-                  <button
-                    onClick={() => setAddingToColumn(col.id)}
-                    className="m-2 flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    Add card
-                  </button>
-                )}
               </div>
             );
           })}
@@ -317,7 +309,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
         <DragOverlay>
           {activeCard && (
-            <div className="w-72 opacity-90">
+            <div className="w-[calc(100vw-2rem)] opacity-90 md:w-72">
               <BoardCardItem card={activeCard} users={users} readOnly onClick={() => {}} />
             </div>
           )}
