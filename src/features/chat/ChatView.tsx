@@ -87,7 +87,7 @@ function ChatViewInner({
   const showChat = !!activeConversationId;
 
   return (
-    <div className="flex h-[calc(100dvh-60px)] bg-background-dark md:h-[100dvh]">
+    <div className="flex h-[100dvh] bg-background-dark">
       {/* Conversation list — always visible on desktop, hidden when chat is open on mobile */}
       <aside
         className={`w-full border-r border-white/10 md:flex md:w-80 md:flex-col ${

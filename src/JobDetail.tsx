@@ -1272,6 +1272,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
     };
   }, [isClockedIn, activeShift]);
 
+  // Intercept browser-back when a full-screen overlay is open so pressing back
+  // closes the overlay instead of navigating away from the job detail page.
+  useEffect(() => {
+    if (!viewingAttachment && !showBinLocationScanner) return;
+    const handlePopState = () => {
+      setViewingAttachment(null);
+      setShowBinLocationScanner(false);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewingAttachment, showBinLocationScanner]);
+
   const handleSubmitComment = async () => {
     if (!newComment.trim() || isSubmitting) return;
     setIsSubmitting(true);
@@ -2208,7 +2220,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           }}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="e.g., SK-F35-0911"
                         />
                       ) : (
@@ -2226,7 +2238,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="A, B, NC"
                         />
                       ) : (
@@ -2245,7 +2257,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onBlur={partsLocked ? undefined : savePartName}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Part name"
                         />
                       ) : linkedParts?.[idx] ? (
@@ -2275,7 +2287,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.estNumber}
                     onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="EST#"
                   />
                 </div>
@@ -2285,7 +2297,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.rfqNumber}
                     onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="RFQ#"
                   />
                 </div>
@@ -2295,7 +2307,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.po}
                     onChange={(e) => setEditForm({ ...editForm, po: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="PO"
                   />
                 </div>
@@ -2305,7 +2317,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.invNumber}
                     onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="INV#"
                   />
                 </div>
@@ -2315,7 +2327,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.owrNumber}
                     onChange={(e) => setEditForm({ ...editForm, owrNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="OWR#"
                   />
                 </div>
@@ -2325,7 +2337,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="date"
                     value={editForm.dueDate}
                     onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -2334,7 +2346,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="date"
                     value={editForm.ecd}
                     onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -2344,7 +2356,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     onChange={(e) =>
                       setEditForm({ ...editForm, status: e.target.value as JobStatus })
                     }
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   >
                     {ALL_STATUSES.map((s) => (
                       <option key={s.id} value={s.id} className="bg-[#1f1b2e] text-white">
@@ -2394,7 +2406,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     rows={2}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="Description..."
                   />
                 </div>
@@ -2476,7 +2488,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             }}
                             disabled={partsLocked}
                             title={partsLockedReason ?? undefined}
-                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Number of sets"
                           />
                           {derivedCompleteSets > 0 && (
@@ -2536,7 +2548,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                       }}
                                       disabled={partsLocked}
                                       title={partsLockedReason ?? undefined}
-                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                       aria-label={`Quantity for ${label}`}
                                     />
                                     <span className="text-[10px] text-slate-400">Qty</span>
@@ -2568,7 +2580,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Sets"
                           aria-label="Quantity (sets)"
                         />
@@ -2637,7 +2649,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setLaborHoursFromPart(false);
                       setEditForm({ ...editForm, laborHours: e.target.value });
                     }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2668,7 +2680,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setAllocationSource('total');
                       setEditForm({ ...editForm, cncHours: e.target.value });
                     }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2683,7 +2695,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setAllocationSource('total');
                       setEditForm({ ...editForm, printer3DHours: e.target.value });
                     }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2700,7 +2712,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       onChange={(e) =>
                         setEditForm({ ...editForm, progressEstimatePercent: e.target.value })
                       }
-                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                       placeholder="Optional 0–100"
                     />
                   </div>

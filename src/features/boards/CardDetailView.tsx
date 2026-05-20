@@ -103,7 +103,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 pb-20">
         <div className="mx-auto max-w-2xl space-y-6">
           {card.color && <div className={`h-2 w-16 rounded-full ${card.color}`} />}
 

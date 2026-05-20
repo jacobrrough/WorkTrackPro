@@ -148,6 +148,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   }, [activeShift?.id]);
 
+  // Intercept browser back while the bin-assignment scanner overlay is open so
+  // back closes the overlay rather than navigating away from Dashboard.
+  useEffect(() => {
+    if (!showScanner && !scannedBinLocation) return;
+    const handlePopState = () => {
+      setShowScanner(false);
+      setAddingJobToBin(false);
+      setScannedBinLocation(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [showScanner, scannedBinLocation]);
+
   const handleClockOutFromPopup = async () => {
     setIsClockOutLoading(true);
     const result = await clockOut();
@@ -210,7 +223,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       iconClassName: 'text-amber-500',
       cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20',
       ariaLabel: 'Open QR scanner',
-      onClick: () => setShowScanner(true),
+      onClick: () => onNavigate('scanner'),
     },
     {
       key: 'create-job',
@@ -551,7 +564,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <button
           type="button"
           onClick={() => setIsTrackerOpen(true)}
-          className="fixed bottom-4 right-4 z-40 flex min-h-12 items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
+          className="fixed bottom-20 right-4 z-[45] flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">
             schedule

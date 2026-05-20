@@ -524,7 +524,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d] pb-20">
+    <div className="flex h-[100dvh] flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d]">
       <header className="sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <button

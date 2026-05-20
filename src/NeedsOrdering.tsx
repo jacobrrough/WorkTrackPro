@@ -454,7 +454,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
 
       {/* Summary Footer */}
       {!showOnOrder && totalNeedsOrdering > 0 && selectedItems.size > 0 && (
-        <div className="safe-area-pb fixed bottom-0 left-0 right-0 border-t border-white/10 bg-card-dark px-4 py-3">
+        <div className="safe-area-pb fixed bottom-0 left-0 right-0 z-[45] border-t border-white/10 bg-card-dark px-4 py-3">
           <div className="mx-auto flex max-w-4xl items-center justify-between">
             <div>
               <p className="font-bold text-white">{selectedItems.size} items selected</p>
