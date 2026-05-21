@@ -485,11 +485,21 @@ const PartDetail: React.FC<PartDetailProps> = ({
           partUpdates.pricePerSet = updates.pricePerVariant;
         }
         if (Object.keys(partUpdates).length > 0) {
-          await handleUpdatePart(partUpdates);
-          showToast('Part updated successfully', 'success');
+          // Optimistic update so QuoteCalculator reflects immediately (same time as VariantQuoteMini)
+          const snapshot = part;
+          setPart((prev) => (prev ? { ...prev, ...partUpdates } : null));
           setEditingVariant(null);
-          await loadPart(true);
-          notifyPartUpdated();
+          try {
+            await handleUpdatePart(partUpdates);
+          } catch {
+            setPart(snapshot);
+            return;
+          }
+          try {
+            await loadPart(true);
+          } catch {
+            // non-critical: DB write already committed, UI has server-confirmed state
+          }
         }
         return;
       }
@@ -2153,12 +2163,12 @@ const VariantCard: React.FC<VariantCardProps> = ({
   const handleSave = () => {
     onUpdate(variant.id, {
       name: name || undefined,
-      ...(showFinancials ? { pricePerVariant: price ? Number(price) : undefined } : {}),
-      laborHours: laborHours ? Number(laborHours) : undefined,
-      cncTimeHours: cncHours ? Number(cncHours) : undefined,
-      requiresCNC: cncHours ? true : variant.requiresCNC,
-      printer3DTimeHours: printer3DHours ? Number(printer3DHours) : undefined,
-      requires3DPrint: printer3DHours ? true : variant.requires3DPrint,
+      ...(showFinancials ? { pricePerVariant: price !== '' ? Number(price) : undefined } : {}),
+      laborHours: laborHours !== '' ? Number(laborHours) : undefined,
+      cncTimeHours: cncHours !== '' ? Number(cncHours) : undefined,
+      requiresCNC: cncHours !== '' ? Number(cncHours) > 0 : variant.requiresCNC,
+      printer3DTimeHours: printer3DHours !== '' ? Number(printer3DHours) : undefined,
+      requires3DPrint: printer3DHours !== '' ? Number(printer3DHours) > 0 : variant.requires3DPrint,
     });
   };
 
