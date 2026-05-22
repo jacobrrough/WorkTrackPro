@@ -65,10 +65,10 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
   const [localCards, setLocalCards] = useState<BoardCard[] | null>(null);
 
   const board = data?.board ?? null;
-  const { ref: boardScrollRef, onScroll: onBoardScroll } = useScrollRestore(
-    `board-${boardId}`,
-    { axis: 'x', ready: !isLoading && !!board }
-  );
+  const { ref: boardScrollRef, onScroll: onBoardScroll } = useScrollRestore(`board-${boardId}`, {
+    axis: 'x',
+    ready: !isLoading && !!board,
+  });
 
   const dataCards = data?.cards;
   const cards = useMemo(() => localCards ?? dataCards ?? [], [localCards, dataCards]);

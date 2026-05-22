@@ -28,7 +28,8 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
   calculateAvailable,
   calculateAllocated,
 }) => {
-  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('needs-ordering');
+  const { ref: scrollRef, onScroll: handleScroll } =
+    useScrollRestore<HTMLElement>('needs-ordering');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [orderQuantities, setOrderQuantities] = useState<Record<string, number>>({});
   const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());

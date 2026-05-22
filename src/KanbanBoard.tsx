@@ -781,7 +781,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         container.scrollTop = savedPosition;
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardViewKey, horizontalScrollKey, columns]);
 
   // Throttled horizontal scroll handler for board container (persist position only; no drag bar)

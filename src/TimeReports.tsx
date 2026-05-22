@@ -550,7 +550,11 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         </div>
       </header>
 
-      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
+      <main
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 space-y-6 overflow-y-auto px-4 py-6"
+      >
         {/* Job filter banner when opened from a job card */}
         {jobFilter && (
           <div className="flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/10 p-3">
