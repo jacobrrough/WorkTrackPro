@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Job, InventoryItem, User, ViewState, Quote, QuoteLineItem, Shift } from '@/core/types';
 import { quoteService } from './services/api/quotes';
+import { useScrollRestore } from './hooks/useScrollRestore';
 import { useToast } from './Toast';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { getJobDisplayName } from './lib/formatJob';
@@ -28,6 +29,7 @@ const Quotes: React.FC<QuotesProps> = ({
   onBack,
 }) => {
   const { showToast } = useToast();
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('quotes');
   const [productName, setProductName] = useState('');
   const [description, setDescription] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
@@ -382,7 +384,7 @@ const Quotes: React.FC<QuotesProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 pb-24">
+      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-24">
         {/* Product Input */}
         <div className="mb-6 pt-6">
           <label className="mb-2 block text-sm font-bold text-white">Product Name *</label>

@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import AllocateToJobModal from './AllocateToJobModal';
 
-const INVENTORY_LIST_SCROLL_KEY = 'inventory-list';
 import {
   InventoryFilters,
   InventoryTab,
@@ -71,9 +71,7 @@ export default function InventoryMainView({
 }: InventoryMainViewProps) {
   const { showToast } = useToast();
   const { state: navState, updateState } = useNavigation();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollPositionsRef = useRef(navState.scrollPositions);
-  scrollPositionsRef.current = navState.scrollPositions;
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore('inventory-list');
 
   const [tab, setTabState] = useState<InventoryTab>(
     () => (navState.inventoryTab as InventoryTab) || 'allParts'
@@ -130,26 +128,6 @@ export default function InventoryMainView({
     }
     return { total: baseFiltered.length, needsReorder, lowStock };
   }, [baseFiltered, calculateAllocated, calculateAvailable]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const saved = scrollPositionsRef.current[INVENTORY_LIST_SCROLL_KEY] ?? 0;
-    el.scrollTop = saved;
-  }, []);
-
-  const handleScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const next = el.scrollTop;
-    if ((scrollPositionsRef.current[INVENTORY_LIST_SCROLL_KEY] ?? 0) === next) return;
-    updateState({
-      scrollPositions: {
-        ...scrollPositionsRef.current,
-        [INVENTORY_LIST_SCROLL_KEY]: next,
-      },
-    });
-  };
 
   const handleQuickAdjust = async (item: InventoryItem, delta: number) => {
     const next = Math.max(0, item.inStock + delta);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { Job, JobStatus, ViewState, User, Checklist, InventoryItem, Shift } from '@/core/types';
 import { formatDateOnly } from '@/core/date';
 import { formatJobCode, formatDashSummary, totalFromDashQuantities } from '@/lib/formatJob';
@@ -759,31 +759,29 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     };
   }, []);
 
-  // Restore scroll positions only on mount/return (NOT when scrollPositions updates, or scrolling would re-trigger restore and cause jumpiness)
-  // (Removed custom touch handler: it locked to vertical too easily and blocked horizontal scroll; native scroll + touch-action is used instead.)
-  useEffect(() => {
+  // Restore scroll positions before the first paint so there's no visible flash to column 0.
+  // useLayoutEffect runs synchronously after DOM commit but before the browser paints,
+  // eliminating the jitter that setTimeout(80ms) caused.
+  // Deps intentionally exclude navState.scrollPositions — only run on mount/board switch.
+  useLayoutEffect(() => {
     const positions = scrollPositionsSnapshot.current;
-    const timeoutId = setTimeout(() => {
-      const savedHorizontalScroll = positions[horizontalScrollKey];
-      if (
-        boardContainerRef.current &&
-        savedHorizontalScroll !== undefined &&
-        savedHorizontalScroll > 0
-      ) {
-        boardContainerRef.current.scrollLeft = savedHorizontalScroll;
+    const savedHorizontalScroll = positions[horizontalScrollKey];
+    if (
+      boardContainerRef.current &&
+      savedHorizontalScroll !== undefined &&
+      savedHorizontalScroll > 0
+    ) {
+      boardContainerRef.current.scrollTo({ left: savedHorizontalScroll, behavior: 'instant' });
+    }
+    columns.forEach((column) => {
+      const columnKey = `${boardViewKey}-${column.id}`;
+      const savedPosition = positions[columnKey];
+      const container = columnRefs.current[column.id];
+      if (container && savedPosition !== undefined && savedPosition > 0) {
+        container.scrollTop = savedPosition;
       }
-      columns.forEach((column) => {
-        const columnKey = `${boardViewKey}-${column.id}`;
-        const savedPosition = positions[columnKey];
-        const container = columnRefs.current[column.id];
-        if (container && savedPosition !== undefined && savedPosition > 0) {
-          container.scrollTop = savedPosition;
-        }
-      });
-    }, 80);
-
-    return () => clearTimeout(timeoutId);
-    // Intentionally exclude navState.scrollPositions so we only restore on mount/board switch, not on every scroll save
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardViewKey, horizontalScrollKey, columns]);
 
   // Throttled horizontal scroll handler for board container (persist position only; no drag bar)
@@ -814,6 +812,23 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     },
     100
   );
+
+  // Flush the exact DOM scroll positions to navState on unmount, bypassing the throttle.
+  // Must be useLayoutEffect (not useEffect): React clears DOM-attached refs during the
+  // mutation phase, before passive effects fire. useLayoutEffect cleanup runs during
+  // commit while refs are still valid.
+  useLayoutEffect(() => {
+    return () => {
+      const flushed: Record<string, number> = { ...scrollPositionsRef.current };
+      if (boardContainerRef.current) {
+        flushed[horizontalScrollKey] = boardContainerRef.current.scrollLeft;
+      }
+      for (const [columnId, el] of Object.entries(columnRefs.current)) {
+        if (el) flushed[`${boardViewKey}-${columnId}`] = el.scrollTop;
+      }
+      updateState({ scrollPositions: flushed });
+    };
+  }, [boardViewKey, horizontalScrollKey, updateState]);
 
   // Stable key so effect only runs when the set of job IDs changes (avoids infinite loop from new jobs array ref each render)
   const jobIdsKey =
