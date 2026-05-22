@@ -228,17 +228,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       onClick: () => onNavigate('scanner'),
     },
     {
-      key: 'create-job',
-      title: 'New Job',
-      subtitle: 'Create job',
-      icon: 'add_circle',
-      iconClassName: 'text-green-500',
-      cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
-      ariaLabel: 'Create a new job',
-      onClick: () => onNavigate('create-job'),
-      adminOnly: true,
-    },
-    {
       key: 'calendar',
       title: 'Calendar',
       subtitle: 'Job timeline',
