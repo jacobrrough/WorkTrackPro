@@ -11,6 +11,7 @@ import {
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { formatDateOnly } from '@/core/date';
 import { getJobDisplayName } from '@/lib/formatJob';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
@@ -123,6 +124,8 @@ const Calendar: React.FC<CalendarProps> = ({
   // can resolve it to false on unmount, unblocking the suspended loop so that
   // the cancelledRef check fires and the loop exits cleanly.
   const pendingModalResolveRef = useRef<((v: boolean) => void) | null>(null);
+
+  const { ref: scrollRef, onScroll: onScrollSave } = useScrollRestore('calendar');
   useEffect(() => {
     cancelledRef.current = false;
     return () => {
@@ -800,7 +803,11 @@ const Calendar: React.FC<CalendarProps> = ({
       </div>
 
       {/* Calendar Grid - scrollable with safe area bottom for iPhone */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto px-3 py-4 pb-[env(safe-area-inset-bottom)] sm:px-4">
+      <div
+        ref={scrollRef}
+        onScroll={onScrollSave}
+        className="flex-1 overflow-x-auto overflow-y-auto px-3 py-4 pb-[env(safe-area-inset-bottom)] sm:px-4"
+      >
         <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
           <p>
             {settings.employeeCount} emp · {weeklyRegularHoursPerEmployee.toFixed(1)}h reg/wk

@@ -1,11 +1,14 @@
 import { useLocation } from 'react-router-dom';
+import { useApp } from './AppContext';
 import { useAppNavigate } from './hooks/useAppNavigate';
 
 function BottomNavigation() {
   const { pathname } = useLocation();
+  const { currentUser } = useApp();
   const appNavigate = useAppNavigate();
+  const isAdmin = currentUser?.isAdmin === true;
 
-  const isJobs = pathname.startsWith('/app/board/shop');
+  const isJobs = pathname.startsWith('/app/board/');
   const isStock = pathname.startsWith('/app/inventory');
   const isScanner = pathname.startsWith('/app/scanner');
   // Home is active for any /app route not claimed by another tab
@@ -33,7 +36,7 @@ function BottomNavigation() {
           type="button"
           onClick={() => {
             if (isJobs) return;
-            appNavigate('board-shop');
+            appNavigate(isAdmin ? 'board-admin' : 'board-shop');
           }}
           aria-current={isJobs ? 'page' : undefined}
           className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isJobs ? 'text-primary' : 'text-slate-400'}`}

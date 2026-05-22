@@ -13,6 +13,7 @@ import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
 import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
+import { useScrollRestore } from './hooks/useScrollRestore';
 
 /**
  * Isolated timer component — owns its own 1-second interval so that ticking
@@ -59,6 +60,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('dashboard');
   const {
     currentUser,
     jobs,
@@ -419,6 +421,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </header>
 
       <main
+        ref={scrollRef}
+        onScroll={handleScroll}
         id="main-content"
         tabIndex={-1}
         aria-labelledby="dashboard-heading"

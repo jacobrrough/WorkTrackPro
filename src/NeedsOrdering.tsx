@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewState, InventoryItem, getCategoryDisplayName } from '@/core/types';
+import { useScrollRestore } from './hooks/useScrollRestore';
 
 interface NeedsOrderingProps {
   inventory: InventoryItem[];
@@ -27,6 +28,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
   calculateAvailable,
   calculateAllocated,
 }) => {
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('needs-ordering');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [orderQuantities, setOrderQuantities] = useState<Record<string, number>>({});
   const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());
@@ -234,7 +236,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
       </header>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24">
+      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 pb-24">
         {vendorGroups.length === 0 ? (
           <div className="py-12 text-center">
             <span className="material-symbols-outlined mb-4 text-6xl text-white/20">

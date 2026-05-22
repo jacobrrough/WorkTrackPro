@@ -13,6 +13,7 @@ import {
 } from '@/hooks/useNotificationPreferences';
 import { getDefaultPreferences } from '@/services/api/notificationPreferences';
 import Accordion from '@/components/Accordion';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 
 interface NotificationSettingsViewProps {
   onNavigate: (view: ViewState, id?: string) => void;
@@ -290,6 +291,7 @@ function Toggle({
 const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onBack }) => {
   const { currentUser } = useApp();
   const { showToast } = useToast();
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore('notification-settings');
   const isAdmin = currentUser?.isAdmin ?? false;
   const [activeTab, setActiveTab] = useState<NotificationChannel>('in_app');
 
@@ -376,7 +378,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (

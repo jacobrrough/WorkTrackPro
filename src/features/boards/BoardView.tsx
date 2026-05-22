@@ -24,6 +24,7 @@ import BoardColumnHeader from './components/BoardColumnHeader';
 import AddColumnButton from './components/AddColumnButton';
 import CardEditorModal, { type CardSaveData } from './components/CardEditorModal';
 import BoardSettingsModal from './components/BoardSettingsModal';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 
 interface BoardViewProps {
   boardId: string;
@@ -64,6 +65,11 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
   const [localCards, setLocalCards] = useState<BoardCard[] | null>(null);
 
   const board = data?.board ?? null;
+  const { ref: boardScrollRef, onScroll: onBoardScroll } = useScrollRestore(
+    `board-${boardId}`,
+    { axis: 'x', ready: !isLoading && !!board }
+  );
+
   const dataCards = data?.cards;
   const cards = useMemo(() => localCards ?? dataCards ?? [], [localCards, dataCards]);
   const members = data?.members ?? [];
@@ -266,7 +272,11 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto p-4 md:snap-none md:gap-4">
+        <div
+          ref={boardScrollRef}
+          onScroll={onBoardScroll}
+          className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto p-4 md:snap-none md:gap-4"
+        >
           {columns.map((col) => {
             const colCards = cardsByColumn[col.id] ?? [];
             return (
