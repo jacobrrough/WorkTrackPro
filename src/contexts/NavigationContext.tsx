@@ -21,8 +21,6 @@ interface NavigationState {
   inventorySupplier: string;
   /** Inventory list active tab: allParts | needsReordering | lowStock | byBin */
   inventoryTab: string;
-  /** Inventory list view mode: list | kanban */
-  inventoryListView: 'list' | 'kanban';
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
   /** Custom ordering of dashboard quick-action keys. */
@@ -41,7 +39,6 @@ const defaultState: NavigationState = {
   inventoryCategory: 'all',
   inventorySupplier: 'all',
   inventoryTab: 'allParts',
-  inventoryListView: 'list',
   partsSearchTerm: '',
   quickActionOrder: [],
   hiddenQuickActions: [],
