@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Job, InventoryItem, User, ViewState, Quote, QuoteLineItem, Shift } from '@/core/types';
 import { quoteService } from './services/api/quotes';
+import { useScrollRestore } from './hooks/useScrollRestore';
 import { useToast } from './Toast';
 import { getWorkedShiftMs } from './lib/lunchUtils';
 import { getJobDisplayName } from './lib/formatJob';
@@ -28,6 +29,7 @@ const Quotes: React.FC<QuotesProps> = ({
   onBack,
 }) => {
   const { showToast } = useToast();
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('quotes');
   const [productName, setProductName] = useState('');
   const [description, setDescription] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
@@ -351,7 +353,7 @@ const Quotes: React.FC<QuotesProps> = ({
   }, [quoteData, jobs]);
 
   return (
-    <div className="flex h-screen flex-col bg-background-dark">
+    <div className="flex h-[100dvh] flex-col bg-background-dark">
       <header className="sticky top-0 z-50 flex-shrink-0 border-b border-primary/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -382,7 +384,7 @@ const Quotes: React.FC<QuotesProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 pb-24">
+      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pb-24">
         {/* Product Input */}
         <div className="mb-6 pt-6">
           <label className="mb-2 block text-sm font-bold text-white">Product Name *</label>

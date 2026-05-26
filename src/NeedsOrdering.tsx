@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewState, InventoryItem, getCategoryDisplayName } from '@/core/types';
+import { useScrollRestore } from './hooks/useScrollRestore';
 
 interface NeedsOrderingProps {
   inventory: InventoryItem[];
@@ -27,6 +28,8 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
   calculateAvailable,
   calculateAllocated,
 }) => {
+  const { ref: scrollRef, onScroll: handleScroll } =
+    useScrollRestore<HTMLElement>('needs-ordering');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [orderQuantities, setOrderQuantities] = useState<Record<string, number>>({});
   const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());
@@ -234,7 +237,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
       </header>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24">
+      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 pb-24">
         {vendorGroups.length === 0 ? (
           <div className="py-12 text-center">
             <span className="material-symbols-outlined mb-4 text-6xl text-white/20">
@@ -454,7 +457,7 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
 
       {/* Summary Footer */}
       {!showOnOrder && totalNeedsOrdering > 0 && selectedItems.size > 0 && (
-        <div className="safe-area-pb fixed bottom-0 left-0 right-0 border-t border-white/10 bg-card-dark px-4 py-3">
+        <div className="safe-area-pb fixed bottom-0 left-0 right-0 z-[45] border-t border-white/10 bg-card-dark px-4 py-3">
           <div className="mx-auto flex max-w-4xl items-center justify-between">
             <div>
               <p className="font-bold text-white">{selectedItems.size} items selected</p>

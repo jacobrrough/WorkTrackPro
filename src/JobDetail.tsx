@@ -247,6 +247,12 @@ function getPartDerivedDefaultsForJob(
   };
 }
 
+/** Returns the toast message shown when a BOM sync is skipped because the job is consumed. */
+function bomSyncSkippedMessage(job: { jobCode: number; status: string }): string {
+  const label = job.status === 'delivered' ? 'delivered' : 'finished';
+  return `BOM changes won't sync to Job #${job.jobCode} — it's already ${label}.`;
+}
+
 const JobDetail: React.FC<JobDetailProps> = ({
   job,
   onNavigate,
@@ -300,9 +306,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [onClockOut, showToast]);
 
   const handleChecklistComplete = useCallback(async () => {
-    await advanceJobToNextStatus(job.id, job.status);
+    await advanceJobToNextStatus(job.id);
     await onReloadJob?.();
-  }, [advanceJobToNextStatus, job.id, job.status, onReloadJob]);
+  }, [advanceJobToNextStatus, job.id, onReloadJob]);
 
   const [timer, setTimer] = useState('00:00:00');
   const [newComment, setNewComment] = useState('');
@@ -1266,6 +1272,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
     };
   }, [isClockedIn, activeShift]);
 
+  // Intercept browser-back when a full-screen overlay is open so pressing back
+  // closes the overlay instead of navigating away from the job detail page.
+  useEffect(() => {
+    if (!viewingAttachment && !showBinLocationScanner) return;
+    const handlePopState = () => {
+      setViewingAttachment(null);
+      setShowBinLocationScanner(false);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewingAttachment, showBinLocationScanner]);
+
   const handleSubmitComment = async () => {
     if (!newComment.trim() || isSubmitting) return;
     setIsSubmitting(true);
@@ -1299,9 +1317,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         }
       } else {
         console.error('Failed to add comment - no comment returned');
+        showToast('Failed to post comment', 'error');
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      showToast('Failed to post comment', 'error');
     }
     setIsSubmitting(false);
   };
@@ -1454,11 +1474,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
             await syncJobInventoryFromParts(job.id, partsForSync, { replace: true });
             await onReloadJob?.();
           } catch (syncErr) {
+            const syncMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save (multi-part):', syncErr);
-            showToast(
-              'Job saved; material sync failed. Use Auto-assign materials to retry.',
-              'warning'
-            );
+            if (syncMsg.startsWith('material_sync_skipped:')) {
+              showToast(bomSyncSkippedMessage(job), 'info');
+            } else {
+              showToast(
+                'Job saved; material sync failed. Use Auto-assign materials to retry.',
+                'warning'
+              );
+            }
           }
         } else if (
           statusAllowsAllocation &&
@@ -1477,10 +1502,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
           } catch (syncErr) {
             const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save:', msg);
-            showToast(
-              'Job saved; material sync failed. Use Auto-assign materials to retry.',
-              'warning'
-            );
+            if (msg.startsWith('material_sync_skipped:')) {
+              showToast(bomSyncSkippedMessage(job), 'info');
+            } else {
+              showToast(
+                'Job saved; material sync failed. Use Auto-assign materials to retry.',
+                'warning'
+              );
+            }
           }
         } else if (
           statusAllowsAllocation &&
@@ -1495,10 +1524,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
           } catch (syncErr) {
             const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
             console.error('Material sync after save:', msg);
-            showToast(
-              'Job saved; material sync failed. Use Auto-assign materials to retry.',
-              'warning'
-            );
+            if (msg.startsWith('material_sync_skipped:')) {
+              showToast(bomSyncSkippedMessage(job), 'info');
+            } else {
+              showToast(
+                'Job saved; material sync failed. Use Auto-assign materials to retry.',
+                'warning'
+              );
+            }
           }
         }
         setIsEditing(false);
@@ -1593,8 +1626,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
       await onReloadJob?.();
       showToast('Materials auto-assigned from part(s)', 'success');
     } catch (err) {
+      const autoMsg = err instanceof Error ? err.message : String(err);
       console.error('Auto-assign materials:', err);
-      showToast('Failed to auto-assign materials', 'error');
+      if (autoMsg.startsWith('material_sync_skipped:')) {
+        showToast(bomSyncSkippedMessage(job), 'warning');
+      } else {
+        showToast('Failed to auto-assign materials', 'error');
+      }
     } finally {
       setSyncingMaterials(false);
     }
@@ -1654,8 +1692,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   showToast('Materials combined from all parts', 'success');
                 }
               } catch (syncErr) {
+                const addPartMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
                 console.error('Material sync after add part:', syncErr);
-                showToast('Part added; sync materials from job if needed', 'warning');
+                if (addPartMsg.startsWith('material_sync_skipped:')) {
+                  showToast(bomSyncSkippedMessage(job), 'info');
+                } else {
+                  showToast('Part added; sync materials from job if needed', 'warning');
+                }
               }
             }
             // Combined labor for scheduling: sum labor from each part × quantities
@@ -1692,16 +1735,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         showToast('Failed to add part to job', 'error');
       }
     },
-    [
-      job.id,
-      job.partId,
-      job.partNumber,
-      job.dashQuantities,
-      job.parts,
-      job.status,
-      onUpdateJob,
-      showToast,
-    ]
+    [job, onUpdateJob, showToast]
   );
 
   const handleAddInventory = useCallback(
@@ -2186,7 +2220,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           }}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="e.g., SK-F35-0911"
                         />
                       ) : (
@@ -2204,7 +2238,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="A, B, NC"
                         />
                       ) : (
@@ -2223,7 +2257,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onBlur={partsLocked ? undefined : savePartName}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Part name"
                         />
                       ) : linkedParts?.[idx] ? (
@@ -2253,7 +2287,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.estNumber}
                     onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="EST#"
                   />
                 </div>
@@ -2263,7 +2297,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.rfqNumber}
                     onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="RFQ#"
                   />
                 </div>
@@ -2273,7 +2307,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.po}
                     onChange={(e) => setEditForm({ ...editForm, po: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="PO"
                   />
                 </div>
@@ -2283,7 +2317,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.invNumber}
                     onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="INV#"
                   />
                 </div>
@@ -2293,7 +2327,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.owrNumber}
                     onChange={(e) => setEditForm({ ...editForm, owrNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="OWR#"
                   />
                 </div>
@@ -2303,7 +2337,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="date"
                     value={editForm.dueDate}
                     onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -2312,7 +2346,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="date"
                     value={editForm.ecd}
                     onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -2322,7 +2356,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     onChange={(e) =>
                       setEditForm({ ...editForm, status: e.target.value as JobStatus })
                     }
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   >
                     {ALL_STATUSES.map((s) => (
                       <option key={s.id} value={s.id} className="bg-[#1f1b2e] text-white">
@@ -2372,7 +2406,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     rows={2}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="Description..."
                   />
                 </div>
@@ -2454,7 +2488,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             }}
                             disabled={partsLocked}
                             title={partsLockedReason ?? undefined}
-                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Number of sets"
                           />
                           {derivedCompleteSets > 0 && (
@@ -2514,7 +2548,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                       }}
                                       disabled={partsLocked}
                                       title={partsLockedReason ?? undefined}
-                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                       aria-label={`Quantity for ${label}`}
                                     />
                                     <span className="text-[10px] text-slate-400">Qty</span>
@@ -2546,7 +2580,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full max-w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Sets"
                           aria-label="Quantity (sets)"
                         />
@@ -2615,7 +2649,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setLaborHoursFromPart(false);
                       setEditForm({ ...editForm, laborHours: e.target.value });
                     }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2646,7 +2680,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setAllocationSource('total');
                       setEditForm({ ...editForm, cncHours: e.target.value });
                     }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2661,7 +2695,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setAllocationSource('total');
                       setEditForm({ ...editForm, printer3DHours: e.target.value });
                     }}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2678,7 +2712,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       onChange={(e) =>
                         setEditForm({ ...editForm, progressEstimatePercent: e.target.value })
                       }
-                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                       placeholder="Optional 0–100"
                     />
                   </div>
@@ -3463,6 +3497,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 jobId={job.id}
                 jobStatus={job.status}
                 currentUser={currentUser}
+                jobInventoryItems={job.inventoryItems}
                 compact={false}
                 onChecklistComplete={handleChecklistComplete}
               />

@@ -14,9 +14,14 @@ import type { ViewState } from '@/core/types';
 interface ChatViewInnerProps {
   conversationId?: string;
   onNavigate?: (view: ViewState, id?: string) => void;
+  onBack?: () => void;
 }
 
-function ChatViewInner({ conversationId: initialConversationId, onNavigate }: ChatViewInnerProps) {
+function ChatViewInner({
+  conversationId: initialConversationId,
+  onNavigate,
+  onBack,
+}: ChatViewInnerProps) {
   const { currentUser } = useAuth();
   const { users } = useApp();
   const {
@@ -82,7 +87,7 @@ function ChatViewInner({ conversationId: initialConversationId, onNavigate }: Ch
   const showChat = !!activeConversationId;
 
   return (
-    <div className="flex h-[calc(100dvh-60px)] bg-background-dark md:h-[100dvh]">
+    <div className="flex h-[100dvh] bg-background-dark">
       {/* Conversation list — always visible on desktop, hidden when chat is open on mobile */}
       <aside
         className={`w-full border-r border-white/10 md:flex md:w-80 md:flex-col ${
@@ -96,6 +101,7 @@ function ChatViewInner({ conversationId: initialConversationId, onNavigate }: Ch
           isLoading={conversations.isLoading}
           onSelect={setActiveConversationId}
           onNewConversation={() => setShowNewModal(true)}
+          onBack={onBack}
         />
       </aside>
 
@@ -148,12 +154,13 @@ function ChatViewInner({ conversationId: initialConversationId, onNavigate }: Ch
 interface ChatViewProps {
   conversationId?: string;
   onNavigate?: (view: ViewState, id?: string) => void;
+  onBack?: () => void;
 }
 
-export default function ChatView({ conversationId, onNavigate }: ChatViewProps) {
+export default function ChatView({ conversationId, onNavigate, onBack }: ChatViewProps) {
   return (
     <ChatProvider>
-      <ChatViewInner conversationId={conversationId} onNavigate={onNavigate} />
+      <ChatViewInner conversationId={conversationId} onNavigate={onNavigate} onBack={onBack} />
     </ChatProvider>
   );
 }

@@ -17,8 +17,7 @@ async function recordPartRevisionHistory(
 ): Promise<void> {
   if (previousRev !== undefined && rev === previousRev) return;
   const sessionData = await supabase.auth.getSession();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userId = (sessionData as any)?.data?.session?.user?.id ?? null;
+  const userId = sessionData.data.session?.user?.id ?? null;
   await supabase
     .from('part_revision_history')
     .insert({
@@ -65,6 +64,7 @@ function mapRowToVariant(row: Record<string, unknown>): PartVariant {
     partId: row.part_id as string,
     variantSuffix: (row.variant_suffix as string) ?? '',
     name: row.name as string | undefined,
+    description: row.description as string | undefined,
     pricePerVariant: row.price_per_variant != null ? Number(row.price_per_variant) : undefined,
     laborHours: row.labor_hours != null ? Number(row.labor_hours) : undefined,
     requiresCNC: row.requires_cnc === true,
@@ -202,27 +202,51 @@ export const partsService = {
 
     const variantIds = variants.map((v) => v.id);
 
-    // Load all part_materials: variant-level and part-level (part_id set, variant null)
-    const { data: allMaterialsData, error: matErr } = await supabase
-      .from('part_materials')
-      .select('*');
-    if (matErr) throw matErr;
-    const allMaterials = allMaterialsData ?? [];
-
-    // Part-level materials: part_id = id and no variant
     type PartMaterialRow = Record<string, unknown> & {
       part_id?: string;
       part_variant_id?: string;
       variant_id?: string;
       inventory_id?: string;
     };
+
+    let allMaterials: PartMaterialRow[] = [];
+    try {
+      const joined = variantIds.join(',');
+      const filterParts = [`part_id.eq.${id}`];
+      if (variantIds.length > 0) {
+        filterParts.push(`part_variant_id.in.(${joined})`);
+      }
+
+      let { data, error } = await supabase
+        .from('part_materials')
+        .select('*')
+        .or(filterParts.join(','));
+
+      // Retry with legacy column name if part_variant_id doesn't exist
+      if (error && variantIds.length > 0) {
+        const legacyFilter = [`part_id.eq.${id}`, `variant_id.in.(${joined})`];
+        const retry = await supabase.from('part_materials').select('*').or(legacyFilter.join(','));
+        data = retry.data;
+        error = retry.error;
+      }
+
+      if (error) throw error;
+      allMaterials = (data ?? []) as PartMaterialRow[];
+    } catch (matError) {
+      console.warn('Failed to load part materials:', matError);
+      part.materials = [];
+      for (const v of part.variants) v.materials = [];
+      const drawings = await this.getPartDrawings(id);
+      part.drawingAttachments = drawings;
+      part.drawingAttachment = drawings[0] ?? null;
+      return part;
+    }
+
     const hasVariants = variantIds.length > 0;
     const partLevelRows = allMaterials.filter((r: PartMaterialRow) => {
       const partId = r.part_id;
       const variantId = r.part_variant_id ?? r.variant_id;
       if (partId !== id) return false;
-      // No-variant master parts: treat any part_id-linked row as part-level source.
-      // This recovers legacy rows that may still have a variant link populated.
       if (!hasVariants) return true;
       return !variantId;
     });
@@ -799,6 +823,14 @@ export const partsService = {
 
     let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
 
+    // DB has both quantity and quantity_per_unit columns — satisfy both NOT NULL constraints
+    if (error && error.code === '23502') {
+      row.quantity = quantityPerUnit;
+      const result = await supabase.from('part_materials').insert(row).select('*').single();
+      data = result.data;
+      error = result.error;
+    }
+
     // Retry with legacy schema (variant_id, quantity) on unknown column or 400
     const isSchemaError =
       error &&
@@ -926,6 +958,13 @@ export const partsService = {
         usage_type: 'per_set',
       };
       let { data, error } = await supabase.from('part_materials').insert(row).select('*').single();
+      // DB has both quantity and quantity_per_unit columns — satisfy both NOT NULL constraints
+      if (error && error.code === '23502') {
+        row.quantity = quantity;
+        const result = await supabase.from('part_materials').insert(row).select('*').single();
+        data = result.data;
+        error = result.error;
+      }
       if (
         error &&
         (error.code === '42703' ||
@@ -1164,8 +1203,7 @@ export const partsService = {
             )
             .in('status', ['paid', 'projectCompleted'])
             .is('part_id', null)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .order('due_date', { ascending: false }) as any;
+            .order('due_date', { ascending: false }) as unknown as typeof query;
         }
       } catch {
         // Column doesn't exist, continue without part_id filter

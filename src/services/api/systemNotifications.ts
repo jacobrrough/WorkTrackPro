@@ -1,4 +1,8 @@
-import type { SystemNotification, SystemNotificationType } from '../../core/types';
+import type {
+  NotificationPreferences,
+  SystemNotification,
+  SystemNotificationType,
+} from '../../core/types';
 import { supabase } from './supabaseClient';
 
 function mapRow(row: Record<string, unknown>): SystemNotification {
@@ -102,6 +106,23 @@ export const systemNotificationService = {
       return null;
     }
     return mapRow(result);
+  },
+
+  async createNotificationIfEnabled(
+    preferences: NotificationPreferences | null,
+    data: {
+      userId: string;
+      type: SystemNotificationType;
+      title: string;
+      message: string;
+      link?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<SystemNotification | null> {
+    if (preferences && preferences.in_app[data.type] === false) {
+      return null;
+    }
+    return this.createNotification(data);
   },
 
   async notifyMention(data: {

@@ -10,6 +10,7 @@ interface ScannerScreenProps {
   jobs: Job[];
   inventory: InventoryItem[];
   onNavigate: (view: ViewState, id?: string) => void;
+  onBack?: () => void;
   onUpdateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
   onUpdateInventoryItem: (
     id: string,
@@ -27,6 +28,7 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
   jobs,
   inventory,
   onNavigate,
+  onBack,
   onUpdateJob,
   onUpdateInventoryItem,
   onRefreshJobs,
@@ -124,7 +126,7 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
       <header className="safe-area-top flex shrink-0 items-center justify-between border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
         <button
           type="button"
-          onClick={() => onNavigate('dashboard')}
+          onClick={() => (onBack ? onBack() : onNavigate('dashboard'))}
           className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
           aria-label="Back to home"
         >

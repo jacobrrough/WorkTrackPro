@@ -19,18 +19,17 @@ create table if not exists public.deliveries (
 do $$
 begin
   if not exists (select 1 from pg_indexes where indexname = 'idx_deliveries_job') then
-    create index idx_deliveries_job on public.deliveries(job_id);
+    create index if not exists idx_deliveries_job on public.deliveries(job_id);
   end if;
   if not exists (select 1 from pg_indexes where indexname = 'idx_deliveries_date') then
-    create index idx_deliveries_date on public.deliveries(delivered_at desc);
+    create index if not exists idx_deliveries_date on public.deliveries(delivered_at desc);
   end if;
   if not exists (
     select 1 from pg_constraint
     where conname = 'deliveries_job_number_unique'
     and conrelid = 'public.deliveries'::regclass
   ) then
-    alter table public.deliveries
-    add constraint deliveries_job_number_unique unique (job_id, delivery_number);
+    alter table public.deliveries add constraint deliveries_job_number_unique unique (job_id, delivery_number);
   end if;
 end $$;
 

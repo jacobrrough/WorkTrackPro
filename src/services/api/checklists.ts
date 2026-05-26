@@ -205,18 +205,29 @@ export const checklistHistoryService = {
       return [];
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data ?? []).map((row: any) => ({
+    interface JoinedRow {
+      id: string;
+      checklist_id: string;
+      user_id: string;
+      item_index: number;
+      item_text: string | null;
+      checked: boolean;
+      created_at: string;
+      checklists: { job_id: string; status: string };
+      profiles: { name: string | null; initials: string | null } | null;
+    }
+    const rows = (data ?? []) as unknown as JoinedRow[];
+    return rows.map((row) => ({
       id: row.id,
       checklist: row.checklist_id,
       user: row.user_id,
-      userName: row.profiles?.name,
-      userInitials: row.profiles?.initials,
+      userName: row.profiles?.name ?? undefined,
+      userInitials: row.profiles?.initials ?? undefined,
       itemIndex: row.item_index,
       itemText: row.item_text ?? '',
       checked: row.checked,
       timestamp: row.created_at,
-      status: row.checklists?.status,
+      status: row.checklists?.status as JobStatus | undefined,
     }));
   },
 

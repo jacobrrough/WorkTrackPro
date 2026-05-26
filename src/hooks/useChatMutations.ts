@@ -54,7 +54,15 @@ export function useChatMutations() {
           messageType: 'text',
         });
         msg.decryptedContent = plaintext;
-        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', conversationId] });
+        queryClient.setQueryData<{ pages: Message[][]; pageParams: unknown[] }>(
+          ['chat', 'messages', conversationId],
+          (old) => {
+            if (!old) return old;
+            const firstPage = old.pages[0] ?? [];
+            if (firstPage.some((m) => m.id === msg.id)) return old;
+            return { ...old, pages: [[msg, ...firstPage], ...old.pages.slice(1)] };
+          }
+        );
         queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
         return msg;
       } catch (e) {
@@ -106,7 +114,15 @@ export function useChatMutations() {
         });
 
         msg.decryptedContent = metadata;
-        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', conversationId] });
+        queryClient.setQueryData<{ pages: Message[][]; pageParams: unknown[] }>(
+          ['chat', 'messages', conversationId],
+          (old) => {
+            if (!old) return old;
+            const firstPage = old.pages[0] ?? [];
+            if (firstPage.some((m) => m.id === msg.id)) return old;
+            return { ...old, pages: [[msg, ...firstPage], ...old.pages.slice(1)] };
+          }
+        );
         queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
         return msg;
       } catch (e) {

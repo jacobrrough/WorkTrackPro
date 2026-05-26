@@ -52,11 +52,13 @@ export const authService = {
 
     if (!session?.user) return null;
     const { data: profile, error: profileError } = await withTimeout(
-      supabase
-        .from('profiles')
-        .select('id, email, name, initials, is_admin, is_approved')
-        .eq('id', session.user.id)
-        .maybeSingle(),
+      Promise.resolve(
+        supabase
+          .from('profiles')
+          .select('id, email, name, initials, is_admin, is_approved')
+          .eq('id', session.user.id)
+          .maybeSingle()
+      ),
       5000
     );
     if (profileError) {

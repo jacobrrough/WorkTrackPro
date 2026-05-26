@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { InventoryItem, Job, ViewState } from '@/core/types';
+import { allowMaterialAllocation } from '@/lib/inventoryCalculations';
 
 interface JobInventoryProps {
   job: Job;
@@ -31,6 +32,7 @@ export default function JobInventory({
   onAddInventory,
   onRemoveInventory,
 }: JobInventoryProps) {
+  const canAllocate = allowMaterialAllocation(job.status);
   const [showAddInventory, setShowAddInventory] = useState(false);
   const [selectedInventory, setSelectedInventory] = useState<string>('');
   const [inventoryQty, setInventoryQty] = useState('1');
@@ -75,7 +77,13 @@ export default function JobInventory({
           {currentUserIsAdmin && (
             <button
               onClick={() => setShowAddInventory(true)}
-              className="min-h-11 px-2 text-xs font-bold text-primary"
+              disabled={!canAllocate}
+              title={
+                !canAllocate
+                  ? 'Materials can only be added while the job is in production'
+                  : undefined
+              }
+              className="min-h-11 px-2 text-xs font-bold text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-sm">add</span>
               Add
@@ -89,7 +97,7 @@ export default function JobInventory({
               inventory_2
             </span>
             <p className="text-sm text-slate-400">No materials assigned</p>
-            {currentUserIsAdmin && (
+            {currentUserIsAdmin && canAllocate && (
               <button
                 onClick={() => setShowAddInventory(true)}
                 className="mt-2 min-h-11 px-2 text-sm font-bold text-primary"
@@ -180,7 +188,7 @@ export default function JobInventory({
                           ) : (
                             <span
                               onClick={(e) => {
-                                if (currentUserIsAdmin && item.id) {
+                                if (currentUserIsAdmin && canAllocate && item.id) {
                                   e.stopPropagation();
                                   e.preventDefault();
                                   setEditingMaterialQty(item.id);
@@ -188,11 +196,13 @@ export default function JobInventory({
                                 }
                               }}
                               className={
-                                currentUserIsAdmin
+                                currentUserIsAdmin && canAllocate
                                   ? '-mx-2 -my-1 inline-block cursor-pointer rounded px-2 py-1 transition-colors hover:bg-primary/10 hover:text-primary hover:underline'
                                   : ''
                               }
-                              title={currentUserIsAdmin ? 'Click to edit quantity' : ''}
+                              title={
+                                currentUserIsAdmin && canAllocate ? 'Click to edit quantity' : ''
+                              }
                             >
                               {item.quantity}
                             </span>

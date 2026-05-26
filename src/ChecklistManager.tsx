@@ -173,6 +173,22 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
     }
   };
 
+  const handleToggleItemMaterialCheck = async (itemId: string) => {
+    if (!editingChecklist) return;
+    const updatedItems = editingChecklist.items.map((item) =>
+      item.id === itemId ? { ...item, isMaterialCheck: !item.isMaterialCheck } : item
+    );
+    try {
+      await checklistService.update(editingChecklist.id, { items: updatedItems });
+      const updated = { ...editingChecklist, items: updatedItems };
+      setEditingChecklist(updated);
+      setChecklists(checklists.map((c) => (c.id === updated.id ? updated : c)));
+    } catch (error) {
+      console.error('Failed to update item:', error);
+      showToast('Failed to update item', 'error');
+    }
+  };
+
   const handleDeleteChecklist = async (checklistId: string) => {
     if (!confirm('Delete this checklist? This cannot be undone.')) return;
 
@@ -342,6 +358,21 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                             className="w-full border-none bg-transparent text-sm text-white outline-none"
                           />
                         </div>
+                        <button
+                          onClick={() => handleToggleItemMaterialCheck(item.id)}
+                          title={
+                            item.isMaterialCheck
+                              ? 'Material check gate: ON'
+                              : 'Material check gate: OFF'
+                          }
+                          className={
+                            item.isMaterialCheck
+                              ? 'text-primary'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }
+                        >
+                          <span className="material-symbols-outlined text-sm">inventory_2</span>
+                        </button>
                         <button
                           onClick={() => handleDeleteItem(item.id)}
                           className="text-red-400 hover:text-red-300"

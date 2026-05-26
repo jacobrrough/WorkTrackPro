@@ -20,6 +20,7 @@ interface BoardColumnHeaderProps {
   column: BoardColumn;
   cardCount: number;
   readOnly?: boolean;
+  onAddCard?: () => void;
   onRename: (name: string) => void;
   onChangeColor: (color: string) => void;
   onDelete: () => void;
@@ -29,6 +30,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
   column,
   cardCount,
   readOnly,
+  onAddCard,
   onRename,
   onChangeColor,
   onDelete,
@@ -90,7 +92,9 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
           {column.name}
         </span>
       )}
-      <span className="text-xs text-slate-500">{cardCount}</span>
+      <span className="rounded-sm bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
+        {cardCount}
+      </span>
       {!readOnly && (
         <div className="relative" ref={menuRef}>
           <button
@@ -101,7 +105,19 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
             <span className="material-symbols-outlined text-base">more_vert</span>
           </button>
           {showMenu && (
-            <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded border border-white/10 bg-surface-dark py-1 shadow-lg">
+            <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded border border-white/10 bg-surface-dark py-1 shadow-lg">
+              {onAddCard && (
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onAddCard();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-300 hover:bg-white/10"
+                >
+                  <span className="material-symbols-outlined text-base">add</span>
+                  Add card
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowMenu(false);

@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import AllocateToJobModal from './AllocateToJobModal';
 
-const INVENTORY_LIST_SCROLL_KEY = 'inventory-list';
 import {
   InventoryFilters,
   InventoryTab,
@@ -24,10 +24,7 @@ interface InventoryMainViewProps {
   filters: InventoryFilters;
   onFiltersChange: (patch: Partial<InventoryFilters>) => void;
   onAddItem: () => void;
-  onCreateItem?: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
-  onReloadInventory?: () => Promise<void>;
   onOpenDetail: (itemId: string) => void;
-  onKanbanView?: () => void;
   onQuickAdjust: (item: InventoryItem, delta: number) => Promise<void>;
   onMarkOrdered?: (itemId: string, quantity: number) => Promise<boolean>;
   onReceiveOrder?: (itemId: string, quantity: number) => Promise<boolean>;
@@ -59,9 +56,7 @@ export default function InventoryMainView({
   filters,
   onFiltersChange,
   onAddItem,
-  onCreateItem,
   onOpenDetail,
-  onKanbanView,
   onQuickAdjust,
   onMarkOrdered,
   onReceiveOrder,
@@ -71,9 +66,7 @@ export default function InventoryMainView({
 }: InventoryMainViewProps) {
   const { showToast } = useToast();
   const { state: navState, updateState } = useNavigation();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollPositionsRef = useRef(navState.scrollPositions);
-  scrollPositionsRef.current = navState.scrollPositions;
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore('inventory-list');
 
   const [tab, setTabState] = useState<InventoryTab>(
     () => (navState.inventoryTab as InventoryTab) || 'allParts'
@@ -87,13 +80,6 @@ export default function InventoryMainView({
   const [orderModalMode, setOrderModalMode] = useState<'add' | 'receive' | null>(null);
   const [orderModalQty, setOrderModalQty] = useState(0);
   const [rowMenuItemId, setRowMenuItemId] = useState<string | null>(null);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickAddName, setQuickAddName] = useState('');
-  const [quickAddCategory, setQuickAddCategory] = useState<InventoryCategory>('material');
-  const [quickAddStock, setQuickAddStock] = useState(0);
-  const [quickAddUnit, setQuickAddUnit] = useState('');
-  const [quickAddSaving, setQuickAddSaving] = useState(false);
-
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
   const baseFiltered = useMemo(
     () =>
@@ -107,7 +93,9 @@ export default function InventoryMainView({
     if (tab === 'allParts') return baseFiltered;
     if (tab === 'needsReordering') {
       return baseFiltered.filter(
-        (item) => computeStock(item, calculateAvailable, calculateAllocated).needsReorder
+        (item) =>
+          computeStock(item, calculateAvailable, calculateAllocated).needsReorder &&
+          (item.onOrder ?? 0) <= 0
       );
     }
     if (tab === 'lowStock') {
@@ -125,31 +113,11 @@ export default function InventoryMainView({
     let lowStock = 0;
     for (const item of baseFiltered) {
       const stock = computeStock(item, calculateAvailable, calculateAllocated);
-      if (stock.needsReorder) needsReorder += 1;
+      if (stock.needsReorder && (item.onOrder ?? 0) <= 0) needsReorder += 1;
       if (stock.lowStock || stock.available <= 0) lowStock += 1;
     }
     return { total: baseFiltered.length, needsReorder, lowStock };
   }, [baseFiltered, calculateAllocated, calculateAvailable]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const saved = scrollPositionsRef.current[INVENTORY_LIST_SCROLL_KEY] ?? 0;
-    el.scrollTop = saved;
-  }, []);
-
-  const handleScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const next = el.scrollTop;
-    if ((scrollPositionsRef.current[INVENTORY_LIST_SCROLL_KEY] ?? 0) === next) return;
-    updateState({
-      scrollPositions: {
-        ...scrollPositionsRef.current,
-        [INVENTORY_LIST_SCROLL_KEY]: next,
-      },
-    });
-  };
 
   const handleQuickAdjust = async (item: InventoryItem, delta: number) => {
     const next = Math.max(0, item.inStock + delta);
@@ -347,24 +315,6 @@ export default function InventoryMainView({
             <h1 className="text-xl font-bold text-white">Parts Inventory</h1>
           </div>
           <div className="flex gap-2">
-            {onKanbanView && (
-              <button
-                type="button"
-                onClick={onKanbanView}
-                className="min-h-[44px] rounded-sm border border-white/20 bg-white/5 px-3 text-xs font-bold text-slate-300"
-              >
-                Kanban
-              </button>
-            )}
-            {onCreateItem && (
-              <button
-                type="button"
-                onClick={() => setShowQuickAdd(true)}
-                className="min-h-[44px] rounded-sm border border-primary/40 bg-primary/20 px-3 text-xs font-bold text-primary"
-              >
-                Quick add
-              </button>
-            )}
             <button
               type="button"
               onClick={exportCsv}
@@ -649,123 +599,6 @@ export default function InventoryMainView({
             onAllocateToJob(jobId, allocatingItem.id, quantity, notes)
           }
         />
-      )}
-
-      {showQuickAdd && onCreateItem && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
-            <h3 className="mb-3 text-lg font-bold text-white">Quick add part</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Name *</label>
-                <input
-                  type="text"
-                  value={quickAddName}
-                  onChange={(e) => setQuickAddName(e.target.value)}
-                  placeholder="Part name"
-                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Category</label>
-                <select
-                  value={quickAddCategory}
-                  onChange={(e) => setQuickAddCategory(e.target.value as InventoryCategory)}
-                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
-                >
-                  {CATEGORY_OPTIONS.filter((c) => c !== 'all').map((cat) => (
-                    <option key={cat} value={cat}>
-                      {getCategoryDisplayName(cat)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-400">
-                    Initial stock
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={quickAddStock}
-                    onChange={(e) => setQuickAddStock(Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-400">Unit *</label>
-                  <input
-                    type="text"
-                    value={quickAddUnit}
-                    onChange={(e) => setQuickAddUnit(e.target.value)}
-                    placeholder="ea, ft, lbs"
-                    className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={quickAddSaving || !quickAddName.trim() || !quickAddUnit.trim()}
-                onClick={async () => {
-                  if (!quickAddName.trim() || !quickAddUnit.trim()) {
-                    showToast('Name and unit are required', 'warning');
-                    return;
-                  }
-                  setQuickAddSaving(true);
-                  try {
-                    const created = await onCreateItem({
-                      name: quickAddName.trim(),
-                      category: quickAddCategory,
-                      inStock: quickAddStock,
-                      unit: quickAddUnit.trim(),
-                    });
-                    if (created) {
-                      showToast('Part added', 'success');
-                      setShowQuickAdd(false);
-                      setQuickAddName('');
-                      setQuickAddCategory('material');
-                      setQuickAddStock(0);
-                      setQuickAddUnit('');
-                    } else {
-                      showToast('Failed to add part', 'error');
-                    }
-                  } finally {
-                    setQuickAddSaving(false);
-                  }
-                }}
-                className="min-h-[44px] flex-1 rounded-sm bg-primary px-3 font-bold text-white disabled:opacity-50"
-              >
-                {quickAddSaving ? 'Creating...' : 'Create'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickAdd(false);
-                  onAddItem();
-                }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm font-bold text-slate-300"
-              >
-                Full form
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickAdd(false);
-                  setQuickAddName('');
-                  setQuickAddCategory('material');
-                  setQuickAddStock(0);
-                  setQuickAddUnit('');
-                }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 font-bold text-slate-300"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {orderModalItem && orderModalMode && (

@@ -1,6 +1,6 @@
 /**
- * Labor hours suggestion from similar jobs.
- * Used by Create Job and Job Detail edit forms to suggest expected time.
+ * Labor hours utilities: planned-hours extraction, shift-hour calculation,
+ * and similar-job suggestions used by Create Job and Job Detail forms.
  */
 
 import { Job } from '@/core/types';

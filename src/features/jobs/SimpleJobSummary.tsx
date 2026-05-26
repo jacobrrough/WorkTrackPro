@@ -77,7 +77,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   };
 
   const handleChecklistComplete = async () => {
-    await advanceJobToNextStatus(job.id, job.status);
+    await advanceJobToNextStatus(job.id);
     await onReloadJob?.();
   };
 
@@ -172,6 +172,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
             jobId={job.id}
             jobStatus={job.status}
             currentUser={currentUser}
+            jobInventoryItems={job.inventoryItems}
             compact={false}
             onChecklistComplete={handleChecklistComplete}
           />

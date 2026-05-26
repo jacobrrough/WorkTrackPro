@@ -4,14 +4,51 @@ import { systemNotificationService } from '@/services/api/systemNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SystemNotification, SystemNotificationType, ViewState } from '@/core/types';
 
-const TYPE_LABELS: Record<SystemNotificationType, string> = {
-  mention: 'Mention',
+const TYPE_LABELS: Partial<Record<SystemNotificationType, string>> = {
+  // Jobs & Boards
   status_change: 'Status',
   assignment: 'Assigned',
   unassignment: 'Removed',
-  low_stock: 'Low stock',
   rush: 'Rush',
   overdue: 'Overdue',
+  comment_mention: 'Mention',
+  checklist_complete: 'Checklist',
+  delivery_update: 'Delivery',
+  variant_update: 'Variant',
+  // Inventory
+  low_stock: 'Low Stock',
+  critical_stock: 'Critical',
+  allocation_complete: 'Allocated',
+  allocation_reversal: 'Reversed',
+  reorder_point_hit: 'Reorder',
+  // Time Clock
+  shift_edit_approved: 'Shift Edit',
+  shift_edit_requested: 'Shift Request',
+  clock_anomaly: 'Clock Alert',
+  lunch_break_reminder: 'Lunch',
+  // Chat
+  chat_mention: 'Chat Mention',
+  new_direct_message: 'DM',
+  thread_reply: 'Reply',
+  // Admin
+  new_user_pending_approval: 'New User',
+  user_approved: 'Approved',
+  user_rejected: 'Rejected',
+  proposal_submitted: 'Proposal',
+  // Quotes
+  new_customer_proposal: 'Proposal',
+  quote_assigned: 'Quote',
+  quote_updated: 'Quote Update',
+  // Deliveries
+  delivery_scheduled: 'Scheduled',
+  delivery_completed: 'Delivered',
+  delivery_delayed: 'Delayed',
+  // System
+  daily_summary: 'Summary',
+  system_alert: 'Alert',
+  maintenance_notice: 'Maintenance',
+  // Legacy
+  mention: 'Mention',
   delivery: 'Delivery',
   po_received: 'PO Received',
 };
@@ -83,15 +120,28 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
         <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-sm border border-white/10 bg-[#1a1122] shadow-xl">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
             <span className="text-sm font-bold text-white">Notifications</span>
-            {notifications.some((n) => !n.readAt) && (
+            <div className="flex items-center gap-2">
+              {notifications.some((n) => !n.readAt) && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleMarkAllRead}
-                className="text-xs text-primary hover:underline"
+                onClick={() => {
+                  setOpen(false);
+                  onNavigate?.('notification-settings' as ViewState);
+                }}
+                className="flex size-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Notification settings"
               >
-                Mark all read
+                <span className="material-symbols-outlined text-base">settings</span>
               </button>
-            )}
+            </div>
           </div>
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
@@ -107,7 +157,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   }`}
                 >
                   <span className="text-xs font-bold uppercase text-primary">
-                    {TYPE_LABELS[n.type]}
+                    {TYPE_LABELS[n.type] ?? n.type.replace(/_/g, ' ')}
                   </span>
                   <span className="text-sm text-white">{n.message}</span>
                 </button>

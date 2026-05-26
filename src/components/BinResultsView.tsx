@@ -37,43 +37,50 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
   onAddJobToBin,
 }) => {
   const { showToast } = useToast();
-  const [clearingBinForId, setClearingBinForId] = useState<string | null>(null);
+  const [clearingJobIds, setClearingJobIds] = useState<Set<string>>(new Set());
+  const [clearingInventoryIds, setClearingInventoryIds] = useState<Set<string>>(new Set());
 
   const bin = binLocation.trim();
   const jobsAtBin = jobs.filter((j) => (j.binLocation ?? '').trim() === bin);
   const inventoryAtBin = inventory.filter((i) => (i.binLocation ?? '').trim() === bin);
 
   const handleClearJobBin = async (jobId: string) => {
-    setClearingBinForId(jobId);
+    setClearingJobIds((prev) => new Set(prev).add(jobId));
     try {
       const ok = await onUpdateJob(jobId, { binLocation: undefined });
-      if (ok) {
-        showToast('Removed from bin', 'success');
-        await onRefreshJobs();
-      } else {
-        showToast('Failed to remove from bin', 'error');
-      }
-    } catch {
+      showToast(ok ? 'Removed from bin' : 'Failed to remove from bin', ok ? 'success' : 'error');
+    } catch (err) {
+      console.error('[BinResultsView] clear job bin failed:', err);
       showToast('Failed to remove from bin', 'error');
     } finally {
-      setClearingBinForId(null);
+      setClearingJobIds((prev) => {
+        const next = new Set(prev);
+        next.delete(jobId);
+        return next;
+      });
+      onRefreshJobs().catch((err) =>
+        console.error('[BinResultsView] refresh jobs after clear failed:', err)
+      );
     }
   };
 
   const handleClearInventoryBin = async (itemId: string) => {
-    setClearingBinForId(itemId);
+    setClearingInventoryIds((prev) => new Set(prev).add(itemId));
     try {
       const ok = await onUpdateInventoryItem(itemId, { binLocation: undefined });
-      if (ok) {
-        showToast('Removed from bin', 'success');
-        await onRefreshInventory();
-      } else {
-        showToast('Failed to remove from bin', 'error');
-      }
-    } catch {
+      showToast(ok ? 'Removed from bin' : 'Failed to remove from bin', ok ? 'success' : 'error');
+    } catch (err) {
+      console.error('[BinResultsView] clear inventory bin failed:', err);
       showToast('Failed to remove from bin', 'error');
     } finally {
-      setClearingBinForId(null);
+      setClearingInventoryIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+      onRefreshInventory().catch((err) =>
+        console.error('[BinResultsView] refresh inventory after clear failed:', err)
+      );
     }
   };
 
@@ -118,45 +125,34 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                     Jobs
                   </h3>
                   <ul className="space-y-1">
-                    {jobsAtBin.map((j) => (
-                      <li
-                        key={j.id}
-                        className="flex items-center gap-3 rounded border border-white/10 bg-white/5 p-2"
-                      >
-                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked
-                            onChange={() => handleClearJobBin(j.id)}
-                            disabled={clearingBinForId === j.id}
-                            className="size-5 rounded border-white/20"
-                          />
-                          <span
-                            className="min-w-0 flex-1 truncate text-white"
-                            onClick={(e) => {
-                              if ((e.target as HTMLElement).tagName !== 'INPUT') {
-                                onNavigate('job-detail', j.id);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ')
-                                onNavigate('job-detail', j.id);
-                            }}
-                            role="button"
-                            tabIndex={0}
+                    {jobsAtBin.map((j) => {
+                      const isClearing = clearingJobIds.has(j.id);
+                      return (
+                        <li
+                          key={j.id}
+                          className="flex items-center gap-3 rounded border border-white/10 bg-white/5 p-2"
+                        >
+                          <button
+                            type="button"
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                            onClick={() => handleClearJobBin(j.id)}
+                            disabled={isClearing}
                           >
-                            #{formatJobCode(j.jobCode)} – {getJobDisplayName(j)}
-                          </span>
-                        </label>
-                        <span className="material-symbols-outlined text-primary" aria-hidden>
-                          chevron_right
-                        </span>
-                      </li>
-                    ))}
+                            <span className="min-w-0 flex-1 truncate text-white">
+                              #{formatJobCode(j.jobCode)} – {getJobDisplayName(j)}
+                            </span>
+                            <span
+                              className="material-symbols-outlined shrink-0 text-slate-500"
+                              aria-hidden
+                            >
+                              {isClearing ? 'hourglass_empty' : 'remove_circle'}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    Uncheck to remove from bin. Tap row to open job.
-                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">Tap to remove from bin.</p>
                 </section>
               )}
               {inventoryAtBin.length > 0 && (
@@ -175,7 +171,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                             type="checkbox"
                             checked
                             onChange={() => handleClearInventoryBin(item.id)}
-                            disabled={clearingBinForId === item.id}
+                            disabled={clearingInventoryIds.has(item.id)}
                             className="size-5 rounded border-white/20"
                           />
                           <span

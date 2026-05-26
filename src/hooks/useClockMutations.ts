@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ClockPunchResult } from '@/core/clockPunch';
-import type { JobStatus, Shift } from '@/core/types';
+import type { Shift } from '@/core/types';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 import { isAuthError } from '@/lib/authErrors';
 import { enqueueClockPunch } from '@/lib/offlineQueue';
 import { shiftService } from '@/services/api/shifts';
+import { jobService } from '@/services/api/jobs';
+import { isConsumedStatus } from '@/lib/inventoryCalculations';
 
 export interface UseClockMutationsParams {
   currentUser: { id: string } | null;
@@ -14,8 +16,12 @@ export interface UseClockMutationsParams {
   activeShift: Shift | null;
   refreshShifts: () => Promise<void>;
   refreshJobs: () => Promise<void>;
-  updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>;
   onOfflinePunchEnqueued: () => void;
+  showToast?: (
+    message: string,
+    type: 'info' | 'success' | 'error' | 'warning',
+    duration?: number
+  ) => void;
 }
 
 const success = (): ClockPunchResult => ({ ok: true, queued: false });
@@ -28,8 +34,8 @@ export function useClockMutations({
   activeShift,
   refreshShifts,
   refreshJobs,
-  updateJobStatus,
   onOfflinePunchEnqueued,
+  showToast,
 }: UseClockMutationsParams) {
   const queryClient = useQueryClient();
 
@@ -64,9 +70,103 @@ export function useClockMutations({
       const applyJobProgressAfterClockIn = async () => {
         await refreshShifts();
         const job = jobs.find((j) => j.id === jobId);
-        const shouldMoveToInProgress = job?.status === 'pending' || job?.status === 'rush';
-        if (shouldMoveToInProgress) {
-          await updateJobStatus(jobId, 'inProgress');
+        const cachedStatus = job?.status;
+        // Enter the live-check path when the cached status is pending/rush OR when the job
+        // isn't in the local cache yet (e.g. just created by another session). For every
+        // other cached status (inProgress, onHold, qualityControl…) we skip the transition.
+        const shouldCheckLive =
+          cachedStatus === 'pending' || cachedStatus === 'rush' || job === undefined;
+        if (shouldCheckLive) {
+          // Guard against offline-replay phantom restore: re-fetch current status from DB
+          // before issuing the transition. A stale punch replayed after reconnect could
+          // otherwise call updateJobStatus('inProgress') on an already-finished job,
+          // which would trigger the DB trigger to restore (undo the deduction of) inStock.
+          let liveStatus: string | null;
+          try {
+            liveStatus = await jobService.getJobStatus(jobId);
+          } catch {
+            // Network/DB error — be conservative: skip the transition rather than
+            // risk a phantom restore on a job that may have already been finished.
+            console.warn(
+              'Clock in: getJobStatus failed; skipping inProgress transition for job',
+              jobId
+            );
+            showToast?.(
+              'Clocked in. Could not verify job status — please check the job manually.',
+              'warning'
+            );
+            await refreshJobs();
+            return;
+          }
+          if (liveStatus !== null && isConsumedStatus(liveStatus)) {
+            // Job is already finished/delivered — inform the worker and skip.
+            showToast?.('Clocked in. Job is already finished — status unchanged.', 'info');
+            await refreshJobs();
+            return;
+          }
+          // liveStatus === null means the job row is gone — unusual; skip conservatively.
+          if (liveStatus === null) {
+            showToast?.(
+              'Clocked in. Job not found in database — please check with an admin.',
+              'warning'
+            );
+            await refreshJobs();
+            return;
+          }
+
+          // Already in progress (moved by another session between cache read and now).
+          // updateJobStatusConditional would succeed as a no-op (WHEN clause suppresses
+          // trigger) but would show a misleading "Job is now In Progress" toast.
+          if (liveStatus === 'inProgress') {
+            showToast?.('Clocked in. Job is already In Progress.', 'info');
+            await refreshJobs();
+            return;
+          }
+
+          // Live status is not pending or rush — don't force a transition. This guards
+          // the job-not-in-cache path: if the job was in qualityControl, onHold, or any
+          // other non-pending status, we should not move it to inProgress on clock-in.
+          if (liveStatus !== 'pending' && liveStatus !== 'rush') {
+            await refreshJobs();
+            return;
+          }
+
+          // Use a conditional UPDATE (WHERE status = liveStatus) to close the TOCTOU
+          // window between getJobStatus and this write. If the status changed in that
+          // gap (e.g., admin finished the job), 0 rows match — the trigger never fires,
+          // and no phantom stock restore occurs.
+          let transitioned = false;
+          let updateFailed = false;
+          try {
+            transitioned = await jobService.updateJobStatusConditional(
+              jobId,
+              'inProgress',
+              liveStatus
+            );
+          } catch (err) {
+            // Network/RLS/DB error — not a benign 0-row race.
+            updateFailed = true;
+            console.error('Clock in: conditional status update threw', err);
+          }
+          if (updateFailed) {
+            // Real error (network, permissions) — warn the worker, do not imply a benign race.
+            showToast?.(
+              'Clocked in, but job status could not be updated — please check the job manually.',
+              'warning'
+            );
+          } else if (!transitioned) {
+            // 0 rows matched — status changed between our fetch and write.
+            // Most likely a benign race (admin finished or reassigned the job).
+            showToast?.(
+              'Clocked in. Job status was just updated — check the current status.',
+              'info'
+            );
+          } else {
+            // Success — job moved to In Progress.
+            showToast?.('Clocked in. Job is now In Progress.', 'success');
+          }
+          // Always refresh — so the worker sees the current status, not the stale cache.
+          await refreshJobs();
         } else {
           await refreshJobs();
         }
@@ -128,7 +228,7 @@ export function useClockMutations({
         return failure(true);
       }
     },
-    [currentUser, shifts, refreshShifts, refreshJobs, jobs, updateJobStatus, onOfflinePunchEnqueued]
+    [currentUser, shifts, refreshShifts, refreshJobs, jobs, onOfflinePunchEnqueued, showToast]
   );
 
   const clockOut = useCallback(async (): Promise<ClockPunchResult> => {
