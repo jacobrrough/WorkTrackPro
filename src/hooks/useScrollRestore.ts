@@ -55,12 +55,13 @@ export function useScrollRestore<T extends HTMLElement = HTMLDivElement>(
   }, [key, axis, ready]);
 
   useLayoutEffect(() => {
+    const element = ref.current;
+
     return () => {
-      const el = ref.current;
-      if (!el) return;
+      if (!element) return;
       const next = { ...posRef.current };
-      if (axis !== 'x') next[Y_KEY(key)] = el.scrollTop;
-      if (axis !== 'y') next[X_KEY(key)] = el.scrollLeft;
+      if (axis !== 'x') next[Y_KEY(key)] = element.scrollTop;
+      if (axis !== 'y') next[X_KEY(key)] = element.scrollLeft;
       updateState({ scrollPositions: next });
     };
   }, [key, axis, updateState]);

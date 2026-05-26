@@ -4,6 +4,7 @@ import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
 import { AppRouter } from './AppRouter';
 import { useAppNavigate } from './hooks/useAppNavigate';
+import ErrorBoundary from './ErrorBoundary';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
@@ -164,18 +165,44 @@ export default function App() {
   return (
     <>
       {currentUser && (
-        <CommandPalette
-          open={commandPaletteOpen}
-          onOpenChange={setCommandPaletteOpen}
-          jobs={jobs}
-          inventory={inventory}
-          users={users}
-          onNavigate={appNavigate}
-        />
+        <ErrorBoundary
+          fallback={
+            <div className="fixed bottom-4 right-4 rounded-sm border border-red-500/30 bg-background-dark/95 px-3 py-2 text-sm text-red-400">
+              Command palette unavailable
+            </div>
+          }
+        >
+          <CommandPalette
+            open={commandPaletteOpen}
+            onOpenChange={setCommandPaletteOpen}
+            jobs={jobs}
+            inventory={inventory}
+            users={users}
+            onNavigate={appNavigate}
+          />
+        </ErrorBoundary>
       )}
-      <AppShell>
-        <AppRouter />
-      </AppShell>
+      <ErrorBoundary
+        fallback={
+          <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark p-4 text-center">
+            <p className="text-lg font-semibold text-white">Something went wrong</p>
+            <p className="mt-2 max-w-md text-sm text-slate-400">
+              An unexpected error occurred. Please refresh the page. If the problem persists, contact your administrator.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-6 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
+            >
+              Refresh Page
+            </button>
+          </div>
+        }
+      >
+        <AppShell>
+          <AppRouter />
+        </AppShell>
+      </ErrorBoundary>
     </>
   );
 }

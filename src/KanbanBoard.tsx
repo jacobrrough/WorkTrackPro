@@ -781,7 +781,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         container.scrollTop = savedPosition;
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardViewKey, horizontalScrollKey, columns]);
 
   // Throttled horizontal scroll handler for board container (persist position only; no drag bar)
@@ -818,12 +817,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // mutation phase, before passive effects fire. useLayoutEffect cleanup runs during
   // commit while refs are still valid.
   useLayoutEffect(() => {
+    const boardContainer = boardContainerRef.current;
+    const columnsMap = columnRefs.current;
+
     return () => {
       const flushed: Record<string, number> = { ...scrollPositionsRef.current };
-      if (boardContainerRef.current) {
-        flushed[horizontalScrollKey] = boardContainerRef.current.scrollLeft;
+      if (boardContainer) {
+        flushed[horizontalScrollKey] = boardContainer.scrollLeft;
       }
-      for (const [columnId, el] of Object.entries(columnRefs.current)) {
+      for (const [columnId, el] of Object.entries(columnsMap)) {
         if (el) flushed[`${boardViewKey}-${columnId}`] = el.scrollTop;
       }
       updateState({ scrollPositions: flushed });
