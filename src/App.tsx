@@ -187,7 +187,8 @@ export default function App() {
           <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark p-4 text-center">
             <p className="text-lg font-semibold text-white">Something went wrong</p>
             <p className="mt-2 max-w-md text-sm text-slate-400">
-              An unexpected error occurred. Please refresh the page. If the problem persists, contact your administrator.
+              An unexpected error occurred. Please refresh the page. If the problem persists,
+              contact your administrator.
             </p>
             <button
               type="button"

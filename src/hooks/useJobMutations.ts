@@ -185,7 +185,8 @@ export function useJobMutations({
       // Lightweight development-time invariant guard for the complex job/parts/variant model.
       // Helps surface cases where legacy single-part fields and the newer multi-part (job_parts) data are sent together.
       if (import.meta.env.DEV) {
-        const hasLegacy = data.partId != null || data.dashQuantities != null || data.partNumber != null;
+        const hasLegacy =
+          data.partId != null || data.dashQuantities != null || data.partNumber != null;
         const hasMultiPart = Array.isArray(data.parts) && data.parts.length > 0;
         if (hasLegacy && hasMultiPart) {
           console.warn(
