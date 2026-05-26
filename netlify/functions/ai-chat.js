@@ -21,7 +21,10 @@ async function verifyAdminUser(event) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
   if (authError || !user) return null;
 
   const { data: profile, error: profileError } = await supabase
@@ -85,11 +88,18 @@ export async function handler(event) {
     };
   }
 
+  // Build the endpoint URL — AI_MODEL_URL may or may not include the path already.
+  const baseUrl = aiModelUrl.replace(/\/+$/, '');
+  const endpoint = baseUrl.endsWith('/v1/chat/completions')
+    ? baseUrl
+    : `${baseUrl}/v1/chat/completions`;
+
+  let response;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
 
-    const response = await fetch(`${aiModelUrl}/v1/chat/completions`, {
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -103,25 +113,6 @@ export async function handler(event) {
     });
 
     clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      console.error('AI model error:', response.status, errorText);
-      return {
-        statusCode: 502,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'AI model returned an error', status: response.status }),
-      };
-    }
-
-    const result = await response.json();
-    const reply = result.choices?.[0]?.message?.content ?? '';
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ ok: true, reply }),
-    };
   } catch (error) {
     if (error.name === 'AbortError') {
       return {
@@ -130,11 +121,49 @@ export async function handler(event) {
         body: JSON.stringify({ error: 'AI model request timed out' }),
       };
     }
-    console.error('ai-chat unexpected error:', error);
+    console.error('ai-chat fetch error:', error.message || error);
     return {
-      statusCode: 500,
+      statusCode: 502,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Unexpected error contacting AI service' }),
+      body: JSON.stringify({
+        error: 'Unable to reach AI service',
+        detail: error.message || 'Connection failed',
+      }),
     };
   }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    console.error('AI model error:', response.status, errorText);
+    return {
+      statusCode: 502,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        error: 'AI model returned an error',
+        status: response.status,
+        detail: errorText.slice(0, 200),
+      }),
+    };
+  }
+
+  let result;
+  try {
+    result = await response.json();
+  } catch (parseError) {
+    const raw = await response.text().catch(() => '');
+    console.error('ai-chat JSON parse error:', parseError.message, 'body:', raw.slice(0, 500));
+    return {
+      statusCode: 502,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'AI service returned invalid response' }),
+    };
+  }
+
+  const reply = result.choices?.[0]?.message?.content ?? '';
+
+  return {
+    statusCode: 200,
+    headers: corsHeaders,
+    body: JSON.stringify({ ok: true, reply }),
+  };
 }

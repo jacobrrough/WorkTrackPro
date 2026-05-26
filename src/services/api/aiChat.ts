@@ -31,7 +31,8 @@ export const aiChatService = {
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Request failed' }));
-      return { ok: false, error: body.error || `HTTP ${response.status}` };
+      const detail = body.detail ? ` (${body.detail})` : '';
+      return { ok: false, error: (body.error || `HTTP ${response.status}`) + detail };
     }
 
     const data = await response.json();
