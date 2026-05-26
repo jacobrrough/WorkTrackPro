@@ -44,10 +44,17 @@ const NotificationSettingsView = lazyWithRetry(
 
 // ─── Shared not-found fallback ───────────────────────────────────────────────
 
-function NotFound({ message, onBack }: { message: string; onBack: () => void }) {
+function NotFound({ message, description, onBack }: { 
+  message: string; 
+  description?: string; 
+  onBack: () => void 
+}) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4 text-center">
       <p className="text-slate-400">{message}</p>
+      {description && (
+        <p className="max-w-sm text-xs text-slate-500">{description}</p>
+      )}
       <button
         type="button"
         onClick={onBack}
@@ -159,8 +166,23 @@ function JobDetailRoute() {
   }, [detailJob, jobId, queryClient, navigation]);
 
   const job = detailJob ?? jobs.find((j) => j.id === jobId);
-  if (isPending && !job) return null;
-  if (!job) return <NotFound message="Job not found." onBack={back} />;
+  if (isPending && !job) {
+    // Better UX for direct deep links: show lightweight loading instead of blank screen
+    return (
+      <div className="flex h-[100dvh] items-center justify-center bg-background-dark">
+        <div className="text-slate-400">Loading job…</div>
+      </div>
+    );
+  }
+  if (!job) {
+    return (
+      <NotFound 
+        message="Job not found." 
+        description="The job may have been deleted, completed, or you may no longer have access."
+        onBack={back} 
+      />
+    );
+  }
 
   return (
     <JobDetail
@@ -261,8 +283,22 @@ function InventoryDetailRoute() {
   });
 
   const item = props.inventory.find((i) => i.id === itemId);
-  if (isPending && !item) return null;
-  if (!item) return <NotFound message="Item not found." onBack={back} />;
+  if (isPending && !item) {
+    return (
+      <div className="flex h-[100dvh] items-center justify-center bg-background-dark">
+        <div className="text-slate-400">Loading item…</div>
+      </div>
+    );
+  }
+  if (!item) {
+    return (
+      <NotFound 
+        message="Item not found." 
+        description="The inventory item may have been deleted or you may no longer have access."
+        onBack={back} 
+      />
+    );
+  }
   return (
     <>
       <Inventory
@@ -320,7 +356,15 @@ function BoardCardDetailRoute() {
   const { boardId, cardId } = useParams<{ boardId: string; cardId: string }>();
   const appNavigate = useAppNavigate();
   const back = useInAppBack(boardId ? `/app/boards/${boardId}` : '/app/boards');
-  if (!boardId || !cardId) return <NotFound message="Card not found." onBack={back} />;
+  if (!boardId || !cardId) {
+    return (
+      <NotFound 
+        message="Card not found." 
+        description="The card may have been deleted, moved, or you may no longer have access."
+        onBack={back} 
+      />
+    );
+  }
   return (
     <CardDetailView boardId={boardId} cardId={cardId} onNavigate={appNavigate} onBack={back} />
   );
