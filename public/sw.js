@@ -1,7 +1,10 @@
-/* Minimal service worker for WorkTrack Pro PWA installability.
- * Caches the app shell so the app can be installed and works offline for repeat visits.
+/* Service worker for WorkTrack Pro PWA.
+ * - App shell: cached on install for offline navigation
+ * - Hashed assets (/assets/*): cache-first (Vite fingerprints them, so they're immutable)
+ * - Navigation requests: network-first, fallback to cached shell
  */
-const CACHE_NAME = 'worktrack-pro-v2';
+const CACHE_NAME = 'worktrack-pro-v3';
+const ASSETS_CACHE = 'worktrack-pro-assets-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -16,7 +19,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys
+          .filter((k) => k !== CACHE_NAME && k !== ASSETS_CACHE)
+          .map((k) => caches.delete(k))
       )
     )
   );
@@ -24,12 +29,31 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.mode !== 'navigate' && event.request.url.startsWith('http')) {
+  const url = new URL(event.request.url);
+
+  // Hashed static assets (JS chunks, CSS, images) — cache-first, immutable
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.open(ASSETS_CACHE).then((cache) =>
+        cache.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(event.request).then((response) => {
+            if (response.ok) cache.put(event.request, response.clone());
+            return response;
+          });
+        })
+      )
+    );
     return;
   }
-  event.respondWith(
-    fetch(event.request).catch(() =>
-      caches.match(event.request).then((r) => r || caches.match('/index.html'))
-    )
-  );
+
+  // Navigation requests — network-first, fallback to cached shell
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then((r) => r || caches.match('/index.html'))
+      )
+    );
+    return;
+  }
 });

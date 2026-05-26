@@ -73,7 +73,9 @@ import JobStatusHistory from '@/features/jobs/components/JobStatusHistory';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import { LaborSuggestion } from '@/features/jobs/components/LaborSuggestion';
-import { MachineCompletionBadge } from '@/features/jobs/components/MachineCompletionBadge';
+import { MachineCompletionSection } from '@/features/jobs/components/MachineCompletionSection';
+import { ProgressEstimateInput } from '@/features/jobs/components/ProgressEstimateInput';
+import { VariantBreakdown } from '@/features/jobs/components/VariantBreakdown';
 import ConfirmDialog from './ConfirmDialog';
 import PartSelector from '@/components/PartSelector';
 
@@ -2755,19 +2757,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     )}
                 </div>
               )}
-              {laborBreakdownByDash && laborBreakdownByDash.entries.length > 0 && (
-                <div className="mb-3 space-y-0.5">
-                  {laborBreakdownByDash.entries.map(
-                    ({ suffix, qty, laborHoursTotal, cncHoursTotal, printer3DHoursTotal }) => (
-                      <div key={suffix} className="flex justify-between text-[10px] text-slate-400">
-                        {suffix} ×{qty} = L {(laborHoursTotal ?? 0).toFixed(1)}h / CNC{' '}
-                        {(cncHoursTotal ?? 0).toFixed(1)}h / 3D{' '}
-                        {(printer3DHoursTotal ?? 0).toFixed(1)}h
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
+              <VariantBreakdown entries={laborBreakdownByDash?.entries ?? []} />
               <div className="border-t border-white/10 pt-2">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">
@@ -3035,25 +3025,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2">
                     <span className="text-[10px] text-slate-500">Progress estimate %</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
+                    <ProgressEstimateInput
                       value={progressEstimateInput}
-                      onChange={(e) => setProgressEstimateInput(e.target.value)}
-                      className="h-7 w-14 rounded border border-white/20 bg-white/10 px-1 text-right text-xs text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={async () => {
+                      onChange={setProgressEstimateInput}
+                      onSave={async () => {
                         const v = progressEstimateInput.trim();
                         const num =
                           v === '' ? null : Math.max(0, Math.min(100, parseFloat(v) || 0));
                         try {
-                          await onUpdateJob(job.id, {
-                            progressEstimatePercent: num,
-                          });
-                          // Do not refetch jobs here – cache merge in updateJob already updated list + detail; refetch can overwrite with server response that omits progress_estimate_percent
+                          await onUpdateJob(job.id, { progressEstimatePercent: num });
                           showToast(
                             num != null ? 'Progress estimate set' : 'Progress estimate cleared',
                             'success'
@@ -3062,26 +3042,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           showToast('Failed to update progress estimate', 'error');
                         }
                       }}
-                      className="rounded border border-primary/40 bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/30"
-                    >
-                      Set
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
+                      onClear={async () => {
                         setProgressEstimateInput('');
                         try {
                           await onUpdateJob(job.id, { progressEstimatePercent: null });
-                          // Do not refetch – cache merge keeps UI in sync; refetch can revert if server omits column
                           showToast('Progress estimate cleared', 'success');
                         } catch {
                           showToast('Failed to clear', 'error');
                         }
                       }}
-                      className="rounded border border-white/20 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/10"
-                    >
-                      Clear
-                    </button>
+                    />
                   </div>
                 </div>
               )}
@@ -3187,44 +3157,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
 
               {currentUser.isAdmin && isCncRequired && (
-                <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <MachineCompletionBadge type="cnc" completedAt={job.cncCompletedAt} />
-                    <button
-                      type="button"
-                      onClick={handleToggleCncDone}
-                      className={`h-11 touch-manipulation rounded-sm border px-3 text-xs font-semibold ${
-                        job.cncCompletedAt
-                          ? 'border-green-500/40 bg-green-500/20 text-green-200'
-                          : 'border-amber-500/40 bg-amber-500/20 text-amber-200'
-                      }`}
-                    >
-                      {job.cncCompletedAt ? 'Mark Pending' : 'Mark Done'}
-                    </button>
-                  </div>
-                </div>
+                <MachineCompletionSection
+                  type="cnc"
+                  completedAt={job.cncCompletedAt}
+                  onToggle={handleToggleCncDone}
+                  canToggle={currentUser.isAdmin && isCncRequired}
+                />
               )}
 
               {currentUser.isAdmin && is3DPrintRequired && (
-                <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <MachineCompletionBadge
-                      type="printer3d"
-                      completedAt={job.printer3DCompletedAt}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleToggle3DPrintDone}
-                      className={`h-11 touch-manipulation rounded-sm border px-3 text-xs font-semibold ${
-                        job.printer3DCompletedAt
-                          ? 'border-green-500/40 bg-green-500/20 text-green-200'
-                          : 'border-blue-500/40 bg-blue-500/20 text-blue-200'
-                      }`}
-                    >
-                      {job.printer3DCompletedAt ? 'Mark Pending' : 'Mark Done'}
-                    </button>
-                  </div>
-                </div>
+                <MachineCompletionSection
+                  type="printer3d"
+                  completedAt={job.printer3DCompletedAt}
+                  onToggle={handleToggle3DPrintDone}
+                  canToggle={currentUser.isAdmin && is3DPrintRequired}
+                />
               )}
 
               {/* Bin Location - Compact */}
