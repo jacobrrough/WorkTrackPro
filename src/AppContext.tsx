@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -23,7 +24,7 @@ import { withComputedInventory } from '@/lib/inventoryState';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
 import { syncOfflineClockQueue } from '@/lib/syncOfflineClockQueue';
-import { subscriptions } from '@/services/api/subscriptions';
+import { subscriptions, broadcastChange } from '@/services/api/subscriptions';
 import { createRealtimeDebouncer } from '@/lib/realtimeDebounce';
 import { useToast } from '@/Toast';
 
@@ -48,8 +49,12 @@ export interface AppContextType {
   createJob: (data: Partial<Job>) => Promise<Job | null>;
   updateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
   deleteJob: (jobId: string) => Promise<boolean>;
-  updateJobStatus: (jobId: string, status: JobStatus) => Promise<boolean>;
-  advanceJobToNextStatus: (jobId: string, currentStatus: JobStatus) => Promise<boolean>;
+  updateJobStatus: (
+    jobId: string,
+    status: JobStatus,
+    expectedCurrentStatus?: JobStatus
+  ) => Promise<boolean>;
+  advanceJobToNextStatus: (jobId: string) => Promise<boolean>;
   addJobComment: (jobId: string, text: string) => Promise<Comment | null>;
   getJobByCode: (code: number) => Promise<Job | null>;
   clockIn: (jobId: string) => Promise<ClockPunchResult>;
@@ -108,6 +113,23 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { activeShift, activeJob } = useActiveShift(currentUser, queries.shifts, queries.jobs);
   const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
+  // Wrapped refresh functions: broadcast to all other clients before refreshing locally.
+  const { refreshJobs, refreshShifts, refreshInventory } = queries;
+  const refreshJobsAndBroadcast = useCallback(async () => {
+    await refreshJobs();
+    broadcastChange('jobs');
+  }, [refreshJobs]);
+
+  const refreshShiftsAndBroadcast = useCallback(async () => {
+    await refreshShifts();
+    broadcastChange('shifts');
+  }, [refreshShifts]);
+
+  const refreshInventoryAndBroadcast = useCallback(async () => {
+    await refreshInventory();
+    broadcastChange('inventory');
+  }, [refreshInventory]);
+
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
@@ -116,11 +138,10 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
-    inventory: queries.inventory,
     currentUser,
-    refreshJobs: queries.refreshJobs,
-    refreshInventory: queries.refreshInventory,
-    refreshShifts: queries.refreshShifts,
+    refreshJobs: refreshJobsAndBroadcast,
+    refreshInventory: refreshInventoryAndBroadcast,
+    refreshShifts: refreshShiftsAndBroadcast,
     showToast,
   });
 
@@ -129,26 +150,26 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     shifts: queries.shifts,
     jobs: queries.jobs,
     activeShift,
-    refreshShifts: queries.refreshShifts,
-    refreshJobs: queries.refreshJobs,
-    updateJobStatus: jobMutations.updateJobStatus,
+    refreshShifts: refreshShiftsAndBroadcast,
+    refreshJobs: refreshJobsAndBroadcast,
     onOfflinePunchEnqueued: () => setOfflineQueueVersion((v) => v + 1),
+    showToast,
   });
 
   const inventoryMutations = useInventoryMutations({
     inventory: queries.inventory,
     jobs: queries.jobs,
     currentUser,
-    refreshJobs: queries.refreshJobs,
-    refreshInventory: queries.refreshInventory,
+    refreshJobs: refreshJobsAndBroadcast,
+    refreshInventory: refreshInventoryAndBroadcast,
     calculateAvailable,
     calculateAllocated,
     showToast,
   });
 
   const attachmentMutations = useAttachmentMutations({
-    refreshJobs: queries.refreshJobs,
-    refreshInventory: queries.refreshInventory,
+    refreshJobs: refreshJobsAndBroadcast,
+    refreshInventory: refreshInventoryAndBroadcast,
   });
 
   // Offline clock queue: sync on reconnect, tab focus, and periodic while pending
@@ -202,6 +223,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     // refreshInventory() is NOT called here — the subscribeToJobRelated
     // channel handles job_inventory changes with debouncing.
     const unsubJobs = subscriptions.subscribeToJobs((action, scalars) => {
+      if (typeof scalars.id !== 'string') return;
       if (action === 'create') {
         void queries.refreshJob(scalars.id);
       } else if (action === 'update') {
@@ -217,42 +239,44 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         }
       } else if (action === 'delete') {
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? prev.filter((j) => j.id !== scalars.id) : []
+          prev ? prev.filter((j) => j.id !== scalars.id) : prev
         );
         queryClient.removeQueries({ queryKey: ['job', scalars.id] });
       }
     });
 
-    // ── Shifts channel (unchanged) ─────────────────────────────────
+    // ── Shifts channel ─────────────────────────────────────────────
     const unsubShifts = subscriptions.subscribeToShifts((action, record) => {
+      if (typeof record.id !== 'string') return;
       if (action === 'create') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
           prev ? [record as Shift, ...prev] : [record as Shift]
         );
       } else if (action === 'update') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? prev.map((s) => (s.id === record.id ? (record as Shift) : s)) : []
+          prev ? prev.map((s) => (s.id === record.id ? record : s)) : prev
         );
       } else if (action === 'delete') {
         queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? prev.filter((s) => s.id !== record.id) : []
+          prev ? prev.filter((s) => s.id !== record.id) : prev
         );
       }
     });
 
-    // ── Inventory channel (unchanged) ──────────────────────────────
+    // ── Inventory channel ──────────────────────────────────────────
     const unsubInventory = subscriptions.subscribeToInventory((action, record) => {
+      if (typeof record.id !== 'string') return;
       if (action === 'create') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
           prev ? [record as InventoryItem, ...prev] : [record as InventoryItem]
         );
       } else if (action === 'update') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.map((i) => (i.id === record.id ? (record as InventoryItem) : i)) : []
+          prev ? prev.map((i) => (i.id === record.id ? record : i)) : prev
         );
       } else if (action === 'delete') {
         queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.filter((i) => i.id !== record.id) : []
+          prev ? prev.filter((i) => i.id !== record.id) : prev
         );
       }
     });
@@ -289,6 +313,34 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       debounce('parts-jobs', () => void queries.refreshJobs());
     });
 
+    // ── Users/profiles table ───────────────────────────────────────
+    // Note: DELETE payloads only carry the PK (id) from payload.old — other
+    // fields on `record` are defaults and must not be read in the delete branch.
+    const unsubUsers = subscriptions.subscribeToUsers((action, record) => {
+      if (typeof record.id !== 'string') return;
+      if (action === 'create') {
+        queryClient.setQueryData<User[]>(['users'], (prev) => {
+          if (!prev) return [record];
+          return prev.some((u) => u.id === record.id) ? prev : [record, ...prev];
+        });
+      } else if (action === 'update') {
+        queryClient.setQueryData<User[]>(['users'], (prev) =>
+          prev ? prev.map((u) => (u.id === record.id ? record : u)) : prev
+        );
+      } else if (action === 'delete') {
+        queryClient.setQueryData<User[]>(['users'], (prev) =>
+          prev ? prev.filter((u) => u.id !== record.id) : prev
+        );
+      }
+    });
+
+    // ── Broadcast: cross-client invalidation ──────────────────────────
+    const unsubChanges = subscriptions.subscribeToChanges((entity) => {
+      void queryClient.invalidateQueries({ queryKey: [entity] });
+      // 'boards' list and individual board caches share different root keys
+      if (entity === 'boards') void queryClient.invalidateQueries({ queryKey: ['board'] });
+    });
+
     return () => {
       unsubJobs();
       unsubShifts();
@@ -296,6 +348,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       unsubJobRelated();
       unsubBoards();
       unsubParts();
+      unsubUsers();
+      unsubChanges();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, queryClient, queries.refreshJob, queries.refreshJobs, queries.refreshInventory]);

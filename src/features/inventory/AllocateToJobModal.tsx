@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { InventoryItem, Job } from '@/core/types';
 import { formatJobCode } from '@/lib/formatJob';
-import { isAllocationActiveStatus } from '@/lib/inventoryCalculations';
+import { allowMaterialAllocation } from '@/lib/inventoryCalculations';
 
 interface AllocateToJobModalProps {
   item: InventoryItem;
@@ -24,7 +24,7 @@ export default function AllocateToJobModal({
   const [saving, setSaving] = useState(false);
 
   const activeJobs = useMemo(
-    () => jobs.filter((job) => isAllocationActiveStatus(job.status)),
+    () => jobs.filter((job) => allowMaterialAllocation(job.status)),
     [jobs]
   );
 

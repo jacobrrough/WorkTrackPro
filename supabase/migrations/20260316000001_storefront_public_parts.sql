@@ -14,12 +14,14 @@ set attachment_type = 'drawing'
 where part_id is not null and (attachment_type is null or attachment_type = 'general');
 
 -- 3) RLS: anon can read parts that are shown on store
+drop policy if exists "Anon read parts on store" on public.parts;
 create policy "Anon read parts on store"
 on public.parts for select
 to anon
 using (show_on_store = true);
 
 -- 4) RLS: anon can read part_variants for store parts (for variant pricing)
+drop policy if exists "Anon read part_variants for store parts" on public.part_variants;
 create policy "Anon read part_variants for store parts"
 on public.part_variants for select
 to anon
@@ -28,6 +30,7 @@ using (
 );
 
 -- 5) RLS: anon can read attachments that are product_image for store parts
+drop policy if exists "Anon read product_image attachments for store parts" on public.attachments;
 create policy "Anon read product_image attachments for store parts"
 on public.attachments for select
 to anon

@@ -4,25 +4,70 @@
  */
 import type { Job, InventoryItem } from '@/core/types';
 
+/**
+ * Statuses where a job's materials count as "allocated" (reserved from available stock).
+ * 'finished' excluded: once consumed the DB trigger decrements inStock, so the job no
+ * longer double-counts in the allocated calculation.
+ * 'onHold' included: a paused job still holds its reserved materials.
+ */
 export const ACTIVE_ALLOCATION_STATUSES: Set<string> = new Set([
   'pod',
   'rush',
   'pending',
   'inProgress',
   'qualityControl',
-  'finished',
+  'onHold',
 ]);
 
 export function isAllocationActiveStatus(status: string): boolean {
   return ACTIVE_ALLOCATION_STATUSES.has(status);
 }
 
-/** Statuses that allow writing job_inventory (allocate materials). Only PO'd and later. */
-export const ALLOW_MATERIAL_ALLOCATION_STATUSES: Set<string> = new Set([
-  'pod',
+/**
+ * Statuses where inStock has been permanently decremented (materials physically consumed).
+ * Includes all post-production finance states — stock was deducted at 'finished' and
+ * these states follow it, so they must also be treated as consumed to correctly trigger
+ * stock restoration on rework (is_consumed_status(OLD) AND is_production_status(NEW)).
+ */
+export const CONSUMED_STATUSES: Set<string> = new Set([
+  'finished',
+  'delivered',
   'waitingForPayment',
   'projectCompleted',
   'paid',
+]);
+
+export function isConsumedStatus(status: string): boolean {
+  return CONSUMED_STATUSES.has(status);
+}
+
+/**
+ * Statuses where a restore (rework) is valid when leaving a consumed state.
+ * 'onHold' excluded: finished→onHold is an admin pause, not a material return.
+ */
+export const PRODUCTION_STATUSES: Set<string> = new Set([
+  'pod',
+  'rush',
+  'pending',
+  'inProgress',
+  'qualityControl',
+]);
+
+export function isProductionStatus(status: string): boolean {
+  return PRODUCTION_STATUSES.has(status);
+}
+
+/**
+ * Statuses that allow writing job_inventory (allocate/edit materials).
+ * All active production statuses — rush jobs and mid-build adjustments are legitimate.
+ * Finance/post-production states excluded: materials already consumed by that point.
+ */
+export const ALLOW_MATERIAL_ALLOCATION_STATUSES: Set<string> = new Set([
+  'pod',
+  'rush',
+  'pending',
+  'inProgress',
+  'qualityControl',
 ]);
 
 export function allowMaterialAllocation(status: string): boolean {

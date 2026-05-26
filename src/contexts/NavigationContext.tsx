@@ -21,8 +21,6 @@ interface NavigationState {
   inventorySupplier: string;
   /** Inventory list active tab: allParts | needsReordering | lowStock | byBin */
   inventoryTab: string;
-  /** Inventory list view mode: list | kanban */
-  inventoryListView: 'list' | 'kanban';
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
   /** Custom ordering of dashboard quick-action keys. */
@@ -41,7 +39,6 @@ const defaultState: NavigationState = {
   inventoryCategory: 'all',
   inventorySupplier: 'all',
   inventoryTab: 'allParts',
-  inventoryListView: 'list',
   partsSearchTerm: '',
   quickActionOrder: [],
   hiddenQuickActions: [],
@@ -76,6 +73,14 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
       console.error('Failed to save navigation state:', error);
     }
   }, [state]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dashboardPrefs_updatedAt', new Date().toISOString());
+    } catch {
+      // best-effort timestamp
+    }
+  }, [state.quickActionOrder, state.hiddenQuickActions]);
 
   const updateState = useCallback((newState: Partial<NavigationState>) => {
     setState((prev) => ({ ...prev, ...newState }));

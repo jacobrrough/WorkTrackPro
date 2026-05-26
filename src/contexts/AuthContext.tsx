@@ -76,6 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<boolean> => {
+      // Sole cleanup point for the session-expiry flag. initApp bails without
+      // calling checkAuth when the flag is present; clearing it here unblocks
+      // normal auth flow on any subsequent page load after re-authentication.
+      sessionStorage.removeItem('wtp_session_expired');
       setAuthError(null);
       setIsLoading(true);
       try {
@@ -128,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Hard logout: used when the system forces a sign-out (idle timeout, token
   // refresh failure, or Supabase killing the session unexpectedly).
-  // Wipes login tokens from browser storage, then reloads the page so there
+  // Wipes login tokens from browser storage, then navigates to /app so there
   // is zero stale state left in memory. A flag in sessionStorage tells the
   // login screen to show "Your session expired."
   const hardLogout = useCallback(async () => {
@@ -140,8 +144,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await withTimeout(supabase.auth.signOut({ scope: 'local' }), 3000); // clears tokens from localStorage, no server call needed
     } catch (e) {
       console.warn('hardLogout: signOut failed, reloading anyway', e);
+      // signOut timed out — manually wipe Supabase auth keys so checkAuth
+      // cannot re-hydrate a stale session on the next page load.
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {
+        // ignore — storage may be unavailable in some environments
+      }
     } finally {
-      window.location.reload();
+      // Navigate to app root rather than reloading in place. reload() would
+      // re-enter whatever authenticated view the worker was on, hit a lazy
+      // Suspense boundary, and show a stuck "Loading view..." screen.
+      // replace('/app') lands at the root where the render guard catches it.
+      try {
+        window.location.replace('/app');
+      } catch {
+        reloadPending.current = false; // unblock retries if navigation fails
+        window.location.reload();
+      }
     }
   }, []);
 
@@ -155,6 +177,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initial auth check
   useEffect(() => {
     const initApp = async () => {
+      // If hardLogout set the expiry flag before navigating here, bail out
+      // immediately — do not call checkAuth. checkAuth could return a user
+      // from stale localStorage tokens (signOut may have timed out), which
+      // would flip !currentUser to true, bypass the render guard in App.tsx,
+      // and land on a lazy Suspense boundary → stuck "Loading view..." screen.
+      // login() is the sole point that clears the flag after re-authentication.
+      if (sessionStorage.getItem('wtp_session_expired')) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         const user = await authService.checkAuth();

@@ -89,6 +89,16 @@ A comprehensive business management application for small to medium manufacturin
 - Board selection from within Gmail sidebar
 - Full setup guide: `gmail-addon/README.md` + Netlify env vars (`GMAIL_ADDON_API_KEY`, optional `GMAIL_ADDON_USER_ID`)
 
+### Notifications & Preferences
+- Real-time in-app notification feed (job status, mentions, low stock, assignments, deliveries, chat, and more)
+- NotificationBell with unread badge, mark-read, and type-labeled dropdown
+- User-configurable notification preferences: per-type opt-in/out across 33 notification types in 8 groups
+- Server-side `should_notify()` gating on all Postgres triggers — notifications are only created when enabled
+- Settings UI with accordion groups, toggle switches, autosave with optimistic updates
+- Admin-only notification types hidden for non-admin users
+- Quick actions: Enable All, Disable All, Reset to Defaults
+- Email channel tab (coming soon)
+
 ### Other
 - Role-based access (Admin vs Employee); admin-only views guarded
 - User approval workflow: new accounts require admin approval
@@ -189,7 +199,7 @@ src/
 ├── lib/              # Utilities (timeUtils, inventoryCalculations, inventoryState, offlineQueue, exportCsv, partDistribution, partsCalculations, calculatePartQuote, jobProgress, formatJob, etc.)
 │   └── crypto/       # E2E encryption helpers (ECDH key generation, encrypt/decrypt, key cache)
 ├── components/       # Shared UI (Toast, ProtectedRoute, AdminRoute, NotificationBell, CommandPalette, QRScanner, etc.)
-├── contexts/         # Navigation, Settings, ClockIn, Notifications
+├── contexts/         # Navigation, Settings, ClockIn
 ├── core/             # types.ts, validation, imageHelper
 ├── features/         # Feature modules:
 │   ├── admin/        #   Parts management, calendar, admin settings

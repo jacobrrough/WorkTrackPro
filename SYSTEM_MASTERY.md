@@ -28,6 +28,9 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
   - 1:N to `messages.sender_id`
   - 1:N to `deliveries.created_by`
   - self-reference via `approved_by`
+- Triggers:
+  - `on_auth_user_created` → `handle_new_user()` (creates profile row)
+  - `trg_create_notification_preferences` → `create_default_notification_preferences()` (creates default prefs row after profile insert)
 
 ### Jobs, inventory, allocations
 
@@ -224,6 +227,14 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
   - `subscribeToConversationUpdates()` — conversation metadata
   - `subscribeToSystemNotifications()` — system notification events
 - `AppContext` applies in-memory updates and triggers inventory refresh on job changes for allocation consistency.
+- `useSystemNotificationSubscription` prepends new notifications to the infinite query cache and increments the unread count.
+
+### Notification preferences flow
+- `notificationPreferencesService` (`src/services/api/notificationPreferences.ts`) handles get/update with defaults merging.
+- `useNotificationPreferences` hook uses TanStack Query with 5-min stale time (prefs change rarely).
+- `useUpdateNotificationPreferences` uses optimistic mutation with rollback on error.
+- `createNotificationIfEnabled` in `systemNotificationService` provides client-side preference gating (in addition to server-side `should_notify()` in triggers).
+- Settings page accessible to all users via gear icon in NotificationBell dropdown → `notification-settings` view.
 
 ### TanStack Query and server state
 - Jobs, shifts, users, and inventory are fetched via `useQuery` in `AppContext` (query keys: `['jobs']`, `['shifts']`, `['users']`, `['inventory']`), enabled when the user is approved.

@@ -24,6 +24,7 @@ create index if not exists idx_part_revision_history_part on public.part_revisio
 create index if not exists idx_part_revision_history_changed_at on public.part_revision_history(changed_at desc);
 
 alter table public.part_revision_history enable row level security;
+drop policy if exists "Authenticated part_revision_history" on public.part_revision_history;
 create policy "Authenticated part_revision_history"
   on public.part_revision_history for all to authenticated using (true) with check (true);
 

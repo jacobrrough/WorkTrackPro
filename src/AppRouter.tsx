@@ -1,0 +1,560 @@
+// AppShell is provided by App.tsx — do NOT add AppShell inside any route wrapper.
+import { useCallback, useEffect, useMemo } from 'react';
+import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useApp } from './AppContext';
+import { useAppNavigate } from './hooks/useAppNavigate';
+import { useInAppBack } from './hooks/useInAppBack';
+import { useClockInByCode } from './hooks/useClockInByCode';
+import { AdminGuard } from './components/AdminGuard';
+import BottomNavigation from './BottomNavigation';
+import { jobService, inventoryService } from './pocketbase';
+import type { Job, ViewState } from './core/types';
+import { lazyWithRetry } from './lib/lazyWithRetry';
+
+const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
+const JobDetail = lazyWithRetry(() => import('./JobDetail'), 'JobDetail');
+const ClockInScreen = lazyWithRetry(() => import('./ClockInScreen'), 'ClockInScreen');
+const Inventory = lazyWithRetry(() => import('./Inventory'), 'Inventory');
+const KanbanBoard = lazyWithRetry(() => import('./KanbanBoard'), 'KanbanBoard');
+const Parts = lazyWithRetry(() => import('./features/admin/Parts'), 'Parts');
+const PartDetail = lazyWithRetry(() => import('./features/admin/PartDetail'), 'PartDetail');
+const AdminCreateJob = lazyWithRetry(() => import('./AdminCreateJob'), 'AdminCreateJob');
+const Quotes = lazyWithRetry(() => import('./Quotes'), 'Quotes');
+const Calendar = lazyWithRetry(() => import('./features/admin/Calendar'), 'Calendar');
+const TimeReports = lazyWithRetry(() => import('./TimeReports'), 'TimeReports');
+const AdminSettings = lazyWithRetry(
+  () => import('./features/admin/AdminSettings'),
+  'AdminSettings'
+);
+const TrelloImport = lazyWithRetry(() => import('./TrelloImport'), 'TrelloImport');
+const ScannerScreen = lazyWithRetry(() => import('./ScannerScreen'), 'ScannerScreen');
+const BoardList = lazyWithRetry(() => import('./features/boards/BoardList'), 'BoardList');
+const BoardView = lazyWithRetry(() => import('./features/boards/BoardView'), 'BoardView');
+const CardDetailView = lazyWithRetry(
+  () => import('./features/boards/CardDetailView'),
+  'CardDetailView'
+);
+const ChatView = lazyWithRetry(() => import('./features/chat/ChatView'), 'ChatView');
+const NotificationSettingsView = lazyWithRetry(
+  () => import('./features/notifications/NotificationSettingsView'),
+  'NotificationSettingsView'
+);
+
+// ─── Shared not-found fallback ───────────────────────────────────────────────
+
+function NotFound({ message, onBack }: { message: string; onBack: () => void }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4">
+      <p className="text-slate-400">{message}</p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
+      >
+        Back to Home
+      </button>
+    </div>
+  );
+}
+
+// ─── Shared inventory props ───────────────────────────────────────────────────
+// Avoids duplicating the 12-prop destructure across InventoryRoute and InventoryDetailRoute.
+
+function useInventoryRouteProps() {
+  const {
+    inventory,
+    jobs,
+    updateInventoryStock,
+    updateInventoryItem,
+    createInventory,
+    markInventoryOrdered,
+    receiveInventoryOrder,
+    addInventoryAttachment,
+    deleteInventoryAttachment,
+    refreshInventory,
+    currentUser,
+    calculateAvailable,
+    calculateAllocated,
+    allocateInventoryToJob,
+  } = useApp();
+  return {
+    inventory,
+    jobs,
+    isAdmin: currentUser?.isAdmin ?? false,
+    onUpdateStock: updateInventoryStock,
+    onUpdateItem: updateInventoryItem,
+    onCreateItem: createInventory,
+    onMarkOrdered: markInventoryOrdered,
+    onReceiveOrder: receiveInventoryOrder,
+    onAddAttachment: addInventoryAttachment,
+    onDeleteAttachment: deleteInventoryAttachment,
+    onReloadInventory: refreshInventory,
+    calculateAvailable,
+    calculateAllocated,
+    onAllocateToJob: allocateInventoryToJob,
+  };
+}
+
+// ─── Route wrappers ──────────────────────────────────────────────────────────
+
+function DashboardRoute() {
+  const appNavigate = useAppNavigate();
+  return (
+    <>
+      <Dashboard onNavigate={appNavigate} />
+      <BottomNavigation />
+    </>
+  );
+}
+
+function JobDetailRoute() {
+  const { jobId } = useParams<{ jobId: string }>();
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  const queryClient = useQueryClient();
+  const {
+    jobs,
+    activeShift,
+    clockIn,
+    clockOut,
+    inventory,
+    shifts,
+    addJobComment,
+    addJobInventory,
+    removeJobInventory,
+    updateJob,
+    deleteJob,
+    refreshJob,
+    currentUser,
+    addAttachment,
+    deleteAttachment,
+    updateAttachmentAdminOnly,
+    calculateAvailable,
+  } = useApp();
+
+  const { data: detailJob, isPending } = useQuery({
+    queryKey: ['job', jobId],
+    queryFn: () => jobService.getJobById(jobId!),
+    enabled: !!jobId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (detailJob && jobId) {
+      queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+        prev ? prev.map((j) => (j.id === jobId ? detailJob : j)) : [detailJob]
+      );
+    }
+  }, [detailJob, jobId, queryClient]);
+
+  const job = detailJob ?? jobs.find((j) => j.id === jobId);
+  if (isPending && !job) return null;
+  if (!job) return <NotFound message="Job not found." onBack={back} />;
+
+  return (
+    <JobDetail
+      job={job}
+      onNavigate={appNavigate}
+      onBack={back}
+      isClockedIn={activeShift?.job === job.id}
+      onClockIn={() => clockIn(job.id)}
+      onClockOut={clockOut}
+      activeShift={activeShift}
+      inventory={inventory}
+      jobs={jobs}
+      shifts={shifts}
+      onAddComment={addJobComment}
+      onAddInventory={addJobInventory}
+      onRemoveInventory={removeJobInventory}
+      onUpdateJob={updateJob}
+      onDeleteJob={deleteJob}
+      onReloadJob={() => refreshJob(job.id)}
+      currentUser={currentUser!}
+      onAddAttachment={addAttachment}
+      onDeleteAttachment={deleteAttachment}
+      onUpdateAttachmentAdminOnly={updateAttachmentAdminOnly}
+      calculateAvailable={calculateAvailable}
+    />
+  );
+}
+
+function ClockInRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  const { activeShift, activeJob, clockOut } = useApp();
+  const onClockInByCode = useClockInByCode();
+  return (
+    <>
+      <ClockInScreen
+        onNavigate={appNavigate}
+        onBack={back}
+        onClockInByCode={onClockInByCode}
+        activeShift={activeShift}
+        activeJob={activeJob}
+        onClockOut={clockOut}
+      />
+      <BottomNavigation />
+    </>
+  );
+}
+
+function ScannerRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  const { jobs, inventory, updateJob, updateInventoryItem, refreshJobs, refreshInventory } =
+    useApp();
+  // All outgoing navigation from the scanner replaces the scanner history entry
+  // so it never sits in the middle of the stack. Without this, scanning a job
+  // pushes /app/jobs/123 on top of /app/scanner — pressing back from the job
+  // returns to the scanner instead of wherever the user came from.
+  const navigateFromScanner = useCallback(
+    (view: ViewState, id?: string) => appNavigate(view, id, { replace: true }),
+    [appNavigate]
+  );
+  return (
+    <ScannerScreen
+      jobs={jobs}
+      inventory={inventory}
+      onNavigate={navigateFromScanner}
+      onBack={back}
+      onUpdateJob={updateJob}
+      onUpdateInventoryItem={updateInventoryItem}
+      onRefreshJobs={refreshJobs}
+      onRefreshInventory={refreshInventory}
+    />
+  );
+}
+
+function InventoryRoute() {
+  const appNavigate = useAppNavigate();
+  const props = useInventoryRouteProps();
+  return (
+    <>
+      <Inventory {...props} onNavigate={appNavigate} />
+      <BottomNavigation />
+    </>
+  );
+}
+
+function InventoryDetailRoute() {
+  const { itemId } = useParams<{ itemId: string }>();
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app/inventory');
+  const props = useInventoryRouteProps();
+
+  const { isPending } = useQuery({
+    queryKey: ['inventory-item', itemId],
+    queryFn: () => inventoryService.getByIds([itemId!]).then((r) => r[0] ?? null),
+    enabled: !!itemId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const item = props.inventory.find((i) => i.id === itemId);
+  if (isPending && !item) return null;
+  if (!item) return <NotFound message="Item not found." onBack={back} />;
+  return (
+    <>
+      <Inventory
+        {...props}
+        onNavigate={appNavigate}
+        initialItemId={itemId}
+        onBackFromDetail={back}
+      />
+      <BottomNavigation />
+    </>
+  );
+}
+
+// Shared KanbanBoard route — only boardType differs between shop and admin
+function KanbanBoardRoute({ boardType }: { boardType: 'shopFloor' | 'admin' }) {
+  const appNavigate = useAppNavigate();
+  const { jobs, shifts, deleteJob, deleteAttachment, currentUser, updateJobStatus, updateJob } =
+    useApp();
+  const isAdmin = currentUser?.isAdmin ?? false;
+  return (
+    <>
+      <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
+        <KanbanBoard
+          jobs={jobs}
+          shifts={shifts}
+          onNavigate={appNavigate}
+          onCreateJob={() => appNavigate('create-job')}
+          onDeleteJob={deleteJob}
+          onDeleteAttachment={deleteAttachment}
+          boardType={boardType}
+          isAdmin={isAdmin}
+          currentUser={currentUser!}
+          onUpdateJobStatus={updateJobStatus}
+          onUpdateJob={updateJob}
+        />
+      </div>
+      <BottomNavigation />
+    </>
+  );
+}
+
+function BoardsRoute() {
+  const appNavigate = useAppNavigate();
+  return <BoardList onNavigate={appNavigate} />;
+}
+
+function BoardDetailRoute() {
+  const { boardId } = useParams<{ boardId: string }>();
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app/boards');
+  return <BoardView boardId={boardId!} onNavigate={appNavigate} onBack={back} />;
+}
+
+function BoardCardDetailRoute() {
+  const { boardId, cardId } = useParams<{ boardId: string; cardId: string }>();
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack(boardId ? `/app/boards/${boardId}` : '/app/boards');
+  if (!boardId || !cardId) return <NotFound message="Card not found." onBack={back} />;
+  return (
+    <CardDetailView boardId={boardId} cardId={cardId} onNavigate={appNavigate} onBack={back} />
+  );
+}
+
+function PartsRoute() {
+  const appNavigate = useAppNavigate();
+  const { jobs, currentUser } = useApp();
+  return (
+    <Parts
+      jobs={jobs}
+      currentUser={currentUser!}
+      onNavigate={appNavigate}
+      onNavigateBack={() => appNavigate('dashboard')}
+    />
+  );
+}
+
+function PartDetailRoute() {
+  const { partId } = useParams<{ partId: string }>();
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app/parts');
+  const { jobs, shifts } = useApp();
+  return (
+    <PartDetail
+      partId={partId!}
+      jobs={jobs}
+      shifts={shifts}
+      onNavigate={appNavigate}
+      onNavigateBack={back}
+    />
+  );
+}
+
+function CreateJobRoute() {
+  const appNavigate = useAppNavigate();
+  const { createJob, users, currentUser, jobs, shifts } = useApp();
+  const existingJobCodes = useMemo(() => jobs.map((j) => j.jobCode), [jobs]);
+  return (
+    <AdminCreateJob
+      onCreate={createJob}
+      onNavigate={appNavigate}
+      users={users}
+      existingJobCodes={existingJobCodes}
+      currentUser={currentUser!}
+      jobs={jobs}
+      shifts={shifts}
+    />
+  );
+}
+
+function QuotesRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  const { jobs, inventory, shifts, currentUser } = useApp();
+  return (
+    <Quotes
+      jobs={jobs}
+      inventory={inventory}
+      shifts={shifts}
+      currentUser={currentUser!}
+      onNavigate={appNavigate}
+      onBack={back}
+    />
+  );
+}
+
+function TimeReportsRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  const [searchParams] = useSearchParams();
+  const initialJobId = searchParams.get('job') ?? undefined;
+  const { shifts, users, jobs, currentUser, refreshShifts } = useApp();
+  return (
+    <TimeReports
+      shifts={shifts}
+      users={users}
+      jobs={jobs}
+      currentUser={currentUser!}
+      onNavigate={appNavigate}
+      onBack={back}
+      onRefreshShifts={refreshShifts}
+      initialJobId={initialJobId}
+      readOnly={!currentUser?.isAdmin}
+    />
+  );
+}
+
+function CalendarRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  const { jobs, shifts, currentUser, refreshJobs, refreshShifts, updateJob } = useApp();
+  return (
+    <Calendar
+      jobs={jobs}
+      shifts={shifts}
+      currentUser={currentUser!}
+      onNavigate={appNavigate}
+      onBack={back}
+      refreshJobs={refreshJobs}
+      refreshShifts={refreshShifts}
+      onUpdateJob={updateJob}
+    />
+  );
+}
+
+function AdminSettingsRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  return <AdminSettings onNavigate={appNavigate} onBack={back} />;
+}
+
+function TrelloImportRoute() {
+  const appNavigate = useAppNavigate();
+  const { refreshJobs } = useApp();
+  return (
+    <div className="flex min-h-screen flex-col bg-background-dark">
+      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => appNavigate('dashboard')}
+          className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+        >
+          <span className="material-symbols-outlined">arrow_back</span>
+        </button>
+        <h1 className="text-lg font-bold text-white">Import Trello</h1>
+        <div className="size-10" />
+      </header>
+      <main className="flex-1 overflow-y-auto p-4">
+        <TrelloImport
+          onClose={() => appNavigate('dashboard')}
+          onImportComplete={() => {
+            refreshJobs();
+            appNavigate('dashboard');
+          }}
+        />
+      </main>
+    </div>
+  );
+}
+
+function ChatRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  return <ChatView onNavigate={appNavigate} onBack={back} />;
+}
+
+function ChatConversationRoute() {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app/chat');
+  return <ChatView conversationId={conversationId} onNavigate={appNavigate} onBack={back} />;
+}
+
+function NotificationSettingsRoute() {
+  const appNavigate = useAppNavigate();
+  const back = useInAppBack('/app');
+  return <NotificationSettingsView onNavigate={appNavigate} onBack={back} />;
+}
+
+// ─── Router root ─────────────────────────────────────────────────────────────
+
+export function AppRouter() {
+  return (
+    <Routes>
+      <Route path="/app" element={<DashboardRoute />} />
+      <Route
+        path="/app/jobs/new"
+        element={
+          <AdminGuard>
+            <CreateJobRoute />
+          </AdminGuard>
+        }
+      />
+      <Route path="/app/jobs/:jobId" element={<JobDetailRoute />} />
+      <Route path="/app/clock-in" element={<ClockInRoute />} />
+      <Route path="/app/scanner" element={<ScannerRoute />} />
+      <Route path="/app/inventory" element={<InventoryRoute />} />
+      <Route path="/app/inventory/:itemId" element={<InventoryDetailRoute />} />
+      <Route path="/app/board/shop" element={<KanbanBoardRoute boardType="shopFloor" />} />
+      <Route
+        path="/app/board/admin"
+        element={
+          <AdminGuard>
+            <KanbanBoardRoute boardType="admin" />
+          </AdminGuard>
+        }
+      />
+      <Route path="/app/boards" element={<BoardsRoute />} />
+      <Route path="/app/boards/:boardId" element={<BoardDetailRoute />} />
+      <Route path="/app/boards/:boardId/cards/:cardId" element={<BoardCardDetailRoute />} />
+      <Route
+        path="/app/parts"
+        element={
+          <AdminGuard>
+            <PartsRoute />
+          </AdminGuard>
+        }
+      />
+      <Route
+        path="/app/parts/:partId"
+        element={
+          <AdminGuard>
+            <PartDetailRoute />
+          </AdminGuard>
+        }
+      />
+      <Route
+        path="/app/quotes"
+        element={
+          <AdminGuard>
+            <QuotesRoute />
+          </AdminGuard>
+        }
+      />
+      <Route path="/app/time-reports" element={<TimeReportsRoute />} />
+      <Route
+        path="/app/calendar"
+        element={
+          <AdminGuard>
+            <CalendarRoute />
+          </AdminGuard>
+        }
+      />
+      <Route
+        path="/app/settings"
+        element={
+          <AdminGuard>
+            <AdminSettingsRoute />
+          </AdminGuard>
+        }
+      />
+      <Route
+        path="/app/import"
+        element={
+          <AdminGuard>
+            <TrelloImportRoute />
+          </AdminGuard>
+        }
+      />
+      <Route path="/app/chat" element={<ChatRoute />} />
+      <Route path="/app/chat/:conversationId" element={<ChatConversationRoute />} />
+      <Route path="/app/notifications/settings" element={<NotificationSettingsRoute />} />
+      <Route path="/app/*" element={<Navigate to="/app" replace />} />
+    </Routes>
+  );
+}

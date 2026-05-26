@@ -2,6 +2,7 @@ import type { Job, JobStatus, Comment, JobPartLink } from '../../core/types';
 import { supabase } from './supabaseClient';
 import { uploadAttachment, deleteAttachmentRecord, getAttachmentPublicUrl } from './storage';
 import { runMutationWithSchemaFallback } from './schemaCompat';
+import { isConsumedStatus } from '../../lib/inventoryCalculations';
 
 type SupabaseErrorLike = {
   code?: string;
@@ -403,6 +404,15 @@ async function fetchJobExpand(jobId: string): Promise<{
   ]);
 
   const job_inventory = (jiRes.data ?? []) as JobInventoryRow[];
+  if (comRes.error) {
+    console.error(
+      '[fetchJobExpand] comments query failed:',
+      comRes.error.message,
+      comRes.error.code,
+      comRes.error.hint,
+      { jobId }
+    );
+  }
   const commentsRaw = (comRes.data ?? []) as CommentRow[];
   const attachments = (attRes.data ?? []) as AttachmentRow[];
 
@@ -486,6 +496,15 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
   ]);
 
   const jobInventory = (jiRes.data ?? []) as JobInventoryRow[];
+  if (comRes.error) {
+    console.error(
+      '[fetchJobsExpandBatch] comments query failed:',
+      comRes.error.message,
+      comRes.error.code,
+      comRes.error.hint,
+      { jobIds }
+    );
+  }
   const commentsRaw = (comRes.data ?? []) as CommentRow[];
   const attachments = (attRes.data ?? []) as AttachmentRow[];
 
@@ -569,6 +588,23 @@ export const jobService = {
       }
     }
     return mapped;
+  },
+
+  /**
+   * Lightweight fetch — only reads the status column; avoids full expand cost.
+   * Throws on DB/network error so callers can distinguish a transient failure
+   * (throw) from a missing row (null). Callers should catch and treat errors
+   * conservatively (skip the action) rather than proceeding with stale state.
+   */
+  async getJobStatus(jobId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('status')
+      .eq('id', jobId)
+      .maybeSingle();
+    if (error) throw error; // network/DB failure — let caller decide
+    if (!data) return null; // row not found (deleted, RLS, etc.)
+    return (data as { status: string }).status;
   },
 
   async getJobById(jobId: string): Promise<Job | null> {
@@ -859,6 +895,39 @@ export const jobService = {
     return mapJobRow(updated as Record<string, unknown>, expand);
   },
 
+  /**
+   * Conditional status update — only writes if the job's current status matches
+   * `fromStatus`. Returns true if the row was updated, false if it was skipped
+   * (meaning the job's status had already changed). Used by the clock-in path to
+   * close the TOCTOU window between getJobStatus and the inProgress transition.
+   */
+  async updateJobStatusConditional(
+    jobId: string,
+    status: JobStatus,
+    fromStatus: string
+  ): Promise<boolean> {
+    const payload: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('jobs')
+      .update(payload)
+      .eq('id', jobId)
+      .eq('status', fromStatus)
+      .select('id')
+      .maybeSingle();
+    if (error) {
+      console.error('updateJobStatusConditional failed:', error.message, {
+        jobId,
+        status,
+        fromStatus,
+      });
+      throw error;
+    }
+    return data !== null; // null = 0 rows matched (status had already changed)
+  },
+
   async updateJobStatus(jobId: string, status: JobStatus): Promise<boolean> {
     const payload: Record<string, unknown> = {
       status,
@@ -870,7 +939,7 @@ export const jobService = {
     const { error } = await supabase.from('jobs').update(payload).eq('id', jobId);
     if (error) {
       console.error('updateJobStatus failed:', error.message, error.code, { jobId, status });
-      return false;
+      throw error;
     }
     return true;
   },
@@ -1053,7 +1122,13 @@ export const jobService = {
       .insert({ job_id: jobId, user_id: userId, text })
       .select('id, job_id, user_id, text, created_at')
       .single();
-    if (error) return null;
+    if (error) {
+      console.error('[addComment] insert failed:', error.message, error.code, error.hint, {
+        jobId,
+        userId,
+      });
+      throw error;
+    }
     const profiles = await supabase
       .from('profiles')
       .select('id, name, initials')
@@ -1073,11 +1148,21 @@ export const jobService = {
 
   async updateComment(commentId: string, text: string): Promise<boolean> {
     const { error } = await supabase.from('comments').update({ text }).eq('id', commentId);
+    if (error) {
+      console.error('[updateComment] failed:', error.message, error.code, error.hint, {
+        commentId,
+      });
+    }
     return !error;
   },
 
   async deleteComment(commentId: string): Promise<boolean> {
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (error) {
+      console.error('[deleteComment] failed:', error.message, error.code, error.hint, {
+        commentId,
+      });
+    }
     return !error;
   },
 
@@ -1087,6 +1172,19 @@ export const jobService = {
     quantity: number,
     unit: string
   ): Promise<boolean> {
+    // Service-layer guard: mirrors the DB trigger; gives UX a meaningful error message.
+    // DB trigger is the hard safety net; this provides a fast-path UX error before the insert.
+    const { data: jobRow, error: jobLookupError } = await supabase
+      .from('jobs')
+      .select('status')
+      .eq('id', jobId)
+      .maybeSingle();
+    if (jobLookupError) throw jobLookupError;
+    if (jobRow && isConsumedStatus(jobRow.status)) {
+      throw new Error(
+        `job_is_consumed: cannot allocate inventory to job in status ${jobRow.status}`
+      );
+    }
     const { error } = await supabase.from('job_inventory').insert({
       job_id: jobId,
       inventory_id: inventoryId,
@@ -1102,16 +1200,59 @@ export const jobService = {
     quantity: number,
     unit: string
   ): Promise<boolean> {
+    // Service-layer guard: mirrors the DB trigger; gives UX a meaningful error before the write.
+    // DB trigger (job_inventory_update_consumed_guard_trg) is the hard safety net.
+    const { data: jiRow, error: jiLookupError } = await supabase
+      .from('job_inventory')
+      .select('job_id')
+      .eq('id', jobInventoryId)
+      .maybeSingle();
+    if (jiLookupError) throw jiLookupError;
+    if (jiRow) {
+      const { data: jobRow, error: jobLookupError } = await supabase
+        .from('jobs')
+        .select('status')
+        .eq('id', jiRow.job_id)
+        .maybeSingle();
+      if (jobLookupError) throw jobLookupError;
+      if (jobRow && isConsumedStatus(jobRow.status)) {
+        throw new Error(`job_is_consumed: cannot update inventory allocation on a finished job`);
+      }
+    }
     const { error } = await supabase
       .from('job_inventory')
       .update({ quantity, unit: unit || 'units' })
       .eq('id', jobInventoryId);
-    return !error;
+    if (error) throw error;
+    return true;
   },
 
-  async removeJobInventory(_jobId: string, jobInventoryId: string): Promise<boolean> {
+  async removeJobInventory(jobId: string, jobInventoryId: string): Promise<boolean> {
+    // Service-layer guard: prevents deleting allocations from consumed jobs, which would
+    // corrupt the rework restore (the DB trigger reads job_inventory to restore stock).
+    // Derive job_id from the row itself (consistent with updateJobInventory) — don't
+    // rely solely on the caller-supplied jobId, which could be stale or incorrect.
+    const { data: jiRow, error: jiLookupError } = await supabase
+      .from('job_inventory')
+      .select('job_id')
+      .eq('id', jobInventoryId)
+      .maybeSingle();
+    if (jiLookupError) throw jiLookupError;
+    const resolvedJobId = jiRow?.job_id ?? jobId;
+    if (resolvedJobId) {
+      const { data: jobRow, error: jobLookupError } = await supabase
+        .from('jobs')
+        .select('status')
+        .eq('id', resolvedJobId)
+        .maybeSingle();
+      if (jobLookupError) throw jobLookupError;
+      if (jobRow && isConsumedStatus(jobRow.status)) {
+        throw new Error(`job_is_consumed: cannot remove inventory allocation from a finished job`);
+      }
+    }
     const { error } = await supabase.from('job_inventory').delete().eq('id', jobInventoryId);
-    return !error;
+    if (error) throw error;
+    return true;
   },
 
   async addAttachment(jobId: string, file: File, isAdminOnly: boolean): Promise<boolean> {

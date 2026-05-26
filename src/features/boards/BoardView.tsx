@@ -1,14 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCorners,
+  pointerWithin,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type DragCancelEvent,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
@@ -22,12 +26,19 @@ import BoardColumnHeader from './components/BoardColumnHeader';
 import AddColumnButton from './components/AddColumnButton';
 import CardEditorModal, { type CardSaveData } from './components/CardEditorModal';
 import BoardSettingsModal from './components/BoardSettingsModal';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 
 interface BoardViewProps {
   boardId: string;
   onNavigate: (view: ViewState, id?: string) => void;
   onBack: () => void;
 }
+
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  if (pointerCollisions.length > 0) return pointerCollisions;
+  return closestCorners(args);
+};
 
 function DroppableColumn({ column, children }: { column: BoardColumn; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col-${column.id}` });
@@ -54,8 +65,21 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [localCards, setLocalCards] = useState<BoardCard[] | null>(null);
+  const dragStartColumnRef = useRef<string | null>(null);
+  // Last over target seen during dragOver. On mobile, dnd-kit can report `over === null`
+  // at the release frame if the finger drifts off a droppable; we fall back to this so
+  // the drop honors the preview the user just saw instead of snapping back.
+  const lastOverIdRef = useRef<string | null>(null);
+  // Drop generation: each drop increments this; the finally only clears optimistic state
+  // if no newer drop has run, so rapid sequential drags don't clobber each other.
+  const dropGenerationRef = useRef(0);
 
   const board = data?.board ?? null;
+  const { ref: boardScrollRef, onScroll: onBoardScroll } = useScrollRestore(`board-${boardId}`, {
+    axis: 'x',
+    ready: !isLoading && !!board,
+  });
+
   const dataCards = data?.cards;
   const cards = useMemo(() => localCards ?? dataCards ?? [], [localCards, dataCards]);
   const members = data?.members ?? [];
@@ -84,13 +108,26 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     return map;
   }, [columns, cards]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
 
   const activeCard = activeCardId ? (cards.find((c) => c.id === activeCardId) ?? null) : null;
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(event.active.id as string);
+    const activeId = event.active.id as string;
+    setActiveCardId(activeId);
     setLocalCards([...cards]);
+    dragStartColumnRef.current = cards.find((c) => c.id === activeId)?.columnId ?? null;
+    // Clear any stale value from a previous drag's last dragOver. If this new drag fires
+    // no dragOver events (instant tap-drop), the fallback in dragEnd must not pick up the
+    // previous drag's target.
+    lastOverIdRef.current = null;
+    // Bump the drop generation so any in-flight prior drop's `finally` sees a mismatch
+    // and skips its cleanup — otherwise it would `resetDragState()` mid-drag and wipe
+    // this new drag's optimistic state.
+    dropGenerationRef.current++;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -99,6 +136,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    lastOverIdRef.current = overId;
 
     const activeIdx = localCards.findIndex((c) => c.id === activeId);
     if (activeIdx === -1) return;
@@ -113,42 +151,135 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     }
 
     if (localCards[activeIdx].columnId !== targetColumnId) {
-      const updated = [...localCards];
-      updated[activeIdx] = { ...updated[activeIdx], columnId: targetColumnId };
+      const updated = localCards.filter((c) => c.id !== activeId);
+      const movedCard = { ...localCards[activeIdx], columnId: targetColumnId };
+
+      if (overId.startsWith('col-')) {
+        updated.push(movedCard);
+      } else {
+        const overIdx = updated.findIndex((c) => c.id === overId);
+        if (overIdx === -1) {
+          updated.push(movedCard);
+        } else {
+          updated.splice(overIdx, 0, movedCard);
+        }
+      }
+
       setLocalCards(updated);
     }
+  };
+
+  const resetDragState = () => {
+    setLocalCards(null);
+    dragStartColumnRef.current = null;
+    lastOverIdRef.current = null;
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    setActiveCardId(null);
+    resetDragState();
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
 
-    if (!over || !localCards) {
-      setLocalCards(null);
+    if (!localCards) {
+      resetDragState();
       return;
     }
 
+    // Mobile fallback: if dnd-kit lost track of `over` at the release frame (common when
+    // a finger drifts a few pixels off any droppable at touch-end), honor the last over
+    // seen during dragOver so the drop lands where the preview was showing.
     const activeId = active.id as string;
-    const overId = over.id as string;
+    const overId = (over?.id as string | undefined) ?? lastOverIdRef.current;
+    if (!overId) {
+      resetDragState();
+      return;
+    }
+
+    // Drop on self: no reorder. Without this guard, `colCards.findIndex(overId)` returns -1
+    // (active was filtered out) and the card silently snaps to the column's end.
+    if (activeId === overId) {
+      resetDragState();
+      return;
+    }
+
     const card = localCards.find((c) => c.id === activeId);
     if (!card) {
-      setLocalCards(null);
+      resetDragState();
       return;
     }
 
     let targetColumnId = card.columnId;
     if (overId.startsWith('col-')) {
       targetColumnId = overId.replace('col-', '');
+    } else {
+      const overCard = localCards.find((c) => c.id === overId);
+      if (overCard) targetColumnId = overCard.columnId;
     }
 
     const colCards = localCards.filter((c) => c.columnId === targetColumnId && c.id !== activeId);
-    const overIdx = overId.startsWith('col-')
-      ? colCards.length
-      : colCards.findIndex((c) => c.id === overId);
-    const sortOrder = overIdx >= 0 ? overIdx : colCards.length;
 
-    setLocalCards(null);
-    await mutations.moveCard(boardId, activeId, { columnId: targetColumnId, sortOrder });
+    let insertIdx: number;
+    if (overId.startsWith('col-')) {
+      insertIdx = colCards.length;
+    } else {
+      const overIdxFiltered = colCards.findIndex((c) => c.id === overId);
+      insertIdx = overIdxFiltered >= 0 ? overIdxFiltered : colCards.length;
+
+      // Within-column downward drag: filtering out the active card shifted the over card's
+      // index up by 1. Insert AFTER the over card so it lands where the user dropped it,
+      // matching standard sortable behavior. Cross-column moves don't need this adjustment.
+      const isWithinColumn = dragStartColumnRef.current === targetColumnId;
+      if (isWithinColumn && overIdxFiltered >= 0) {
+        const originalCol = localCards.filter((c) => c.columnId === targetColumnId);
+        const originalActiveIdx = originalCol.findIndex((c) => c.id === activeId);
+        const originalOverIdx = originalCol.findIndex((c) => c.id === overId);
+        if (originalActiveIdx >= 0 && originalActiveIdx < originalOverIdx) {
+          insertIdx = overIdxFiltered + 1;
+        }
+      }
+    }
+
+    colCards.splice(insertIdx, 0, card);
+    const orderedCardIds = colCards.map((c) => c.id);
+
+    // Commit the new order to localCards so the optimistic render (after the DragOverlay
+    // disappears) shows the card in its dropped slot — not its pre-drag slot. Without this,
+    // within-column reorders snap back to the old position until the server refetch lands.
+    const reorderedColCards = colCards.map((c, i) => ({
+      ...c,
+      columnId: targetColumnId,
+      sortOrder: i,
+    }));
+    setLocalCards([
+      ...localCards.filter((c) => c.columnId !== targetColumnId && c.id !== activeId),
+      ...reorderedColCards,
+    ]);
+
+    // Second bump claims this drop's slot. (The first bump happens in handleDragStart to
+    // invalidate any prior in-flight drop's `finally`.) Subsequent drags or drops bump
+    // further so this drop's `finally` knows it's stale.
+    const myGen = ++dropGenerationRef.current;
+    try {
+      const ok = await mutations.reorderCards(boardId, targetColumnId, orderedCardIds);
+      // Only toast if this is still the latest drop. A newer drop's payload includes this
+      // one's intent (it was built on this drop's optimistic state), so a failed-but-applied
+      // toast would mislead the user.
+      if (!ok && dropGenerationRef.current === myGen) {
+        showToast('Could not save reorder', 'error');
+      }
+    } catch {
+      if (dropGenerationRef.current === myGen) {
+        showToast('Could not save reorder', 'error');
+      }
+    } finally {
+      // Only clear if no newer drop has started; otherwise we'd wipe the next drop's
+      // optimistic state and flash the user's previous drag away mid-flight.
+      if (dropGenerationRef.current === myGen) resetDragState();
+    }
   };
 
   const handleAddColumn = async (name: string) => {
@@ -231,24 +362,30 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
-        <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+        <div
+          ref={boardScrollRef}
+          onScroll={onBoardScroll}
+          className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto p-4 md:snap-none md:gap-4"
+        >
           {columns.map((col) => {
             const colCards = cardsByColumn[col.id] ?? [];
             return (
               <div
                 key={col.id}
-                className="flex w-72 flex-shrink-0 flex-col rounded-lg border border-white/10 bg-surface-dark"
+                className="flex w-[calc(100vw-2rem)] flex-shrink-0 snap-center flex-col rounded-lg border border-white/10 bg-surface-dark md:w-72"
               >
                 <div className="p-3 pb-0">
                   <BoardColumnHeader
                     column={col}
                     cardCount={colCards.length}
                     readOnly={readOnly}
+                    onAddCard={() => setAddingToColumn(col.id)}
                     onRename={(name) => mutations.updateColumn(boardId, col.id, { name })}
                     onChangeColor={(color) => mutations.updateColumn(boardId, col.id, { color })}
                     onDelete={() => mutations.deleteColumn(boardId, col.id)}
@@ -270,15 +407,6 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
                     ))}
                   </DroppableColumn>
                 </SortableContext>
-                {!readOnly && (
-                  <button
-                    onClick={() => setAddingToColumn(col.id)}
-                    className="m-2 flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    Add card
-                  </button>
-                )}
               </div>
             );
           })}
@@ -287,7 +415,10 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
         <DragOverlay>
           {activeCard && (
-            <div className="w-72 opacity-90">
+            // Width matches the card's rendered size in the column (column width minus
+            // the DroppableColumn's p-2 = 16px). If the overlay is wider, the card visually
+            // jumps to a larger size at drag-start, which reads as "off-center" from the cursor.
+            <div className="w-[calc(100vw-3rem)] opacity-90 md:w-[17rem]">
               <BoardCardItem card={activeCard} users={users} readOnly onClick={() => {}} />
             </div>
           )}

@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Shift, User, Job, ViewState, ShiftEdit } from '@/core/types';
 import { useToast } from './Toast';
+import { useScrollRestore } from './hooks/useScrollRestore';
 import { shiftService, shiftEditService } from './pocketbase';
 import ConfirmDialog from './ConfirmDialog';
 import { formatDurationHours } from './lib/timeUtils';
@@ -114,6 +115,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   readOnly = false,
 }) => {
   const { showToast } = useToast();
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('time-reports');
   /** When set, show only shifts for this job (from initialJobId or user cleared "Show all"). */
   const [jobFilter, setJobFilter] = useState<string | null>(() => initialJobId ?? null);
   // Sync job filter when navigating to Time Reports with a job id
@@ -524,7 +526,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d] pb-20">
+    <div className="flex h-[100dvh] flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d]">
       <header className="sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <button
@@ -548,7 +550,11 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
+      <main
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 space-y-6 overflow-y-auto px-4 py-6"
+      >
         {/* Job filter banner when opened from a job card */}
         {jobFilter && (
           <div className="flex items-center justify-between gap-3 rounded-sm border border-primary/30 bg-primary/10 p-3">

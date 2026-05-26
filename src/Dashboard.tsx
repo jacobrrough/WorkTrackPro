@@ -12,6 +12,8 @@ import { lazyWithRetry } from './lib/lazyWithRetry';
 import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
+import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
+import { useScrollRestore } from './hooks/useScrollRestore';
 
 /**
  * Isolated timer component — owns its own 1-second interval so that ticking
@@ -58,6 +60,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore<HTMLElement>('dashboard');
   const {
     currentUser,
     jobs,
@@ -81,6 +84,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
   const [isEditingActions, setIsEditingActions] = useState(false);
+  const { syncToServer } = useDashboardPreferencesSync(!!currentUser);
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
@@ -146,6 +150,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   }, [activeShift?.id]);
 
+  // Intercept browser back while the bin-assignment scanner overlay is open so
+  // back closes the overlay rather than navigating away from Dashboard.
+  useEffect(() => {
+    if (!showScanner && !scannedBinLocation) return;
+    const handlePopState = () => {
+      setShowScanner(false);
+      setAddingJobToBin(false);
+      setScannedBinLocation(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [showScanner, scannedBinLocation]);
+
   const handleClockOutFromPopup = async () => {
     setIsClockOutLoading(true);
     const result = await clockOut();
@@ -208,18 +225,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       iconClassName: 'text-amber-500',
       cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20',
       ariaLabel: 'Open QR scanner',
-      onClick: () => setShowScanner(true),
-    },
-    {
-      key: 'create-job',
-      title: 'New Job',
-      subtitle: 'Create job',
-      icon: 'add_circle',
-      iconClassName: 'text-green-500',
-      cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
-      ariaLabel: 'Create a new job',
-      onClick: () => onNavigate('create-job'),
-      adminOnly: true,
+      onClick: () => onNavigate('scanner'),
     },
     {
       key: 'calendar',
@@ -348,8 +354,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       if (target < 0 || target >= keys.length) return;
       [keys[idx], keys[target]] = [keys[target], keys[idx]];
       updateState({ quickActionOrder: keys });
+      syncToServer({ quickActionOrder: keys, hiddenQuickActions: navState.hiddenQuickActions });
     },
-    [orderedActions, updateState]
+    [orderedActions, updateState, syncToServer, navState.hiddenQuickActions]
   );
 
   const toggleHidden = useCallback(
@@ -357,13 +364,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const hidden = navState.hiddenQuickActions;
       const next = hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key];
       updateState({ hiddenQuickActions: next });
+      syncToServer({ quickActionOrder: navState.quickActionOrder, hiddenQuickActions: next });
     },
-    [navState.hiddenQuickActions, updateState]
+    [navState.hiddenQuickActions, navState.quickActionOrder, updateState, syncToServer]
   );
 
   const resetCustomization = useCallback(() => {
     updateState({ quickActionOrder: [], hiddenQuickActions: [] });
-  }, [updateState]);
+    syncToServer({ quickActionOrder: [], hiddenQuickActions: [] });
+  }, [updateState, syncToServer]);
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
@@ -401,6 +410,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </header>
 
       <main
+        ref={scrollRef}
+        onScroll={handleScroll}
         id="main-content"
         tabIndex={-1}
         aria-labelledby="dashboard-heading"
@@ -546,7 +557,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <button
           type="button"
           onClick={() => setIsTrackerOpen(true)}
-          className="fixed bottom-4 right-4 z-40 flex min-h-12 items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
+          className="fixed bottom-20 right-4 z-[45] flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">
             schedule

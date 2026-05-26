@@ -18,8 +18,11 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.5 : 1,
+    // Block native scroll/zoom on the card so the TouchSensor's hold-delay isn't
+    // racing the browser's pan gesture — that race was the source of the shake on mobile.
+    touchAction: 'none',
   };
 
   const assignee = card.assigneeId ? users.find((u) => u.id === card.assigneeId) : null;

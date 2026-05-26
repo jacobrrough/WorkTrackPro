@@ -3,7 +3,6 @@ import { InventoryItem, Job, ViewState } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
 import InventoryDetail from './InventoryDetail';
 import AddInventoryItem from './AddInventoryItem';
-import InventoryKanban from './InventoryKanban';
 
 import InventoryMainView from '@/features/inventory/InventoryMainView';
 import type { InventoryFilters } from '@/features/inventory/inventoryViewModel';
@@ -56,8 +55,6 @@ const Inventory: React.FC<InventoryProps> = ({
 }) => {
   const { state: navState, updateState } = useNavigation();
   const [view, setView] = useState<InventoryView>('main');
-  const listView = navState.inventoryListView ?? 'list';
-  const setListView = (mode: 'list' | 'kanban') => updateState({ inventoryListView: mode });
   const [filters, setFilters] = useState<InventoryFilters>({
     search: navState.inventorySearchTerm ?? '',
     category: (navState.inventoryCategory as InventoryFilters['category']) ?? 'all',
@@ -118,25 +115,6 @@ const Inventory: React.FC<InventoryProps> = ({
     );
   }
 
-  if (listView === 'kanban') {
-    return (
-      <InventoryKanban
-        inventory={inventory}
-        onNavigate={(itemId) => onNavigate('inventory-detail', itemId)}
-        onBack={() => onNavigate('dashboard')}
-        onAddItem={handleAddItem}
-        onUpdateItem={async (itemId, updates) => {
-          const updated = await onUpdateItem(itemId, updates);
-          if (updated && onReloadInventory) await onReloadInventory();
-        }}
-        onSwitchToList={() => setListView('list')}
-        isAdmin={isAdmin}
-        calculateAvailable={calculateAvailable}
-        calculateAllocated={calculateAllocated}
-      />
-    );
-  }
-
   return (
     <InventoryMainView
       inventory={inventory}
@@ -158,16 +136,7 @@ const Inventory: React.FC<InventoryProps> = ({
         if (Object.keys(navPatch).length) updateState(navPatch);
       }}
       onAddItem={handleAddItem}
-      onCreateItem={async (data) => {
-        const payload = { ...data };
-        if (!isAdmin && 'price' in payload) delete (payload as Record<string, unknown>).price;
-        const newItem = await onCreateItem(payload);
-        if (newItem && onReloadInventory) await onReloadInventory();
-        return newItem;
-      }}
-      onReloadInventory={onReloadInventory}
       onOpenDetail={(itemId) => onNavigate('inventory-detail', itemId)}
-      onKanbanView={() => setListView('kanban')}
       onMarkOrdered={onMarkOrdered}
       onReceiveOrder={onReceiveOrder}
       onQuickAdjust={async (item, delta) => {

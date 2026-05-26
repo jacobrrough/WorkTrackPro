@@ -14,6 +14,7 @@ function getLazyReloadKey(moduleName: string): string {
   return `${LAZY_RELOAD_KEY_PREFIX}${moduleName}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function lazyWithRetry<T extends ComponentType<any>>(
   importer: () => Promise<{ default: T }>,
   moduleName: string

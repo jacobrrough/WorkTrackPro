@@ -1,13 +1,24 @@
 // ChecklistDisplay.tsx - Display checklist on job cards and detail pages
 import React, { useState, useEffect } from 'react';
-import { Checklist, ChecklistHistory, JobStatus, User, getStatusDisplayName } from '@/core/types';
+import {
+  Checklist,
+  ChecklistHistory,
+  JobInventoryItem,
+  JobStatus,
+  User,
+  getStatusDisplayName,
+} from '@/core/types';
 import { useToast } from './Toast';
 import { checklistService, checklistHistoryService } from './pocketbase';
+import { inventoryService } from '@/services/api/inventory';
+
+type ShortfallInfo = { name: string; need: number; have: number; unit: string };
 
 interface ChecklistDisplayProps {
   jobId: string;
   jobStatus: JobStatus;
   currentUser: User;
+  jobInventoryItems?: JobInventoryItem[];
   compact?: boolean; // For card view vs detail view
   onChecklistComplete?: () => void | Promise<void>;
 }
@@ -16,6 +27,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
   jobId,
   jobStatus,
   currentUser,
+  jobInventoryItems,
   compact = false,
   onChecklistComplete,
 }) => {
@@ -26,6 +38,10 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<ChecklistHistory[]>([]);
   const [, setError] = useState<string | null>(null);
+  const [shortfallState, setShortfallState] = useState<{
+    itemIndex: number;
+    items: ShortfallInfo[];
+  } | null>(null);
 
   const loadChecklist = React.useCallback(async () => {
     setLoading(true);
@@ -84,8 +100,45 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
     const item = checklist.items[itemIndex];
     const newCheckedState = !item.checked;
 
+    setShortfallState(null);
     setUpdating(true);
     try {
+      // Material availability gate
+      if (newCheckedState && item.isMaterialCheck) {
+        const bom = jobInventoryItems ?? [];
+        if (!bom.length) {
+          console.warn(
+            '[ChecklistDisplay] isMaterialCheck item triggered but no BOM data provided'
+          );
+        } else {
+          const ids = bom.map((ji) => ji.inventoryId).filter((id): id is string => !!id);
+
+          const liveItems = await inventoryService.getByIds(ids).catch(() => {
+            showToast('Could not verify stock levels — please try again.', 'error');
+            return null;
+          });
+          if (!liveItems) return;
+
+          const liveMap = new Map(liveItems.map((i) => [i.id, i]));
+          const shortfalls: ShortfallInfo[] = bom
+            .filter((ji): ji is typeof ji & { inventoryId: string } => !!ji.inventoryId)
+            .flatMap((ji) => {
+              const live = liveMap.get(ji.inventoryId);
+              if (!live) return [];
+              const have = live.available + live.onOrder;
+              return have < ji.quantity
+                ? [{ name: live.name, need: ji.quantity, have, unit: ji.unit }]
+                : [];
+            });
+
+          if (shortfalls.length) {
+            setShortfallState({ itemIndex, items: shortfalls });
+            showToast('Not enough stock to proceed — see details below.', 'error');
+            return;
+          }
+        }
+      }
+
       // Update the item
       const updatedItems = checklist.items.map((itm, idx) =>
         idx === itemIndex
@@ -173,35 +226,54 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
 
       <div className="space-y-2">
         {checklist.items.map((item, index) => (
-          <label
-            key={item.id}
-            className={`flex cursor-pointer items-start gap-3 rounded p-2 transition-all ${
-              item.checked
-                ? 'border border-green-500/20 bg-green-500/10'
-                : 'border border-white/10 bg-white/5 hover:border-primary/50'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={item.checked}
-              onChange={() => handleToggleItem(index)}
-              disabled={updating}
-              className="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0"
-            />
-            <div className="flex-1">
-              <p
-                className={`text-sm ${item.checked ? 'text-green-400 line-through' : 'text-white'}`}
-              >
-                {item.text}
-              </p>
-              {item.checked && item.checkedByName && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Completed by {item.checkedByName}
-                  {item.checkedAt && ` on ${new Date(item.checkedAt).toLocaleDateString()}`}
+          <div key={item.id}>
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded p-2 transition-all ${
+                item.checked
+                  ? 'border border-green-500/20 bg-green-500/10'
+                  : 'border border-white/10 bg-white/5 hover:border-primary/50'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={item.checked}
+                onChange={() => handleToggleItem(index)}
+                disabled={updating}
+                className="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0"
+              />
+              <div className="flex-1">
+                <p
+                  className={`text-sm ${item.checked ? 'text-green-400 line-through' : 'text-white'}`}
+                >
+                  {item.text}
                 </p>
-              )}
-            </div>
-          </label>
+                {item.checked && item.checkedByName && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Completed by {item.checkedByName}
+                    {item.checkedAt && ` on ${new Date(item.checkedAt).toLocaleDateString()}`}
+                  </p>
+                )}
+              </div>
+            </label>
+            {shortfallState?.itemIndex === index && (
+              <div className="mt-1 rounded border border-red-500/30 bg-red-500/10 p-2">
+                <p className="mb-1.5 text-xs font-bold text-red-400">Insufficient stock:</p>
+                <ul className="space-y-1">
+                  {shortfallState.items.map((s) => (
+                    <li
+                      key={s.name}
+                      className="flex items-center justify-between text-xs text-red-300"
+                    >
+                      <span className="truncate">{s.name}</span>
+                      <span className="ml-2 shrink-0 font-mono text-[11px]">
+                        need {s.need.toFixed(2)} {s.unit}, have {s.have}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
@@ -246,7 +318,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                           <p className="text-xs text-slate-400">
                             {new Date(record.timestamp).toLocaleString()}
                             {'status' in record && record.status
-                              ? ` · ${getStatusDisplayName((record as any).status)}`
+                              ? ` · ${getStatusDisplayName(record.status!)}`
                               : ''}
                           </p>
                         </div>
