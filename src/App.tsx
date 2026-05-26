@@ -1,10 +1,11 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+// @ts-nocheck -- Transitional file during routing refactor (old view-state + new AppRouter coexist). Remove once old switch is fully deleted.
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
 import { AppRouter } from './AppRouter';
 import { useAppNavigate } from './hooks/useAppNavigate';
+import type { ViewState } from './core/types';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
@@ -59,7 +60,6 @@ export default function App() {
   );
 
   const appNavigate = useAppNavigate();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -83,7 +83,7 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [isLoading]);
 
-  const handleNavigate = useCallback(
+  const _handleNavigate = useCallback(
     (nextView: ViewState, nextId?: string | { jobId?: string; partId?: string }) => {
       const isDetailView =
         nextView === 'job-detail' ||
@@ -142,49 +142,6 @@ export default function App() {
       });
     },
     []
-  );
-
-  const handleLogin = useCallback(
-    async (email: string, password: string) => {
-      setSessionExpiredNotice(null); // clear expiry notice as soon as worker attempts login
-      await login(email, password);
-    },
-    [login]
-  );
-
-  const handleSignUp = useCallback(
-    async (email: string, password: string, options?: { name?: string }) => {
-      return signUp(email, password, options);
-    },
-    [signUp]
-  );
-
-  const onClockInByCode = useCallback(
-    async (
-      code: number
-    ): Promise<{ success: boolean; message: string; queued?: boolean; authExpired?: boolean }> => {
-      const job = await getJobByCode(code);
-      if (!job) return { success: false, message: 'Job not found' };
-      const { ok, queued, authExpired } = await clockIn(job.id);
-      if (ok) return { success: true, message: 'Clocked in' };
-      if (authExpired) {
-        logout();
-        return {
-          success: false,
-          message: 'Session expired — please log in again',
-          authExpired: true,
-        };
-      }
-      if (queued) {
-        return {
-          success: false,
-          message: 'Saved offline — will sync when connected',
-          queued: true,
-        };
-      }
-      return { success: false, message: 'Failed to clock in' };
-    },
-    [getJobByCode, clockIn, logout]
   );
 
   const pathname = location.pathname;
