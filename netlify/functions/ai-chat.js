@@ -49,6 +49,22 @@ export async function handler(event) {
     };
   }
 
+  try {
+    return await handlePost(event);
+  } catch (err) {
+    console.error('ai-chat unhandled error:', err);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        error: 'Internal function error',
+        detail: err instanceof Error ? err.message : String(err),
+      }),
+    };
+  }
+}
+
+async function handlePost(event) {
   const aiModelUrl = process.env.AI_MODEL_URL;
   const aiProxySecret = process.env.AI_PROXY_SECRET;
   if (!aiModelUrl || !aiProxySecret) {
@@ -89,9 +105,7 @@ export async function handler(event) {
   }
 
   // Build the endpoint URL — AI_MODEL_URL may omit the protocol or trailing path.
-  const withProtocol = /^https?:\/\//i.test(aiModelUrl)
-    ? aiModelUrl
-    : `https://${aiModelUrl}`;
+  const withProtocol = /^https?:\/\//i.test(aiModelUrl) ? aiModelUrl : `https://${aiModelUrl}`;
   const baseUrl = withProtocol.replace(/\/+$/, '');
   const endpoint = baseUrl.endsWith('/v1/chat/completions')
     ? baseUrl
@@ -149,12 +163,13 @@ export async function handler(event) {
     };
   }
 
+  // Read body as text first, then parse — avoids consumed-body crash if JSON parsing fails.
+  const rawBody = await response.text().catch(() => '');
   let result;
   try {
-    result = await response.json();
+    result = JSON.parse(rawBody);
   } catch (parseError) {
-    const raw = await response.text().catch(() => '');
-    console.error('ai-chat JSON parse error:', parseError.message, 'body:', raw.slice(0, 500));
+    console.error('ai-chat JSON parse error:', parseError.message, 'body:', rawBody.slice(0, 500));
     return {
       statusCode: 502,
       headers: corsHeaders,
