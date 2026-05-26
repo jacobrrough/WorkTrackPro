@@ -137,40 +137,6 @@ function pickRow(payload: {
   return payload.eventType === 'DELETE' ? payload.old : payload.new;
 }
 
-// ── Broadcast ────────────────────────────────────────────────────────
-
-export type EntityKey =
-  | 'jobs'
-  | 'shifts'
-  | 'inventory'
-  | 'users'
-  | 'parts'
-  | 'boards'
-  | 'deliveries';
-
-const VALID_ENTITIES = new Set<EntityKey>([
-  'jobs',
-  'shifts',
-  'inventory',
-  'users',
-  'parts',
-  'boards',
-  'deliveries',
-]);
-
-// Module-level ref — set when AppContext subscribes, cleared on unmount.
-// Lets broadcastChange fire without threading a channel reference through the tree.
-let _appChannel: ReturnType<typeof supabase.channel> | null = null;
-
-const _lastBroadcast = new Map<EntityKey, number>();
-
-export function broadcastChange(entity: EntityKey): void {
-  const now = Date.now();
-  if (now - (_lastBroadcast.get(entity) ?? 0) < 150) return;
-  _lastBroadcast.set(entity, now);
-  void _appChannel?.send({ type: 'broadcast', event: 'change', payload: { entity } });
-}
-
 // ── Types ────────────────────────────────────────────────────────────
 
 type JobScalarCallback = (action: RealtimeAction, record: JobScalars & { id: string }) => void;
@@ -183,179 +149,126 @@ type RelatedTableCallback = (
   record: Record<string, unknown>
 ) => void;
 
+// ── Consolidated core subscription ──────────────────────────────────
+// All 14 tables on a single Supabase Realtime channel to avoid connection
+// pressure that caused TIMED_OUT errors with 7+ separate channels.
+
+export interface CoreRealtimeCallbacks {
+  onJob: JobScalarCallback;
+  onShift: ShiftCallback;
+  onInventory: InventoryCallback;
+  onUser: UserCallback;
+  onJobRelated: RelatedTableCallback;
+  onBoardRelated: RelatedTableCallback;
+  onParts: RelatedTableCallback;
+}
+
+const JOB_RELATED_TABLES = [
+  'comments',
+  'attachments',
+  'job_parts',
+  'job_inventory',
+  'checklists',
+  'deliveries',
+] as const;
+
+const BOARD_TABLES = ['boards', 'board_columns', 'board_cards'] as const;
+
+function buildCoreChannel(callbacks: CoreRealtimeCallbacks) {
+  let channel = supabase.channel('realtime-core');
+
+  // ── Core entity tables ──────────────────────────────────────────
+  channel = channel
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+      const record = pickRow(payload);
+      if (record) callbacks.onJob(eventAction(payload.eventType), mapJobScalars(record));
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, (payload) => {
+      const record = pickRow(payload);
+      if (record) callbacks.onShift(eventAction(payload.eventType), mapShiftRow(record));
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
+      const record = pickRow(payload);
+      if (record) callbacks.onInventory(eventAction(payload.eventType), mapInventoryRow(record));
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+      const record = pickRow(payload);
+      if (record) callbacks.onUser(eventAction(payload.eventType), mapUserRow(record));
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'parts' }, (payload) => {
+      const record = (payload.new ?? payload.old) as Record<string, unknown>;
+      if (record) callbacks.onParts('parts', eventAction(payload.eventType), record);
+    });
+
+  // ── Job-related tables ──────────────────────────────────────────
+  for (const table of JOB_RELATED_TABLES) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+      const record = pickRow(payload);
+      if (record) callbacks.onJobRelated(table, eventAction(payload.eventType), record);
+    });
+  }
+
+  // ── Board-related tables ────────────────────────────────────────
+  for (const table of BOARD_TABLES) {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, (payload) => {
+      const record = pickRow(payload);
+      if (record) callbacks.onBoardRelated(table, eventAction(payload.eventType), record);
+    });
+  }
+
+  return channel;
+}
+
 // ── Subscriptions ────────────────────────────────────────────────────
 
 export const subscriptions = {
-  subscribeToJobs(callback: JobScalarCallback): () => void {
-    const channel = supabase
-      .channel('jobs-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
-        const record = pickRow(payload);
-        if (record) callback(eventAction(payload.eventType), mapJobScalars(record));
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          console.error(`[realtime:jobs-changes] ${status}`);
-      });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  subscribeToShifts(callback: ShiftCallback): () => void {
-    const channel = supabase
-      .channel('shifts-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, (payload) => {
-        const record = pickRow(payload);
-        if (record) callback(eventAction(payload.eventType), mapShiftRow(record));
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          console.error(`[realtime:shifts-changes] ${status}`);
-      });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  subscribeToInventory(callback: InventoryCallback): () => void {
-    const channel = supabase
-      .channel('inventory-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
-        const record = pickRow(payload);
-        if (record) callback(eventAction(payload.eventType), mapInventoryRow(record));
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          console.error(`[realtime:inventory-changes] ${status}`);
-      });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  subscribeToUsers(callback: UserCallback): () => void {
-    const channel = supabase
-      .channel('users-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
-        const record = pickRow(payload);
-        if (record) callback(eventAction(payload.eventType), mapUserRow(record));
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          console.error(`[realtime:users-changes] ${status}`);
-      });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  subscribeToChanges(callback: (entity: EntityKey) => void): () => void {
-    const ch = supabase
-      .channel('app-changes')
-      .on('broadcast', { event: 'change' }, ({ payload }) => {
-        const e = payload?.entity;
-        if (typeof e === 'string' && VALID_ENTITIES.has(e as EntityKey)) callback(e as EntityKey);
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          console.error(`[realtime:app-changes] ${status}`);
-      });
-    _appChannel = ch;
-    return () => {
-      if (_appChannel === ch) _appChannel = null;
-      supabase.removeChannel(ch);
-    };
-  },
-
   /**
-   * Consolidated channel for job-related tables: comments, attachments,
-   * job_parts, job_inventory, checklists, deliveries.
-   * The callback receives the table name, action, and raw row so the
-   * consumer can extract foreign keys (job_id, etc.) and refresh caches.
+   * Single consolidated channel for all core application tables.
+   * Auto-reconnects on TIMED_OUT / CHANNEL_ERROR with exponential backoff.
    */
-  subscribeToJobRelated(callback: RelatedTableCallback): () => void {
-    const tables = [
-      'comments',
-      'attachments',
-      'job_parts',
-      'job_inventory',
-      'checklists',
-      'deliveries',
-    ] as const;
-    let channel = supabase.channel('job-related-changes');
-    for (const table of tables) {
-      channel = channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table },
-        (payload) => {
-          // TODO(realtime-delete): DELETE payloads carry only the PK via payload.old —
-          // job_id is absent without REPLICA IDENTITY FULL, so deletes are silently
-          // dropped by the consumer (job_id guard). Fix requires schema change.
-          const record = pickRow(payload);
-          if (record) callback(table, eventAction(payload.eventType), record);
+  subscribeToCoreChanges(callbacks: CoreRealtimeCallbacks): () => void {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+    let disposed = false;
+
+    function connect() {
+      if (disposed) return;
+      channel = buildCoreChannel(callbacks);
+      channel.subscribe((status) => {
+        if (disposed) return;
+        if (status === 'SUBSCRIBED') {
+          attempt = 0; // reset backoff on success
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[realtime:core] ${status} — reconnecting (attempt ${attempt + 1})`);
+          teardown();
+          const delay = Math.min(1000 * 2 ** attempt, 30_000);
+          attempt++;
+          reconnectTimer = setTimeout(connect, delay);
         }
-      );
-    }
-    channel.subscribe((status) => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-        console.error(`[realtime:job-related-changes] ${status}`);
-    });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  /**
-   * Consolidated channel for board-related tables: boards, board_columns, board_cards.
-   */
-  subscribeToBoardRelated(callback: RelatedTableCallback): () => void {
-    const tables = ['boards', 'board_columns', 'board_cards'] as const;
-    let channel = supabase.channel('board-changes');
-    for (const table of tables) {
-      channel = channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table },
-        (payload) => {
-          // TODO(realtime-delete): DELETE payloads carry only the PK via payload.old —
-          // board_id is absent without REPLICA IDENTITY FULL, so deletes are silently
-          // dropped by the consumer (board_id guard). Fix requires schema change.
-          const record = pickRow(payload);
-          if (record) callback(table, eventAction(payload.eventType), record);
-        }
-      );
-    }
-    channel.subscribe((status) => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-        console.error(`[realtime:board-changes] ${status}`);
-    });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  /**
-   * Channel for parts table changes.
-   */
-  subscribeToParts(callback: RelatedTableCallback): () => void {
-    const channel = supabase
-      .channel('parts-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'parts' }, (payload) => {
-        // DELETE events use payload.new ?? payload.old — safe here because the callback
-        // only triggers a full refresh (no id-based filtering on delete).
-        const record = (payload.new ?? payload.old) as Record<string, unknown>;
-        if (record) callback('parts', eventAction(payload.eventType), record);
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-          console.error(`[realtime:parts-changes] ${status}`);
       });
+    }
+
+    function teardown() {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+    }
+
+    connect();
+
     return () => {
-      supabase.removeChannel(channel);
+      disposed = true;
+      teardown();
     };
   },
 
-  // ── Chat subscriptions ─────────────────────────────
+  // ── Chat subscriptions (per-conversation, opened/closed dynamically) ─
 
   subscribeToChatMessages(
     conversationId: string,

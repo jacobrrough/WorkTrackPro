@@ -9,9 +9,7 @@ export function MachineCompletionBadge({ type, completedAt }: MachineCompletionB
 
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-        {label} Status
-      </p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label} Status</p>
       <p className={`text-sm font-semibold ${isDone ? 'text-green-300' : 'text-amber-300'}`}>
         {isDone ? `${label} Done` : `${label} Pending`}
       </p>

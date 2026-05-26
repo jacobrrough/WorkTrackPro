@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -24,7 +23,7 @@ import { withComputedInventory } from '@/lib/inventoryState';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
 import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
 import { syncOfflineClockQueue } from '@/lib/syncOfflineClockQueue';
-import { subscriptions, broadcastChange } from '@/services/api/subscriptions';
+import { subscriptions } from '@/services/api/subscriptions';
 import { createRealtimeDebouncer } from '@/lib/realtimeDebounce';
 import { useToast } from '@/Toast';
 
@@ -113,23 +112,6 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { activeShift, activeJob } = useActiveShift(currentUser, queries.shifts, queries.jobs);
   const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
-  // Wrapped refresh functions: broadcast to all other clients before refreshing locally.
-  const { refreshJobs, refreshShifts, refreshInventory } = queries;
-  const refreshJobsAndBroadcast = useCallback(async () => {
-    await refreshJobs();
-    broadcastChange('jobs');
-  }, [refreshJobs]);
-
-  const refreshShiftsAndBroadcast = useCallback(async () => {
-    await refreshShifts();
-    broadcastChange('shifts');
-  }, [refreshShifts]);
-
-  const refreshInventoryAndBroadcast = useCallback(async () => {
-    await refreshInventory();
-    broadcastChange('inventory');
-  }, [refreshInventory]);
-
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
@@ -139,9 +121,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
     currentUser,
-    refreshJobs: refreshJobsAndBroadcast,
-    refreshInventory: refreshInventoryAndBroadcast,
-    refreshShifts: refreshShiftsAndBroadcast,
+    refreshJobs: queries.refreshJobs,
+    refreshInventory: queries.refreshInventory,
+    refreshShifts: queries.refreshShifts,
     showToast,
   });
 
@@ -150,8 +132,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     shifts: queries.shifts,
     jobs: queries.jobs,
     activeShift,
-    refreshShifts: refreshShiftsAndBroadcast,
-    refreshJobs: refreshJobsAndBroadcast,
+    refreshShifts: queries.refreshShifts,
+    refreshJobs: queries.refreshJobs,
     onOfflinePunchEnqueued: () => setOfflineQueueVersion((v) => v + 1),
     showToast,
   });
@@ -160,16 +142,16 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     inventory: queries.inventory,
     jobs: queries.jobs,
     currentUser,
-    refreshJobs: refreshJobsAndBroadcast,
-    refreshInventory: refreshInventoryAndBroadcast,
+    refreshJobs: queries.refreshJobs,
+    refreshInventory: queries.refreshInventory,
     calculateAvailable,
     calculateAllocated,
     showToast,
   });
 
   const attachmentMutations = useAttachmentMutations({
-    refreshJobs: refreshJobsAndBroadcast,
-    refreshInventory: refreshInventoryAndBroadcast,
+    refreshJobs: queries.refreshJobs,
+    refreshInventory: queries.refreshInventory,
   });
 
   // Offline clock queue: sync on reconnect, tab focus, and periodic while pending
@@ -211,7 +193,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     };
   }, [queries.refreshShifts, queries.refreshJobs, showToast, offlineQueueVersion]);
 
-  // Realtime subscriptions
+  // Realtime subscriptions — single consolidated channel for all core tables.
   const debouncerRef = useRef(createRealtimeDebouncer(300));
   useEffect(() => () => debouncerRef.current.cleanup(), []);
 
@@ -219,138 +201,122 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     const debounce = debouncerRef.current.debounce;
 
-    // ── Jobs channel (merge scalars, preserve relation arrays) ──────
-    // refreshInventory() is NOT called here — the subscribeToJobRelated
-    // channel handles job_inventory changes with debouncing.
-    const unsubJobs = subscriptions.subscribeToJobs((action, scalars) => {
-      if (typeof scalars.id !== 'string') return;
-      if (action === 'create') {
-        void queries.refreshJob(scalars.id);
-      } else if (action === 'update') {
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
-          if (!prev) return prev;
-          const exists = prev.some((j) => j.id === scalars.id);
-          if (!exists) return prev;
-          return prev.map((j) => (j.id === scalars.id ? { ...j, ...scalars } : j));
-        });
-        const existing = queryClient.getQueryData<Job>(['job', scalars.id]);
-        if (existing) {
-          queryClient.setQueryData<Job>(['job', scalars.id], { ...existing, ...scalars });
+    const unsub = subscriptions.subscribeToCoreChanges({
+      // ── Jobs (merge scalars, preserve relation arrays) ────────────
+      onJob: (action, scalars) => {
+        if (typeof scalars.id !== 'string') return;
+        if (action === 'create') {
+          void queries.refreshJob(scalars.id);
+        } else if (action === 'update') {
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) => {
+            if (!prev) return prev;
+            const exists = prev.some((j) => j.id === scalars.id);
+            if (!exists) return prev;
+            return prev.map((j) => (j.id === scalars.id ? { ...j, ...scalars } : j));
+          });
+          const existing = queryClient.getQueryData<Job>(['job', scalars.id]);
+          if (existing) {
+            queryClient.setQueryData<Job>(['job', scalars.id], { ...existing, ...scalars });
+          }
+        } else if (action === 'delete') {
+          queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
+            prev ? prev.filter((j) => j.id !== scalars.id) : prev
+          );
+          queryClient.removeQueries({ queryKey: ['job', scalars.id] });
         }
-      } else if (action === 'delete') {
-        queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-          prev ? prev.filter((j) => j.id !== scalars.id) : prev
-        );
-        queryClient.removeQueries({ queryKey: ['job', scalars.id] });
-      }
-    });
+      },
 
-    // ── Shifts channel ─────────────────────────────────────────────
-    const unsubShifts = subscriptions.subscribeToShifts((action, record) => {
-      if (typeof record.id !== 'string') return;
-      if (action === 'create') {
-        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? [record as Shift, ...prev] : [record as Shift]
-        );
-      } else if (action === 'update') {
-        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? prev.map((s) => (s.id === record.id ? record : s)) : prev
-        );
-      } else if (action === 'delete') {
-        queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-          prev ? prev.filter((s) => s.id !== record.id) : prev
-        );
-      }
-    });
-
-    // ── Inventory channel ──────────────────────────────────────────
-    const unsubInventory = subscriptions.subscribeToInventory((action, record) => {
-      if (typeof record.id !== 'string') return;
-      if (action === 'create') {
-        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? [record as InventoryItem, ...prev] : [record as InventoryItem]
-        );
-      } else if (action === 'update') {
-        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.map((i) => (i.id === record.id ? record : i)) : prev
-        );
-      } else if (action === 'delete') {
-        queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-          prev ? prev.filter((i) => i.id !== record.id) : prev
-        );
-      }
-    });
-
-    // ── Job-related tables (comments, attachments, job_parts, etc.) ─
-    const unsubJobRelated = subscriptions.subscribeToJobRelated((table, _action, record) => {
-      const jobId = record.job_id as string | undefined;
-      if (!jobId) return;
-      debounce(`job-${jobId}`, () => void queries.refreshJob(jobId));
-      if (table === 'job_inventory') {
-        debounce('inventory-refresh', () => void queries.refreshInventory());
-      }
-    });
-
-    // ── Board-related tables ───────────────────────────────────────
-    const unsubBoards = subscriptions.subscribeToBoardRelated((table, _action, record) => {
-      if (table === 'boards') {
-        void queryClient.invalidateQueries({ queryKey: ['boards'] });
-        const boardId = record.id as string | undefined;
-        if (boardId) void queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-      } else {
-        const boardId = record.board_id as string | undefined;
-        if (boardId) {
-          debounce(
-            `board-${boardId}`,
-            () => void queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+      // ── Shifts ────────────────────────────────────────────────────
+      onShift: (action, record) => {
+        if (typeof record.id !== 'string') return;
+        if (action === 'create') {
+          queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+            prev ? [record as Shift, ...prev] : [record as Shift]
+          );
+        } else if (action === 'update') {
+          queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+            prev ? prev.map((s) => (s.id === record.id ? record : s)) : prev
+          );
+        } else if (action === 'delete') {
+          queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
+            prev ? prev.filter((s) => s.id !== record.id) : prev
           );
         }
-      }
+      },
+
+      // ── Inventory ─────────────────────────────────────────────────
+      onInventory: (action, record) => {
+        if (typeof record.id !== 'string') return;
+        if (action === 'create') {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? [record as InventoryItem, ...prev] : [record as InventoryItem]
+          );
+        } else if (action === 'update') {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? prev.map((i) => (i.id === record.id ? record : i)) : prev
+          );
+        } else if (action === 'delete') {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? prev.filter((i) => i.id !== record.id) : prev
+          );
+        }
+      },
+
+      // ── Users/profiles ────────────────────────────────────────────
+      // DELETE payloads only carry the PK (id) from payload.old — other
+      // fields on `record` are defaults and must not be read in the delete branch.
+      onUser: (action, record) => {
+        if (typeof record.id !== 'string') return;
+        if (action === 'create') {
+          queryClient.setQueryData<User[]>(['users'], (prev) => {
+            if (!prev) return [record];
+            return prev.some((u) => u.id === record.id) ? prev : [record, ...prev];
+          });
+        } else if (action === 'update') {
+          queryClient.setQueryData<User[]>(['users'], (prev) =>
+            prev ? prev.map((u) => (u.id === record.id ? record : u)) : prev
+          );
+        } else if (action === 'delete') {
+          queryClient.setQueryData<User[]>(['users'], (prev) =>
+            prev ? prev.filter((u) => u.id !== record.id) : prev
+          );
+        }
+      },
+
+      // ── Job-related tables (comments, attachments, job_parts, etc.)
+      onJobRelated: (table, _action, record) => {
+        const jobId = record.job_id as string | undefined;
+        if (!jobId) return;
+        debounce(`job-${jobId}`, () => void queries.refreshJob(jobId));
+        if (table === 'job_inventory') {
+          debounce('inventory-refresh', () => void queries.refreshInventory());
+        }
+      },
+
+      // ── Board-related tables ──────────────────────────────────────
+      onBoardRelated: (table, _action, record) => {
+        if (table === 'boards') {
+          void queryClient.invalidateQueries({ queryKey: ['boards'] });
+          const boardId = record.id as string | undefined;
+          if (boardId) void queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        } else {
+          const boardId = record.board_id as string | undefined;
+          if (boardId) {
+            debounce(
+              `board-${boardId}`,
+              () => void queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+            );
+          }
+        }
+      },
+
+      // ── Parts table ───────────────────────────────────────────────
+      onParts: () => {
+        debounce('parts-jobs', () => void queries.refreshJobs());
+      },
     });
 
-    // ── Parts table ────────────────────────────────────────────────
-    const unsubParts = subscriptions.subscribeToParts(() => {
-      debounce('parts-jobs', () => void queries.refreshJobs());
-    });
-
-    // ── Users/profiles table ───────────────────────────────────────
-    // Note: DELETE payloads only carry the PK (id) from payload.old — other
-    // fields on `record` are defaults and must not be read in the delete branch.
-    const unsubUsers = subscriptions.subscribeToUsers((action, record) => {
-      if (typeof record.id !== 'string') return;
-      if (action === 'create') {
-        queryClient.setQueryData<User[]>(['users'], (prev) => {
-          if (!prev) return [record];
-          return prev.some((u) => u.id === record.id) ? prev : [record, ...prev];
-        });
-      } else if (action === 'update') {
-        queryClient.setQueryData<User[]>(['users'], (prev) =>
-          prev ? prev.map((u) => (u.id === record.id ? record : u)) : prev
-        );
-      } else if (action === 'delete') {
-        queryClient.setQueryData<User[]>(['users'], (prev) =>
-          prev ? prev.filter((u) => u.id !== record.id) : prev
-        );
-      }
-    });
-
-    // ── Broadcast: cross-client invalidation ──────────────────────────
-    const unsubChanges = subscriptions.subscribeToChanges((entity) => {
-      void queryClient.invalidateQueries({ queryKey: [entity] });
-      // 'boards' list and individual board caches share different root keys
-      if (entity === 'boards') void queryClient.invalidateQueries({ queryKey: ['board'] });
-    });
-
-    return () => {
-      unsubJobs();
-      unsubShifts();
-      unsubInventory();
-      unsubJobRelated();
-      unsubBoards();
-      unsubParts();
-      unsubUsers();
-      unsubChanges();
-    };
+    return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, queryClient, queries.refreshJob, queries.refreshJobs, queries.refreshInventory]);
 

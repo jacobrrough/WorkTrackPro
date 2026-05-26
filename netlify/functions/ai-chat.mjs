@@ -18,10 +18,9 @@ function getServiceClient() {
   });
 }
 
-async function verifyAdminUser(event) {
-  const auth = (event.headers.authorization || event.headers.Authorization || '').trim();
-  if (!auth.startsWith('Bearer ')) return null;
-  const token = auth.slice(7).trim();
+async function verifyAdminUser(authHeader) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7).trim();
   if (!token) return null;
 
   const supabase = getServiceClient();
@@ -661,73 +660,72 @@ async function fetchBoardsContext(supabase) {
   }
 }
 
-// ── Main handler ────────────────────────────────────────
+// ── Main handler (Netlify V2) ───────────────────────────
 
-export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true }) };
-  }
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
+export default async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    });
+  }
+
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    return await handlePost(event);
+    return await handlePost(request);
   } catch (err) {
     console.error('ai-chat unhandled error:', err);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         error: 'Internal function error',
         detail: err instanceof Error ? err.message : String(err),
       }),
-    };
+      { status: 500, headers: corsHeaders }
+    );
   }
-}
+};
 
-async function handlePost(event) {
+async function handlePost(request) {
   const aiModelUrl = process.env.AI_MODEL_URL;
   const aiProxySecret = process.env.AI_PROXY_SECRET;
   if (!aiModelUrl || !aiProxySecret) {
-    return {
-      statusCode: 500,
+    return new Response(JSON.stringify({ error: 'AI service not configured' }), {
+      status: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'AI service not configured' }),
-    };
+    });
   }
 
-  const user = await verifyAdminUser(event);
+  const authHeader = request.headers.get('authorization') || '';
+  const user = await verifyAdminUser(authHeader);
   if (!user) {
-    return {
-      statusCode: 403,
+    return new Response(JSON.stringify({ error: 'Admin access required' }), {
+      status: 403,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Admin access required' }),
-    };
+    });
   }
 
   let payload;
   try {
-    payload = JSON.parse(event.body || '{}');
+    payload = await request.json();
   } catch {
-    return {
-      statusCode: 400,
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+      status: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Invalid JSON body' }),
-    };
+    });
   }
 
   const { messages } = payload;
   if (!Array.isArray(messages) || messages.length === 0) {
-    return {
-      statusCode: 400,
+    return new Response(JSON.stringify({ error: 'messages array is required' }), {
+      status: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'messages array is required' }),
-    };
+    });
   }
 
   // ── Build context-aware system prompt ──
@@ -761,7 +759,7 @@ async function handlePost(event) {
   let response;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 55000);
 
     response = await fetch(endpoint, {
       method: 'POST',
@@ -779,35 +777,32 @@ async function handlePost(event) {
     clearTimeout(timeout);
   } catch (error) {
     if (error.name === 'AbortError') {
-      return {
-        statusCode: 504,
+      return new Response(JSON.stringify({ error: 'AI model request timed out' }), {
+        status: 504,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'AI model request timed out' }),
-      };
+      });
     }
     console.error('ai-chat fetch error:', error.message || error);
-    return {
-      statusCode: 502,
-      headers: corsHeaders,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         error: 'Unable to reach AI service',
         detail: error.message || 'Connection failed',
       }),
-    };
+      { status: 502, headers: corsHeaders }
+    );
   }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
     console.error('AI model error:', response.status, errorText);
-    return {
-      statusCode: 502,
-      headers: corsHeaders,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         error: 'AI model returned an error',
         status: response.status,
         detail: errorText.slice(0, 200),
       }),
-    };
+      { status: 502, headers: corsHeaders }
+    );
   }
 
   const rawBody = await response.text().catch(() => '');
@@ -815,24 +810,22 @@ async function handlePost(event) {
   try {
     result = JSON.parse(rawBody);
   } catch (parseError) {
-    console.error(
-      'ai-chat JSON parse error:',
-      parseError.message,
-      'body:',
-      rawBody.slice(0, 500)
-    );
-    return {
-      statusCode: 502,
+    console.error('ai-chat JSON parse error:', parseError.message, 'body:', rawBody.slice(0, 500));
+    return new Response(JSON.stringify({ error: 'AI service returned invalid response' }), {
+      status: 502,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'AI service returned invalid response' }),
-    };
+    });
   }
 
   const reply = result.choices?.[0]?.message?.content ?? '';
 
-  return {
-    statusCode: 200,
+  return new Response(JSON.stringify({ ok: true, reply }), {
+    status: 200,
     headers: corsHeaders,
-    body: JSON.stringify({ ok: true, reply }),
-  };
+  });
 }
+
+// Netlify Function config — V2 functions have a longer default timeout.
+export const config = {
+  path: '/api/ai-chat',
+};
