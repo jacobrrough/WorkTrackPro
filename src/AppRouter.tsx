@@ -6,6 +6,7 @@ import { useApp } from './AppContext';
 import { useAppNavigate } from './hooks/useAppNavigate';
 import { useInAppBack } from './hooks/useInAppBack';
 import { useClockInByCode } from './hooks/useClockInByCode';
+import { useNavigation } from './contexts/NavigationContext';
 import { AdminGuard } from './components/AdminGuard';
 import BottomNavigation from './BottomNavigation';
 import { jobService, inventoryService } from './pocketbase';
@@ -140,13 +141,22 @@ function JobDetailRoute() {
     staleTime: 2 * 60 * 1000,
   });
 
+  const navigation = useNavigation();
+
   useEffect(() => {
     if (detailJob && jobId) {
       queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
         prev ? prev.map((j) => (j.id === jobId ? detailJob : j)) : [detailJob]
       );
+      // Polish for deep links: arriving directly via URL or notification
+      // - Updates "last viewed job" for Dashboard resume features.
+      // - Clears stale job list search/filters so the user sees a clean state.
+      navigation.updateState({
+        lastViewedJobId: jobId,
+        searchTerm: '', // clear list search on direct detail arrival
+      });
     }
-  }, [detailJob, jobId, queryClient]);
+  }, [detailJob, jobId, queryClient, navigation]);
 
   const job = detailJob ?? jobs.find((j) => j.id === jobId);
   if (isPending && !job) return null;
