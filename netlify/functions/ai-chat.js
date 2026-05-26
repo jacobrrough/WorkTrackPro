@@ -88,8 +88,11 @@ export async function handler(event) {
     };
   }
 
-  // Build the endpoint URL — AI_MODEL_URL may or may not include the path already.
-  const baseUrl = aiModelUrl.replace(/\/+$/, '');
+  // Build the endpoint URL — AI_MODEL_URL may omit the protocol or trailing path.
+  const withProtocol = /^https?:\/\//i.test(aiModelUrl)
+    ? aiModelUrl
+    : `https://${aiModelUrl}`;
+  const baseUrl = withProtocol.replace(/\/+$/, '');
   const endpoint = baseUrl.endsWith('/v1/chat/completions')
     ? baseUrl
     : `${baseUrl}/v1/chat/completions`;
