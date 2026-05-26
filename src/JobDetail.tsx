@@ -73,7 +73,7 @@ import JobStatusHistory from '@/features/jobs/components/JobStatusHistory';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import { LaborSuggestion } from '@/features/jobs/components/LaborSuggestion';
-import { MachineCompletionBadge } from '@/features/jobs/components/MachineCompletionBadge';
+import { MachineCompletionSection } from '@/features/jobs/components/MachineCompletionSection';
 import ConfirmDialog from './ConfirmDialog';
 import PartSelector from '@/components/PartSelector';
 
@@ -3187,47 +3187,21 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
 
               {currentUser.isAdmin && isCncRequired && (
-                <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <MachineCompletionBadge
-                      type="cnc"
-                      completedAt={job.cncCompletedAt}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleToggleCncDone}
-                      className={`h-11 touch-manipulation rounded-sm border px-3 text-xs font-semibold ${
-                        job.cncCompletedAt
-                          ? 'border-green-500/40 bg-green-500/20 text-green-200'
-                          : 'border-amber-500/40 bg-amber-500/20 text-amber-200'
-                      }`}
-                    >
-                      {job.cncCompletedAt ? 'Mark Pending' : 'Mark Done'}
-                    </button>
-                  </div>
-                </div>
+                <MachineCompletionSection
+                  type="cnc"
+                  completedAt={job.cncCompletedAt}
+                  onToggle={handleToggleCncDone}
+                  canToggle={currentUser.isAdmin && isCncRequired}
+                />
               )}
 
               {currentUser.isAdmin && is3DPrintRequired && (
-                <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <MachineCompletionBadge
-                      type="printer3d"
-                      completedAt={job.printer3DCompletedAt}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleToggle3DPrintDone}
-                      className={`h-11 touch-manipulation rounded-sm border px-3 text-xs font-semibold ${
-                        job.printer3DCompletedAt
-                          ? 'border-green-500/40 bg-green-500/20 text-green-200'
-                          : 'border-blue-500/40 bg-blue-500/20 text-blue-200'
-                      }`}
-                    >
-                      {job.printer3DCompletedAt ? 'Mark Pending' : 'Mark Done'}
-                    </button>
-                  </div>
-                </div>
+                <MachineCompletionSection
+                  type="printer3d"
+                  completedAt={job.printer3DCompletedAt}
+                  onToggle={handleToggle3DPrintDone}
+                  canToggle={currentUser.isAdmin && is3DPrintRequired}
+                />
               )}
 
               {/* Bin Location - Compact */}
