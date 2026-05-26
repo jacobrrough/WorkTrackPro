@@ -226,7 +226,7 @@ export function useJobMutations({
                       type: 'assignment',
                       title: 'Assigned to Job',
                       message: `${changerName} assigned you to ${jobLabel}`,
-                      link: `job-detail:${jobId}`,
+                      link: `/app/jobs/${jobId}`,
                       metadata: { job_id: jobId, job_code: previousJob.jobCode },
                     })
                     .catch((err) => console.error('Assignment notification failed:', err));
@@ -240,7 +240,7 @@ export function useJobMutations({
                       type: 'unassignment',
                       title: 'Removed from Job',
                       message: `${changerName} removed you from ${jobLabel}`,
-                      link: `job-detail:${jobId}`,
+                      link: `/app/jobs/${jobId}`,
                       metadata: { job_id: jobId, job_code: previousJob.jobCode },
                     })
                     .catch((err) => console.error('Unassignment notification failed:', err));
@@ -257,7 +257,7 @@ export function useJobMutations({
                       type: 'rush',
                       title: 'Rush Job',
                       message: `${jobLabel} has been marked as RUSH by ${changerName}`,
-                      link: `job-detail:${jobId}`,
+                      link: `/app/jobs/${jobId}`,
                       metadata: { job_id: jobId, job_code: previousJob.jobCode },
                     })
                     .catch((err) => console.error('Rush notification failed:', err));

@@ -1,11 +1,9 @@
-// @ts-nocheck -- Transitional file during routing refactor (old view-state + new AppRouter coexist). Remove once old switch is fully deleted.
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
 import { AppRouter } from './AppRouter';
 import { useAppNavigate } from './hooks/useAppNavigate';
-import type { ViewState } from './core/types';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
@@ -25,13 +23,8 @@ export default function App() {
     users,
   } = useApp();
 
-  // Router hooks declared early so they can be used by handleNavigate and effects
   const location = useLocation();
-  const navigate = useNavigate();
 
-  const [view, setView] = useState<ViewState>('dashboard');
-  const [id, setId] = useState<string | undefined>(undefined);
-  const [, setBackStack] = useState<Array<{ view: ViewState; id?: string }>>([]);
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -83,96 +76,14 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [isLoading]);
 
-  const _handleNavigate = useCallback(
-    (nextView: ViewState, nextId?: string | { jobId?: string; partId?: string }) => {
-      const isDetailView =
-        nextView === 'job-detail' ||
-        nextView === 'inventory-detail' ||
-        nextView === 'part-detail' ||
-        nextView === 'board-card-detail';
-
-      if (isDetailView) {
-        setBackStack((prev) => {
-          const entry = id !== undefined ? { view, id } : { view };
-          return [...prev, entry];
-        });
-      } else {
-        setBackStack([]);
-      }
-
-      setView(nextView);
-      if (nextId === undefined) {
-        setId(undefined);
-      } else if (typeof nextId === 'string') {
-        setId(nextId);
-      } else if (nextId && 'jobId' in nextId && nextId.jobId) {
-        setId(nextId.jobId);
-      } else if (nextId && 'partId' in nextId && nextId.partId) {
-        setId(nextId.partId);
-      } else {
-        setId(undefined);
-      }
-
-      // Incremental deep linking (P1): push real URLs for the most important detail views
-      // so users can copy/share links and browser back/forward works for them.
-      if (nextView === 'job-detail' && id) {
-        navigate(`/app/jobs/${id}`, { replace: true });
-      }
-      // Future: add similar for inventory-detail, part-detail, board-card-detail etc.
-    },
-    [view, id, navigate]
-  );
-
-  const navigateBackFrom = useCallback(
-    (
-      _detailView: 'job-detail' | 'inventory-detail' | 'part-detail' | 'board-card-detail',
-      fallback: ViewState
-    ) => {
-      setBackStack((prev) => {
-        const entry = prev[prev.length - 1];
-        const nextStack = prev.slice(0, -1);
-        if (entry != null) {
-          setView(entry.view);
-          setId(entry.id ?? undefined);
-        } else {
-          setView(fallback);
-          setId(undefined);
-        }
-        return nextStack;
-      });
-    },
-    []
-  );
-
   const pathname = location.pathname;
   const isEmployeeAppPath = pathname === '/app' || pathname.startsWith('/app/');
-
-  // Incremental deep linking (start of P1 routing work).
-  // When URL matches a known detail pattern (e.g. /app/jobs/:id), drive the internal view state.
-  // This gives shareable links, bookmarks, and better browser history for the most important views
-  // while we gradually migrate away from pure view-state navigation.
-  useEffect(() => {
-    if (!isEmployeeAppPath) return;
-
-    const jobMatch = pathname.match(/^\/app\/jobs\/([^/]+)$/);
-    if (jobMatch) {
-      const jobId = jobMatch[1];
-      if (view !== 'job-detail' || id !== jobId) {
-        setView('job-detail');
-        setId(jobId);
-        setBackStack([]); // reset backstack when arriving via direct link
-      }
-      return;
-    }
-    // Future increments: add similar matchers for
-    // /app/inventory/:id, /app/parts/:id, /app/boards/:boardId/cards/:cardId, etc.
-  }, [pathname, isEmployeeAppPath, view, id]);
 
   if (!isEmployeeAppPath) {
     // Replace (not push) so the public page doesn't sit in browser back-history
     // under the employee app — otherwise pressing back from /app exits the app
     // back to localhost:3000 (public home).
-    const onEmployeeLogin = () => navigate('/app', { replace: true });
+    const onEmployeeLogin = () => window.location.assign('/app');
     if (pathname === '/shop' || pathname.startsWith('/shop/')) {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
     }
