@@ -63,18 +63,30 @@ Internal app navigation is view-state (not URL path). Main views:
 | `calendar` | Calendar view (admin) |
 | `admin-settings` | Org settings, labor rates, on-site rules (admin) |
 | `trello-import` | Trello import (admin) |
+| `boards` / `board-detail` / `board-card-detail` | Custom kanban boards (standalone) |
+| `chat` / `chat-conversation` | E2E encrypted chat + system notifications |
 
 Sign-up is available from the login page. **Navigation:** Internal app uses view-state (e.g. `dashboard`, `job-detail`, `inventory`) and `handleNavigate` from App; no URL path per view. State (search, filters, scroll, last job, minimal view, active tab) is persisted via `NavigationContext`.
 
-### Architecture (refactored)
+### Architecture (refactored — completed)
 
-- **Auth:** `AuthContext` (`useAuth()`) — currentUser, login, signUp, logout, auth refresh, idle timeout.
-- **Server state:** `useAppQueries(enabled)` — jobs, shifts, users, inventory + refresh fns.
-- **Derived:** `useActiveShift`, `useInventoryAllocation` — activeShift, activeJob, calculateAvailable/Allocated.
-- **Mutations:** `useJobMutations`, `useClockMutations`, `useInventoryMutations`, `useAttachmentMutations` — composed in `AppContext`; public API remains `useApp()`.
+The AppContext refactor plan (see `docs/APPCONTEXT-REFACTOR-PLAN.md`) has been executed:
+
+- **Auth:** `AuthContext` (`useAuth()`) — currentUser, login, signUp, logout, password reset, session expiry guards, idle timeout, + E2E key unlock/generation for chat.
+- **Server state:** `useAppQueries(enabled)` — the 4 core TanStack queries (jobs, shifts, users, inventory) with smart refreshers (including part-data healing).
+- **Derived:** `useActiveShift`, `useInventoryAllocation`.
+- **Mutations:** Domain hooks (`useJobMutations`, `useClockMutations`, `useInventoryMutations`, `useAttachmentMutations`, `useBoardMutations`, `useChatMutations`, `useDeliveryMutations`, etc.) composed in the thin `AppContext` (public `useApp()` facade preserved for minimal churn).
+- **Realtime:** Debounced Supabase subscriptions (jobs scalars + job-related tables, shifts, inventory, boards, parts) wired in AppContext.
 - **Attachments:** Job and inventory file lists support delete (admin) via `AttachmentsList` `canDelete` / `onDeleteAttachment`; toast feedback.
-- **Allocation guard:** Supabase trigger `job_inventory_allocate_guard` prevents allocating more than `in_stock` (race-safe). Migration: `supabase/migrations/20260313000001_job_inventory_allocate_guard.sql`.
+- **Allocation guard:** Supabase trigger `job_inventory_allocate_guard` prevents allocating more than `in_stock` (race-safe).
+- **Schema resilience:** `schemaCompat.ts` + runtime column stripping + client healing for PostgREST cache staleness after migrations.
+- **Navigation state:** `NavigationContext` persists searches, filters, scroll positions, quick-action order, minimalView, etc. in localStorage.
 - **Backups:** See `docs/BACKUP.md` for Supabase backup and PITR notes.
+
+**Deep reference docs (highly recommended):**
+- `docs/SYSTEM_MASTERY.md` — verified DB schema, relations, RLS, encryption, job workflow.
+- `docs/APPCONTEXT-REFACTOR-PLAN.md` — the executed refactor.
+- `docs/JOB_AND_PART_DATA_FLOW.md`, `docs/PART_DETAIL_AUTO_CALCULATIONS.md`, etc.
 
 ### Notes
 
@@ -82,6 +94,9 @@ Sign-up is available from the login page. **Navigation:** Internal app uses view
 - Vite may enable HTTPS/proxy when `key.pem`/`cert.pem` exist; in Cloud Agent these don't exist, so dev server runs on plain HTTP — fine.
 - Supabase is cloud-hosted (no local Supabase CLI required). Migrations in `supabase/migrations/` are reference only; apply in Supabase SQL Editor or via CLI.
 - Trello proxy (`npm run trello-proxy`) is optional and only needed for Trello import.
+- Realtime uses a custom debouncer (`lib/realtimeDebounce.ts`) to avoid UI stutter on high-frequency updates. Schema compatibility layer gracefully handles PostgREST cache staleness after migrations (see `services/api/schemaCompat.ts` and the troubleshooting note below).
+
+**Mastery / deep docs** live in `docs/` (SYSTEM_MASTERY.md is the single best source for schema, RLS, encryption, and data flows).
 
 ### When to use explore / agents
 

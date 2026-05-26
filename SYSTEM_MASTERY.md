@@ -19,20 +19,31 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
   - 1:N to `inventory_history.user_id`
   - 1:N to `quotes.created_by`
   - 1:N to `organization_settings.updated_by`
+  - 1:N to `boards.created_by`
+  - 1:N to `board_members.user_id`
+  - 1:N to `board_cards.assignee_id`
+  - 1:1 to `user_encryption_keys.user_id`
+  - 1:N to `conversations.created_by`
+  - 1:N to `conversation_members.user_id`
+  - 1:N to `messages.sender_id`
+  - 1:N to `deliveries.created_by`
   - self-reference via `approved_by`
 
 ### Jobs, inventory, allocations
 
 #### `jobs`
-- Fields: `id`, `job_code`, `po`, `name`, `qty`, `description`, `ecd`, `due_date`, `labor_hours`, `active`, `status`, `board_type`, `created_by`, `assigned_users`, `is_rush`, `workers`, `bin_location`, `part_number`, `part_id`, `variant_suffix`, `est_number`, `inv_number`, `rfq_number`, `owr_number`, `dash_quantities`, `revision`, `labor_breakdown_by_variant`, `machine_breakdown_by_variant`, `allocation_source`, `allocation_source_updated_at`, `created_at`, `updated_at`
+- Fields: `id`, `job_code`, `po`, `name`, `qty`, `description`, `ecd`, `due_date`, `planned_completion_date`, `labor_hours`, `active`, `status`, `board_type`, `created_by`, `assigned_users`, `is_rush`, `workers`, `bin_location`, `part_number`, `part_id`, `variant_suffix`, `est_number`, `inv_number`, `rfq_number`, `owr_number`, `dash_quantities`, `revision`, `labor_breakdown_by_variant`, `machine_breakdown_by_variant`, `allocation_source`, `allocation_source_updated_at`, `progress_estimate_percent`, `cnc_completed_at`, `cnc_completed_by`, `printer3d_completed_at`, `printer3d_completed_by`, `created_at`, `updated_at`
 - Relations:
   - 1:N `job_inventory.job_id`
+  - 1:N `job_parts.job_id` (multi-part support)
   - 1:N `shifts.job_id`
   - 1:N `comments.job_id`
   - 1:N `attachments.job_id`
   - 1:N `checklists.job_id`
+  - 1:N `deliveries.job_id`
   - 1:N `inventory_history.related_job_id`
   - N:1 `parts` (`part_id`, plus legacy `part_number`)
+  - N:1 `profiles` (`cnc_completed_by`, `printer3d_completed_by`)
 
 #### `inventory`
 - Fields: `id`, `name`, `description`, `category`, `in_stock`, `available`, `disposed`, `on_order`, `reorder_point`, `price`, `unit`, `has_image`, `image_path`, `barcode`, `bin_location`, `vendor`, `attachment_count`, `created_at`, `updated_at`
@@ -61,8 +72,8 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - Fields: `id`, `job_id`, `user_id`, `text`, `created_at`
 
 #### `attachments`
-- Fields: `id`, `job_id`, `inventory_id`, `part_id`, `filename`, `storage_path`, `is_admin_only`, `created_at`
-- Constraint: exactly one parent key (`job_id` xor `inventory_id` xor `part_id`)
+- Fields: `id`, `job_id`, `inventory_id`, `part_id`, `board_card_id`, `filename`, `storage_path`, `is_admin_only`, `created_at`
+- Constraint: exactly one parent key (`job_id` xor `inventory_id` xor `part_id` xor `board_card_id`)
 
 ### Checklists and history
 
@@ -105,6 +116,68 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 #### `customer_proposal_files`
 - Fields: `id`, `proposal_id`, `filename`, `storage_path`, `content_type`, `size_bytes`, `public_url`, `created_at`
 
+### Multi-part jobs
+
+#### `job_parts`
+- Fields: `id`, `job_id`, `part_id`, `dash_quantities` (jsonb), `sort_order`, `created_at`, `updated_at`
+- Unique: (`job_id`, `part_id`)
+- Relation role: N:M bridge for `jobs` and `parts`; allows a single job to link multiple parts, each with its own dash quantities
+
+### Deliveries
+
+#### `deliveries`
+- Fields: `id`, `job_id`, `delivery_number`, `delivered_at` (date), `carrier`, `tracking_number`, `recipient_name`, `notes`, `line_items` (jsonb), `created_by`, `created_at`, `updated_at`
+- Unique: (`job_id`, `delivery_number`)
+- Relations: N:1 to `jobs`, N:1 to `profiles` (`created_by`)
+
+### Custom boards
+
+#### `boards`
+- Fields: `id`, `name`, `description`, `created_by`, `visibility` (default 'private'), `created_at`, `updated_at`
+- Relations: 1:N `board_columns`, 1:N `board_cards`, 1:N `board_members`, N:1 `profiles` (`created_by`)
+
+#### `board_columns`
+- Fields: `id`, `board_id`, `name`, `color`, `sort_order`, `created_at`, `updated_at`
+- Relations: N:1 `boards`, 1:N `board_cards`
+
+#### `board_cards`
+- Fields: `id`, `board_id`, `column_id`, `title`, `description`, `assignee_id`, `due_date`, `color`, `sort_order`, `created_at`, `updated_at`
+- Relations: N:1 `boards`, N:1 `board_columns`, N:1 `profiles` (`assignee_id`), 1:N `attachments` (`board_card_id`)
+
+#### `board_members`
+- Fields: `id`, `board_id`, `user_id`, `role` (default 'editor'), `created_at`
+- Unique: (`board_id`, `user_id`)
+- Relations: N:1 `boards`, N:1 `profiles`
+
+### Encrypted chat
+
+#### `user_encryption_keys`
+- Fields: `id`, `user_id`, `public_key`, `encrypted_private_key`, `key_salt`, `key_iv`, `algorithm` (default 'ECDH-P256-AES-GCM'), `created_at`, `updated_at`
+- Unique: (`user_id`)
+- Relations: 1:1 `profiles`
+
+#### `conversations`
+- Fields: `id`, `type` (default 'direct'), `name`, `created_by`, `created_at`, `updated_at`
+- Relations: N:1 `profiles` (`created_by`), 1:N `conversation_members`, 1:N `messages`
+
+#### `conversation_members`
+- Fields: `id`, `conversation_id`, `user_id`, `encrypted_conversation_key`, `key_iv`, `role` (default 'member'), `joined_at`, `left_at`
+- Unique: (`conversation_id`, `user_id`)
+- Relations: N:1 `conversations`, N:1 `profiles`
+
+#### `messages`
+- Fields: `id`, `conversation_id`, `sender_id`, `encrypted_content`, `content_iv`, `message_type` (default 'text'), `created_at`, `updated_at`, `deleted_at`
+- Relations: N:1 `conversations`, N:1 `profiles` (`sender_id`), 1:N `message_receipts`, 1:N `message_attachments`
+
+#### `message_receipts`
+- Fields: `id`, `message_id`, `user_id`, `delivered_at`, `read_at`
+- Unique: (`message_id`, `user_id`)
+- Relations: N:1 `messages`, N:1 `profiles`
+
+#### `message_attachments`
+- Fields: `id`, `message_id`, `storage_path`, `encrypted_file_key`, `file_key_iv`, `file_iv`, `file_name`, `file_size`, `mime_type`
+- Relations: N:1 `messages`
+
 ## Interaction flows and interconnectivity
 
 ### Inventory ↔ Jobs via `job_inventory`
@@ -138,7 +211,18 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - No direct quantity mutation from shifts to inventory.
 
 ### Realtime subscriptions
-- `src/services/api/subscriptions.ts` subscribes to `jobs`, `shifts`, `inventory` postgres changes.
+- `src/services/api/subscriptions.ts` provides granular subscription functions:
+  - `subscribeToJobs()` — jobs table changes
+  - `subscribeToShifts()` — shifts table changes
+  - `subscribeToInventory()` — inventory table changes
+  - `subscribeToJobRelated()` — consolidated: comments, attachments, job_parts, job_inventory, checklists, deliveries
+  - `subscribeToBoardRelated()` — boards, board_columns, board_cards
+  - `subscribeToParts()` — parts table changes
+  - `subscribeToChatMessages()` — new/updated messages
+  - `subscribeToChatReceipts()` — delivery/read receipts
+  - `subscribeToChatMembers()` — conversation membership changes
+  - `subscribeToConversationUpdates()` — conversation metadata
+  - `subscribeToSystemNotifications()` — system notification events
 - `AppContext` applies in-memory updates and triggers inventory refresh on job changes for allocation consistency.
 
 ### TanStack Query and server state
@@ -149,7 +233,48 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
 - `src/lib/offlineQueue.ts`: failed clock-in/clock-out enqueues to localStorage; sync on `online` and mount. `OfflineIndicator` shows pending count in the dashboard header.
 
 ### Netlify functions
-- `netlify/functions/` (e.g. `submit-proposal.js`) for serverless endpoints; proposal intake is public. Set env vars in Netlify for secrets.
+- `netlify/functions/submit-proposal.js` — public proposal intake; validates Turnstile CAPTCHA, writes to `customer_proposals`, sends emails via Resend.
+- `netlify/functions/boards-for-addon.js` — returns boards list for Gmail add-on; authenticates via `GMAIL_ADDON_API_KEY`.
+- `netlify/functions/create-card-from-email.js` — creates a board card from email data; handles attachment upload to Supabase storage.
+
+### Multi-part jobs via `job_parts`
+- Jobs can link to multiple parts through the `job_parts` junction table. Each link stores its own `dash_quantities` (jsonb).
+- The primary `part_id` on `jobs` is retained for backward compatibility; `job_parts` is the canonical multi-part source.
+- `useMaterialSync` iterates all linked parts and calls `syncJobInventoryFromPart` for each, merging material requirements.
+- UI: JobDetail shows a parts list; each part expands to show its dash quantities and material allocation.
+
+### Deliveries workflow
+- Deliveries are created per job via `deliveryService.createDelivery`.
+- Each delivery has a sequential `delivery_number` (unique per job), `line_items` (jsonb array of items/quantities shipped), and optional carrier/tracking info.
+- Packing slip generation renders delivery details for printing.
+- When a job reaches `delivered` status, inventory reconciliation runs as before; deliveries provide the shipment audit trail.
+
+### Custom boards
+- Boards are created by any user; `board_members` controls who can view/edit.
+- Board columns are ordered by `sort_order`; cards within columns also use `sort_order`.
+- Card CRUD: create, update (title, description, assignee, due date, color), move between columns (drag-drop updates `column_id` + `sort_order`), delete.
+- Card attachments use the existing `attachments` table with `board_card_id` as the parent key.
+- Realtime: `subscribeToBoardRelated()` listens to `boards`, `board_columns`, `board_cards` postgres changes.
+
+### Chat encryption flow
+- **Key generation:** On first login (or when no keys exist), the client generates an ECDH P-256 key pair. The private key is encrypted with a key derived from the user's password (PBKDF2 → AES-GCM) and stored in `user_encryption_keys` alongside the public key.
+- **Conversation creation:** Creator generates a random AES-GCM conversation key, encrypts it with each member's public key, and stores per-member in `conversation_members.encrypted_conversation_key`.
+- **Send message:** Sender decrypts the conversation key with their private key, encrypts the message content with AES-GCM, writes to `messages.encrypted_content` + `content_iv`.
+- **Receive message:** Recipient decrypts conversation key → decrypts message. Delivery/read receipts tracked in `message_receipts`.
+- **Key recovery:** On password reset, the user's private key is re-encrypted with the new password-derived key. `useCryptoKeys` hook manages key cache and auto-unlock.
+- **Attachments:** Files are encrypted with a per-file key; the file key is encrypted with the conversation key and stored in `message_attachments`.
+
+### Gmail Add-on flow
+- Google Apps Script add-on (`gmail-addon/`) provides a sidebar in Gmail.
+- User selects a board → add-on calls `boards-for-addon` Netlify function to fetch available boards.
+- On "Create Card", add-on calls `create-card-from-email` with email subject, body snippet, and attachments.
+- Netlify function authenticates via `GMAIL_ADDON_API_KEY`, creates a `board_cards` row, and uploads attachments to Supabase storage.
+
+### System notifications
+- Notification types: `job_overdue`, `job_rush`, `low_stock`, `chat_message`, `mention`, `job_status_change`.
+- Delivered via the chat system as system messages in a dedicated system conversation.
+- `useSystemNotifications` hook subscribes to realtime notifications and updates the notification bell count.
+- Triggers are evaluated client-side (e.g., job overdue check on dashboard load, low stock on inventory mutation).
 
 ### Navigation and application state flow
 - Top-level route split: `/` public marketing vs `/app` employee app.
@@ -182,36 +307,52 @@ Runtime backend is Supabase. The `src/pocketbase.ts` module is a compatibility i
   - `dashboard`
   - `job-detail`
   - `clock-in`
+  - `scanner`
   - `inventory`
   - `inventory-detail`
   - `board-shop` / `board-admin`
-  - `parts`
-  - `part-detail`
-  - `create-job`
-  - `quotes`
-  - `calendar`
+  - `boards` (custom boards list)
+  - `board-detail` (individual custom board)
+  - `board-card-detail`
+  - `chat` (conversation list)
+  - `chat-conversation` (individual conversation)
+  - `parts` (admin)
+  - `part-detail` (admin)
+  - `create-job` (admin)
+  - `quotes` (admin)
+  - `calendar` (admin)
   - `time-reports`
-  - `admin-settings`
-  - `trello-import`
+  - `admin-settings` (admin)
+  - `trello-import` (admin)
 
-## Inventory and parts pain points observed in code
+## Known pain points
 
 1. `src/AppContext.tsx` is still large and combines auth, jobs, shifts, inventory orchestration.
 2. `src/InventoryDetail.tsx` remains monolithic (scanner, edit form, history, attachments, linked-jobs in one file).
-3. `src/features/admin/PartDetail.tsx` is large and high-coupling.
+3. `src/features/admin/PartDetail.tsx` is large and high-coupling (see SYSTEM_MASTERY_PARTS_v2.md for detailed audit).
 4. Mixed modal patterns and one-off overlays increase maintenance cost.
 5. `inventory.available` still exists in schema but display uses computed values, requiring discipline across services/UI.
 6. Some action clusters in list/detail views still duplicate controls (for example edit/history both entering same detail surface).
 7. Limited test coverage around status transitions and stock reconciliation edge cases.
+8. Parts calculation logic has been consolidated into `partsCalculations.ts` but some callers may still import from individual modules directly.
 
 ## Helpers and utilities to preserve/extend
 
-- `src/lib/inventoryCalculations.ts`
-- `src/lib/inventoryState.ts`
-- `src/lib/inventoryReconciliation.ts`
-- `src/lib/timeUtils.ts`
-- `src/core/validation.ts`
-- `src/lib/materialFromPart.ts`
-- `src/lib/partDistribution.ts`
-- `src/lib/priceVisibility.ts`
-- `src/lib/jobWorkflow.ts`
+- `src/lib/inventoryCalculations.ts` — allocated/available stock math
+- `src/lib/inventoryState.ts` — inventory display state derivation
+- `src/lib/inventoryReconciliation.ts` — delivery reconciliation planning
+- `src/lib/timeUtils.ts` — shift duration, formatting, reporting helpers
+- `src/core/validation.ts` — input validation helpers
+- `src/lib/materialFromPart.ts` — `computeRequiredMaterials`, `syncJobInventoryFromPart`
+- `src/lib/partsCalculations.ts` — single source of truth re-exporting all part calculation functions with safe quantity handling
+- `src/lib/calculatePartQuote.ts` — material + labor + CNC + 3D cost per part/variant
+- `src/lib/partDistribution.ts` — set/variant price, labor, CNC distribution
+- `src/lib/variantPricingAuto.ts` — variant labor/CNC/3D targets from set composition
+- `src/lib/variantMath.ts` — `quantityPerUnit` normalization, dash suffix helpers
+- `src/lib/priceVisibility.ts` — shop-floor price hiding
+- `src/lib/jobWorkflow.ts` — status transitions and workflow logic
+- `src/lib/jobProgress.ts` — progress estimation and at-risk flagging
+- `src/lib/formatJob.ts` — job display formatting, `calculateSetCompletion`
+- `src/lib/offlineQueue.ts` — offline time clock punch queue
+- `src/lib/exportCsv.ts` — CSV export for reports
+- `src/lib/crypto/` — E2E encryption: ECDH key generation, AES-GCM encrypt/decrypt, key cache

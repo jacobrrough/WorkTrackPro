@@ -32,6 +32,9 @@ jobs:
       - name: Format check
         run: npx prettier --check "src/**/*.{ts,tsx,css,json}"
 
+      - name: Type check
+        run: npm run typecheck
+
       - name: Build
         run: npm run build
         env:

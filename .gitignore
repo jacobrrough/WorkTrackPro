@@ -65,3 +65,8 @@ backups/
 *.backup
 *.bak
 *~
+
+# AI / agent worktrees and session artifacts (Claude, Cursor, etc. - often contain full duplicated checkouts and test runs)
+.claude/worktrees/
+.claude/worktrees/**
+
