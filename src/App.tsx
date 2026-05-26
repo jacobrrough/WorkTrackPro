@@ -1,5 +1,5 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApp } from './AppContext';
 import { jobService } from './pocketbase';
@@ -104,6 +104,10 @@ export default function App() {
     receiveInventoryOrder,
   } = useApp();
 
+  // Router hooks declared early so they can be used by handleNavigate and effects
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [view, setView] = useState<ViewState>('dashboard');
   const [id, setId] = useState<string | undefined>(undefined);
   const [, setBackStack] = useState<Array<{ view: ViewState; id?: string }>>([]);
@@ -193,8 +197,15 @@ export default function App() {
       } else {
         setId(undefined);
       }
+
+      // Incremental deep linking (P1): push real URLs for the most important detail views
+      // so users can copy/share links and browser back/forward works for them.
+      if (nextView === 'job-detail' && id) {
+        navigate(`/app/jobs/${id}`, { replace: true });
+      }
+      // Future: add similar for inventory-detail, part-detail, board-card-detail etc.
     },
-    [view, id]
+    [view, id, navigate]
   );
 
   const navigateBackFrom = useCallback(
@@ -261,9 +272,29 @@ export default function App() {
     [getJobByCode, clockIn, logout]
   );
 
-  const location = useLocation();
   const pathname = location.pathname;
   const isEmployeeAppPath = pathname === '/app' || pathname.startsWith('/app/');
+
+  // Incremental deep linking (start of P1 routing work).
+  // When URL matches a known detail pattern (e.g. /app/jobs/:id), drive the internal view state.
+  // This gives shareable links, bookmarks, and better browser history for the most important views
+  // while we gradually migrate away from pure view-state navigation.
+  useEffect(() => {
+    if (!isEmployeeAppPath) return;
+
+    const jobMatch = pathname.match(/^\/app\/jobs\/([^/]+)$/);
+    if (jobMatch) {
+      const jobId = jobMatch[1];
+      if (view !== 'job-detail' || id !== jobId) {
+        setView('job-detail');
+        setId(jobId);
+        setBackStack([]); // reset backstack when arriving via direct link
+      }
+      return;
+    }
+    // Future increments: add similar matchers for
+    // /app/inventory/:id, /app/parts/:id, /app/boards/:boardId/cards/:cardId, etc.
+  }, [pathname, isEmployeeAppPath, view, id]);
 
   if (!isEmployeeAppPath) {
     const onEmployeeLogin = () => window.location.assign('/app');
