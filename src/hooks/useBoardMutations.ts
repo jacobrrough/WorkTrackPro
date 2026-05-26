@@ -178,7 +178,15 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     async (boardId: string, columnId: string, cardIds: string[]) => {
       const ok = await boardService.reorderCards(boardId, columnId, cardIds);
       if (ok) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        // Await the refetch so callers (BoardView) can clear optimistic state without
+        // flashing stale data. Unique to reorderCards because it owns optimistic state;
+        // other mutations in this file can fire-and-forget.
+        try {
+          await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        } catch {
+          // Write succeeded; a transient refetch error is not a save failure. The next
+          // background sync or render-driven refetch will reconcile.
+        }
         broadcastChange('boards');
       }
       return ok;
