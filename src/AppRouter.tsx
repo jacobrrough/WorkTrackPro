@@ -44,17 +44,19 @@ const NotificationSettingsView = lazyWithRetry(
 
 // ─── Shared not-found fallback ───────────────────────────────────────────────
 
-function NotFound({ message, description, onBack }: { 
-  message: string; 
-  description?: string; 
-  onBack: () => void 
+function NotFound({
+  message,
+  description,
+  onBack,
+}: {
+  message: string;
+  description?: string;
+  onBack: () => void;
 }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4 text-center">
       <p className="text-slate-400">{message}</p>
-      {description && (
-        <p className="max-w-sm text-xs text-slate-500">{description}</p>
-      )}
+      {description && <p className="max-w-sm text-xs text-slate-500">{description}</p>}
       <button
         type="button"
         onClick={onBack}
@@ -176,10 +178,10 @@ function JobDetailRoute() {
   }
   if (!job) {
     return (
-      <NotFound 
-        message="Job not found." 
+      <NotFound
+        message="Job not found."
         description="The job may have been deleted, completed, or you may no longer have access."
-        onBack={back} 
+        onBack={back}
       />
     );
   }
@@ -292,10 +294,10 @@ function InventoryDetailRoute() {
   }
   if (!item) {
     return (
-      <NotFound 
-        message="Item not found." 
+      <NotFound
+        message="Item not found."
         description="The inventory item may have been deleted or you may no longer have access."
-        onBack={back} 
+        onBack={back}
       />
     );
   }
@@ -358,10 +360,10 @@ function BoardCardDetailRoute() {
   const back = useInAppBack(boardId ? `/app/boards/${boardId}` : '/app/boards');
   if (!boardId || !cardId) {
     return (
-      <NotFound 
-        message="Card not found." 
+      <NotFound
+        message="Card not found."
         description="The card may have been deleted, moved, or you may no longer have access."
-        onBack={back} 
+        onBack={back}
       />
     );
   }
