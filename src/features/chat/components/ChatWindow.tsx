@@ -57,7 +57,7 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
     );
     cryptoKeyCache.setConversationKey(conversationId, convKey);
     return creatorPubKey;
-  }, [conversationId, convData, currentUserId]);
+  }, [conversationId, convData]);
 
   const handleSendText = useCallback(
     async (text: string) => {

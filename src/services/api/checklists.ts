@@ -205,6 +205,7 @@ export const checklistHistoryService = {
       return [];
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data ?? []).map((row: any) => ({
       id: row.id,
       checklist: row.checklist_id,

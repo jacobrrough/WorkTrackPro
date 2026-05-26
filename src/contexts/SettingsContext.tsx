@@ -157,7 +157,9 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
     Object.assign(mergedScheduleRaw, next.workWeekSchedule);
   }
   next.workWeekSchedule = normalizeWorkWeekSchedule(
-    mergedScheduleRaw as Record<number, unknown> as any
+    // The normalize function has a strict input type; this internal merge is safe
+    // @ts-expect-error -- controlled shape from partial updates
+    mergedScheduleRaw as Record<number, unknown>
   );
 
   if (typeof next.requireOnSite !== 'boolean') next.requireOnSite = base.requireOnSite;

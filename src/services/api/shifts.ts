@@ -46,6 +46,7 @@ export const shiftService = {
       .select(SHIFTS_SELECT_WITH_LUNCH)
       .order('clock_in_time', { ascending: false });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let list: any[] = withLunch.data ?? [];
     if (withLunch.error) {
       if (!isMissingLunchColumnsError(withLunch.error)) {

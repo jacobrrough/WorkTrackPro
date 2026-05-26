@@ -17,6 +17,7 @@ async function recordPartRevisionHistory(
 ): Promise<void> {
   if (previousRev !== undefined && rev === previousRev) return;
   const sessionData = await supabase.auth.getSession();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (sessionData as any)?.data?.session?.user?.id ?? null;
   await supabase
     .from('part_revision_history')
@@ -1163,6 +1164,7 @@ export const partsService = {
             )
             .in('status', ['paid', 'projectCompleted'])
             .is('part_id', null)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .order('due_date', { ascending: false }) as any;
         }
       } catch {
