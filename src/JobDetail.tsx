@@ -3189,10 +3189,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {currentUser.isAdmin && isCncRequired && (
                 <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <MachineCompletionBadge
-                      type="cnc"
-                      completedAt={job.cncCompletedAt}
-                    />
+                    <MachineCompletionBadge type="cnc" completedAt={job.cncCompletedAt} />
                     <button
                       type="button"
                       onClick={handleToggleCncDone}
