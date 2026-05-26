@@ -111,7 +111,12 @@ function ChatViewInner({
           <SystemNotificationsView
             onBack={() => setActiveConversationId(null)}
             onNavigate={(link) => {
-              if (onNavigate && link) {
+              if (!onNavigate || !link) return;
+              if (link.startsWith('/')) {
+                // Real deep link URL (new format) — navigate directly
+                window.location.assign(link);
+              } else {
+                // Legacy view:id format fallback (for any old notifications still in DB)
                 const [linkView, linkId] = link.split(':');
                 if (linkView && linkId) onNavigate(linkView as ViewState, linkId);
               }

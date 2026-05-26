@@ -181,6 +181,21 @@ export function useJobMutations({
       // to 0 at 100%, dropping the job from the calendar). Admin-only at the app layer;
       // RLS is the authoritative backstop.
       if ('progressEstimatePercent' in data && !currentUser?.isAdmin) return null;
+
+      // Lightweight development-time invariant guard for the complex job/parts/variant model.
+      // Helps surface cases where legacy single-part fields and the newer multi-part (job_parts) data are sent together.
+      if (import.meta.env.DEV) {
+        const hasLegacy =
+          data.partId != null || data.dashQuantities != null || data.partNumber != null;
+        const hasMultiPart = Array.isArray(data.parts) && data.parts.length > 0;
+        if (hasLegacy && hasMultiPart) {
+          console.warn(
+            '[JobUpdate] Both legacy part fields and multi-part (parts[]) data provided. This may indicate a migration or data shape issue.',
+            { jobId, data }
+          );
+        }
+      }
+
       try {
         // Clone before mutating so we don't alter the caller's object.
         // `data` is Partial<Job> and may be reused by the caller after this call.
@@ -226,7 +241,7 @@ export function useJobMutations({
                       type: 'assignment',
                       title: 'Assigned to Job',
                       message: `${changerName} assigned you to ${jobLabel}`,
-                      link: `job-detail:${jobId}`,
+                      link: `/app/jobs/${jobId}`,
                       metadata: { job_id: jobId, job_code: previousJob.jobCode },
                     })
                     .catch((err) => console.error('Assignment notification failed:', err));
@@ -240,7 +255,7 @@ export function useJobMutations({
                       type: 'unassignment',
                       title: 'Removed from Job',
                       message: `${changerName} removed you from ${jobLabel}`,
-                      link: `job-detail:${jobId}`,
+                      link: `/app/jobs/${jobId}`,
                       metadata: { job_id: jobId, job_code: previousJob.jobCode },
                     })
                     .catch((err) => console.error('Unassignment notification failed:', err));
@@ -257,7 +272,7 @@ export function useJobMutations({
                       type: 'rush',
                       title: 'Rush Job',
                       message: `${jobLabel} has been marked as RUSH by ${changerName}`,
-                      link: `job-detail:${jobId}`,
+                      link: `/app/jobs/${jobId}`,
                       metadata: { job_id: jobId, job_code: previousJob.jobCode },
                     })
                     .catch((err) => console.error('Rush notification failed:', err));

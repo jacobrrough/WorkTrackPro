@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
 import { AppRouter } from './AppRouter';
 import { useAppNavigate } from './hooks/useAppNavigate';
+import ErrorBoundary from './ErrorBoundary';
 import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
@@ -22,6 +23,8 @@ export default function App() {
     inventory,
     users,
   } = useApp();
+
+  const location = useLocation();
 
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -51,7 +54,6 @@ export default function App() {
   );
 
   const appNavigate = useAppNavigate();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -75,7 +77,6 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [isLoading]);
 
-  const location = useLocation();
   const pathname = location.pathname;
   const isEmployeeAppPath = pathname === '/app' || pathname.startsWith('/app/');
 
@@ -83,7 +84,7 @@ export default function App() {
     // Replace (not push) so the public page doesn't sit in browser back-history
     // under the employee app — otherwise pressing back from /app exits the app
     // back to localhost:3000 (public home).
-    const onEmployeeLogin = () => navigate('/app', { replace: true });
+    const onEmployeeLogin = () => window.location.assign('/app');
     if (pathname === '/shop' || pathname.startsWith('/shop/')) {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
     }
@@ -164,18 +165,45 @@ export default function App() {
   return (
     <>
       {currentUser && (
-        <CommandPalette
-          open={commandPaletteOpen}
-          onOpenChange={setCommandPaletteOpen}
-          jobs={jobs}
-          inventory={inventory}
-          users={users}
-          onNavigate={appNavigate}
-        />
+        <ErrorBoundary
+          fallback={
+            <div className="fixed bottom-4 right-4 rounded-sm border border-red-500/30 bg-background-dark/95 px-3 py-2 text-sm text-red-400">
+              Command palette unavailable
+            </div>
+          }
+        >
+          <CommandPalette
+            open={commandPaletteOpen}
+            onOpenChange={setCommandPaletteOpen}
+            jobs={jobs}
+            inventory={inventory}
+            users={users}
+            onNavigate={appNavigate}
+          />
+        </ErrorBoundary>
       )}
-      <AppShell>
-        <AppRouter />
-      </AppShell>
+      <ErrorBoundary
+        fallback={
+          <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark p-4 text-center">
+            <p className="text-lg font-semibold text-white">Something went wrong</p>
+            <p className="mt-2 max-w-md text-sm text-slate-400">
+              An unexpected error occurred. Please refresh the page. If the problem persists,
+              contact your administrator.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-6 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
+            >
+              Refresh Page
+            </button>
+          </div>
+        }
+      >
+        <AppShell>
+          <AppRouter />
+        </AppShell>
+      </ErrorBoundary>
     </>
   );
 }

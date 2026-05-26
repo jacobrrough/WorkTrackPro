@@ -15,6 +15,11 @@ import SearchAutocomplete from './components/SearchAutocomplete';
 import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
 import { useScrollRestore } from './hooks/useScrollRestore';
 
+const AIAssistantPanel = lazyWithRetry(
+  () => import('./components/AIAssistantPanel'),
+  'AIAssistantPanel'
+);
+
 /**
  * Isolated timer component — owns its own 1-second interval so that ticking
  * only re-renders this small subtree, not the entire Dashboard.
@@ -84,6 +89,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
   const [isEditingActions, setIsEditingActions] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const { syncToServer } = useDashboardPreferencesSync(!!currentUser);
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
@@ -320,6 +326,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cardClassName: 'border-purple-500/30 bg-gradient-to-br from-purple-600/20 to-pink-600/20',
       ariaLabel: 'Open Trello import',
       onClick: () => onNavigate('trello-import'),
+      adminOnly: true,
+    },
+    {
+      key: 'ai-assistant',
+      title: 'AI Assistant',
+      subtitle: 'Ask anything',
+      icon: 'smart_toy',
+      iconClassName: 'text-sky-400',
+      cardClassName: 'border-sky-500/30 bg-gradient-to-br from-sky-600/20 to-indigo-600/20',
+      ariaLabel: 'Open AI assistant',
+      onClick: () => setShowAIAssistant(true),
       adminOnly: true,
     },
   ];
@@ -657,6 +674,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             setShowScanner(true);
           }}
         />
+      )}
+
+      {/* AI Assistant Panel */}
+      {showAIAssistant && (
+        <Suspense fallback={null}>
+          <AIAssistantPanel onClose={() => setShowAIAssistant(false)} />
+        </Suspense>
       )}
 
       {/* QR Scanner Modal */}
