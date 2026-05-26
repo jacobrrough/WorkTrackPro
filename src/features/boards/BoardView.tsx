@@ -1,16 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCorners,
   pointerWithin,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type DragCancelEvent,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
@@ -63,6 +65,14 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [localCards, setLocalCards] = useState<BoardCard[] | null>(null);
+  const dragStartColumnRef = useRef<string | null>(null);
+  // Last over target seen during dragOver. On mobile, dnd-kit can report `over === null`
+  // at the release frame if the finger drifts off a droppable; we fall back to this so
+  // the drop honors the preview the user just saw instead of snapping back.
+  const lastOverIdRef = useRef<string | null>(null);
+  // Drop generation: each drop increments this; the finally only clears optimistic state
+  // if no newer drop has run, so rapid sequential drags don't clobber each other.
+  const dropGenerationRef = useRef(0);
 
   const board = data?.board ?? null;
   const { ref: boardScrollRef, onScroll: onBoardScroll } = useScrollRestore(`board-${boardId}`, {
@@ -98,13 +108,26 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     return map;
   }, [columns, cards]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
 
   const activeCard = activeCardId ? (cards.find((c) => c.id === activeCardId) ?? null) : null;
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(event.active.id as string);
+    const activeId = event.active.id as string;
+    setActiveCardId(activeId);
     setLocalCards([...cards]);
+    dragStartColumnRef.current = cards.find((c) => c.id === activeId)?.columnId ?? null;
+    // Clear any stale value from a previous drag's last dragOver. If this new drag fires
+    // no dragOver events (instant tap-drop), the fallback in dragEnd must not pick up the
+    // previous drag's target.
+    lastOverIdRef.current = null;
+    // Bump the drop generation so any in-flight prior drop's `finally` sees a mismatch
+    // and skips its cleanup — otherwise it would `resetDragState()` mid-drag and wipe
+    // this new drag's optimistic state.
+    dropGenerationRef.current++;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -113,6 +136,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    lastOverIdRef.current = overId;
 
     const activeIdx = localCards.findIndex((c) => c.id === activeId);
     if (activeIdx === -1) return;
@@ -145,20 +169,46 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     }
   };
 
+  const resetDragState = () => {
+    setLocalCards(null);
+    dragStartColumnRef.current = null;
+    lastOverIdRef.current = null;
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    setActiveCardId(null);
+    resetDragState();
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
 
-    if (!over || !localCards) {
-      setLocalCards(null);
+    if (!localCards) {
+      resetDragState();
       return;
     }
 
+    // Mobile fallback: if dnd-kit lost track of `over` at the release frame (common when
+    // a finger drifts a few pixels off any droppable at touch-end), honor the last over
+    // seen during dragOver so the drop lands where the preview was showing.
     const activeId = active.id as string;
-    const overId = over.id as string;
+    const overId = (over?.id as string | undefined) ?? lastOverIdRef.current;
+    if (!overId) {
+      resetDragState();
+      return;
+    }
+
+    // Drop on self: no reorder. Without this guard, `colCards.findIndex(overId)` returns -1
+    // (active was filtered out) and the card silently snaps to the column's end.
+    if (activeId === overId) {
+      resetDragState();
+      return;
+    }
+
     const card = localCards.find((c) => c.id === activeId);
     if (!card) {
-      setLocalCards(null);
+      resetDragState();
       return;
     }
 
@@ -176,15 +226,60 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     if (overId.startsWith('col-')) {
       insertIdx = colCards.length;
     } else {
-      const idx = colCards.findIndex((c) => c.id === overId);
-      insertIdx = idx >= 0 ? idx : colCards.length;
+      const overIdxFiltered = colCards.findIndex((c) => c.id === overId);
+      insertIdx = overIdxFiltered >= 0 ? overIdxFiltered : colCards.length;
+
+      // Within-column downward drag: filtering out the active card shifted the over card's
+      // index up by 1. Insert AFTER the over card so it lands where the user dropped it,
+      // matching standard sortable behavior. Cross-column moves don't need this adjustment.
+      const isWithinColumn = dragStartColumnRef.current === targetColumnId;
+      if (isWithinColumn && overIdxFiltered >= 0) {
+        const originalCol = localCards.filter((c) => c.columnId === targetColumnId);
+        const originalActiveIdx = originalCol.findIndex((c) => c.id === activeId);
+        const originalOverIdx = originalCol.findIndex((c) => c.id === overId);
+        if (originalActiveIdx >= 0 && originalActiveIdx < originalOverIdx) {
+          insertIdx = overIdxFiltered + 1;
+        }
+      }
     }
 
     colCards.splice(insertIdx, 0, card);
     const orderedCardIds = colCards.map((c) => c.id);
 
-    setLocalCards(null);
-    await mutations.reorderCards(boardId, targetColumnId, orderedCardIds);
+    // Commit the new order to localCards so the optimistic render (after the DragOverlay
+    // disappears) shows the card in its dropped slot — not its pre-drag slot. Without this,
+    // within-column reorders snap back to the old position until the server refetch lands.
+    const reorderedColCards = colCards.map((c, i) => ({
+      ...c,
+      columnId: targetColumnId,
+      sortOrder: i,
+    }));
+    setLocalCards([
+      ...localCards.filter((c) => c.columnId !== targetColumnId && c.id !== activeId),
+      ...reorderedColCards,
+    ]);
+
+    // Second bump claims this drop's slot. (The first bump happens in handleDragStart to
+    // invalidate any prior in-flight drop's `finally`.) Subsequent drags or drops bump
+    // further so this drop's `finally` knows it's stale.
+    const myGen = ++dropGenerationRef.current;
+    try {
+      const ok = await mutations.reorderCards(boardId, targetColumnId, orderedCardIds);
+      // Only toast if this is still the latest drop. A newer drop's payload includes this
+      // one's intent (it was built on this drop's optimistic state), so a failed-but-applied
+      // toast would mislead the user.
+      if (!ok && dropGenerationRef.current === myGen) {
+        showToast('Could not save reorder', 'error');
+      }
+    } catch {
+      if (dropGenerationRef.current === myGen) {
+        showToast('Could not save reorder', 'error');
+      }
+    } finally {
+      // Only clear if no newer drop has started; otherwise we'd wipe the next drop's
+      // optimistic state and flash the user's previous drag away mid-flight.
+      if (dropGenerationRef.current === myGen) resetDragState();
+    }
   };
 
   const handleAddColumn = async (name: string) => {
@@ -271,6 +366,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div
           ref={boardScrollRef}
@@ -319,7 +415,10 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
         <DragOverlay>
           {activeCard && (
-            <div className="w-[calc(100vw-2rem)] opacity-90 md:w-72">
+            // Width matches the card's rendered size in the column (column width minus
+            // the DroppableColumn's p-2 = 16px). If the overlay is wider, the card visually
+            // jumps to a larger size at drag-start, which reads as "off-center" from the cursor.
+            <div className="w-[calc(100vw-3rem)] opacity-90 md:w-[17rem]">
               <BoardCardItem card={activeCard} users={users} readOnly onClick={() => {}} />
             </div>
           )}
