@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Delivery, DeliveryLineItem, User } from '@/core/types';
 import { deliveryService } from '@/services/api/deliveries';
-import { broadcastChange } from '@/services/api/subscriptions';
 
 export interface UseDeliveryMutationsParams {
   currentUser: User | null;
@@ -35,7 +34,6 @@ export function useDeliveryMutations({ currentUser, showToast }: UseDeliveryMuta
           prev ? [...prev, delivery] : [delivery]
         );
         showToast(`Delivery #${delivery.deliveryNumber} recorded`, 'success');
-        broadcastChange('deliveries');
       } else {
         showToast('Failed to record delivery', 'error');
       }
@@ -61,7 +59,6 @@ export function useDeliveryMutations({ currentUser, showToast }: UseDeliveryMuta
       if (delivery) {
         queryClient.invalidateQueries({ queryKey: ['deliveries', jobId] });
         showToast('Delivery updated', 'success');
-        broadcastChange('deliveries');
       } else {
         showToast('Failed to update delivery', 'error');
       }
@@ -78,7 +75,6 @@ export function useDeliveryMutations({ currentUser, showToast }: UseDeliveryMuta
           prev ? prev.filter((d) => d.id !== id) : []
         );
         showToast('Delivery deleted', 'success');
-        broadcastChange('deliveries');
       } else {
         showToast('Failed to delete delivery', 'error');
       }
