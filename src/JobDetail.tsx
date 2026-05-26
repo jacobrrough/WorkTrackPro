@@ -73,6 +73,7 @@ import JobStatusHistory from '@/features/jobs/components/JobStatusHistory';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
 import { LaborSuggestion } from '@/features/jobs/components/LaborSuggestion';
+import { MachineCompletionBadge } from '@/features/jobs/components/MachineCompletionBadge';
 import ConfirmDialog from './ConfirmDialog';
 import PartSelector from '@/components/PartSelector';
 
@@ -3188,21 +3189,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {currentUser.isAdmin && isCncRequired && (
                 <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                        CNC Status
-                      </p>
-                      <p
-                        className={`text-sm font-semibold ${job.cncCompletedAt ? 'text-green-300' : 'text-amber-300'}`}
-                      >
-                        {job.cncCompletedAt ? 'CNC Done' : 'CNC Pending'}
-                      </p>
-                      {job.cncCompletedAt && (
-                        <p className="text-[10px] text-slate-400">
-                          Marked {formatDateOnly(job.cncCompletedAt)}
-                        </p>
-                      )}
-                    </div>
+                    <MachineCompletionBadge
+                      type="cnc"
+                      completedAt={job.cncCompletedAt}
+                    />
                     <button
                       type="button"
                       onClick={handleToggleCncDone}
@@ -3221,21 +3211,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {currentUser.isAdmin && is3DPrintRequired && (
                 <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                        3D Print Status
-                      </p>
-                      <p
-                        className={`text-sm font-semibold ${job.printer3DCompletedAt ? 'text-green-300' : 'text-blue-300'}`}
-                      >
-                        {job.printer3DCompletedAt ? '3D Print Done' : '3D Print Pending'}
-                      </p>
-                      {job.printer3DCompletedAt && (
-                        <p className="text-[10px] text-slate-400">
-                          Marked {formatDateOnly(job.printer3DCompletedAt)}
-                        </p>
-                      )}
-                    </div>
+                    <MachineCompletionBadge
+                      type="printer3d"
+                      completedAt={job.printer3DCompletedAt}
+                    />
                     <button
                       type="button"
                       onClick={handleToggle3DPrintDone}
