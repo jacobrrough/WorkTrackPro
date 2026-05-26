@@ -72,6 +72,7 @@ import DeliveriesSection from '@/features/deliveries/DeliveriesSection';
 import JobStatusHistory from '@/features/jobs/components/JobStatusHistory';
 import JobInventory from '@/features/jobs/components/JobInventory';
 import JobDetailHeaderBar from '@/features/jobs/components/JobDetailHeaderBar';
+import { LaborSuggestion } from '@/features/jobs/components/LaborSuggestion';
 import ConfirmDialog from './ConfirmDialog';
 import PartSelector from '@/components/PartSelector';
 
@@ -2627,17 +2628,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </span>
                       )}
                     </label>
-                    {laborSuggestion != null && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditForm({ ...editForm, laborHours: laborSuggestion.toString() })
-                        }
-                        className="text-[10px] text-primary hover:underline"
-                      >
-                        Use {laborSuggestion.toFixed(1)}h
-                      </button>
-                    )}
+                    <LaborSuggestion
+                      suggestion={laborSuggestion}
+                      onApply={() =>
+                        setEditForm({ ...editForm, laborHours: laborSuggestion!.toString() })
+                      }
+                    />
                   </div>
                   <input
                     type="number"
