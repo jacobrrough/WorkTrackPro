@@ -14,27 +14,6 @@
  * Returns an array of Cards to display in the add-on sidebar.
  */
 function onGmailMessage(event) {
-  // Guard against the function being invoked without a Gmail event — e.g.
-  // when someone clicks "Run" in the Apps Script editor instead of opening
-  // an email in Gmail. In production, Google always supplies event.gmail.
-  if (!event || !event.gmail || !event.gmail.messageId) {
-    Logger.log('onGmailMessage called without a Gmail event context. ' +
-      'Open an email in Gmail to test the add-on.');
-    return [
-      CardService.newCardBuilder()
-        .setHeader(CardService.newCardHeader().setTitle('WorkTrack Card Creator'))
-        .addSection(
-          CardService.newCardSection().addWidget(
-            CardService.newTextParagraph().setText(
-              'Open an email in Gmail to use this add-on. ' +
-              'This function can\'t be run directly from the Apps Script editor.'
-            )
-          )
-        )
-        .build(),
-    ];
-  }
-
   var messageId = event.gmail.messageId;
   var accessToken = event.gmail.accessToken;
   GmailApp.setCurrentMessageAccessToken(accessToken);
@@ -189,20 +168,6 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
  * Action handler — called when the user clicks "Create Card".
  */
 function onCreateCard(event) {
-  // Guard: action handlers fired by Gmail always supply an event. If we got
-  // here some other way (e.g. someone clicked "Run" in the editor), bail
-  // out cleanly instead of throwing.
-  if (!event) {
-    Logger.log('onCreateCard called without an event.');
-    return CardService.newActionResponseBuilder()
-      .setNotification(
-        CardService.newNotification().setText(
-          'This action must be triggered from Gmail.'
-        )
-      )
-      .build();
-  }
-
   // Refresh the per-message access token. The one captured in onGmailMessage
   // is short-lived and will have expired by the time the user clicks the
   // button, causing GmailApp.getMessageById(...).getAttachments() to throw
@@ -211,7 +176,7 @@ function onCreateCard(event) {
     GmailApp.setCurrentMessageAccessToken(event.gmail.accessToken);
   }
 
-  var formInputs = (event.commonEventObject && event.commonEventObject.formInputs) || {};
+  var formInputs = event.commonEventObject.formInputs || {};
 
   // Parse the single combined destination dropdown (boardId|columnId).
   var boardId = '';
