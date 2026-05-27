@@ -168,14 +168,6 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
  * Action handler — called when the user clicks "Create Card".
  */
 function onCreateCard(event) {
-  // Refresh the per-message access token. The one captured in onGmailMessage
-  // is short-lived and will have expired by the time the user clicks the
-  // button, causing GmailApp.getMessageById(...).getAttachments() to throw
-  // a permissions error. The action event carries a fresh token.
-  if (event.gmail && event.gmail.accessToken) {
-    GmailApp.setCurrentMessageAccessToken(event.gmail.accessToken);
-  }
-
   var formInputs = event.commonEventObject.formInputs || {};
 
   // Parse the single combined destination dropdown (boardId|columnId).
@@ -216,12 +208,10 @@ function onCreateCard(event) {
 
   var attachmentPayloads = [];
   var attachmentError = '';
-  // Prefer the fresh messageId from the action event; fall back to the
-  // cached one if for some reason it's missing.
-  var currentMessageId = (event.gmail && event.gmail.messageId) || gmailId;
-  if (selectedIndexes.length > 0 && currentMessageId) {
+  if (selectedIndexes.length > 0 && gmailId) {
     try {
-      var message = GmailApp.getMessageById(currentMessageId);
+      // Use gmail.readonly scope to access the full message directly.
+      var message = GmailApp.getMessageById(gmailId);
       if (message) {
         var rawAttachments = message.getAttachments();
         for (var i = 0; i < selectedIndexes.length; i++) {
