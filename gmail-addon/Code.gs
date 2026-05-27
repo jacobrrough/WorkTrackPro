@@ -46,23 +46,33 @@ function onGmailMessage(event) {
   // Fetch boards for the dropdown.
   var boards = fetchBoards();
 
-  // Store email data in cache for the action callback.
+  // Store email data in cache for the action callbacks (board-change + create).
   var cache = CacheService.getUserCache();
   cache.put('email_subject', subject, 600);
   cache.put('email_body', body.substring(0, 2000), 600);
+  cache.put('email_body_preview', bodyPreview, 600);
   cache.put('email_from', from, 600);
   cache.put('email_date', date, 600);
   cache.put('email_message_id', gmailMessageId, 600);
   cache.put('email_gmail_id', messageId, 600);
   cache.put('email_attachment_count', String(rawAttachments.length), 600);
+  cache.put('email_boards', JSON.stringify(boards), 600);
+  cache.put('email_attachments_info', JSON.stringify(attachmentInfo), 600);
 
-  return [buildMainCard(subject, bodyPreview, from, boards, attachmentInfo)];
+  return [buildMainCard(subject, bodyPreview, from, boards, attachmentInfo, '', '')];
 }
 
 /**
- * Builds the main sidebar Card with a single board>column dropdown and create button.
+ * Builds the main sidebar Card.
+ *
+ * Two-step destination selector: a Board dropdown, then a Column dropdown
+ * whose options are filtered to the selected board. When the user picks a
+ * different board, onBoardChanged rebuilds the card.
+ *
+ * @param {string} selectedBoardId  — currently-selected board id, or '' for default
+ * @param {string} selectedColumnId — currently-selected column id, or '' for default
  */
-function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
+function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo, selectedBoardId, selectedColumnId) {
   var card = CardService.newCardBuilder();
   card.setHeader(
     CardService.newCardHeader()
@@ -92,9 +102,10 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
   }
   card.addSection(emailSection);
 
-  // ── Single combined board + column dropdown ──────────
-  // Google Apps Script Card dropdowns can't dynamically filter,
-  // so we use one dropdown with "Board > Column" entries.
+  // ── Two-step destination selector ────────────────────
+  // First pick the board. The column dropdown is filtered to that board's
+  // columns; when the user changes the board, onBoardChanged rebuilds the
+  // card with the new column list.
   var destSection = CardService.newCardSection().setHeader('Destination');
 
   if (boards.length === 0) {
@@ -104,23 +115,62 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
       )
     );
   } else {
-    var dropdown = CardService.newSelectionInput()
-      .setType(CardService.SelectionInputType.DROPDOWN)
-      .setTitle('Board > Column')
-      .setFieldName('destination');
-
-    var isFirst = true;
-    for (var b = 0; b < boards.length; b++) {
-      var board = boards[b];
-      for (var c = 0; c < board.columns.length; c++) {
-        var col = board.columns[c];
-        var label = board.name + '  >  ' + col.name;
-        var value = board.id + '|' + col.id;
-        dropdown.addItem(label, value, isFirst);
-        isFirst = false;
+    // Resolve the effective board: caller's choice if still valid, else first.
+    var effectiveBoardId = '';
+    for (var bIdx = 0; bIdx < boards.length; bIdx++) {
+      if (boards[bIdx].id === selectedBoardId) {
+        effectiveBoardId = selectedBoardId;
+        break;
       }
     }
-    destSection.addWidget(dropdown);
+    if (!effectiveBoardId) effectiveBoardId = boards[0].id;
+
+    // Board dropdown — onChange refreshes the column list below.
+    var boardChangeAction = CardService.newAction().setFunctionName('onBoardChanged');
+    var boardDropdown = CardService.newSelectionInput()
+      .setType(CardService.SelectionInputType.DROPDOWN)
+      .setTitle('Board')
+      .setFieldName('boardId')
+      .setOnChangeAction(boardChangeAction);
+    for (var bAdd = 0; bAdd < boards.length; bAdd++) {
+      boardDropdown.addItem(
+        boards[bAdd].name,
+        boards[bAdd].id,
+        boards[bAdd].id === effectiveBoardId
+      );
+    }
+    destSection.addWidget(boardDropdown);
+
+    // Look up the active board so we can populate its columns.
+    var selectedBoard = null;
+    for (var bFind = 0; bFind < boards.length; bFind++) {
+      if (boards[bFind].id === effectiveBoardId) {
+        selectedBoard = boards[bFind];
+        break;
+      }
+    }
+
+    if (selectedBoard && selectedBoard.columns && selectedBoard.columns.length > 0) {
+      // Default to the first column unless caller picked a valid one for this board.
+      var effectiveColumnId = '';
+      for (var cIdx = 0; cIdx < selectedBoard.columns.length; cIdx++) {
+        if (selectedBoard.columns[cIdx].id === selectedColumnId) {
+          effectiveColumnId = selectedColumnId;
+          break;
+        }
+      }
+      if (!effectiveColumnId) effectiveColumnId = selectedBoard.columns[0].id;
+
+      var columnDropdown = CardService.newSelectionInput()
+        .setType(CardService.SelectionInputType.DROPDOWN)
+        .setTitle('Column')
+        .setFieldName('columnId');
+      for (var cAdd = 0; cAdd < selectedBoard.columns.length; cAdd++) {
+        var col = selectedBoard.columns[cAdd];
+        columnDropdown.addItem(col.name, col.id, col.id === effectiveColumnId);
+      }
+      destSection.addWidget(columnDropdown);
+    }
   }
 
   card.addSection(destSection);
@@ -165,28 +215,64 @@ function buildMainCard(subject, bodyPreview, from, boards, attachmentInfo) {
 }
 
 /**
+ * Action handler — fires when the user picks a different board from the
+ * board dropdown. Rebuilds the card so the column dropdown shows only that
+ * board's columns. State (boards, attachmentInfo, email preview) is loaded
+ * from the user cache that was populated in onGmailMessage; if the cache
+ * has expired (10 min), boards are re-fetched as a fallback.
+ */
+function onBoardChanged(event) {
+  var formInputs = (event.commonEventObject && event.commonEventObject.formInputs) || {};
+  var newBoardId = '';
+  if (formInputs.boardId && formInputs.boardId.stringInputs) {
+    newBoardId = formInputs.boardId.stringInputs.value[0] || '';
+  }
+
+  var cache = CacheService.getUserCache();
+  var subject = cache.get('email_subject') || '(no subject)';
+  var bodyPreview = cache.get('email_body_preview') || '';
+  var from = cache.get('email_from') || '';
+  var boardsJson = cache.get('email_boards');
+  var attachmentsJson = cache.get('email_attachments_info');
+  var boards = boardsJson ? JSON.parse(boardsJson) : [];
+  var attachmentInfo = attachmentsJson ? JSON.parse(attachmentsJson) : [];
+
+  // Cache miss: re-fetch boards so the dropdown isn't suddenly empty.
+  if (boards.length === 0) {
+    boards = fetchBoards();
+    cache.put('email_boards', JSON.stringify(boards), 600);
+  }
+
+  var newCard = buildMainCard(
+    subject, bodyPreview, from, boards, attachmentInfo, newBoardId, ''
+  );
+
+  return CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().updateCard(newCard))
+    .build();
+}
+
+/**
  * Action handler — called when the user clicks "Create Card".
  */
 function onCreateCard(event) {
   var formInputs = event.commonEventObject.formInputs || {};
 
-  // Parse the single combined destination dropdown (boardId|columnId).
+  // Read the two separate dropdowns wired up in buildMainCard.
   var boardId = '';
   var columnId = '';
 
-  if (formInputs.destination && formInputs.destination.stringInputs) {
-    var destValue = formInputs.destination.stringInputs.value[0] || '';
-    var parts = destValue.split('|');
-    if (parts.length === 2) {
-      boardId = parts[0];
-      columnId = parts[1];
-    }
+  if (formInputs.boardId && formInputs.boardId.stringInputs) {
+    boardId = formInputs.boardId.stringInputs.value[0] || '';
+  }
+  if (formInputs.columnId && formInputs.columnId.stringInputs) {
+    columnId = formInputs.columnId.stringInputs.value[0] || '';
   }
 
   if (!boardId || !columnId) {
     return CardService.newActionResponseBuilder()
       .setNotification(
-        CardService.newNotification().setText('Please select a destination.')
+        CardService.newNotification().setText('Please select a board and column.')
       )
       .build();
   }
