@@ -2,6 +2,23 @@ import { supabase } from './supabaseClient';
 
 const ORG_SETTINGS_KEY = 'default';
 
+export interface BrandingRecord {
+  companyName: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyEmail: string;
+  /** Base64 data URL of the uploaded logo, or '' when none. */
+  logoDataUrl: string;
+}
+
+export const EMPTY_BRANDING: BrandingRecord = {
+  companyName: '',
+  companyAddress: '',
+  companyPhone: '',
+  companyEmail: '',
+  logoDataUrl: '',
+};
+
 export interface OrganizationSettingsRecord {
   laborRate: number;
   materialUpcharge: number;
@@ -15,6 +32,20 @@ export interface OrganizationSettingsRecord {
   siteLng: number | null;
   siteRadiusMeters: number | null;
   enforceOnSiteAtLogin: boolean;
+  branding: BrandingRecord;
+}
+
+function mapBranding(raw: unknown): BrandingRecord {
+  if (!raw || typeof raw !== 'object') return { ...EMPTY_BRANDING };
+  const b = raw as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  return {
+    companyName: str(b.companyName),
+    companyAddress: str(b.companyAddress),
+    companyPhone: str(b.companyPhone),
+    companyEmail: str(b.companyEmail),
+    logoDataUrl: str(b.logoDataUrl),
+  };
 }
 
 type OrganizationSettingsRow = {
@@ -30,6 +61,7 @@ type OrganizationSettingsRow = {
   site_lng?: number | null;
   site_radius_meters?: number | null;
   enforce_on_site_at_login?: boolean;
+  branding?: Record<string, unknown> | null;
 };
 
 function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecord {
@@ -51,16 +83,17 @@ function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecor
         ? Number(row.site_radius_meters)
         : null,
     enforceOnSiteAtLogin: Boolean(row.enforce_on_site_at_login),
+    branding: mapBranding(row.branding),
   };
 }
 
 export const adminSettingsService = {
   async getOrganizationSettings(): Promise<OrganizationSettingsRecord | null> {
+    // select('*') keeps reads resilient if the `branding` column has not been
+    // migrated yet on a given environment (missing column -> undefined, not an error).
     const { data, error } = await supabase
       .from('organization_settings')
-      .select(
-        'labor_rate, material_upcharge, cnc_rate, printer_3d_rate, employee_count, overtime_multiplier, work_week_schedule, require_on_site, site_lat, site_lng, site_radius_meters, enforce_on_site_at_login'
-      )
+      .select('*')
       .eq('org_key', ORG_SETTINGS_KEY)
       .maybeSingle();
     if (error || !data) return null;
@@ -89,6 +122,7 @@ export const adminSettingsService = {
       site_lng: settings.siteLng ?? null,
       site_radius_meters: settings.siteRadiusMeters ?? null,
       enforce_on_site_at_login: settings.enforceOnSiteAtLogin,
+      branding: settings.branding ?? EMPTY_BRANDING,
       updated_by: authData.user?.id ?? null,
       updated_at: new Date().toISOString(),
     };
@@ -96,9 +130,7 @@ export const adminSettingsService = {
     const { data, error } = await supabase
       .from('organization_settings')
       .upsert(payload, { onConflict: 'org_key' })
-      .select(
-        'labor_rate, material_upcharge, cnc_rate, printer_3d_rate, employee_count, overtime_multiplier, work_week_schedule, require_on_site, site_lat, site_lng, site_radius_meters, enforce_on_site_at_login'
-      )
+      .select('*')
       .single();
 
     if (error) {

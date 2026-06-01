@@ -175,7 +175,12 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
       )}
 
       {previewing && (
-        <PackingSlipPreview delivery={previewing} job={job} onClose={() => setPreviewing(null)} />
+        <PackingSlipPreview
+          delivery={previewing}
+          job={job}
+          canEditBranding={isAdmin}
+          onClose={() => setPreviewing(null)}
+        />
       )}
 
       {confirmDeleteId && (

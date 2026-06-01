@@ -1,17 +1,29 @@
 import React, { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import type { Delivery, Job } from '@/core/types';
+import { useSettings } from '@/contexts/SettingsContext';
 import PackingSlipTemplate from '../PackingSlipTemplate';
+import PackingSlipSettingsModal from './PackingSlipSettingsModal';
 
 interface PackingSlipPreviewProps {
   delivery: Delivery;
   job: Job;
   onClose: () => void;
+  /** Admins can edit the company branding shown on the slip. */
+  canEditBranding?: boolean;
 }
 
-const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({ delivery, job, onClose }) => {
+const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
+  delivery,
+  job,
+  onClose,
+  canEditBranding = false,
+}) => {
   const slipRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const [editingBranding, setEditingBranding] = useState(false);
+  const { branding } = useSettings().settings;
+  const hasBranding = Boolean(branding.companyName.trim() || branding.logoDataUrl);
 
   const handlePrint = useReactToPrint({
     contentRef: slipRef,
@@ -47,6 +59,16 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({ delivery, job, 
           Packing Slip — Job #{job.jobCode}, Delivery #{delivery.deliveryNumber}
         </h2>
         <div className="flex items-center gap-2">
+          {canEditBranding && (
+            <button
+              onClick={() => setEditingBranding(true)}
+              className="flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+              title="Edit company name, contact info and logo"
+            >
+              <span className="material-symbols-outlined text-base">branding_watermark</span>
+              Branding
+            </button>
+          )}
           <button
             onClick={() => handlePrint()}
             className="flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
@@ -72,10 +94,32 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({ delivery, job, 
         </div>
       </header>
       <div className="flex-1 overflow-auto p-6">
+        {canEditBranding && !hasBranding && (
+          <div className="mx-auto mb-4 flex max-w-[8.5in] items-center justify-between gap-3 rounded border border-primary/40 bg-primary/10 px-4 py-2.5 text-sm text-white print:hidden">
+            <span>This slip has no company name or logo yet.</span>
+            <button
+              onClick={() => setEditingBranding(true)}
+              className="shrink-0 rounded bg-primary px-3 py-1.5 text-xs font-bold text-white"
+            >
+              Add branding
+            </button>
+          </div>
+        )}
         <div className="mx-auto shadow-2xl" style={{ width: '8.5in' }}>
-          <PackingSlipTemplate ref={slipRef} delivery={delivery} job={job} />
+          <PackingSlipTemplate
+            ref={slipRef}
+            delivery={delivery}
+            job={job}
+            companyName={branding.companyName}
+            companyAddress={branding.companyAddress}
+            companyPhone={branding.companyPhone}
+            companyEmail={branding.companyEmail}
+            logoUrl={branding.logoDataUrl || undefined}
+          />
         </div>
       </div>
+
+      {editingBranding && <PackingSlipSettingsModal onClose={() => setEditingBranding(false)} />}
     </div>
   );
 };

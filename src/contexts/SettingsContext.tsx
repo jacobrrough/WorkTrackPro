@@ -13,9 +13,15 @@ import {
   WorkWeekSchedule,
   normalizeWorkWeekSchedule,
 } from '@/lib/workHours';
-import { adminSettingsService } from '@/services/api/adminSettings';
+import {
+  adminSettingsService,
+  EMPTY_BRANDING,
+  type BrandingRecord,
+} from '@/services/api/adminSettings';
 
 const STORAGE_KEY = 'worktrack-admin-settings';
+
+export type BrandingSettings = BrandingRecord;
 
 export interface AdminSettings {
   laborRate: number;
@@ -32,6 +38,8 @@ export interface AdminSettings {
   siteRadiusMeters: number | null;
   /** When true and requireOnSite is true, block app access until user is on site */
   enforceOnSiteAtLogin: boolean;
+  /** Company branding for packing slips: name, contact info, and uploaded logo. */
+  branding: BrandingSettings;
 }
 
 export interface UpdateSettingsResult {
@@ -52,7 +60,24 @@ const defaults: AdminSettings = {
   siteLng: null,
   siteRadiusMeters: null,
   enforceOnSiteAtLogin: false,
+  branding: { ...EMPTY_BRANDING },
 };
+
+function sanitizeBranding(
+  base: BrandingSettings,
+  partial: Partial<BrandingSettings> | null | undefined
+): BrandingSettings {
+  const src = partial && typeof partial === 'object' ? partial : {};
+  const pick = (key: keyof BrandingSettings) =>
+    typeof src[key] === 'string' ? (src[key] as string) : base[key];
+  return {
+    companyName: pick('companyName'),
+    companyAddress: pick('companyAddress'),
+    companyPhone: pick('companyPhone'),
+    companyEmail: pick('companyEmail'),
+    logoDataUrl: pick('logoDataUrl'),
+  };
+}
 
 function loadSettings(): AdminSettings {
   try {
@@ -99,6 +124,7 @@ function loadSettings(): AdminSettings {
             ? Number(parsed.siteRadiusMeters)
             : null,
         enforceOnSiteAtLogin: Boolean(parsed.enforceOnSiteAtLogin),
+        branding: sanitizeBranding(defaults.branding, parsed.branding),
       };
     }
   } catch {
@@ -180,6 +206,11 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
   if (typeof next.enforceOnSiteAtLogin !== 'boolean')
     next.enforceOnSiteAtLogin = base.enforceOnSiteAtLogin;
 
+  next.branding =
+    partial.branding !== undefined
+      ? sanitizeBranding(base.branding, partial.branding)
+      : sanitizeBranding(base.branding, next.branding);
+
   return next;
 }
 
@@ -223,6 +254,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             siteLng: shared.siteLng,
             siteRadiusMeters: shared.siteRadiusMeters,
             enforceOnSiteAtLogin: shared.enforceOnSiteAtLogin,
+            branding: shared.branding,
           })
         );
       }
@@ -255,6 +287,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       siteLng: optimistic.siteLng,
       siteRadiusMeters: optimistic.siteRadiusMeters,
       enforceOnSiteAtLogin: optimistic.enforceOnSiteAtLogin,
+      branding: optimistic.branding,
     });
 
     setIsSyncing(false);
@@ -278,6 +311,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           siteLng: data.siteLng,
           siteRadiusMeters: data.siteRadiusMeters,
           enforceOnSiteAtLogin: data.enforceOnSiteAtLogin,
+          branding: data.branding,
         })
       );
     }

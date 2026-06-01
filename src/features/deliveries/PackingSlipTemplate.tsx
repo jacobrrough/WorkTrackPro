@@ -16,7 +16,7 @@ import { formatJobCode } from '@/lib/formatJob';
 export interface PackingSlipTemplateProps {
   delivery: Delivery;
   job: Job;
-  // Customize these via props (or hard-code them in this file).
+  // Company branding — set these from Packing Slip Branding (admins) or pass directly.
   companyName?: string;
   companyAddress?: string;
   companyPhone?: string;
@@ -26,18 +26,11 @@ export interface PackingSlipTemplateProps {
 
 const PackingSlipTemplate = forwardRef<HTMLDivElement, PackingSlipTemplateProps>(
   function PackingSlipTemplate(
-    {
-      delivery,
-      job,
-      companyName = 'WorkTrack Pro',
-      companyAddress,
-      companyPhone,
-      companyEmail,
-      logoUrl,
-    },
+    { delivery, job, companyName, companyAddress, companyPhone, companyEmail, logoUrl },
     ref
   ) {
     const totalQty = delivery.lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const trimmedName = companyName?.trim();
 
     return (
       <div
@@ -48,8 +41,10 @@ const PackingSlipTemplate = forwardRef<HTMLDivElement, PackingSlipTemplateProps>
         {/* ─── Header ─── */}
         <div className="mb-6 flex items-start justify-between border-b-2 border-black pb-4">
           <div>
-            {logoUrl && <img src={logoUrl} alt={companyName} className="mb-2 h-16" />}
-            <h1 className="text-2xl font-bold">{companyName}</h1>
+            {logoUrl && (
+              <img src={logoUrl} alt={trimmedName || 'Company logo'} className="mb-2 h-16" />
+            )}
+            {trimmedName && <h1 className="text-2xl font-bold">{trimmedName}</h1>}
             {companyAddress && <p className="text-sm">{companyAddress}</p>}
             {(companyPhone || companyEmail) && (
               <p className="text-sm">
