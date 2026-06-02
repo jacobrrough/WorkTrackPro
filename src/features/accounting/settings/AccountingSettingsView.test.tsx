@@ -53,6 +53,11 @@ function defaultAccounts(overrides: Partial<DefaultAccounts> = {}): DefaultAccou
     uncategorizedIncome: null,
     uncategorizedExpense: null,
     paymentProcessorClearing: null,
+    openingBalanceLiabilities: null,
+    wagesExpense: null,
+    employerPayrollTaxExpense: null,
+    payrollClearing: null,
+    payrollLiabilities: null,
     ...overrides,
   };
 }

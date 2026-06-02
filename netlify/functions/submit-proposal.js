@@ -1,4 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
+// PHASE E (E5) — optional, server-gated rate limiting + body-size hardening on this PUBLIC endpoint.
+// INERT by default (ACCOUNTING_SECURITY_HARDENING_ENABLED off ⇒ both helpers are no-ops), so this
+// does NOT change the existing proposal-intake behavior until an operator enables hardening. When on,
+// it adds a per-client-IP submit cap + a request-body size cap IN ADDITION to the existing Turnstile
+// anti-spam check (defense in depth — it does not replace Turnstile).
+import {
+  isHardeningEnabled,
+  rateLimit,
+  clientKeyFromEvent,
+  enforceBodyLimit,
+  tooManyRequestsResponse,
+  payloadTooLargeResponse,
+  LIMITS,
+} from './lib/securityHardening.mjs';
 
 // Public endpoint: customer proposal form. No user JWT required; Turnstile + body validation used.
 
@@ -262,6 +276,25 @@ export async function handler(event) {
       headers: corsHeaders,
       body: JSON.stringify({ error: `Missing server configuration: ${missingEnv}` }),
     };
+  }
+
+  // ── E5 input hardening (INERT unless ACCOUNTING_SECURITY_HARDENING_ENABLED). Reject an oversize
+  //    body, then throttle submissions per client IP — both BEFORE parsing/processing. Additive to
+  //    (not a replacement for) the existing Turnstile check below. ──
+  if (isHardeningEnabled()) {
+    const maxBytes = LIMITS.maxBodyBytes();
+    const sizeCheck = enforceBodyLimit(event, maxBytes);
+    if (sizeCheck.tooLarge) {
+      return payloadTooLargeResponse(corsHeaders, maxBytes);
+    }
+    const rl = rateLimit(
+      clientKeyFromEvent(event, 'submit-proposal'),
+      LIMITS.submitProposalPerHour(),
+      60 * 60 * 1000
+    );
+    if (rl.limited) {
+      return tooManyRequestsResponse(corsHeaders, rl.retryAfterSec);
+    }
   }
 
   try {

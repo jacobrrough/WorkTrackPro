@@ -12,7 +12,7 @@ import {
   useOpenTaxTableDriftCount,
 } from '../hooks/useAccountingQueries';
 import { useSetClosedThroughDate } from '../hooks/useAccountingMutations';
-import { TAX_TABLES_BASE } from '../constants';
+import { NOTIFICATIONS_BASE, SECURITY_BASE, TAX_TABLES_BASE } from '../constants';
 import { openDriftBadgeLabel } from '../taxTableSyncView';
 import {
   confirmCloseMessage,
@@ -337,6 +337,88 @@ function TaxTableUpdatesPanel() {
 }
 
 /**
+ * NOTIFICATION DELIVERY (HELD / UNVERIFIED — NOT FOR FILING) entry — a link into the
+ * notification config/preferences surface. The whole module is FLAG-DARK: events ship
+ * disabled and nothing delivers until it is graduated (and each recipient opts in). The
+ * entry is foregrounded as held so an admin understands it is config-only today.
+ */
+function NotificationsPanel() {
+  const navigate = useNavigate();
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-base font-bold text-white">
+        <span className="material-symbols-outlined text-primary">notifications_active</span>
+        Notifications
+        <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-red-300">
+          Unverified
+        </span>
+      </h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Wire accounting events (invoice sent / overdue, bill due soon, low bank balance, tax
+        deadline) into the app notification feed. Held and flag-dark — events ship disabled and
+        require CPA and/or security sign-off before delivery is enabled.
+      </p>
+      <Card
+        className="mt-3 flex items-center gap-3"
+        padding="lg"
+        onClick={() => navigate(NOTIFICATIONS_BASE)}
+      >
+        <span className="material-symbols-outlined text-amber-300">tune</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-white">Open the notification settings</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Configure event toggles + thresholds and preview the recipient audience.
+          </p>
+        </div>
+        <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * PHASE E SECURITY HARDENING (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING) entry — a link into
+ * the Security overview (encryption cutover, tamper-evident audit-log integrity, RBAC management,
+ * and the backup/restore documentation stub). The whole area is FLAG-DARK and requires a SECURITY
+ * review before it is enabled; it is surfaced as held so an admin understands it is a review /
+ * read-only surface today (the one write, the audit-chain backfill, is supervised + admin-only).
+ */
+function SecurityPanel() {
+  const navigate = useNavigate();
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-base font-bold text-white">
+        <span className="material-symbols-outlined text-primary">security</span>
+        Security
+        <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-red-300">
+          Unverified
+        </span>
+      </h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Field-encryption cutover progress, tamper-evident audit-log integrity, role management
+        (grant/revoke), and the backup/restore runbook. Held and flag-dark — requires a security
+        sign-off (key management, encryption coverage, hash-chain integrity, backup) before it is
+        enabled.
+      </p>
+      <Card
+        className="mt-3 flex items-center gap-3"
+        padding="lg"
+        onClick={() => navigate(SECURITY_BASE)}
+      >
+        <span className="material-symbols-outlined text-amber-300">shield</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-white">Open the security overview</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Encryption coverage, audit-chain integrity, roles, and the backup runbook.
+          </p>
+        </div>
+        <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+      </Card>
+    </div>
+  );
+}
+
+/**
  * D1 — Books-closed (period lock) date. Accounting-admin control to "close the books"
  * through a date: once set, the DB rejects posting or voiding any journal entry dated on
  * or before it (migration 20260601000016). The whole accounting module is already behind
@@ -451,6 +533,14 @@ export default function AccountingSettingsView() {
 
         <div className="border-t border-white/10 pt-5">
           <TaxTableUpdatesPanel />
+        </div>
+
+        <div className="border-t border-white/10 pt-5">
+          <NotificationsPanel />
+        </div>
+
+        <div className="border-t border-white/10 pt-5">
+          <SecurityPanel />
         </div>
       </div>
 

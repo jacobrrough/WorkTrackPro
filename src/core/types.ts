@@ -644,6 +644,18 @@ export type SystemNotificationType =
   | 'daily_summary'
   | 'system_alert'
   | 'maintenance_notice'
+  // ── WorkTrackAccounting (HELD / UNVERIFIED — NOT FOR FILING) ────────────────
+  // Free-text notification `type` strings emitted by accounting.dispatch_notification
+  // (migration 20260601000025) into the EXISTING public.system_notifications feed.
+  // These are ALSO the in-app preference keys the dispatch RPC gates on via
+  // public.should_notify(user, 'acct_*', 'in_app'). They default OFF in the
+  // preferences builder below so the module stays flag-dark until CPA/security sign-off.
+  // Every delivered row carries metadata.unverified=true + module='accounting'.
+  | 'acct_invoice_sent'
+  | 'acct_invoice_overdue'
+  | 'acct_bill_due_soon'
+  | 'acct_low_bank_balance'
+  | 'acct_tax_deadline'
   // Legacy (backward compat with existing DB rows)
   | 'mention'
   | 'delivery'

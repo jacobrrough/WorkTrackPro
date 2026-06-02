@@ -1,4 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
+// PHASE E (E5) — optional, server-gated rate limiting on this add-on helper endpoint. INERT by
+// default (ACCOUNTING_SECURITY_HARDENING_ENABLED off ⇒ no-op), so existing behavior is unchanged
+// until an operator enables hardening. When on, it adds a per-client-IP request cap.
+import {
+  isHardeningEnabled,
+  rateLimit,
+  clientKeyFromEvent,
+  tooManyRequestsResponse,
+  LIMITS,
+} from './lib/securityHardening.mjs';
 
 // Read-only endpoint: returns boards + columns for the Gmail Add-on dropdown.
 // Authenticated via a static API key (GMAIL_ADDON_API_KEY env var).
@@ -36,6 +46,14 @@ export async function handler(event) {
       headers: corsHeaders,
       body: JSON.stringify({ error: 'Unauthorized' }),
     };
+  }
+
+  // ── E5 rate limit (INERT unless ACCOUNTING_SECURITY_HARDENING_ENABLED). Throttle per client IP. ──
+  if (isHardeningEnabled()) {
+    const rl = rateLimit(clientKeyFromEvent(event, 'boards-for-addon'), LIMITS.addonPerMinute(), 60 * 1000);
+    if (rl.limited) {
+      return tooManyRequestsResponse(corsHeaders, rl.retryAfterSec);
+    }
   }
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;

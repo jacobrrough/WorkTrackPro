@@ -3,8 +3,12 @@ import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
+import { AttachmentsSection } from '../components/AttachmentsSection';
 import { useJournalEntry } from '../hooks/useAccountingQueries';
-import { useVoidJournalEntry } from '../hooks/useAccountingMutations';
+import {
+  useRemoveEntityAttachments,
+  useVoidJournalEntry,
+} from '../hooks/useAccountingMutations';
 import { computeBalance, formatMoney } from '../accountingViewModel';
 import type { JournalLine } from '../types';
 
@@ -16,6 +20,11 @@ export default function JournalEntryDetail() {
   const { entryId } = useParams<{ entryId: string }>();
   const { data: entry, isPending, isError } = useJournalEntry(entryId);
   const voidEntry = useVoidJournalEntry();
+  // DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). App-layer orphan cleanup for the
+  // polymorphic accounting.attachments table (no DB FK to cascade). Fired AFTER a successful
+  // void so a voided (terminal) journal entry does not strand its attached objects. Best-effort
+  // + non-blocking: a cleanup failure must NEVER mask the successful void.
+  const removeEntityAttachments = useRemoveEntityAttachments();
   const [error, setError] = useState<string | null>(null);
 
   const onVoid = async () => {
@@ -24,7 +33,16 @@ export default function JournalEntryDetail() {
     if (reason == null) return;
     setError(null);
     const res = await voidEntry.mutateAsync({ id: entry.id, reason: reason.trim() || 'Voided' });
-    if (!res.ok) setError(res.error ?? 'Could not void the entry.');
+    if (!res.ok) {
+      setError(res.error ?? 'Could not void the entry.');
+      return;
+    }
+    // Cascade-remove this entry's attachments now that it is voided (fire-and-forget; a cleanup
+    // error is swallowed so it cannot surface on the void path).
+    removeEntityAttachments.mutate(
+      { entityType: 'journal_entry', entityId: entry.id },
+      { onError: () => { /* orphan cleanup is best-effort; never block the void */ } }
+    );
   };
 
   const lines = sortedLines(entry?.lines);
@@ -106,6 +124,11 @@ export default function JournalEntryDetail() {
               {error}
             </p>
           )}
+
+          {/* DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). Attach supporting
+              documents to this journal entry. Renders the UnverifiedBanner + the "stored
+              unencrypted" disclosure; moves NO money and posts NO journal entry. */}
+          <AttachmentsSection entityType="journal_entry" entityId={entry.id} />
         </div>
       )}
     </AccountingShell>

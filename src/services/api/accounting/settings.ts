@@ -46,6 +46,16 @@ export function mapDefaultAccounts(value: Record<string, unknown> | null): Defau
     uncategorizedIncome: nstr(v.uncategorized_income),
     uncategorizedExpense: nstr(v.uncategorized_expense),
     paymentProcessorClearing: nstr(v.payment_processor_clearing),
+    // IMPORT/MIGRATION structural default (added to the blob by migration 20260601000023).
+    openingBalanceLiabilities: nstr(v.opening_balance_liabilities),
+    // C2 PAYROLL structural defaults (added to the blob by migration 20260601000027). NOTE:
+    // migration 027 seeds these FOUR keys in camelCase (wagesExpense, …) — unlike the
+    // snake_case keys above — so we read both casings here and prefer whichever the blob has
+    // (the seed writes camelCase; the snake fallbacks future-proof a hand-edited blob).
+    wagesExpense: nstr(v.wagesExpense ?? v.wages_expense),
+    employerPayrollTaxExpense: nstr(v.employerPayrollTaxExpense ?? v.employer_payroll_tax_expense),
+    payrollClearing: nstr(v.payrollClearing ?? v.payroll_clearing),
+    payrollLiabilities: nstr(v.payrollLiabilities ?? v.payroll_liabilities),
   };
 }
 

@@ -13,6 +13,73 @@ export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
 export const SETTINGS_BASE = `${ACCOUNTING_BASE}/settings`;
 
 /**
+ * IMPORT / MIGRATION (HELD / UNVERIFIED — NOT FOR FILING). The whole import module is
+ * FLAG-DARK and requires CPA and/or security sign-off before it is enabled. Two screens:
+ * a batch list (with a new-batch upload/parse) at /app/accounting/import, and a per-batch
+ * wizard host (preview → COA mapping → reconciliation → admin commit) at
+ * /app/accounting/import/:batchId. The router registers these with RELATIVE segments.
+ * Every screen + export renders the UnverifiedBanner; only an explicit admin commit posts
+ * BALANCED opening-balance journal entries (via accounting.commit_import_batch).
+ */
+export const IMPORT_BASE = `${ACCOUNTING_BASE}/import`;
+/** Relative route segments (mounted in the AccountingRouter). */
+export const IMPORT_SEGMENT = 'import';
+export const IMPORT_BATCH_SEGMENT = 'import/:batchId';
+/** Absolute path to the import batch list. */
+export const importPath = (): string => IMPORT_BASE;
+/** Absolute path to one import batch's wizard. */
+export const importBatchPath = (batchId: string): string => `${IMPORT_BASE}/${batchId}`;
+
+/**
+ * NOTIFICATION DELIVERY (HELD / UNVERIFIED — NOT FOR FILING). The whole notification module
+ * is FLAG-DARK and requires CPA and/or security sign-off before it is enabled. A single
+ * config/preferences surface at /app/accounting/settings/notifications: the five event rules
+ * (each shipping DISABLED) with an enable toggle + threshold input, plus a recipient-audience
+ * preview so an admin can see the blast radius before enabling anything. The router registers
+ * it with a RELATIVE segment (under the existing `settings` parent). The screen renders the
+ * UnverifiedBanner; it moves NO money and posts NO journal entry — it only edits
+ * accounting.notification_rules config. Delivery itself is the dispatch RPC / the env-gated
+ * server sweep, never this screen.
+ */
+export const NOTIFICATIONS_BASE = `${SETTINGS_BASE}/notifications`;
+/** Relative route segment (mounted under the existing `settings` parent in the router). */
+export const NOTIFICATIONS_SETTINGS_SEGMENT = 'settings/notifications';
+/** Absolute path to the notification config/preferences surface. */
+export const notificationsPath = (): string => NOTIFICATIONS_BASE;
+
+/**
+ * C2 PAYROLL (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING). The whole payroll module is
+ * FLAG-DARK and requires a CPA/EA payroll professional AND/OR security sign-off before it is
+ * enabled. Screens (UI lane): an employee master + editor, pay schedules, a pay-run list +
+ * per-run workspace (calculate → review paychecks → commit → paystubs), an Admin Tax-Table
+ * editor (verify every rate), and the W-2/1099-NEC/DE-9C + NACHA report STUBS. EVERY screen and
+ * export renders the UnverifiedBanner; only an explicit commit posts the BALANCED payroll JE (via
+ * accounting.commit_pay_run). The router registers these with RELATIVE segments.
+ */
+export const PAYROLL_BASE = `${ACCOUNTING_BASE}/payroll`;
+/** Relative route segments (mounted in the AccountingRouter). */
+export const PAYROLL_SEGMENT = 'payroll';
+export const PAYROLL_EMPLOYEES_SEGMENT = 'payroll/employees';
+export const PAYROLL_EMPLOYEE_SEGMENT = 'payroll/employees/:employeeId';
+export const PAYROLL_SCHEDULES_SEGMENT = 'payroll/schedules';
+export const PAYROLL_RUNS_SEGMENT = 'payroll/runs';
+export const PAYROLL_RUN_SEGMENT = 'payroll/runs/:runId';
+export const PAYROLL_PAYCHECK_SEGMENT = 'payroll/runs/:runId/paychecks/:paycheckId';
+export const PAYROLL_TAX_TABLES_SEGMENT = 'payroll/tax-tables';
+export const PAYROLL_REPORTS_SEGMENT = 'payroll/reports';
+/** Absolute path helpers. */
+export const payrollPath = (): string => PAYROLL_BASE;
+export const payrollEmployeesPath = (): string => `${PAYROLL_BASE}/employees`;
+export const payrollEmployeePath = (employeeId: string): string => `${PAYROLL_BASE}/employees/${employeeId}`;
+export const payrollSchedulesPath = (): string => `${PAYROLL_BASE}/schedules`;
+export const payrollRunsPath = (): string => `${PAYROLL_BASE}/runs`;
+export const payrollRunPath = (runId: string): string => `${PAYROLL_BASE}/runs/${runId}`;
+export const payrollPaycheckPath = (runId: string, paycheckId: string): string =>
+  `${PAYROLL_BASE}/runs/${runId}/paychecks/${paycheckId}`;
+export const payrollTaxTablesPath = (): string => `${PAYROLL_BASE}/tax-tables`;
+export const payrollReportsPath = (): string => `${PAYROLL_BASE}/reports`;
+
+/**
  * TAX-SYNC (ADVISORY-ONLY) lives UNDER Settings: an accounting_admin-only "Tax table
  * updates" screen (sources + open-drift inbox) plus a per-drift detail (old-vs-new +
  * Apply/Dismiss). Mounted at /app/accounting/settings/tax-tables[/drift/:driftId]; the
@@ -27,6 +94,38 @@ export const TAX_TABLE_DRIFT_SEGMENT = 'settings/tax-tables/drift/:driftId';
 export const taxTablesPath = (): string => TAX_TABLES_BASE;
 /** Absolute path to one drift's detail screen. */
 export const taxTableDriftPath = (driftId: string): string => `${TAX_TABLES_BASE}/drift/${driftId}`;
+
+/**
+ * PHASE E SECURITY HARDENING (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING). The whole
+ * module is FLAG-DARK and requires a SECURITY review (key management/rotation, encryption
+ * coverage, hash-chain integrity, backup/restore) before it is enabled. Three security screens
+ * live UNDER Settings, plus an audit-chain detail drill-down:
+ *   • Security Overview  /app/accounting/settings/security
+ *     — encryption cutover-progress (counts only) + the audit hash-chain integrity badge +
+ *       the read-only rate-limit summary + the supervised one-time chain backfill.
+ *   • Audit-chain detail /app/accounting/settings/security/audit-chain
+ *     — the full per-seq verification (ok / reason / stored-vs-expected hash).
+ *   • RBAC management   /app/accounting/settings/security/roles
+ *     — grant/revoke accounting roles over accounting.user_roles (accounting_admin-only at the DB).
+ *   • Backup/Restore    /app/accounting/settings/security/backup
+ *     — a read-only documentation STUB of the pg_dump + AES runbook (NO destructive action).
+ * The router registers these with RELATIVE segments (under the existing `settings` parent). Every
+ * screen renders the UnverifiedBanner; NOTHING here moves money or posts a journal entry.
+ */
+export const SECURITY_BASE = `${SETTINGS_BASE}/security`;
+/** Relative route segments (mounted under the existing `settings` parent in the router). */
+export const SECURITY_OVERVIEW_SEGMENT = 'settings/security';
+export const SECURITY_AUDIT_CHAIN_SEGMENT = 'settings/security/audit-chain';
+export const SECURITY_ROLES_SEGMENT = 'settings/security/roles';
+export const SECURITY_BACKUP_SEGMENT = 'settings/security/backup';
+/** Absolute path to the Security Overview screen. */
+export const securityOverviewPath = (): string => SECURITY_BASE;
+/** Absolute path to the audit-chain integrity detail screen. */
+export const securityAuditChainPath = (): string => `${SECURITY_BASE}/audit-chain`;
+/** Absolute path to the RBAC management screen. */
+export const securityRolesPath = (): string => `${SECURITY_BASE}/roles`;
+/** Absolute path to the Backup/Restore documentation STUB screen. */
+export const securityBackupPath = (): string => `${SECURITY_BASE}/backup`;
 
 /** The five A3 financial reports, used by the Reports index and the router. */
 export interface ReportLink {
@@ -267,6 +366,99 @@ export const ACCOUNTING_QUERY_KEYS = {
   taxTableDriftDetail: (id: string) => ['accounting', 'tax-table-sync', 'drift', id] as const,
   taxTableDriftRates: (id: string) =>
     ['accounting', 'tax-table-sync', 'drift', id, 'current-rates'] as const,
+  // ── IMPORT / MIGRATION (HELD / UNVERIFIED — NOT FOR FILING). `import` is the subtree
+  // root for scoped invalidation; the batch list, a batch's header, its staging rows
+  // (optionally filtered), its account-map and its reconciliation hang under it. Only the
+  // COMMIT mutation posts money (via accounting.commit_import_batch → post_journal_entry),
+  // so commit additionally invalidates the journal + reports subtrees — the same fan-out
+  // the AR/AP money mutations use. Every other import mutation (stage/seed/map/ready) is
+  // staging-only and touches ONLY this subtree. All keys stay under ['accounting', ...] so
+  // the core app's cache is never disturbed; with the flag OFF none of this is reachable. ──
+  import: ['accounting', 'import'] as const,
+  importBatches: ['accounting', 'import', 'batches'] as const,
+  importBatch: (id: string) => ['accounting', 'import', 'batches', id] as const,
+  importStaging: (batchId: string, filterKey?: string) =>
+    ['accounting', 'import', 'batches', batchId, 'staging', filterKey ?? 'all'] as const,
+  importAccountMap: (batchId: string) =>
+    ['accounting', 'import', 'batches', batchId, 'account-map'] as const,
+  importReconciliation: (batchId: string) =>
+    ['accounting', 'import', 'batches', batchId, 'reconciliation'] as const,
+  importReadyBlockers: (batchId: string) =>
+    ['accounting', 'import', 'batches', batchId, 'ready-blockers'] as const,
+  // ── NOTIFICATION DELIVERY (HELD / UNVERIFIED — NOT FOR FILING). `notifications` is the
+  // subtree root for scoped invalidation; the rules list, a single rule, and the recipient
+  // audience hang under it. Editing a rule (enable/disable/threshold) invalidates ONLY this
+  // subtree — the notification module posts NO journal entry and moves NO money, so the
+  // journal/reports subtrees are never touched. DISPATCH delivers into the EXISTING
+  // public.system_notifications feed via accounting.dispatch_notification; that feed is owned
+  // by the core app's own notification queries (NotificationBell), which this module does not
+  // manage — so a successful dispatch does not invalidate any ['accounting', ...] key. All
+  // keys stay under ['accounting', ...]; with the flag OFF none of this is reachable. ────────
+  notifications: ['accounting', 'notifications'] as const,
+  notificationRules: ['accounting', 'notifications', 'rules'] as const,
+  notificationRule: (id: string) => ['accounting', 'notifications', 'rules', id] as const,
+  notificationRecipients: ['accounting', 'notifications', 'recipients'] as const,
+  // ── DOCUMENT MANAGEMENT / ATTACHMENTS (HELD / UNVERIFIED — NOT FOR FILING). `attachments`
+  // is the subtree root for scoped invalidation; the per-entity list keys by (entityType,
+  // entityId) so attaching/removing a file on one entity refetches ONLY that entity's list.
+  // The module posts NO journal entry and moves NO money, so every mutation here invalidates
+  // ONLY this subtree — the journal/reports subtrees are never touched. All keys stay under
+  // ['accounting', ...] so the core app's cache (incl. its OWN public.attachments queries for
+  // parts/jobs) is never disturbed; with the flag OFF none of this is reachable. ────────────
+  attachments: ['accounting', 'attachments'] as const,
+  attachmentsForEntity: (entityType: string, entityId: string) =>
+    ['accounting', 'attachments', entityType, entityId] as const,
+  // ── C2 PAYROLL (HELD / UNVERIFIED — NOT FOR FILING). `payroll` is the subtree root for scoped
+  // invalidation; the employee master, pay schedules, the pay-run list + a run's header /
+  // paychecks / liabilities, the admin tax tables, and the statutory report/NACHA stubs hang under
+  // it. CALCULATE writes paychecks/liabilities but moves NO money → it invalidates only the
+  // `payroll` subtree. COMMIT is the ONLY money path (accounting.commit_pay_run → ONE balanced JE),
+  // so it additionally invalidates the journal + reports subtrees — the same fan-out the AR/AP money
+  // mutations use. VOID likewise. Editing a tax table changes how a FUTURE run computes withholding
+  // (no JE) → `payroll` subtree only. All keys stay under ['accounting', ...]; with the flag OFF
+  // none of this is reachable and it is stripped from the production build. ──────────────────────
+  payroll: ['accounting', 'payroll'] as const,
+  employees: (includeInactive?: boolean) =>
+    ['accounting', 'payroll', 'employees', includeInactive ? 'all' : 'active'] as const,
+  employee: (id: string) => ['accounting', 'payroll', 'employees', id] as const,
+  paySchedules: (includeInactive?: boolean) =>
+    ['accounting', 'payroll', 'pay-schedules', includeInactive ? 'all' : 'active'] as const,
+  paySchedule: (id: string) => ['accounting', 'payroll', 'pay-schedules', id] as const,
+  payRuns: ['accounting', 'payroll', 'pay-runs'] as const,
+  payRun: (id: string) => ['accounting', 'payroll', 'pay-runs', id] as const,
+  payRunPaychecks: (runId: string) => ['accounting', 'payroll', 'pay-runs', runId, 'paychecks'] as const,
+  payRunLiabilities: (runId: string) => ['accounting', 'payroll', 'pay-runs', runId, 'liabilities'] as const,
+  paycheck: (id: string) => ['accounting', 'payroll', 'paychecks', id] as const,
+  payrollTaxTables: (taxYear: number) => ['accounting', 'payroll', 'tax-tables', taxYear] as const,
+  payrollTaxTableYears: ['accounting', 'payroll', 'tax-tables', 'years'] as const,
+  payrollTaxTable: (id: string) => ['accounting', 'payroll', 'tax-tables', 'row', id] as const,
+  payrollSeededKinds: (taxYear: number) => ['accounting', 'payroll', 'tax-tables', taxYear, 'seeded-kinds'] as const,
+  payrollReport: (kind: string, taxYear: number, quarter?: number | null) =>
+    ['accounting', 'payroll', 'reports', kind, taxYear, quarter ?? 'year'] as const,
+  payrollNachaStub: (runId: string) => ['accounting', 'payroll', 'pay-runs', runId, 'nacha-stub'] as const,
+  payrollCommittedRuns: (taxYear: number) => ['accounting', 'payroll', 'reports', 'committed-runs', taxYear] as const,
+  // ── PHASE E SECURITY HARDENING (HELD / UNVERIFIED — NOT FOR FILING). `security` and `rbac` are
+  // the subtree roots for scoped invalidation. The encryption-coverage probe, the audit hash-chain
+  // status + per-seq verification, and the two read-only security-settings blobs hang under
+  // `security`; the role grants + per-user summaries + the candidate picker hang under `rbac`.
+  // NOTHING here moves money or posts a journal entry, so every mutation in this area invalidates
+  // ONLY its own subtree — the journal/reports subtrees are NEVER touched. The encrypted-field
+  // accessors (set_*) also refresh `securityCoverage` (a backfill changes the plaintext-vs-cipher
+  // counts) and the audit backfill refreshes the chain keys. Granting/revoking a role invalidates
+  // the `rbac` subtree. All keys stay under ['accounting', ...] so the core app's cache is never
+  // disturbed; with the flag OFF none of this is reachable and it is stripped from the build. ──────
+  security: ['accounting', 'security'] as const,
+  securityCoverage: ['accounting', 'security', 'encryption-coverage'] as const,
+  securityAuditChainStatus: ['accounting', 'security', 'audit-chain', 'status'] as const,
+  securityAuditChainVerify: (from?: number) =>
+    ['accounting', 'security', 'audit-chain', 'verify', from ?? 1] as const,
+  securityRateLimits: ['accounting', 'security', 'rate-limits'] as const,
+  securityBackupPolicy: ['accounting', 'security', 'backup-policy'] as const,
+  rbac: ['accounting', 'rbac'] as const,
+  rbacUserRoles: ['accounting', 'rbac', 'user-roles'] as const,
+  rbacGrants: ['accounting', 'rbac', 'grants'] as const,
+  rbacUserRolesFor: (userId: string) => ['accounting', 'rbac', 'user-roles', userId] as const,
+  rbacCandidates: ['accounting', 'rbac', 'candidates'] as const,
 };
 
 /** Minimal serializable shape used to namespace the cash-flow forecast query key. */
@@ -319,5 +511,11 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
   { key: 'fixed-assets', label: 'Fixed assets', icon: 'precision_manufacturing', path: FIXED_ASSETS_BASE },
   { key: 'reports', label: 'Reports', icon: 'analytics', path: `${ACCOUNTING_BASE}/reports` },
   { key: 'custom-fields', label: 'Custom fields', icon: 'tune', path: CUSTOM_FIELDS_BASE },
+  // HELD / UNVERIFIED — NOT FOR FILING. Import/migration; every screen carries the banner.
+  { key: 'import', label: 'Import', icon: 'cloud_upload', path: IMPORT_BASE },
+  // HELD / UNVERIFIED — NOT FOR FILING. Notification config; the surface carries the banner.
+  { key: 'notifications', label: 'Notifications', icon: 'notifications_active', path: NOTIFICATIONS_BASE },
+  // HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING. Payroll; every screen + export carries the banner.
+  { key: 'payroll', label: 'Payroll', icon: 'badge', path: PAYROLL_BASE },
   { key: 'settings', label: 'Settings', icon: 'settings', path: `${ACCOUNTING_BASE}/settings` },
 ];

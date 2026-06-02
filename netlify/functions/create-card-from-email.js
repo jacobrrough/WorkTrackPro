@@ -1,4 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
+// PHASE E (E5) — optional, server-gated rate limiting on this add-on endpoint. INERT by default
+// (ACCOUNTING_SECURITY_HARDENING_ENABLED off ⇒ no-op), so existing behavior is unchanged until an
+// operator enables hardening. Body SIZE is already guarded by the per-attachment caps below, so we
+// add only a per-client-IP request cap here.
+import {
+  isHardeningEnabled,
+  rateLimit,
+  clientKeyFromEvent,
+  tooManyRequestsResponse,
+  LIMITS,
+} from './lib/securityHardening.mjs';
 
 // Creates a board card from Gmail email data (subject, body, attachments).
 // Authenticated via a static API key (GMAIL_ADDON_API_KEY env var).
@@ -51,6 +62,14 @@ export async function handler(event) {
       headers: corsHeaders,
       body: JSON.stringify({ error: 'Unauthorized' }),
     };
+  }
+
+  // ── E5 rate limit (INERT unless ACCOUNTING_SECURITY_HARDENING_ENABLED). Throttle per client IP. ──
+  if (isHardeningEnabled()) {
+    const rl = rateLimit(clientKeyFromEvent(event, 'create-card-from-email'), LIMITS.addonPerMinute(), 60 * 1000);
+    if (rl.limited) {
+      return tooManyRequestsResponse(corsHeaders, rl.retryAfterSec);
+    }
   }
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;

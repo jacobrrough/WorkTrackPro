@@ -60,6 +60,17 @@ import {
   buildDiff,
   severityOf,
 } from './lib/taxTableParsers.mjs';
+// PHASE E (E5) — optional, server-gated rate limiting on the manual "check now" trigger. INERT by
+// default (ACCOUNTING_SECURITY_HARDENING_ENABLED off ⇒ rateLimit() always allows), so this does not
+// change the existing behavior of the function until an operator enables hardening.
+import {
+  isHardeningEnabled,
+  rateLimit,
+  clientKeyFromEvent,
+  eventLikeFromRequest,
+  tooManyRequestsWebResponse,
+  LIMITS,
+} from './lib/securityHardening.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -438,6 +449,17 @@ export default async (request) => {
       JSON.stringify({ ok: false, error: 'Tax-table sync is not configured (missing service-role credentials).' }),
       { status: 500, headers: corsHeaders }
     );
+  }
+
+  // ── Optional rate limit on the manual trigger (E5; INERT unless hardening is enabled). Throttle
+  //    a flood of "check now" POSTs per client IP BEFORE any role lookup / external fetch. The cron
+  //    path (no Bearer) is not rate-limited. Coarse, best-effort, per warm instance. ──
+  if (isManual && isHardeningEnabled()) {
+    const key = clientKeyFromEvent(eventLikeFromRequest(request), 'tax-refresh');
+    const rl = rateLimit(key, LIMITS.taxRefreshPerHour(), 60 * 60 * 1000);
+    if (rl.limited) {
+      return tooManyRequestsWebResponse(corsHeaders, rl.retryAfterSec);
+    }
   }
 
   // ── Manual "check now" must be an accounting_admin. The cron path (no Bearer)

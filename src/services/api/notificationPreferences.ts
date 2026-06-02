@@ -40,6 +40,15 @@ const ALL_NOTIFICATION_TYPES: SystemNotificationType[] = [
   'daily_summary',
   'system_alert',
   'maintenance_notice',
+  // ── WorkTrackAccounting (HELD / UNVERIFIED — NOT FOR FILING) ────────────────
+  // The five accounting event types. Listed so the preferences merge knows about them;
+  // all default OFF (see DISABLED_BY_DEFAULT) so the module stays flag-dark until an
+  // admin opts in AND the rule + delivery paths are graduated.
+  'acct_invoice_sent',
+  'acct_invoice_overdue',
+  'acct_bill_due_soon',
+  'acct_low_bank_balance',
+  'acct_tax_deadline',
 ];
 
 const ADMIN_ONLY_TYPES: SystemNotificationType[] = [
@@ -52,7 +61,19 @@ const ADMIN_ONLY_TYPES: SystemNotificationType[] = [
   'allocation_reversal',
 ];
 
-const DISABLED_BY_DEFAULT: SystemNotificationType[] = ['daily_summary', 'maintenance_notice'];
+const DISABLED_BY_DEFAULT: SystemNotificationType[] = [
+  'daily_summary',
+  'maintenance_notice',
+  // Accounting events default OFF (flag-dark): even a user who never edits preferences
+  // is opted OUT until they explicitly enable an accounting notification. This is the
+  // client-side analog of the DB-side `notification_rules.enabled = false` backstop and
+  // honors the held-module posture end-to-end.
+  'acct_invoice_sent',
+  'acct_invoice_overdue',
+  'acct_bill_due_soon',
+  'acct_low_bank_balance',
+  'acct_tax_deadline',
+];
 
 export function getDefaultPreferences(isAdmin: boolean): NotificationPreferences {
   const inApp: Partial<Record<SystemNotificationType, boolean>> = {};

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
+import { AttachmentsSection } from '../components/AttachmentsSection';
 import {
   useFixedAssetRegisterRow,
   useFixedAssetSchedule,
@@ -377,6 +378,11 @@ export default function FixedAssetDetailView() {
                 register.
               </p>
             </section>
+
+            {/* DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). Attach the asset's
+                purchase invoice / warranty / supporting documents. Renders the UnverifiedBanner
+                + the "stored unencrypted" disclosure; moves NO money and posts NO journal entry. */}
+            <AttachmentsSection entityType="fixed_asset" entityId={asset.id} />
           </>
         )}
       </div>

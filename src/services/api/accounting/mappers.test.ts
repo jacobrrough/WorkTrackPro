@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  mapAccountingAttachmentRow,
   mapAccountBalanceRow,
   mapApAgingRow,
   mapArAgingRow,
@@ -22,6 +23,9 @@ import {
   mapInvoiceRow,
   mapInvoiceLineRow,
   mapJobCostingRow,
+  mapNotificationDispatchLogRow,
+  mapNotificationRuleRow,
+  toNotificationRulePayload,
   mapPaymentRow,
   mapPaymentApplicationRow,
   mapReconciliationRow,
@@ -40,6 +44,17 @@ import {
   parseRecurringPayload,
   parseTaxFilingRules,
   parseTaxTableSnapshotParsed,
+  // ── C2 PAYROLL ────────────────────────────────────────────────────────────
+  mapEmployeeRow,
+  mapPayScheduleRow,
+  mapPayRunRow,
+  mapPaycheckRow,
+  mapPayrollLiabilityRow,
+  mapPayrollTaxTableRow,
+  parsePayRunSummary,
+  parsePaycheckTaxes,
+  parsePaycheckDeductions,
+  parsePayrollTaxTableBody,
 } from './mappers';
 import type { RecurringInvoicePayload } from '../../../features/accounting/types';
 import { mapClosedThroughDate, mapDefaultAccounts } from './settings';
@@ -285,6 +300,33 @@ describe('mapDefaultAccounts', () => {
     expect(d.paymentProcessorClearing).toBe('a-1260');
     // A key absent from this partial blob is still null, not undefined.
     expect(d.uncategorizedIncome).toBeNull();
+  });
+
+  it('resolves the C2 PAYROLL keys (camelCase, as migration 027 seeds them)', () => {
+    // Migration 027 merges these FOUR keys in camelCase (unlike the snake_case keys above).
+    const d = mapDefaultAccounts({
+      wagesExpense: 'a-6500',
+      employerPayrollTaxExpense: 'a-6510',
+      payrollClearing: 'a-1010',
+      payrollLiabilities: 'a-2300',
+    });
+    expect(d.wagesExpense).toBe('a-6500');
+    expect(d.employerPayrollTaxExpense).toBe('a-6510');
+    expect(d.payrollClearing).toBe('a-1010');
+    expect(d.payrollLiabilities).toBe('a-2300');
+  });
+
+  it('also tolerates snake_case payroll keys (hand-edited blob future-proofing)', () => {
+    const d = mapDefaultAccounts({
+      wages_expense: 'a-6500',
+      employer_payroll_tax_expense: 'a-6510',
+      payroll_clearing: 'a-1010',
+      payroll_liabilities: 'a-2300',
+    });
+    expect(d.wagesExpense).toBe('a-6500');
+    expect(d.employerPayrollTaxExpense).toBe('a-6510');
+    expect(d.payrollClearing).toBe('a-1010');
+    expect(d.payrollLiabilities).toBe('a-2300');
   });
 
   it('returns an all-null shape for an empty/missing blob', () => {
@@ -1738,3 +1780,551 @@ describe('mapTaxRateRow', () => {
     expect(r.jurisdiction).toBeNull();
   });
 });
+
+// ── NOTIFICATION DELIVERY (HELD / UNVERIFIED) ──────────────────────────────────
+describe('mapNotificationRuleRow', () => {
+  it('maps a disabled all-accounts rule (NULL threshold + NULL bank account)', () => {
+    const r = mapNotificationRuleRow({
+      id: 'rule-1',
+      event_type: 'invoice_sent',
+      enabled: false,
+      threshold: null,
+      bank_account_id: null,
+      notes: 'ships disabled',
+      created_by: null,
+      created_at: '2026-06-01T00:00:00Z',
+      updated_at: '2026-06-01T00:00:00Z',
+    });
+    expect(r).toEqual({
+      id: 'rule-1',
+      eventType: 'invoice_sent',
+      enabled: false,
+      threshold: null,
+      bankAccountId: null,
+      notes: 'ships disabled',
+      createdBy: null,
+      createdAt: '2026-06-01T00:00:00Z',
+      updatedAt: '2026-06-01T00:00:00Z',
+      bankAccountName: undefined,
+    });
+  });
+
+  it('coerces a numeric-string threshold and hydrates an embedded bank account name', () => {
+    const r = mapNotificationRuleRow({
+      id: 'rule-2',
+      event_type: 'low_bank_balance',
+      enabled: true,
+      threshold: '500.00', // numeric(14,2) can arrive as a string
+      bank_account_id: 'ba-1',
+      notes: null,
+      created_by: 'user-1',
+      created_at: '2026-06-01T00:00:00Z',
+      updated_at: '2026-06-02T00:00:00Z',
+      bank_account: { id: 'ba-1', name: 'Operating Checking' },
+    });
+    expect(r.threshold).toBe(500);
+    expect(r.enabled).toBe(true);
+    expect(r.bankAccountId).toBe('ba-1');
+    expect(r.bankAccountName).toBe('Operating Checking');
+  });
+
+  it('preserves NULL threshold (never coerces to 0) and defaults an unknown event', () => {
+    const r = mapNotificationRuleRow({
+      id: 'rule-3',
+      event_type: 'totally_unknown', // not in the allow-list → safe default
+      enabled: false,
+      threshold: null,
+      created_at: '2026-06-01T00:00:00Z',
+      updated_at: '2026-06-01T00:00:00Z',
+    });
+    expect(r.threshold).toBeNull();
+    expect(r.eventType).toBe('invoice_sent');
+  });
+});
+
+describe('toNotificationRulePayload', () => {
+  it('builds a full insert payload (event included) and snake-cases the keys', () => {
+    const row = toNotificationRulePayload(
+      { eventType: 'low_bank_balance', enabled: true, threshold: 250, bankAccountId: 'ba-9', notes: 'floor' },
+      true
+    );
+    expect(row).toEqual({
+      event_type: 'low_bank_balance',
+      enabled: true,
+      threshold: 250,
+      bank_account_id: 'ba-9',
+      notes: 'floor',
+    });
+  });
+
+  it('omits keys the caller did not set (partial update) and can drop event_type', () => {
+    const row = toNotificationRulePayload({ eventType: 'invoice_overdue', enabled: false }, false);
+    expect(row).toEqual({ enabled: false }); // no event_type, no threshold/notes/account
+    expect('threshold' in row).toBe(false);
+  });
+
+  it('passes an explicit null threshold through (clear the value)', () => {
+    const row = toNotificationRulePayload({ eventType: 'bill_due_soon', threshold: null }, false);
+    expect(row).toEqual({ threshold: null });
+  });
+});
+
+describe('mapNotificationDispatchLogRow', () => {
+  it('maps an append-only dedupe-ledger row', () => {
+    const r = mapNotificationDispatchLogRow({
+      id: 'log-1',
+      event_type: 'invoice_overdue',
+      dedupe_key: 'invoice_overdue:inv-1:bucket30',
+      subject_id: 'inv-1',
+      notification_count: 1,
+      last_dispatched_at: '2026-06-10T00:00:00Z',
+      created_at: '2026-06-10T00:00:00Z',
+    });
+    expect(r).toEqual({
+      id: 'log-1',
+      eventType: 'invoice_overdue',
+      dedupeKey: 'invoice_overdue:inv-1:bucket30',
+      subjectId: 'inv-1',
+      notificationCount: 1,
+      lastDispatchedAt: '2026-06-10T00:00:00Z',
+      createdAt: '2026-06-10T00:00:00Z',
+    });
+  });
+
+  it('tolerates a NULL subject (tax deadline) and a count default of 0', () => {
+    const r = mapNotificationDispatchLogRow({
+      id: 'log-2',
+      event_type: 'tax_deadline_upcoming',
+      dedupe_key: 'tax_deadline_upcoming:agency-1:2026-07-31',
+      subject_id: null,
+      created_at: '2026-07-01T00:00:00Z',
+      last_dispatched_at: '2026-07-01T00:00:00Z',
+    });
+    expect(r.subjectId).toBeNull();
+    expect(r.notificationCount).toBe(0);
+  });
+});
+
+// ── DOCUMENT MANAGEMENT / ATTACHMENTS (HELD / UNVERIFIED — NOT FOR FILING) ───────
+describe('mapAccountingAttachmentRow', () => {
+  it('maps snake_case columns to the camelCase domain shape', () => {
+    const a = mapAccountingAttachmentRow({
+      id: 'att-1',
+      entity_type: 'bill',
+      entity_id: 'bill-1',
+      storage_path: 'accounting/bill/bill-1/abc.pdf',
+      filename: 'receipt-2026-05.pdf',
+      content_type: 'application/pdf',
+      size_bytes: 12345,
+      uploaded_by: 'user-1',
+      created_at: '2026-06-01T00:00:00Z',
+    });
+    expect(a).toEqual({
+      id: 'att-1',
+      entityType: 'bill',
+      entityId: 'bill-1',
+      storagePath: 'accounting/bill/bill-1/abc.pdf',
+      filename: 'receipt-2026-05.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 12345,
+      uploadedBy: 'user-1',
+      createdAt: '2026-06-01T00:00:00Z',
+    });
+  });
+
+  it('preserves a NULL content_type, size, and uploaded_by (no coercion to 0/"")', () => {
+    const a = mapAccountingAttachmentRow({
+      id: 'att-2',
+      entity_type: 'invoice',
+      entity_id: 'inv-1',
+      storage_path: 'accounting/invoice/inv-1/x.png',
+      filename: 'x.png',
+      content_type: null,
+      size_bytes: null,
+      uploaded_by: null,
+      created_at: '2026-06-02T00:00:00Z',
+    });
+    expect(a.contentType).toBeNull();
+    // size_bytes must stay null (an unknown-size file is NOT a 0-byte file).
+    expect(a.sizeBytes).toBeNull();
+    expect(a.uploadedBy).toBeNull();
+  });
+
+  it('coerces a numeric-string size_bytes (bigint may arrive as a string) and finite-guards it', () => {
+    expect(
+      mapAccountingAttachmentRow({ id: 'a', entity_type: 'fixed_asset', entity_id: 'fa', storage_path: 'p', filename: 'f', size_bytes: '999999999999', created_at: 't' }).sizeBytes
+    ).toBe(999999999999);
+    // Garbage size degrades to null, not NaN.
+    expect(
+      mapAccountingAttachmentRow({ id: 'a', entity_type: 'invoice', entity_id: 'i', storage_path: 'p', filename: 'f', size_bytes: 'not-a-number', created_at: 't' }).sizeBytes
+    ).toBeNull();
+  });
+
+  it('defaults an unexpected entity_type to a safe member of the union', () => {
+    const a = mapAccountingAttachmentRow({
+      id: 'a',
+      entity_type: 'totally_unknown_kind',
+      entity_id: 'e',
+      storage_path: 'p',
+      filename: 'f',
+      created_at: 't',
+    });
+    expect(a.entityType).toBe('invoice');
+  });
+
+  it('accepts each of the six supported entity kinds verbatim', () => {
+    for (const kind of ['invoice', 'bill', 'payment', 'vendor_payment', 'journal_entry', 'fixed_asset'] as const) {
+      expect(
+        mapAccountingAttachmentRow({ id: 'a', entity_type: kind, entity_id: 'e', storage_path: 'p', filename: 'f', created_at: 't' }).entityType
+      ).toBe(kind);
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// C2 — PAYROLL mappers (HELD / UNVERIFIED — NOT FOR FILING)
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('mapEmployeeRow', () => {
+  it('maps W-4/DE-4 + pay-setup snake_case columns to the camelCase domain shape', () => {
+    const e = mapEmployeeRow({
+      id: 'emp1',
+      profile_id: 'prof1',
+      display_name: 'Jane Worker',
+      email: 'jane@test',
+      employment_type: 'w2',
+      fed_filing_status: 'married_joint',
+      fed_multiple_jobs: true,
+      fed_dependents_amount_cents: 200000,
+      fed_other_income_cents: 50000,
+      fed_deductions_cents: 100000,
+      fed_extra_withholding_cents: 2500,
+      ca_filing_status: 'single',
+      ca_allowances: 2,
+      ca_extra_withholding_cents: 1000,
+      pay_type: 'hourly',
+      pay_rate_cents: 3000,
+      default_job_id: 'job1',
+      ssn: null,
+      bank_routing_masked: null,
+      bank_account_masked: null,
+      is_active: true,
+      notes: 'n',
+      created_by: 'admin1',
+      created_at: '2026-01-01',
+      updated_at: '2026-01-02',
+    });
+    expect(e).toMatchObject({
+      id: 'emp1',
+      profileId: 'prof1',
+      displayName: 'Jane Worker',
+      employmentType: 'w2',
+      fedFilingStatus: 'married_joint',
+      fedMultipleJobs: true,
+      fedDependentsAmountCents: 200000,
+      caAllowances: 2,
+      payType: 'hourly',
+      payRateCents: 3000,
+      defaultJobId: 'job1',
+      ssn: null,
+      isActive: true,
+    });
+  });
+  it('reads numeric-string cents columns and defaults unknown enums', () => {
+    const e = mapEmployeeRow({
+      id: 'e',
+      display_name: 'X',
+      employment_type: 'weird',
+      fed_filing_status: 'bogus',
+      pay_type: 'nope',
+      pay_rate_cents: '4200',
+    });
+    expect(e.employmentType).toBe('w2'); // default
+    expect(e.fedFilingStatus).toBe('single'); // default
+    expect(e.payType).toBe('hourly'); // default
+    expect(e.payRateCents).toBe(4200); // numeric string coerced
+  });
+});
+
+describe('mapPayScheduleRow', () => {
+  it('maps a schedule with its next window', () => {
+    const s = mapPayScheduleRow({
+      id: 'sch1',
+      name: 'Biweekly',
+      frequency: 'biweekly',
+      anchor_date: '2026-01-02',
+      next_period_start: '2026-06-01',
+      next_period_end: '2026-06-14',
+      next_pay_date: '2026-06-19',
+      is_active: true,
+      created_at: '2026-01-01',
+      updated_at: '2026-01-01',
+    });
+    expect(s).toMatchObject({
+      id: 'sch1',
+      name: 'Biweekly',
+      frequency: 'biweekly',
+      anchorDate: '2026-01-02',
+      nextPeriodStart: '2026-06-01',
+      nextPayDate: '2026-06-19',
+      isActive: true,
+    });
+  });
+});
+
+describe('parsePayRunSummary', () => {
+  it('reads the camelCase cents roll-up', () => {
+    const s = parsePayRunSummary({
+      paychecks: 3,
+      grossCents: 600000,
+      netCents: 450000,
+      employeeTaxCents: 120000,
+      employerTaxCents: 70000,
+      otherDeductionsCents: 30000,
+      postedJournalEntryId: 'je1',
+    });
+    expect(s).toMatchObject({
+      paychecks: 3,
+      grossCents: 600000,
+      netCents: 450000,
+      employeeTaxCents: 120000,
+      postedJournalEntryId: 'je1',
+    });
+  });
+  it('degrades a stringified or garbage cell to {}', () => {
+    expect(parsePayRunSummary('not json')).toEqual({});
+    expect(parsePayRunSummary(null)).toEqual({});
+    expect(parsePayRunSummary([1, 2])).toEqual({});
+  });
+});
+
+describe('mapPayRunRow', () => {
+  it('maps the lifecycle header + summary', () => {
+    const r = mapPayRunRow({
+      id: 'run1',
+      pay_schedule_id: 'sch1',
+      period_start: '2026-06-01',
+      period_end: '2026-06-14',
+      pay_date: '2026-06-19',
+      tax_year: 2026,
+      status: 'committed',
+      summary: { grossCents: 600000, postedJournalEntryId: 'je1' },
+      posted_journal_entry_id: 'je1',
+      committed_at: '2026-06-19',
+      created_at: '2026-06-01',
+      updated_at: '2026-06-19',
+    });
+    expect(r).toMatchObject({
+      id: 'run1',
+      payScheduleId: 'sch1',
+      taxYear: 2026,
+      status: 'committed',
+      postedJournalEntryId: 'je1',
+    });
+    expect(r.summary.grossCents).toBe(600000);
+  });
+  it('defaults an unknown status to draft', () => {
+    expect(mapPayRunRow({ id: 'r', period_start: 'a', period_end: 'b', pay_date: 'c', status: 'bogus' }).status).toBe('draft');
+  });
+});
+
+describe('parsePaycheckTaxes', () => {
+  it('narrows the per-tax map and drops unknown kinds', () => {
+    const t = parsePaycheckTaxes({
+      fica_ss: { employee_cents: 12400, employer_cents: 12400, table_id: 'ss', taxable_wage_cents: 200000 },
+      ca_pit: { employee_cents: 7182, employer_cents: 0 },
+      bogus_kind: { employee_cents: 999 },
+    });
+    expect(t.fica_ss).toEqual({ employeeCents: 12400, employerCents: 12400, tableId: 'ss', taxableWageCents: 200000 });
+    expect(t.ca_pit).toMatchObject({ employeeCents: 7182, employerCents: 0, tableId: null });
+    expect('bogus_kind' in t).toBe(false);
+  });
+  it('degrades a stringified/null cell to {}', () => {
+    expect(parsePaycheckTaxes('x')).toEqual({});
+    expect(parsePaycheckTaxes(null)).toEqual({});
+  });
+});
+
+describe('parsePaycheckDeductions', () => {
+  it('narrows the deductions array (label falls back to code)', () => {
+    const d = parsePaycheckDeductions([
+      { code: 'health', label: 'Health', amount_cents: 5000, pretax: true },
+      { code: '401k', amount_cents: 10000 },
+      { label: 'no code' }, // dropped
+    ]);
+    expect(d).toHaveLength(2);
+    expect(d[0]).toEqual({ code: 'health', label: 'Health', amountCents: 5000, pretax: true });
+    expect(d[1]).toEqual({ code: '401k', label: '401k', amountCents: 10000, pretax: false });
+  });
+  it('degrades a non-array to []', () => {
+    expect(parsePaycheckDeductions(null)).toEqual([]);
+    expect(parsePaycheckDeductions('x')).toEqual([]);
+  });
+});
+
+describe('mapPaycheckRow', () => {
+  it('maps hours (hundredths) + cents + provenance array + hydrated name', () => {
+    const p = mapPaycheckRow({
+      id: 'pc1',
+      pay_run_id: 'run1',
+      employee_id: 'emp1',
+      hours_regular_cents: 4000,
+      hours_ot_cents: 500,
+      gross_cents: 200000,
+      taxes: { fica_ss: { employee_cents: 12400, employer_cents: 12400 } },
+      deductions: [{ code: 'health', amount_cents: 5000 }],
+      employer_taxes_cents: 23500,
+      employee_taxes_cents: 45011,
+      other_deductions_cents: 5000,
+      net_cents: 149989,
+      source_shift_ids: ['s1', 's2'],
+      memo: 'm',
+      created_at: '2026-06-19',
+      updated_at: '2026-06-19',
+      employee: { display_name: 'Jane Worker' },
+    });
+    expect(p).toMatchObject({
+      id: 'pc1',
+      payRunId: 'run1',
+      employeeId: 'emp1',
+      hoursRegularHundredthHours: 4000,
+      hoursOtHundredthHours: 500,
+      grossCents: 200000,
+      employeeTaxesCents: 45011,
+      netCents: 149989,
+      employeeName: 'Jane Worker',
+    });
+    expect(p.sourceShiftIds).toEqual(['s1', 's2']);
+    expect(p.taxes.fica_ss?.employeeCents).toBe(12400);
+    expect(p.deductions[0].code).toBe('health');
+  });
+  it('the cents identity net = gross − employeeTaxes − otherDeductions holds for a mapped row', () => {
+    const p = mapPaycheckRow({
+      id: 'pc',
+      pay_run_id: 'r',
+      employee_id: 'e',
+      gross_cents: 200000,
+      employee_taxes_cents: 45011,
+      other_deductions_cents: 5000,
+      net_cents: 149989,
+    });
+    expect(p.netCents).toBe(p.grossCents - p.employeeTaxesCents - p.otherDeductionsCents);
+  });
+});
+
+describe('mapPayrollLiabilityRow', () => {
+  it('maps a per-agency accrual', () => {
+    const l = mapPayrollLiabilityRow({
+      id: 'li1',
+      pay_run_id: 'run1',
+      jurisdiction: 'CA',
+      tax_kind: 'ca_sdi',
+      party: 'employee',
+      amount_cents: 2400,
+      liability_account_id: 'acct-2300',
+      status: 'accrued',
+      created_at: '2026-06-19',
+      updated_at: '2026-06-19',
+    });
+    expect(l).toMatchObject({
+      id: 'li1',
+      jurisdiction: 'CA',
+      taxKind: 'ca_sdi',
+      party: 'employee',
+      amountCents: 2400,
+      status: 'accrued',
+    });
+  });
+});
+
+describe('parsePayrollTaxTableBody', () => {
+  it('parses a flat-rate-with-cap body (SS)', () => {
+    const b = parsePayrollTaxTableBody({
+      rate: 0.062,
+      employer_rate: 0.062,
+      wage_base_cents: 17610000,
+      threshold_cents: null,
+      employee_paid: true,
+      employer_paid: true,
+    });
+    expect(b).toMatchObject({ rate: 0.062, employerRate: 0.062, wageBaseCents: 17610000, employeePaid: true, employerPaid: true });
+  });
+  it('parses a FUTA body with the informational gross/credit fields', () => {
+    const b = parsePayrollTaxTableBody({
+      rate: 0.006, employer_rate: 0.006, wage_base_cents: 700000, threshold_cents: null,
+      employee_paid: false, employer_paid: true, gross_rate: 0.06, standard_state_credit: 0.054,
+    });
+    expect(b).toMatchObject({ rate: 0.006, grossRate: 0.06, standardStateCredit: 0.054 });
+  });
+  it('parses a percentage-method body with normalized brackets', () => {
+    const b = parsePayrollTaxTableBody({
+      method: 'percentage',
+      pay_periods_per_year: 1,
+      standard_deduction_cents: null,
+      brackets: [
+        { over_cents: 0, but_not_over_cents: 640000, base_cents: 0, rate: 0.0, of_excess_over_cents: 0 },
+        { over_cents: 640000, but_not_over_cents: null, base_cents: 0, rate: 0.1, of_excess_over_cents: 640000 },
+      ],
+    });
+    expect(b.method).toBe('percentage');
+    if (b.method === 'percentage') {
+      expect(b.brackets).toHaveLength(2);
+      expect(b.brackets[1]).toEqual({ overCents: 640000, butNotOverCents: null, baseCents: 0, rate: 0.1, ofExcessOverCents: 640000 });
+    }
+  });
+  it('degrades a garbage cell to a zero-rate flat body (engine withholds 0, never throws)', () => {
+    const b = parsePayrollTaxTableBody('not json');
+    expect(b).toMatchObject({ rate: 0, employeePaid: false, employerPaid: false });
+  });
+});
+
+describe('mapPayrollTaxTableRow', () => {
+  it('maps a flat-rate row with provenance and normalizes null status/frequency to "any"', () => {
+    const r = mapPayrollTaxTableRow({
+      id: 'ss',
+      jurisdiction: 'federal',
+      tax_kind: 'fica_ss',
+      tax_year: 2025,
+      effective_date: '2025-01-01',
+      filing_status: null,
+      pay_frequency: null,
+      table_json: { rate: 0.062, employer_rate: 0.062, wage_base_cents: 17610000, employee_paid: true, employer_paid: true },
+      source_citation: 'IRS Pub 15 (2025)',
+      source_revision: '2025',
+      is_active: true,
+      created_at: '2025-01-01',
+      updated_at: '2025-01-01',
+    });
+    expect(r).toMatchObject({
+      id: 'ss',
+      jurisdiction: 'federal',
+      taxKind: 'fica_ss',
+      taxYear: 2025,
+      filingStatus: 'any',
+      payFrequency: 'any',
+      sourceCitation: 'IRS Pub 15 (2025)',
+      sourceRevision: '2025',
+      isActive: true,
+    });
+    expect((r.body as { rate: number }).rate).toBe(0.062);
+  });
+  it('maps a percentage-method row keyed by single/annual', () => {
+    const r = mapPayrollTaxTableRow({
+      id: 'fed-single',
+      jurisdiction: 'federal',
+      tax_kind: 'fed_income_pit',
+      tax_year: 2025,
+      effective_date: '2025-01-01',
+      filing_status: 'single',
+      pay_frequency: 'annual',
+      table_json: { method: 'percentage', pay_periods_per_year: 1, brackets: [] },
+      source_citation: 'IRS Pub 15-T (2025)',
+      source_revision: '2025',
+      is_active: true,
+    });
+    expect(r.filingStatus).toBe('single');
+    expect(r.payFrequency).toBe('annual');
+    expect(r.body.method).toBe('percentage');
+  });
+});
+

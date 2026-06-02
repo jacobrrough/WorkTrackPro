@@ -534,6 +534,29 @@ export interface DefaultAccounts {
   uncategorizedIncome: string | null;
   uncategorizedExpense: string | null;
   paymentProcessorClearing: string | null;
+  /**
+   * IMPORT/MIGRATION structural default (migration 20260601000023 adds this key to the
+   * blob): the liability-side opening-balance offset, the companion to openingBalanceEquity.
+   *   openingBalanceLiabilities -> 2050  (import/migration liability offset; pairs with 3050)
+   * Resolved by the commit_import_batch RPC when a staged opening-balance row chooses
+   * offset='liability'; equity (3050) is the default offset.
+   */
+  openingBalanceLiabilities: string | null;
+  /**
+   * C2 PAYROLL structural defaults (HELD / UNVERIFIED — migration 20260601000027 adds these
+   * keys to the blob, in camelCase). They name the accounts the pay-run JE posts against so
+   * accounting.commit_pay_run never hardcodes ids:
+   *   wagesExpense              -> 6500  (Σ gross wages; debit)
+   *   employerPayrollTaxExpense -> 6510  (employer FICA/Medicare/FUTA/CA UI/ETT; debit)
+   *   payrollClearing           -> 1010  (net-pay cash CLEARING; the credit that keeps ACH a STUB)
+   *   payrollLiabilities        -> 2300  (employee withholdings + employer taxes + deductions; credit)
+   * The pay-run never touches a real bank rail: net pay parks in 1010 and is cleared by a
+   * separate balanced JE later.
+   */
+  wagesExpense: string | null;
+  employerPayrollTaxExpense: string | null;
+  payrollClearing: string | null;
+  payrollLiabilities: string | null;
 }
 
 // ── Financial reports (A3) ───────────────────────────────────────────────────
@@ -2320,4 +2343,1334 @@ export interface TaxRate {
   endDate: string | null;
   isActive: boolean;
   createdAt: string;
+}
+
+// ── IMPORT / MIGRATION (Phase D, HELD / UNVERIFIED — NOT FOR FILING) ───────────
+//
+// ⚠️  This whole domain is FLAG-DARK and UNVERIFIED. It imports historical data from
+//     QuickBooks Online (CSV/JSON export), QuickBooks Desktop (.IIF), and generic
+//     Excel/CSV into accounting.*. NOTHING touches the ledger except an explicit,
+//     admin-only commit, which posts BALANCED opening-balance journal entries via
+//     accounting.commit_import_batch -> accounting.post_journal_entry (offsets:
+//     3050 Opening Balance Equity / 2050 Opening Balance Liabilities). The UI renders
+//     an "UNVERIFIED — NOT FOR FILING. Requires CPA and/or security sign-off…" banner
+//     on every screen + export. HUMANS MUST VERIFY: account-mapping fidelity, no
+//     double-posting, and that opening balances reconcile to the source trial balance.
+//
+// Tables: accounting.import_batches / import_staging / import_account_map (migration
+// 20260601000024). All money math here is integer CENTS (G6); the DB converts to
+// numeric(14,2) dollars at posting time.
+
+/** Source system of an import batch (matches the DB check on import_batches.source). */
+export type ImportSource = 'qbo' | 'qbd' | 'csv';
+
+export const IMPORT_SOURCES: ImportSource[] = ['qbo', 'qbd', 'csv'];
+
+export const IMPORT_SOURCE_LABELS: Record<ImportSource, string> = {
+  qbo: 'QuickBooks Online',
+  qbd: 'QuickBooks Desktop (IIF)',
+  csv: 'Excel / CSV',
+};
+
+/**
+ * Finer-grained shape within a source. Drives which parser ran and how the raw rows
+ * are read. 'qbo_csv'/'qbo_json' are QBO exports; 'iif' is QuickBooks Desktop; 'csv'
+ * is a generic delimited file (incl. an .xlsx exported to CSV).
+ */
+export type ImportSourceDetail = 'qbo_csv' | 'qbo_json' | 'iif' | 'csv';
+
+/**
+ * Batch lifecycle (matches the DB check on import_batches.status):
+ *   draft → mapping → ready → committed (terminal). failed/discarded are off-ramps.
+ * ONLY a 'ready' batch may be committed; commit is idempotent.
+ */
+export type ImportBatchStatus = 'draft' | 'mapping' | 'ready' | 'committed' | 'failed' | 'discarded';
+
+export const IMPORT_BATCH_STATUS_LABELS: Record<ImportBatchStatus, string> = {
+  draft: 'Draft',
+  mapping: 'Mapping',
+  ready: 'Ready to commit',
+  committed: 'Committed',
+  failed: 'Failed',
+  discarded: 'Discarded',
+};
+
+/**
+ * Per-record entity classification (matches the DB check on import_staging.entity_type).
+ * Only 'opening_balance' and 'journal_entry' rows post money at commit; everything else
+ * is master data or staged-but-not-posted (the key guard against double-counting AR/AP).
+ */
+export type ImportEntityType =
+  | 'account'
+  | 'customer'
+  | 'vendor'
+  | 'open_invoice'
+  | 'open_bill'
+  | 'opening_balance'
+  | 'journal_entry'
+  | 'unsupported';
+
+export const IMPORT_ENTITY_TYPE_LABELS: Record<ImportEntityType, string> = {
+  account: 'Account',
+  customer: 'Customer',
+  vendor: 'Vendor',
+  open_invoice: 'Open invoice',
+  open_bill: 'Open bill',
+  opening_balance: 'Opening balance',
+  journal_entry: 'Journal entry',
+  unsupported: 'Unsupported',
+};
+
+/** Per-record lifecycle (matches the DB check on import_staging.status). */
+export type ImportStagingStatus = 'pending' | 'mapped' | 'skipped' | 'committed' | 'error';
+
+/** Account-map row lifecycle (matches the DB check on import_account_map.status). */
+export type ImportAccountMapStatus = 'unmapped' | 'mapped' | 'ignored';
+
+/** Which offset account carries an opening-balance row's plug (default 'equity' → 3050). */
+export type ImportOffset = 'equity' | 'liability';
+
+/**
+ * File metadata captured on the batch header (import_batches.file_meta jsonb). The
+ * source file itself, if parked, lives in the EXISTING storage bucket — storagePath
+ * records where (no new infra). sha256 is the whole-file digest (dedup of re-uploads).
+ */
+export interface ImportFileMeta {
+  name?: string;
+  bytes?: number;
+  rowCount?: number;
+  sha256?: string;
+  importedShapes?: string[];
+  storagePath?: string;
+}
+
+/**
+ * Post-commit summary mirrored from the commit_import_batch RPC result
+ * (import_batches.summary jsonb). All money totals are integer cents.
+ */
+export interface ImportSummary {
+  postedEntryIds?: string[];
+  lines?: number;
+  openingBalanceCents?: number;
+  accountsCreated?: number;
+  openingBalanceRows?: number;
+  journalEntryRows?: number;
+}
+
+/** One import batch header (accounting.import_batches). */
+export interface ImportBatch {
+  id: string;
+  source: ImportSource;
+  sourceDetail: ImportSourceDetail | null;
+  status: ImportBatchStatus;
+  fileMeta: ImportFileMeta;
+  summary: ImportSummary;
+  /** Opening-balance "as of" date for the posted entries (ISO YYYY-MM-DD), or null. */
+  openingBalanceDate: string | null;
+  committedAt: string | null;
+  committedBy: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Hydrated counts (from an aggregate read embed); undefined when not joined. */
+  stagingCount?: number;
+}
+
+/**
+ * The normalized "mapped" posting payload for an entity_type='opening_balance' staging
+ * row — the exact shape accounting.commit_import_batch reads from import_staging.mapped.
+ * All amounts are integer CENTS. Exactly one of debitCents/creditCents is normally > 0.
+ */
+export interface MappedOpeningBalance {
+  targetAccountId: string;
+  debitCents: number;
+  creditCents: number;
+  /** Offset bucket for this row's plug; defaults to 'equity' (3050) when omitted. */
+  offset?: ImportOffset;
+  memo?: string | null;
+  customerId?: string | null;
+  vendorId?: string | null;
+  jobId?: string | null;
+  /**
+   * The source COA account key this row's amount came from (parser-stamped). Used ONLY by
+   * the mapping wizard / the resolve step to bind targetAccountId from the account map; the
+   * commit RPC ignores it. A 'ready' batch has targetAccountId resolved to a real UUID.
+   */
+  sourceAccountKey?: string | null;
+}
+
+/** One line of a mapped historical journal-entry payload (integer cents). */
+export interface MappedJournalLine {
+  /** Resolved target account UUID. Empty/placeholder until the resolve step binds it. */
+  accountId: string;
+  debitCents: number;
+  creditCents: number;
+  memo?: string | null;
+  customerId?: string | null;
+  vendorId?: string | null;
+  jobId?: string | null;
+  /**
+   * The source COA account key this line referenced (parser-stamped). The resolve step
+   * binds `accountId` from the account map using this; the commit RPC ignores it. A
+   * 'ready' batch has every line's accountId resolved to a real UUID.
+   */
+  sourceAccountKey?: string | null;
+}
+
+/**
+ * The normalized "mapped" payload for an entity_type='journal_entry' staging row (an
+ * advanced historical GL re-post). The source already balances; commit posts each as
+ * its own balanced entry. Must carry >= 2 lines (the DB guard re-checks).
+ */
+export interface MappedJournalEntry {
+  memo?: string | null;
+  lines: MappedJournalLine[];
+}
+
+/** One staged source record (accounting.import_staging). `raw` is the verbatim parse. */
+export interface ImportStagingRow {
+  id: string;
+  batchId: string;
+  entityType: ImportEntityType;
+  raw: Record<string, unknown>;
+  /** Null until mapped. For opening_balance/journal_entry rows this is the posting payload. */
+  mapped: Record<string, unknown> | null;
+  status: ImportStagingStatus;
+  error: string | null;
+  /** sha256 of the canonicalized raw record within (batch, entity_type) — the dedup key. */
+  contentHash: string;
+  postedJournalEntryId: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+/** One chart-of-accounts mapping (accounting.import_account_map). */
+export interface ImportAccountMap {
+  id: string;
+  batchId: string;
+  /** The source account's stable key as it appeared in the file (number or name). */
+  sourceAccountKey: string;
+  sourceAccountName: string | null;
+  sourceAccountType: string | null;
+  /** Chosen target in our chart; null when create_as_new (or still unmapped). */
+  targetAccountId: string | null;
+  createAsNew: boolean;
+  newAccountNumber: string | null;
+  newAccountType: AccountType | null;
+  newAccountSubtype: string | null;
+  status: ImportAccountMapStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A parsed source record before it is staged: the verbatim `raw`, its entity
+ * classification, the stable `contentHash` (dedup key), and — for rows that can post —
+ * a candidate `mapped` payload (opening-balance or journal-entry, integer cents). The
+ * source account key (when present) lets the wizard build the distinct mapping set.
+ */
+export interface ParsedImportRecord {
+  entityType: ImportEntityType;
+  raw: Record<string, unknown>;
+  contentHash: string;
+  /** Candidate posting payload (opening-balance/journal-entry). Null for master data. */
+  mapped: MappedOpeningBalance | MappedJournalEntry | null;
+  /** The source COA account this row's amount sits in (for the mapping wizard), if any. */
+  sourceAccountKey?: string | null;
+  sourceAccountName?: string | null;
+  sourceAccountType?: string | null;
+  sortOrder: number;
+}
+
+/** A distinct source chart-of-accounts account discovered by the parser. */
+export interface ParsedSourceAccount {
+  sourceAccountKey: string;
+  sourceAccountName: string | null;
+  sourceAccountType: string | null;
+}
+
+/** Full result of parsing one import file (pure; no Supabase/React). */
+export interface ImportParseResult {
+  source: ImportSource;
+  sourceDetail: ImportSourceDetail;
+  records: ParsedImportRecord[];
+  /** The distinct source accounts (for the COA mapping wizard), de-duplicated by key. */
+  sourceAccounts: ParsedSourceAccount[];
+  /** Non-fatal per-row issues the UI can surface (e.g. an unreadable amount). */
+  warnings: string[];
+}
+
+/** Input to create an import batch header. */
+export interface NewImportBatchInput {
+  source: ImportSource;
+  sourceDetail?: ImportSourceDetail | null;
+  fileMeta?: ImportFileMeta;
+  openingBalanceDate?: string | null;
+}
+
+/** Patch for an account-map row in the mapping wizard. */
+export interface ImportAccountMapInput {
+  targetAccountId?: string | null;
+  createAsNew?: boolean;
+  newAccountNumber?: string | null;
+  newAccountType?: AccountType | null;
+  newAccountSubtype?: string | null;
+  status?: ImportAccountMapStatus;
+}
+
+/** The shape commit_import_batch returns (and stores in import_batches.summary). */
+export interface ImportCommitResult {
+  ok: boolean;
+  summary?: ImportSummary;
+  error?: string;
+}
+
+// ── NOTIFICATION DELIVERY (HELD / UNVERIFIED — NOT FOR FILING) ─────────────────
+//
+// ⚠️  This whole domain is FLAG-DARK and UNVERIFIED. It wires accounting EVENTS into the
+//     EXISTING app notification feed (public.system_notifications) — the ONE sanctioned
+//     cross-schema seam, the SECURITY DEFINER RPC accounting.dispatch_notification
+//     (migration 20260601000025). It requires CPA and/or security sign-off before it is
+//     enabled. Config (accounting.notification_rules) ships DISABLED; every delivered
+//     notification carries metadata.unverified=true; every config surface renders the
+//     UnverifiedBanner. NO MONEY MOVES and NO JOURNAL ENTRY is posted by this module.
+//     HUMANS MUST VERIFY: cross-schema delivery security, recipient audience, tax-deadline
+//     cadence (representative CDTFA only), threshold/day semantics, and the server env gate.
+//
+// MONEY MATH (G6): the low_bank_balance threshold is a DOLLAR amount (numeric(14,2) in the
+// DB, `number` here). All balance comparison is done in INTEGER CENTS in the pure
+// notificationRulesMath.ts (via accountingViewModel.toCents). Day-based thresholds
+// (overdue / due-soon / tax-deadline) are plain integers.
+
+/**
+ * The five accounting notification events (matches the DB check on
+ * accounting.notification_rules.event_type and the dispatch RPC's allow-list):
+ *   • invoice_sent          — event-driven (app-side): an invoice was sent to a customer.
+ *   • invoice_overdue       — time-based: a sent invoice is past due by >= N days w/ balance.
+ *   • bill_due_soon         — time-based: an open bill comes due within N days.
+ *   • low_bank_balance      — time-based: a bank account dips below a $ floor.
+ *   • tax_deadline_upcoming — time-based: a C1 filing deadline is within N days.
+ * The time-based four are swept by the ENV-GATED (default OFF) Netlify scheduled function
+ * (server lane). invoice_sent fires app-side under the user's own session.
+ */
+export type NotificationEventType =
+  | 'invoice_sent'
+  | 'invoice_overdue'
+  | 'bill_due_soon'
+  | 'low_bank_balance'
+  | 'tax_deadline_upcoming';
+
+export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
+  'invoice_sent',
+  'invoice_overdue',
+  'bill_due_soon',
+  'low_bank_balance',
+  'tax_deadline_upcoming',
+];
+
+/** Human labels for the five events (config UI). */
+export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
+  invoice_sent: 'Invoice sent',
+  invoice_overdue: 'Invoice overdue',
+  bill_due_soon: 'Bill due soon',
+  low_bank_balance: 'Low bank balance',
+  tax_deadline_upcoming: 'Tax-filing deadline upcoming',
+};
+
+/**
+ * What an event's `threshold` MEANS (per-event; the config UI uses this to label/validate
+ * the input). The DB stores threshold as numeric(14,2), nullable.
+ *   • 'days'    — bill_due_soon / tax_deadline_upcoming (notify when due within N days).
+ *   • 'days'    — invoice_overdue (notify once past due by >= N days).
+ *   • 'dollars' — low_bank_balance (minimum balance in dollars; compared in cents).
+ *   • 'none'    — invoice_sent (no threshold).
+ */
+export type NotificationThresholdKind = 'days' | 'dollars' | 'none';
+
+export const NOTIFICATION_THRESHOLD_KIND: Record<NotificationEventType, NotificationThresholdKind> = {
+  invoice_sent: 'none',
+  invoice_overdue: 'days',
+  bill_due_soon: 'days',
+  low_bank_balance: 'dollars',
+  tax_deadline_upcoming: 'days',
+};
+
+/**
+ * The in-app preference key (public.user_notification_preferences) each event maps to —
+ * the SAME mapping the dispatch RPC gates on via public.should_notify(user, key, 'in_app').
+ * These keys are members of core SystemNotificationType and default OFF in the preferences
+ * builder (flag-dark). Kept here so the config/preferences UI can resolve event → pref key.
+ */
+export const NOTIFICATION_PREF_KEY: Record<NotificationEventType, string> = {
+  invoice_sent: 'acct_invoice_sent',
+  invoice_overdue: 'acct_invoice_overdue',
+  bill_due_soon: 'acct_bill_due_soon',
+  low_bank_balance: 'acct_low_bank_balance',
+  tax_deadline_upcoming: 'acct_tax_deadline',
+};
+
+/**
+ * One notification rule (accounting.notification_rules). The additive config the spec names:
+ * (event_type, enabled, threshold, optional bank-account scope). Ships DISABLED. `threshold`
+ * is in DOLLARS for low_bank_balance (compared in cents downstream) and a day-count for the
+ * day-based events; null for invoice_sent. `bankAccountId` scopes a low_bank_balance rule to
+ * one account (null = all active bank accounts).
+ */
+export interface NotificationRule {
+  id: string;
+  eventType: NotificationEventType;
+  enabled: boolean;
+  /** Days (overdue/due-soon/deadline) or DOLLARS (low_bank_balance); null when not applicable. */
+  threshold: number | null;
+  /** low_bank_balance only: scope to one bank account; null = all active accounts. */
+  bankAccountId: string | null;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Hydrated from a joined bank_accounts read embed (display only); undefined when not joined. */
+  bankAccountName?: string;
+}
+
+/**
+ * Patch/insert for a notification rule (the config screen). `eventType` + `bankAccountId`
+ * form the upsert conflict target; `enabled` is the per-event kill switch; `threshold` and
+ * `notes` are the editable fields. All fields optional on update.
+ */
+export interface NotificationRuleInput {
+  eventType: NotificationEventType;
+  enabled?: boolean;
+  threshold?: number | null;
+  bankAccountId?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * One append-only dedupe-ledger row (accounting.notification_dispatch_log). NOT money — a
+ * record of what was already delivered so the daily sweep does not re-notify the same
+ * subject. Written ONLY by the dispatch RPC; surfaced read-only for diagnostics.
+ */
+export interface NotificationDispatchLog {
+  id: string;
+  eventType: NotificationEventType;
+  /** Stable, caller-computed key (e.g. 'invoice_overdue:<invoiceId>:bucket30'). */
+  dedupeKey: string;
+  /** The invoice/bill/bank-account id this delivery concerned (null for tax deadlines). */
+  subjectId: string | null;
+  notificationCount: number;
+  lastDispatchedAt: string;
+  createdAt: string;
+}
+
+/**
+ * The arguments the dispatch RPC (accounting.dispatch_notification) takes for ONE delivery to
+ * ONE recipient. The service resolves the audience and calls once per recipient; the RPC
+ * gates on the rule being enabled + should_notify + the dedupe ledger before it performs the
+ * single authorized insert into public.system_notifications. Returns the new notification id
+ * or null (suppressed). `title`/`message` MUST carry the UNVERIFIED prefix (held-module rule).
+ */
+export interface NotificationDispatchInput {
+  eventType: NotificationEventType;
+  userId: string;
+  title: string;
+  message: string;
+  link?: string | null;
+  metadata?: Record<string, unknown>;
+  /** Stable dedupe key; when omitted the RPC defaults it to event:subject:user. */
+  dedupeKey?: string | null;
+  /** The subject row id (invoice/bill/bank account) for the dedupe ledger + diagnostics. */
+  subjectId?: string | null;
+}
+
+/** Outcome of one dispatch call: the delivered notification id, or null when suppressed. */
+export interface NotificationDispatchResult {
+  /** New public.system_notifications id on delivery; null when suppressed (disabled/opted-out/dup). */
+  notificationId: string | null;
+  /** True only when a notification row was actually created. */
+  delivered: boolean;
+  error?: string;
+}
+
+// ── DOCUMENT MANAGEMENT / ATTACHMENTS (HELD / UNVERIFIED — NOT FOR FILING) ───────
+//
+// Metadata domain for receipts/contracts/files attached to accounting entities
+// (accounting.attachments, migration 20260601000026). The whole module is FLAG-DARK and
+// requires CPA and/or security sign-off before it is enabled; every UI surface + preview
+// renders the UnverifiedBanner. Files reuse the EXISTING `attachments` storage bucket; this
+// table/domain holds only the metadata (where the object is, its name, mime, size, who
+// uploaded it). NO money moves and NO journal entry is posted by attaching/removing a file.
+//
+// ENCRYPTION-AT-REST IS DEFERRED to the Phase E security module — files sit UNENCRYPTED in
+// the bucket until then (disclosed on every surface). The existing bucket RLS is permissive
+// (any authenticated user, any path), so the OBJECT bytes are only as protected as the
+// bucket; this table's RLS (can_read/can_write) gates only the METADATA. Finer per-object
+// storage authz is a Phase E follow-up. See the migration header for the full disclosure.
+
+/**
+ * The six accounting entities a file can be attached to (matches the CHECK on
+ * accounting.attachments.entity_type). `payment`/`vendor_payment` are supported by the DB for
+ * when their standalone detail screens exist; v1 attaches payment-level docs via the
+ * invoice/bill detail (see the migration + build report).
+ */
+export type AttachmentEntityType =
+  | 'invoice'
+  | 'bill'
+  | 'payment'
+  | 'vendor_payment'
+  | 'journal_entry'
+  | 'fixed_asset';
+
+/** Canonical ordered list of the six entity kinds (mirrors the DB CHECK list). */
+export const ATTACHMENT_ENTITY_TYPES: AttachmentEntityType[] = [
+  'invoice',
+  'bill',
+  'payment',
+  'vendor_payment',
+  'journal_entry',
+  'fixed_asset',
+];
+
+/** Human labels for the six entity kinds (UI). */
+export const ATTACHMENT_ENTITY_LABELS: Record<AttachmentEntityType, string> = {
+  invoice: 'Invoice',
+  bill: 'Bill',
+  payment: 'Payment',
+  vendor_payment: 'Vendor payment',
+  journal_entry: 'Journal entry',
+  fixed_asset: 'Fixed asset',
+};
+
+/**
+ * One stored file's metadata (accounting.attachments). Rows are IMMUTABLE after insert
+ * (replace = delete + re-upload), so there is no updatedAt. `storagePath` is the object's
+ * path WITHIN the fixed existing `attachments` bucket (the bucket name is a service constant,
+ * NOT stored). `sizeBytes` is a plain BYTE COUNT (not money). `contentType` is the browser
+ * MIME (nullable). `uploadedBy` is the uploader's profile id (null after a profile delete).
+ */
+export interface AccountingAttachment {
+  id: string;
+  entityType: AttachmentEntityType;
+  entityId: string;
+  storagePath: string;
+  filename: string;
+  /** MIME from File.type (e.g. 'application/pdf', 'image/png'); null when the browser omitted it. */
+  contentType: string | null;
+  /** File size in BYTES (File.size); null when unknown. NOT currency — no cents rule applies. */
+  sizeBytes: number | null;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+/**
+ * Input to attach a file to an entity. The browser passes the File plus the parent
+ * (entityType, entityId); the service computes the storage path, uploads the object to the
+ * existing bucket, then inserts the metadata row. Validation (accept list + size cap) is
+ * client-side only in v1 (bypassable — see WHAT A HUMAN MUST VERIFY).
+ */
+export interface NewAttachmentInput {
+  entityType: AttachmentEntityType;
+  entityId: string;
+  file: File;
+}
+
+/**
+ * The accepted upload MIME types for v1 (receipts/contracts → images + PDF). This is a
+ * CLIENT-SIDE convenience guard surfaced in the file picker's `accept` and validated before
+ * upload; it is NOT a security control (the permissive bucket RLS does not enforce it). A
+ * server-side allow-list / scan is a Phase E follow-up.
+ */
+export const ATTACHMENT_ACCEPTED_MIME_TYPES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+] as const;
+
+/** The `accept` attribute string for the upload <input type="file">. */
+export const ATTACHMENT_ACCEPT_ATTR = ATTACHMENT_ACCEPTED_MIME_TYPES.join(',');
+
+/**
+ * Client-side max upload size (10 MiB). CONVENIENCE GUARD ONLY — bypassable; the bucket does
+ * not enforce it. A server-side / bucket file-size limit is a Phase E follow-up.
+ */
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// C2 — PAYROLL (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING)
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// ⚠️  The whole payroll module is FLAG-DARK (VITE_ACCOUNTING_ENABLED off) and requires a
+//     CPA/EA payroll professional AND/OR security sign-off before it is enabled. Every
+//     payroll screen, report, and export renders a PROMINENT "UNVERIFIED — NOT FOR FILING"
+//     banner (UI lane). The withholding RATES/BRACKETS are seeded from official published
+//     values (IRS Pub 15 / Pub 15-T + CA EDD DE 44, cited in migration 028) but are NOT
+//     filing-grade until verified. NACHA / direct-deposit is a STUB — no real ACH.
+//
+// MONEY MATH (G6): EVERY monetary field below whose name ends in `Cents` is INTEGER CENTS
+//   (the DB columns are `*_cents bigint`). Hours fields ending in `HundredthHours` are
+//   HUNDREDTHS OF AN HOUR (1.5h = 150) so partial hours stay integer. Nothing in this domain
+//   is a floating-point dollar amount — dollars appear only at the JE boundary inside the
+//   commit_pay_run RPC.
+
+// ── Shared payroll enums ──────────────────────────────────────────────────────
+
+/** W-2 employee (withholding applies) vs 1099-NEC contractor (gross, no withholding). */
+export type EmploymentType = 'w2' | '1099';
+export const EMPLOYMENT_TYPES: EmploymentType[] = ['w2', '1099'];
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
+  w2: 'W-2 employee',
+  '1099': '1099-NEC contractor',
+};
+
+/** Federal W-4 / CA DE-4 filing status. Mirrors the DB CHECK on employees + payroll_tax_tables. */
+export type PayrollFilingStatus =
+  | 'single'
+  | 'married_joint'
+  | 'married_separate'
+  | 'head_of_household';
+export const PAYROLL_FILING_STATUSES: PayrollFilingStatus[] = [
+  'single',
+  'married_joint',
+  'married_separate',
+  'head_of_household',
+];
+export const PAYROLL_FILING_STATUS_LABELS: Record<PayrollFilingStatus, string> = {
+  single: 'Single or married filing separately',
+  married_joint: 'Married filing jointly',
+  married_separate: 'Married filing separately',
+  head_of_household: 'Head of household',
+};
+
+/** Hourly (cents/hour) vs salary (cents/year). */
+export type PayType = 'hourly' | 'salary';
+export const PAY_TYPES: PayType[] = ['hourly', 'salary'];
+export const PAY_TYPE_LABELS: Record<PayType, string> = {
+  hourly: 'Hourly',
+  salary: 'Salary',
+};
+
+/** Pay-schedule frequency. Drives the annualization divisor in the withholding engine. */
+export type PayFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly';
+export const PAY_FREQUENCIES: PayFrequency[] = ['weekly', 'biweekly', 'semimonthly', 'monthly'];
+export const PAY_FREQUENCY_LABELS: Record<PayFrequency, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Bi-weekly',
+  semimonthly: 'Semi-monthly',
+  monthly: 'Monthly',
+};
+
+/** Pay periods per year per frequency — the engine's annualization divisor (G6). */
+export const PAY_PERIODS_PER_YEAR: Record<PayFrequency, number> = {
+  weekly: 52,
+  biweekly: 26,
+  semimonthly: 24,
+  monthly: 12,
+};
+
+/**
+ * Pay-run lifecycle. draft → calculated → committed (terminal); 'void' is the post-commit
+ * off-ramp (reverses the posted JE). Mirrors the DB CHECK + the recalc/commit/void RPCs.
+ */
+export type PayRunStatus = 'draft' | 'calculated' | 'committed' | 'void';
+export const PAY_RUN_STATUSES: PayRunStatus[] = ['draft', 'calculated', 'committed', 'void'];
+export const PAY_RUN_STATUS_LABELS: Record<PayRunStatus, string> = {
+  draft: 'Draft',
+  calculated: 'Calculated',
+  committed: 'Committed',
+  void: 'Void',
+};
+
+/** Tax jurisdiction for a payroll tax table / liability row. */
+export type PayrollJurisdiction = 'federal' | 'CA';
+export const PAYROLL_JURISDICTIONS: PayrollJurisdiction[] = ['federal', 'CA'];
+
+/** Which side a tax falls on. */
+export type TaxParty = 'employee' | 'employer';
+
+/**
+ * The statutory item a payroll_tax_tables row parameterizes (mirrors the DB CHECK). See
+ * migration 028 for the official source citation of each. fed_income_pit / ca_pit are the
+ * percentage-method withholding brackets; the rest are flat-rate-with-cap.
+ */
+export type PayrollTaxKind =
+  | 'fica_ss' // Social Security (OASDI) — employee + matched employer, annual wage base
+  | 'fica_medicare' // Medicare HI — employee + matched employer, no cap
+  | 'medicare_addl' // Additional Medicare — EMPLOYEE ONLY, over a threshold
+  | 'futa' // Federal Unemployment Tax — EMPLOYER ONLY, $7,000 base
+  | 'ca_ui' // CA Unemployment Insurance — EMPLOYER ONLY (experience-rated)
+  | 'ca_ett' // CA Employment Training Tax — EMPLOYER ONLY
+  | 'ca_sdi' // CA State Disability Insurance — EMPLOYEE ONLY (cap removed 2024+)
+  | 'fed_income_pit' // Federal income-tax withholding — Pub 15-T percentage method
+  | 'ca_pit'; // CA Personal Income Tax withholding — EDD DE 44 Method B
+export const PAYROLL_TAX_KINDS: PayrollTaxKind[] = [
+  'fica_ss',
+  'fica_medicare',
+  'medicare_addl',
+  'futa',
+  'ca_ui',
+  'ca_ett',
+  'ca_sdi',
+  'fed_income_pit',
+  'ca_pit',
+];
+export const PAYROLL_TAX_KIND_LABELS: Record<PayrollTaxKind, string> = {
+  fica_ss: 'Social Security (FICA OASDI)',
+  fica_medicare: 'Medicare (FICA HI)',
+  medicare_addl: 'Additional Medicare',
+  futa: 'Federal Unemployment (FUTA)',
+  ca_ui: 'CA Unemployment Insurance (UI)',
+  ca_ett: 'CA Employment Training Tax (ETT)',
+  ca_sdi: 'CA State Disability Insurance (SDI)',
+  fed_income_pit: 'Federal income tax withholding',
+  ca_pit: 'CA personal income tax withholding',
+};
+
+// ── Employee (accounting.employees) ───────────────────────────────────────────
+
+/**
+ * A payroll employee (accounting.employees). Carries the W-4/DE-4 withholding inputs + pay
+ * setup. `profileId` optionally links to a public.profiles app login (so hours can be sourced
+ * from that user's public.shifts); `defaultJobId` is the default cost-allocation job. Both are
+ * read-only references on the accounting (child) side (ON DELETE SET NULL) — public.* is never
+ * written.
+ *
+ * SECURITY (G8 — Phase E DEFERRED): `ssn` and the bank masks are PLACEHOLDER columns with NO
+ * pgcrypto encryption yet. They are surfaced here as nullable strings so the schema is stable,
+ * but a security professional MUST sign off and Phase E (field encryption + key management) MUST
+ * land before any real SSN / bank data is entered. The UI must not collect a real SSN while
+ * flag-dark; see WHAT A HUMAN MUST VERIFY.
+ */
+export interface Employee {
+  id: string;
+  /** Optional link to a public.profiles app login (drives shift-sourced hours). */
+  profileId: string | null;
+  displayName: string;
+  email: string | null;
+  employmentType: EmploymentType;
+  // Federal W-4 (2020+) inputs
+  fedFilingStatus: PayrollFilingStatus;
+  /** W-4 Step 2 checkbox (two jobs / spouse works). */
+  fedMultipleJobs: boolean;
+  /** W-4 Step 3 dependents total, in cents. */
+  fedDependentsAmountCents: number;
+  /** W-4 Step 4(a) other income, in cents. */
+  fedOtherIncomeCents: number;
+  /** W-4 Step 4(b) deductions, in cents. */
+  fedDeductionsCents: number;
+  /** W-4 Step 4(c) extra withholding PER PAY PERIOD, in cents. */
+  fedExtraWithholdingCents: number;
+  // California DE-4 inputs
+  caFilingStatus: PayrollFilingStatus;
+  /** DE-4 regular withholding allowances (>= 0). */
+  caAllowances: number;
+  /** DE-4 additional amount per pay period, in cents. */
+  caExtraWithholdingCents: number;
+  // Pay setup
+  payType: PayType;
+  /** Hourly: cents/hour. Salary: cents/year. Always >= 0. */
+  payRateCents: number;
+  defaultJobId: string | null;
+  // SECURITY-SENSITIVE PLACEHOLDERS — Phase E (pgcrypto) DEFERRED. Keep NULL while flag-dark.
+  /** DO NOT store a real SSN until Phase E encryption lands. */
+  ssn: string | null;
+  /** Display-only routing mask (e.g. '••••1234'); no real ACH (NACHA is a stub). */
+  bankRoutingMasked: string | null;
+  /** Display-only account mask; no real bank rail. */
+  bankAccountMasked: string | null;
+  isActive: boolean;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Create an employee. employmentType defaults to 'w2'; statuses default to 'single'. */
+export interface NewEmployeeInput {
+  displayName: string;
+  email?: string | null;
+  profileId?: string | null;
+  employmentType?: EmploymentType;
+  fedFilingStatus?: PayrollFilingStatus;
+  fedMultipleJobs?: boolean;
+  fedDependentsAmountCents?: number;
+  fedOtherIncomeCents?: number;
+  fedDeductionsCents?: number;
+  fedExtraWithholdingCents?: number;
+  caFilingStatus?: PayrollFilingStatus;
+  caAllowances?: number;
+  caExtraWithholdingCents?: number;
+  payType?: PayType;
+  payRateCents?: number;
+  defaultJobId?: string | null;
+  isActive?: boolean;
+  notes?: string | null;
+}
+
+/** Patch an employee (every field optional). SSN/bank masks intentionally NOT settable here (Phase E). */
+export type UpdateEmployeeInput = Partial<NewEmployeeInput>;
+
+// ── Pay schedule (accounting.pay_schedules) ───────────────────────────────────
+
+/** A named pay schedule (frequency + the next window a run is opened for). */
+export interface PaySchedule {
+  id: string;
+  name: string;
+  frequency: PayFrequency;
+  /** A known period boundary the rest are computed from (ISO YYYY-MM-DD). */
+  anchorDate: string;
+  nextPeriodStart: string | null;
+  nextPeriodEnd: string | null;
+  nextPayDate: string | null;
+  isActive: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Create a pay schedule. */
+export interface NewPayScheduleInput {
+  name: string;
+  frequency: PayFrequency;
+  anchorDate: string;
+  nextPeriodStart?: string | null;
+  nextPeriodEnd?: string | null;
+  nextPayDate?: string | null;
+  isActive?: boolean;
+}
+
+/** Patch a pay schedule. */
+export type UpdatePayScheduleInput = Partial<NewPayScheduleInput>;
+
+// ── Pay run (accounting.pay_runs) ─────────────────────────────────────────────
+
+/**
+ * The post-commit roll-up summary stamped on a committed pay run (mirrors
+ * accounting.commit_pay_run's jsonb result; all `*Cents` are INTEGER CENTS). A zero-gross run
+ * carries note + a null postedJournalEntryId (no JE posted).
+ */
+export interface PayRunSummary {
+  paychecks?: number;
+  grossCents?: number;
+  netCents?: number;
+  employeeTaxCents?: number;
+  employerTaxCents?: number;
+  otherDeductionsCents?: number;
+  postedJournalEntryId?: string | null;
+  note?: string | null;
+}
+
+/**
+ * One payroll run header (accounting.pay_runs). `summary` is empty until commit. The
+ * `postedJournalEntryId` is stamped on commit; void reverses that JE.
+ */
+export interface PayRun {
+  id: string;
+  payScheduleId: string | null;
+  periodStart: string;
+  periodEnd: string;
+  payDate: string;
+  taxYear: number;
+  status: PayRunStatus;
+  summary: PayRunSummary;
+  postedJournalEntryId: string | null;
+  committedAt: string | null;
+  committedBy: string | null;
+  voidedAt: string | null;
+  voidedBy: string | null;
+  voidReason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Create a draft pay run. taxYear defaults to the pay date's year in the service. */
+export interface NewPayRunInput {
+  payScheduleId?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  payDate: string;
+  taxYear?: number;
+}
+
+// ── Paycheck (accounting.paychecks) ───────────────────────────────────────────
+
+/**
+ * The per-tax breakdown stored in paychecks.taxes jsonb and used by the engine. Each entry is
+ * keyed by PayrollTaxKind and carries the employee and/or employer cents plus the
+ * payroll_tax_tables version id the figure was computed from (full auditability).
+ */
+export interface PaycheckTaxLine {
+  /** Employee-side withholding for this tax, in cents (0 when employer-only). */
+  employeeCents: number;
+  /** Employer-side tax for this tax, in cents (0 when employee-only). */
+  employerCents: number;
+  /** The accounting.payroll_tax_tables row id this figure was computed from (provenance). */
+  tableId?: string | null;
+  /** Optional taxable-wage base the rate applied to (post-cap), in cents — for the paystub. */
+  taxableWageCents?: number;
+}
+
+/** The full per-tax map on a paycheck (subset of PayrollTaxKind present per employee). */
+export type PaycheckTaxes = Partial<Record<PayrollTaxKind, PaycheckTaxLine>>;
+
+/** One non-statutory deduction line (paychecks.deductions jsonb element). */
+export interface PaycheckDeduction {
+  /** Machine code (e.g. 'health', '401k'). */
+  code: string;
+  label: string;
+  amountCents: number;
+  /** True when the deduction is pre-tax (reduces taxable wages) — engine currently treats all as post-tax; see HUMAN-VERIFY. */
+  pretax: boolean;
+}
+
+/**
+ * One paycheck (accounting.paychecks): one row per employee per run. Hours are HUNDREDTHS of
+ * an hour; all money is INTEGER CENTS. `taxes` is the per-tax employee/employer breakdown;
+ * `deductions` the non-statutory lines. `employeeTaxesCents` / `otherDeductionsCents` are the
+ * convenience sums the commit RPC reads (= Σ over taxes/deductions). The cents identity
+ * net = gross − employeeTaxes − otherDeductions holds by construction in the engine.
+ */
+export interface Paycheck {
+  id: string;
+  payRunId: string;
+  employeeId: string;
+  /** Regular hours in hundredths of an hour (1.5h = 150). */
+  hoursRegularHundredthHours: number;
+  /** Overtime hours in hundredths of an hour. */
+  hoursOtHundredthHours: number;
+  grossCents: number;
+  taxes: PaycheckTaxes;
+  deductions: PaycheckDeduction[];
+  /** Σ employer-side taxes, in cents. */
+  employerTaxesCents: number;
+  /** Σ employee-side withholdings, in cents. */
+  employeeTaxesCents: number;
+  /** Σ non-statutory deductions, in cents. */
+  otherDeductionsCents: number;
+  /** Net pay = gross − employeeTaxes − otherDeductions, in cents. */
+  netCents: number;
+  /** Provenance: which public.shifts rows fed this check (NOT a FK). */
+  sourceShiftIds: string[];
+  memo: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Optional hydrated employee display name (when the read joins employees). */
+  employeeName?: string;
+}
+
+// ── Payroll liability (accounting.payroll_liabilities) ────────────────────────
+
+/** Accrual status of a payroll liability row. accrued → paid when a deposit JE clears it. */
+export type PayrollLiabilityStatus = 'accrued' | 'paid';
+
+/**
+ * One per-agency accrual (accounting.payroll_liabilities) bridging the 2300 credit to a future
+ * per-agency tax deposit (out of scope for this build). `amountCents` is INTEGER CENTS.
+ */
+export interface PayrollLiability {
+  id: string;
+  payRunId: string;
+  jurisdiction: PayrollJurisdiction;
+  /** Mirrors payroll_tax_tables.tax_kind. */
+  taxKind: string;
+  party: TaxParty;
+  amountCents: number;
+  liabilityAccountId: string | null;
+  status: PayrollLiabilityStatus;
+  paidJournalEntryId: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Payroll tax table (accounting.payroll_tax_tables) ─────────────────────────
+
+/**
+ * A flat-rate-with-cap tax table body (fica_ss/fica_medicare/medicare_addl/futa/ca_ui/ca_ett/
+ * ca_sdi). All money in CENTS. `rate` is the employee-or-each-party rate; `employerRate` the
+ * employer rate when it differs / is matched; `wageBaseCents` the annual cap (null = no cap);
+ * `thresholdCents` e.g. the Additional-Medicare start.
+ */
+export interface FlatRateTaxTable {
+  /** Discriminant: 'flat' marks a flat-rate body (vs the 'percentage' method body). Optional in
+   * the stored JSON (a row with no `method` IS flat), but the parser stamps it so the
+   * PayrollTaxTableBody union narrows cleanly in TS. */
+  method?: 'flat';
+  rate: number;
+  employerRate: number | null;
+  wageBaseCents: number | null;
+  thresholdCents: number | null;
+  employeePaid: boolean;
+  employerPaid: boolean;
+  /** FUTA only: the gross rate before the standard state credit (informational). */
+  grossRate?: number;
+  /** FUTA only: the standard 5.4% state credit (informational). */
+  standardStateCredit?: number;
+}
+
+/** One annual percentage-method withholding bracket (fed_income_pit / ca_pit). All cents. */
+export interface PercentageBracket {
+  overCents: number;
+  butNotOverCents: number | null;
+  baseCents: number;
+  rate: number;
+  ofExcessOverCents: number;
+}
+
+/** A percentage-method withholding table body (fed_income_pit / ca_pit). */
+export interface PercentageMethodTaxTable {
+  method: 'percentage';
+  /** Annualization divisor baked into the row (1 for the seeded ANNUAL brackets). */
+  payPeriodsPerYear: number;
+  standardDeductionCents: number | null;
+  brackets: PercentageBracket[];
+}
+
+/** A payroll tax table's `table_json` body — flat-rate or percentage-method. */
+export type PayrollTaxTableBody = FlatRateTaxTable | PercentageMethodTaxTable;
+
+/**
+ * One admin-updatable, effective-dated statutory reference row (accounting.payroll_tax_tables).
+ * `body` is the parsed table_json (rates/caps/brackets in cents). source_citation/source_revision
+ * are NOT NULL (provenance the human verifier needs). filing_status/pay_frequency are 'any' for
+ * flat-rate kinds; set for percentage-method rows.
+ */
+export interface PayrollTaxTable {
+  id: string;
+  jurisdiction: PayrollJurisdiction;
+  taxKind: PayrollTaxKind;
+  taxYear: number;
+  effectiveDate: string;
+  /** 'any' for flat-rate kinds; a status for percentage-method rows. Null normalizes to 'any'. */
+  filingStatus: 'any' | PayrollFilingStatus;
+  /** 'any' for flat-rate kinds; a frequency for percentage-method rows. Null normalizes to 'any'. */
+  payFrequency: 'any' | PayFrequency | 'annual';
+  body: PayrollTaxTableBody;
+  sourceCitation: string;
+  sourceRevision: string;
+  notes: string | null;
+  isActive: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Patch a payroll tax table row (the Admin Tax-Table UI). Only the body + provenance + active
+ * flag are editable; the natural key (jurisdiction/kind/year/status/frequency) is immutable
+ * (correct a wrong key by deactivating + inserting a new row). `body` is written as table_json.
+ */
+export interface UpdatePayrollTaxTableInput {
+  body?: PayrollTaxTableBody;
+  effectiveDate?: string;
+  sourceCitation?: string;
+  sourceRevision?: string;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+/** Insert a new payroll tax table row (admin override / add a missing status). */
+export interface NewPayrollTaxTableInput {
+  jurisdiction: PayrollJurisdiction;
+  taxKind: PayrollTaxKind;
+  taxYear: number;
+  effectiveDate: string;
+  filingStatus?: 'any' | PayrollFilingStatus;
+  payFrequency?: 'any' | PayFrequency | 'annual';
+  body: PayrollTaxTableBody;
+  sourceCitation: string;
+  sourceRevision: string;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+// ── Pay-run lifecycle results (service ⇄ UI) ──────────────────────────────────
+
+/**
+ * Result of calculating (or recalculating) a pay run: the freshly computed paychecks were
+ * written and the run flipped to 'calculated'. `error` carries any DB/engine failure (the run
+ * stays editable). The cents totals mirror what commit will post.
+ */
+export interface CalculatePayRunResult {
+  ok: boolean;
+  paychecksWritten: number;
+  grossCents: number;
+  employeeTaxCents: number;
+  employerTaxCents: number;
+  otherDeductionsCents: number;
+  netCents: number;
+  /** Employees skipped (no hours / inactive / 1099 with no amount), surfaced for the UI. */
+  skipped: Array<{ employeeId: string; employeeName: string; reason: string }>;
+  error?: string;
+}
+
+/**
+ * Result of committing a pay run (the ONLY money path). On success `summary` is the stamped
+ * roll-up. A DB rejection (unbalanced cents identity, wrong status, non-payroll user, closed
+ * period) comes back `{ ok:false, error }` with the WHOLE commit rolled back — no half-posted
+ * run. Idempotent: re-committing a committed run returns its stored summary.
+ */
+export interface CommitPayRunResult {
+  ok: boolean;
+  summary?: PayRunSummary;
+  error?: string;
+}
+
+// ── Paystub view-model (the single per-employee paystub) ──────────────────────
+
+/** One line on a paystub's tax table (employee + employer side of a single statutory tax). */
+export interface PaystubTaxLine {
+  taxKind: PayrollTaxKind;
+  label: string;
+  employeeCents: number;
+  employerCents: number;
+}
+
+/**
+ * The render-ready paystub for ONE paycheck: the employee + run context plus the earnings /
+ * employee-withholding / employer-tax / deduction breakdowns (all cents). Built by a pure
+ * presenter from a Paycheck + its Employee + PayRun, so it is trivially testable and reused by
+ * the on-screen paystub and the (stub) export. Carries the UNVERIFIED disclaimer flag.
+ */
+export interface Paystub {
+  paycheckId: string;
+  employeeId: string;
+  employeeName: string;
+  payRunId: string;
+  periodStart: string;
+  periodEnd: string;
+  payDate: string;
+  hoursRegularHundredthHours: number;
+  hoursOtHundredthHours: number;
+  grossCents: number;
+  taxLines: PaystubTaxLine[];
+  deductions: PaycheckDeduction[];
+  employeeTaxesCents: number;
+  employerTaxesCents: number;
+  otherDeductionsCents: number;
+  netCents: number;
+}
+
+// ── Statutory report STUBS (W-2 / 1099-NEC / DE-9C) ───────────────────────────
+
+/** The three statutory year-end / quarterly report stubs this build emits (NOT filing-grade). */
+export type PayrollReportKind = 'w2' | '1099_nec' | 'de9c';
+export const PAYROLL_REPORT_KINDS: PayrollReportKind[] = ['w2', '1099_nec', 'de9c'];
+export const PAYROLL_REPORT_KIND_LABELS: Record<PayrollReportKind, string> = {
+  w2: 'W-2 (Wage and Tax Statement)',
+  '1099_nec': '1099-NEC (Nonemployee Compensation)',
+  de9c: 'DE-9C (CA Quarterly Wage & Withholding)',
+};
+
+/**
+ * One employee/contractor row of a statutory report STUB. Aggregated from COMMITTED paychecks
+ * over a tax year (W-2 / DE-9C) or 1099 contractor payments. All money in cents. This is a STUB:
+ * it is NOT a filing-grade form and several boxes are approximations / omitted — see the
+ * `unverified` + HUMAN-VERIFY notes. The UI banners every export.
+ */
+export interface PayrollReportRow {
+  employeeId: string;
+  employeeName: string;
+  employmentType: EmploymentType;
+  ssnMasked: string | null;
+  taxYear: number;
+  grossWagesCents: number;
+  fedIncomeWithheldCents: number;
+  ssWagesCents: number;
+  ssWithheldCents: number;
+  medicareWagesCents: number;
+  medicareWithheldCents: number;
+  caWagesCents: number;
+  caPitWithheldCents: number;
+  caSdiWithheldCents: number;
+}
+
+/**
+ * A statutory report STUB: the kind, the tax year (and quarter for DE-9C), the aggregated rows,
+ * and the always-true `unverified` marker. Produced by a pure aggregator over committed
+ * paychecks; never filing-grade.
+ */
+export interface PayrollReport {
+  kind: PayrollReportKind;
+  taxYear: number;
+  /** 1..4 for the quarterly DE-9C; null for the annual W-2 / 1099-NEC. */
+  quarter: number | null;
+  rows: PayrollReportRow[];
+  /** Always true — this is a STUB, never filing-grade. */
+  unverified: true;
+  /** Human-readable caveat travelling with the report. */
+  disclaimer: string;
+}
+
+// ── NACHA (direct-deposit) file STUB ──────────────────────────────────────────
+
+/**
+ * The result of the NACHA file generator STUB. This is DELIBERATELY a stub: it produces a
+ * human-readable PLACEHOLDER, NOT a bankable NACHA (ACH) file. `content` is a clearly-marked
+ * non-fileable text blob; `bankable` is ALWAYS false. No real routing/account numbers are used
+ * (the masks are display-only). See WHAT A HUMAN MUST VERIFY — a real NACHA format + a banking
+ * relationship + security sign-off are required before any ACH is generated.
+ */
+export interface NachaStubResult {
+  /** Clearly-marked NON-FILEABLE placeholder text (NOT a real NACHA file). */
+  content: string;
+  /** Always false — this never produces a bankable ACH file. */
+  bankable: false;
+  /** Number of net-pay entries the (stub) batch would contain. */
+  entryCount: number;
+  /** Σ net pay across the entries, in cents (matches the run's net). */
+  totalNetCents: number;
+  disclaimer: string;
+}
+
+// ── PHASE E — SECURITY HARDENING (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING) ─────────────
+// Domain types for the security-hardening surfaces: pgcrypto field-encryption coverage, the
+// tamper-evident audit hash chain, RBAC over accounting.user_roles, and the read-only security
+// settings (rate limits + backup policy). Mirrors migrations 031/032/033. NO money moves and NO
+// journal entry is posted by anything in this section (G3 vacuous). The whole module is FLAG-DARK
+// and requires a SECURITY review before it is enabled; every security screen renders the
+// UnverifiedBanner. See the build report "WHAT A HUMAN MUST VERIFY".
+
+/**
+ * One row of accounting.encryption_coverage() — per sensitive field, how many rows have a
+ * non-null PLAINTEXT value vs a non-null CIPHERTEXT (`*_enc`) value. Drives the Security Overview
+ * "cutover progress" display. COUNTS ONLY — never the values themselves. `field` is the stable
+ * "table.column" key (e.g. 'vendors.tax_id'). `pendingCount` (plaintext − encrypted, floored at 0)
+ * is the still-to-backfill count, derived in the mapper for the UI.
+ */
+export interface EncryptionCoverageRow {
+  field: string;
+  plaintextCount: number;
+  encryptedCount: number;
+  /** Derived: max(plaintextCount − encryptedCount, 0) — rows still awaiting backfill. */
+  pendingCount: number;
+}
+
+/**
+ * The audit hash-chain integrity badge — accounting.audit_chain_status() decoded. `verified` is
+ * true only when verify_audit_chain found NO break. `unchainedRows` are legacy pre-E2 rows still
+ * awaiting the one-time backfill (NOT a tamper). `firstBreakSeq` is the chain_seq of the first
+ * failing row, or null when the chain is intact.
+ */
+export interface AuditChainStatus {
+  verified: boolean;
+  chainedRows: number;
+  unchainedRows: number;
+  firstBreakSeq: number | null;
+}
+
+/**
+ * One row of accounting.verify_audit_chain(p_from) — the per-seq verification result. `ok` is false
+ * on the FIRST row whose content/link/sequence fails; `reason` explains it (content tamper, reorder/
+ * deletion, or a seq gap). `storedHash` is what is recorded; `expectedHash` is the recomputation
+ * from the canonical payload + the prior row's stored hash. Used by the integrity-detail screen.
+ */
+export interface AuditChainVerifyRow {
+  chainSeq: number;
+  ok: boolean;
+  reason: string;
+  storedHash: string | null;
+  expectedHash: string | null;
+}
+
+/** The four accounting roles (accounting.user_roles.role check constraint). */
+export type AccountingRoleKey = 'accounting_admin' | 'accountant' | 'payroll' | 'viewer';
+export const ACCOUNTING_ROLE_KEYS: AccountingRoleKey[] = [
+  'accounting_admin',
+  'accountant',
+  'payroll',
+  'viewer',
+];
+export const ACCOUNTING_ROLE_LABELS: Record<AccountingRoleKey, string> = {
+  accounting_admin: 'Accounting admin',
+  accountant: 'Accountant',
+  payroll: 'Payroll',
+  viewer: 'Viewer',
+};
+/** A short, plain description of what each role can do — for the RBAC management UI. */
+export const ACCOUNTING_ROLE_DESCRIPTIONS: Record<AccountingRoleKey, string> = {
+  accounting_admin: 'Full control: manage roles, post/void, books-closed lock, all reads & writes.',
+  accountant: 'Read and write accounting data (post invoices/bills/journal); cannot manage roles.',
+  payroll: 'Access payroll (employees, pay runs, SSN/bank/wage encrypted fields).',
+  viewer: 'Read-only across accounting; cannot write or post.',
+};
+
+/**
+ * One accounting.user_roles grant (a single role held by a single user). The optional `userEmail` /
+ * `userName` are hydrated from the embedded public.profiles row for the management list. `grantedBy`
+ * is the admin who issued the grant (null when seeded/unknown).
+ */
+export interface UserRoleGrant {
+  id: string;
+  userId: string;
+  role: AccountingRoleKey;
+  grantedBy: string | null;
+  grantedAt: string;
+  /** Hydrated from the embedded profile for display (the table stores only the id). */
+  userEmail?: string | null;
+  userName?: string | null;
+}
+
+/**
+ * The roles held by a single user, collapsed for the management UI's per-user row. `roles` is the
+ * set of role keys; `grants` keeps the underlying grant rows (ids) so a revoke can target the exact
+ * row. Built in the service from the flat grant list.
+ */
+export interface UserRoleSummary {
+  userId: string;
+  userEmail: string | null;
+  userName: string | null;
+  roles: AccountingRoleKey[];
+  grants: UserRoleGrant[];
+}
+
+/**
+ * A candidate user the admin can grant a role to — sourced read-only from public.profiles
+ * (approved users). Surfaced by the RBAC screen's "add a grant" picker. Carries no accounting data.
+ */
+export interface RoleCandidate {
+  userId: string;
+  email: string | null;
+  name: string | null;
+}
+
+/**
+ * The default per-route rate limits the E5 Netlify limiter reads (accounting.settings
+ * 'security_rate_limits', migration 033). READ-ONLY in the UI (the limiter consumes them server-side
+ * once ACCOUNTING_SECURITY_HARDENING_ENABLED is on). Window-based, best-effort per instance.
+ */
+export interface SecurityRateLimits {
+  defaultPerMinute: number;
+  taxRefreshPerHour: number;
+  submitProposalPerHour: number;
+  addonPerMinute: number;
+  maxBodyBytes: number;
+}
+
+/**
+ * The documented backup/restore policy surfaced READ-ONLY on the Backup/Restore STUB screen (E4,
+ * accounting.settings 'backup_policy', migration 033). The screen performs NO destructive action —
+ * this is documentation of the operator-run pg_dump + AES procedure, not a job.
+ */
+export interface BackupPolicy {
+  schedule: string;
+  encryption: string;
+  retentionDays: number;
+  restoreMode: string;
+  pitrExpectation: string;
+}
+
+/** Result of a single encrypted-field accessor write (set_*). Never throws on an expected DB
+ * rejection (RLS/role denial, missing key, not-found) — the message is surfaced for inline display. */
+export interface EncryptedFieldWriteResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** Result of running the one-time audit-chain backfill: how many legacy rows were hashed. */
+export interface BackfillAuditChainResult {
+  ok: boolean;
+  hashed: number;
+  error?: string;
 }

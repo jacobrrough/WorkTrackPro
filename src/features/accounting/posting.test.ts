@@ -35,6 +35,11 @@ const ACCOUNTS: DefaultAccounts = {
   uncategorizedIncome: 'acc-uninc',
   uncategorizedExpense: 'acc-unexp',
   paymentProcessorClearing: 'acc-ppc',
+  openingBalanceLiabilities: 'acc-obl',
+  wagesExpense: 'acc-wages',
+  employerPayrollTaxExpense: 'acc-emp-tax',
+  payrollClearing: 'acc-payroll-clearing',
+  payrollLiabilities: 'acc-payroll-liab',
 };
 
 const sumDebit = (lines: { debit: number }[]) => lines.reduce((s, l) => s + toCents(l.debit), 0);

@@ -6,10 +6,13 @@ import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
+import { AttachmentsSection } from '../components/AttachmentsSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useInvoice, useInvoicePayments } from '../hooks/useAccountingQueries';
 import {
+  useDispatchInvoiceSent,
   useRecordPayment,
+  useRemoveEntityAttachments,
   useSendInvoice,
   useVoidInvoice,
 } from '../hooks/useAccountingMutations';
@@ -176,6 +179,17 @@ export default function InvoiceDetailView() {
   const { data: payments = [] } = useInvoicePayments(invoiceId);
   const sendInvoice = useSendInvoice();
   const voidInvoice = useVoidInvoice();
+  // HELD / UNVERIFIED — NOT FOR FILING. Event-driven (app-side) notification dispatch fired
+  // after a successful send. The dispatch RPC's enabled-gate + the recipients' default-OFF
+  // in-app preferences make this a NO-OP until the notification module is graduated, so wiring
+  // it here is safe while flag-dark. Best-effort + non-blocking: a delivery failure must NOT
+  // surface as a send error (the invoice was sent; delivery is the held module's concern).
+  const dispatchInvoiceSent = useDispatchInvoiceSent();
+  // DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). App-layer orphan cleanup for the
+  // polymorphic accounting.attachments table (no DB FK to cascade). Fired AFTER a successful
+  // void so a voided (terminal) invoice does not strand its attached objects. Best-effort +
+  // non-blocking: a cleanup failure must NEVER mask the successful void.
+  const removeEntityAttachments = useRemoveEntityAttachments();
   const [showPayment, setShowPayment] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -183,7 +197,20 @@ export default function InvoiceDetailView() {
     if (!invoice) return;
     setActionError(null);
     const res = await sendInvoice.mutateAsync(invoice.id);
-    if (res.error) setActionError(res.error);
+    if (res.error) {
+      setActionError(res.error);
+      return;
+    }
+    // Fire-and-forget the accounting "invoice sent" notification for the now-sent invoice.
+    // Per-invoice dedupe means re-sending the same invoice never re-notifies; swallow any
+    // delivery error so it cannot mask a successful send.
+    if (res.invoice) {
+      dispatchInvoiceSent.mutate(res.invoice, {
+        onError: () => {
+          /* delivery is best-effort + flag-dark; never surfaced on the send path */
+        },
+      });
+    }
   };
 
   const onVoid = async () => {
@@ -192,7 +219,16 @@ export default function InvoiceDetailView() {
     if (reason == null) return;
     setActionError(null);
     const res = await voidInvoice.mutateAsync({ id: invoice.id, reason: reason.trim() || 'Voided' });
-    if (!res.ok) setActionError(res.error ?? 'Could not void the invoice.');
+    if (!res.ok) {
+      setActionError(res.error ?? 'Could not void the invoice.');
+      return;
+    }
+    // Cascade-remove this invoice's attachments now that it is voided (fire-and-forget; a
+    // cleanup error is swallowed so it cannot surface on the void path).
+    removeEntityAttachments.mutate(
+      { entityType: 'invoice', entityId: invoice.id },
+      { onError: () => { /* orphan cleanup is best-effort; never block the void */ } }
+    );
   };
 
   const lines = sortedLines(invoice?.lines);
@@ -380,6 +416,11 @@ export default function InvoiceDetailView() {
               are defined; otherwise edits/saves them into accounting.custom_field_values
               without touching this invoice's own record. */}
           <CustomFieldsSection entityType="invoice" entityId={invoice.id} />
+
+          {/* DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). Attach receipts/
+              contracts/supporting files to this invoice. Renders the UnverifiedBanner + the
+              "stored unencrypted" disclosure; moves NO money and posts NO journal entry. */}
+          <AttachmentsSection entityType="invoice" entityId={invoice.id} />
         </div>
       )}
 

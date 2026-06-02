@@ -6,11 +6,13 @@ import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
+import { AttachmentsSection } from '../components/AttachmentsSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useBill, useBillPayments } from '../hooks/useAccountingQueries';
 import {
   usePostBill,
   useRecordVendorPayment,
+  useRemoveEntityAttachments,
   useVoidBill,
 } from '../hooks/useAccountingMutations';
 import { formatMoney } from '../accountingViewModel';
@@ -176,6 +178,11 @@ export default function BillDetailView() {
   const { data: payments = [] } = useBillPayments(billId);
   const postBill = usePostBill();
   const voidBill = useVoidBill();
+  // DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). App-layer orphan cleanup for the
+  // polymorphic accounting.attachments table (no DB FK to cascade). Fired AFTER a successful
+  // void so a voided (terminal) bill does not strand its attached objects. Best-effort +
+  // non-blocking: a cleanup failure must NEVER mask the successful void.
+  const removeEntityAttachments = useRemoveEntityAttachments();
   const [showPayment, setShowPayment] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -192,7 +199,16 @@ export default function BillDetailView() {
     if (reason == null) return;
     setActionError(null);
     const res = await voidBill.mutateAsync({ id: bill.id, reason: reason.trim() || 'Voided' });
-    if (!res.ok) setActionError(res.error ?? 'Could not void the bill.');
+    if (!res.ok) {
+      setActionError(res.error ?? 'Could not void the bill.');
+      return;
+    }
+    // Cascade-remove this bill's attachments now that it is voided (fire-and-forget; a cleanup
+    // error is swallowed so it cannot surface on the void path).
+    removeEntityAttachments.mutate(
+      { entityType: 'bill', entityId: bill.id },
+      { onError: () => { /* orphan cleanup is best-effort; never block the void */ } }
+    );
   };
 
   const lines = sortedLines(bill?.lines);
@@ -370,6 +386,11 @@ export default function BillDetailView() {
               defined; otherwise edits/saves them into accounting.custom_field_values
               without touching this bill's own record. */}
           <CustomFieldsSection entityType="bill" entityId={bill.id} />
+
+          {/* DOCUMENT MANAGEMENT (HELD / UNVERIFIED — NOT FOR FILING). Attach vendor receipts/
+              contracts/supporting files to this bill. Renders the UnverifiedBanner + the
+              "stored unencrypted" disclosure; moves NO money and posts NO journal entry. */}
+          <AttachmentsSection entityType="bill" entityId={bill.id} />
         </div>
       )}
 

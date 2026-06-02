@@ -135,6 +135,66 @@ const CustomFieldsView = lazyWithRetry(
   () => import('./custom-fields/CustomFieldsView'),
   'CustomFieldsView'
 );
+// IMPORT / MIGRATION (HELD / UNVERIFIED — NOT FOR FILING). Every screen renders the
+// UnverifiedBanner; only an explicit admin commit posts balanced opening-balance entries.
+const ImportBatchesView = lazyWithRetry(
+  () => import('./import/ImportBatchesView'),
+  'ImportBatchesView'
+);
+const ImportBatchDetailView = lazyWithRetry(
+  () => import('./import/ImportBatchDetailView'),
+  'ImportBatchDetailView'
+);
+// NOTIFICATION DELIVERY (HELD / UNVERIFIED — NOT FOR FILING). The config/preferences surface
+// renders the UnverifiedBanner; it edits accounting.notification_rules config only (no money,
+// no JE). Delivery is the dispatch RPC / the env-gated server sweep — never this screen.
+const NotificationRulesSettingsView = lazyWithRetry(
+  () => import('./notifications/NotificationRulesSettingsView'),
+  'NotificationRulesSettingsView'
+);
+// C2 PAYROLL (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING). Every payroll screen renders the
+// UnverifiedBanner (via PayrollScreen); only an explicit commit posts ONE balanced payroll JE (via
+// accounting.commit_pay_run). Relative segments under /app/accounting/payroll.
+const PayrollHome = lazyWithRetry(() => import('./payroll/PayrollHome'), 'PayrollHome');
+const EmployeesView = lazyWithRetry(() => import('./payroll/EmployeesView'), 'EmployeesView');
+const EmployeeEditView = lazyWithRetry(
+  () => import('./payroll/EmployeeEditView'),
+  'EmployeeEditView'
+);
+const PaySchedulesView = lazyWithRetry(
+  () => import('./payroll/PaySchedulesView'),
+  'PaySchedulesView'
+);
+const PayRunsView = lazyWithRetry(() => import('./payroll/PayRunsView'), 'PayRunsView');
+const PayRunWorkspaceView = lazyWithRetry(
+  () => import('./payroll/PayRunWorkspaceView'),
+  'PayRunWorkspaceView'
+);
+const PaystubView = lazyWithRetry(() => import('./payroll/PaystubView'), 'PaystubView');
+const TaxTablesView = lazyWithRetry(() => import('./payroll/TaxTablesView'), 'TaxTablesView');
+const PayrollReportsView = lazyWithRetry(
+  () => import('./payroll/PayrollReportsView'),
+  'PayrollReportsView'
+);
+// PHASE E SECURITY HARDENING (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING). Every security screen
+// renders the UnverifiedBanner (via SecurityScreen). NOTHING here moves money or posts a journal
+// entry. Relative segments under /app/accounting/settings/security.
+const SecurityOverviewView = lazyWithRetry(
+  () => import('./security/SecurityOverviewView'),
+  'SecurityOverviewView'
+);
+const AuditChainDetailView = lazyWithRetry(
+  () => import('./security/AuditChainDetailView'),
+  'AuditChainDetailView'
+);
+const RbacManagementView = lazyWithRetry(
+  () => import('./security/RbacManagementView'),
+  'RbacManagementView'
+);
+const BackupRestoreView = lazyWithRetry(
+  () => import('./security/BackupRestoreView'),
+  'BackupRestoreView'
+);
 
 /**
  * Single lazy entry point for the whole accounting module. AppRouter mounts this at
@@ -186,9 +246,19 @@ export default function AccountingRouter() {
         <Route path="inventory/cogs" element={<InventoryCogsWorklistView />} />
         <Route path="inventory/items/:sourceInventoryId" element={<InventoryValuationItemView />} />
         <Route path="settings" element={<AccountingSettingsView />} />
+        {/* NOTIFICATION DELIVERY (HELD / UNVERIFIED — NOT FOR FILING) — config surface under
+            Settings. Banner on screen; edits config only (no money/JE). */}
+        <Route path="settings/notifications" element={<NotificationRulesSettingsView />} />
         {/* TAX-SYNC (ADVISORY-ONLY) — accounting_admin-only screens under Settings. */}
         <Route path="settings/tax-tables" element={<TaxTableUpdatesView />} />
         <Route path="settings/tax-tables/drift/:driftId" element={<TaxTableDriftDetailView />} />
+        {/* PHASE E SECURITY HARDENING (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING) — screens under
+            Settings. Banner on every screen; nothing moves money or posts a JE. The audit-chain
+            detail is reached FROM the overview. */}
+        <Route path="settings/security" element={<SecurityOverviewView />} />
+        <Route path="settings/security/audit-chain" element={<AuditChainDetailView />} />
+        <Route path="settings/security/roles" element={<RbacManagementView />} />
+        <Route path="settings/security/backup" element={<BackupRestoreView />} />
         <Route path="budgets" element={<BudgetsView />} />
         {/* Static segment ranks above :budgetId, so the forecast resolves correctly. */}
         <Route path="budgets/cash-flow" element={<CashFlowForecastView />} />
@@ -199,6 +269,21 @@ export default function AccountingRouter() {
         <Route path="fixed-assets/new" element={<FixedAssetCreateView />} />
         <Route path="fixed-assets/:assetId" element={<FixedAssetDetailView />} />
         <Route path="custom-fields" element={<CustomFieldsView />} />
+        {/* IMPORT / MIGRATION (HELD / UNVERIFIED — NOT FOR FILING). Banner on every screen. */}
+        <Route path="import" element={<ImportBatchesView />} />
+        <Route path="import/:batchId" element={<ImportBatchDetailView />} />
+        {/* C2 PAYROLL (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING). Banner on every screen +
+            export. Static segments (employees/new, schedules) are registered before the dynamic
+            :employeeId/:runId so they resolve first; the paystub path is the most specific. */}
+        <Route path="payroll" element={<PayrollHome />} />
+        <Route path="payroll/employees" element={<EmployeesView />} />
+        <Route path="payroll/employees/:employeeId" element={<EmployeeEditView />} />
+        <Route path="payroll/schedules" element={<PaySchedulesView />} />
+        <Route path="payroll/runs" element={<PayRunsView />} />
+        <Route path="payroll/runs/:runId" element={<PayRunWorkspaceView />} />
+        <Route path="payroll/runs/:runId/paychecks/:paycheckId" element={<PaystubView />} />
+        <Route path="payroll/tax-tables" element={<TaxTablesView />} />
+        <Route path="payroll/reports" element={<PayrollReportsView />} />
         <Route path="*" element={<Navigate to="/app/accounting" replace />} />
       </Routes>
     </AdminGuard>
