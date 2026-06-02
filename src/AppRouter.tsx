@@ -12,6 +12,7 @@ import BottomNavigation from './BottomNavigation';
 import { jobService, inventoryService } from './pocketbase';
 import type { Job, ViewState } from './core/types';
 import { lazyWithRetry } from './lib/lazyWithRetry';
+import { ACCOUNTING_BUILD_ENABLED } from './lib/featureFlags';
 
 const Dashboard = lazyWithRetry(() => import('./Dashboard'), 'Dashboard');
 const JobDetail = lazyWithRetry(() => import('./JobDetail'), 'JobDetail');
@@ -41,6 +42,13 @@ const NotificationSettingsView = lazyWithRetry(
   () => import('./features/notifications/NotificationSettingsView'),
   'NotificationSettingsView'
 );
+
+// WorkTrackAccounting — single lazy entry, gated by the build-time flag. When the
+// flag is off this is null and the import() sits in a dead ternary branch, so Rollup
+// excludes the entire accounting module (and all its chunks) from the build.
+const AccountingRouter = ACCOUNTING_BUILD_ENABLED
+  ? lazyWithRetry(() => import('./features/accounting/AccountingRouter'), 'AccountingRouter')
+  : null;
 
 // ─── Shared not-found fallback ───────────────────────────────────────────────
 
@@ -610,6 +618,9 @@ export function AppRouter() {
       <Route path="/app/chat" element={<ChatRoute />} />
       <Route path="/app/chat/:conversationId" element={<ChatConversationRoute />} />
       <Route path="/app/notifications/settings" element={<NotificationSettingsRoute />} />
+      {/* WorkTrackAccounting — mounted only when the build-time flag is on, so the
+          module is unreachable AND excluded from the build when the flag is off. */}
+      {AccountingRouter && <Route path="/app/accounting/*" element={<AccountingRouter />} />}
       <Route path="/app/*" element={<Navigate to="/app" replace />} />
     </Routes>
   );

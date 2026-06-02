@@ -2,6 +2,19 @@
 # Build and deploy from GitHub
 # Required env vars (set in Netlify dashboard): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (build);
 # for functions: SUPABASE_SERVICE_ROLE_KEY, TURNSTILE_SECRET_KEY, RESEND_API_KEY, PROPOSAL_* / RESEND_*
+#
+# WorkTrackAccounting TAX-SYNC scheduled function:
+#   netlify/functions/tax-table-refresh.mjs runs QUARTERLY via an in-code V2
+#   schedule (export const config = { schedule: "0 6 1 1,4,7,10 *" }) — no toml
+#   [functions] schedule block is needed for V2 scheduled functions. It is ALSO
+#   reachable on-demand for the admin "check now" at /api/tax-table-refresh (via
+#   the /api/* redirect below). It is HARD-GATED on the server env var
+#   ACCOUNTING_TAX_SYNC_ENABLED (default OFF): when off it performs no external
+#   fetch and no DB write. Set that var (Site settings -> Environment variables)
+#   ONLY after the module graduates and the source parsers are verified against the
+#   live CDTFA/EDD files. The function uses SUPABASE_SERVICE_ROLE_KEY and stays
+#   entirely within the accounting.* schema (advisory-only: it never mutates stored
+#   tax rates).
 
 [build]
   command = "npm run build"
@@ -10,6 +23,8 @@
 [functions]
   directory = "netlify/functions"
 
+# Routes the SPA's /api/* calls (incl. the TAX-SYNC "check now" POST
+# /api/tax-table-refresh) to the matching Netlify function.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
