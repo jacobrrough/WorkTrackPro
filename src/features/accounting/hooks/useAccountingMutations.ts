@@ -141,8 +141,13 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Partial<NewCustomerInput> & { isActive?: boolean } }) =>
-      customersService.update(id, input),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Partial<NewCustomerInput> & { isActive?: boolean };
+    }) => customersService.update(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.customers }),
   });
 }
@@ -155,8 +160,13 @@ export function useUpdateCustomer() {
 export function useCreateInvoiceDraft() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ input, customerTaxExempt }: { input: NewInvoiceInput; customerTaxExempt?: boolean }) =>
-      invoicesService.createDraft(input, { customerTaxExempt }),
+    mutationFn: ({
+      input,
+      customerTaxExempt,
+    }: {
+      input: NewInvoiceInput;
+      customerTaxExempt?: boolean;
+    }) => invoicesService.createDraft(input, { customerTaxExempt }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
@@ -251,8 +261,13 @@ export function useCreateVendor() {
 export function useUpdateVendor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Partial<NewVendorInput> & { isActive?: boolean } }) =>
-      vendorsService.update(id, input),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Partial<NewVendorInput> & { isActive?: boolean };
+    }) => vendorsService.update(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.vendors }),
   });
 }
@@ -307,7 +322,8 @@ export function usePostBill() {
 export function useVoidBill() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => billsService.voidBill(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      billsService.voidBill(id, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bills });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
@@ -474,7 +490,11 @@ export function useUpdateReconciliation() {
       patch,
     }: {
       id: string;
-      patch: { statementDate?: string; statementEndingBalance?: number | null; beginningBalance?: number | null };
+      patch: {
+        statementDate?: string;
+        statementEndingBalance?: number | null;
+        beginningBalance?: number | null;
+      };
     }) => reconciliationsService.update(id, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bank }),
   });
@@ -1037,8 +1057,13 @@ export function useStageImportRecords() {
 export function useSeedImportAccountMap() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ batchId, sourceAccounts }: { batchId: string; sourceAccounts: ParsedSourceAccount[] }) =>
-      importService.seedAccountMap(batchId, sourceAccounts),
+    mutationFn: ({
+      batchId,
+      sourceAccounts,
+    }: {
+      batchId: string;
+      sourceAccounts: ParsedSourceAccount[];
+    }) => importService.seedAccountMap(batchId, sourceAccounts),
     onSuccess: () => invalidateImport(qc),
   });
 }
@@ -1244,7 +1269,9 @@ function invalidateEntityAttachments(
   entityType: AttachmentEntityType,
   entityId: string
 ): void {
-  qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.attachmentsForEntity(entityType, entityId) });
+  qc.invalidateQueries({
+    queryKey: ACCOUNTING_QUERY_KEYS.attachmentsForEntity(entityType, entityId),
+  });
 }
 
 /**
@@ -1284,8 +1311,13 @@ export function useDeleteAttachment() {
 export function useRemoveEntityAttachments() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ entityType, entityId }: { entityType: AttachmentEntityType; entityId: string }) =>
-      attachmentsService.removeForEntity(entityType, entityId),
+    mutationFn: ({
+      entityType,
+      entityId,
+    }: {
+      entityType: AttachmentEntityType;
+      entityId: string;
+    }) => attachmentsService.removeForEntity(entityType, entityId),
     onSuccess: (_res, { entityType, entityId }) =>
       invalidateEntityAttachments(qc, entityType, entityId),
   });
@@ -1558,8 +1590,13 @@ export function useSetEmployeeBank() {
 export function useSetEmployeePayRate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ employeeId, payRateCents }: { employeeId: string; payRateCents: number | null }) =>
-      securityService.setEmployeePayRate(employeeId, payRateCents),
+    mutationFn: ({
+      employeeId,
+      payRateCents,
+    }: {
+      employeeId: string;
+      payRateCents: number | null;
+    }) => securityService.setEmployeePayRate(employeeId, payRateCents),
     onSuccess: (result) => {
       if (result.ok) invalidateEncryptionCoverage(qc);
     },

@@ -63,12 +63,12 @@ function JobCogsEvents({ jobId }: { jobId: string }) {
 
   if (isPending) return <p className="px-3 py-2 text-xs text-slate-500">Loading COGS events…</p>;
   if (isError)
-    return <p className="px-3 py-2 text-xs text-red-400">Could not load this job&apos;s COGS events.</p>;
+    return (
+      <p className="px-3 py-2 text-xs text-red-400">Could not load this job&apos;s COGS events.</p>
+    );
   if (events.length === 0)
     return (
-      <p className="px-3 py-2 text-xs text-slate-500">
-        No COGS events recorded for this job yet.
-      </p>
+      <p className="px-3 py-2 text-xs text-slate-500">No COGS events recorded for this job yet.</p>
     );
 
   return (
@@ -147,9 +147,9 @@ function JobRow({
             <span className="text-red-300">{result.error}</span>
           ) : result.uncosted ? (
             <span className="text-amber-300">
-              Nothing was costable — this job&apos;s stock has no open FIFO cost layer (it was likely
-              opening stock received outside a bill). No journal entry was posted. Seed an opening cost
-              layer to cost it.
+              Nothing was costable — this job&apos;s stock has no open FIFO cost layer (it was
+              likely opening stock received outside a bill). No journal entry was posted. Seed an
+              opening cost layer to cost it.
             </span>
           ) : (
             <span className="text-emerald-300">
@@ -222,8 +222,7 @@ export default function InventoryCogsWorklistView() {
     }
   };
 
-  const toggleExpand = (jobId: string) =>
-    setExpandedId((prev) => (prev === jobId ? null : jobId));
+  const toggleExpand = (jobId: string) => setExpandedId((prev) => (prev === jobId ? null : jobId));
 
   return (
     <AccountingShell
@@ -263,8 +262,8 @@ export default function InventoryCogsWorklistView() {
             <span className="material-symbols-outlined text-4xl text-slate-500">checklist</span>
             <p className="text-lg font-bold text-white">No consumed jobs to cost</p>
             <p className="max-w-md text-sm text-slate-400">
-              When a job consumes inventory in the app, it appears here so its cost can be relieved to
-              COGS. Nothing has consumed stock yet.
+              When a job consumes inventory in the app, it appears here so its cost can be relieved
+              to COGS. Nothing has consumed stock yet.
             </p>
           </div>
         )}

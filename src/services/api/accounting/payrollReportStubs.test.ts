@@ -115,7 +115,9 @@ describe('buildPaystub', () => {
     expect(stub.taxLines[1].taxKind).toBe('ca_pit');
     expect(stub.taxLines[2].taxKind).toBe('fica_ss');
     // Cents identity held straight from the paycheck.
-    expect(stub.netCents).toBe(stub.grossCents - stub.employeeTaxesCents - stub.otherDeductionsCents);
+    expect(stub.netCents).toBe(
+      stub.grossCents - stub.employeeTaxesCents - stub.otherDeductionsCents
+    );
     expect(stub.deductions[0].code).toBe('health');
   });
   it('falls back to a name and blank period when employee/run are null', () => {
@@ -124,7 +126,11 @@ describe('buildPaystub', () => {
     expect(stub.periodStart).toBe('');
   });
   it('omits tax lines a paycheck does not carry', () => {
-    const stub = buildPaystub(paycheck({ taxes: { fed_income_pit: { employeeCents: 100, employerCents: 0 } } }), employee(), run());
+    const stub = buildPaystub(
+      paycheck({ taxes: { fed_income_pit: { employeeCents: 100, employerCents: 0 } } }),
+      employee(),
+      run()
+    );
     expect(stub.taxLines).toHaveLength(1);
     expect(stub.taxLines[0].taxKind).toBe('fed_income_pit');
   });
@@ -132,7 +138,11 @@ describe('buildPaystub', () => {
 
 describe('buildReportRow', () => {
   it('aggregates two paychecks into a W-2-style stub row', () => {
-    const rows = buildReportRow(employee({ ssn: '123-45-6789' }), [paycheck(), paycheck({ id: 'pc2' })], 2026);
+    const rows = buildReportRow(
+      employee({ ssn: '123-45-6789' }),
+      [paycheck(), paycheck({ id: 'pc2' })],
+      2026
+    );
     expect(rows.grossWagesCents).toBe(400000); // 2 * 200,000
     expect(rows.fedIncomeWithheldCents).toBe(40258); // 2 * 20,129
     expect(rows.ssWithheldCents).toBe(24800); // 2 * 12,400
@@ -158,7 +168,10 @@ describe('buildPayrollReportStub', () => {
     const report = buildPayrollReportStub('w2', 2026, [
       { employee: employee({ id: 'a', displayName: 'Aaron' }), paychecks: [paycheck()] },
       { employee: employee({ id: 'z', displayName: 'Zoe' }), paychecks: [paycheck()] },
-      { employee: employee({ id: 'c', displayName: 'Carl', employmentType: '1099' }), paychecks: [paycheck()] },
+      {
+        employee: employee({ id: 'c', displayName: 'Carl', employmentType: '1099' }),
+        paychecks: [paycheck()],
+      },
     ]);
     expect(report.kind).toBe('w2');
     expect(report.unverified).toBe(true);
@@ -169,13 +182,21 @@ describe('buildPayrollReportStub', () => {
   it('builds a 1099-NEC stub from 1099 contractors only', () => {
     const report = buildPayrollReportStub('1099_nec', 2026, [
       { employee: employee({ id: 'a', displayName: 'W2 person' }), paychecks: [paycheck()] },
-      { employee: employee({ id: 'c', displayName: 'Carl', employmentType: '1099' }), paychecks: [paycheck()] },
+      {
+        employee: employee({ id: 'c', displayName: 'Carl', employmentType: '1099' }),
+        paychecks: [paycheck()],
+      },
     ]);
     expect(report.rows).toHaveLength(1);
     expect(report.rows[0].employeeName).toBe('Carl');
   });
   it('stamps the quarter on a DE-9C stub', () => {
-    const report = buildPayrollReportStub('de9c', 2026, [{ employee: employee(), paychecks: [paycheck()] }], 2);
+    const report = buildPayrollReportStub(
+      'de9c',
+      2026,
+      [{ employee: employee(), paychecks: [paycheck()] }],
+      2
+    );
     expect(report.kind).toBe('de9c');
     expect(report.quarter).toBe(2);
   });

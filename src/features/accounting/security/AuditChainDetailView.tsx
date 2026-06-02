@@ -31,7 +31,9 @@ function VerifyRow({ row }: { row: AuditChainVerifyRow }) {
     <div className={`flex flex-col gap-1.5 border-l-2 px-3 py-2.5 ${toneBorderClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <span className="font-mono text-sm text-white">#{row.chainSeq}</span>
-        <span className={`rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${toneBadgeClass(tone)}`}>
+        <span
+          className={`rounded-sm px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${toneBadgeClass(tone)}`}
+        >
           {row.ok ? 'Verified' : 'Broken'}
         </span>
       </div>
@@ -39,7 +41,10 @@ function VerifyRow({ row }: { row: AuditChainVerifyRow }) {
       <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
         <div className="min-w-0">
           <span className="text-[11px] uppercase tracking-wide text-slate-500">Stored</span>
-          <p className="truncate font-mono text-xs text-slate-300" title={row.storedHash ?? undefined}>
+          <p
+            className="truncate font-mono text-xs text-slate-300"
+            title={row.storedHash ?? undefined}
+          >
             {shortHash(row.storedHash)}
           </p>
         </div>
@@ -99,7 +104,9 @@ export default function AuditChainDetailView() {
               >
                 {failing > 0 ? 'gpp_bad' : 'verified_user'}
               </span>
-              <p className={`text-sm font-semibold ${failing > 0 ? 'text-red-200' : 'text-green-200'}`}>
+              <p
+                className={`text-sm font-semibold ${failing > 0 ? 'text-red-200' : 'text-green-200'}`}
+              >
                 {verificationSummary(rows)}
               </p>
             </div>
@@ -109,7 +116,8 @@ export default function AuditChainDetailView() {
             <Card padding="lg">
               <p className="text-sm text-slate-400">
                 No chained audit rows to verify yet. Once accounting activity is audited (and any
-                legacy rows are backfilled from the overview), the per-row verification appears here.
+                legacy rows are backfilled from the overview), the per-row verification appears
+                here.
               </p>
             </Card>
           ) : (
@@ -123,8 +131,8 @@ export default function AuditChainDetailView() {
           )}
 
           <p className="text-xs text-slate-500">
-            The first break is reported once — the chain continues from each stored hash, so a single
-            altered row does not cascade into the rows after it. Canonical serialization and
+            The first break is reported once — the chain continues from each stored hash, so a
+            single altered row does not cascade into the rows after it. Canonical serialization and
             concurrency safety of the chain are on the human-verify list.
           </p>
         </>

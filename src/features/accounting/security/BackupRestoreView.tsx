@@ -15,7 +15,15 @@ import { backupPolicyRows } from '../securityView';
 import { SecurityError, SecurityScreen } from './SecurityScreen';
 
 /** A numbered runbook step block. */
-function RunbookStep({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function RunbookStep({
+  n,
+  title,
+  children,
+}: {
+  n: number;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <li className="flex gap-3">
       <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
@@ -98,8 +106,8 @@ export default function BackupRestoreView() {
           Operator runbook
         </h3>
         <p className="mt-1 text-sm text-slate-400">
-          A logical backup with pg_dump, encrypted at rest with AES-256-GCM, stored off-platform, and
-          restored manually under supervision. Adjust to your Supabase plan and key custody.
+          A logical backup with pg_dump, encrypted at rest with AES-256-GCM, stored off-platform,
+          and restored manually under supervision. Adjust to your Supabase plan and key custody.
         </p>
 
         <Card className="mt-3" padding="lg">
@@ -111,15 +119,16 @@ export default function BackupRestoreView() {
             </RunbookStep>
 
             <RunbookStep n={2} title="Encrypt at rest (AES-256-GCM)">
-              Encrypt the dump with a key held in your secrets manager (never in the repo or the app):
+              Encrypt the dump with a key held in your secrets manager (never in the repo or the
+              app):
               <CommandSample>{`openssl enc -aes-256-gcm -pbkdf2 -salt \\
   -in wtp-*.dump -out wtp-*.dump.enc -pass env:BACKUP_KEY`}</CommandSample>
             </RunbookStep>
 
             <RunbookStep n={3} title="Store off-platform with retention">
-              Upload the <span className="font-mono">.enc</span> artifact to versioned, access-controlled
-              object storage. Enforce the documented retention ({policy?.retentionDays ?? '—'} days) and
-              verify the upload checksum.
+              Upload the <span className="font-mono">.enc</span> artifact to versioned,
+              access-controlled object storage. Enforce the documented retention (
+              {policy?.retentionDays ?? '—'} days) and verify the upload checksum.
             </RunbookStep>
 
             <RunbookStep n={4} title="Restore — supervised, on a fresh target">
@@ -130,18 +139,19 @@ pg_restore --no-owner --dbname "$RESTORE_TARGET_URL" wtp-*.dump`}</CommandSample
             </RunbookStep>
 
             <RunbookStep n={5} title="Point-in-time recovery">
-              For PITR, rely on your Supabase plan’s continuous backups ({policy?.pitrExpectation ?? '—'}).
-              This dump runbook complements, not replaces, platform PITR.
+              For PITR, rely on your Supabase plan’s continuous backups (
+              {policy?.pitrExpectation ?? '—'}). This dump runbook complements, not replaces,
+              platform PITR.
             </RunbookStep>
           </ol>
         </Card>
 
         <div className="mt-3 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-          <span className="font-bold">Human must verify:</span> validate this runbook end-to-end on a
-          non-prod copy (dump → encrypt → store → decrypt → restore → integrity check), confirm key
-          custody and rotation, and keep restore a supervised manual step. The encrypted field key
-          (pgcrypto) and the backup key are <span className="font-semibold">separate</span> secrets —
-          a backup is only as recoverable as the key that decrypts it.
+          <span className="font-bold">Human must verify:</span> validate this runbook end-to-end on
+          a non-prod copy (dump → encrypt → store → decrypt → restore → integrity check), confirm
+          key custody and rotation, and keep restore a supervised manual step. The encrypted field
+          key (pgcrypto) and the backup key are <span className="font-semibold">separate</span>{' '}
+          secrets — a backup is only as recoverable as the key that decrypts it.
         </div>
       </section>
     </SecurityScreen>

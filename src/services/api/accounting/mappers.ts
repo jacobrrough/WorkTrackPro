@@ -235,7 +235,11 @@ export function mapTaxCodeRow(row: Row, rateOverride?: number): TaxCode {
 
 // ── Tax agencies & filing calendar (C1) ──────────────────────────────────────
 
-const VALID_TAX_FILING_FREQUENCIES = new Set<TaxFilingFrequency>(['monthly', 'quarterly', 'annual']);
+const VALID_TAX_FILING_FREQUENCIES = new Set<TaxFilingFrequency>([
+  'monthly',
+  'quarterly',
+  'annual',
+]);
 
 /** Narrow a raw filing_frequency cell to the union, or null when unset/invalid. */
 function taxFilingFrequency(v: unknown): TaxFilingFrequency | null {
@@ -570,11 +574,7 @@ export function mapJobCostingRow(row: Row): JobCostingRow {
 
 // ── Banking (A4) ─────────────────────────────────────────────────────────────
 
-const VALID_BANK_ACCOUNT_TYPES = new Set<BankAccountType>([
-  'checking',
-  'savings',
-  'credit_card',
-]);
+const VALID_BANK_ACCOUNT_TYPES = new Set<BankAccountType>(['checking', 'savings', 'credit_card']);
 const VALID_BANK_TXN_STATUS = new Set<BankTransactionStatus>([
   'unreviewed',
   'categorized',
@@ -794,7 +794,8 @@ export function mapReconciliationRow(row: Row): Reconciliation {
     id: str(row.id),
     bankAccountId: str(row.bank_account_id),
     statementDate: str(row.statement_date),
-    statementEndingBalance: row.statement_ending_balance == null ? null : num(row.statement_ending_balance),
+    statementEndingBalance:
+      row.statement_ending_balance == null ? null : num(row.statement_ending_balance),
     beginningBalance: row.beginning_balance == null ? null : num(row.beginning_balance),
     status: status === 'completed' ? 'completed' : 'in_progress',
     reconciledBy: nstr(row.reconciled_by),
@@ -851,7 +852,10 @@ export function mapBudgetLineRow(row: Row): BudgetLine {
 
 // ── Fixed assets & depreciation (D3) ──────────────────────────────────────────
 
-const VALID_DEPRECIATION_METHODS = new Set<DepreciationMethod>(['straight_line', 'declining_balance']);
+const VALID_DEPRECIATION_METHODS = new Set<DepreciationMethod>([
+  'straight_line',
+  'declining_balance',
+]);
 const VALID_FIXED_ASSET_STATUSES = new Set<FixedAssetStatus>([
   'active',
   'fully_depreciated',
@@ -1223,12 +1227,15 @@ export function mapTaxRateRow(row: Row): TaxRate {
 // (migration 20260601000024). jsonb columns (file_meta/summary/raw/mapped) arrive
 // already JSON-parsed from supabase-js, so we narrow them to objects defensively.
 
-const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const obj = (v: unknown): Record<string, unknown> =>
+  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 
 /** Narrow the file_meta jsonb to the ImportFileMeta shape. */
 function mapImportFileMeta(value: unknown): ImportFileMeta {
   const v = obj(value);
-  const shapes = Array.isArray(v.importedShapes) ? (v.importedShapes as unknown[]).map(String) : undefined;
+  const shapes = Array.isArray(v.importedShapes)
+    ? (v.importedShapes as unknown[]).map(String)
+    : undefined;
   return {
     name: v.name == null ? undefined : String(v.name),
     bytes: typeof v.bytes === 'number' ? v.bytes : undefined,
@@ -1282,7 +1289,10 @@ export function mapImportBatchRow(row: Row): ImportBatch {
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
     // A `staging:import_staging(count)` embed surfaces as [{ count }].
-    stagingCount: Array.isArray(stagingAgg) && stagingAgg[0]?.count != null ? Number(stagingAgg[0].count) : undefined,
+    stagingCount:
+      Array.isArray(stagingAgg) && stagingAgg[0]?.count != null
+        ? Number(stagingAgg[0].count)
+        : undefined,
   };
 }
 
@@ -1476,7 +1486,12 @@ const VALID_PAYROLL_FILING_STATUSES = new Set<PayrollFilingStatus>([
   'head_of_household',
 ]);
 const VALID_PAY_TYPES = new Set<PayType>(['hourly', 'salary']);
-const VALID_PAY_FREQUENCIES = new Set<PayFrequency>(['weekly', 'biweekly', 'semimonthly', 'monthly']);
+const VALID_PAY_FREQUENCIES = new Set<PayFrequency>([
+  'weekly',
+  'biweekly',
+  'semimonthly',
+  'monthly',
+]);
 const VALID_PAY_RUN_STATUSES = new Set<PayRunStatus>(['draft', 'calculated', 'committed', 'void']);
 const VALID_PAYROLL_JURISDICTIONS = new Set<PayrollJurisdiction>(['federal', 'CA']);
 const VALID_TAX_PARTIES = new Set<TaxParty>(['employee', 'employer']);
@@ -1758,7 +1773,14 @@ export function parsePayrollTaxTableBody(v: unknown): PayrollTaxTableBody {
     }
   }
   if (!o || typeof o !== 'object' || Array.isArray(o)) {
-    return { rate: 0, employerRate: null, wageBaseCents: null, thresholdCents: null, employeePaid: false, employerPaid: false };
+    return {
+      rate: 0,
+      employerRate: null,
+      wageBaseCents: null,
+      thresholdCents: null,
+      employeePaid: false,
+      employerPaid: false,
+    };
   }
   const s = o as Record<string, unknown>;
   if (s.method === 'percentage') {
@@ -1791,15 +1813,24 @@ export function parsePayrollTaxTableBody(v: unknown): PayrollTaxTableBody {
   return {
     method: 'flat',
     rate: num(s.rate),
-    employerRate: s.employer_rate == null && s.employerRate == null ? null : num(s.employer_rate ?? s.employerRate),
+    employerRate:
+      s.employer_rate == null && s.employerRate == null
+        ? null
+        : num(s.employer_rate ?? s.employerRate),
     wageBaseCents:
-      s.wage_base_cents == null && s.wageBaseCents == null ? null : cents(s.wage_base_cents ?? s.wageBaseCents),
+      s.wage_base_cents == null && s.wageBaseCents == null
+        ? null
+        : cents(s.wage_base_cents ?? s.wageBaseCents),
     thresholdCents:
-      s.threshold_cents == null && s.thresholdCents == null ? null : cents(s.threshold_cents ?? s.thresholdCents),
+      s.threshold_cents == null && s.thresholdCents == null
+        ? null
+        : cents(s.threshold_cents ?? s.thresholdCents),
     employeePaid: bool(s.employee_paid ?? s.employeePaid),
     employerPaid: bool(s.employer_paid ?? s.employerPaid),
     ...(s.gross_rate != null ? { grossRate: num(s.gross_rate) } : {}),
-    ...(s.standard_state_credit != null ? { standardStateCredit: num(s.standard_state_credit) } : {}),
+    ...(s.standard_state_credit != null
+      ? { standardStateCredit: num(s.standard_state_credit) }
+      : {}),
   };
 }
 
@@ -1848,7 +1879,9 @@ export function mapPayrollTaxTableRow(row: Row): PayrollTaxTable {
 // in the generated Database types, so each row arrives as Record<string, unknown> and we
 // narrow explicitly (same as every mapper above). NONE of these carry a monetary value.
 
-const VALID_ACCOUNTING_ROLE_KEYS: ReadonlySet<string> = new Set<AccountingRoleKey>(ACCOUNTING_ROLE_KEYS);
+const VALID_ACCOUNTING_ROLE_KEYS: ReadonlySet<string> = new Set<AccountingRoleKey>(
+  ACCOUNTING_ROLE_KEYS
+);
 
 /** Narrow a raw role cell to the AccountingRoleKey union (defaults to 'viewer' — least privilege). */
 function accountingRoleKey(v: unknown): AccountingRoleKey {

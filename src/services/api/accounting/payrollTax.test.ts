@@ -82,58 +82,182 @@ function pctRow(
 // 2025 Single / STANDARD federal annual brackets (Pub 15-T Worksheet 1A), in cents.
 const FED_SINGLE_BRACKETS: PercentageBracket[] = [
   { overCents: 0, butNotOverCents: 640000, baseCents: 0, rate: 0.0, ofExcessOverCents: 0 },
-  { overCents: 640000, butNotOverCents: 1832500, baseCents: 0, rate: 0.1, ofExcessOverCents: 640000 },
-  { overCents: 1832500, butNotOverCents: 5487500, baseCents: 119250, rate: 0.12, ofExcessOverCents: 1832500 },
-  { overCents: 5487500, butNotOverCents: 10975000, baseCents: 557850, rate: 0.22, ofExcessOverCents: 5487500 },
-  { overCents: 10975000, butNotOverCents: 20370000, baseCents: 1765100, rate: 0.24, ofExcessOverCents: 10975000 },
-  { overCents: 20370000, butNotOverCents: 25692500, baseCents: 4019900, rate: 0.32, ofExcessOverCents: 20370000 },
-  { overCents: 25692500, butNotOverCents: 63275000, baseCents: 5723100, rate: 0.35, ofExcessOverCents: 25692500 },
-  { overCents: 63275000, butNotOverCents: null, baseCents: 18876975, rate: 0.37, ofExcessOverCents: 63275000 },
+  {
+    overCents: 640000,
+    butNotOverCents: 1832500,
+    baseCents: 0,
+    rate: 0.1,
+    ofExcessOverCents: 640000,
+  },
+  {
+    overCents: 1832500,
+    butNotOverCents: 5487500,
+    baseCents: 119250,
+    rate: 0.12,
+    ofExcessOverCents: 1832500,
+  },
+  {
+    overCents: 5487500,
+    butNotOverCents: 10975000,
+    baseCents: 557850,
+    rate: 0.22,
+    ofExcessOverCents: 5487500,
+  },
+  {
+    overCents: 10975000,
+    butNotOverCents: 20370000,
+    baseCents: 1765100,
+    rate: 0.24,
+    ofExcessOverCents: 10975000,
+  },
+  {
+    overCents: 20370000,
+    butNotOverCents: 25692500,
+    baseCents: 4019900,
+    rate: 0.32,
+    ofExcessOverCents: 20370000,
+  },
+  {
+    overCents: 25692500,
+    butNotOverCents: 63275000,
+    baseCents: 5723100,
+    rate: 0.35,
+    ofExcessOverCents: 25692500,
+  },
+  {
+    overCents: 63275000,
+    butNotOverCents: null,
+    baseCents: 18876975,
+    rate: 0.37,
+    ofExcessOverCents: 63275000,
+  },
 ];
 
 // 2025 Single CA DE 44 Method B Table 5 annual brackets, in cents.
 const CA_SINGLE_BRACKETS: PercentageBracket[] = [
   { overCents: 0, butNotOverCents: 1075600, baseCents: 0, rate: 0.011, ofExcessOverCents: 0 },
-  { overCents: 1075600, butNotOverCents: 2549900, baseCents: 11832, rate: 0.022, ofExcessOverCents: 1075600 },
-  { overCents: 2549900, butNotOverCents: 4024500, baseCents: 44267, rate: 0.044, ofExcessOverCents: 2549900 },
-  { overCents: 4024500, butNotOverCents: 5586600, baseCents: 109149, rate: 0.066, ofExcessOverCents: 4024500 },
-  { overCents: 5586600, butNotOverCents: 7060600, baseCents: 212248, rate: 0.088, ofExcessOverCents: 5586600 },
-  { overCents: 7060600, butNotOverCents: 36065900, baseCents: 341960, rate: 0.1023, ofExcessOverCents: 7060600 },
-  { overCents: 36065900, butNotOverCents: 43278700, baseCents: 3309402, rate: 0.1133, ofExcessOverCents: 36065900 },
-  { overCents: 43278700, butNotOverCents: 72131400, baseCents: 4126413, rate: 0.1243, ofExcessOverCents: 43278700 },
-  { overCents: 72131400, butNotOverCents: 100000000, baseCents: 7712418, rate: 0.1353, ofExcessOverCents: 72131400 },
-  { overCents: 100000000, butNotOverCents: null, baseCents: 11484597, rate: 0.1463, ofExcessOverCents: 100000000 },
+  {
+    overCents: 1075600,
+    butNotOverCents: 2549900,
+    baseCents: 11832,
+    rate: 0.022,
+    ofExcessOverCents: 1075600,
+  },
+  {
+    overCents: 2549900,
+    butNotOverCents: 4024500,
+    baseCents: 44267,
+    rate: 0.044,
+    ofExcessOverCents: 2549900,
+  },
+  {
+    overCents: 4024500,
+    butNotOverCents: 5586600,
+    baseCents: 109149,
+    rate: 0.066,
+    ofExcessOverCents: 4024500,
+  },
+  {
+    overCents: 5586600,
+    butNotOverCents: 7060600,
+    baseCents: 212248,
+    rate: 0.088,
+    ofExcessOverCents: 5586600,
+  },
+  {
+    overCents: 7060600,
+    butNotOverCents: 36065900,
+    baseCents: 341960,
+    rate: 0.1023,
+    ofExcessOverCents: 7060600,
+  },
+  {
+    overCents: 36065900,
+    butNotOverCents: 43278700,
+    baseCents: 3309402,
+    rate: 0.1133,
+    ofExcessOverCents: 36065900,
+  },
+  {
+    overCents: 43278700,
+    butNotOverCents: 72131400,
+    baseCents: 4126413,
+    rate: 0.1243,
+    ofExcessOverCents: 43278700,
+  },
+  {
+    overCents: 72131400,
+    butNotOverCents: 100000000,
+    baseCents: 7712418,
+    rate: 0.1353,
+    ofExcessOverCents: 72131400,
+  },
+  {
+    overCents: 100000000,
+    butNotOverCents: null,
+    baseCents: 11484597,
+    rate: 0.1463,
+    ofExcessOverCents: 100000000,
+  },
 ];
 
 function fullTaxSet(): PayrollTaxTableSet {
   const rows: PayrollTaxTable[] = [
     flatRow('ss', 'fica_ss', 'federal', {
-      rate: 0.062, employerRate: 0.062, wageBaseCents: 17610000, thresholdCents: null,
-      employeePaid: true, employerPaid: true,
+      rate: 0.062,
+      employerRate: 0.062,
+      wageBaseCents: 17610000,
+      thresholdCents: null,
+      employeePaid: true,
+      employerPaid: true,
     }),
     flatRow('med', 'fica_medicare', 'federal', {
-      rate: 0.0145, employerRate: 0.0145, wageBaseCents: null, thresholdCents: null,
-      employeePaid: true, employerPaid: true,
+      rate: 0.0145,
+      employerRate: 0.0145,
+      wageBaseCents: null,
+      thresholdCents: null,
+      employeePaid: true,
+      employerPaid: true,
     }),
     flatRow('addl', 'medicare_addl', 'federal', {
-      rate: 0.009, employerRate: null, wageBaseCents: null, thresholdCents: 20000000,
-      employeePaid: true, employerPaid: false,
+      rate: 0.009,
+      employerRate: null,
+      wageBaseCents: null,
+      thresholdCents: 20000000,
+      employeePaid: true,
+      employerPaid: false,
     }),
     flatRow('futa', 'futa', 'federal', {
-      rate: 0.006, employerRate: 0.006, wageBaseCents: 700000, thresholdCents: null,
-      employeePaid: false, employerPaid: true,
+      rate: 0.006,
+      employerRate: 0.006,
+      wageBaseCents: 700000,
+      thresholdCents: null,
+      employeePaid: false,
+      employerPaid: true,
     }),
     flatRow('ui', 'ca_ui', 'CA', {
-      rate: 0.034, employerRate: 0.034, wageBaseCents: 700000, thresholdCents: null,
-      employeePaid: false, employerPaid: true,
+      rate: 0.034,
+      employerRate: 0.034,
+      wageBaseCents: 700000,
+      thresholdCents: null,
+      employeePaid: false,
+      employerPaid: true,
     }),
     flatRow('ett', 'ca_ett', 'CA', {
-      rate: 0.001, employerRate: 0.001, wageBaseCents: 700000, thresholdCents: null,
-      employeePaid: false, employerPaid: true,
+      rate: 0.001,
+      employerRate: 0.001,
+      wageBaseCents: 700000,
+      thresholdCents: null,
+      employeePaid: false,
+      employerPaid: true,
     }),
     flatRow('sdi', 'ca_sdi', 'CA', {
-      rate: 0.012, employerRate: null, wageBaseCents: null, thresholdCents: null,
-      employeePaid: true, employerPaid: false,
+      rate: 0.012,
+      employerRate: null,
+      wageBaseCents: null,
+      thresholdCents: null,
+      employeePaid: true,
+      employerPaid: false,
     }),
     pctRow('fed-single', 'fed_income_pit', 'federal', 'single', FED_SINGLE_BRACKETS),
     pctRow('ca-single', 'ca_pit', 'CA', 'single', CA_SINGLE_BRACKETS),
@@ -258,7 +382,10 @@ describe('buildTaxTableSet + resolvePercentageRow', () => {
   });
   it('returns the latest-effective row when two share a key', () => {
     const older = pctRow('old', 'fed_income_pit', 'federal', 'single', FED_SINGLE_BRACKETS);
-    const newer = { ...pctRow('new', 'fed_income_pit', 'federal', 'single', FED_SINGLE_BRACKETS), effectiveDate: '2025-07-01' };
+    const newer = {
+      ...pctRow('new', 'fed_income_pit', 'federal', 'single', FED_SINGLE_BRACKETS),
+      effectiveDate: '2025-07-01',
+    };
     const set = buildTaxTableSet(2025, [older, newer]);
     expect(set.percentage['fed_income_pit:single']?.id).toBe('new');
   });
@@ -358,7 +485,12 @@ describe('computePaycheckTaxes', () => {
     const set = fullTaxSet();
     // YTD 17,600,000; base 17,610,000 → only 10,000 of a 200,000 check is SS-taxable.
     const r = computePaycheckTaxes(
-      { grossCents: 200000, ytdGrossCents: 17600000, employee: baseEmployee, frequency: 'biweekly' },
+      {
+        grossCents: 200000,
+        ytdGrossCents: 17600000,
+        employee: baseEmployee,
+        frequency: 'biweekly',
+      },
       set
     );
     const ss = r.lines.find((l) => l.kind === 'fica_ss')!;
@@ -373,7 +505,12 @@ describe('computePaycheckTaxes', () => {
     const set = fullTaxSet();
     // YTD 19,900,000; check 200,000 → 100,000 over the 20,000,000 threshold.
     const r = computePaycheckTaxes(
-      { grossCents: 200000, ytdGrossCents: 19900000, employee: baseEmployee, frequency: 'biweekly' },
+      {
+        grossCents: 200000,
+        ytdGrossCents: 19900000,
+        employee: baseEmployee,
+        frequency: 'biweekly',
+      },
       set
     );
     const addl = r.lines.find((l) => l.kind === 'medicare_addl')!;
@@ -401,8 +538,12 @@ describe('computePaycheckTaxes', () => {
   it('surfaces missing tax tables instead of silently zeroing', () => {
     const set = buildTaxTableSet(2025, [
       flatRow('ss', 'fica_ss', 'federal', {
-        rate: 0.062, employerRate: 0.062, wageBaseCents: 17610000, thresholdCents: null,
-        employeePaid: true, employerPaid: true,
+        rate: 0.062,
+        employerRate: 0.062,
+        wageBaseCents: 17610000,
+        thresholdCents: null,
+        employeePaid: true,
+        employerPaid: true,
       }),
     ]);
     const r = computePaycheckTaxes(

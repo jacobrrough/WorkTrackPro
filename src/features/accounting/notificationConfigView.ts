@@ -144,7 +144,10 @@ export function validateThreshold(
     return { value: null, error: 'Enter a number.' };
   }
   if (n < 0) {
-    return { value: null, error: kind === 'dollars' ? 'Enter an amount of $0 or more.' : 'Enter 0 or more days.' };
+    return {
+      value: null,
+      error: kind === 'dollars' ? 'Enter an amount of $0 or more.' : 'Enter 0 or more days.',
+    };
   }
 
   if (kind === 'days') {

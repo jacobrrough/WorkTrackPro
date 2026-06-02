@@ -29,11 +29,7 @@ import type {
 } from '../../../features/accounting/types';
 import { supabase } from '../supabaseClient';
 import { acct } from './accountingClient';
-import {
-  mapRoleCandidateRow,
-  mapUserRoleGrantRow,
-  type Row,
-} from './mappers';
+import { mapRoleCandidateRow, mapUserRoleGrantRow, type Row } from './mappers';
 
 /** The outcome of a grant/revoke write. Never throws on an expected DB rejection. */
 export interface RbacWriteResult {
@@ -66,7 +62,11 @@ export const rbacService = {
         .in('id', userIds);
       if (profErr) throw profErr;
       const byId = new Map<string, { email: string | null; name: string | null }>();
-      for (const p of (profiles ?? []) as Array<{ id?: unknown; email?: unknown; name?: unknown }>) {
+      for (const p of (profiles ?? []) as Array<{
+        id?: unknown;
+        email?: unknown;
+        name?: unknown;
+      }>) {
         if (p.id) {
           byId.set(String(p.id), {
             email: p.email == null ? null : String(p.email),
@@ -116,10 +116,7 @@ export const rbacService = {
 
   /** The role keys a single user holds (active grants). Reads throw. */
   async rolesForUser(userId: string): Promise<AccountingRoleKey[]> {
-    const { data, error } = await acct()
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
+    const { data, error } = await acct().from('user_roles').select('role').eq('user_id', userId);
     if (error) throw error;
     const roles = new Set<AccountingRoleKey>();
     for (const r of ((data ?? []) as Row[]).map(mapUserRoleGrantRow)) roles.add(r.role);

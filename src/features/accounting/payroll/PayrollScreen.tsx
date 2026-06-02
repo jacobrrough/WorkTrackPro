@@ -19,7 +19,13 @@ import {
 } from '../constants';
 
 /** The payroll sub-sections (a secondary nav within the module's Payroll area). */
-export type PayrollSection = 'overview' | 'employees' | 'schedules' | 'runs' | 'tax-tables' | 'reports';
+export type PayrollSection =
+  | 'overview'
+  | 'employees'
+  | 'schedules'
+  | 'runs'
+  | 'tax-tables'
+  | 'reports';
 
 interface SubNavItem {
   key: PayrollSection;
@@ -51,7 +57,13 @@ interface PayrollScreenProps {
 const DEFAULT_BANNER_DETAIL =
   'Payroll is flag-dark. Nothing here is filing-grade; direct deposit is a non-bankable stub. Verify every rate, form, and the encryption posture before enabling.';
 
-export function PayrollScreen({ section, title, bannerDetail, actions, children }: PayrollScreenProps) {
+export function PayrollScreen({
+  section,
+  title,
+  bannerDetail,
+  actions,
+  children,
+}: PayrollScreenProps) {
   const navigate = useNavigate();
 
   return (

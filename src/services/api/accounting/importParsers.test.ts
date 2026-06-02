@@ -239,11 +239,9 @@ describe('parseQboJson', () => {
     const obs = res.records.filter((r) => r.entityType === 'opening_balance');
     expect(obs).toHaveLength(2);
     // Account number is the source key when present.
-    const checking = obs.find((r) => r.sourceAccountKey === '1000')!
-      .mapped as MappedOpeningBalance;
+    const checking = obs.find((r) => r.sourceAccountKey === '1000')!.mapped as MappedOpeningBalance;
     expect(checking.debitCents).toBe(1000000);
-    const loan = obs.find((r) => r.sourceAccountKey === 'Loan')!
-      .mapped as MappedOpeningBalance;
+    const loan = obs.find((r) => r.sourceAccountKey === 'Loan')!.mapped as MappedOpeningBalance;
     expect(loan.creditCents).toBe(400000);
     expect(loan.offset).toBe('liability');
   });
@@ -329,15 +327,18 @@ describe('parseDelimited', () => {
   });
 
   it('reads a single signed Balance column with a Type for sign', () => {
-    const csv = ['Name,Type,Balance', 'Checking,Bank,10000.00', 'Loan,Long Term Liability,4000.00'].join('\n');
+    const csv = [
+      'Name,Type,Balance',
+      'Checking,Bank,10000.00',
+      'Loan,Long Term Liability,4000.00',
+    ].join('\n');
     const res = parseDelimited(csv, 'csv').build();
     const obs = res.records.filter((r) => r.entityType === 'opening_balance');
     expect(obs).toHaveLength(2);
     const checking = obs.find((r) => r.sourceAccountName === 'Checking')!
       .mapped as MappedOpeningBalance;
     expect(checking.debitCents).toBe(1000000); // asset → debit
-    const loan = obs.find((r) => r.sourceAccountName === 'Loan')!
-      .mapped as MappedOpeningBalance;
+    const loan = obs.find((r) => r.sourceAccountName === 'Loan')!.mapped as MappedOpeningBalance;
     expect(loan.creditCents).toBe(400000); // liability → credit
   });
 

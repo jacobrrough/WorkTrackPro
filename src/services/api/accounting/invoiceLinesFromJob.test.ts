@@ -106,7 +106,10 @@ describe('buildInvoiceLinesFromJob', () => {
     expect(lines[0].incomeAccountId).toBe('acc-sales');
     expect(lines[0].taxCodeId).toBe('tax-1');
     // unitPrice * quantity reconstructs the total (within rounding)
-    expect((lines[0].unitPrice ?? 0) * (lines[0].quantity ?? 0)).toBeCloseTo(lines[0].lineTotal!, 1);
+    expect((lines[0].unitPrice ?? 0) * (lines[0].quantity ?? 0)).toBeCloseTo(
+      lines[0].lineTotal!,
+      1
+    );
   });
 
   it("anchors to a part's stored pricePerSet (manualSetPrice), matching the calculator", () => {
@@ -137,7 +140,12 @@ describe('buildInvoiceLinesFromJob', () => {
         { partId: 'part-2', partNumber: 'P-200', dashQuantities: { '01': 2 } },
       ],
     });
-    const lines = buildInvoiceLinesFromJob({ job, parts: [partA, partB], inventory, settings: SETTINGS });
+    const lines = buildInvoiceLinesFromJob({
+      job,
+      parts: [partA, partB],
+      inventory,
+      settings: SETTINGS,
+    });
     expect(lines).toHaveLength(2);
     expect(lines.map((l) => l.jobId)).toEqual(['job-1', 'job-1']);
   });
@@ -147,11 +155,14 @@ describe('buildInvoiceLinesFromJob', () => {
       partNumber: undefined,
       dashQuantities: undefined,
       parts: [],
-      inventoryItems: [
-        { id: 'ji-1', inventoryId: 'inv-1', quantity: 4, unit: 'ea' },
-      ],
+      inventoryItems: [{ id: 'ji-1', inventoryId: 'inv-1', quantity: 4, unit: 'ea' }],
     });
-    const lines = buildInvoiceLinesFromJob({ job, parts: [], inventory, settings: { ...SETTINGS, materialMultiplier: 2 } });
+    const lines = buildInvoiceLinesFromJob({
+      job,
+      parts: [],
+      inventory,
+      settings: { ...SETTINGS, materialMultiplier: 2 },
+    });
     expect(lines).toHaveLength(1);
     // 4 * $5 * 2 = $40
     expect(lines[0].lineTotal).toBeCloseTo(40, 2);
@@ -159,7 +170,12 @@ describe('buildInvoiceLinesFromJob', () => {
   });
 
   it('returns no lines when there is nothing to invoice', () => {
-    const job = makeJob({ partNumber: undefined, dashQuantities: undefined, parts: [], inventoryItems: [] });
+    const job = makeJob({
+      partNumber: undefined,
+      dashQuantities: undefined,
+      parts: [],
+      inventoryItems: [],
+    });
     expect(buildInvoiceLinesFromJob({ job, parts: [], inventory, settings: SETTINGS })).toEqual([]);
   });
 });

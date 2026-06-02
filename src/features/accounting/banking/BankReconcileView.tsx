@@ -123,7 +123,9 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-white/5 text-slate-400">
-        <span className="material-symbols-outlined text-lg">{done ? 'check_circle' : 'balance'}</span>
+        <span className="material-symbols-outlined text-lg">
+          {done ? 'check_circle' : 'balance'}
+        </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold text-white">
@@ -153,8 +155,7 @@ export default function BankReconcileView() {
   const { data: reconciliations = [], isPending, isError } = useReconciliations(bankAccountId);
   const [showCreate, setShowCreate] = useState(false);
 
-  const openDetail = (id: string) =>
-    navigate(`${BANKING_BASE}/${bankAccountId}/reconcile/${id}`);
+  const openDetail = (id: string) => navigate(`${BANKING_BASE}/${bankAccountId}/reconcile/${id}`);
 
   return (
     <AccountingShell

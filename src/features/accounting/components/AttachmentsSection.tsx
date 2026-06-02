@@ -36,10 +36,7 @@ import {
   previewKindFor,
 } from './attachmentFormat';
 import { useAccountingAttachments } from '../hooks/useAccountingQueries';
-import {
-  useDeleteAttachment,
-  useUploadAttachment,
-} from '../hooks/useAccountingMutations';
+import { useDeleteAttachment, useUploadAttachment } from '../hooks/useAccountingMutations';
 import {
   ATTACHMENT_ACCEPT_ATTR,
   type AccountingAttachment,
@@ -124,7 +121,10 @@ function AttachmentPreviewModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
-          <h3 className="min-w-0 flex-1 truncate text-sm font-bold text-white" title={attachment.filename}>
+          <h3
+            className="min-w-0 flex-1 truncate text-sm font-bold text-white"
+            title={attachment.filename}
+          >
             {attachment.filename}
           </h3>
           {url && (
@@ -150,7 +150,10 @@ function AttachmentPreviewModal({
 
         {/* Held-module banner on the preview surface (required everywhere this module renders). */}
         <div className="px-4 pt-3">
-          <UnverifiedBanner variant="compact" detail="Stored unencrypted — do not preview filing-sensitive documents." />
+          <UnverifiedBanner
+            variant="compact"
+            detail="Stored unencrypted — do not preview filing-sensitive documents."
+          />
         </div>
 
         <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto p-4">
@@ -179,9 +182,7 @@ function AttachmentPreviewModal({
               <span className="material-symbols-outlined text-5xl text-slate-500">
                 {fileKindIcon(attachment.contentType)}
               </span>
-              <p className="text-sm text-slate-400">
-                This file type cannot be previewed inline.
-              </p>
+              <p className="text-sm text-slate-400">This file type cannot be previewed inline.</p>
               <a href={url} target="_blank" rel="noopener noreferrer">
                 <Button size="sm" variant="secondary" icon="download">
                   Download
@@ -216,7 +217,9 @@ function AttachmentRow({
         className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary"
         aria-hidden="true"
       >
-        <span className="material-symbols-outlined text-lg">{fileKindIcon(attachment.contentType)}</span>
+        <span className="material-symbols-outlined text-lg">
+          {fileKindIcon(attachment.contentType)}
+        </span>
       </span>
 
       {canPreview ? (
@@ -229,7 +232,10 @@ function AttachmentRow({
           {attachment.filename}
         </button>
       ) : (
-        <span className="min-w-0 flex-1 truncate font-semibold text-white" title={attachment.filename}>
+        <span
+          className="min-w-0 flex-1 truncate font-semibold text-white"
+          title={attachment.filename}
+        >
           {attachment.filename}
         </span>
       )}
@@ -237,7 +243,9 @@ function AttachmentRow({
       <span className="hidden shrink-0 font-mono tabular-nums text-slate-500 sm:block">
         {formatBytes(attachment.sizeBytes)}
       </span>
-      {created && <span className="hidden w-24 shrink-0 text-right text-slate-500 md:block">{created}</span>}
+      {created && (
+        <span className="hidden w-24 shrink-0 text-right text-slate-500 md:block">{created}</span>
+      )}
 
       {canPreview && (
         <button

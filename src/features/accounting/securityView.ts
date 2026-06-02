@@ -99,7 +99,9 @@ export function fieldLabel(field: string): string {
  * never exceeds the denominator for display purposes (clamped), so a shadow over-count cannot
  * read as >100%.
  */
-export function coveragePercent(row: Pick<EncryptionCoverageRow, 'plaintextCount' | 'encryptedCount'>): number {
+export function coveragePercent(
+  row: Pick<EncryptionCoverageRow, 'plaintextCount' | 'encryptedCount'>
+): number {
   const plaintext = Math.max(0, Math.floor(row.plaintextCount));
   const encrypted = Math.max(0, Math.floor(row.encryptedCount));
   if (plaintext === 0) return 100;
@@ -108,7 +110,9 @@ export function coveragePercent(row: Pick<EncryptionCoverageRow, 'plaintextCount
 }
 
 /** A short cutover status label for one field, driven by its pending count. */
-export function coverageStatusLabel(row: Pick<EncryptionCoverageRow, 'plaintextCount' | 'encryptedCount' | 'pendingCount'>): string {
+export function coverageStatusLabel(
+  row: Pick<EncryptionCoverageRow, 'plaintextCount' | 'encryptedCount' | 'pendingCount'>
+): string {
   if (row.plaintextCount === 0 && row.encryptedCount === 0) return 'No data';
   if (row.pendingCount === 0) return 'Migrated';
   if (row.encryptedCount === 0) return 'Plaintext only';
@@ -116,7 +120,9 @@ export function coverageStatusLabel(row: Pick<EncryptionCoverageRow, 'plaintextC
 }
 
 /** Tone for a field's cutover row: complete → good, partway → warn, nothing migrated yet → bad. */
-export function coverageTone(row: Pick<EncryptionCoverageRow, 'plaintextCount' | 'encryptedCount' | 'pendingCount'>): SecurityTone {
+export function coverageTone(
+  row: Pick<EncryptionCoverageRow, 'plaintextCount' | 'encryptedCount' | 'pendingCount'>
+): SecurityTone {
   if (row.plaintextCount === 0 && row.encryptedCount === 0) return 'neutral';
   if (row.pendingCount === 0) return 'good';
   if (row.encryptedCount === 0) return 'bad';
@@ -266,7 +272,10 @@ export function backupPolicyRows(policy: BackupPolicy): BackupPolicyDisplayRow[]
   return [
     { label: 'Schedule', value: policy.schedule },
     { label: 'Encryption', value: policy.encryption },
-    { label: 'Retention', value: `${policy.retentionDays} day${policy.retentionDays === 1 ? '' : 's'}` },
+    {
+      label: 'Retention',
+      value: `${policy.retentionDays} day${policy.retentionDays === 1 ? '' : 's'}`,
+    },
     { label: 'Restore mode', value: policy.restoreMode },
     { label: 'Point-in-time recovery', value: policy.pitrExpectation },
   ];
@@ -281,16 +290,22 @@ export function roleLabel(role: AccountingRoleKey | string): string {
 
 /** The roles a user holds, in the canonical privilege order (admin → … → viewer), labelled. */
 export function orderedRoleLabels(roles: AccountingRoleKey[]): string[] {
-  return ACCOUNTING_ROLE_KEYS.filter((k) => roles.includes(k)).map((k) => ACCOUNTING_ROLE_LABELS[k]);
+  return ACCOUNTING_ROLE_KEYS.filter((k) => roles.includes(k)).map(
+    (k) => ACCOUNTING_ROLE_LABELS[k]
+  );
 }
 
 /** The display label for one user-role summary row (name → email → id). */
-export function userDisplayLabel(summary: Pick<UserRoleSummary, 'userName' | 'userEmail' | 'userId'>): string {
+export function userDisplayLabel(
+  summary: Pick<UserRoleSummary, 'userName' | 'userEmail' | 'userId'>
+): string {
   return summary.userName || summary.userEmail || summary.userId;
 }
 
 /** A short secondary line for a user row (email when a name is shown; the id otherwise). */
-export function userSecondaryLabel(summary: Pick<UserRoleSummary, 'userName' | 'userEmail' | 'userId'>): string {
+export function userSecondaryLabel(
+  summary: Pick<UserRoleSummary, 'userName' | 'userEmail' | 'userId'>
+): string {
   if (summary.userName && summary.userEmail) return summary.userEmail;
   if (!summary.userName && summary.userEmail) return summary.userId;
   return summary.userId;

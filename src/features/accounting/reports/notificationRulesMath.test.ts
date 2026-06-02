@@ -140,7 +140,11 @@ describe('detectOverdueInvoices', () => {
   const asOf = '2026-06-15';
 
   it('flags a sent invoice past due by >= threshold days with a balance', () => {
-    const out = detectOverdueInvoices([invoice({ dueDate: '2026-05-31', balanceDue: 100 })], 1, asOf);
+    const out = detectOverdueInvoices(
+      [invoice({ dueDate: '2026-05-31', balanceDue: 100 })],
+      1,
+      asOf
+    );
     expect(out).toHaveLength(1);
     expect(out[0].eventType).toBe('invoice_overdue');
     expect(out[0].subjectId).toBe('inv-1');
@@ -169,7 +173,14 @@ describe('detectOverdueInvoices', () => {
 
   it('flags a partially_paid invoice with a remaining balance', () => {
     const out = detectOverdueInvoices(
-      [invoice({ status: 'partially_paid', dueDate: '2026-05-31', amountPaid: 40, balanceDue: 60 })],
+      [
+        invoice({
+          status: 'partially_paid',
+          dueDate: '2026-05-31',
+          amountPaid: 40,
+          balanceDue: 60,
+        }),
+      ],
       1,
       asOf
     );
@@ -178,7 +189,11 @@ describe('detectOverdueInvoices', () => {
   });
 
   it('advances the dedupe bucket as the invoice ages (re-notify on worsening, not daily)', () => {
-    const deep = detectOverdueInvoices([invoice({ dueDate: '2026-04-10', balanceDue: 100 })], 1, asOf);
+    const deep = detectOverdueInvoices(
+      [invoice({ dueDate: '2026-04-10', balanceDue: 100 })],
+      1,
+      asOf
+    );
     // Apr 10 → Jun 15 = 66 days → bucket 60.
     expect(deep[0].dedupeKey).toBe('invoice_overdue:inv-1:bucket60');
   });
@@ -239,12 +254,16 @@ describe('detectLowBankBalances', () => {
 
   it('does NOT flag an account exactly AT the floor (>= is safe)', () => {
     // 500.00 dollars == 50000 cents == threshold 50000 cents → not below.
-    expect(detectLowBankBalances([bankAccount({ currentBalance: 500 })], 500, null, asOf)).toHaveLength(0);
+    expect(
+      detectLowBankBalances([bankAccount({ currentBalance: 500 })], 500, null, asOf)
+    ).toHaveLength(0);
   });
 
   it('uses integer cents (a fractional-cent balance just above does not falsely trigger)', () => {
     // 500.001 rounds to 50000 cents == floor → not below. Proves no float drift.
-    expect(detectLowBankBalances([bankAccount({ currentBalance: 500.001 })], 500, null, asOf)).toHaveLength(0);
+    expect(
+      detectLowBankBalances([bankAccount({ currentBalance: 500.001 })], 500, null, asOf)
+    ).toHaveLength(0);
   });
 
   it('flags a negative (overdrawn) balance', () => {
@@ -264,8 +283,12 @@ describe('detectLowBankBalances', () => {
   });
 
   it('skips inactive accounts and returns nothing when no threshold is configured', () => {
-    expect(detectLowBankBalances([bankAccount({ isActive: false, currentBalance: 0 })], 500, null, asOf)).toHaveLength(0);
-    expect(detectLowBankBalances([bankAccount({ currentBalance: 0 })], null, null, asOf)).toHaveLength(0);
+    expect(
+      detectLowBankBalances([bankAccount({ isActive: false, currentBalance: 0 })], 500, null, asOf)
+    ).toHaveLength(0);
+    expect(
+      detectLowBankBalances([bankAccount({ currentBalance: 0 })], null, null, asOf)
+    ).toHaveLength(0);
   });
 });
 
@@ -280,7 +303,10 @@ describe('detectTaxDeadlines', () => {
   });
 
   it('keys by agency NAME when the agency id is null (config-only agency)', () => {
-    const out = detectTaxDeadlines([taxEntry({ agencyId: null, agencyName: 'City of X', daysUntilDue: 3 })], 14);
+    const out = detectTaxDeadlines(
+      [taxEntry({ agencyId: null, agencyName: 'City of X', daysUntilDue: 3 })],
+      14
+    );
     expect(out[0].dedupeKey).toBe('tax_deadline_upcoming:City of X:2026-07-31');
   });
 
@@ -298,7 +324,9 @@ describe('detectTaxDeadlines', () => {
 
 describe('buildInvoiceSentCandidate', () => {
   it('builds one per-invoice candidate with an UNVERIFIED title + per-invoice dedupe key', () => {
-    const c = buildInvoiceSentCandidate(invoice({ id: 'inv-9', invoiceNumber: '2002', total: 1234.56, customerName: 'Acme' }));
+    const c = buildInvoiceSentCandidate(
+      invoice({ id: 'inv-9', invoiceNumber: '2002', total: 1234.56, customerName: 'Acme' })
+    );
     expect(c.eventType).toBe('invoice_sent');
     expect(c.subjectId).toBe('inv-9');
     expect(c.dedupeKey).toBe('invoice_sent:inv-9'); // re-sending the same invoice will not re-notify

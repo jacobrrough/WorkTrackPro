@@ -7,11 +7,7 @@ import type {
 } from '../../../features/accounting/types';
 import { supabase } from '../supabaseClient';
 import { acct } from './accountingClient';
-import {
-  mapInventoryCogsEventRow,
-  mapInventoryValuationRow,
-  type Row,
-} from './mappers';
+import { mapInventoryCogsEventRow, mapInventoryValuationRow, type Row } from './mappers';
 
 /**
  * B3 — inventory valuation (FIFO) → COGS. Bridges the EXISTING public job-consumption

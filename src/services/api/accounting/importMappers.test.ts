@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  mapImportAccountMapRow,
-  mapImportBatchRow,
-  mapImportStagingRow,
-} from './mappers';
+import { mapImportAccountMapRow, mapImportBatchRow, mapImportStagingRow } from './mappers';
 import { mapDefaultAccounts } from './settings';
 
 // HELD / UNVERIFIED — row<->domain mappers for the import tables (migration 24) +
@@ -16,7 +12,13 @@ describe('mapImportBatchRow', () => {
       source: 'qbo',
       source_detail: 'qbo_csv',
       status: 'committed',
-      file_meta: { name: 'tb.csv', bytes: 1024, rowCount: 12, sha256: 'abc', storagePath: 'imports/x' },
+      file_meta: {
+        name: 'tb.csv',
+        bytes: 1024,
+        rowCount: 12,
+        sha256: 'abc',
+        storagePath: 'imports/x',
+      },
       summary: {
         posted_entry_ids: ['je1', 'je2'],
         lines: 5,
@@ -71,7 +73,12 @@ describe('mapImportStagingRow', () => {
       batch_id: 'b1',
       entity_type: 'opening_balance',
       raw: { account: 'Checking', balance: '10000.00' },
-      mapped: { targetAccountId: 'acc-cash', debitCents: 1000000, creditCents: 0, offset: 'equity' },
+      mapped: {
+        targetAccountId: 'acc-cash',
+        debitCents: 1000000,
+        creditCents: 0,
+        offset: 'equity',
+      },
       status: 'mapped',
       error: null,
       content_hash: 'opening_balance:abc',

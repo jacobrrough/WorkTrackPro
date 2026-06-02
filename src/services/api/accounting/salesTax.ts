@@ -77,7 +77,11 @@ async function resolveLiabilityAccount(): Promise<{ id: string | null; number: s
       .eq('id', id)
       .maybeSingle();
     const row = data as Row | null;
-    if (row) return { id: String(row.id), number: row.account_number == null ? null : String(row.account_number) };
+    if (row)
+      return {
+        id: String(row.id),
+        number: row.account_number == null ? null : String(row.account_number),
+      };
   }
 
   // Fallback: the conventional 2200 "Sales Tax Payable" chart account.
@@ -87,7 +91,11 @@ async function resolveLiabilityAccount(): Promise<{ id: string | null; number: s
     .eq('account_number', '2200')
     .maybeSingle();
   const row = data as Row | null;
-  if (row) return { id: String(row.id), number: row.account_number == null ? null : String(row.account_number) };
+  if (row)
+    return {
+      id: String(row.id),
+      number: row.account_number == null ? null : String(row.account_number),
+    };
   return { id, number: null };
 }
 
@@ -107,7 +115,10 @@ async function fetchInvoiceTaxInputs(invoiceIds: string[]): Promise<InvoiceTaxIn
   const CHUNK = 100;
   for (let i = 0; i < invoiceIds.length; i += CHUNK) {
     const slice = invoiceIds.slice(i, i + CHUNK);
-    const { data, error } = await acct().from('invoices').select(INVOICE_TAX_SELECT).in('id', slice);
+    const { data, error } = await acct()
+      .from('invoices')
+      .select(INVOICE_TAX_SELECT)
+      .in('id', slice);
     if (error) throw error;
     // The deeply-nested embed makes PostgREST infer an error-union element type; the
     // accounting schema isn't in the generated Database types anyway, so we narrow via
@@ -152,7 +163,9 @@ async function fetchInvoiceTaxInputs(invoiceIds: string[]): Promise<InvoiceTaxIn
 async function fetchAgencies(): Promise<TaxAgency[]> {
   const { data, error } = await acct()
     .from('tax_agencies')
-    .select('id, name, liability_account_id, filing_frequency, created_at, tax_rates(rate, is_active)')
+    .select(
+      'id, name, liability_account_id, filing_frequency, created_at, tax_rates(rate, is_active)'
+    )
     .order('name', { ascending: true });
   if (error) throw error;
   return ((data ?? []) as Row[]).map((r) =>
@@ -187,7 +200,9 @@ export const salesTaxService = {
     // its source_type/source_id for attribution.
     let q = acct()
       .from('journal_lines')
-      .select('debit, credit, entry:journal_entries!inner(id, status, entry_date, source_type, source_id)')
+      .select(
+        'debit, credit, entry:journal_entries!inner(id, status, entry_date, source_type, source_id)'
+      )
       .eq('account_id', liability.id)
       .eq('entry.status', 'posted');
     if (range.from) q = q.gte('entry.entry_date', range.from);
@@ -266,7 +281,11 @@ export const salesTaxService = {
     }
 
     entries.sort((a, b) =>
-      a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : a.agencyName.localeCompare(b.agencyName)
+      a.dueDate < b.dueDate
+        ? -1
+        : a.dueDate > b.dueDate
+          ? 1
+          : a.agencyName.localeCompare(b.agencyName)
     );
 
     return { asOf: asOfIso, entries };

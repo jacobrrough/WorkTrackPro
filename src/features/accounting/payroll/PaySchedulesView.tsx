@@ -46,7 +46,13 @@ function formFor(schedule: PaySchedule | null): ScheduleForm {
 }
 
 /** Create/edit dialog for a pay schedule. */
-function ScheduleModal({ schedule, onClose }: { schedule: PaySchedule | null; onClose: () => void }) {
+function ScheduleModal({
+  schedule,
+  onClose,
+}: {
+  schedule: PaySchedule | null;
+  onClose: () => void;
+}) {
   const isNew = !schedule;
   const create = useCreatePaySchedule();
   const update = useUpdatePaySchedule();
@@ -80,7 +86,9 @@ function ScheduleModal({ schedule, onClose }: { schedule: PaySchedule | null; on
     if (isNew) {
       const res = await create.mutateAsync(input);
       if (res.error || !res.schedule) {
-        setError(res.error ?? 'Could not create the pay schedule. Confirm you have a payroll role.');
+        setError(
+          res.error ?? 'Could not create the pay schedule. Confirm you have a payroll role.'
+        );
         return;
       }
     } else {
@@ -97,7 +105,9 @@ function ScheduleModal({ schedule, onClose }: { schedule: PaySchedule | null; on
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">{isNew ? 'New pay schedule' : 'Edit pay schedule'}</h2>
+          <h2 className="text-lg font-bold text-white">
+            {isNew ? 'New pay schedule' : 'Edit pay schedule'}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -110,11 +120,22 @@ function ScheduleModal({ schedule, onClose }: { schedule: PaySchedule | null; on
 
         <div className="flex flex-col gap-3">
           <FormField label="Name" htmlFor="ps-name" required>
-            <input id="ps-name" className={inputClass} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Biweekly — hourly" />
+            <input
+              id="ps-name"
+              className={inputClass}
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              placeholder="e.g. Biweekly — hourly"
+            />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Frequency" htmlFor="ps-freq" hint="Drives withholding annualization.">
-              <select id="ps-freq" className={inputClass} value={form.frequency} onChange={(e) => set('frequency', e.target.value as PayFrequency)}>
+              <select
+                id="ps-freq"
+                className={inputClass}
+                value={form.frequency}
+                onChange={(e) => set('frequency', e.target.value as PayFrequency)}
+              >
                 {PAY_FREQUENCIES.map((f) => (
                   <option key={f} value={f}>
                     {PAY_FREQUENCY_LABELS[f]}
@@ -122,21 +143,52 @@ function ScheduleModal({ schedule, onClose }: { schedule: PaySchedule | null; on
                 ))}
               </select>
             </FormField>
-            <FormField label="Anchor date" htmlFor="ps-anchor" required hint="A known period boundary.">
-              <input id="ps-anchor" type="date" className={inputClass} value={form.anchorDate} onChange={(e) => set('anchorDate', e.target.value)} />
+            <FormField
+              label="Anchor date"
+              htmlFor="ps-anchor"
+              required
+              hint="A known period boundary."
+            >
+              <input
+                id="ps-anchor"
+                type="date"
+                className={inputClass}
+                value={form.anchorDate}
+                onChange={(e) => set('anchorDate', e.target.value)}
+              />
             </FormField>
           </div>
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Next period (optional)</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Next period (optional)
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Period start" htmlFor="ps-start">
-              <input id="ps-start" type="date" className={inputClass} value={form.nextPeriodStart} onChange={(e) => set('nextPeriodStart', e.target.value)} />
+              <input
+                id="ps-start"
+                type="date"
+                className={inputClass}
+                value={form.nextPeriodStart}
+                onChange={(e) => set('nextPeriodStart', e.target.value)}
+              />
             </FormField>
             <FormField label="Period end" htmlFor="ps-end">
-              <input id="ps-end" type="date" className={inputClass} value={form.nextPeriodEnd} onChange={(e) => set('nextPeriodEnd', e.target.value)} />
+              <input
+                id="ps-end"
+                type="date"
+                className={inputClass}
+                value={form.nextPeriodEnd}
+                onChange={(e) => set('nextPeriodEnd', e.target.value)}
+              />
             </FormField>
           </div>
           <FormField label="Pay date" htmlFor="ps-pay">
-            <input id="ps-pay" type="date" className={inputClass} value={form.nextPayDate} onChange={(e) => set('nextPayDate', e.target.value)} />
+            <input
+              id="ps-pay"
+              type="date"
+              className={inputClass}
+              value={form.nextPayDate}
+              onChange={(e) => set('nextPayDate', e.target.value)}
+            />
           </FormField>
 
           {error && (
@@ -236,12 +288,21 @@ export default function PaySchedulesView() {
       {!isPending && !isError && schedules.length > 0 && (
         <div className="flex flex-col gap-2">
           {schedules.map((schedule) => (
-            <ScheduleRow key={schedule.id} schedule={schedule} onEdit={() => setModal({ open: true, schedule })} />
+            <ScheduleRow
+              key={schedule.id}
+              schedule={schedule}
+              onEdit={() => setModal({ open: true, schedule })}
+            />
           ))}
         </div>
       )}
 
-      {modal.open && <ScheduleModal schedule={modal.schedule} onClose={() => setModal({ open: false, schedule: null })} />}
+      {modal.open && (
+        <ScheduleModal
+          schedule={modal.schedule}
+          onClose={() => setModal({ open: false, schedule: null })}
+        />
+      )}
     </PayrollScreen>
   );
 }

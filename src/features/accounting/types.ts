@@ -2384,7 +2384,13 @@ export type ImportSourceDetail = 'qbo_csv' | 'qbo_json' | 'iif' | 'csv';
  *   draft → mapping → ready → committed (terminal). failed/discarded are off-ramps.
  * ONLY a 'ready' batch may be committed; commit is idempotent.
  */
-export type ImportBatchStatus = 'draft' | 'mapping' | 'ready' | 'committed' | 'failed' | 'discarded';
+export type ImportBatchStatus =
+  | 'draft'
+  | 'mapping'
+  | 'ready'
+  | 'committed'
+  | 'failed'
+  | 'discarded';
 
 export const IMPORT_BATCH_STATUS_LABELS: Record<ImportBatchStatus, string> = {
   draft: 'Draft',
@@ -2687,13 +2693,14 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
  */
 export type NotificationThresholdKind = 'days' | 'dollars' | 'none';
 
-export const NOTIFICATION_THRESHOLD_KIND: Record<NotificationEventType, NotificationThresholdKind> = {
-  invoice_sent: 'none',
-  invoice_overdue: 'days',
-  bill_due_soon: 'days',
-  low_bank_balance: 'dollars',
-  tax_deadline_upcoming: 'days',
-};
+export const NOTIFICATION_THRESHOLD_KIND: Record<NotificationEventType, NotificationThresholdKind> =
+  {
+    invoice_sent: 'none',
+    invoice_overdue: 'days',
+    bill_due_soon: 'days',
+    low_bank_balance: 'dollars',
+    tax_deadline_upcoming: 'days',
+  };
 
 /**
  * The in-app preference key (public.user_notification_preferences) each event maps to —

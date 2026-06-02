@@ -46,7 +46,8 @@ const TILES: PayrollTile[] = [
     key: 'runs',
     label: 'Pay runs',
     icon: 'payments',
-    description: 'Calculate → review paychecks → commit a balanced payroll journal entry → paystubs.',
+    description:
+      'Calculate → review paychecks → commit a balanced payroll journal entry → paystubs.',
     to: payrollRunsPath(),
   },
   {
@@ -108,14 +109,24 @@ export default function PayrollHome() {
             What a human must verify before enabling
           </h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-100/90">
-            <li>Every federal & CA rate, wage base, threshold, and withholding bracket against the
-              current IRS Pub 15 / Pub 15-T and CA EDD DE 44 for the tax year.</li>
-            <li>The withholding formulas and statutory deductions (the engine surfaces known gaps,
-              e.g. CA DE 44 Table 5 only and a placeholder UI experience rate).</li>
-            <li>Hours sourcing, overtime rules, and the pay-frequency annualization the engine uses.</li>
-            <li>The W-2 / 1099-NEC / DE-9C box mapping and the NACHA file format — all are STUBS.</li>
-            <li>Encryption / key posture for SSN & bank data (Phase E) before any real data is
-              entered.</li>
+            <li>
+              Every federal & CA rate, wage base, threshold, and withholding bracket against the
+              current IRS Pub 15 / Pub 15-T and CA EDD DE 44 for the tax year.
+            </li>
+            <li>
+              The withholding formulas and statutory deductions (the engine surfaces known gaps,
+              e.g. CA DE 44 Table 5 only and a placeholder UI experience rate).
+            </li>
+            <li>
+              Hours sourcing, overtime rules, and the pay-frequency annualization the engine uses.
+            </li>
+            <li>
+              The W-2 / 1099-NEC / DE-9C box mapping and the NACHA file format — all are STUBS.
+            </li>
+            <li>
+              Encryption / key posture for SSN & bank data (Phase E) before any real data is
+              entered.
+            </li>
           </ul>
         </Card>
       </div>

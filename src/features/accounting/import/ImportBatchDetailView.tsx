@@ -77,7 +77,9 @@ function BatchHeader({ batch }: { batch: ImportBatch }) {
     <div className="rounded-sm border border-white/10 bg-card-dark p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="material-symbols-outlined text-primary">cloud_upload</span>
-        <h2 className="font-bold text-white">{batch.fileMeta?.name ?? sourceLabel(batch.source)}</h2>
+        <h2 className="font-bold text-white">
+          {batch.fileMeta?.name ?? sourceLabel(batch.source)}
+        </h2>
         <BatchStatusPill status={batch.status} />
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
@@ -109,7 +111,9 @@ function BatchHeader({ batch }: { batch: ImportBatch }) {
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={setDate.isPending || (date || null) === (batch.openingBalanceDate ?? null)}
+                disabled={
+                  setDate.isPending || (date || null) === (batch.openingBalanceDate ?? null)
+                }
                 onClick={() => setDate.mutate({ id: batch.id, date: date || null })}
               >
                 Save
@@ -163,7 +167,10 @@ function AccountMapRow({ row, editable }: { row: ImportAccountMap; editable: boo
               onChange={(e) =>
                 update.mutate({
                   id: row.id,
-                  patch: { createAsNew: true, newAccountType: (e.target.value || null) as AccountType | null },
+                  patch: {
+                    createAsNew: true,
+                    newAccountType: (e.target.value || null) as AccountType | null,
+                  },
                 })
               }
             >
@@ -180,7 +187,10 @@ function AccountMapRow({ row, editable }: { row: ImportAccountMap; editable: boo
             ariaLabel={`Target account for ${row.sourceAccountKey}`}
             value={row.targetAccountId ?? ''}
             onChange={(targetAccountId) =>
-              update.mutate({ id: row.id, patch: { targetAccountId: targetAccountId || null, createAsNew: false } })
+              update.mutate({
+                id: row.id,
+                patch: { targetAccountId: targetAccountId || null, createAsNew: false },
+              })
             }
           />
         )}
@@ -195,7 +205,11 @@ function AccountMapRow({ row, editable }: { row: ImportAccountMap; editable: boo
                   id: row.id,
                   patch: isCreate
                     ? { createAsNew: false }
-                    : { createAsNew: true, targetAccountId: null, newAccountType: row.newAccountType ?? null },
+                    : {
+                        createAsNew: true,
+                        targetAccountId: null,
+                        newAccountType: row.newAccountType ?? null,
+                      },
                 })
               }
             >
@@ -243,9 +257,7 @@ function AccountMapWizard({ batchId, editable }: { batchId: string; editable: bo
       </div>
 
       {isPending && <p className="px-3 py-4 text-sm text-slate-400">Loading account map…</p>}
-      {isError && (
-        <p className="px-3 py-4 text-sm text-red-400">Could not load the account map.</p>
-      )}
+      {isError && <p className="px-3 py-4 text-sm text-red-400">Could not load the account map.</p>}
       {!isPending && !isError && maps.length === 0 && (
         <p className="px-3 py-4 text-sm text-slate-400">
           No source accounts were discovered in this import.
@@ -290,10 +302,7 @@ function ReconciliationPanel({ recon }: { recon: OpeningBalanceReconciliation | 
         <Field label="Opening rows" value={String(recon.rowCount)} />
         <Field label="Σ Debits" value={formatCents(recon.totalDebitCents)} />
         <Field label="Σ Credits" value={formatCents(recon.totalCreditCents)} />
-        <Field
-          label="Imbalance"
-          value={formatCentsAccounting(recon.sourceImbalanceCents)}
-        />
+        <Field label="Imbalance" value={formatCentsAccounting(recon.sourceImbalanceCents)} />
       </div>
 
       {recon.plugs.length > 0 && (
@@ -304,9 +313,13 @@ function ReconciliationPanel({ recon }: { recon: OpeningBalanceReconciliation | 
           <ul className="mt-1 space-y-0.5 text-sm text-slate-300">
             {recon.plugs.map((p) => (
               <li key={p.offset} className="font-mono">
-                {p.offset === 'equity' ? '3050 Opening Balance Equity' : '2050 Opening Balance Liabilities'}
+                {p.offset === 'equity'
+                  ? '3050 Opening Balance Equity'
+                  : '2050 Opening Balance Liabilities'}
                 {' — '}
-                {p.debitCents > 0 ? `Dr ${formatCents(p.debitCents)}` : `Cr ${formatCents(p.creditCents)}`}
+                {p.debitCents > 0
+                  ? `Dr ${formatCents(p.debitCents)}`
+                  : `Cr ${formatCents(p.creditCents)}`}
               </li>
             ))}
           </ul>
@@ -334,9 +347,11 @@ function CommitConfirmDialog({
   onClose: () => void;
 }) {
   const commit = useCommitImportBatch();
-  const [result, setResult] = useState<{ ok: boolean; error?: string; summary?: ImportSummary } | null>(
-    null
-  );
+  const [result, setResult] = useState<{
+    ok: boolean;
+    error?: string;
+    summary?: ImportSummary;
+  } | null>(null);
 
   const run = async () => {
     const res = await commit.mutateAsync(batch.id);
@@ -480,8 +495,8 @@ function CommitPanel({ batch }: { batch: ImportBatch }) {
     <section className="rounded-sm border border-white/10 bg-card-dark p-4">
       <h2 className="font-bold text-white">Commit</h2>
       <p className="mt-1 text-sm text-slate-400">
-        Map every account, reconcile the opening balances, then mark the batch ready and commit. Only
-        an accounting admin can commit; the commit posts balanced entries and is idempotent.
+        Map every account, reconcile the opening balances, then mark the batch ready and commit.
+        Only an accounting admin can commit; the commit posts balanced entries and is idempotent.
       </p>
 
       {hasBlockers && (
@@ -532,7 +547,9 @@ function CommitPanel({ batch }: { batch: ImportBatch }) {
           Commit & post
         </Button>
         {!isReady && (
-          <span className="text-xs text-slate-500">Commit unlocks once the batch is marked ready.</span>
+          <span className="text-xs text-slate-500">
+            Commit unlocks once the batch is marked ready.
+          </span>
         )}
       </div>
 
@@ -549,7 +566,11 @@ function rawSummary(row: ImportStagingRow): string {
   const r = row.raw ?? {};
   // Show a couple of human-meaningful fields without assuming a fixed shape.
   const name =
-    (r.name as string) ?? (r.account as string) ?? (r.Account as string) ?? (r.memo as string) ?? '';
+    (r.name as string) ??
+    (r.account as string) ??
+    (r.Account as string) ??
+    (r.memo as string) ??
+    '';
   return typeof name === 'string' ? name : JSON.stringify(r).slice(0, 80);
 }
 
@@ -595,7 +616,8 @@ function StagedRowsPreview({ batchId, editable }: { batchId: string; editable: b
           ]}
         >
           {preview.map((row) => {
-            const postable = row.entityType === 'opening_balance' || row.entityType === 'journal_entry';
+            const postable =
+              row.entityType === 'opening_balance' || row.entityType === 'journal_entry';
             return (
               <tr key={row.id} className="border-t border-white/5">
                 <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-400">

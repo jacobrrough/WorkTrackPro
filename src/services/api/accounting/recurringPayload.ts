@@ -96,7 +96,9 @@ export function buildRecurringBillInput(
  * lines — the exact rule accounting.post_journal_entry enforces — so an unbalanced
  * template is rejected before any DB round-trip.
  */
-export function buildRecurringJournalLines(payload: RecurringJournalPayload): NewJournalLineInput[] {
+export function buildRecurringJournalLines(
+  payload: RecurringJournalPayload
+): NewJournalLineInput[] {
   const lines: NewJournalLineInput[] = payload.lines.map((l) => ({
     accountId: l.accountId,
     debit: l.debit,

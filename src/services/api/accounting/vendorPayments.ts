@@ -1,7 +1,4 @@
-import type {
-  NewVendorPaymentInput,
-  VendorPayment,
-} from '../../../features/accounting/types';
+import type { NewVendorPaymentInput, VendorPayment } from '../../../features/accounting/types';
 import { buildVendorPaymentJournalLines } from '../../../features/accounting/posting';
 import { acct } from './accountingClient';
 import { mapVendorPaymentRow, type Row } from './mappers';
@@ -102,7 +99,8 @@ export const vendorPaymentsService = {
       })
       .select('*')
       .single();
-    if (pErr || !payRow) return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
+    if (pErr || !payRow)
+      return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
     const paymentId = (payRow as Row).id as string;
 
     // 2) Post the disbursement JE.
@@ -115,7 +113,10 @@ export const vendorPaymentsService = {
     });
     if (!posted.entryId) {
       await acct().from('vendor_payments').delete().eq('id', paymentId);
-      return { payment: null, error: posted.error ?? 'Failed to post the disbursement journal entry.' };
+      return {
+        payment: null,
+        error: posted.error ?? 'Failed to post the disbursement journal entry.',
+      };
     }
 
     // 3) Insert applications (trigger updates bills + payment.unapplied_amount and

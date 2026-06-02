@@ -79,7 +79,11 @@ export const payrollTaxTablesService = {
 
   /** One tax-table row, or null. */
   async getById(id: string): Promise<PayrollTaxTable | null> {
-    const { data, error } = await acct().from('payroll_tax_tables').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await acct()
+      .from('payroll_tax_tables')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
     if (error || !data) return null;
     return mapPayrollTaxTableRow(data as Row);
   },
@@ -89,9 +93,14 @@ export const payrollTaxTablesService = {
    * source_revision are REQUIRED (NOT NULL in the DB) so the provenance the verifier needs is
    * always present. filing_status/pay_frequency default to 'any' for flat-rate kinds.
    */
-  async create(input: NewPayrollTaxTableInput): Promise<{ row: PayrollTaxTable | null; error?: string }> {
+  async create(
+    input: NewPayrollTaxTableInput
+  ): Promise<{ row: PayrollTaxTable | null; error?: string }> {
     if (!input.sourceCitation?.trim() || !input.sourceRevision?.trim()) {
-      return { row: null, error: 'A tax-table row needs a source citation and revision (provenance is required).' };
+      return {
+        row: null,
+        error: 'A tax-table row needs a source citation and revision (provenance is required).',
+      };
     }
     const { data, error } = await acct()
       .from('payroll_tax_tables')
@@ -110,7 +119,8 @@ export const payrollTaxTablesService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { row: null, error: error?.message ?? 'Failed to create the tax-table row.' };
+    if (error || !data)
+      return { row: null, error: error?.message ?? 'Failed to create the tax-table row.' };
     return { row: mapPayrollTaxTableRow(data as Row) };
   },
 
@@ -119,29 +129,43 @@ export const payrollTaxTablesService = {
    * a wrong key by deactivating + inserting a new row). A blanked citation/revision is rejected
    * (provenance must remain present).
    */
-  async update(id: string, input: UpdatePayrollTaxTableInput): Promise<{ row: PayrollTaxTable | null; error?: string }> {
+  async update(
+    id: string,
+    input: UpdatePayrollTaxTableInput
+  ): Promise<{ row: PayrollTaxTable | null; error?: string }> {
     const patch: Record<string, unknown> = {};
     if (input.body !== undefined) patch.table_json = bodyToJson(input.body);
     if (input.effectiveDate !== undefined) patch.effective_date = input.effectiveDate;
     if (input.sourceCitation !== undefined) {
-      if (!input.sourceCitation.trim()) return { row: null, error: 'The source citation cannot be blank.' };
+      if (!input.sourceCitation.trim())
+        return { row: null, error: 'The source citation cannot be blank.' };
       patch.source_citation = input.sourceCitation.trim();
     }
     if (input.sourceRevision !== undefined) {
-      if (!input.sourceRevision.trim()) return { row: null, error: 'The source revision cannot be blank.' };
+      if (!input.sourceRevision.trim())
+        return { row: null, error: 'The source revision cannot be blank.' };
       patch.source_revision = input.sourceRevision.trim();
     }
     if (input.notes !== undefined) patch.notes = input.notes;
     if (input.isActive !== undefined) patch.is_active = input.isActive;
     if (Object.keys(patch).length === 0) return { row: await this.getById(id) };
-    const { data, error } = await acct().from('payroll_tax_tables').update(patch).eq('id', id).select('*').single();
-    if (error || !data) return { row: null, error: error?.message ?? 'Failed to update the tax-table row.' };
+    const { data, error } = await acct()
+      .from('payroll_tax_tables')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !data)
+      return { row: null, error: error?.message ?? 'Failed to update the tax-table row.' };
     return { row: mapPayrollTaxTableRow(data as Row) };
   },
 
   /** Retire a row without deleting it (keeps the audit trail). Reactivate via update({ isActive:true }). */
   async setActive(id: string, isActive: boolean): Promise<{ ok: boolean; error?: string }> {
-    const { error } = await acct().from('payroll_tax_tables').update({ is_active: isActive }).eq('id', id);
+    const { error } = await acct()
+      .from('payroll_tax_tables')
+      .update({ is_active: isActive })
+      .eq('id', id);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },

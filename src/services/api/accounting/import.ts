@@ -114,7 +114,9 @@ export const importService = {
   },
 
   /** Create a draft batch header. */
-  async createBatch(input: NewImportBatchInput): Promise<{ batch: ImportBatch | null; error?: string }> {
+  async createBatch(
+    input: NewImportBatchInput
+  ): Promise<{ batch: ImportBatch | null; error?: string }> {
     const { data, error } = await acct()
       .from('import_batches')
       .insert({
@@ -126,12 +128,16 @@ export const importService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { batch: null, error: error?.message ?? 'Failed to create import batch.' };
+    if (error || !data)
+      return { batch: null, error: error?.message ?? 'Failed to create import batch.' };
     return { batch: mapImportBatchRow(data as Row) };
   },
 
   /** Set a batch's opening-balance "as of" date. */
-  async setOpeningBalanceDate(id: string, date: string | null): Promise<{ ok: boolean; error?: string }> {
+  async setOpeningBalanceDate(
+    id: string,
+    date: string | null
+  ): Promise<{ ok: boolean; error?: string }> {
     const { error } = await acct()
       .from('import_batches')
       .update({ opening_balance_date: date, updated_at: new Date().toISOString() })
@@ -197,7 +203,11 @@ export const importService = {
   },
 
   /** Staged rows for a batch, in sort order. */
-  async listStaging(batchId: string, filter: ImportStagingFilter = {}, limit = 1000): Promise<ImportStagingRow[]> {
+  async listStaging(
+    batchId: string,
+    filter: ImportStagingFilter = {},
+    limit = 1000
+  ): Promise<ImportStagingRow[]> {
     let q = acct()
       .from('import_staging')
       .select('*')
@@ -256,7 +266,10 @@ export const importService = {
       try {
         chart = await accountsService.getAll();
       } catch (e) {
-        return { seeded: 0, error: e instanceof Error ? e.message : 'Could not load the chart of accounts.' };
+        return {
+          seeded: 0,
+          error: e instanceof Error ? e.message : 'Could not load the chart of accounts.',
+        };
       }
     }
 
@@ -297,7 +310,10 @@ export const importService = {
    * 'mapped'; choosing create-as-new keeps target null and marks it 'mapped' too (the
    * commit RPC creates the account). Clearing both returns it to 'unmapped'.
    */
-  async updateAccountMap(id: string, patch: ImportAccountMapInput): Promise<{ ok: boolean; error?: string }> {
+  async updateAccountMap(
+    id: string,
+    patch: ImportAccountMapInput
+  ): Promise<{ ok: boolean; error?: string }> {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.targetAccountId !== undefined) row.target_account_id = patch.targetAccountId;
     if (patch.createAsNew !== undefined) row.create_as_new = patch.createAsNew;
@@ -338,7 +354,11 @@ export const importService = {
       maps = await this.listAccountMap(batchId);
       rows = await this.listStaging(batchId, { postableOnly: true });
     } catch (e) {
-      return { resolved: 0, unresolved: [], error: e instanceof Error ? e.message : 'Read failed.' };
+      return {
+        resolved: 0,
+        unresolved: [],
+        error: e instanceof Error ? e.message : 'Read failed.',
+      };
     }
     const resolution = buildAccountResolution(maps);
 
@@ -349,7 +369,11 @@ export const importService = {
       if (row.entityType === 'opening_balance') {
         const r = resolveOpeningBalance(row.mapped as unknown as MappedOpeningBalance, resolution);
         if (!r.mapped) {
-          unresolved.push({ stagingId: row.id, entityType: row.entityType, keys: r.unresolvedKeys });
+          unresolved.push({
+            stagingId: row.id,
+            entityType: row.entityType,
+            keys: r.unresolvedKeys,
+          });
           continue;
         }
         // Persist the SNAKE_CASE shape the commit RPC reads (target_account_id / debit_cents …).
@@ -362,7 +386,11 @@ export const importService = {
       } else if (row.entityType === 'journal_entry') {
         const r = resolveJournalEntry(row.mapped as unknown as MappedJournalEntry, resolution);
         if (!r.mapped) {
-          unresolved.push({ stagingId: row.id, entityType: row.entityType, keys: r.unresolvedKeys });
+          unresolved.push({
+            stagingId: row.id,
+            entityType: row.entityType,
+            keys: r.unresolvedKeys,
+          });
           continue;
         }
         // Persist the SNAKE_CASE shape the commit RPC reads (lines[].account_id / debit_cents …).
@@ -408,11 +436,16 @@ export const importService = {
       for (const row of rows) {
         if (row.status === 'skipped' || !row.mapped) continue;
         if (row.entityType === 'opening_balance') {
-          const r = resolveOpeningBalance(row.mapped as unknown as MappedOpeningBalance, resolution);
-          if (!r.mapped) rowBlockers.push(`opening balance ${row.id}: ${r.unresolvedKeys.join(', ')}`);
+          const r = resolveOpeningBalance(
+            row.mapped as unknown as MappedOpeningBalance,
+            resolution
+          );
+          if (!r.mapped)
+            rowBlockers.push(`opening balance ${row.id}: ${r.unresolvedKeys.join(', ')}`);
         } else if (row.entityType === 'journal_entry') {
           const r = resolveJournalEntry(row.mapped as unknown as MappedJournalEntry, resolution);
-          if (!r.mapped) rowBlockers.push(`journal entry ${row.id}: ${r.unresolvedKeys.join(', ')}`);
+          if (!r.mapped)
+            rowBlockers.push(`journal entry ${row.id}: ${r.unresolvedKeys.join(', ')}`);
         }
       }
       return { blockers: [...mapBlockers, ...rowBlockers] };
@@ -477,8 +510,11 @@ export const importService = {
 /** Normalize the jsonb summary the RPC returns to the ImportSummary camelCase shape. */
 function normalizeSummary(data: unknown): ImportCommitResult['summary'] {
   const v = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
-  const ids = Array.isArray(v.posted_entry_ids) ? (v.posted_entry_ids as unknown[]).map(String) : undefined;
-  const n = (k: string): number | undefined => (typeof v[k] === 'number' ? (v[k] as number) : v[k] == null ? undefined : Number(v[k]));
+  const ids = Array.isArray(v.posted_entry_ids)
+    ? (v.posted_entry_ids as unknown[]).map(String)
+    : undefined;
+  const n = (k: string): number | undefined =>
+    typeof v[k] === 'number' ? (v[k] as number) : v[k] == null ? undefined : Number(v[k]);
   return {
     postedEntryIds: ids,
     lines: n('lines'),

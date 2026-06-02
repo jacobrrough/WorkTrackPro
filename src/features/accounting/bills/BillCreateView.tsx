@@ -125,7 +125,11 @@ export default function BillCreateView() {
             </select>
           </FormField>
 
-          <FormField label="Bill number" htmlFor="bill-number" hint="The vendor's invoice / reference #">
+          <FormField
+            label="Bill number"
+            htmlFor="bill-number"
+            hint="The vendor's invoice / reference #"
+          >
             <input
               id="bill-number"
               className={inputClass}

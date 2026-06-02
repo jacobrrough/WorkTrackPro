@@ -23,8 +23,18 @@ function agency(p: Partial<TaxAgency> & Pick<TaxAgency, 'id' | 'name' | 'rate'>)
 }
 
 /** Compact liability-line factory (a posted 2200 credit). */
-function credit(sourceId: string | null, amount: number, sourceType = 'invoice'): LiabilityLineInput {
-  return { journalEntryId: `je-${sourceId ?? 'x'}`, sourceType, sourceId, debit: 0, credit: amount };
+function credit(
+  sourceId: string | null,
+  amount: number,
+  sourceType = 'invoice'
+): LiabilityLineInput {
+  return {
+    journalEntryId: `je-${sourceId ?? 'x'}`,
+    sourceType,
+    sourceId,
+    debit: 0,
+    credit: amount,
+  };
 }
 
 function baseInput(over: Partial<SalesTaxLiabilityInput>): SalesTaxLiabilityInput {
@@ -163,7 +173,9 @@ describe('buildSalesTaxLiability — multi-agency pro-rata', () => {
     const report = buildSalesTaxLiability(
       baseInput({
         liabilityLines: [credit('inv1', 0.01)],
-        invoices: [{ invoiceId: 'inv1', agencyIds: ['a1', 'a2', 'a3'], taxableSales: 1, nonTaxableSales: 0 }],
+        invoices: [
+          { invoiceId: 'inv1', agencyIds: ['a1', 'a2', 'a3'], taxableSales: 1, nonTaxableSales: 0 },
+        ],
         agencies: [a1, a2, a3],
       })
     );
@@ -182,7 +194,9 @@ describe('buildSalesTaxLiability — unattributed / review bucket (stop-conditio
           credit('inv1', 95), // tied
           credit(null, 10, 'manual'), // manual JE → unattributed
         ],
-        invoices: [{ invoiceId: 'inv1', agencyIds: ['cdtfa'], taxableSales: 1000, nonTaxableSales: 0 }],
+        invoices: [
+          { invoiceId: 'inv1', agencyIds: ['cdtfa'], taxableSales: 1000, nonTaxableSales: 0 },
+        ],
         agencies: [cdtfa],
       })
     );
@@ -234,9 +248,17 @@ describe('buildSalesTaxLiability — unattributed / review bucket (stop-conditio
       baseInput({
         liabilityLines: [
           credit('inv1', 95),
-          { journalEntryId: 'je-adj', sourceType: 'adjustment', sourceId: null, debit: 5, credit: 0 },
+          {
+            journalEntryId: 'je-adj',
+            sourceType: 'adjustment',
+            sourceId: null,
+            debit: 5,
+            credit: 0,
+          },
         ],
-        invoices: [{ invoiceId: 'inv1', agencyIds: ['cdtfa'], taxableSales: 1000, nonTaxableSales: 0 }],
+        invoices: [
+          { invoiceId: 'inv1', agencyIds: ['cdtfa'], taxableSales: 1000, nonTaxableSales: 0 },
+        ],
         agencies: [cdtfa],
       })
     );

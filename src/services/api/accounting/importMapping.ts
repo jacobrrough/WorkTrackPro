@@ -76,7 +76,9 @@ export function suggestAccountMatch(
   const sourceNameNorm = normName(source.sourceAccountName ?? source.sourceAccountKey);
 
   // 1) exact account-number match.
-  const byNumber = active.find((a) => a.accountNumber && normName(a.accountNumber) === sourceKeyNorm);
+  const byNumber = active.find(
+    (a) => a.accountNumber && normName(a.accountNumber) === sourceKeyNorm
+  );
   if (byNumber) {
     return {
       targetAccountId: byNumber.id,
@@ -182,7 +184,7 @@ export function resolveOpeningBalance(
   const directRaw = dualStr(o, 'targetAccountId', 'target_account_id');
   const direct = directRaw && directRaw.trim() !== '' ? directRaw : null;
   const sourceKey = dualStr(o, 'sourceAccountKey', 'source_account_key');
-  const viaKey = sourceKey ? resolution.get(sourceKey) ?? null : null;
+  const viaKey = sourceKey ? (resolution.get(sourceKey) ?? null) : null;
   const targetAccountId = direct ?? viaKey;
   if (!targetAccountId) {
     return { mapped: null, unresolvedKeys: [sourceKey ?? '(no source key)'] };
@@ -219,7 +221,7 @@ export function resolveJournalEntry(
     const directRaw = dualStr(ln, 'accountId', 'account_id');
     const direct = directRaw && directRaw.trim() !== '' ? directRaw : null;
     const sourceKey = dualStr(ln, 'sourceAccountKey', 'source_account_key');
-    const viaKey = sourceKey ? resolution.get(sourceKey) ?? null : null;
+    const viaKey = sourceKey ? (resolution.get(sourceKey) ?? null) : null;
     const accountId = direct ?? viaKey;
     if (!accountId) unresolvedKeys.push(sourceKey ?? '(no source key)');
     return {
@@ -414,7 +416,8 @@ export function accountMapBlockers(maps: ImportAccountMap[]): string[] {
   for (const row of maps) {
     if (row.status === 'ignored') continue;
     if (row.createAsNew) {
-      if (!row.newAccountType) blockers.push(`${row.sourceAccountKey} (create-as-new needs a type)`);
+      if (!row.newAccountType)
+        blockers.push(`${row.sourceAccountKey} (create-as-new needs a type)`);
       continue;
     }
     if (!row.targetAccountId) blockers.push(`${row.sourceAccountKey} (unmapped)`);

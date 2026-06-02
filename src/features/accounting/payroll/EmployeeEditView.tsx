@@ -79,7 +79,12 @@ export default function EmployeeEditView() {
   const isNew = !employeeId || employeeId === 'new';
   const navigate = useNavigate();
 
-  const { data: employee, isPending, isError, refetch } = useEmployee(isNew ? undefined : employeeId);
+  const {
+    data: employee,
+    isPending,
+    isError,
+    refetch,
+  } = useEmployee(isNew ? undefined : employeeId);
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
 
@@ -158,7 +163,10 @@ export default function EmployeeEditView() {
     }
   };
 
-  const title = useMemo(() => (isNew ? 'New employee (Unverified)' : 'Edit employee (Unverified)'), [isNew]);
+  const title = useMemo(
+    () => (isNew ? 'New employee (Unverified)' : 'Edit employee (Unverified)'),
+    [isNew]
+  );
 
   // Edit mode: surface load states before showing the form.
   if (!isNew && isPending) {
@@ -185,7 +193,11 @@ export default function EmployeeEditView() {
       <PayrollScreen section="employees" title={title}>
         <Card padding="lg" className="text-center">
           <p className="text-slate-300">That employee was not found.</p>
-          <Button className="mt-3" variant="secondary" onClick={() => navigate(payrollEmployeesPath())}>
+          <Button
+            className="mt-3"
+            variant="secondary"
+            onClick={() => navigate(payrollEmployeesPath())}
+          >
             Back to employees
           </Button>
         </Card>
@@ -202,7 +214,9 @@ export default function EmployeeEditView() {
       <div className="flex flex-col gap-4">
         {/* Identity + pay setup */}
         <Card padding="lg" className="flex flex-col gap-3">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Identity & pay</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+            Identity & pay
+          </h3>
           <FormField label="Name" htmlFor="emp-name" required>
             <input
               id="emp-name"
@@ -255,7 +269,11 @@ export default function EmployeeEditView() {
           <FormField
             label={form.payType === 'hourly' ? 'Hourly rate' : 'Annual salary'}
             htmlFor="emp-rate"
-            hint={form.payType === 'hourly' ? 'Dollars per hour.' : 'Dollars per year (split across pay periods).'}
+            hint={
+              form.payType === 'hourly'
+                ? 'Dollars per hour.'
+                : 'Dollars per year (split across pay periods).'
+            }
           >
             <CurrencyInput
               id="emp-rate"
@@ -287,7 +305,11 @@ export default function EmployeeEditView() {
                   ))}
                 </select>
               </FormField>
-              <FormField label="Step 2 — multiple jobs" htmlFor="fed-multi" hint="W-4 Step 2(c) checkbox.">
+              <FormField
+                label="Step 2 — multiple jobs"
+                htmlFor="fed-multi"
+                hint="W-4 Step 2(c) checkbox."
+              >
                 <label className="flex h-[40px] items-center gap-2 text-sm text-slate-300">
                   <input
                     id="fed-multi"
@@ -301,17 +323,49 @@ export default function EmployeeEditView() {
               </FormField>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField label="Step 3 — dependents" htmlFor="fed-dep" hint="Annual dependents credit amount.">
-                <CurrencyInput id="fed-dep" value={form.fedDependentsDollars} onValueChange={(v) => set('fedDependentsDollars', v)} />
+              <FormField
+                label="Step 3 — dependents"
+                htmlFor="fed-dep"
+                hint="Annual dependents credit amount."
+              >
+                <CurrencyInput
+                  id="fed-dep"
+                  value={form.fedDependentsDollars}
+                  onValueChange={(v) => set('fedDependentsDollars', v)}
+                />
               </FormField>
-              <FormField label="Step 4(a) — other income" htmlFor="fed-other" hint="Annual, not from jobs.">
-                <CurrencyInput id="fed-other" value={form.fedOtherIncomeDollars} onValueChange={(v) => set('fedOtherIncomeDollars', v)} />
+              <FormField
+                label="Step 4(a) — other income"
+                htmlFor="fed-other"
+                hint="Annual, not from jobs."
+              >
+                <CurrencyInput
+                  id="fed-other"
+                  value={form.fedOtherIncomeDollars}
+                  onValueChange={(v) => set('fedOtherIncomeDollars', v)}
+                />
               </FormField>
-              <FormField label="Step 4(b) — deductions" htmlFor="fed-ded" hint="Annual deductions over the standard.">
-                <CurrencyInput id="fed-ded" value={form.fedDeductionsDollars} onValueChange={(v) => set('fedDeductionsDollars', v)} />
+              <FormField
+                label="Step 4(b) — deductions"
+                htmlFor="fed-ded"
+                hint="Annual deductions over the standard."
+              >
+                <CurrencyInput
+                  id="fed-ded"
+                  value={form.fedDeductionsDollars}
+                  onValueChange={(v) => set('fedDeductionsDollars', v)}
+                />
               </FormField>
-              <FormField label="Step 4(c) — extra withholding" htmlFor="fed-extra" hint="Extra per PAY PERIOD.">
-                <CurrencyInput id="fed-extra" value={form.fedExtraWithholdingDollars} onValueChange={(v) => set('fedExtraWithholdingDollars', v)} />
+              <FormField
+                label="Step 4(c) — extra withholding"
+                htmlFor="fed-extra"
+                hint="Extra per PAY PERIOD."
+              >
+                <CurrencyInput
+                  id="fed-extra"
+                  value={form.fedExtraWithholdingDollars}
+                  onValueChange={(v) => set('fedExtraWithholdingDollars', v)}
+                />
               </FormField>
             </div>
           </Card>
@@ -320,7 +374,9 @@ export default function EmployeeEditView() {
         {/* California DE-4 — only meaningful for W-2 employees */}
         {isW2 && (
           <Card padding="lg" className="flex flex-col gap-3">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">California DE-4</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              California DE-4
+            </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Filing status" htmlFor="ca-status">
                 <select
@@ -336,7 +392,11 @@ export default function EmployeeEditView() {
                   ))}
                 </select>
               </FormField>
-              <FormField label="Regular withholding allowances" htmlFor="ca-allow" hint="DE-4 Worksheet A total (≥ 0).">
+              <FormField
+                label="Regular withholding allowances"
+                htmlFor="ca-allow"
+                hint="DE-4 Worksheet A total (≥ 0)."
+              >
                 <input
                   id="ca-allow"
                   type="number"
@@ -345,13 +405,24 @@ export default function EmployeeEditView() {
                   inputMode="numeric"
                   className={`${inputClass} text-right`}
                   value={form.caAllowances === 0 ? '' : form.caAllowances}
-                  onChange={(e) => set('caAllowances', Math.max(0, Number.parseInt(e.target.value, 10) || 0))}
+                  onChange={(e) =>
+                    set('caAllowances', Math.max(0, Number.parseInt(e.target.value, 10) || 0))
+                  }
                   placeholder="0"
                 />
               </FormField>
             </div>
-            <FormField label="Additional CA withholding" htmlFor="ca-extra" hint="Extra per PAY PERIOD.">
-              <CurrencyInput id="ca-extra" value={form.caExtraWithholdingDollars} onValueChange={(v) => set('caExtraWithholdingDollars', v)} className="max-w-[14rem]" />
+            <FormField
+              label="Additional CA withholding"
+              htmlFor="ca-extra"
+              hint="Extra per PAY PERIOD."
+            >
+              <CurrencyInput
+                id="ca-extra"
+                value={form.caExtraWithholdingDollars}
+                onValueChange={(v) => set('caExtraWithholdingDollars', v)}
+                className="max-w-[14rem]"
+              />
             </FormField>
           </Card>
         )}
@@ -379,7 +450,11 @@ export default function EmployeeEditView() {
           </p>
         </Card>
 
-        <FormField label="Notes" htmlFor="emp-notes" hint="Optional. Do not store sensitive identifiers here.">
+        <FormField
+          label="Notes"
+          htmlFor="emp-notes"
+          hint="Optional. Do not store sensitive identifiers here."
+        >
           <textarea
             id="emp-notes"
             className={`${inputClass} min-h-[72px]`}

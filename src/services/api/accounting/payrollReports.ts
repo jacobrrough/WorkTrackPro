@@ -36,7 +36,11 @@ export const payrollReportsService = {
    * @param taxYear  the tax year to aggregate.
    * @param quarter  1..4 for DE-9C (omit/null for the whole year, or for W-2/1099-NEC).
    */
-  async buildReport(kind: PayrollReportKind, taxYear: number, quarter: number | null = null): Promise<PayrollReport> {
+  async buildReport(
+    kind: PayrollReportKind,
+    taxYear: number,
+    quarter: number | null = null
+  ): Promise<PayrollReport> {
     // 1) Committed runs for the year (optionally filtered to a quarter by pay date).
     const { data: runRows, error: runErr } = await acct()
       .from('pay_runs')
@@ -79,7 +83,9 @@ export const payrollReportsService = {
    * bankable ACH file (`bankable` is always false). No real bank details are read (the employee
    * bank fields are Phase-E masks). Returns `{ stub: null, error }` when the run is missing.
    */
-  async buildNachaStub(payRunId: string): Promise<{ stub: NachaStubResult | null; error?: string }> {
+  async buildNachaStub(
+    payRunId: string
+  ): Promise<{ stub: NachaStubResult | null; error?: string }> {
     const run = await payRunService.getById(payRunId);
     if (!run) return { stub: null, error: 'Pay run not found.' };
     if (run.status !== 'committed') {

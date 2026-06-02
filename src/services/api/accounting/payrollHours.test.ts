@@ -17,7 +17,13 @@ function shift(
   lunchStart?: string | null,
   lunchEnd?: string | null
 ): ShiftRecord {
-  return { id, clockInTime: inIso, clockOutTime: outIso, lunchStartTime: lunchStart, lunchEndTime: lunchEnd };
+  return {
+    id,
+    clockInTime: inIso,
+    clockOutTime: outIso,
+    lunchStartTime: lunchStart,
+    lunchEndTime: lunchEnd,
+  };
 }
 
 describe('minutesToHourCents', () => {
@@ -35,12 +41,20 @@ describe('minutesToHourCents', () => {
 
 describe('shiftWorkedMinutes', () => {
   it('computes elapsed minutes between clock-in and clock-out', () => {
-    expect(shiftWorkedMinutes(shift('s1', '2026-06-01T08:00:00Z', '2026-06-01T16:00:00Z'))).toBe(480);
+    expect(shiftWorkedMinutes(shift('s1', '2026-06-01T08:00:00Z', '2026-06-01T16:00:00Z'))).toBe(
+      480
+    );
   });
   it('subtracts the unpaid lunch window', () => {
     expect(
       shiftWorkedMinutes(
-        shift('s1', '2026-06-01T08:00:00Z', '2026-06-01T16:00:00Z', '2026-06-01T12:00:00Z', '2026-06-01T12:30:00Z')
+        shift(
+          's1',
+          '2026-06-01T08:00:00Z',
+          '2026-06-01T16:00:00Z',
+          '2026-06-01T12:00:00Z',
+          '2026-06-01T12:30:00Z'
+        )
       )
     ).toBe(450); // 8h − 30m
   });
@@ -52,7 +66,9 @@ describe('shiftWorkedMinutes', () => {
   });
   it('ignores a malformed lunch window', () => {
     expect(
-      shiftWorkedMinutes(shift('s1', '2026-06-01T08:00:00Z', '2026-06-01T16:00:00Z', 'not-a-date', null))
+      shiftWorkedMinutes(
+        shift('s1', '2026-06-01T08:00:00Z', '2026-06-01T16:00:00Z', 'not-a-date', null)
+      )
     ).toBe(480);
   });
 });

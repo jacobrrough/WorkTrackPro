@@ -260,7 +260,9 @@ export function useBankAccounts(includeInactive = false) {
 /** A single bank account with its linked GL account hydrated. */
 export function useBankAccount(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.bankAccount(id) : ['accounting', 'bank', 'accounts', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.bankAccount(id)
+      : ['accounting', 'bank', 'accounts', 'none'],
     queryFn: () => bankAccountsService.getById(id as string),
     enabled: !!id,
   });
@@ -299,7 +301,9 @@ export function useReconciliations(bankAccountId?: string) {
 /** A single reconciliation header. */
 export function useReconciliation(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.reconciliation(id) : ['accounting', 'bank', 'reconciliations', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.reconciliation(id)
+      : ['accounting', 'bank', 'reconciliations', 'none'],
     queryFn: () => reconciliationsService.getById(id as string),
     enabled: !!id,
   });
@@ -407,7 +411,9 @@ export function useRecurringTemplates(includeInactive = true) {
 /** A single recurring template (with its payload). */
 export function useRecurringTemplate(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.recurringTemplate(id) : ['accounting', 'recurring', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.recurringTemplate(id)
+      : ['accounting', 'recurring', 'none'],
     queryFn: () => recurringTemplatesService.getById(id as string),
     enabled: !!id,
   });
@@ -525,7 +531,9 @@ export function useBudgetGrid(id: string | undefined) {
 /** Budget-vs-Actual for a budget's fiscal year (actuals = posted journal lines). */
 export function useBudgetVsActual(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.budgetVsActual(id) : ['accounting', 'budgets', 'none', 'vs-actual'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.budgetVsActual(id)
+      : ['accounting', 'budgets', 'none', 'vs-actual'],
     queryFn: () => budgetsService.getBudgetVsActual(id as string),
     enabled: !!id,
   });
@@ -606,10 +614,7 @@ export function useFixedAssetSchedule(fixedAssetId: string | undefined) {
  * consume); without one it returns all defs across entity types for the admin screen.
  * `includeInactive` surfaces deactivated defs (admin management).
  */
-export function useCustomFieldDefs(
-  entityType?: CustomFieldEntityType,
-  includeInactive = false
-) {
+export function useCustomFieldDefs(entityType?: CustomFieldEntityType, includeInactive = false) {
   return useQuery({
     queryKey: [...ACCOUNTING_QUERY_KEYS.customFieldDefs(entityType), { includeInactive }] as const,
     queryFn: () =>
@@ -634,7 +639,10 @@ export function useEntityCustomFields(
   return useQuery({
     queryKey:
       entityType && entityId
-        ? ([...ACCOUNTING_QUERY_KEYS.customFieldValues(entityType, entityId), { includeInactive }] as const)
+        ? ([
+            ...ACCOUNTING_QUERY_KEYS.customFieldValues(entityType, entityId),
+            { includeInactive },
+          ] as const)
         : ['accounting', 'custom-fields', 'values', 'none'],
     queryFn: () =>
       customFieldsService.listForEntity(
@@ -775,7 +783,9 @@ export function useImportBatches() {
 /** One import batch header (with a staging row count). */
 export function useImportBatch(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.importBatch(id) : ['accounting', 'import', 'batches', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.importBatch(id)
+      : ['accounting', 'import', 'batches', 'none'],
     queryFn: () => importService.getBatch(id as string),
     enabled: !!id,
   });
@@ -886,7 +896,8 @@ export function useAccountingAttachments(
       entityType && entityId
         ? ACCOUNTING_QUERY_KEYS.attachmentsForEntity(entityType, entityId)
         : ['accounting', 'attachments', 'none'],
-    queryFn: () => attachmentsService.listForEntity(entityType as AttachmentEntityType, entityId as string),
+    queryFn: () =>
+      attachmentsService.listForEntity(entityType as AttachmentEntityType, entityId as string),
     enabled: !!entityType && !!entityId,
   });
 }
@@ -911,7 +922,9 @@ export function useEmployees(includeInactive = false) {
 /** A single employee (W-4/DE-4 + pay setup). */
 export function useEmployee(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.employee(id) : ['accounting', 'payroll', 'employees', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.employee(id)
+      : ['accounting', 'payroll', 'employees', 'none'],
     queryFn: () => employeesService.getById(id as string),
     enabled: !!id,
   });
@@ -928,7 +941,9 @@ export function usePaySchedules(includeInactive = false) {
 /** A single pay schedule. */
 export function usePaySchedule(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.paySchedule(id) : ['accounting', 'payroll', 'pay-schedules', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.paySchedule(id)
+      : ['accounting', 'payroll', 'pay-schedules', 'none'],
     queryFn: () => payScheduleService.getById(id as string),
     enabled: !!id,
   });
@@ -954,7 +969,9 @@ export function usePayRun(id: string | undefined) {
 /** A run's paychecks (employee name hydrated) — the review/paystub list. */
 export function usePayRunPaychecks(runId: string | undefined) {
   return useQuery({
-    queryKey: runId ? ACCOUNTING_QUERY_KEYS.payRunPaychecks(runId) : ['accounting', 'payroll', 'pay-runs', 'none', 'paychecks'],
+    queryKey: runId
+      ? ACCOUNTING_QUERY_KEYS.payRunPaychecks(runId)
+      : ['accounting', 'payroll', 'pay-runs', 'none', 'paychecks'],
     queryFn: () => payRunService.listPaychecks(runId as string),
     enabled: !!runId,
   });
@@ -963,7 +980,9 @@ export function usePayRunPaychecks(runId: string | undefined) {
 /** A run's per-agency liability accruals (the 2300 breakdown). */
 export function usePayRunLiabilities(runId: string | undefined) {
   return useQuery({
-    queryKey: runId ? ACCOUNTING_QUERY_KEYS.payRunLiabilities(runId) : ['accounting', 'payroll', 'pay-runs', 'none', 'liabilities'],
+    queryKey: runId
+      ? ACCOUNTING_QUERY_KEYS.payRunLiabilities(runId)
+      : ['accounting', 'payroll', 'pay-runs', 'none', 'liabilities'],
     queryFn: () => payRunService.listLiabilities(runId as string),
     enabled: !!runId,
   });
@@ -972,7 +991,9 @@ export function usePayRunLiabilities(runId: string | undefined) {
 /** A single paycheck (for the paystub view). */
 export function usePaycheck(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.paycheck(id) : ['accounting', 'payroll', 'paychecks', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.paycheck(id)
+      : ['accounting', 'payroll', 'paychecks', 'none'],
     queryFn: () => payRunService.getPaycheck(id as string),
     enabled: !!id,
   });
@@ -1010,7 +1031,11 @@ export function usePayrollSeededKinds(taxYear: number) {
  * DE-9C), aggregated from COMMITTED paychecks. NOT filing-grade — the result carries
  * `unverified: true` and the UI banners the export.
  */
-export function usePayrollReport(kind: PayrollReportKind | undefined, taxYear: number, quarter: number | null = null) {
+export function usePayrollReport(
+  kind: PayrollReportKind | undefined,
+  taxYear: number,
+  quarter: number | null = null
+) {
   return useQuery({
     queryKey: kind
       ? ACCOUNTING_QUERY_KEYS.payrollReport(kind, taxYear, quarter)
@@ -1034,7 +1059,9 @@ export function usePayrollCommittedRuns(taxYear: number) {
  */
 export function usePayrollNachaStub(runId: string | undefined) {
   return useQuery({
-    queryKey: runId ? ACCOUNTING_QUERY_KEYS.payrollNachaStub(runId) : ['accounting', 'payroll', 'pay-runs', 'none', 'nacha-stub'],
+    queryKey: runId
+      ? ACCOUNTING_QUERY_KEYS.payrollNachaStub(runId)
+      : ['accounting', 'payroll', 'pay-runs', 'none', 'nacha-stub'],
     queryFn: () => payrollReportsService.buildNachaStub(runId as string),
     enabled: !!runId,
   });

@@ -161,7 +161,10 @@ function RecordVendorPaymentModal({ bill, onClose }: { bill: Bill; onClose: () =
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={submit} disabled={recordPayment.isPending || amount <= 0 || overBalance}>
+            <Button
+              onClick={submit}
+              disabled={recordPayment.isPending || amount <= 0 || overBalance}
+            >
               {recordPayment.isPending ? 'Recording…' : 'Record payment'}
             </Button>
           </div>
@@ -207,7 +210,11 @@ export default function BillDetailView() {
     // error is swallowed so it cannot surface on the void path).
     removeEntityAttachments.mutate(
       { entityType: 'bill', entityId: bill.id },
-      { onError: () => { /* orphan cleanup is best-effort; never block the void */ } }
+      {
+        onError: () => {
+          /* orphan cleanup is best-effort; never block the void */
+        },
+      }
     );
   };
 

@@ -233,10 +233,20 @@ export function classifyAccountType(raw: string | null | undefined): TypeClass |
   if (s.includes('other income') || s.includes('other current income')) return INCOME;
   if (s.includes('income') || s.includes('revenue') || s.includes('sales')) return INCOME;
   if (s.includes('expense') || s.includes('overhead')) return EXPENSE;
-  if (s.includes('liabilit') || s.includes('loan') || s.includes('payable') || s.includes('note payable')) {
+  if (
+    s.includes('liabilit') ||
+    s.includes('loan') ||
+    s.includes('payable') ||
+    s.includes('note payable')
+  ) {
     return LIABILITY;
   }
-  if (s.includes('equity') || s.includes('retained earnings') || s.includes('capital') || s.includes('owner')) {
+  if (
+    s.includes('equity') ||
+    s.includes('retained earnings') ||
+    s.includes('capital') ||
+    s.includes('owner')
+  ) {
     return EQUITY;
   }
   if (
@@ -362,7 +372,9 @@ export function parseIif(text: string): ImportResultBuilder {
     if (first.startsWith('!')) {
       // A section header. First cell is "!KEYWORD"; the rest name the columns.
       headerKey = first.slice(1).toUpperCase();
-      header = cells.map((c, i) => (i === 0 ? c.slice(1).trim().toUpperCase() : c.trim().toUpperCase()));
+      header = cells.map((c, i) =>
+        i === 0 ? c.slice(1).trim().toUpperCase() : c.trim().toUpperCase()
+      );
       continue;
     }
     if (!headerKey) continue; // data before any header — ignore.
@@ -420,7 +432,12 @@ function emitIifAccount(out: ImportResultBuilder, row: Record<string, string>): 
   out.addRecord({
     entityType: 'opening_balance',
     raw: { ...row },
-    mapped: { targetAccountId: '', ...ob, sourceAccountKey: name, memo: `Opening balance (IIF): ${name}` },
+    mapped: {
+      targetAccountId: '',
+      ...ob,
+      sourceAccountKey: name,
+      memo: `Opening balance (IIF): ${name}`,
+    },
     sourceAccountKey: name,
     sourceAccountName: name,
     sourceAccountType: typeStr,
@@ -434,12 +451,19 @@ function emitIifTransaction(
 ): void {
   // Build the mapped journal-entry: one line per TRNS/SPL row. AMOUNT is debit-positive.
   const head = txnLines[0];
-  const memo = clean(head.MEMO) ?? clean(head.DOCNUM) ?? `Imported (IIF) ${clean(head.TRNSTYPE) ?? 'transaction'}`;
+  const memo =
+    clean(head.MEMO) ??
+    clean(head.DOCNUM) ??
+    `Imported (IIF) ${clean(head.TRNSTYPE) ?? 'transaction'}`;
   const mappedLines: MappedJournalLine[] = [];
   for (const ln of txnLines) {
     const acct = clean(ln.ACCNT);
     if (acct) {
-      out.addSourceAccount({ sourceAccountKey: acct, sourceAccountName: acct, sourceAccountType: null });
+      out.addSourceAccount({
+        sourceAccountKey: acct,
+        sourceAccountName: acct,
+        sourceAccountType: null,
+      });
     }
     const cents = parseCents(ln.AMOUNT);
     if (cents == null || cents === 0) continue;
@@ -455,7 +479,9 @@ function emitIifTransaction(
   }
   if (mappedLines.length < 2) {
     // A single-line (or empty) transaction cannot post a balanced entry; surface it.
-    out.warn(`IIF transaction ${index + 1} has < 2 amount lines — staged but not postable as a balanced entry.`);
+    out.warn(
+      `IIF transaction ${index + 1} has < 2 amount lines — staged but not postable as a balanced entry.`
+    );
   }
   const mapped: MappedJournalEntry = { memo, lines: mappedLines };
   out.addRecord({
@@ -529,7 +555,8 @@ function collectEntities(root: Record<string, unknown>, key: string): unknown[] 
 function matchesEntity(item: unknown, key: string): boolean {
   if (!item || typeof item !== 'object') return false;
   const o = item as Record<string, unknown>;
-  if (key === 'Account') return 'AccountType' in o || 'Classification' in o || ('Name' in o && 'CurrentBalance' in o);
+  if (key === 'Account')
+    return 'AccountType' in o || 'Classification' in o || ('Name' in o && 'CurrentBalance' in o);
   if (key === 'JournalEntry') return Array.isArray(o.Line) && 'Line' in o;
   return false;
 }
@@ -540,7 +567,11 @@ function emitQboAccount(out: ImportResultBuilder, a: Record<string, unknown>): v
   const number = clean(a.AcctNum) ?? clean(a.Number);
   const typeStr = clean(a.AccountType) ?? clean(a.Classification) ?? clean(a.AccountSubType);
   const key = number ?? name;
-  out.addSourceAccount({ sourceAccountKey: key, sourceAccountName: name, sourceAccountType: typeStr });
+  out.addSourceAccount({
+    sourceAccountKey: key,
+    sourceAccountName: name,
+    sourceAccountType: typeStr,
+  });
 
   const balCents = parseCents(a.CurrentBalance as number | string | undefined);
   if (balCents == null || balCents === 0) return;
@@ -549,21 +580,35 @@ function emitQboAccount(out: ImportResultBuilder, a: Record<string, unknown>): v
   out.addRecord({
     entityType: 'opening_balance',
     raw: { ...a },
-    mapped: { targetAccountId: '', ...ob, sourceAccountKey: key, memo: `Opening balance (QBO): ${name}` },
+    mapped: {
+      targetAccountId: '',
+      ...ob,
+      sourceAccountKey: key,
+      memo: `Opening balance (QBO): ${name}`,
+    },
     sourceAccountKey: key,
     sourceAccountName: name,
     sourceAccountType: typeStr,
   });
 }
 
-function emitQboJournalEntry(out: ImportResultBuilder, j: Record<string, unknown>, index: number): void {
+function emitQboJournalEntry(
+  out: ImportResultBuilder,
+  j: Record<string, unknown>,
+  index: number
+): void {
   const linesRaw = Array.isArray(j.Line) ? (j.Line as Array<Record<string, unknown>>) : [];
   const mappedLines: MappedJournalLine[] = [];
   for (const ln of linesRaw) {
     const detail = (ln.JournalEntryLineDetail ?? {}) as Record<string, unknown>;
     const acctRef = (detail.AccountRef ?? {}) as Record<string, unknown>;
     const acctName = clean(acctRef.name) ?? clean(acctRef.value);
-    if (acctName) out.addSourceAccount({ sourceAccountKey: acctName, sourceAccountName: acctName, sourceAccountType: null });
+    if (acctName)
+      out.addSourceAccount({
+        sourceAccountKey: acctName,
+        sourceAccountName: acctName,
+        sourceAccountType: null,
+      });
     const cents = parseCents(ln.Amount as number | string | undefined);
     if (cents == null || cents === 0) continue;
     const posting = String(detail.PostingType ?? '').toLowerCase();
@@ -577,7 +622,9 @@ function emitQboJournalEntry(out: ImportResultBuilder, j: Record<string, unknown
     });
   }
   if (mappedLines.length < 2) {
-    out.warn(`QBO JournalEntry ${index + 1} has < 2 lines — staged but not postable as a balanced entry.`);
+    out.warn(
+      `QBO JournalEntry ${index + 1} has < 2 lines — staged but not postable as a balanced entry.`
+    );
   }
   const memo = clean(j.PrivateNote) ?? clean(j.DocNumber) ?? `Imported (QBO) journal entry`;
   out.addRecord({
@@ -589,19 +636,29 @@ function emitQboJournalEntry(out: ImportResultBuilder, j: Record<string, unknown
 }
 
 /** Extract `[ {account,type,debit,credit} ]` from a QBO TrialBalance report, or null. */
-function extractTrialBalanceRows(
-  parsed: unknown
-): Array<{ account: string; type: string | null; debit: string | null; credit: string | null }> | null {
+function extractTrialBalanceRows(parsed: unknown): Array<{
+  account: string;
+  type: string | null;
+  debit: string | null;
+  credit: string | null;
+}> | null {
   if (!parsed || typeof parsed !== 'object') return null;
   const root = parsed as Record<string, unknown>;
   const header = root.Header as Record<string, unknown> | undefined;
   const isTb = clean(header?.ReportName)?.toLowerCase().includes('trial balance');
   const rowsContainer = root.Rows as Record<string, unknown> | undefined;
-  const rowArr = rowsContainer && Array.isArray(rowsContainer.Row) ? (rowsContainer.Row as unknown[]) : null;
+  const rowArr =
+    rowsContainer && Array.isArray(rowsContainer.Row) ? (rowsContainer.Row as unknown[]) : null;
   if (!rowArr) return null;
-  if (!isTb && !rowArr.some((r) => Array.isArray((r as Record<string, unknown>).ColData))) return null;
+  if (!isTb && !rowArr.some((r) => Array.isArray((r as Record<string, unknown>).ColData)))
+    return null;
 
-  const out: Array<{ account: string; type: string | null; debit: string | null; credit: string | null }> = [];
+  const out: Array<{
+    account: string;
+    type: string | null;
+    debit: string | null;
+    credit: string | null;
+  }> = [];
   const walk = (rows: unknown[]) => {
     for (const r of rows) {
       const ro = r as Record<string, unknown>;
@@ -628,7 +685,10 @@ function extractTrialBalanceRows(
 // ── QBO CSV / generic delimited ──────────────────────────────────────────────────
 
 /** Column-name synonyms (lower-cased, non-alphanumerics stripped) → logical field. */
-const CSV_HEADERS: Record<string, 'account' | 'number' | 'type' | 'debit' | 'credit' | 'balance' | 'name'> = {
+const CSV_HEADERS: Record<
+  string,
+  'account' | 'number' | 'type' | 'debit' | 'credit' | 'balance' | 'name'
+> = {
   account: 'account',
   accountname: 'account',
   glaccount: 'account',
@@ -672,7 +732,9 @@ export function parseDelimited(text: string, detail: ImportSourceDetail): Import
   const delimiter = detectDelimiter(nonEmpty[0]);
   const header = parseLine(nonEmpty[0], delimiter).map(normHeader);
 
-  const col: Partial<Record<'account' | 'number' | 'type' | 'debit' | 'credit' | 'balance' | 'name', number>> = {};
+  const col: Partial<
+    Record<'account' | 'number' | 'type' | 'debit' | 'credit' | 'balance' | 'name', number>
+  > = {};
   header.forEach((h, i) => {
     const logical = CSV_HEADERS[h];
     if (logical && col[logical] === undefined) col[logical] = i;
@@ -680,7 +742,9 @@ export function parseDelimited(text: string, detail: ImportSourceDetail): Import
 
   const acctCol = col.account ?? col.name;
   if (acctCol === undefined) {
-    throw new ImportParseError('CSV is missing a recognizable account column (e.g. "Account" or "Name").');
+    throw new ImportParseError(
+      'CSV is missing a recognizable account column (e.g. "Account" or "Name").'
+    );
   }
   const hasDebitCredit = col.debit !== undefined || col.credit !== undefined;
   const hasBalance = col.balance !== undefined;
@@ -700,7 +764,11 @@ export function parseDelimited(text: string, detail: ImportSourceDetail): Import
     const number = at(col.number);
     const typeStr = at(col.type);
     const key = number ?? account;
-    out.addSourceAccount({ sourceAccountKey: key, sourceAccountName: account, sourceAccountType: typeStr });
+    out.addSourceAccount({
+      sourceAccountKey: key,
+      sourceAccountName: account,
+      sourceAccountType: typeStr,
+    });
 
     emitTrialBalanceRow(out, account, typeStr, at(col.debit), at(col.credit), {
       balance: at(col.balance),
@@ -877,8 +945,10 @@ export class ImportResultBuilder {
     } else {
       // Backfill a name/type if the first sighting lacked it.
       const existing = this.accounts.get(acct.sourceAccountKey)!;
-      if (!existing.sourceAccountName && acct.sourceAccountName) existing.sourceAccountName = acct.sourceAccountName;
-      if (!existing.sourceAccountType && acct.sourceAccountType) existing.sourceAccountType = acct.sourceAccountType;
+      if (!existing.sourceAccountName && acct.sourceAccountName)
+        existing.sourceAccountName = acct.sourceAccountName;
+      if (!existing.sourceAccountType && acct.sourceAccountType)
+        existing.sourceAccountType = acct.sourceAccountType;
     }
   }
 
@@ -909,7 +979,9 @@ export class ImportResultBuilder {
 }
 
 /** The fields that define a record's identity for dedup (kept small + stable). */
-function hashIdentity(rec: Omit<ParsedImportRecord, 'contentHash' | 'sortOrder'>): Record<string, unknown> {
+function hashIdentity(
+  rec: Omit<ParsedImportRecord, 'contentHash' | 'sortOrder'>
+): Record<string, unknown> {
   return {
     e: rec.entityType,
     a: rec.sourceAccountKey ?? null,

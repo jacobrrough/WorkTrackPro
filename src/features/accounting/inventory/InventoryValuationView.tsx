@@ -5,12 +5,7 @@ import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useInventoryValuation } from '../hooks/useAccountingQueries';
 import { INVENTORY_BASE } from '../constants';
-import {
-  formatMoney,
-  formatQty,
-  formatUnitCost,
-  totalInventoryValuation,
-} from './inventoryFormat';
+import { formatMoney, formatQty, formatUnitCost, totalInventoryValuation } from './inventoryFormat';
 import type { InventoryValuationRow } from '../types';
 
 /**
@@ -27,7 +22,15 @@ import type { InventoryValuationRow } from '../types';
  */
 
 /** Right-aligned, tabular money cell; matches the report / job-costing tables. */
-function MoneyCell({ amount, strong = false, muted = false }: { amount: number; strong?: boolean; muted?: boolean }) {
+function MoneyCell({
+  amount,
+  strong = false,
+  muted = false,
+}: {
+  amount: number;
+  strong?: boolean;
+  muted?: boolean;
+}) {
   return (
     <td
       className={`px-3 py-2 text-right font-mono tabular-nums ${
@@ -94,16 +97,16 @@ export default function InventoryValuationView() {
 
         <p className="text-sm text-slate-400">
           FIFO valuation per stock item. Asset value is the sum of each open cost layer&apos;s
-          remaining quantity × its unit cost, and ties to the Inventory Asset account (1300). Average
-          unit cost is the weighted average of those open layers; lifetime COGS is the cost relieved
-          to Cost of Goods Sold (5000) as jobs consumed stock.
+          remaining quantity × its unit cost, and ties to the Inventory Asset account (1300).
+          Average unit cost is the weighted average of those open layers; lifetime COGS is the cost
+          relieved to Cost of Goods Sold (5000) as jobs consumed stock.
         </p>
 
         {isPending && <p className="text-slate-400">Loading inventory valuation…</p>}
         {isError && (
           <p className="text-red-400">
-            Could not load inventory valuation. Confirm the accounting schema is exposed and you have
-            an accounting role.
+            Could not load inventory valuation. Confirm the accounting schema is exposed and you
+            have an accounting role.
           </p>
         )}
 
@@ -204,11 +207,11 @@ export default function InventoryValuationView() {
             </div>
 
             <p className="text-xs leading-relaxed text-slate-500">
-              <span className="font-semibold text-slate-400">How these are figured:</span> Asset value
-              and average cost reflect only OPEN FIFO layers (remaining quantity &gt; 0). An item shows
-              a dash for average cost when nothing is on hand. Lifetime received/consumed/COGS are
-              cumulative across all layers and consumption events. Tap a row to see the item&apos;s
-              detail.
+              <span className="font-semibold text-slate-400">How these are figured:</span> Asset
+              value and average cost reflect only OPEN FIFO layers (remaining quantity &gt; 0). An
+              item shows a dash for average cost when nothing is on hand. Lifetime
+              received/consumed/COGS are cumulative across all layers and consumption events. Tap a
+              row to see the item&apos;s detail.
             </p>
           </>
         )}

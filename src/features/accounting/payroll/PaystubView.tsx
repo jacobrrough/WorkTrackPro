@@ -19,12 +19,28 @@ import type { ReportDocument } from '../reports/reportExport';
 import { useEmployee, usePaycheck, usePayRun } from '../hooks/useAccountingQueries';
 import { payrollRunPath } from '../constants';
 import type { Paystub } from '../types';
-import { PAYROLL_EXPORT_DISCLAIMER, formatCents, formatCentsAccounting, formatHundredthHours, formatPayrollDate } from './payrollFormat';
+import {
+  PAYROLL_EXPORT_DISCLAIMER,
+  formatCents,
+  formatCentsAccounting,
+  formatHundredthHours,
+  formatPayrollDate,
+} from './payrollFormat';
 
 /** A two-column money line within a paystub section. */
-function MoneyLine({ label, cents, bold = false }: { label: string; cents: number; bold?: boolean }) {
+function MoneyLine({
+  label,
+  cents,
+  bold = false,
+}: {
+  label: string;
+  cents: number;
+  bold?: boolean;
+}) {
   return (
-    <div className={`flex items-center justify-between px-3 py-1.5 text-sm ${bold ? 'font-bold text-white' : 'text-slate-300'}`}>
+    <div
+      className={`flex items-center justify-between px-3 py-1.5 text-sm ${bold ? 'font-bold text-white' : 'text-slate-300'}`}
+    >
       <span>{label}</span>
       <span className="font-mono tabular-nums">{formatCentsAccounting(cents)}</span>
     </div>
@@ -61,8 +77,15 @@ function buildPaystubDocument(stub: Paystub): ReportDocument {
       ...stub.taxLines
         .filter((t) => t.employeeCents > 0)
         .map((t) => ({ cells: [t.label], amount: t.employeeCents / 100 })),
-      ...stub.deductions.map((d) => ({ cells: [`${d.label}${d.pretax ? ' (pre-tax)' : ''}`], amount: d.amountCents / 100 })),
-      { cells: ['Total withholding & deductions'], amount: (stub.employeeTaxesCents + stub.otherDeductionsCents) / 100, isTotal: true },
+      ...stub.deductions.map((d) => ({
+        cells: [`${d.label}${d.pretax ? ' (pre-tax)' : ''}`],
+        amount: d.amountCents / 100,
+      })),
+      {
+        cells: ['Total withholding & deductions'],
+        amount: (stub.employeeTaxesCents + stub.otherDeductionsCents) / 100,
+        isTotal: true,
+      },
     ],
   };
   const employer = {
@@ -140,7 +163,12 @@ export default function PaystubView() {
       bannerDetail="This paystub is NOT a filing-grade pay statement. The withholding figures come from unverified rates. Exports carry the same warning."
       actions={
         runId ? (
-          <Button size="sm" variant="ghost" icon="arrow_back" onClick={() => navigate(payrollRunPath(runId))}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon="arrow_back"
+            onClick={() => navigate(payrollRunPath(runId))}
+          >
             Pay run
           </Button>
         ) : undefined
@@ -156,7 +184,9 @@ export default function PaystubView() {
           </p>
           <p className="mt-0.5 text-xs text-slate-500">
             {formatHundredthHours(stub.hoursRegularHundredthHours)} regular
-            {stub.hoursOtHundredthHours > 0 ? ` · ${formatHundredthHours(stub.hoursOtHundredthHours)} OT` : ''}
+            {stub.hoursOtHundredthHours > 0
+              ? ` · ${formatHundredthHours(stub.hoursOtHundredthHours)} OT`
+              : ''}
           </p>
         </div>
         <ExportButtons buildDocument={() => buildPaystubDocument(stub)} />
@@ -170,21 +200,36 @@ export default function PaystubView() {
       {/* Employee withholding */}
       <Section title="Employee withholding">
         {employeeTaxLines.length === 0 && stub.deductions.length === 0 && (
-          <p className="px-3 py-2 text-xs text-slate-500">No withholding (e.g. a 1099 contractor or a sub-threshold check).</p>
+          <p className="px-3 py-2 text-xs text-slate-500">
+            No withholding (e.g. a 1099 contractor or a sub-threshold check).
+          </p>
         )}
         {employeeTaxLines.map((t) => (
           <MoneyLine key={t.taxKind} label={t.label} cents={t.employeeCents} />
         ))}
         {stub.deductions.map((d) => (
-          <MoneyLine key={d.code} label={`${d.label}${d.pretax ? ' (pre-tax)' : ''}`} cents={d.amountCents} />
+          <MoneyLine
+            key={d.code}
+            label={`${d.label}${d.pretax ? ' (pre-tax)' : ''}`}
+            cents={d.amountCents}
+          />
         ))}
-        <MoneyLine label="Total withholding & deductions" cents={stub.employeeTaxesCents + stub.otherDeductionsCents} bold />
+        <MoneyLine
+          label="Total withholding & deductions"
+          cents={stub.employeeTaxesCents + stub.otherDeductionsCents}
+          bold
+        />
       </Section>
 
       {/* Net pay */}
-      <Card padding="lg" className="flex items-center justify-between border-emerald-500/30 bg-emerald-500/5">
+      <Card
+        padding="lg"
+        className="flex items-center justify-between border-emerald-500/30 bg-emerald-500/5"
+      >
         <span className="text-sm font-bold uppercase tracking-wide text-emerald-200">Net pay</span>
-        <span className="font-mono text-xl font-bold tabular-nums text-white">{formatCents(stub.netCents)}</span>
+        <span className="font-mono text-xl font-bold tabular-nums text-white">
+          {formatCents(stub.netCents)}
+        </span>
       </Card>
 
       {/* Employer taxes (informational — not withheld) */}

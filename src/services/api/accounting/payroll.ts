@@ -130,12 +130,16 @@ export const employeesService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { employee: null, error: error?.message ?? 'Failed to create the employee.' };
+    if (error || !data)
+      return { employee: null, error: error?.message ?? 'Failed to create the employee.' };
     return { employee: mapEmployeeRow(data as Row) };
   },
 
   /** Patch an employee (SSN/bank intentionally not patchable here — Phase E). */
-  async update(id: string, input: UpdateEmployeeInput): Promise<{ employee: Employee | null; error?: string }> {
+  async update(
+    id: string,
+    input: UpdateEmployeeInput
+  ): Promise<{ employee: Employee | null; error?: string }> {
     const patch: Record<string, unknown> = {};
     if (input.displayName !== undefined) {
       const name = input.displayName.trim();
@@ -147,21 +151,32 @@ export const employeesService = {
     if (input.employmentType !== undefined) patch.employment_type = input.employmentType;
     if (input.fedFilingStatus !== undefined) patch.fed_filing_status = input.fedFilingStatus;
     if (input.fedMultipleJobs !== undefined) patch.fed_multiple_jobs = input.fedMultipleJobs;
-    if (input.fedDependentsAmountCents !== undefined) patch.fed_dependents_amount_cents = input.fedDependentsAmountCents;
-    if (input.fedOtherIncomeCents !== undefined) patch.fed_other_income_cents = input.fedOtherIncomeCents;
-    if (input.fedDeductionsCents !== undefined) patch.fed_deductions_cents = input.fedDeductionsCents;
-    if (input.fedExtraWithholdingCents !== undefined) patch.fed_extra_withholding_cents = input.fedExtraWithholdingCents;
+    if (input.fedDependentsAmountCents !== undefined)
+      patch.fed_dependents_amount_cents = input.fedDependentsAmountCents;
+    if (input.fedOtherIncomeCents !== undefined)
+      patch.fed_other_income_cents = input.fedOtherIncomeCents;
+    if (input.fedDeductionsCents !== undefined)
+      patch.fed_deductions_cents = input.fedDeductionsCents;
+    if (input.fedExtraWithholdingCents !== undefined)
+      patch.fed_extra_withholding_cents = input.fedExtraWithholdingCents;
     if (input.caFilingStatus !== undefined) patch.ca_filing_status = input.caFilingStatus;
     if (input.caAllowances !== undefined) patch.ca_allowances = input.caAllowances;
-    if (input.caExtraWithholdingCents !== undefined) patch.ca_extra_withholding_cents = input.caExtraWithholdingCents;
+    if (input.caExtraWithholdingCents !== undefined)
+      patch.ca_extra_withholding_cents = input.caExtraWithholdingCents;
     if (input.payType !== undefined) patch.pay_type = input.payType;
     if (input.payRateCents !== undefined) patch.pay_rate_cents = input.payRateCents;
     if (input.defaultJobId !== undefined) patch.default_job_id = input.defaultJobId;
     if (input.isActive !== undefined) patch.is_active = input.isActive;
     if (input.notes !== undefined) patch.notes = input.notes;
     if (Object.keys(patch).length === 0) return { employee: await this.getById(id) };
-    const { data, error } = await acct().from('employees').update(patch).eq('id', id).select('*').single();
-    if (error || !data) return { employee: null, error: error?.message ?? 'Failed to update the employee.' };
+    const { data, error } = await acct()
+      .from('employees')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !data)
+      return { employee: null, error: error?.message ?? 'Failed to update the employee.' };
     return { employee: mapEmployeeRow(data as Row) };
   },
 
@@ -184,12 +199,18 @@ export const payScheduleService = {
   },
 
   async getById(id: string): Promise<PaySchedule | null> {
-    const { data, error } = await acct().from('pay_schedules').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await acct()
+      .from('pay_schedules')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
     if (error || !data) return null;
     return mapPayScheduleRow(data as Row);
   },
 
-  async create(input: NewPayScheduleInput): Promise<{ schedule: PaySchedule | null; error?: string }> {
+  async create(
+    input: NewPayScheduleInput
+  ): Promise<{ schedule: PaySchedule | null; error?: string }> {
     const name = input.name?.trim();
     if (!name) return { schedule: null, error: 'A pay schedule needs a name.' };
     const anchor = toIsoDate(input.anchorDate);
@@ -207,11 +228,15 @@ export const payScheduleService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { schedule: null, error: error?.message ?? 'Failed to create the pay schedule.' };
+    if (error || !data)
+      return { schedule: null, error: error?.message ?? 'Failed to create the pay schedule.' };
     return { schedule: mapPayScheduleRow(data as Row) };
   },
 
-  async update(id: string, input: UpdatePayScheduleInput): Promise<{ schedule: PaySchedule | null; error?: string }> {
+  async update(
+    id: string,
+    input: UpdatePayScheduleInput
+  ): Promise<{ schedule: PaySchedule | null; error?: string }> {
     const patch: Record<string, unknown> = {};
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -220,13 +245,20 @@ export const payScheduleService = {
     }
     if (input.frequency !== undefined) patch.frequency = input.frequency;
     if (input.anchorDate !== undefined) patch.anchor_date = toIsoDate(input.anchorDate);
-    if (input.nextPeriodStart !== undefined) patch.next_period_start = toIsoDate(input.nextPeriodStart);
+    if (input.nextPeriodStart !== undefined)
+      patch.next_period_start = toIsoDate(input.nextPeriodStart);
     if (input.nextPeriodEnd !== undefined) patch.next_period_end = toIsoDate(input.nextPeriodEnd);
     if (input.nextPayDate !== undefined) patch.next_pay_date = toIsoDate(input.nextPayDate);
     if (input.isActive !== undefined) patch.is_active = input.isActive;
     if (Object.keys(patch).length === 0) return { schedule: await this.getById(id) };
-    const { data, error } = await acct().from('pay_schedules').update(patch).eq('id', id).select('*').single();
-    if (error || !data) return { schedule: null, error: error?.message ?? 'Failed to update the pay schedule.' };
+    const { data, error } = await acct()
+      .from('pay_schedules')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !data)
+      return { schedule: null, error: error?.message ?? 'Failed to update the pay schedule.' };
     return { schedule: mapPayScheduleRow(data as Row) };
   },
 };
@@ -324,7 +356,8 @@ export const payRunService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { run: null, error: error?.message ?? 'Failed to create the pay run.' };
+    if (error || !data)
+      return { run: null, error: error?.message ?? 'Failed to create the pay run.' };
     return { run: mapPayRunRow(data as Row) };
   },
 
@@ -375,7 +408,10 @@ export const payRunService = {
       if (error) throw error;
       taxRows = ((data ?? []) as Row[]).map(mapPayrollTaxTableRow);
     } catch (e) {
-      return { ...empty, error: e instanceof Error ? e.message : 'Failed to load the pay run inputs.' };
+      return {
+        ...empty,
+        error: e instanceof Error ? e.message : 'Failed to load the pay run inputs.',
+      };
     }
 
     const taxSet = buildTaxTableSet(run.taxYear, taxRows);
@@ -428,7 +464,11 @@ export const payRunService = {
 
       // Skip employees with no pay this period (no hours / zero salary) — nothing to book.
       if (grossCents <= 0) {
-        skipped.push({ employeeId: emp.id, employeeName: emp.displayName, reason: 'No pay this period (no hours / zero rate).' });
+        skipped.push({
+          employeeId: emp.id,
+          employeeName: emp.displayName,
+          reason: 'No pay this period (no hours / zero rate).',
+        });
         continue;
       }
 
@@ -459,7 +499,12 @@ export const payRunService = {
         hours_ot_cents: overtimeHourCents,
         gross_cents: computed.grossCents,
         taxes: computedTaxesToJson(computed.taxes.lines),
-        deductions: deductions.map((d) => ({ code: d.code, label: d.label, amount_cents: d.amountCents, pretax: d.pretax })),
+        deductions: deductions.map((d) => ({
+          code: d.code,
+          label: d.label,
+          amount_cents: d.amountCents,
+          pretax: d.pretax,
+        })),
         employer_taxes_cents: computed.employerTaxesCents,
         employee_taxes_cents: computed.employeeTaxesCents,
         other_deductions_cents: computed.otherDeductionsCents,
@@ -471,10 +516,22 @@ export const payRunService = {
       for (const line of computed.taxes.lines) {
         const jurisdiction = TAX_JURISDICTION[line.kind] ?? 'federal';
         if (line.employeeCents > 0) {
-          liabilityRows.push({ pay_run_id: payRunId, jurisdiction, tax_kind: line.kind, party: 'employee', amount_cents: line.employeeCents });
+          liabilityRows.push({
+            pay_run_id: payRunId,
+            jurisdiction,
+            tax_kind: line.kind,
+            party: 'employee',
+            amount_cents: line.employeeCents,
+          });
         }
         if (line.employerCents > 0) {
-          liabilityRows.push({ pay_run_id: payRunId, jurisdiction, tax_kind: line.kind, party: 'employer', amount_cents: line.employerCents });
+          liabilityRows.push({
+            pay_run_id: payRunId,
+            jurisdiction,
+            tax_kind: line.kind,
+            party: 'employer',
+            amount_cents: line.employerCents,
+          });
         }
       }
 
@@ -523,7 +580,11 @@ export const payRunService = {
    * being computed (so a recalc of the same run doesn't double-count it). Drives the SS/FUTA/UI
    * wage caps + the Additional-Medicare threshold. Reads committed paychecks only.
    */
-  async ytdGrossForEmployee(employeeId: string, taxYear: number, excludeRunId: string): Promise<number> {
+  async ytdGrossForEmployee(
+    employeeId: string,
+    taxYear: number,
+    excludeRunId: string
+  ): Promise<number> {
     // Find the committed runs for this tax year (excluding the current one).
     const { data: runRows, error: runErr } = await acct()
       .from('pay_runs')
@@ -592,7 +653,11 @@ export const payRunService = {
  * clock-in date (a shift that clocks in within the period). Uses the BASE supabase client (public
  * schema), not the accounting-scoped client.
  */
-async function loadShifts(profileId: string, periodStart: string, periodEnd: string): Promise<ShiftRecord[]> {
+async function loadShifts(
+  profileId: string,
+  periodStart: string,
+  periodEnd: string
+): Promise<ShiftRecord[]> {
   const { data, error } = await supabase
     .from('shifts')
     .select('id, clock_in_time, clock_out_time, lunch_start_time, lunch_end_time')
@@ -615,7 +680,9 @@ async function loadShifts(profileId: string, periodStart: string, periodEnd: str
  * default to 'biweekly' (the most common) when the schedule frequency is unknown. The annualization
  * choice is on the HUMAN-VERIFY list — confirm the org's actual frequency drives withholding.
  */
-function scheduleFrequencyFallback(_run: PayRun): 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' {
+function scheduleFrequencyFallback(
+  _run: PayRun
+): 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' {
   return 'biweekly';
 }
 
@@ -636,7 +703,8 @@ function computedTaxesToJson(lines: ComputedTaxLine[]): Record<string, unknown> 
 /** Normalize the commit RPC's jsonb summary (camelCase keys) to the PayRunSummary shape. */
 function normalizeSummary(data: unknown): CommitPayRunResult['summary'] {
   const v = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
-  const n = (k: string): number | undefined => (typeof v[k] === 'number' ? (v[k] as number) : v[k] == null ? undefined : Number(v[k]));
+  const n = (k: string): number | undefined =>
+    typeof v[k] === 'number' ? (v[k] as number) : v[k] == null ? undefined : Number(v[k]);
   return {
     paychecks: n('paychecks'),
     grossCents: n('grossCents'),

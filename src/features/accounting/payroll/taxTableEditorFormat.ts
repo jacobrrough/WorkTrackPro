@@ -27,7 +27,9 @@ export function missingTaxKindLabels(seededKinds: PayrollTaxKind[]): string[] {
 }
 
 /** Whether a body is the percentage-method (brackets) shape. */
-export function isPercentageBody(body: PayrollTaxTableBody): body is Extract<PayrollTaxTableBody, { method: 'percentage' }> {
+export function isPercentageBody(
+  body: PayrollTaxTableBody
+): body is Extract<PayrollTaxTableBody, { method: 'percentage' }> {
   return body.method === 'percentage';
 }
 
@@ -65,7 +67,11 @@ function pct(rate: number): string {
 /** Format integer cents as a whole-dollar label (wage bases/thresholds are large round numbers). */
 function dollars(cents: number): string {
   const safe = Number.isFinite(cents) ? cents : 0;
-  return (safe / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  return (safe / 100).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
 }
 
 /** Group a year's tax-table rows by jurisdiction → kind for the editor list. */

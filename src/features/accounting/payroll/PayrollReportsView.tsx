@@ -33,7 +33,9 @@ const inputClass =
   'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Which columns each report kind surfaces (a STUB — box mapping is approximate). */
-function columnsFor(kind: PayrollReportKind): Array<{ key: keyof PayrollReportRow; label: string }> {
+function columnsFor(
+  kind: PayrollReportKind
+): Array<{ key: keyof PayrollReportRow; label: string }> {
   if (kind === '1099_nec') {
     return [{ key: 'grossWagesCents', label: 'Box 1 — Nonemployee comp.' }];
   }
@@ -57,7 +59,11 @@ function columnsFor(kind: PayrollReportKind): Array<{ key: keyof PayrollReportRo
 function buildReportDocument(report: PayrollReport): ReportDocument {
   const cols = columnsFor(report.kind);
   const rows = report.rows.map((r) => ({
-    cells: [r.employeeName, r.ssnMasked ?? '—', ...cols.slice(1).map((c) => formatCents(r[c.key] as number))],
+    cells: [
+      r.employeeName,
+      r.ssnMasked ?? '—',
+      ...cols.slice(1).map((c) => formatCents(r[c.key] as number)),
+    ],
     amount: (report.rows.length > 0 ? (r[cols[0].key] as number) : 0) / 100,
   }));
   const quarterLabel = report.quarter ? ` Q${report.quarter}` : '';
@@ -90,7 +96,8 @@ function ReportStub({
   const { data: report, isPending, isError, refetch } = usePayrollReport(kind, taxYear, quarter);
   const cols = columnsFor(kind);
 
-  if (isPending) return <p className="text-slate-400">Building {PAYROLL_REPORT_KIND_LABELS[kind]}…</p>;
+  if (isPending)
+    return <p className="text-slate-400">Building {PAYROLL_REPORT_KIND_LABELS[kind]}…</p>;
 
   if (isError || !report) {
     return (
@@ -113,7 +120,10 @@ function ReportStub({
             {quarter ? ` · Q${quarter}` : ''}
           </p>
         </div>
-        <ExportButtons buildDocument={() => buildReportDocument(report)} disabled={report.rows.length === 0} />
+        <ExportButtons
+          buildDocument={() => buildReportDocument(report)}
+          disabled={report.rows.length === 0}
+        />
       </div>
 
       <div className="rounded-sm border border-red-500/40 bg-red-500/10 p-2 text-[11px] font-semibold text-red-200">
@@ -122,7 +132,8 @@ function ReportStub({
 
       {report.rows.length === 0 ? (
         <p className="text-sm text-slate-400">
-          No committed paychecks for the selected {kind === '1099_nec' ? '1099 contractors' : 'employees'} in this period.
+          No committed paychecks for the selected{' '}
+          {kind === '1099_nec' ? '1099 contractors' : 'employees'} in this period.
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -142,9 +153,14 @@ function ReportStub({
               {report.rows.map((r) => (
                 <tr key={r.employeeId}>
                   <td className="px-2 py-1.5 text-white">{r.employeeName}</td>
-                  <td className="px-2 py-1.5 font-mono text-xs text-slate-400">{r.ssnMasked ?? '—'}</td>
+                  <td className="px-2 py-1.5 font-mono text-xs text-slate-400">
+                    {r.ssnMasked ?? '—'}
+                  </td>
                   {cols.map((c) => (
-                    <td key={String(c.key)} className="px-2 py-1.5 text-right font-mono tabular-nums text-slate-200">
+                    <td
+                      key={String(c.key)}
+                      className="px-2 py-1.5 text-right font-mono tabular-nums text-slate-200"
+                    >
                       {formatCents(r[c.key] as number)}
                     </td>
                   ))}
@@ -181,7 +197,9 @@ function NachaStubCard({ runs }: { runs: PayRun[] }) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-bold text-white">Direct deposit (NACHA) — STUB</h3>
-          <p className="text-xs text-slate-500">A non-bankable placeholder. No real ACH is initiated.</p>
+          <p className="text-xs text-slate-500">
+            A non-bankable placeholder. No real ACH is initiated.
+          </p>
         </div>
       </div>
 
@@ -191,15 +209,23 @@ function NachaStubCard({ runs }: { runs: PayRun[] }) {
       </div>
 
       {runs.length === 0 ? (
-        <p className="text-sm text-slate-400">No committed pay runs this year to generate a stub for.</p>
+        <p className="text-sm text-slate-400">
+          No committed pay runs this year to generate a stub for.
+        </p>
       ) : (
         <>
           <label className="flex items-center gap-2 text-xs text-slate-400">
             Committed run
-            <select className={`${inputClass} w-auto`} value={selectedId} onChange={(e) => setRunId(e.target.value)} aria-label="Committed run">
+            <select
+              className={`${inputClass} w-auto`}
+              value={selectedId}
+              onChange={(e) => setRunId(e.target.value)}
+              aria-label="Committed run"
+            >
               {runs.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {formatPayrollDate(r.periodStart)} … {formatPayrollDate(r.periodEnd)} (pay {formatPayrollDate(r.payDate)})
+                  {formatPayrollDate(r.periodStart)} … {formatPayrollDate(r.periodEnd)} (pay{' '}
+                  {formatPayrollDate(r.payDate)})
                 </option>
               ))}
             </select>
@@ -210,7 +236,8 @@ function NachaStubCard({ runs }: { runs: PayRun[] }) {
           {stub && (
             <>
               <p className="text-xs text-slate-400">
-                {stub.entryCount} entr{stub.entryCount === 1 ? 'y' : 'ies'} · {formatCents(stub.totalNetCents)} total net ·{' '}
+                {stub.entryCount} entr{stub.entryCount === 1 ? 'y' : 'ies'} ·{' '}
+                {formatCents(stub.totalNetCents)} total net ·{' '}
                 <span className="font-semibold text-red-300">not bankable</span>
               </p>
               <pre className="max-h-64 overflow-auto rounded-sm border border-white/10 bg-background-dark p-3 text-[11px] leading-relaxed text-slate-300">
@@ -258,7 +285,12 @@ export default function PayrollReportsView() {
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-xs text-slate-400">
           Tax year
-          <select className={`${inputClass} w-auto`} value={effectiveYear} onChange={(e) => setYear(Number(e.target.value))} aria-label="Tax year">
+          <select
+            className={`${inputClass} w-auto`}
+            value={effectiveYear}
+            onChange={(e) => setYear(Number(e.target.value))}
+            aria-label="Tax year"
+          >
             {yearOptions.map((y) => (
               <option key={y} value={y}>
                 {y}

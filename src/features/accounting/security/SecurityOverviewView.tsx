@@ -51,7 +51,9 @@ function CoverageRow({ row }: { row: EncryptionCoverageRow }) {
     <div className="flex flex-col gap-1.5 px-3 py-2.5">
       <div className="flex items-center justify-between gap-3">
         <span className="min-w-0 truncate font-medium text-white">{fieldLabel(row.field)}</span>
-        <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${toneBadgeClass(tone)}`}>
+        <span
+          className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${toneBadgeClass(tone)}`}
+        >
           {coverageStatusLabel(row)}
         </span>
       </div>
@@ -107,10 +109,10 @@ function EncryptionPanel() {
           )}
           <p className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-200">
             <span className="font-bold">Cutover not started in live forms.</span> The vendor, bank,
-            and employee edit forms still write plaintext. The encrypted accessors are the authorized
-            backfill + verification path for the post-sign-off cutover — and wages remain shadow-only
-            (the payroll engine still reads the plaintext rate). Retiring any plaintext column is a
-            future migration AFTER the security review.
+            and employee edit forms still write plaintext. The encrypted accessors are the
+            authorized backfill + verification path for the post-sign-off cutover — and wages remain
+            shadow-only (the payroll engine still reads the plaintext rate). Retiring any plaintext
+            column is a future migration AFTER the security review.
           </p>
         </Card>
       )}
@@ -128,7 +130,9 @@ function BackfillDialog({ status, onClose }: { status: AuditChainStatus; onClose
     setError(null);
     const res = await backfill.mutateAsync();
     if (!res.ok) {
-      setError(res.error ?? 'The backfill was rejected. Confirm you hold the accounting_admin role.');
+      setError(
+        res.error ?? 'The backfill was rejected. Confirm you hold the accounting_admin role.'
+      );
       return;
     }
     setDone(res.hashed);
@@ -166,8 +170,9 @@ function BackfillDialog({ status, onClose }: { status: AuditChainStatus; onClose
             </p>
             <p className="mb-4 rounded-sm border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-200">
               <span className="font-bold">Run this once, deliberately.</span> Re-running after any
-              tampering would re-bless the altered rows. Only proceed if the legacy rows are trusted.
-              Restricted to the <span className="font-semibold">accounting_admin</span> role.
+              tampering would re-bless the altered rows. Only proceed if the legacy rows are
+              trusted. Restricted to the <span className="font-semibold">accounting_admin</span>{' '}
+              role.
             </p>
             {error && (
               <p className="mb-3 text-sm text-red-400" role="alert">
@@ -213,8 +218,8 @@ function AuditChainPanel() {
         Tamper-evident audit log
       </h3>
       <p className="mt-1 text-sm text-slate-400">
-        Each audit row carries a SHA-256 hash linking it to the previous one. A break means a row was
-        altered, deleted, or reordered.
+        Each audit row carries a SHA-256 hash linking it to the previous one. A break means a row
+        was altered, deleted, or reordered.
       </p>
 
       {isPending && <p className="mt-3 text-sm text-slate-400">Checking the hash chain…</p>}
@@ -231,7 +236,9 @@ function AuditChainPanel() {
       {!isPending && !isError && status && (
         <Card className="mt-3 flex flex-col gap-3" padding="lg">
           <div className="flex items-center gap-3">
-            <span className={`rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${toneBadgeClass(tone)}`}>
+            <span
+              className={`rounded-sm px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${toneBadgeClass(tone)}`}
+            >
               {chainBadgeLabel(status)}
             </span>
             <span className="text-xs text-slate-500">
@@ -250,7 +257,12 @@ function AuditChainPanel() {
               View full verification
             </Button>
             {canBackfill(status) && (
-              <Button size="sm" variant="ghost" icon="playlist_add_check" onClick={() => setConfirming(true)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="playlist_add_check"
+                onClick={() => setConfirming(true)}
+              >
                 Backfill legacy rows
               </Button>
             )}
@@ -305,8 +317,8 @@ function RateLimitPanel() {
         </Card>
       )}
       <p className="mt-2 text-xs text-slate-500">
-        Note: the limiter is in-memory and per-warm-instance (best-effort). A distributed store is on
-        the human-verify list before relying on it.
+        Note: the limiter is in-memory and per-warm-instance (best-effort). A distributed store is
+        on the human-verify list before relying on it.
       </p>
     </section>
   );

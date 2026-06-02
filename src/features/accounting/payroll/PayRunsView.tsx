@@ -76,8 +76,17 @@ function NewPayRunModal({ onClose }: { onClose: (createdId?: string) => void }) 
 
         <div className="flex flex-col gap-3">
           {schedules.length > 0 && (
-            <FormField label="Pay schedule" htmlFor="pr-sched" hint="Optional — informational link.">
-              <select id="pr-sched" className={inputClass} value={payScheduleId} onChange={(e) => setPayScheduleId(e.target.value)}>
+            <FormField
+              label="Pay schedule"
+              htmlFor="pr-sched"
+              hint="Optional — informational link."
+            >
+              <select
+                id="pr-sched"
+                className={inputClass}
+                value={payScheduleId}
+                onChange={(e) => setPayScheduleId(e.target.value)}
+              >
                 <option value="">No schedule</option>
                 {schedules.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -89,14 +98,32 @@ function NewPayRunModal({ onClose }: { onClose: (createdId?: string) => void }) 
           )}
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Period start" htmlFor="pr-start" required>
-              <input id="pr-start" type="date" className={inputClass} value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+              <input
+                id="pr-start"
+                type="date"
+                className={inputClass}
+                value={periodStart}
+                onChange={(e) => setPeriodStart(e.target.value)}
+              />
             </FormField>
             <FormField label="Period end" htmlFor="pr-end" required>
-              <input id="pr-end" type="date" className={inputClass} value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+              <input
+                id="pr-end"
+                type="date"
+                className={inputClass}
+                value={periodEnd}
+                onChange={(e) => setPeriodEnd(e.target.value)}
+              />
             </FormField>
           </div>
           <FormField label="Pay date" htmlFor="pr-pay" required hint="Determines the tax year.">
-            <input id="pr-pay" type="date" className={inputClass} value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+            <input
+              id="pr-pay"
+              type="date"
+              className={inputClass}
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+            />
           </FormField>
 
           {error && (
@@ -129,7 +156,9 @@ function PayRunRow({ run, onOpen }: { run: PayRun; onOpen: () => void }) {
           <p className="truncate font-bold text-white">
             {formatPayrollDate(run.periodStart)} … {formatPayrollDate(run.periodEnd)}
           </p>
-          <span className={`rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${payRunStatusBadgeClass(run.status)}`}>
+          <span
+            className={`rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${payRunStatusBadgeClass(run.status)}`}
+          >
             {payRunStatusLabel(run.status)}
           </span>
         </div>

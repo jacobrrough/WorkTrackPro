@@ -37,13 +37,7 @@
  */
 import { toCents } from '../accountingViewModel';
 import { toIsoDate } from '../periodLock';
-import type {
-  Bill,
-  BankAccount,
-  Invoice,
-  NotificationEventType,
-  TaxCalendarEntry,
-} from '../types';
+import type { Bill, BankAccount, Invoice, NotificationEventType, TaxCalendarEntry } from '../types';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -130,7 +124,9 @@ function invoiceIsOpenSent(inv: Invoice): boolean {
 
 /** True when a bill is open/partially-paid with a positive balance. */
 function billIsOpen(bill: Bill): boolean {
-  return (bill.status === 'open' || bill.status === 'partially_paid') && toCents(bill.balanceDue) > 0;
+  return (
+    (bill.status === 'open' || bill.status === 'partially_paid') && toCents(bill.balanceDue) > 0
+  );
 }
 
 /**

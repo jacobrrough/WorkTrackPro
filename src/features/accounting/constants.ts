@@ -70,7 +70,8 @@ export const PAYROLL_REPORTS_SEGMENT = 'payroll/reports';
 /** Absolute path helpers. */
 export const payrollPath = (): string => PAYROLL_BASE;
 export const payrollEmployeesPath = (): string => `${PAYROLL_BASE}/employees`;
-export const payrollEmployeePath = (employeeId: string): string => `${PAYROLL_BASE}/employees/${employeeId}`;
+export const payrollEmployeePath = (employeeId: string): string =>
+  `${PAYROLL_BASE}/employees/${employeeId}`;
 export const payrollSchedulesPath = (): string => `${PAYROLL_BASE}/schedules`;
 export const payrollRunsPath = (): string => `${PAYROLL_BASE}/runs`;
 export const payrollRunPath = (runId: string): string => `${PAYROLL_BASE}/runs/${runId}`;
@@ -220,7 +221,8 @@ export const ACCOUNTING_QUERY_KEYS = {
   taxCodes: ['accounting', 'tax-codes'] as const,
   invoices: ['accounting', 'invoices'] as const,
   invoice: (id: string) => ['accounting', 'invoices', id] as const,
-  invoicePayments: (invoiceId: string) => ['accounting', 'invoices', invoiceId, 'payments'] as const,
+  invoicePayments: (invoiceId: string) =>
+    ['accounting', 'invoices', invoiceId, 'payments'] as const,
   payments: ['accounting', 'payments'] as const,
   payment: (id: string) => ['accounting', 'payments', id] as const,
   vendors: ['accounting', 'vendors'] as const,
@@ -426,17 +428,22 @@ export const ACCOUNTING_QUERY_KEYS = {
   paySchedule: (id: string) => ['accounting', 'payroll', 'pay-schedules', id] as const,
   payRuns: ['accounting', 'payroll', 'pay-runs'] as const,
   payRun: (id: string) => ['accounting', 'payroll', 'pay-runs', id] as const,
-  payRunPaychecks: (runId: string) => ['accounting', 'payroll', 'pay-runs', runId, 'paychecks'] as const,
-  payRunLiabilities: (runId: string) => ['accounting', 'payroll', 'pay-runs', runId, 'liabilities'] as const,
+  payRunPaychecks: (runId: string) =>
+    ['accounting', 'payroll', 'pay-runs', runId, 'paychecks'] as const,
+  payRunLiabilities: (runId: string) =>
+    ['accounting', 'payroll', 'pay-runs', runId, 'liabilities'] as const,
   paycheck: (id: string) => ['accounting', 'payroll', 'paychecks', id] as const,
   payrollTaxTables: (taxYear: number) => ['accounting', 'payroll', 'tax-tables', taxYear] as const,
   payrollTaxTableYears: ['accounting', 'payroll', 'tax-tables', 'years'] as const,
   payrollTaxTable: (id: string) => ['accounting', 'payroll', 'tax-tables', 'row', id] as const,
-  payrollSeededKinds: (taxYear: number) => ['accounting', 'payroll', 'tax-tables', taxYear, 'seeded-kinds'] as const,
+  payrollSeededKinds: (taxYear: number) =>
+    ['accounting', 'payroll', 'tax-tables', taxYear, 'seeded-kinds'] as const,
   payrollReport: (kind: string, taxYear: number, quarter?: number | null) =>
     ['accounting', 'payroll', 'reports', kind, taxYear, quarter ?? 'year'] as const,
-  payrollNachaStub: (runId: string) => ['accounting', 'payroll', 'pay-runs', runId, 'nacha-stub'] as const,
-  payrollCommittedRuns: (taxYear: number) => ['accounting', 'payroll', 'reports', 'committed-runs', taxYear] as const,
+  payrollNachaStub: (runId: string) =>
+    ['accounting', 'payroll', 'pay-runs', runId, 'nacha-stub'] as const,
+  payrollCommittedRuns: (taxYear: number) =>
+    ['accounting', 'payroll', 'reports', 'committed-runs', taxYear] as const,
   // ── PHASE E SECURITY HARDENING (HELD / UNVERIFIED — NOT FOR FILING). `security` and `rbac` are
   // the subtree roots for scoped invalidation. The encryption-coverage probe, the audit hash-chain
   // status + per-seq verification, and the two read-only security-settings blobs hang under
@@ -469,7 +476,11 @@ export interface CashFlowForecastKey {
 }
 
 /** Stable key fragment for a forecast request (null/absent bounds → 'default'). */
-function forecastKey(key?: CashFlowForecastKey): { startMonth: string; months: number | 'default'; openingBalance: number } {
+function forecastKey(key?: CashFlowForecastKey): {
+  startMonth: string;
+  months: number | 'default';
+  openingBalance: number;
+} {
   return {
     startMonth: key?.startMonth ?? 'default',
     months: key?.months ?? 'default',
@@ -508,13 +519,23 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
   { key: 'recurring', label: 'Recurring', icon: 'event_repeat', path: RECURRING_BASE },
   { key: 'dimensions', label: 'Dimensions', icon: 'sell', path: DIMENSIONS_BASE },
   { key: 'budgets', label: 'Budgets', icon: 'savings', path: BUDGETS_BASE },
-  { key: 'fixed-assets', label: 'Fixed assets', icon: 'precision_manufacturing', path: FIXED_ASSETS_BASE },
+  {
+    key: 'fixed-assets',
+    label: 'Fixed assets',
+    icon: 'precision_manufacturing',
+    path: FIXED_ASSETS_BASE,
+  },
   { key: 'reports', label: 'Reports', icon: 'analytics', path: `${ACCOUNTING_BASE}/reports` },
   { key: 'custom-fields', label: 'Custom fields', icon: 'tune', path: CUSTOM_FIELDS_BASE },
   // HELD / UNVERIFIED — NOT FOR FILING. Import/migration; every screen carries the banner.
   { key: 'import', label: 'Import', icon: 'cloud_upload', path: IMPORT_BASE },
   // HELD / UNVERIFIED — NOT FOR FILING. Notification config; the surface carries the banner.
-  { key: 'notifications', label: 'Notifications', icon: 'notifications_active', path: NOTIFICATIONS_BASE },
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    icon: 'notifications_active',
+    path: NOTIFICATIONS_BASE,
+  },
   // HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING. Payroll; every screen + export carries the banner.
   { key: 'payroll', label: 'Payroll', icon: 'badge', path: PAYROLL_BASE },
   { key: 'settings', label: 'Settings', icon: 'settings', path: `${ACCOUNTING_BASE}/settings` },

@@ -95,7 +95,9 @@ function NewImportPanel() {
         },
       });
       if (!batch) {
-        setCreateError(error ?? 'Could not create the import batch. Check your accounting-admin role.');
+        setCreateError(
+          error ?? 'Could not create the import batch. Check your accounting-admin role.'
+        );
         return;
       }
       // Stage the parsed rows + seed the account-map wizard (deduped by content hash).
@@ -132,7 +134,11 @@ function NewImportPanel() {
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="secondary" icon="folder_open" onClick={() => fileInputRef.current?.click()}>
+        <Button
+          variant="secondary"
+          icon="folder_open"
+          onClick={() => fileInputRef.current?.click()}
+        >
           Choose file
         </Button>
         {file && <span className="text-sm text-slate-300">{file.name}</span>}
@@ -166,8 +172,8 @@ function NewImportPanel() {
             <p className="text-xs text-slate-400">
               Also detected{' '}
               <span className="font-semibold text-white">{counts?.journalEntries}</span> historical
-              journal entr{counts?.journalEntries === 1 ? 'y' : 'ies'} (each posts as its own balanced
-              entry on commit).
+              journal entr{counts?.journalEntries === 1 ? 'y' : 'ies'} (each posts as its own
+              balanced entry on commit).
             </p>
           )}
 
@@ -210,7 +216,9 @@ function NewImportPanel() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-sm bg-background-dark px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
       <div className="truncate font-bold text-white">{value}</div>
     </div>
   );
@@ -261,9 +269,9 @@ export default function ImportBatchesView() {
         <UnverifiedBanner detail="Imported data is staged only; nothing posts to the ledger without an explicit admin commit. Human must verify account mapping, that nothing is double-posted, and that opening balances reconcile to the source trial balance." />
 
         <p className="text-sm text-slate-400">
-          Bring historical data in from QuickBooks Online, QuickBooks Desktop, or a spreadsheet. Each
-          import is staged and mapped to your chart of accounts; only an explicit admin commit posts
-          balanced opening-balance journal entries.
+          Bring historical data in from QuickBooks Online, QuickBooks Desktop, or a spreadsheet.
+          Each import is staged and mapped to your chart of accounts; only an explicit admin commit
+          posts balanced opening-balance journal entries.
         </p>
 
         <NewImportPanel />
@@ -276,8 +284,8 @@ export default function ImportBatchesView() {
           {isPending && <p className="text-slate-400">Loading import batches…</p>}
           {isError && (
             <p className="text-red-400">
-              Could not load import batches. Confirm the accounting schema is exposed and you have an
-              accounting-admin role.
+              Could not load import batches. Confirm the accounting schema is exposed and you have
+              an accounting-admin role.
             </p>
           )}
 

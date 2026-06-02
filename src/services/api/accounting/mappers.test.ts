@@ -133,8 +133,22 @@ describe('mapInvoiceRow', () => {
       updated_at: '2026-06-01',
       customer: { display_name: 'Acme Co' },
       lines: [
-        { id: 'l2', invoice_id: 'inv1', sort_order: 1, line_total: 8.5, quantity: 1, unit_price: 8.5 },
-        { id: 'l1', invoice_id: 'inv1', sort_order: 0, line_total: 100, quantity: 1, unit_price: 100 },
+        {
+          id: 'l2',
+          invoice_id: 'inv1',
+          sort_order: 1,
+          line_total: 8.5,
+          quantity: 1,
+          unit_price: 8.5,
+        },
+        {
+          id: 'l1',
+          invoice_id: 'inv1',
+          sort_order: 0,
+          line_total: 100,
+          quantity: 1,
+          unit_price: 100,
+        },
       ],
     });
     expect(inv.total).toBe(108.5);
@@ -211,7 +225,13 @@ describe('mapPaymentRow', () => {
       created_at: '2026-06-01',
       updated_at: '2026-06-01',
       applications: [
-        { id: 'pa1', payment_id: 'p1', invoice_id: 'inv1', amount_applied: 108.5, created_at: '2026-06-01' },
+        {
+          id: 'pa1',
+          payment_id: 'p1',
+          invoice_id: 'inv1',
+          amount_applied: 108.5,
+          created_at: '2026-06-01',
+        },
       ],
     });
     expect(p.amount).toBe(108.5);
@@ -427,8 +447,24 @@ describe('mapBillRow', () => {
       updated_at: '2026-06-01',
       vendor: { display_name: 'Bolt Supply' },
       lines: [
-        { id: 'l2', bill_id: 'b1', sort_order: 1, line_total: 40, quantity: 1, unit_cost: 40, account_id: 'acc-cogs' },
-        { id: 'l1', bill_id: 'b1', sort_order: 0, line_total: 100, quantity: 1, unit_cost: 100, account_id: 'acc-opex' },
+        {
+          id: 'l2',
+          bill_id: 'b1',
+          sort_order: 1,
+          line_total: 40,
+          quantity: 1,
+          unit_cost: 40,
+          account_id: 'acc-cogs',
+        },
+        {
+          id: 'l1',
+          bill_id: 'b1',
+          sort_order: 0,
+          line_total: 100,
+          quantity: 1,
+          unit_cost: 100,
+          account_id: 'acc-opex',
+        },
       ],
     });
     expect(bill.total).toBe(150);
@@ -502,7 +538,9 @@ describe('mapBillLineRow', () => {
     expect(l.locationId).toBe('dim-loc');
     expect(l.departmentId).toBe('dim-dept');
     // absent → null
-    expect(mapBillLineRow({ id: 'l4', bill_id: 'b1', quantity: 1, unit_cost: 1 }).classId).toBeNull();
+    expect(
+      mapBillLineRow({ id: 'l4', bill_id: 'b1', quantity: 1, unit_cost: 1 }).classId
+    ).toBeNull();
   });
 });
 
@@ -521,7 +559,13 @@ describe('mapVendorPaymentRow', () => {
       created_at: '2026-06-02',
       updated_at: '2026-06-02',
       applications: [
-        { id: 'vpa1', vendor_payment_id: 'vp1', bill_id: 'b1', amount_applied: 90, created_at: '2026-06-02' },
+        {
+          id: 'vpa1',
+          vendor_payment_id: 'vp1',
+          bill_id: 'b1',
+          amount_applied: 90,
+          created_at: '2026-06-02',
+        },
       ],
     });
     expect(p.amount).toBe(90);
@@ -547,7 +591,12 @@ describe('mapVendorPaymentApplicationRow', () => {
       amount_applied: 50,
       created_at: '2026-06-02',
     });
-    expect(a).toMatchObject({ id: 'vpa1', vendorPaymentId: 'vp1', billId: 'b1', amountApplied: 50 });
+    expect(a).toMatchObject({
+      id: 'vpa1',
+      vendorPaymentId: 'vp1',
+      billId: 'b1',
+      amountApplied: 50,
+    });
   });
 });
 
@@ -629,7 +678,12 @@ describe('mapArAgingRow', () => {
   });
 
   it('falls back to the current bucket on an unexpected value', () => {
-    const r = mapArAgingRow({ invoice_id: 'inv2', customer_id: 'c1', balance_due: 10, aging_bucket: 'weird' });
+    const r = mapArAgingRow({
+      invoice_id: 'inv2',
+      customer_id: 'c1',
+      balance_due: 10,
+      aging_bucket: 'weird',
+    });
     expect(r.bucket).toBe('current');
   });
 });
@@ -915,7 +969,9 @@ describe('parseRecurringPayload', () => {
   });
 
   it('parses a stringified jsonb payload', () => {
-    const p = parseRecurringPayload('{"customerId":"c2","lines":[{"quantity":1,"unitPrice":10}]}') as RecurringInvoicePayload;
+    const p = parseRecurringPayload(
+      '{"customerId":"c2","lines":[{"quantity":1,"unitPrice":10}]}'
+    ) as RecurringInvoicePayload;
     expect(p.customerId).toBe('c2');
     expect(p.lines).toHaveLength(1);
   });
@@ -1318,12 +1374,7 @@ describe('mapFixedAssetRegisterRow', () => {
 
 describe('parseCustomFieldOptions', () => {
   it('passes through a clean pre-parsed array (label defaults to value)', () => {
-    expect(
-      parseCustomFieldOptions([
-        { value: 'hi', label: 'High' },
-        { value: 'lo' },
-      ])
-    ).toEqual([
+    expect(parseCustomFieldOptions([{ value: 'hi', label: 'High' }, { value: 'lo' }])).toEqual([
       { value: 'hi', label: 'High' },
       { value: 'lo', label: 'lo' },
     ]);
@@ -1480,7 +1531,12 @@ describe('mapTaxAgencyRow', () => {
   });
 
   it('null-coerces a missing liability account and rejects an invalid frequency', () => {
-    const a = mapTaxAgencyRow({ id: 'x', name: 'X', liability_account_id: null, filing_frequency: 'weekly' });
+    const a = mapTaxAgencyRow({
+      id: 'x',
+      name: 'X',
+      liability_account_id: null,
+      filing_frequency: 'weekly',
+    });
     expect(a.liabilityAccountId).toBeNull();
     expect(a.filingFrequency).toBeNull();
   });
@@ -1527,7 +1583,12 @@ describe('parseTaxFilingRules', () => {
       { agency: 'Other', frequency: 'biweekly', due_day: 15, due_month_offset: 0 }, // freq → quarterly
     ]);
     expect(rules).toHaveLength(1);
-    expect(rules[0]).toMatchObject({ agency: 'Other', frequency: 'quarterly', dueDay: 15, dueMonthOffset: 0 });
+    expect(rules[0]).toMatchObject({
+      agency: 'Other',
+      frequency: 'quarterly',
+      dueDay: 15,
+      dueMonthOffset: 0,
+    });
   });
 
   it('returns [] for null / non-array / garbage', () => {
@@ -1845,7 +1906,13 @@ describe('mapNotificationRuleRow', () => {
 describe('toNotificationRulePayload', () => {
   it('builds a full insert payload (event included) and snake-cases the keys', () => {
     const row = toNotificationRulePayload(
-      { eventType: 'low_bank_balance', enabled: true, threshold: 250, bankAccountId: 'ba-9', notes: 'floor' },
+      {
+        eventType: 'low_bank_balance',
+        enabled: true,
+        threshold: 250,
+        bankAccountId: 'ba-9',
+        notes: 'floor',
+      },
       true
     );
     expect(row).toEqual({
@@ -1952,11 +2019,27 @@ describe('mapAccountingAttachmentRow', () => {
 
   it('coerces a numeric-string size_bytes (bigint may arrive as a string) and finite-guards it', () => {
     expect(
-      mapAccountingAttachmentRow({ id: 'a', entity_type: 'fixed_asset', entity_id: 'fa', storage_path: 'p', filename: 'f', size_bytes: '999999999999', created_at: 't' }).sizeBytes
+      mapAccountingAttachmentRow({
+        id: 'a',
+        entity_type: 'fixed_asset',
+        entity_id: 'fa',
+        storage_path: 'p',
+        filename: 'f',
+        size_bytes: '999999999999',
+        created_at: 't',
+      }).sizeBytes
     ).toBe(999999999999);
     // Garbage size degrades to null, not NaN.
     expect(
-      mapAccountingAttachmentRow({ id: 'a', entity_type: 'invoice', entity_id: 'i', storage_path: 'p', filename: 'f', size_bytes: 'not-a-number', created_at: 't' }).sizeBytes
+      mapAccountingAttachmentRow({
+        id: 'a',
+        entity_type: 'invoice',
+        entity_id: 'i',
+        storage_path: 'p',
+        filename: 'f',
+        size_bytes: 'not-a-number',
+        created_at: 't',
+      }).sizeBytes
     ).toBeNull();
   });
 
@@ -1973,9 +2056,23 @@ describe('mapAccountingAttachmentRow', () => {
   });
 
   it('accepts each of the six supported entity kinds verbatim', () => {
-    for (const kind of ['invoice', 'bill', 'payment', 'vendor_payment', 'journal_entry', 'fixed_asset'] as const) {
+    for (const kind of [
+      'invoice',
+      'bill',
+      'payment',
+      'vendor_payment',
+      'journal_entry',
+      'fixed_asset',
+    ] as const) {
       expect(
-        mapAccountingAttachmentRow({ id: 'a', entity_type: kind, entity_id: 'e', storage_path: 'p', filename: 'f', created_at: 't' }).entityType
+        mapAccountingAttachmentRow({
+          id: 'a',
+          entity_type: kind,
+          entity_id: 'e',
+          storage_path: 'p',
+          filename: 'f',
+          created_at: 't',
+        }).entityType
       ).toBe(kind);
     }
   });
@@ -2124,18 +2221,31 @@ describe('mapPayRunRow', () => {
     expect(r.summary.grossCents).toBe(600000);
   });
   it('defaults an unknown status to draft', () => {
-    expect(mapPayRunRow({ id: 'r', period_start: 'a', period_end: 'b', pay_date: 'c', status: 'bogus' }).status).toBe('draft');
+    expect(
+      mapPayRunRow({ id: 'r', period_start: 'a', period_end: 'b', pay_date: 'c', status: 'bogus' })
+        .status
+    ).toBe('draft');
   });
 });
 
 describe('parsePaycheckTaxes', () => {
   it('narrows the per-tax map and drops unknown kinds', () => {
     const t = parsePaycheckTaxes({
-      fica_ss: { employee_cents: 12400, employer_cents: 12400, table_id: 'ss', taxable_wage_cents: 200000 },
+      fica_ss: {
+        employee_cents: 12400,
+        employer_cents: 12400,
+        table_id: 'ss',
+        taxable_wage_cents: 200000,
+      },
       ca_pit: { employee_cents: 7182, employer_cents: 0 },
       bogus_kind: { employee_cents: 999 },
     });
-    expect(t.fica_ss).toEqual({ employeeCents: 12400, employerCents: 12400, tableId: 'ss', taxableWageCents: 200000 });
+    expect(t.fica_ss).toEqual({
+      employeeCents: 12400,
+      employerCents: 12400,
+      tableId: 'ss',
+      taxableWageCents: 200000,
+    });
     expect(t.ca_pit).toMatchObject({ employeeCents: 7182, employerCents: 0, tableId: null });
     expect('bogus_kind' in t).toBe(false);
   });
@@ -2247,12 +2357,24 @@ describe('parsePayrollTaxTableBody', () => {
       employee_paid: true,
       employer_paid: true,
     });
-    expect(b).toMatchObject({ rate: 0.062, employerRate: 0.062, wageBaseCents: 17610000, employeePaid: true, employerPaid: true });
+    expect(b).toMatchObject({
+      rate: 0.062,
+      employerRate: 0.062,
+      wageBaseCents: 17610000,
+      employeePaid: true,
+      employerPaid: true,
+    });
   });
   it('parses a FUTA body with the informational gross/credit fields', () => {
     const b = parsePayrollTaxTableBody({
-      rate: 0.006, employer_rate: 0.006, wage_base_cents: 700000, threshold_cents: null,
-      employee_paid: false, employer_paid: true, gross_rate: 0.06, standard_state_credit: 0.054,
+      rate: 0.006,
+      employer_rate: 0.006,
+      wage_base_cents: 700000,
+      threshold_cents: null,
+      employee_paid: false,
+      employer_paid: true,
+      gross_rate: 0.06,
+      standard_state_credit: 0.054,
     });
     expect(b).toMatchObject({ rate: 0.006, grossRate: 0.06, standardStateCredit: 0.054 });
   });
@@ -2262,14 +2384,32 @@ describe('parsePayrollTaxTableBody', () => {
       pay_periods_per_year: 1,
       standard_deduction_cents: null,
       brackets: [
-        { over_cents: 0, but_not_over_cents: 640000, base_cents: 0, rate: 0.0, of_excess_over_cents: 0 },
-        { over_cents: 640000, but_not_over_cents: null, base_cents: 0, rate: 0.1, of_excess_over_cents: 640000 },
+        {
+          over_cents: 0,
+          but_not_over_cents: 640000,
+          base_cents: 0,
+          rate: 0.0,
+          of_excess_over_cents: 0,
+        },
+        {
+          over_cents: 640000,
+          but_not_over_cents: null,
+          base_cents: 0,
+          rate: 0.1,
+          of_excess_over_cents: 640000,
+        },
       ],
     });
     expect(b.method).toBe('percentage');
     if (b.method === 'percentage') {
       expect(b.brackets).toHaveLength(2);
-      expect(b.brackets[1]).toEqual({ overCents: 640000, butNotOverCents: null, baseCents: 0, rate: 0.1, ofExcessOverCents: 640000 });
+      expect(b.brackets[1]).toEqual({
+        overCents: 640000,
+        butNotOverCents: null,
+        baseCents: 0,
+        rate: 0.1,
+        ofExcessOverCents: 640000,
+      });
     }
   });
   it('degrades a garbage cell to a zero-rate flat body (engine withholds 0, never throws)', () => {
@@ -2288,7 +2428,13 @@ describe('mapPayrollTaxTableRow', () => {
       effective_date: '2025-01-01',
       filing_status: null,
       pay_frequency: null,
-      table_json: { rate: 0.062, employer_rate: 0.062, wage_base_cents: 17610000, employee_paid: true, employer_paid: true },
+      table_json: {
+        rate: 0.062,
+        employer_rate: 0.062,
+        wage_base_cents: 17610000,
+        employee_paid: true,
+        employer_paid: true,
+      },
       source_citation: 'IRS Pub 15 (2025)',
       source_revision: '2025',
       is_active: true,
@@ -2327,4 +2473,3 @@ describe('mapPayrollTaxTableRow', () => {
     expect(r.body.method).toBe('percentage');
   });
 });
-

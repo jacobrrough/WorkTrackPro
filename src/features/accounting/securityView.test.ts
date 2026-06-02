@@ -73,7 +73,9 @@ describe('encryption coverage presenters', () => {
   it('produces a status label per state', () => {
     expect(coverageStatusLabel(covRow({ plaintextCount: 0, encryptedCount: 0 }))).toBe('No data');
     expect(coverageStatusLabel(covRow({ plaintextCount: 3, encryptedCount: 3 }))).toBe('Migrated');
-    expect(coverageStatusLabel(covRow({ plaintextCount: 3, encryptedCount: 0 }))).toBe('Plaintext only');
+    expect(coverageStatusLabel(covRow({ plaintextCount: 3, encryptedCount: 0 }))).toBe(
+      'Plaintext only'
+    );
     expect(coverageStatusLabel(covRow({ plaintextCount: 3, encryptedCount: 1 }))).toBe('2 pending');
   });
 
@@ -174,7 +176,9 @@ describe('verification-row presenters', () => {
   it('counts failing rows and summarizes the pass', () => {
     expect(failingRowCount([verifyRow(), verifyRow({ chainSeq: 2 })])).toBe(0);
     expect(verificationSummary([])).toMatch(/No chained/i);
-    expect(verificationSummary([verifyRow(), verifyRow({ chainSeq: 2 })])).toMatch(/All 2 inspected rows verify/);
+    expect(verificationSummary([verifyRow(), verifyRow({ chainSeq: 2 })])).toMatch(
+      /All 2 inspected rows verify/
+    );
     const broken = [
       verifyRow({ chainSeq: 1 }),
       verifyRow({ chainSeq: 2, ok: false, reason: 'row_hash mismatch (row contents altered)' }),
@@ -255,7 +259,10 @@ describe('RBAC presenters', () => {
   });
 
   it('orders held roles by privilege regardless of input order', () => {
-    expect(orderedRoleLabels(['viewer', 'accounting_admin'])).toEqual(['Accounting admin', 'Viewer']);
+    expect(orderedRoleLabels(['viewer', 'accounting_admin'])).toEqual([
+      'Accounting admin',
+      'Viewer',
+    ]);
     expect(orderedRoleLabels(['payroll', 'accountant'])).toEqual(['Accountant', 'Payroll']);
   });
 
@@ -269,8 +276,12 @@ describe('RBAC presenters', () => {
     expect(userDisplayLabel(summary({ userName: null, userEmail: 'a@b.com' }))).toBe('a@b.com');
     expect(userDisplayLabel(summary({ userName: null, userEmail: null, userId: 'u9' }))).toBe('u9');
     // secondary: email under a shown name, else the id
-    expect(userSecondaryLabel(summary({ userName: 'Ada', userEmail: 'a@b.com', userId: 'u1' }))).toBe('a@b.com');
-    expect(userSecondaryLabel(summary({ userName: null, userEmail: 'a@b.com', userId: 'u1' }))).toBe('u1');
+    expect(
+      userSecondaryLabel(summary({ userName: 'Ada', userEmail: 'a@b.com', userId: 'u1' }))
+    ).toBe('a@b.com');
+    expect(
+      userSecondaryLabel(summary({ userName: null, userEmail: 'a@b.com', userId: 'u1' }))
+    ).toBe('u1');
   });
 
   it('summarizes the whole grant set', () => {

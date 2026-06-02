@@ -76,8 +76,14 @@ export const securityService = {
   // post-sign-off CUTOVER backfill; the live forms still write plaintext until then.
 
   /** Encrypt + store a vendor tax id (can_write()-gated). Pass null to clear the ciphertext. */
-  async setVendorTaxId(vendorId: string, plaintext: string | null): Promise<EncryptedFieldWriteResult> {
-    const { error } = await acct().rpc('set_vendor_tax_id', { p_vendor: vendorId, p_plaintext: plaintext });
+  async setVendorTaxId(
+    vendorId: string,
+    plaintext: string | null
+  ): Promise<EncryptedFieldWriteResult> {
+    const { error } = await acct().rpc('set_vendor_tax_id', {
+      p_vendor: vendorId,
+      p_plaintext: plaintext,
+    });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -90,8 +96,14 @@ export const securityService = {
   },
 
   /** Encrypt + store a bank-account mask (can_write()-gated). Pass null to clear. */
-  async setBankAccountMask(accountId: string, plaintext: string | null): Promise<EncryptedFieldWriteResult> {
-    const { error } = await acct().rpc('set_bank_account_mask', { p_account: accountId, p_plaintext: plaintext });
+  async setBankAccountMask(
+    accountId: string,
+    plaintext: string | null
+  ): Promise<EncryptedFieldWriteResult> {
+    const { error } = await acct().rpc('set_bank_account_mask', {
+      p_account: accountId,
+      p_plaintext: plaintext,
+    });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -104,8 +116,14 @@ export const securityService = {
   },
 
   /** Encrypt + store an employee SSN (can_payroll()-gated — stricter than read/write). Null clears. */
-  async setEmployeeSsn(employeeId: string, plaintext: string | null): Promise<EncryptedFieldWriteResult> {
-    const { error } = await acct().rpc('set_employee_ssn', { p_employee: employeeId, p_plaintext: plaintext });
+  async setEmployeeSsn(
+    employeeId: string,
+    plaintext: string | null
+  ): Promise<EncryptedFieldWriteResult> {
+    const { error } = await acct().rpc('set_employee_ssn', {
+      p_employee: employeeId,
+      p_plaintext: plaintext,
+    });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -154,7 +172,10 @@ export const securityService = {
    * engine still reads the plaintext pay_rate_cents — this is belt-and-suspenders-at-rest only, and
    * retiring the plaintext wage column is on the HUMAN-VERIFY list. Pass null to clear.
    */
-  async setEmployeePayRate(employeeId: string, payRateCents: number | null): Promise<EncryptedFieldWriteResult> {
+  async setEmployeePayRate(
+    employeeId: string,
+    payRateCents: number | null
+  ): Promise<EncryptedFieldWriteResult> {
     const { error } = await acct().rpc('set_employee_pay_rate', {
       p_employee: employeeId,
       p_pay_rate_cents: payRateCents,

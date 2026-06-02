@@ -23,10 +23,7 @@ import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
 import { AccountingShell } from '../components/AccountingShell';
 import { UnverifiedBanner } from '../components/UnverifiedBanner';
-import {
-  useNotificationRecipients,
-  useNotificationRules,
-} from '../hooks/useAccountingQueries';
+import { useNotificationRecipients, useNotificationRules } from '../hooks/useAccountingQueries';
 import {
   useDeleteNotificationRule,
   useUpsertNotificationRule,
@@ -110,9 +107,7 @@ function EventConfigCard({ row }: { row: NotificationEventRow }) {
   const enableBlock = enableBlockedReason(row.event, wouldBeThreshold);
   const toggleDisabled = !enabled && enableBlock != null;
 
-  const dirty =
-    enabled !== row.enabled ||
-    (validation.value ?? null) !== (row.threshold ?? null);
+  const dirty = enabled !== row.enabled || (validation.value ?? null) !== (row.threshold ?? null);
 
   const onSave = async () => {
     setError(null);
@@ -145,9 +140,7 @@ function EventConfigCard({ row }: { row: NotificationEventRow }) {
             <h3 className="font-bold text-white">{row.label}</h3>
             <span
               className={`rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${
-                row.enabled
-                  ? 'bg-green-500/15 text-green-300'
-                  : 'bg-white/10 text-slate-400'
+                row.enabled ? 'bg-green-500/15 text-green-300' : 'bg-white/10 text-slate-400'
               }`}
             >
               {row.enabled ? 'Enabled' : 'Disabled'}
@@ -187,15 +180,12 @@ function EventConfigCard({ row }: { row: NotificationEventRow }) {
         </FormField>
       )}
 
-      {toggleDisabled && enableBlock && (
-        <p className="text-xs text-amber-300">{enableBlock}</p>
-      )}
+      {toggleDisabled && enableBlock && <p className="text-xs text-amber-300">{enableBlock}</p>}
 
       {/* Two-gate note: recipients must ALSO have this in-app preference on (defaults OFF). */}
       <p className="text-[11px] text-slate-500">
-        In-app preference key{' '}
-        <span className="font-mono text-slate-400">{row.prefKey}</span> — each recipient must have
-        this on (it defaults off), so enabling here alone does not deliver.
+        In-app preference key <span className="font-mono text-slate-400">{row.prefKey}</span> — each
+        recipient must have this on (it defaults off), so enabling here alone does not deliver.
       </p>
 
       <div className="flex items-center justify-end gap-3">

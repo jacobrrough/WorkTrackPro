@@ -73,7 +73,9 @@ function UserRoleRow({ summary }: { summary: UserRoleSummary }) {
     const res = await revoke.mutateAsync({ userId: summary.userId, role });
     setPending(null);
     if (!res.ok) {
-      setError(res.error ?? 'Could not revoke this role. Confirm you hold the accounting_admin role.');
+      setError(
+        res.error ?? 'Could not revoke this role. Confirm you hold the accounting_admin role.'
+      );
     }
   };
 
@@ -160,13 +162,13 @@ function GrantCard({
     }
     const res = await grant.mutateAsync({ userId, role });
     if (!res.ok) {
-      setError(res.error ?? 'Could not grant this role. Confirm you hold the accounting_admin role.');
+      setError(
+        res.error ?? 'Could not grant this role. Confirm you hold the accounting_admin role.'
+      );
       return;
     }
     const candidate = candidates.find((c) => c.userId === userId);
-    setOkMsg(
-      `Granted ${roleLabel(role)} to ${candidate?.name || candidate?.email || 'the user'}.`
-    );
+    setOkMsg(`Granted ${roleLabel(role)} to ${candidate?.name || candidate?.email || 'the user'}.`);
     setRole('');
   };
 
@@ -235,9 +237,7 @@ function GrantCard({
             </FormField>
           </div>
 
-          {role && (
-            <p className="text-xs text-slate-500">{ACCOUNTING_ROLE_DESCRIPTIONS[role]}</p>
-          )}
+          {role && <p className="text-xs text-slate-500">{ACCOUNTING_ROLE_DESCRIPTIONS[role]}</p>}
 
           <div className="flex items-center justify-end gap-3">
             {error && (

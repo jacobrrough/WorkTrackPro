@@ -38,7 +38,9 @@ function acc(partial: Partial<Account> & { id: string; name: string }): Account 
   };
 }
 
-function srcAcct(partial: Partial<ParsedSourceAccount> & { sourceAccountKey: string }): ParsedSourceAccount {
+function srcAcct(
+  partial: Partial<ParsedSourceAccount> & { sourceAccountKey: string }
+): ParsedSourceAccount {
   return {
     sourceAccountName: partial.sourceAccountName ?? partial.sourceAccountKey,
     sourceAccountType: partial.sourceAccountType ?? null,
@@ -49,20 +51,39 @@ function srcAcct(partial: Partial<ParsedSourceAccount> & { sourceAccountKey: str
 describe('suggestAccountMatch', () => {
   const chart: Account[] = [
     acc({ id: 'a1', accountNumber: '1000', name: 'Cash', accountType: 'asset' }),
-    acc({ id: 'a2', accountNumber: '2000', name: 'Accounts Payable', accountType: 'liability', normalBalance: 'credit' }),
-    acc({ id: 'a3', accountNumber: '4000', name: 'Sales Income', accountType: 'income', normalBalance: 'credit' }),
+    acc({
+      id: 'a2',
+      accountNumber: '2000',
+      name: 'Accounts Payable',
+      accountType: 'liability',
+      normalBalance: 'credit',
+    }),
+    acc({
+      id: 'a3',
+      accountNumber: '4000',
+      name: 'Sales Income',
+      accountType: 'income',
+      normalBalance: 'credit',
+    }),
     acc({ id: 'a4', name: 'Old Inactive', accountType: 'asset', isActive: false }),
   ];
 
   it('matches by exact account number first', () => {
-    const s = suggestAccountMatch(srcAcct({ sourceAccountKey: '1000', sourceAccountName: 'Checking' }), chart);
+    const s = suggestAccountMatch(
+      srcAcct({ sourceAccountKey: '1000', sourceAccountName: 'Checking' }),
+      chart
+    );
     expect(s.targetAccountId).toBe('a1');
     expect(s.confidence).toBe('exact');
   });
 
   it('matches by normalized name when no number', () => {
     const s = suggestAccountMatch(
-      srcAcct({ sourceAccountKey: 'accounts payable', sourceAccountName: 'Accounts Payable', sourceAccountType: 'Accounts Payable' }),
+      srcAcct({
+        sourceAccountKey: 'accounts payable',
+        sourceAccountName: 'Accounts Payable',
+        sourceAccountType: 'Accounts Payable',
+      }),
       chart
     );
     expect(s.targetAccountId).toBe('a2');
@@ -71,7 +92,11 @@ describe('suggestAccountMatch', () => {
 
   it('weak-matches by substring within the inferred type', () => {
     const s = suggestAccountMatch(
-      srcAcct({ sourceAccountKey: 'Sales', sourceAccountName: 'Sales', sourceAccountType: 'Income' }),
+      srcAcct({
+        sourceAccountKey: 'Sales',
+        sourceAccountName: 'Sales',
+        sourceAccountType: 'Income',
+      }),
       chart
     );
     expect(s.targetAccountId).toBe('a3');
@@ -79,13 +104,20 @@ describe('suggestAccountMatch', () => {
   });
 
   it('never suggests an inactive account', () => {
-    const s = suggestAccountMatch(srcAcct({ sourceAccountKey: 'Old Inactive', sourceAccountName: 'Old Inactive' }), chart);
+    const s = suggestAccountMatch(
+      srcAcct({ sourceAccountKey: 'Old Inactive', sourceAccountName: 'Old Inactive' }),
+      chart
+    );
     expect(s.targetAccountId).toBeNull();
   });
 
   it('returns none + an inferred type for a create-as-new default', () => {
     const s = suggestAccountMatch(
-      srcAcct({ sourceAccountKey: 'Mystery', sourceAccountName: 'Mystery', sourceAccountType: 'Credit Card' }),
+      srcAcct({
+        sourceAccountKey: 'Mystery',
+        sourceAccountName: 'Mystery',
+        sourceAccountType: 'Credit Card',
+      }),
       chart
     );
     expect(s.targetAccountId).toBeNull();
@@ -245,8 +277,18 @@ describe('accountMapBlockers', () => {
       mapRow({ sourceAccountKey: 'ok', targetAccountId: 'a1', status: 'mapped' }),
       mapRow({ sourceAccountKey: 'ignored', status: 'ignored' }),
       mapRow({ sourceAccountKey: 'missing', targetAccountId: null, status: 'unmapped' }),
-      mapRow({ sourceAccountKey: 'newNoType', createAsNew: true, newAccountType: null, status: 'mapped' }),
-      mapRow({ sourceAccountKey: 'newOk', createAsNew: true, newAccountType: 'asset', status: 'mapped' }),
+      mapRow({
+        sourceAccountKey: 'newNoType',
+        createAsNew: true,
+        newAccountType: null,
+        status: 'mapped',
+      }),
+      mapRow({
+        sourceAccountKey: 'newOk',
+        createAsNew: true,
+        newAccountType: 'asset',
+        status: 'mapped',
+      }),
     ];
     const blockers = accountMapBlockers(maps);
     expect(blockers.some((b) => b.includes('missing'))).toBe(true);
@@ -316,7 +358,12 @@ describe('resolve is idempotent across casings (the load-bearing fix)', () => {
 
   it('re-resolves an already-snake_case opening balance without losing amounts', () => {
     // Simulate a row already persisted in snake_case by a prior resolve pass.
-    const snake = { target_account_id: 'acc-cash', debit_cents: 1000000, credit_cents: 0, offset: 'equity' };
+    const snake = {
+      target_account_id: 'acc-cash',
+      debit_cents: 1000000,
+      credit_cents: 0,
+      offset: 'equity',
+    };
     const r = resolveOpeningBalance(snake, resolution);
     expect(r.mapped).not.toBeNull();
     expect(r.mapped?.targetAccountId).toBe('acc-cash');
@@ -360,7 +407,9 @@ describe('normalBalanceForType', () => {
   });
 });
 
-function mapRow(partial: Partial<ImportAccountMap> & { sourceAccountKey: string }): ImportAccountMap {
+function mapRow(
+  partial: Partial<ImportAccountMap> & { sourceAccountKey: string }
+): ImportAccountMap {
   return {
     id: `m-${partial.sourceAccountKey}`,
     batchId: 'b1',

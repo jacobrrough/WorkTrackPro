@@ -40,7 +40,9 @@ function SummaryCard({
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-2 text-center">
       <p className="text-[10px] font-semibold uppercase text-slate-500">{label}</p>
-      <p className={`font-mono text-sm font-bold tabular-nums ${valueCls}`}>{formatMoney(amount)}</p>
+      <p className={`font-mono text-sm font-bold tabular-nums ${valueCls}`}>
+        {formatMoney(amount)}
+      </p>
     </div>
   );
 }
@@ -130,7 +132,9 @@ export default function CashFlowForecastView() {
       </button>
 
       {isPending && <ReportLoading />}
-      {isError && <ReportError message="Could not load the cash-flow forecast. Confirm the accounting schema is exposed and you have an accounting role." />}
+      {isError && (
+        <ReportError message="Could not load the cash-flow forecast. Confirm the accounting schema is exposed and you have an accounting role." />
+      )}
 
       {!isPending && !isError && data && !hasActivity && (
         <ReportEmpty
@@ -193,8 +197,8 @@ export default function CashFlowForecastView() {
 
           {data.periods.some((p) => p.runningBalance < 0) && (
             <p className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
-              <span className="font-bold">Heads up:</span> the projected cash balance goes negative in
-              at least one period. Consider the timing of receivables and payables.
+              <span className="font-bold">Heads up:</span> the projected cash balance goes negative
+              in at least one period. Consider the timing of receivables and payables.
             </p>
           )}
         </>

@@ -63,10 +63,9 @@ const ORDINAL_SUFFIX = (n: number): string => {
 };
 
 /** "Monthly", "Every 2 weeks", "Every 3 months on the 1st" — a human schedule label. */
-export function scheduleLabel(tpl: Pick<
-  RecurringTemplate,
-  'frequency' | 'intervalCount' | 'dayOfMonth'
->): string {
+export function scheduleLabel(
+  tpl: Pick<RecurringTemplate, 'frequency' | 'intervalCount' | 'dayOfMonth'>
+): string {
   const base =
     tpl.intervalCount > 1
       ? `Every ${tpl.intervalCount} ${pluralUnit(tpl.frequency, tpl.intervalCount)}`
@@ -103,7 +102,9 @@ export function payloadGrossCents(kind: RecurringKind, payload: RecurringPayload
     const p = payload as RecurringInvoicePayload;
     return (p.lines ?? []).reduce((sum, l) => {
       const gross =
-        l.lineTotal != null ? l.lineTotal : (l.quantity ?? 0) * (l.unitPrice ?? 0) - (l.discount ?? 0);
+        l.lineTotal != null
+          ? l.lineTotal
+          : (l.quantity ?? 0) * (l.unitPrice ?? 0) - (l.discount ?? 0);
       return sum + toCents(gross);
     }, 0);
   }

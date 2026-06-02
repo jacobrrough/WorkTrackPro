@@ -105,7 +105,8 @@ export const recurringTemplatesService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { template: null, error: error?.message ?? 'Failed to create template.' };
+    if (error || !data)
+      return { template: null, error: error?.message ?? 'Failed to create template.' };
     return { template: mapRecurringTemplateRow(data as Row) };
   },
 
@@ -142,7 +143,8 @@ export const recurringTemplatesService = {
       .eq('id', id)
       .select('*')
       .single();
-    if (error || !data) return { template: null, error: error?.message ?? 'Failed to update template.' };
+    if (error || !data)
+      return { template: null, error: error?.message ?? 'Failed to update template.' };
     return { template: mapRecurringTemplateRow(data as Row) };
   },
 
@@ -170,7 +172,14 @@ export const recurringTemplatesService = {
   async generateDue(id: string, onDate?: string): Promise<GenerateResult> {
     const tpl = await this.getById(id);
     if (!tpl) {
-      return { templateId: id, generatedId: null, journalEntryId: null, nextRunDate: null, ended: false, error: 'Template not found.' };
+      return {
+        templateId: id,
+        generatedId: null,
+        journalEntryId: null,
+        nextRunDate: null,
+        ended: false,
+        error: 'Template not found.',
+      };
     }
     const runDate = onDate ?? tpl.nextRunDate;
 
@@ -221,7 +230,10 @@ export const recurringTemplatesService = {
         journalEntryId = posted.entryId;
       }
     } catch (e) {
-      return fail(tpl, e instanceof Error ? e.message : 'Failed to generate the recurring document.');
+      return fail(
+        tpl,
+        e instanceof Error ? e.message : 'Failed to generate the recurring document.'
+      );
     }
 
     // 2) The JE is posted. Advance the schedule cursor + bookkeeping columns.

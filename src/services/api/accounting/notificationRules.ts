@@ -64,7 +64,10 @@ export const notificationRulesService = {
     bankAccountId: string | null = null
   ): Promise<NotificationRule | null> {
     let q = acct().from('notification_rules').select(RULE_SELECT).eq('event_type', eventType);
-    q = bankAccountId == null ? q.is('bank_account_id', null) : q.eq('bank_account_id', bankAccountId);
+    q =
+      bankAccountId == null
+        ? q.is('bank_account_id', null)
+        : q.eq('bank_account_id', bankAccountId);
     const { data, error } = await q.maybeSingle();
     if (error || !data) return null;
     return mapNotificationRuleRow(data as Row);
@@ -75,7 +78,9 @@ export const notificationRulesService = {
    * UPDATEs it (touching updated_at), else INSERTs a new one. Returns the saved rule or an
    * error. The DB unique constraint + partial index are the ultimate backstop against dupes.
    */
-  async upsert(input: NotificationRuleInput): Promise<{ rule: NotificationRule | null; error?: string }> {
+  async upsert(
+    input: NotificationRuleInput
+  ): Promise<{ rule: NotificationRule | null; error?: string }> {
     const bankAccountId = input.bankAccountId ?? null;
     const existing = await this.findByEvent(input.eventType, bankAccountId);
 
@@ -117,7 +122,10 @@ export const notificationRulesService = {
   },
 
   /** Set one rule's threshold by id (dollars for low_bank_balance; days otherwise; null clears). */
-  async setThreshold(id: string, threshold: number | null): Promise<{ ok: boolean; error?: string }> {
+  async setThreshold(
+    id: string,
+    threshold: number | null
+  ): Promise<{ ok: boolean; error?: string }> {
     const { error } = await acct()
       .from('notification_rules')
       .update({ threshold, updated_at: new Date().toISOString() })

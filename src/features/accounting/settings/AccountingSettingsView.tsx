@@ -113,11 +113,7 @@ function ConfirmLockDialog({
             onClick={confirm}
             disabled={setLock.isPending}
           >
-            {setLock.isPending
-              ? 'Saving…'
-              : reopening
-                ? 'Re-open books'
-                : 'Close books'}
+            {setLock.isPending ? 'Saving…' : reopening ? 'Re-open books' : 'Close books'}
           </Button>
         </div>
       </div>
@@ -139,9 +135,7 @@ function LockStatusCard({ closedThrough }: { closedThrough: string | null }) {
     >
       <div className="flex items-center gap-2">
         <span className="material-symbols-outlined text-xl">{locked ? 'lock' : 'lock_open'}</span>
-        <span className="text-sm font-semibold">
-          {locked ? 'Books closed' : 'Books open'}
-        </span>
+        <span className="text-sm font-semibold">{locked ? 'Books closed' : 'Books open'}</span>
       </div>
       <p className="mt-1 text-sm">{lockStatusSummary(closedThrough)}</p>
     </div>
@@ -166,9 +160,7 @@ function DefaultAccountRow({ row }: { row: ResolvedDefaultAccount }) {
             {/* Flag a seed that resolved to an UNEXPECTED account number (configured, but not
                 the number this role is documented to use). Quietly reassuring when they match. */}
             {row.account.accountNumber && row.account.accountNumber !== row.expectedNumber && (
-              <p className="mt-0.5 text-[11px] text-amber-300/90">
-                expected {row.expectedNumber}
-              </p>
+              <p className="mt-0.5 text-[11px] text-amber-300/90">expected {row.expectedNumber}</p>
             )}
           </>
         ) : (
@@ -244,9 +236,9 @@ function DefaultAccountsPanel() {
         Default GL accounts
       </h2>
       <p className="mt-1 text-sm text-slate-400">
-        The chart-of-accounts account each posting role maps to. Configured in the database
-        seed; shown here so you can confirm the wiring (especially the structural accounts the
-        import and bank-feed modules depend on).
+        The chart-of-accounts account each posting role maps to. Configured in the database seed;
+        shown here so you can confirm the wiring (especially the structural accounts the import and
+        bank-feed modules depend on).
       </p>
 
       {isPending && <p className="mt-3 text-sm text-slate-400">Loading default accounts…</p>}
@@ -309,7 +301,8 @@ function TaxTableUpdatesPanel() {
       </h2>
       <p className="mt-1 text-sm text-slate-400">
         Advisory checks of official sales-tax (CDTFA) and payroll (CA EDD) rate tables against your
-        stored rates. Differences are flagged for your review — they are never applied automatically.
+        stored rates. Differences are flagged for your review — they are never applied
+        automatically.
       </p>
       <Card
         className="mt-3 flex items-center gap-3"
@@ -498,11 +491,7 @@ export default function AccountingSettingsView() {
 
             <div className="flex flex-wrap items-center justify-end gap-2">
               {closedThrough && (
-                <Button
-                  variant="ghost"
-                  icon="lock_open"
-                  onClick={() => setPending({ date: null })}
-                >
+                <Button variant="ghost" icon="lock_open" onClick={() => setPending({ date: null })}>
                   Re-open the books
                 </Button>
               )}

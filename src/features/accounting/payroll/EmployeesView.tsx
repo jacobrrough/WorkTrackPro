@@ -55,7 +55,8 @@ function EmployeeRow({ employee }: { employee: Employee }) {
         </div>
         <p className="mt-0.5 truncate text-xs text-slate-500">
           {payTypeLabel(employee.payType)} · {rateLabel}
-          {employee.employmentType === 'w2' && ` · Fed ${filingStatusLabel(employee.fedFilingStatus)}`}
+          {employee.employmentType === 'w2' &&
+            ` · Fed ${filingStatusLabel(employee.fedFilingStatus)}`}
           {employee.profileId ? ' · linked login' : ' · no login link'}
         </p>
         {error && (
@@ -113,8 +114,8 @@ export default function EmployeesView() {
       {!isPending && isError && (
         <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
           <p className="text-sm text-red-300">
-            Could not load employees. Confirm the accounting schema is exposed and you have a payroll
-            role.
+            Could not load employees. Confirm the accounting schema is exposed and you have a
+            payroll role.
           </p>
           <Button size="sm" variant="secondary" icon="refresh" onClick={() => refetch()}>
             Retry

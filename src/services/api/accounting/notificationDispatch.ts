@@ -64,9 +64,7 @@ export const notificationDispatchService = {
     const ids = new Set<string>();
 
     // Accounting-role holders (any role). RLS (can_read) lets a role-holder read this table.
-    const { data: roleRows, error: roleErr } = await acct()
-      .from('user_roles')
-      .select('user_id');
+    const { data: roleRows, error: roleErr } = await acct().from('user_roles').select('user_id');
     if (roleErr) throw roleErr;
     for (const r of (roleRows ?? []) as Array<{ user_id?: unknown }>) {
       if (r.user_id) ids.add(String(r.user_id));
@@ -131,7 +129,9 @@ export const notificationDispatchService = {
           recipients: 0,
           delivered: 0,
           suppressed: 0,
-          errors: [{ userId: '*', error: e instanceof Error ? e.message : 'Recipient lookup failed.' }],
+          errors: [
+            { userId: '*', error: e instanceof Error ? e.message : 'Recipient lookup failed.' },
+          ],
         };
       }
     }
@@ -164,7 +164,9 @@ export const notificationDispatchService = {
    * Resolves recipients ONCE and reuses them across all candidates (the same audience gets
    * every accounting alert). Returns one summary per candidate.
    */
-  async dispatchCandidates(candidates: NotificationCandidate[]): Promise<CandidateDispatchSummary[]> {
+  async dispatchCandidates(
+    candidates: NotificationCandidate[]
+  ): Promise<CandidateDispatchSummary[]> {
     if (candidates.length === 0) return [];
     let recipients: string[];
     try {

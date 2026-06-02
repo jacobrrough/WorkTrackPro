@@ -88,7 +88,10 @@ describe('validateThreshold', () => {
   });
 
   it('rejects non-numeric input', () => {
-    expect(validateThreshold('bill_due_soon', 'abc')).toEqual({ value: null, error: 'Enter a number.' });
+    expect(validateThreshold('bill_due_soon', 'abc')).toEqual({
+      value: null,
+      error: 'Enter a number.',
+    });
   });
 });
 
@@ -132,7 +135,9 @@ describe('buildEventRows', () => {
   it('returns all five events in canonical order, defaulting to disabled/unset', () => {
     const rows = buildEventRows([]);
     expect(rows.map((r) => r.event)).toEqual(NOTIFICATION_EVENT_TYPES);
-    expect(rows.every((r) => r.enabled === false && r.threshold === null && r.ruleId === null)).toBe(true);
+    expect(
+      rows.every((r) => r.enabled === false && r.threshold === null && r.ruleId === null)
+    ).toBe(true);
   });
 
   it('pairs each event with its base (NULL-account) rule', () => {
@@ -150,7 +155,13 @@ describe('buildEventRows', () => {
 
   it('does NOT use a bank-account-scoped rule as the base row', () => {
     const rows = buildEventRows([
-      rule({ id: 'r-scoped', eventType: 'low_bank_balance', enabled: true, threshold: 100, bankAccountId: 'bank-1' }),
+      rule({
+        id: 'r-scoped',
+        eventType: 'low_bank_balance',
+        enabled: true,
+        threshold: 100,
+        bankAccountId: 'bank-1',
+      }),
     ]);
     const low = rows.find((r) => r.event === 'low_bank_balance')!;
     // No NULL-account base rule present → row stays unconfigured.
@@ -164,8 +175,18 @@ describe('bankScopedRules / enabledEventCount', () => {
   it('lists only non-null-account rules, sorted by hydrated name', () => {
     const scoped = bankScopedRules([
       rule({ id: 'base', eventType: 'low_bank_balance', bankAccountId: null }),
-      rule({ id: 'b', eventType: 'low_bank_balance', bankAccountId: 'bank-b', bankAccountName: 'Zeta' }),
-      rule({ id: 'a', eventType: 'low_bank_balance', bankAccountId: 'bank-a', bankAccountName: 'Alpha' }),
+      rule({
+        id: 'b',
+        eventType: 'low_bank_balance',
+        bankAccountId: 'bank-b',
+        bankAccountName: 'Zeta',
+      }),
+      rule({
+        id: 'a',
+        eventType: 'low_bank_balance',
+        bankAccountId: 'bank-a',
+        bankAccountName: 'Alpha',
+      }),
     ]);
     expect(scoped.map((r) => r.id)).toEqual(['a', 'b']);
   });

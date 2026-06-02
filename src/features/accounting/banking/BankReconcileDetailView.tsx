@@ -108,8 +108,11 @@ export default function BankReconcileDetailView() {
   }>();
   const navigate = useNavigate();
 
-  const { data: rec, isPending: recLoading, isError: recError } =
-    useReconciliation(reconciliationId);
+  const {
+    data: rec,
+    isPending: recLoading,
+    isError: recError,
+  } = useReconciliation(reconciliationId);
   const { data: summary } = useReconciliationSummary(reconciliationId);
   // All transactions for the account; we surface those clearable against this statement.
   const { data: allTxns = [], isPending: txnsLoading } = useBankTransactions(bankAccountId);
@@ -176,19 +179,15 @@ export default function BankReconcileDetailView() {
           <>
             {locked && (
               <div className="rounded-sm border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
-                This reconciliation is complete and locked. Transactions cleared against it are shown
-                below.
+                This reconciliation is complete and locked. Transactions cleared against it are
+                shown below.
               </div>
             )}
 
             {summary && <SummaryPanel summary={summary} />}
 
             {summary && !locked && (
-              <p
-                className={`text-sm ${
-                  summary.reconciled ? 'text-green-400' : 'text-slate-400'
-                }`}
-              >
+              <p className={`text-sm ${summary.reconciled ? 'text-green-400' : 'text-slate-400'}`}>
                 {summary.reconciled
                   ? 'Balanced — the difference is 0.00. You can complete this reconciliation.'
                   : `Clear transactions until the difference is 0.00 (currently ${formatMoney(

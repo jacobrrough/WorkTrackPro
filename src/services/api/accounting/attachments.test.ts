@@ -37,8 +37,12 @@ describe('buildStoragePath', () => {
 
   it('uses the entity type in the prefix so each kind has its own folder', () => {
     expect(buildStoragePath('bill', 'b1', 'x.png', 'u')).toBe('accounting/bill/b1/u.png');
-    expect(buildStoragePath('fixed_asset', 'fa1', 'x.png', 'u')).toBe('accounting/fixed_asset/fa1/u.png');
-    expect(buildStoragePath('journal_entry', 'je1', 'x.png', 'u')).toBe('accounting/journal_entry/je1/u.png');
+    expect(buildStoragePath('fixed_asset', 'fa1', 'x.png', 'u')).toBe(
+      'accounting/fixed_asset/fa1/u.png'
+    );
+    expect(buildStoragePath('journal_entry', 'je1', 'x.png', 'u')).toBe(
+      'accounting/journal_entry/je1/u.png'
+    );
   });
 
   it('generates a unique uuid per call when none is supplied (no path collision for the same file)', () => {

@@ -49,7 +49,9 @@ function dimGroupKey(
   accountId: string,
   dims: { classId: string | null; locationId: string | null; departmentId: string | null }
 ): string {
-  return [accountId, dims.classId ?? '∅', dims.locationId ?? '∅', dims.departmentId ?? '∅'].join('|');
+  return [accountId, dims.classId ?? '∅', dims.locationId ?? '∅', dims.departmentId ?? '∅'].join(
+    '|'
+  );
 }
 
 /** Only spread dimension ids that are non-null, so JE lines stay clean. */
@@ -208,11 +210,16 @@ export function buildInvoiceRevenueJournalLines(
 
   // Cr Income, grouped by (income account × dimensions) so the revenue can be sliced
   // by class/location/department. Each distinct combination posts its own credit line.
-  const incomeByGroup = new Map<string, { accountId: string; cents: number; dims: ReturnType<typeof pickDimensions> }>();
+  const incomeByGroup = new Map<
+    string,
+    { accountId: string; cents: number; dims: ReturnType<typeof pickDimensions> }
+  >();
   for (const line of totals.lines) {
     const acct = line.incomeAccountId ?? accounts.salesIncome;
     if (!acct) {
-      throw new Error('No income account configured for an invoice line (default_accounts.sales_income).');
+      throw new Error(
+        'No income account configured for an invoice line (default_accounts.sales_income).'
+      );
     }
     const dims = pickDimensions(line);
     const key = dimGroupKey(acct, dims);
@@ -235,7 +242,9 @@ export function buildInvoiceRevenueJournalLines(
   if (totals.taxCents > 0) {
     const taxAccount = accounts.salesTaxPayable;
     if (!taxAccount) {
-      throw new Error('Sales Tax Payable account is not configured (default_accounts.sales_tax_payable).');
+      throw new Error(
+        'Sales Tax Payable account is not configured (default_accounts.sales_tax_payable).'
+      );
     }
     lines.push({
       accountId: taxAccount,
@@ -246,9 +255,7 @@ export function buildInvoiceRevenueJournalLines(
   }
 
   // Stamp the customer dimension on every line for AR reporting.
-  const stamped = customerId
-    ? lines.map((l) => ({ ...l, customerId }))
-    : lines;
+  const stamped = customerId ? lines.map((l) => ({ ...l, customerId })) : lines;
 
   assertBalanced(stamped);
 
@@ -290,7 +297,9 @@ export function buildPaymentJournalLines(params: {
   }
   const appliedCents = applications.reduce((s, a) => s + toCents(a.amountApplied), 0);
   if (appliedCents !== amountCents) {
-    throw new Error('Applied amount must equal the payment amount (no unapplied receipts in Phase A).');
+    throw new Error(
+      'Applied amount must equal the payment amount (no unapplied receipts in Phase A).'
+    );
   }
 
   const lines: NewJournalLineInput[] = [
@@ -421,7 +430,9 @@ export function buildBillExpenseJournalLines(
 ): BillJournalResult {
   const apAccount = accounts.accountsPayable;
   if (!apAccount) {
-    throw new Error('Accounts Payable account is not configured (default_accounts.accounts_payable).');
+    throw new Error(
+      'Accounts Payable account is not configured (default_accounts.accounts_payable).'
+    );
   }
   const totalCents = totals.totalCents;
   if (totalCents <= 0) {
@@ -527,7 +538,9 @@ export function buildVendorPaymentJournalLines(params: {
     throw new Error('No pay-from account configured for the vendor payment (cash/bank).');
   }
   if (!accountsPayableId) {
-    throw new Error('Accounts Payable account is not configured (default_accounts.accounts_payable).');
+    throw new Error(
+      'Accounts Payable account is not configured (default_accounts.accounts_payable).'
+    );
   }
   const amountCents = toCents(amount);
   if (amountCents <= 0) {
@@ -535,7 +548,9 @@ export function buildVendorPaymentJournalLines(params: {
   }
   const appliedCents = applications.reduce((s, a) => s + toCents(a.amountApplied), 0);
   if (appliedCents !== amountCents) {
-    throw new Error('Applied amount must equal the payment amount (no unapplied payments in Phase A).');
+    throw new Error(
+      'Applied amount must equal the payment amount (no unapplied payments in Phase A).'
+    );
   }
 
   const lines: NewJournalLineInput[] = [
@@ -592,7 +607,9 @@ export function buildCogsJournalLines(
   }
   const inventoryAccount = accounts.inventoryAsset;
   if (!inventoryAccount) {
-    throw new Error('Inventory Asset account is not configured (default_accounts.inventory_asset).');
+    throw new Error(
+      'Inventory Asset account is not configured (default_accounts.inventory_asset).'
+    );
   }
   if (!Number.isFinite(costCents) || costCents <= 0) {
     throw new Error('Cannot post COGS with a zero or negative cost.');
@@ -647,7 +664,10 @@ export interface DepreciationJournalResult {
  */
 export function buildDepreciationJournalLines(
   amountCents: number,
-  accounts: { depreciationExpenseAccountId: string | null; accumulatedDepreciationAccountId: string | null }
+  accounts: {
+    depreciationExpenseAccountId: string | null;
+    accumulatedDepreciationAccountId: string | null;
+  }
 ): DepreciationJournalResult {
   const expenseAccount = accounts.depreciationExpenseAccountId;
   if (!expenseAccount) {
@@ -655,7 +675,9 @@ export function buildDepreciationJournalLines(
   }
   const accumAccount = accounts.accumulatedDepreciationAccountId;
   if (!accumAccount) {
-    throw new Error('Accumulated Depreciation account is not configured (default_accounts.accumulated_depreciation).');
+    throw new Error(
+      'Accumulated Depreciation account is not configured (default_accounts.accumulated_depreciation).'
+    );
   }
   if (!Number.isFinite(amountCents) || amountCents <= 0) {
     throw new Error('Cannot post depreciation with a zero or negative amount.');
@@ -719,7 +741,9 @@ export function buildBankTransactionJournalLines(params: {
 }): BankTransactionJournalResult {
   const { amount, bankGlAccountId, categoryAccountId, vendorId, memo } = params;
   if (!bankGlAccountId) {
-    throw new Error('The bank account is not linked to a GL account — link one before categorizing.');
+    throw new Error(
+      'The bank account is not linked to a GL account — link one before categorizing.'
+    );
   }
   if (!categoryAccountId) {
     throw new Error('Choose a category account before posting this transaction.');
@@ -810,7 +834,9 @@ export function assertBalanced(lines: NewJournalLineInput[]): void {
     credit += c;
   }
   if (debit !== credit) {
-    throw new Error(`Journal entry is unbalanced: debits ${debit / 100} <> credits ${credit / 100}.`);
+    throw new Error(
+      `Journal entry is unbalanced: debits ${debit / 100} <> credits ${credit / 100}.`
+    );
   }
   if (debit === 0) {
     throw new Error('Journal entry has no amounts.');

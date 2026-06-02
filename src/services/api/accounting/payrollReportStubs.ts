@@ -53,16 +53,22 @@ const PAYSTUB_TAX_ORDER: PayrollTaxKind[] = [
  * (optionally) the employer column. The cents identity net = gross − employeeTaxes −
  * otherDeductions is preserved straight from the paycheck.
  */
-export function buildPaystub(paycheck: Paycheck, employee: Employee | null, run: PayRun | null): Paystub {
-  const taxLines: PaystubTaxLine[] = PAYSTUB_TAX_ORDER.filter((k) => paycheck.taxes[k]).map((kind) => {
-    const line = paycheck.taxes[kind]!;
-    return {
-      taxKind: kind,
-      label: PAYROLL_TAX_KIND_LABELS[kind],
-      employeeCents: line.employeeCents,
-      employerCents: line.employerCents,
-    };
-  });
+export function buildPaystub(
+  paycheck: Paycheck,
+  employee: Employee | null,
+  run: PayRun | null
+): Paystub {
+  const taxLines: PaystubTaxLine[] = PAYSTUB_TAX_ORDER.filter((k) => paycheck.taxes[k]).map(
+    (kind) => {
+      const line = paycheck.taxes[kind]!;
+      return {
+        taxKind: kind,
+        label: PAYROLL_TAX_KIND_LABELS[kind],
+        employeeCents: line.employeeCents,
+        employerCents: line.employerCents,
+      };
+    }
+  );
   return {
     paycheckId: paycheck.id,
     employeeId: paycheck.employeeId,
@@ -118,7 +124,8 @@ export function buildReportRow(
     ssWagesCents: ssWages > 0 ? ssWages : grossWagesCents,
     ssWithheldCents: sumEmployeeTax(paychecks, 'fica_ss'),
     medicareWagesCents: medWages > 0 ? medWages : grossWagesCents,
-    medicareWithheldCents: sumEmployeeTax(paychecks, 'fica_medicare') + sumEmployeeTax(paychecks, 'medicare_addl'),
+    medicareWithheldCents:
+      sumEmployeeTax(paychecks, 'fica_medicare') + sumEmployeeTax(paychecks, 'medicare_addl'),
     caWagesCents: grossWagesCents,
     caPitWithheldCents: sumEmployeeTax(paychecks, 'ca_pit'),
     caSdiWithheldCents: sumEmployeeTax(paychecks, 'ca_sdi'),
@@ -191,7 +198,10 @@ export function buildNachaStub(run: PayRun, paychecks: Paycheck[]): NachaStubRes
     `Total net: $${(totalNetCents / 100).toFixed(2)}`,
     '',
     '--- entries (employee id → net) ---',
-    ...payable.map((p) => `${p.employeeId}  net=$${(p.netCents / 100).toFixed(2)}  [BANK DETAILS WITHHELD — Phase E]`),
+    ...payable.map(
+      (p) =>
+        `${p.employeeId}  net=$${(p.netCents / 100).toFixed(2)}  [BANK DETAILS WITHHELD — Phase E]`
+    ),
     '',
     '*** END STUB — NOT A REAL NACHA FILE ***',
   ];

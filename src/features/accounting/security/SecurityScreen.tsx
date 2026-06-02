@@ -11,11 +11,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AccountingShell } from '../components/AccountingShell';
 import { UnverifiedBanner } from '../components/UnverifiedBanner';
-import {
-  securityBackupPath,
-  securityOverviewPath,
-  securityRolesPath,
-} from '../constants';
+import { securityBackupPath, securityOverviewPath, securityRolesPath } from '../constants';
 
 /** The security sub-tabs (the audit-chain detail is reached FROM overview, not a top tab). */
 export type SecurityTab = 'overview' | 'roles' | 'backup';

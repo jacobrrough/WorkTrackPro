@@ -5,10 +5,7 @@ import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
 import { AttachmentsSection } from '../components/AttachmentsSection';
 import { useJournalEntry } from '../hooks/useAccountingQueries';
-import {
-  useRemoveEntityAttachments,
-  useVoidJournalEntry,
-} from '../hooks/useAccountingMutations';
+import { useRemoveEntityAttachments, useVoidJournalEntry } from '../hooks/useAccountingMutations';
 import { computeBalance, formatMoney } from '../accountingViewModel';
 import type { JournalLine } from '../types';
 
@@ -41,7 +38,11 @@ export default function JournalEntryDetail() {
     // error is swallowed so it cannot surface on the void path).
     removeEntityAttachments.mutate(
       { entityType: 'journal_entry', entityId: entry.id },
-      { onError: () => { /* orphan cleanup is best-effort; never block the void */ } }
+      {
+        onError: () => {
+          /* orphan cleanup is best-effort; never block the void */
+        },
+      }
     );
   };
 

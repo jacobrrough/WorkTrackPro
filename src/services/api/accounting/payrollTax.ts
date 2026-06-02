@@ -64,7 +64,8 @@ import { PAY_PERIODS_PER_YEAR } from '../../../features/accounting/types';
  * Negative inputs clamp to 0 (a wage/tax is never negative).
  */
 export function applyRateCents(wageCents: number, rate: number): number {
-  if (!Number.isFinite(wageCents) || !Number.isFinite(rate) || wageCents <= 0 || rate <= 0) return 0;
+  if (!Number.isFinite(wageCents) || !Number.isFinite(rate) || wageCents <= 0 || rate <= 0)
+    return 0;
   return Math.round(wageCents * rate);
 }
 
@@ -170,7 +171,9 @@ export function buildTaxTableSet(taxYear: number, rows: PayrollTaxTable[]): Payr
   // Sort by effective date ascending so a later row overwrites an earlier one (last wins).
   const sorted = [...rows]
     .filter((r) => r.taxYear === taxYear && r.isActive)
-    .sort((a, b) => (a.effectiveDate < b.effectiveDate ? -1 : a.effectiveDate > b.effectiveDate ? 1 : 0));
+    .sort((a, b) =>
+      a.effectiveDate < b.effectiveDate ? -1 : a.effectiveDate > b.effectiveDate ? 1 : 0
+    );
   for (const row of sorted) {
     if (row.taxKind === 'fed_income_pit' || row.taxKind === 'ca_pit') {
       const status = row.filingStatus === 'any' ? 'single' : row.filingStatus;
@@ -288,7 +291,10 @@ export function computeFederalIncomeWithholding(
   const annualTaxable = federalAnnualTaxableCents(input);
   const annualTaxGross = annualTaxFromBracketsCents(annualTaxable, body.brackets);
   // Step 3 dependents credit reduces ANNUAL tax (Pub 15-T Worksheet 1, line 3).
-  const annualTaxAfterCredit = Math.max(0, annualTaxGross - input.employee.fedDependentsAmountCents);
+  const annualTaxAfterCredit = Math.max(
+    0,
+    annualTaxGross - input.employee.fedDependentsAmountCents
+  );
   // De-annualize to the pay period (round half up).
   const perPeriod = Math.round(annualTaxAfterCredit / periods);
   const withheld = perPeriod + Math.max(0, input.employee.fedExtraWithholdingCents);
@@ -323,7 +329,8 @@ export function computeCaliforniaWithholding(
 
   const annualGross = input.grossCents * periods;
   const annualTaxGross = annualTaxFromBracketsCents(annualGross, body.brackets);
-  const allowanceCredit = Math.max(0, input.employee.caAllowances) * CA_ALLOWANCE_ANNUAL_CREDIT_CENTS;
+  const allowanceCredit =
+    Math.max(0, input.employee.caAllowances) * CA_ALLOWANCE_ANNUAL_CREDIT_CENTS;
   const annualTaxAfterCredit = Math.max(0, annualTaxGross - allowanceCredit);
   const perPeriod = Math.round(annualTaxAfterCredit / periods);
   const withheld = perPeriod + Math.max(0, input.employee.caExtraWithholdingCents);
@@ -475,8 +482,14 @@ export function assemblePaycheck(
   deductions: DeductionInput[] = []
 ): ComputedPaycheck {
   const gross = Math.max(0, Math.trunc(grossCents));
-  const taxes = computePaycheckTaxes({ grossCents: gross, ytdGrossCents, employee, frequency }, set);
-  const otherDeductionsCents = deductions.reduce((s, d) => s + Math.max(0, Math.trunc(d.amountCents)), 0);
+  const taxes = computePaycheckTaxes(
+    { grossCents: gross, ytdGrossCents, employee, frequency },
+    set
+  );
+  const otherDeductionsCents = deductions.reduce(
+    (s, d) => s + Math.max(0, Math.trunc(d.amountCents)),
+    0
+  );
   const employeeTaxesCents = taxes.employeeTaxesCents;
   const employerTaxesCents = taxes.employerTaxesCents;
   const netCents = gross - employeeTaxesCents - otherDeductionsCents;

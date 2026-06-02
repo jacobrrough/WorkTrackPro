@@ -24,7 +24,13 @@ const pctBody: PayrollTaxTableBody = {
   standardDeductionCents: 1500000,
   brackets: [
     { overCents: 0, butNotOverCents: 1160000, baseCents: 0, rate: 0.1, ofExcessOverCents: 0 },
-    { overCents: 1160000, butNotOverCents: null, baseCents: 116000, rate: 0.12, ofExcessOverCents: 1160000 },
+    {
+      overCents: 1160000,
+      butNotOverCents: null,
+      baseCents: 116000,
+      rate: 0.12,
+      ofExcessOverCents: 1160000,
+    },
   ],
 };
 
@@ -101,7 +107,10 @@ describe('summarizeBody', () => {
 
 describe('groupTaxTables', () => {
   it('splits rows into federal then CA, dropping empty groups', () => {
-    const rows = [row({ jurisdiction: 'federal' }), row({ id: 'r2', jurisdiction: 'CA', taxKind: 'ca_sdi' })];
+    const rows = [
+      row({ jurisdiction: 'federal' }),
+      row({ id: 'r2', jurisdiction: 'CA', taxKind: 'ca_sdi' }),
+    ];
     const groups = groupTaxTables(rows);
     expect(groups.map((g) => g.jurisdiction)).toEqual(['federal', 'CA']);
     expect(groups[0].rows).toHaveLength(1);

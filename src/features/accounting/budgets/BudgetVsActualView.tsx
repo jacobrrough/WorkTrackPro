@@ -45,7 +45,10 @@ function MonthlyDetail({ row }: { row: BudgetVsActualRow }) {
               <tr>
                 <td className="px-2 py-1 text-left text-slate-400">Budget</td>
                 {row.budgetMonthly.map((v, i) => (
-                  <td key={i} className="px-2 py-1 text-right font-mono tabular-nums text-slate-400">
+                  <td
+                    key={i}
+                    className="px-2 py-1 text-right font-mono tabular-nums text-slate-400"
+                  >
                     {formatMoney(v)}
                   </td>
                 ))}
@@ -53,7 +56,10 @@ function MonthlyDetail({ row }: { row: BudgetVsActualRow }) {
               <tr>
                 <td className="px-2 py-1 text-left text-slate-400">Actual</td>
                 {row.actualMonthly.map((v, i) => (
-                  <td key={i} className="px-2 py-1 text-right font-mono tabular-nums text-slate-300">
+                  <td
+                    key={i}
+                    className="px-2 py-1 text-right font-mono tabular-nums text-slate-300"
+                  >
                     {formatMoney(v)}
                   </td>
                 ))}
@@ -149,7 +155,9 @@ export default function BudgetVsActualView() {
       </div>
 
       {isPending && <ReportLoading />}
-      {isError && <ReportError message="Could not load Budget vs Actual. The budget may have been deleted, or the accounting schema is not exposed for your role." />}
+      {isError && (
+        <ReportError message="Could not load Budget vs Actual. The budget may have been deleted, or the accounting schema is not exposed for your role." />
+      )}
       {!isPending && !isError && data && !hasRows && (
         <ReportEmpty
           icon="savings"

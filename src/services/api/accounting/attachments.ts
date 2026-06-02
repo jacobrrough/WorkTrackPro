@@ -112,7 +112,9 @@ export interface AttachmentValidation {
  * through on MIME (we cannot reliably sniff it client-side) but still size-checked — the row's
  * content_type will be null. Pure; exported for tests + reuse by the upload control.
  */
-export function validateAttachmentFile(file: Pick<File, 'size' | 'type' | 'name'>): AttachmentValidation {
+export function validateAttachmentFile(
+  file: Pick<File, 'size' | 'type' | 'name'>
+): AttachmentValidation {
   if (file.size <= 0) {
     return { ok: false, error: 'That file is empty.' };
   }
@@ -169,11 +171,7 @@ export const attachmentsService = {
 
   /** One attachment row by id (e.g. to resolve its storage path before preview). */
   async getById(id: string): Promise<AccountingAttachment | null> {
-    const { data, error } = await acct()
-      .from('attachments')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
+    const { data, error } = await acct().from('attachments').select('*').eq('id', id).maybeSingle();
     if (error || !data) return null;
     return mapAccountingAttachmentRow(data as Row);
   },
@@ -237,7 +235,10 @@ export const attachmentsService = {
    * the row's storage path first (so callers pass an attachment id, never a raw path). Returns
    * null on any failure (unknown id / storage error) so the UI can fall back to a placeholder.
    */
-  async getSignedUrl(id: string, expiresIn: number = SIGNED_URL_TTL_SECONDS): Promise<string | null> {
+  async getSignedUrl(
+    id: string,
+    expiresIn: number = SIGNED_URL_TTL_SECONDS
+  ): Promise<string | null> {
     const att = await this.getById(id);
     if (!att) return null;
     const { data, error } = await supabase.storage

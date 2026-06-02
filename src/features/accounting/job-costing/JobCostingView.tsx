@@ -164,7 +164,9 @@ export default function JobCostingView() {
                     <td className="px-3 py-2">
                       <span className="block truncate font-medium text-white">{row.name}</span>
                       {row.jobCode && (
-                        <span className="block font-mono text-xs text-slate-500">{row.jobCode}</span>
+                        <span className="block font-mono text-xs text-slate-500">
+                          {row.jobCode}
+                        </span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-slate-300">{row.status ?? '—'}</td>
@@ -192,9 +194,9 @@ export default function JobCostingView() {
 
           <p className="text-xs leading-relaxed text-slate-500">
             <span className="font-semibold text-slate-400">How these are figured:</span> Labor cost
-            is an estimate (worked minutes ÷ 60 × the org labor rate); authoritative costing lives in
-            each job&apos;s quote. Revenue counts every non-void invoice — including unsent drafts —
-            so it can exceed sent or paid revenue.
+            is an estimate (worked minutes ÷ 60 × the org labor rate); authoritative costing lives
+            in each job&apos;s quote. Revenue counts every non-void invoice — including unsent
+            drafts — so it can exceed sent or paid revenue.
           </p>
         </div>
       )}

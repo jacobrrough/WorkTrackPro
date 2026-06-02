@@ -87,7 +87,12 @@ function FlatBodyEditor({
           inputMode="decimal"
           className={`${inputClass} text-right`}
           value={rateToPct(body.employerRate)}
-          onChange={(e) => onChange({ ...body, employerRate: e.target.value.trim() === '' ? null : pctToRate(e.target.value) })}
+          onChange={(e) =>
+            onChange({
+              ...body,
+              employerRate: e.target.value.trim() === '' ? null : pctToRate(e.target.value),
+            })
+          }
         />
       </FormField>
       <FormField label="Annual wage base ($)" htmlFor="b-base" hint="Blank = no cap.">
@@ -96,16 +101,24 @@ function FlatBodyEditor({
           inputMode="decimal"
           className={`${inputClass} text-right`}
           value={centsToDollarsStr(body.wageBaseCents)}
-          onChange={(e) => onChange({ ...body, wageBaseCents: dollarsToCentsOrNull(e.target.value) })}
+          onChange={(e) =>
+            onChange({ ...body, wageBaseCents: dollarsToCentsOrNull(e.target.value) })
+          }
         />
       </FormField>
-      <FormField label="Threshold ($)" htmlFor="b-thresh" hint="e.g. Additional-Medicare start. Blank = none.">
+      <FormField
+        label="Threshold ($)"
+        htmlFor="b-thresh"
+        hint="e.g. Additional-Medicare start. Blank = none."
+      >
         <input
           id="b-thresh"
           inputMode="decimal"
           className={`${inputClass} text-right`}
           value={centsToDollarsStr(body.thresholdCents)}
-          onChange={(e) => onChange({ ...body, thresholdCents: dollarsToCentsOrNull(e.target.value) })}
+          onChange={(e) =>
+            onChange({ ...body, thresholdCents: dollarsToCentsOrNull(e.target.value) })
+          }
         />
       </FormField>
     </div>
@@ -133,7 +146,9 @@ function PercentageBodyEditor({
           inputMode="decimal"
           className={`${inputClass} max-w-[14rem] text-right`}
           value={centsToDollarsStr(body.standardDeductionCents)}
-          onChange={(e) => onChange({ ...body, standardDeductionCents: dollarsToCentsOrNull(e.target.value) })}
+          onChange={(e) =>
+            onChange({ ...body, standardDeductionCents: dollarsToCentsOrNull(e.target.value) })
+          }
         />
       </FormField>
       <div>
@@ -159,7 +174,12 @@ function PercentageBodyEditor({
                       inputMode="decimal"
                       className={`${inputClass} text-right`}
                       value={centsToDollarsStr(b.overCents)}
-                      onChange={(e) => setBracket(i, { overCents: dollarsToCentsOrNull(e.target.value) ?? 0, ofExcessOverCents: dollarsToCentsOrNull(e.target.value) ?? 0 })}
+                      onChange={(e) =>
+                        setBracket(i, {
+                          overCents: dollarsToCentsOrNull(e.target.value) ?? 0,
+                          ofExcessOverCents: dollarsToCentsOrNull(e.target.value) ?? 0,
+                        })
+                      }
                     />
                   </td>
                   <td className="px-1 py-1">
@@ -168,7 +188,9 @@ function PercentageBodyEditor({
                       inputMode="decimal"
                       className={`${inputClass} text-right`}
                       value={centsToDollarsStr(b.butNotOverCents)}
-                      onChange={(e) => setBracket(i, { butNotOverCents: dollarsToCentsOrNull(e.target.value) })}
+                      onChange={(e) =>
+                        setBracket(i, { butNotOverCents: dollarsToCentsOrNull(e.target.value) })
+                      }
                     />
                   </td>
                   <td className="px-1 py-1">
@@ -177,7 +199,9 @@ function PercentageBodyEditor({
                       inputMode="decimal"
                       className={`${inputClass} text-right`}
                       value={centsToDollarsStr(b.baseCents)}
-                      onChange={(e) => setBracket(i, { baseCents: dollarsToCentsOrNull(e.target.value) ?? 0 })}
+                      onChange={(e) =>
+                        setBracket(i, { baseCents: dollarsToCentsOrNull(e.target.value) ?? 0 })
+                      }
                     />
                   </td>
                   <td className="px-1 py-1">
@@ -195,8 +219,8 @@ function PercentageBodyEditor({
           </table>
         </div>
         <p className="mt-1 text-[11px] text-slate-500">
-          "Of excess over" mirrors the bracket floor automatically. Adding/removing bracket rows is a
-          follow-up — deactivate + insert a new row to restructure the schedule.
+          "Of excess over" mirrors the bracket floor automatically. Adding/removing bracket rows is
+          a follow-up — deactivate + insert a new row to restructure the schedule.
         </p>
       </div>
     </div>
@@ -228,7 +252,9 @@ function TaxTableEditModal({ row, onClose }: { row: PayrollTaxTable; onClose: ()
     };
     const res = await update.mutateAsync({ id: row.id, input });
     if (res.error || !res.row) {
-      setError(res.error ?? 'Could not save the tax-table row. Confirm you have a payroll-admin role.');
+      setError(
+        res.error ?? 'Could not save the tax-table row. Confirm you have a payroll-admin role.'
+      );
       return;
     }
     onClose();
@@ -252,8 +278,10 @@ function TaxTableEditModal({ row, onClose }: { row: PayrollTaxTable; onClose: ()
         </div>
         <p className="mb-3 text-xs text-slate-500">
           {row.jurisdiction === 'CA' ? 'California' : 'Federal'} ·{' '}
-          {row.filingStatus === 'any' ? 'all filing statuses' : PAYROLL_FILING_STATUS_LABELS[row.filingStatus]} ·{' '}
-          {row.payFrequency} frequency
+          {row.filingStatus === 'any'
+            ? 'all filing statuses'
+            : PAYROLL_FILING_STATUS_LABELS[row.filingStatus]}{' '}
+          · {row.payFrequency} frequency
         </p>
 
         <div className="rounded-sm border border-red-500/40 bg-red-500/10 p-2 text-[11px] font-semibold text-red-200">
@@ -270,17 +298,41 @@ function TaxTableEditModal({ row, onClose }: { row: PayrollTaxTable; onClose: ()
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FormField label="Effective date" htmlFor="t-eff">
-              <input id="t-eff" type="date" className={inputClass} value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
+              <input
+                id="t-eff"
+                type="date"
+                className={inputClass}
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+              />
             </FormField>
             <FormField label="Source citation" htmlFor="t-cite" required>
-              <input id="t-cite" className={inputClass} value={citation} onChange={(e) => setCitation(e.target.value)} placeholder="IRS Pub 15-T (2026)" />
+              <input
+                id="t-cite"
+                className={inputClass}
+                value={citation}
+                onChange={(e) => setCitation(e.target.value)}
+                placeholder="IRS Pub 15-T (2026)"
+              />
             </FormField>
             <FormField label="Source revision" htmlFor="t-rev" required>
-              <input id="t-rev" className={inputClass} value={revision} onChange={(e) => setRevision(e.target.value)} placeholder="2026" />
+              <input
+                id="t-rev"
+                className={inputClass}
+                value={revision}
+                onChange={(e) => setRevision(e.target.value)}
+                placeholder="2026"
+              />
             </FormField>
           </div>
           <FormField label="Notes" htmlFor="t-notes">
-            <input id="t-notes" className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional verification note" />
+            <input
+              id="t-notes"
+              className={inputClass}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional verification note"
+            />
           </FormField>
 
           {error && (

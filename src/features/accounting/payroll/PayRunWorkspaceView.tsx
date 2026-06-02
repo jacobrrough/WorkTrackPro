@@ -18,11 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
 import { PayrollScreen } from './PayrollScreen';
-import {
-  usePayRun,
-  usePayRunLiabilities,
-  usePayRunPaychecks,
-} from '../hooks/useAccountingQueries';
+import { usePayRun, usePayRunLiabilities, usePayRunPaychecks } from '../hooks/useAccountingQueries';
 import {
   useCalculatePayRun,
   useCommitPayRun,
@@ -46,11 +42,21 @@ const inputClass =
   'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** A labelled cents stat for the run header. */
-function Stat({ label, cents, tone = 'default' }: { label: string; cents: number; tone?: 'default' | 'net' }) {
+function Stat({
+  label,
+  cents,
+  tone = 'default',
+}: {
+  label: string;
+  cents: number;
+  tone?: 'default' | 'net';
+}) {
   return (
     <div className="rounded-sm border border-white/10 bg-background-dark px-3 py-2">
       <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-0.5 font-mono text-sm tabular-nums ${tone === 'net' ? 'font-bold text-white' : 'text-slate-200'}`}>
+      <p
+        className={`mt-0.5 font-mono text-sm tabular-nums ${tone === 'net' ? 'font-bold text-white' : 'text-slate-200'}`}
+      >
         {formatCentsAccounting(cents)}
       </p>
     </div>
@@ -61,19 +67,29 @@ function Stat({ label, cents, tone = 'default' }: { label: string; cents: number
 function PaycheckRow({ runId, paycheck }: { runId: string; paycheck: Paycheck }) {
   const navigate = useNavigate();
   return (
-    <Card onClick={() => navigate(payrollPaycheckPath(runId, paycheck.id))} className="flex items-center gap-3" padding="md">
+    <Card
+      onClick={() => navigate(payrollPaycheckPath(runId, paycheck.id))}
+      className="flex items-center gap-3"
+      padding="md"
+    >
       <span className="material-symbols-outlined text-slate-400">receipt</span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-bold text-white">{paycheck.employeeName ?? paycheck.employeeId.slice(0, 8)}</p>
+        <p className="truncate font-bold text-white">
+          {paycheck.employeeName ?? paycheck.employeeId.slice(0, 8)}
+        </p>
         <p className="mt-0.5 truncate text-xs text-slate-500">
           {formatHundredthHours(paycheck.hoursRegularHundredthHours)} reg
-          {paycheck.hoursOtHundredthHours > 0 ? ` · ${formatHundredthHours(paycheck.hoursOtHundredthHours)} OT` : ''}
+          {paycheck.hoursOtHundredthHours > 0
+            ? ` · ${formatHundredthHours(paycheck.hoursOtHundredthHours)} OT`
+            : ''}
           {' · '}
           {formatCents(paycheck.grossCents)} gross
         </p>
       </div>
       <div className="hidden text-right sm:block">
-        <p className="font-mono text-sm font-bold tabular-nums text-white">{formatCentsAccounting(paycheck.netCents)}</p>
+        <p className="font-mono text-sm font-bold tabular-nums text-white">
+          {formatCentsAccounting(paycheck.netCents)}
+        </p>
         <p className="text-[11px] text-slate-500">net</p>
       </div>
       <span className="material-symbols-outlined text-slate-600">chevron_right</span>
@@ -91,10 +107,14 @@ function LiabilityBreakdown({ liabilities }: { liabilities: PayrollLiability[] }
 
   return (
     <Card padding="lg" className="flex flex-col gap-3">
-      <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Liability accruals (2300)</h3>
+      <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+        Liability accruals (2300)
+      </h3>
       {byJurisdiction.map((group) => (
         <div key={group.jurisdiction}>
-          <p className="mb-1 text-xs font-bold text-slate-400">{group.jurisdiction === 'CA' ? 'California' : 'Federal'}</p>
+          <p className="mb-1 text-xs font-bold text-slate-400">
+            {group.jurisdiction === 'CA' ? 'California' : 'Federal'}
+          </p>
           <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
             {group.rows.map((l) => (
               <div key={l.id} className="flex items-center justify-between px-3 py-1.5 text-sm">
@@ -102,7 +122,9 @@ function LiabilityBreakdown({ liabilities }: { liabilities: PayrollLiability[] }
                   {taxKindLabel(l.taxKind as never)}
                   <span className="ml-1.5 text-[11px] text-slate-500">({l.party})</span>
                 </span>
-                <span className="font-mono tabular-nums text-slate-200">{formatCents(l.amountCents)}</span>
+                <span className="font-mono tabular-nums text-slate-200">
+                  {formatCents(l.amountCents)}
+                </span>
               </div>
             ))}
           </div>
@@ -215,7 +237,13 @@ function VoidDialog({ run, onClose }: { run: PayRun; onClose: () => void }) {
           reversal is the correction) and marks the run void.
         </p>
         <FormField label="Reason" htmlFor="void-reason" required className="mt-3">
-          <input id="void-reason" className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. wrong period" />
+          <input
+            id="void-reason"
+            className={inputClass}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. wrong period"
+          />
         </FormField>
 
         {error && (
@@ -304,18 +332,33 @@ export default function PayRunWorkspaceView() {
 
   // Totals for the header: from the live calc result if present, else the run summary (committed),
   // else summed from the loaded paychecks (calculated-but-not-yet-recalced view).
-  const totalGross = calcResult?.ok ? calcResult.grossCents : summary.grossCents ?? paychecks.reduce((s, p) => s + p.grossCents, 0);
-  const totalEmployeeTax = calcResult?.ok ? calcResult.employeeTaxCents : summary.employeeTaxCents ?? paychecks.reduce((s, p) => s + p.employeeTaxesCents, 0);
-  const totalEmployerTax = calcResult?.ok ? calcResult.employerTaxCents : summary.employerTaxCents ?? paychecks.reduce((s, p) => s + p.employerTaxesCents, 0);
-  const totalDeductions = calcResult?.ok ? calcResult.otherDeductionsCents : summary.otherDeductionsCents ?? paychecks.reduce((s, p) => s + p.otherDeductionsCents, 0);
-  const totalNet = calcResult?.ok ? calcResult.netCents : summary.netCents ?? paychecks.reduce((s, p) => s + p.netCents, 0);
+  const totalGross = calcResult?.ok
+    ? calcResult.grossCents
+    : (summary.grossCents ?? paychecks.reduce((s, p) => s + p.grossCents, 0));
+  const totalEmployeeTax = calcResult?.ok
+    ? calcResult.employeeTaxCents
+    : (summary.employeeTaxCents ?? paychecks.reduce((s, p) => s + p.employeeTaxesCents, 0));
+  const totalEmployerTax = calcResult?.ok
+    ? calcResult.employerTaxCents
+    : (summary.employerTaxCents ?? paychecks.reduce((s, p) => s + p.employerTaxesCents, 0));
+  const totalDeductions = calcResult?.ok
+    ? calcResult.otherDeductionsCents
+    : (summary.otherDeductionsCents ?? paychecks.reduce((s, p) => s + p.otherDeductionsCents, 0));
+  const totalNet = calcResult?.ok
+    ? calcResult.netCents
+    : (summary.netCents ?? paychecks.reduce((s, p) => s + p.netCents, 0));
 
   return (
     <PayrollScreen
       section="runs"
       title="Pay run (Unverified)"
       actions={
-        <Button size="sm" variant="ghost" icon="arrow_back" onClick={() => navigate(payrollRunsPath())}>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="arrow_back"
+          onClick={() => navigate(payrollRunsPath())}
+        >
           All runs
         </Button>
       }
@@ -328,13 +371,17 @@ export default function PayRunWorkspaceView() {
               <h2 className="text-lg font-bold text-white">
                 {formatPayrollDate(run.periodStart)} … {formatPayrollDate(run.periodEnd)}
               </h2>
-              <span className={`rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${payRunStatusBadgeClass(run.status)}`}>
+              <span
+                className={`rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${payRunStatusBadgeClass(run.status)}`}
+              >
                 {payRunStatusLabel(run.status)}
               </span>
             </div>
             <p className="mt-0.5 text-xs text-slate-500">
               Pay {formatPayrollDate(run.payDate)} · tax year {run.taxYear}
-              {committed && run.committedAt ? ` · committed ${formatPayrollDate(run.committedAt)}` : ''}
+              {committed && run.committedAt
+                ? ` · committed ${formatPayrollDate(run.committedAt)}`
+                : ''}
             </p>
           </div>
         </div>
@@ -349,7 +396,9 @@ export default function PayRunWorkspaceView() {
 
         {committed && summary.postedJournalEntryId && (
           <p className="text-xs text-emerald-300">
-            Posted journal entry <span className="font-mono">{summary.postedJournalEntryId.slice(0, 8)}…</span> (Dr 6500/6510 · Cr 2300/1010).
+            Posted journal entry{' '}
+            <span className="font-mono">{summary.postedJournalEntryId.slice(0, 8)}…</span> (Dr
+            6500/6510 · Cr 2300/1010).
           </p>
         )}
         {committed && summary.note && <p className="text-xs text-slate-400">{summary.note}</p>}
@@ -358,7 +407,11 @@ export default function PayRunWorkspaceView() {
         <div className="flex flex-wrap items-center gap-2">
           {editable && (
             <Button size="sm" icon="calculate" onClick={onCalculate} disabled={calculate.isPending}>
-              {calculate.isPending ? 'Calculating…' : run.status === 'draft' ? 'Calculate' : 'Recalculate'}
+              {calculate.isPending
+                ? 'Calculating…'
+                : run.status === 'draft'
+                  ? 'Calculate'
+                  : 'Recalculate'}
             </Button>
           )}
           {run.status === 'calculated' && paychecks.length > 0 && (
@@ -372,7 +425,13 @@ export default function PayRunWorkspaceView() {
             </Button>
           )}
           {editable && (
-            <Button size="sm" variant="ghost" icon="delete" onClick={onDelete} disabled={deleteRun.isPending}>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon="delete"
+              onClick={onDelete}
+              disabled={deleteRun.isPending}
+            >
               {deleteRun.isPending ? 'Deleting…' : 'Delete draft'}
             </Button>
           )}
@@ -390,7 +449,9 @@ export default function PayRunWorkspaceView() {
       {/* Paychecks review */}
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Paychecks</h3>
-        <span className="text-[11px] text-slate-500">{paychecks.length} check{paychecks.length === 1 ? '' : 's'}</span>
+        <span className="text-[11px] text-slate-500">
+          {paychecks.length} check{paychecks.length === 1 ? '' : 's'}
+        </span>
       </div>
 
       {paychecks.length === 0 && (

@@ -162,7 +162,10 @@ function RecordPaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: (
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={submit} disabled={recordPayment.isPending || amount <= 0 || overBalance}>
+            <Button
+              onClick={submit}
+              disabled={recordPayment.isPending || amount <= 0 || overBalance}
+            >
               {recordPayment.isPending ? 'Recording…' : 'Record payment'}
             </Button>
           </div>
@@ -218,7 +221,10 @@ export default function InvoiceDetailView() {
     const reason = window.prompt('Reason for voiding this invoice?');
     if (reason == null) return;
     setActionError(null);
-    const res = await voidInvoice.mutateAsync({ id: invoice.id, reason: reason.trim() || 'Voided' });
+    const res = await voidInvoice.mutateAsync({
+      id: invoice.id,
+      reason: reason.trim() || 'Voided',
+    });
     if (!res.ok) {
       setActionError(res.error ?? 'Could not void the invoice.');
       return;
@@ -227,7 +233,11 @@ export default function InvoiceDetailView() {
     // cleanup error is swallowed so it cannot surface on the void path).
     removeEntityAttachments.mutate(
       { entityType: 'invoice', entityId: invoice.id },
-      { onError: () => { /* orphan cleanup is best-effort; never block the void */ } }
+      {
+        onError: () => {
+          /* orphan cleanup is best-effort; never block the void */
+        },
+      }
     );
   };
 
@@ -282,7 +292,8 @@ export default function InvoiceDetailView() {
               {INVOICE_STATUS_LABELS[invoice.status]}
             </span>
             <span className="text-sm text-slate-400">
-              Customer <span className="text-white">{invoice.customerName || invoice.customerId}</span>
+              Customer{' '}
+              <span className="text-white">{invoice.customerName || invoice.customerId}</span>
             </span>
             <span className="text-sm text-slate-400">
               Date <span className="text-white">{invoice.invoiceDate}</span>
@@ -373,9 +384,7 @@ export default function InvoiceDetailView() {
           {invoice.journalEntryId && (
             <button
               type="button"
-              onClick={() =>
-                navigate(`${ACCOUNTING_BASE}/journal/${invoice.journalEntryId}`)
-              }
+              onClick={() => navigate(`${ACCOUNTING_BASE}/journal/${invoice.journalEntryId}`)}
               className="flex items-center gap-1 self-start text-sm font-semibold text-primary hover:text-primary-hover"
             >
               <span className="material-symbols-outlined text-lg">menu_book</span>

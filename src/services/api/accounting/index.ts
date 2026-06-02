@@ -21,10 +21,7 @@ export { accountingSettingsService } from './settings';
 export { salesTaxService } from './salesTax';
 // ── Tax-table auto-refresh + drift alert (TAX-SYNC, advisory-only) ────────────
 export { taxTableSyncService } from './taxTableSync';
-export type {
-  ApplyDriftResult,
-  CheckNowResult,
-} from './taxTableSync';
+export type { ApplyDriftResult, CheckNowResult } from './taxTableSync';
 // ── Reporting dimensions + recurring templates (B2) ──────────────────────────
 export { dimensionsService } from './dimensions';
 export { recurringTemplatesService } from './recurringTemplates';
@@ -42,10 +39,7 @@ export {
   buildRecurringJournalLines,
 } from './recurringPayload';
 export { buildInvoiceLinesFromJob, setsForPart } from './invoiceLinesFromJob';
-export type {
-  InvoiceLinesFromJobParams,
-  QuoteRateSettings,
-} from './invoiceLinesFromJob';
+export type { InvoiceLinesFromJobParams, QuoteRateSettings } from './invoiceLinesFromJob';
 // ── IMPORT / MIGRATION (Phase D, HELD / UNVERIFIED — NOT FOR FILING) ──────────
 // The whole module is FLAG-DARK and requires CPA and/or security sign-off before it is
 // enabled. importService.commit is the ONLY money path (calls accounting.commit_import_batch
@@ -141,12 +135,7 @@ export {
   BankImportError,
 } from './bankImportParsers';
 export type { BankImportFormat, ParseResult } from './bankImportParsers';
-export {
-  applyRules,
-  applyRulesToBatch,
-  ruleMatches,
-  validateRule,
-} from './bankRulesEngine';
+export { applyRules, applyRulesToBatch, ruleMatches, validateRule } from './bankRulesEngine';
 export type { RuleEvaluable } from './bankRulesEngine';
 // ── C2 PAYROLL (HELD / HIGH-RISK / UNVERIFIED — NOT FOR FILING) ─────────────────
 // The whole payroll module is FLAG-DARK and requires CPA/EA payroll AND/OR security sign-off
