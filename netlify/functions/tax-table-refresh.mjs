@@ -481,9 +481,13 @@ export default async (request) => {
 
 // Netlify Functions V2 config:
 //   • schedule → quarterly cron (1st of Jan/Apr/Jul/Oct at 06:00 UTC).
-//   • path     → served at /api/tax-table-refresh via the netlify.toml /api/*
-//     redirect for the admin UI "check now" (taxTableSync.ts CHECK_NOW_ENDPOINT).
+// The admin UI "check now" still reaches this function on-demand at
+// /api/tax-table-refresh (taxTableSync.ts CHECK_NOW_ENDPOINT) via the netlify.toml
+// `/api/*` → `/.netlify/functions/:splat` rewrite, i.e. its DEFAULT function URL.
+// A custom `path` is intentionally NOT set: Netlify rejects a scheduled function
+// that also declares a custom path ("Scheduled functions must not specify a custom
+// path"), which fails the ENTIRE site deploy. The /api/* redirect already provides
+// the admin endpoint, so no custom path is needed.
 export const config = {
   schedule: '0 6 1 1,4,7,10 *',
-  path: '/api/tax-table-refresh',
 };
