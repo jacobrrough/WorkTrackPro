@@ -103,7 +103,7 @@ function RuleEditorModal({
       return;
     }
     // Scope: when "all accounts" is off, the rule is bound to this page's account.
-    const scopedAccountId = draft.scopeAll ? null : bankAccountId ?? null;
+    const scopedAccountId = draft.scopeAll ? null : (bankAccountId ?? null);
 
     if (rule) {
       const res = await update.mutateAsync({
@@ -279,8 +279,7 @@ function RuleRow({
   const remove = useDeleteBankRule();
   const busy = update.isPending || remove.isPending;
 
-  const onToggleActive = () =>
-    update.mutate({ id: rule.id, input: { isActive: !rule.isActive } });
+  const onToggleActive = () => update.mutate({ id: rule.id, input: { isActive: !rule.isActive } });
 
   const onDelete = () => {
     if (window.confirm('Delete this rule? Transactions already categorized are unaffected.')) {
@@ -298,8 +297,7 @@ function RuleRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className={`block text-sm ${rule.isActive ? 'text-white' : 'text-slate-500'}`}>
-          {fieldLabel} {opLabel}{' '}
-          <span className="font-mono text-slate-300">{rule.matchValue}</span>
+          {fieldLabel} {opLabel} <span className="font-mono text-slate-300">{rule.matchValue}</span>
           {' → '}
           <span className="text-primary">{accountName}</span>
         </span>
@@ -421,7 +419,11 @@ export default function BankRulesView() {
       </div>
 
       {showCreate && (
-        <RuleEditorModal rule={null} bankAccountId={bankAccountId} onClose={() => setShowCreate(false)} />
+        <RuleEditorModal
+          rule={null}
+          bankAccountId={bankAccountId}
+          onClose={() => setShowCreate(false)}
+        />
       )}
       {editing && (
         <RuleEditorModal

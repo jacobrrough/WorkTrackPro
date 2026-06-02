@@ -37,12 +37,14 @@ function AccountRow({ line }: { line: ReportLine }) {
 export default function ProfitAndLossView() {
   const [range, setRange] = useState<DateRange>(() => {
     const now = new Date();
-    return { from: new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
+    return {
+      from: new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10),
+      to: now.toISOString().slice(0, 10),
+    };
   });
   const { data, isPending, isError } = useProfitAndLoss(range);
 
-  const hasRows =
-    !!data && (data.income.lines.length > 0 || data.expense.lines.length > 0);
+  const hasRows = !!data && (data.income.lines.length > 0 || data.expense.lines.length > 0);
 
   return (
     <ReportPage

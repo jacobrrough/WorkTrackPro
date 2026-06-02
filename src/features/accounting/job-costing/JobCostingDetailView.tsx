@@ -3,11 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
-import {
-  useJobBills,
-  useJobCostingDetail,
-  useJobInvoices,
-} from '../hooks/useAccountingQueries';
+import { useJobBills, useJobCostingDetail, useJobInvoices } from '../hooks/useAccountingQueries';
 import { marginPct } from '../jobCosting';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE, JOB_COSTING_BASE } from '../constants';
@@ -96,7 +92,13 @@ function SummaryCards({ row }: { row: JobCostingRow }) {
   );
 }
 
-function InvoicesTable({ invoices, onOpen }: { invoices: Invoice[]; onOpen: (id: string) => void }) {
+function InvoicesTable({
+  invoices,
+  onOpen,
+}: {
+  invoices: Invoice[];
+  onOpen: (id: string) => void;
+}) {
   return (
     <LedgerTable
       columns={[
@@ -153,7 +155,9 @@ function BillsTable({ bills, onOpen }: { bills: Bill[]; onOpen: (id: string) => 
           onClick={() => onOpen(bill.id)}
           className="cursor-pointer border-t border-white/5 hover:bg-white/5"
         >
-          <td className="px-3 py-2 font-mono text-xs text-slate-400">{bill.billNumber || 'Draft'}</td>
+          <td className="px-3 py-2 font-mono text-xs text-slate-400">
+            {bill.billNumber || 'Draft'}
+          </td>
           <td className="px-3 py-2 text-white">{bill.vendorName || bill.vendorId}</td>
           <td className="px-3 py-2 text-slate-400">{bill.billDate}</td>
           <td className="px-3 py-2">
@@ -206,7 +210,12 @@ export default function JobCostingDetailView() {
           <p className="text-slate-400">
             No costing found for this job. It may have no logged labor, materials, or invoices yet.
           </p>
-          <Button size="sm" variant="ghost" icon="arrow_back" onClick={() => navigate(JOB_COSTING_BASE)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon="arrow_back"
+            onClick={() => navigate(JOB_COSTING_BASE)}
+          >
             Back to job costing
           </Button>
         </div>
@@ -216,9 +225,7 @@ export default function JobCostingDetailView() {
         <div className="mx-auto flex max-w-3xl flex-col gap-5">
           {/* Header: job identity + status */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {row.jobCode && (
-              <span className="font-mono text-sm text-slate-500">{row.jobCode}</span>
-            )}
+            {row.jobCode && <span className="font-mono text-sm text-slate-500">{row.jobCode}</span>}
             {row.status && (
               <span className="text-sm text-slate-400">
                 Status <span className="text-white">{row.status}</span>
@@ -262,7 +269,10 @@ export default function JobCostingDetailView() {
               </p>
             )}
             {bills.length > 0 && (
-              <BillsTable bills={bills} onOpen={(id) => navigate(`${ACCOUNTING_BASE}/bills/${id}`)} />
+              <BillsTable
+                bills={bills}
+                onOpen={(id) => navigate(`${ACCOUNTING_BASE}/bills/${id}`)}
+              />
             )}
             {bills.length > 0 && (
               <p className="mt-1.5 text-xs text-slate-500">

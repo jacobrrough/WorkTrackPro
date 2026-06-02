@@ -31,8 +31,7 @@ function combinedRateFromJoin(row: Row): number {
   return rate;
 }
 
-const SELECT_WITH_RATES =
-  '*, tax_code_rates(tax_rate:tax_rates(id, rate, is_active))';
+const SELECT_WITH_RATES = '*, tax_code_rates(tax_rate:tax_rates(id, rate, is_active))';
 
 export const taxService = {
   /** Active tax codes with their combined decimal rate. */

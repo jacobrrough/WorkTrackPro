@@ -18,17 +18,22 @@
  * month length) — e.g. Q1 (Jan–Mar) → Apr 30, with due_day 31 clamping to 30.
  */
 import { toIsoDate } from '../periodLock';
-import type {
-  TaxAgency,
-  TaxCalendarEntry,
-  TaxFilingFrequency,
-  TaxFilingRule,
-} from '../types';
+import type { TaxAgency, TaxCalendarEntry, TaxFilingFrequency, TaxFilingRule } from '../types';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MONTH_ABBR = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /** Number of months in one filing period for a frequency. */
@@ -229,7 +234,9 @@ export function computeAgencyCalendar(
 }
 
 /** A frequency-only fallback rule for an agency that has no config row. */
-export function fallbackRuleFor(agency: Pick<TaxAgency, 'name' | 'filingFrequency'>): TaxFilingRule {
+export function fallbackRuleFor(
+  agency: Pick<TaxAgency, 'name' | 'filingFrequency'>
+): TaxFilingRule {
   const freq = normalizeFrequency(agency.filingFrequency);
   return {
     agency: agency.name,

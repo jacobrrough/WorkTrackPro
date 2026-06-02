@@ -42,7 +42,10 @@ describe('periodContaining', () => {
   it('maps a month to its calendar quarter', () => {
     expect(periodContaining(2026, 2, 'quarterly')).toMatchObject({ startMonth1: 1, endMonth1: 3 });
     expect(periodContaining(2026, 5, 'quarterly')).toMatchObject({ startMonth1: 4, endMonth1: 6 });
-    expect(periodContaining(2026, 12, 'quarterly')).toMatchObject({ startMonth1: 10, endMonth1: 12 });
+    expect(periodContaining(2026, 12, 'quarterly')).toMatchObject({
+      startMonth1: 10,
+      endMonth1: 12,
+    });
   });
   it('maps a month to itself when monthly, and the year when annual', () => {
     expect(periodContaining(2026, 7, 'monthly')).toMatchObject({ startMonth1: 7, endMonth1: 7 });
@@ -52,7 +55,9 @@ describe('periodContaining', () => {
 
 describe('periodLabel', () => {
   it('labels quarters / months / years', () => {
-    expect(periodLabel(periodContaining(2026, 5, 'quarterly'), 'quarterly')).toBe('Q2 2026 (Apr–Jun)');
+    expect(periodLabel(periodContaining(2026, 5, 'quarterly'), 'quarterly')).toBe(
+      'Q2 2026 (Apr–Jun)'
+    );
     expect(periodLabel(periodContaining(2026, 6, 'monthly'), 'monthly')).toBe('Jun 2026');
     expect(periodLabel(periodContaining(2026, 6, 'annual'), 'annual')).toBe('FY 2026');
   });
@@ -136,7 +141,12 @@ describe('computeAgencyCalendar — CDTFA from "as of"', () => {
 
 describe('computeAgencyCalendar — monthly + annual cadences', () => {
   it('monthly: due the offset month, oldest first', () => {
-    const monthly: TaxFilingRule = { ...CDTFA_RULE, frequency: 'monthly', dueDay: 20, dueMonthOffset: 1 };
+    const monthly: TaxFilingRule = {
+      ...CDTFA_RULE,
+      frequency: 'monthly',
+      dueDay: 20,
+      dueMonthOffset: 1,
+    };
     const entries = computeAgencyCalendar(monthly, 'm', 'Monthly Agency', {
       asOf: '2026-06-15',
       upcoming: 2,
@@ -147,7 +157,12 @@ describe('computeAgencyCalendar — monthly + annual cadences', () => {
   });
 
   it('annual: one return per year due the following period', () => {
-    const annual: TaxFilingRule = { ...CDTFA_RULE, frequency: 'annual', dueDay: 15, dueMonthOffset: 1 };
+    const annual: TaxFilingRule = {
+      ...CDTFA_RULE,
+      frequency: 'annual',
+      dueDay: 15,
+      dueMonthOffset: 1,
+    };
     const entries = computeAgencyCalendar(annual, 'y', 'Annual Agency', {
       asOf: '2026-06-01',
       upcoming: 1,

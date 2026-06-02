@@ -60,7 +60,9 @@ export default function ReportsView() {
           </Card>
           <Card onClick={() => navigate(cashFlowForecastPath())} className="flex flex-col gap-1.5">
             <span className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-2xl text-primary">waterfall_chart</span>
+              <span className="material-symbols-outlined text-2xl text-primary">
+                waterfall_chart
+              </span>
               <span className="font-bold text-white">Cash-Flow Forecast</span>
             </span>
             <span className="text-xs text-slate-400">

@@ -58,10 +58,7 @@ export default function FixedAssetCreateView() {
   // Live straight-line preview (JS analog of accounting.generate_depreciation_schedule).
   // Empty until there is a depreciable base and a positive life, exactly as the DB writes
   // no rows then. We show the first/last period and the per-period amount, plus the base.
-  const baseCents = useMemo(
-    () => depreciableBaseCents(cost, salvageValue),
-    [cost, salvageValue]
-  );
+  const baseCents = useMemo(() => depreciableBaseCents(cost, salvageValue), [cost, salvageValue]);
   const schedule = useMemo(
     () =>
       computeStraightLineSchedule({
@@ -193,12 +190,7 @@ export default function FixedAssetCreateView() {
         {/* Cost basis + schedule inputs */}
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField label="Cost" htmlFor="fa-cost" required hint="Acquisition cost.">
-            <CurrencyInput
-              id="fa-cost"
-              aria-label="Cost"
-              value={cost}
-              onValueChange={setCost}
-            />
+            <CurrencyInput id="fa-cost" aria-label="Cost" value={cost} onValueChange={setCost} />
           </FormField>
 
           <FormField
@@ -282,7 +274,9 @@ export default function FixedAssetCreateView() {
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                     Depreciable base
                   </p>
-                  <p className="font-mono tabular-nums text-white">{formatMoney(baseCents / 100)}</p>
+                  <p className="font-mono tabular-nums text-white">
+                    {formatMoney(baseCents / 100)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">

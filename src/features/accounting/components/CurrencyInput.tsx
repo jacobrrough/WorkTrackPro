@@ -1,7 +1,9 @@
 import type { InputHTMLAttributes } from 'react';
 
-interface CurrencyInputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> {
+interface CurrencyInputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'onChange' | 'value' | 'type'
+> {
   value: number;
   onValueChange: (value: number) => void;
 }

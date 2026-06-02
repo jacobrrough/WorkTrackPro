@@ -66,7 +66,15 @@ function draftFromDef(d: CustomFieldDef): DefDraft {
 }
 
 function emptyDraft(): DefDraft {
-  return { key: '', label: '', dataType: 'text', options: [], helpText: '', sortOrder: 0, active: true };
+  return {
+    key: '',
+    label: '',
+    dataType: 'text',
+    options: [],
+    helpText: '',
+    sortOrder: 0,
+    active: true,
+  };
 }
 
 /** Editor for the {value,label} choice list of a select field. */
@@ -217,7 +225,7 @@ function DefEditorModal({
         setError(
           res.error?.includes('duplicate') || res.error?.includes('unique')
             ? `A field with key “${normalizedKey}” already exists on ${entityLabel.toLowerCase()}s.`
-            : res.error ?? 'Could not create the field.'
+            : (res.error ?? 'Could not create the field.')
         );
         return;
       }
@@ -230,7 +238,9 @@ function DefEditorModal({
       <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">
-            {isEdit ? `Edit ${entityLabel.toLowerCase()} field` : `New ${entityLabel.toLowerCase()} field`}
+            {isEdit
+              ? `Edit ${entityLabel.toLowerCase()} field`
+              : `New ${entityLabel.toLowerCase()} field`}
           </h2>
           <button
             type="button"
@@ -277,7 +287,8 @@ function DefEditorModal({
 
           {!isEdit && draft.key.trim() !== '' && normalizedKey !== draft.key && (
             <p className="-mt-1 text-xs text-slate-500">
-              Stored as <span className="font-mono text-slate-300">{normalizedKey || '(empty)'}</span>
+              Stored as{' '}
+              <span className="font-mono text-slate-300">{normalizedKey || '(empty)'}</span>
             </p>
           )}
 
@@ -414,7 +425,9 @@ function EntitySection({
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-          <span className="material-symbols-outlined text-lg text-primary">{ENTITY_ICON[entityType]}</span>
+          <span className="material-symbols-outlined text-lg text-primary">
+            {ENTITY_ICON[entityType]}
+          </span>
           {label}
           <span className="font-mono text-xs font-normal text-slate-500">({defs.length})</span>
         </h2>
@@ -468,9 +481,9 @@ export default function CustomFieldsView() {
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-xl text-sm text-slate-400">
-            Define extra fields per accounting entity. Active fields appear on the matching
-            create and detail screens, where they can be filled in and saved alongside the
-            record. They are metadata only — they never move money or post a journal entry.
+            Define extra fields per accounting entity. Active fields appear on the matching create
+            and detail screens, where they can be filled in and saved alongside the record. They are
+            metadata only — they never move money or post a journal entry.
           </p>
           <label className="flex shrink-0 items-center gap-2 text-sm text-slate-300">
             <input
@@ -486,8 +499,8 @@ export default function CustomFieldsView() {
         {isPending && <p className="text-slate-400">Loading custom fields…</p>}
         {isError && (
           <p className="text-red-400">
-            Could not load custom fields. Confirm the accounting schema is exposed and you
-            have an accounting role.
+            Could not load custom fields. Confirm the accounting schema is exposed and you have an
+            accounting role.
           </p>
         )}
 
@@ -507,7 +520,11 @@ export default function CustomFieldsView() {
       </div>
 
       {creatingType && (
-        <DefEditorModal entityType={creatingType} def={null} onClose={() => setCreatingType(null)} />
+        <DefEditorModal
+          entityType={creatingType}
+          def={null}
+          onClose={() => setCreatingType(null)}
+        />
       )}
       {editing && (
         <DefEditorModal

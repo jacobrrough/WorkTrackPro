@@ -16,7 +16,11 @@ export default function AccountingHome() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {tiles.map((t) => (
-          <Card key={t.key} onClick={() => navigate(t.path)} className="flex flex-col items-start gap-2">
+          <Card
+            key={t.key}
+            onClick={() => navigate(t.path)}
+            className="flex flex-col items-start gap-2"
+          >
             <span className="material-symbols-outlined text-2xl text-primary">{t.icon}</span>
             <span className="font-bold text-white">{t.label}</span>
           </Card>

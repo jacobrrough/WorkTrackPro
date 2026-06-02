@@ -22,7 +22,11 @@ function acct(p: Partial<Account> & Pick<Account, 'id'>): BvaAccount {
 }
 
 /** Compact factory for a saved budget cell (dollars). */
-function line(accountId: string, periodMonth: number, amount: number): Pick<BudgetLine, 'accountId' | 'periodMonth' | 'amount'> {
+function line(
+  accountId: string,
+  periodMonth: number,
+  amount: number
+): Pick<BudgetLine, 'accountId' | 'periodMonth' | 'amount'> {
   return { accountId, periodMonth, amount };
 }
 
@@ -58,9 +62,27 @@ describe('actualNaturalCents', () => {
 
 describe('buildBudgetGrid', () => {
   const accounts = [
-    acct({ id: 'inc', accountNumber: '4000', name: 'Sales', accountType: 'income', normalBalance: 'credit' }),
-    acct({ id: 'exp', accountNumber: '6000', name: 'Rent', accountType: 'expense', normalBalance: 'debit' }),
-    acct({ id: 'sup', accountNumber: '6100', name: 'Supplies', accountType: 'expense', normalBalance: 'debit' }),
+    acct({
+      id: 'inc',
+      accountNumber: '4000',
+      name: 'Sales',
+      accountType: 'income',
+      normalBalance: 'credit',
+    }),
+    acct({
+      id: 'exp',
+      accountNumber: '6000',
+      name: 'Rent',
+      accountType: 'expense',
+      normalBalance: 'debit',
+    }),
+    acct({
+      id: 'sup',
+      accountNumber: '6100',
+      name: 'Supplies',
+      accountType: 'expense',
+      normalBalance: 'debit',
+    }),
   ];
 
   it('fills planned cells into a dense 12-slot row and zero-fills the rest', () => {
@@ -109,8 +131,20 @@ describe('buildBudgetGrid', () => {
 
 describe('buildBudgetVsActual', () => {
   const accounts: BvaAccount[] = [
-    acct({ id: 'inc', accountNumber: '4000', name: 'Sales', accountType: 'income', normalBalance: 'credit' }),
-    acct({ id: 'exp', accountNumber: '6000', name: 'Rent', accountType: 'expense', normalBalance: 'debit' }),
+    acct({
+      id: 'inc',
+      accountNumber: '4000',
+      name: 'Sales',
+      accountType: 'income',
+      normalBalance: 'credit',
+    }),
+    acct({
+      id: 'exp',
+      accountNumber: '6000',
+      name: 'Rent',
+      accountType: 'expense',
+      normalBalance: 'debit',
+    }),
   ];
 
   it('compares budget vs natural-signed actual and computes variance', () => {
@@ -120,7 +154,11 @@ describe('buildBudgetVsActual', () => {
       { accountId: 'inc', month: 1, debit: 0, credit: 1200 },
       { accountId: 'exp', month: 1, debit: 750, credit: 0 },
     ];
-    const { rows, totalBudgetCents, totalActualCents } = buildBudgetVsActual(accounts, budget, actuals);
+    const { rows, totalBudgetCents, totalActualCents } = buildBudgetVsActual(
+      accounts,
+      budget,
+      actuals
+    );
 
     const income = rows.find((r) => r.accountId === 'inc')!;
     expect(income.budget).toBe(1000);
@@ -149,17 +187,16 @@ describe('buildBudgetVsActual', () => {
   });
 
   it('omits accounts with neither budget nor actual', () => {
-    const extra = [...accounts, acct({ id: 'idle', accountNumber: '6200', accountType: 'expense' })];
+    const extra = [
+      ...accounts,
+      acct({ id: 'idle', accountNumber: '6200', accountType: 'expense' }),
+    ];
     const { rows } = buildBudgetVsActual(extra, [line('inc', 1, 100)], []);
     expect(rows.some((r) => r.accountId === 'idle')).toBe(false);
   });
 
   it('orders rows by account number (same order as the trial balance)', () => {
-    const { rows } = buildBudgetVsActual(
-      accounts,
-      [line('exp', 1, 1), line('inc', 1, 1)],
-      []
-    );
+    const { rows } = buildBudgetVsActual(accounts, [line('exp', 1, 1), line('inc', 1, 1)], []);
     expect(rows.map((r) => r.accountNumber)).toEqual(['4000', '6000']);
   });
 
@@ -209,7 +246,11 @@ describe('buildCashFlowForecast', () => {
       ap('bill-1', '2026-06-20', 400),
       ap('bill-2', '2026-08-01', 900),
     ];
-    const f = buildCashFlowForecast(items, { openingBalance: 200, startMonth: '2026-06-01', months: 3 });
+    const f = buildCashFlowForecast(items, {
+      openingBalance: 200,
+      startMonth: '2026-06-01',
+      months: 3,
+    });
 
     expect(f.openingBalance).toBe(200);
     expect(f.periods).toHaveLength(3);
@@ -261,12 +302,19 @@ describe('buildCashFlowForecast', () => {
 
   it('clamps the bucket count to a sane range and defaults to 6', () => {
     expect(buildCashFlowForecast([], { startMonth: '2026-06-01' }).periods).toHaveLength(6);
-    expect(buildCashFlowForecast([], { startMonth: '2026-06-01', months: 0 }).periods).toHaveLength(6);
-    expect(buildCashFlowForecast([], { startMonth: '2026-06-01', months: 999 }).periods).toHaveLength(36);
+    expect(buildCashFlowForecast([], { startMonth: '2026-06-01', months: 0 }).periods).toHaveLength(
+      6
+    );
+    expect(
+      buildCashFlowForecast([], { startMonth: '2026-06-01', months: 999 }).periods
+    ).toHaveLength(36);
   });
 
   it('handles a December start rolling into the next year', () => {
-    const f = buildCashFlowForecast([ar('i', '2027-01-15', 100)], { startMonth: '2026-12-01', months: 2 });
+    const f = buildCashFlowForecast([ar('i', '2027-01-15', 100)], {
+      startMonth: '2026-12-01',
+      months: 2,
+    });
     expect(f.periods[0].label).toBe('Dec 2026');
     expect(f.periods[1].label).toBe('Jan 2027');
     expect(f.periods[1].periodEnd).toBe('2027-01-31');
@@ -274,7 +322,11 @@ describe('buildCashFlowForecast', () => {
   });
 
   it('produces an all-zero forecast with no items', () => {
-    const f = buildCashFlowForecast([], { openingBalance: 50, startMonth: '2026-06-01', months: 2 });
+    const f = buildCashFlowForecast([], {
+      openingBalance: 50,
+      startMonth: '2026-06-01',
+      months: 2,
+    });
     expect(f.totalInflow).toBe(0);
     expect(f.totalOutflow).toBe(0);
     expect(f.endingBalance).toBe(50);

@@ -118,8 +118,22 @@ describe('mapInvoiceRow', () => {
       updated_at: '2026-06-01',
       customer: { display_name: 'Acme Co' },
       lines: [
-        { id: 'l2', invoice_id: 'inv1', sort_order: 1, line_total: 8.5, quantity: 1, unit_price: 8.5 },
-        { id: 'l1', invoice_id: 'inv1', sort_order: 0, line_total: 100, quantity: 1, unit_price: 100 },
+        {
+          id: 'l2',
+          invoice_id: 'inv1',
+          sort_order: 1,
+          line_total: 8.5,
+          quantity: 1,
+          unit_price: 8.5,
+        },
+        {
+          id: 'l1',
+          invoice_id: 'inv1',
+          sort_order: 0,
+          line_total: 100,
+          quantity: 1,
+          unit_price: 100,
+        },
       ],
     });
     expect(inv.total).toBe(108.5);
@@ -196,7 +210,13 @@ describe('mapPaymentRow', () => {
       created_at: '2026-06-01',
       updated_at: '2026-06-01',
       applications: [
-        { id: 'pa1', payment_id: 'p1', invoice_id: 'inv1', amount_applied: 108.5, created_at: '2026-06-01' },
+        {
+          id: 'pa1',
+          payment_id: 'p1',
+          invoice_id: 'inv1',
+          amount_applied: 108.5,
+          created_at: '2026-06-01',
+        },
       ],
     });
     expect(p.amount).toBe(108.5);
@@ -385,8 +405,24 @@ describe('mapBillRow', () => {
       updated_at: '2026-06-01',
       vendor: { display_name: 'Bolt Supply' },
       lines: [
-        { id: 'l2', bill_id: 'b1', sort_order: 1, line_total: 40, quantity: 1, unit_cost: 40, account_id: 'acc-cogs' },
-        { id: 'l1', bill_id: 'b1', sort_order: 0, line_total: 100, quantity: 1, unit_cost: 100, account_id: 'acc-opex' },
+        {
+          id: 'l2',
+          bill_id: 'b1',
+          sort_order: 1,
+          line_total: 40,
+          quantity: 1,
+          unit_cost: 40,
+          account_id: 'acc-cogs',
+        },
+        {
+          id: 'l1',
+          bill_id: 'b1',
+          sort_order: 0,
+          line_total: 100,
+          quantity: 1,
+          unit_cost: 100,
+          account_id: 'acc-opex',
+        },
       ],
     });
     expect(bill.total).toBe(150);
@@ -460,7 +496,9 @@ describe('mapBillLineRow', () => {
     expect(l.locationId).toBe('dim-loc');
     expect(l.departmentId).toBe('dim-dept');
     // absent → null
-    expect(mapBillLineRow({ id: 'l4', bill_id: 'b1', quantity: 1, unit_cost: 1 }).classId).toBeNull();
+    expect(
+      mapBillLineRow({ id: 'l4', bill_id: 'b1', quantity: 1, unit_cost: 1 }).classId
+    ).toBeNull();
   });
 });
 
@@ -479,7 +517,13 @@ describe('mapVendorPaymentRow', () => {
       created_at: '2026-06-02',
       updated_at: '2026-06-02',
       applications: [
-        { id: 'vpa1', vendor_payment_id: 'vp1', bill_id: 'b1', amount_applied: 90, created_at: '2026-06-02' },
+        {
+          id: 'vpa1',
+          vendor_payment_id: 'vp1',
+          bill_id: 'b1',
+          amount_applied: 90,
+          created_at: '2026-06-02',
+        },
       ],
     });
     expect(p.amount).toBe(90);
@@ -505,7 +549,12 @@ describe('mapVendorPaymentApplicationRow', () => {
       amount_applied: 50,
       created_at: '2026-06-02',
     });
-    expect(a).toMatchObject({ id: 'vpa1', vendorPaymentId: 'vp1', billId: 'b1', amountApplied: 50 });
+    expect(a).toMatchObject({
+      id: 'vpa1',
+      vendorPaymentId: 'vp1',
+      billId: 'b1',
+      amountApplied: 50,
+    });
   });
 });
 
@@ -587,7 +636,12 @@ describe('mapArAgingRow', () => {
   });
 
   it('falls back to the current bucket on an unexpected value', () => {
-    const r = mapArAgingRow({ invoice_id: 'inv2', customer_id: 'c1', balance_due: 10, aging_bucket: 'weird' });
+    const r = mapArAgingRow({
+      invoice_id: 'inv2',
+      customer_id: 'c1',
+      balance_due: 10,
+      aging_bucket: 'weird',
+    });
     expect(r.bucket).toBe('current');
   });
 });
@@ -873,7 +927,9 @@ describe('parseRecurringPayload', () => {
   });
 
   it('parses a stringified jsonb payload', () => {
-    const p = parseRecurringPayload('{"customerId":"c2","lines":[{"quantity":1,"unitPrice":10}]}') as RecurringInvoicePayload;
+    const p = parseRecurringPayload(
+      '{"customerId":"c2","lines":[{"quantity":1,"unitPrice":10}]}'
+    ) as RecurringInvoicePayload;
     expect(p.customerId).toBe('c2');
     expect(p.lines).toHaveLength(1);
   });
@@ -1276,12 +1332,7 @@ describe('mapFixedAssetRegisterRow', () => {
 
 describe('parseCustomFieldOptions', () => {
   it('passes through a clean pre-parsed array (label defaults to value)', () => {
-    expect(
-      parseCustomFieldOptions([
-        { value: 'hi', label: 'High' },
-        { value: 'lo' },
-      ])
-    ).toEqual([
+    expect(parseCustomFieldOptions([{ value: 'hi', label: 'High' }, { value: 'lo' }])).toEqual([
       { value: 'hi', label: 'High' },
       { value: 'lo', label: 'lo' },
     ]);
@@ -1438,7 +1489,12 @@ describe('mapTaxAgencyRow', () => {
   });
 
   it('null-coerces a missing liability account and rejects an invalid frequency', () => {
-    const a = mapTaxAgencyRow({ id: 'x', name: 'X', liability_account_id: null, filing_frequency: 'weekly' });
+    const a = mapTaxAgencyRow({
+      id: 'x',
+      name: 'X',
+      liability_account_id: null,
+      filing_frequency: 'weekly',
+    });
     expect(a.liabilityAccountId).toBeNull();
     expect(a.filingFrequency).toBeNull();
   });
@@ -1485,7 +1541,12 @@ describe('parseTaxFilingRules', () => {
       { agency: 'Other', frequency: 'biweekly', due_day: 15, due_month_offset: 0 }, // freq → quarterly
     ]);
     expect(rules).toHaveLength(1);
-    expect(rules[0]).toMatchObject({ agency: 'Other', frequency: 'quarterly', dueDay: 15, dueMonthOffset: 0 });
+    expect(rules[0]).toMatchObject({
+      agency: 'Other',
+      frequency: 'quarterly',
+      dueDay: 15,
+      dueMonthOffset: 0,
+    });
   });
 
   it('returns [] for null / non-array / garbage', () => {

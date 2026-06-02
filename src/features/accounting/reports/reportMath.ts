@@ -33,7 +33,9 @@ import { AGING_BUCKETS } from '../types';
 const centsToAmount = (cents: number): number => Math.round(cents) / 100;
 
 /** Signed balance of a row in cents: debit - credit. */
-export function rowBalanceCents(row: Pick<AccountBalanceRow, 'totalDebit' | 'totalCredit'>): number {
+export function rowBalanceCents(
+  row: Pick<AccountBalanceRow, 'totalDebit' | 'totalCredit'>
+): number {
   return toCents(row.totalDebit) - toCents(row.totalCredit);
 }
 
@@ -55,7 +57,10 @@ export function naturalAmountCents(row: AccountBalanceRow): number {
  * Σ(debits) − Σ(credits) over a balanced ledger is zero. Accounts with a zero
  * balance are dropped from the listing but do not affect the totals.
  */
-export function buildTrialBalance(rows: AccountBalanceRow[], range: DateRange = {}): TrialBalanceReport {
+export function buildTrialBalance(
+  rows: AccountBalanceRow[],
+  range: DateRange = {}
+): TrialBalanceReport {
   let debitCents = 0;
   let creditCents = 0;
   const out: AccountBalanceRow[] = [];
@@ -110,7 +115,10 @@ function sectionFrom(
  * is income − expense. Asset/liability/equity rows are ignored. The window is
  * carried through unchanged (the service is responsible for having filtered to it).
  */
-export function buildProfitAndLoss(rows: AccountBalanceRow[], range: DateRange = {}): ProfitAndLossReport {
+export function buildProfitAndLoss(
+  rows: AccountBalanceRow[],
+  range: DateRange = {}
+): ProfitAndLossReport {
   const incomeRows = rows.filter((r) => r.accountType === 'income');
   const expenseRows = rows.filter((r) => r.accountType === 'expense');
 
@@ -152,13 +160,19 @@ const NET_INCOME_LINE_ID = '__net_income__';
  * synthesized here rather than read from an account. The report is balanced when
  * assets == liabilities + equity (incl. that net-income line) to the penny.
  */
-export function buildBalanceSheet(rows: AccountBalanceRow[], range: DateRange = {}): BalanceSheetReport {
+export function buildBalanceSheet(
+  rows: AccountBalanceRow[],
+  range: DateRange = {}
+): BalanceSheetReport {
   const assetRows = rows.filter((r) => r.accountType === 'asset');
   const liabilityRows = rows.filter((r) => r.accountType === 'liability');
   const equityRows = rows.filter((r) => r.accountType === 'equity');
 
   const { section: assets, subtotalCents: assetCents } = sectionFrom('Assets', assetRows);
-  const { section: liabilities, subtotalCents: liabilityCents } = sectionFrom('Liabilities', liabilityRows);
+  const { section: liabilities, subtotalCents: liabilityCents } = sectionFrom(
+    'Liabilities',
+    liabilityRows
+  );
   const { section: equityBase, subtotalCents: equityBaseCents } = sectionFrom('Equity', equityRows);
 
   // Roll current-period net income into equity as a computed line.

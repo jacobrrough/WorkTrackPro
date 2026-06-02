@@ -90,8 +90,8 @@ function TemplateCard({
             <StatusBadge tpl={tpl} asOf={asOf} />
           </div>
           <p className="text-xs text-slate-400">
-            {RECURRING_KIND_LABELS[tpl.kind]} · {scheduleLabel(tpl)} ·{' '}
-            {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+            {RECURRING_KIND_LABELS[tpl.kind]} · {scheduleLabel(tpl)} · {lineCount}{' '}
+            {lineCount === 1 ? 'line' : 'lines'}
           </p>
         </div>
         <span className="shrink-0 font-mono text-sm tabular-nums text-slate-200">
@@ -154,13 +154,7 @@ function TemplateCard({
 }
 
 /** One line of the post-run results panel: success → link, failure → reason. */
-function ResultRow({
-  result,
-  templateName,
-}: {
-  result: GenerateResult;
-  templateName: string;
-}) {
+function ResultRow({ result, templateName }: { result: GenerateResult; templateName: string }) {
   const navigate = useNavigate();
   const ok = !!result.generatedId && !isHardError(result);
   return (
@@ -179,9 +173,7 @@ function ResultRow({
             {result.error && <span className="text-amber-300"> {result.error}</span>}
           </span>
         ) : (
-          <span className="block text-xs text-red-300">
-            {result.error ?? 'Generation failed.'}
-          </span>
+          <span className="block text-xs text-red-300">{result.error ?? 'Generation failed.'}</span>
         )}
       </div>
       {ok && result.journalEntryId && (
@@ -222,10 +214,7 @@ export default function RecurringTemplatesView() {
   const [results, setResults] = useState<{ result: GenerateResult; name: string }[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const nameById = useMemo(
-    () => new Map(templates.map((t) => [t.id, t.name])),
-    [templates]
-  );
+  const nameById = useMemo(() => new Map(templates.map((t) => [t.id, t.name])), [templates]);
 
   const dueCount = useMemo(
     () => templates.filter((t) => isTemplateDue(t, asOf)).length,
@@ -246,7 +235,9 @@ export default function RecurringTemplatesView() {
   const runAll = async () => {
     setResults(null);
     const all = await generateAll.mutateAsync(asOf);
-    setResults(all.map((result) => ({ result, name: nameById.get(result.templateId) ?? 'Template' })));
+    setResults(
+      all.map((result) => ({ result, name: nameById.get(result.templateId) ?? 'Template' }))
+    );
   };
 
   const generatingAll = generateAll.isPending;

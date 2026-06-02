@@ -50,7 +50,10 @@ function CheckNowBar() {
     setFeedback(null);
     const res = await check.mutateAsync();
     if (res.ok) {
-      setFeedback({ ok: true, text: res.message || 'Check complete. Any new differences appear below.' });
+      setFeedback({
+        ok: true,
+        text: res.message || 'Check complete. Any new differences appear below.',
+      });
     } else {
       setFeedback({ ok: false, text: res.error || 'The check could not be run.' });
     }
@@ -70,11 +73,7 @@ function CheckNowBar() {
             any differences below — it never changes a stored rate on its own.
           </p>
         </div>
-        <Button
-          icon="sync"
-          onClick={run}
-          disabled={check.isPending}
-        >
+        <Button icon="sync" onClick={run} disabled={check.isPending}>
           {check.isPending ? 'Checking…' : 'Check now'}
         </Button>
       </div>
@@ -143,9 +142,7 @@ function SourceRow({ source }: { source: TaxTableSource }) {
           {source.jurisdiction && (
             <Pill className="bg-slate-500/15 text-slate-400">{source.jurisdiction}</Pill>
           )}
-          {!source.active && (
-            <Pill className="bg-slate-500/15 text-slate-500">Inactive</Pill>
-          )}
+          {!source.active && <Pill className="bg-slate-500/15 text-slate-500">Inactive</Pill>}
         </div>
         <p className="mt-0.5 text-xs text-slate-500">
           {lastCheckedLabel(source.lastCheckedAt)} · every {source.checkFrequencyDays} days
@@ -218,8 +215,9 @@ export default function TaxTableUpdatesView() {
           <p className="mt-1 text-sm text-slate-400">
             Advisory only. We check official sales-tax (CDTFA) and payroll (CA EDD) tables on a
             quarterly schedule and flag when the published rates differ from your stored rates.
-            Changes are <span className="font-semibold text-slate-300">never applied automatically</span> —
-            you review and confirm each one.
+            Changes are{' '}
+            <span className="font-semibold text-slate-300">never applied automatically</span> — you
+            review and confirm each one.
           </p>
         </div>
 
@@ -245,22 +243,32 @@ export default function TaxTableUpdatesView() {
                 Could not load drift alerts. Confirm the accounting schema is exposed and you have
                 an accounting role.
               </p>
-              <Button size="sm" variant="secondary" icon="refresh" onClick={() => openDrift.refetch()}>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="refresh"
+                onClick={() => openDrift.refetch()}
+              >
                 Retry
               </Button>
             </div>
           )}
 
-          {!openDrift.isPending && !openDrift.isError && !hasOpenDrift(count) && driftRows.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
-              <span className="material-symbols-outlined text-3xl text-emerald-400">task_alt</span>
-              <p className="font-bold text-white">No open alerts</p>
-              <p className="max-w-md text-sm text-slate-400">
-                Your stored tax rates match the latest checked tables. If a quarterly check (or a
-                manual one) finds a difference, it will appear here for you to review.
-              </p>
-            </div>
-          )}
+          {!openDrift.isPending &&
+            !openDrift.isError &&
+            !hasOpenDrift(count) &&
+            driftRows.length === 0 && (
+              <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
+                <span className="material-symbols-outlined text-3xl text-emerald-400">
+                  task_alt
+                </span>
+                <p className="font-bold text-white">No open alerts</p>
+                <p className="max-w-md text-sm text-slate-400">
+                  Your stored tax rates match the latest checked tables. If a quarterly check (or a
+                  manual one) finds a difference, it will appear here for you to review.
+                </p>
+              </div>
+            )}
 
           {!openDrift.isPending && !openDrift.isError && driftRows.length > 0 && (
             <Card padding="none" className="divide-y divide-white/5 overflow-hidden">
@@ -290,7 +298,12 @@ export default function TaxTableUpdatesView() {
           {!sources.isPending && sources.isError && (
             <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
               <p className="text-sm text-red-300">Could not load tax-table sources.</p>
-              <Button size="sm" variant="secondary" icon="refresh" onClick={() => sources.refetch()}>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="refresh"
+                onClick={() => sources.refetch()}
+              >
                 Retry
               </Button>
             </div>
@@ -312,11 +325,11 @@ export default function TaxTableUpdatesView() {
         </section>
 
         <p className="text-xs leading-relaxed text-slate-500">
-          <span className="font-semibold text-slate-400">How this works:</span> a scheduled job pulls
-          each source&apos;s official data file, records a snapshot, and compares it to your active
-          tax rates. A difference becomes an alert here — it does not change anything. Applying an
-          alert updates the stored rate only (no journal entry, no money moved); future invoices then
-          use the new rate.
+          <span className="font-semibold text-slate-400">How this works:</span> a scheduled job
+          pulls each source&apos;s official data file, records a snapshot, and compares it to your
+          active tax rates. A difference becomes an alert here — it does not change anything.
+          Applying an alert updates the stored rate only (no journal entry, no money moved); future
+          invoices then use the new rate.
         </p>
       </div>
     </AccountingShell>

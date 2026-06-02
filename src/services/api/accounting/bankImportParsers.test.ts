@@ -199,7 +199,11 @@ DATA:OFXSGML
   it('parses well-formed (XML/2.x) OFX with closing tags too', () => {
     const xml = `<OFX><STMTTRN><DTPOSTED>20260601</DTPOSTED><TRNAMT>-7.00</TRNAMT><FITID>A1</FITID><NAME>Fee</NAME></STMTTRN></OFX>`;
     const res = parseOfx(xml);
-    expect(res.transactions[0]).toMatchObject({ amount: -7, externalId: 'A1', txnDate: '2026-06-01' });
+    expect(res.transactions[0]).toMatchObject({
+      amount: -7,
+      externalId: 'A1',
+      txnDate: '2026-06-01',
+    });
   });
 
   it('throws when there are no STMTTRN blocks', () => {
@@ -209,7 +213,9 @@ DATA:OFXSGML
 
 describe('parseBankFile dispatch', () => {
   it('routes OFX text to the OFX parser', () => {
-    const res = parseBankFile('<OFX><STMTTRN><DTPOSTED>20260601</DTPOSTED><TRNAMT>-1.00</TRNAMT></STMTTRN></OFX>');
+    const res = parseBankFile(
+      '<OFX><STMTTRN><DTPOSTED>20260601</DTPOSTED><TRNAMT>-1.00</TRNAMT></STMTTRN></OFX>'
+    );
     expect(res.format).toBe('ofx');
     expect(res.transactions[0].amount).toBe(-1);
   });
@@ -230,9 +236,7 @@ describe('syntheticExternalId', () => {
     expect(syntheticExternalId(txn, 0).startsWith('gen:')).toBe(true);
   });
   it('differs when the amount differs', () => {
-    expect(syntheticExternalId(txn, 0)).not.toBe(
-      syntheticExternalId({ ...txn, amount: -43.5 }, 0)
-    );
+    expect(syntheticExternalId(txn, 0)).not.toBe(syntheticExternalId({ ...txn, amount: -43.5 }, 0));
   });
   it('differs by index so identical same-day rows stay distinct', () => {
     expect(syntheticExternalId(txn, 0)).not.toBe(syntheticExternalId(txn, 1));
