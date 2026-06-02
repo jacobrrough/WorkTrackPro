@@ -74,7 +74,10 @@ export const paymentsService = {
         customerId: input.customerId,
       });
     } catch (e) {
-      return { payment: null, error: e instanceof Error ? e.message : 'Unable to build the receipt entry.' };
+      return {
+        payment: null,
+        error: e instanceof Error ? e.message : 'Unable to build the receipt entry.',
+      };
     }
 
     const paymentDate = input.paymentDate ?? new Date().toISOString().slice(0, 10);
@@ -95,7 +98,8 @@ export const paymentsService = {
       })
       .select('*')
       .single();
-    if (pErr || !payRow) return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
+    if (pErr || !payRow)
+      return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
     const paymentId = (payRow as Row).id as string;
 
     // 2) Post the receipt JE.

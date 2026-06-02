@@ -96,7 +96,7 @@ function DimensionEditorModal({
         setError(
           res.error?.includes('duplicate') || res.error?.includes('unique')
             ? `A ${label.toLowerCase()} named “${name}” already exists.`
-            : res.error ?? 'Could not create the dimension.'
+            : (res.error ?? 'Could not create the dimension.')
         );
         return;
       }
@@ -137,7 +137,11 @@ function DimensionEditorModal({
             />
           </FormField>
 
-          <FormField label="Code" htmlFor="dim-code" hint="Optional short code shown in pickers and reports.">
+          <FormField
+            label="Code"
+            htmlFor="dim-code"
+            hint="Optional short code shown in pickers and reports."
+          >
             <input
               id="dim-code"
               className={inputClass}
@@ -179,13 +183,7 @@ function DimensionEditorModal({
   );
 }
 
-function DimensionRow({
-  dimension,
-  onEdit,
-}: {
-  dimension: Dimension;
-  onEdit: () => void;
-}) {
+function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () => void }) {
   const deactivate = useDeactivateDimension();
   const update = useUpdateDimension();
   const busy = deactivate.isPending || update.isPending;
@@ -202,7 +200,9 @@ function DimensionRow({
   return (
     <div className="flex items-center gap-3 px-3 py-2.5">
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-sm ${dimension.isActive ? 'text-white' : 'text-slate-500'}`}>
+        <span
+          className={`block truncate text-sm ${dimension.isActive ? 'text-white' : 'text-slate-500'}`}
+        >
           {dimension.name}
         </span>
         <span className="block text-xs text-slate-500">
@@ -253,7 +253,9 @@ function DimensionSection({
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
           <span className="material-symbols-outlined text-lg text-primary">{TYPE_ICON[type]}</span>
           {plural}
-          <span className="font-mono text-xs font-normal text-slate-500">({dimensions.length})</span>
+          <span className="font-mono text-xs font-normal text-slate-500">
+            ({dimensions.length})
+          </span>
         </h2>
         <Button size="sm" variant="secondary" icon="add" onClick={onAdd}>
           Add
@@ -300,9 +302,9 @@ export default function DimensionsView() {
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-xl text-sm text-slate-400">
-            Classes, locations, and departments are reporting tags you can attach to invoice,
-            bill, and journal lines. They never move money — they slice the same postings so
-            reports can be filtered by program, site, or team.
+            Classes, locations, and departments are reporting tags you can attach to invoice, bill,
+            and journal lines. They never move money — they slice the same postings so reports can
+            be filtered by program, site, or team.
           </p>
           <label className="flex shrink-0 items-center gap-2 text-sm text-slate-300">
             <input

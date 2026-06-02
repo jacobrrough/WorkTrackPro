@@ -85,11 +85,16 @@ export const reconciliationsService = {
   /** Patch the statement figures while a reconciliation is in progress. */
   async update(
     id: string,
-    patch: { statementDate?: string; statementEndingBalance?: number | null; beginningBalance?: number | null }
+    patch: {
+      statementDate?: string;
+      statementEndingBalance?: number | null;
+      beginningBalance?: number | null;
+    }
   ): Promise<{ reconciliation: Reconciliation | null; error?: string }> {
     const row: Record<string, unknown> = {};
     if (patch.statementDate !== undefined) row.statement_date = patch.statementDate;
-    if (patch.statementEndingBalance !== undefined) row.statement_ending_balance = patch.statementEndingBalance;
+    if (patch.statementEndingBalance !== undefined)
+      row.statement_ending_balance = patch.statementEndingBalance;
     if (patch.beginningBalance !== undefined) row.beginning_balance = patch.beginningBalance;
     const { data, error } = await acct()
       .from('reconciliations')
@@ -117,7 +122,10 @@ export const reconciliationsService = {
     const row = cleared
       ? { reconciliation_id: reconciliationId, cleared_at: new Date().toISOString() }
       : { reconciliation_id: null, cleared_at: null };
-    const { error } = await acct().from('bank_transactions').update(row).eq('id', bankTransactionId);
+    const { error } = await acct()
+      .from('bank_transactions')
+      .update(row)
+      .eq('id', bankTransactionId);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -132,7 +140,10 @@ export const reconciliationsService = {
     const row = cleared
       ? { reconciliation_id: reconciliationId, cleared_at: new Date().toISOString() }
       : { reconciliation_id: null, cleared_at: null };
-    const { error } = await acct().from('bank_transactions').update(row).in('id', bankTransactionIds);
+    const { error } = await acct()
+      .from('bank_transactions')
+      .update(row)
+      .in('id', bankTransactionIds);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -187,7 +198,10 @@ export const reconciliationsService = {
       .select('*')
       .single();
     if (error || !data) {
-      return { reconciliation: null, error: error?.message ?? 'Failed to complete reconciliation.' };
+      return {
+        reconciliation: null,
+        error: error?.message ?? 'Failed to complete reconciliation.',
+      };
     }
     // Best-effort: stamp the bank account's last_reconciled_at (non-fatal if it fails).
     await acct()

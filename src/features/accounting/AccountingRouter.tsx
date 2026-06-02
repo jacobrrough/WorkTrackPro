@@ -70,10 +70,7 @@ const JobCostingDetailView = lazyWithRetry(
   () => import('./job-costing/JobCostingDetailView'),
   'JobCostingDetailView'
 );
-const DimensionsView = lazyWithRetry(
-  () => import('./dimensions/DimensionsView'),
-  'DimensionsView'
-);
+const DimensionsView = lazyWithRetry(() => import('./dimensions/DimensionsView'), 'DimensionsView');
 const RecurringTemplatesView = lazyWithRetry(
   () => import('./recurring/RecurringTemplatesView'),
   'RecurringTemplatesView'

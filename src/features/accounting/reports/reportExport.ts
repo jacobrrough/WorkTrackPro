@@ -144,10 +144,7 @@ export function reportToHtml(doc: ReportDocument): string {
           const cells = [...row.cells];
           while (cells.length < section.columns.length) cells.push('');
           const labelCells = cells
-            .map(
-              (c) =>
-                `<td style="padding:6px 8px;${weight}${border}">${escapeHtml(c)}</td>`
-            )
+            .map((c) => `<td style="padding:6px 8px;${weight}${border}">${escapeHtml(c)}</td>`)
             .join('');
           const amountCell =
             row.amount == null

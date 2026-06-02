@@ -94,19 +94,39 @@ describe('computeStraightLineSchedule', () => {
 
   it('returns no rows when salvage >= cost (nothing to depreciate)', () => {
     expect(
-      computeStraightLineSchedule({ cost: 500, salvageValue: 500, usefulLifeMonths: 12, inServiceDate: '2026-01-01' })
+      computeStraightLineSchedule({
+        cost: 500,
+        salvageValue: 500,
+        usefulLifeMonths: 12,
+        inServiceDate: '2026-01-01',
+      })
     ).toEqual([]);
     expect(
-      computeStraightLineSchedule({ cost: 500, salvageValue: 600, usefulLifeMonths: 12, inServiceDate: '2026-01-01' })
+      computeStraightLineSchedule({
+        cost: 500,
+        salvageValue: 600,
+        usefulLifeMonths: 12,
+        inServiceDate: '2026-01-01',
+      })
     ).toEqual([]);
   });
 
   it('returns no rows for a non-positive useful life', () => {
     expect(
-      computeStraightLineSchedule({ cost: 1000, salvageValue: 0, usefulLifeMonths: 0, inServiceDate: '2026-01-01' })
+      computeStraightLineSchedule({
+        cost: 1000,
+        salvageValue: 0,
+        usefulLifeMonths: 0,
+        inServiceDate: '2026-01-01',
+      })
     ).toEqual([]);
     expect(
-      computeStraightLineSchedule({ cost: 1000, salvageValue: 0, usefulLifeMonths: -5, inServiceDate: '2026-01-01' })
+      computeStraightLineSchedule({
+        cost: 1000,
+        salvageValue: 0,
+        usefulLifeMonths: -5,
+        inServiceDate: '2026-01-01',
+      })
     ).toEqual([]);
   });
 

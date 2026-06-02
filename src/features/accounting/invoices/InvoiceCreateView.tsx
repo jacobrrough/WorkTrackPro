@@ -166,10 +166,7 @@ export default function InvoiceCreateView() {
   const selectedCustomer = customers.find((c) => c.id === customerId);
 
   // Default the header tax code to the customer's preferred code, else the default code.
-  const defaultTaxCode = useMemo(
-    () => taxCodes.find((t) => t.isDefault) ?? null,
-    [taxCodes]
-  );
+  const defaultTaxCode = useMemo(() => taxCodes.find((t) => t.isDefault) ?? null, [taxCodes]);
 
   const updateLine = (i: number, patch: Partial<NewInvoiceLineInput>) =>
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -187,7 +184,7 @@ export default function InvoiceCreateView() {
       lines,
       defaultIncomeAccountId: null,
       headerTaxCodeId: taxCodeId || null,
-      taxRateByCode: (id) => (id ? rateById.get(id) ?? 0 : 0),
+      taxRateByCode: (id) => (id ? (rateById.get(id) ?? 0) : 0),
       taxExempt: selectedCustomer?.taxExempt ?? false,
     });
   }, [lines, taxCodes, taxCodeId, selectedCustomer]);
@@ -272,7 +269,11 @@ export default function InvoiceCreateView() {
             </select>
           </FormField>
 
-          <FormField label="Tax code" htmlFor="inv-tax" hint="Applied to taxable lines without their own code">
+          <FormField
+            label="Tax code"
+            htmlFor="inv-tax"
+            hint="Applied to taxable lines without their own code"
+          >
             <select
               id="inv-tax"
               className={inputClass}

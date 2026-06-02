@@ -39,9 +39,7 @@ export function isISODateString(v: string): boolean {
   if (month < 1 || month > 12 || day < 1 || day > 31) return false;
   // Reject impossible days (e.g. 2026-02-30) by round-tripping through UTC.
   const d = new Date(Date.UTC(year, month - 1, day));
-  return (
-    d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day
-  );
+  return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
 }
 
 /** True when a raw value is "empty" (unset): null, undefined, or an all-whitespace string. */
@@ -211,7 +209,9 @@ export function dataTypeUsesOptions(dataType: CustomFieldDataType): boolean {
  * value. Returns [] for non-select callers via dataTypeUsesOptions upstream, but is safe
  * to call regardless. Pure; returns a new array.
  */
-export function normalizeOptions(options: readonly CustomFieldOption[] | undefined): CustomFieldOption[] {
+export function normalizeOptions(
+  options: readonly CustomFieldOption[] | undefined
+): CustomFieldOption[] {
   if (!options || options.length === 0) return [];
   const seen = new Set<string>();
   const out: CustomFieldOption[] = [];

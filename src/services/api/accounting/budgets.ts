@@ -83,12 +83,16 @@ export const budgetsService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { budget: null, error: error?.message ?? 'Failed to create budget.' };
+    if (error || !data)
+      return { budget: null, error: error?.message ?? 'Failed to create budget.' };
     return { budget: mapBudgetRow(data as Row) };
   },
 
   /** Patch a budget header (name / fiscal year / status / description). */
-  async update(id: string, input: UpdateBudgetInput): Promise<{ budget: Budget | null; error?: string }> {
+  async update(
+    id: string,
+    input: UpdateBudgetInput
+  ): Promise<{ budget: Budget | null; error?: string }> {
     const patch: Record<string, unknown> = {};
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -96,7 +100,11 @@ export const budgetsService = {
       patch.name = name;
     }
     if (input.fiscalYear !== undefined) {
-      if (!Number.isInteger(input.fiscalYear) || input.fiscalYear < 2000 || input.fiscalYear > 2100) {
+      if (
+        !Number.isInteger(input.fiscalYear) ||
+        input.fiscalYear < 2000 ||
+        input.fiscalYear > 2100
+      ) {
         return { budget: null, error: 'Fiscal year must be a year between 2000 and 2100.' };
       }
       patch.fiscal_year = input.fiscalYear;
@@ -105,13 +113,22 @@ export const budgetsService = {
     if (input.description !== undefined) patch.description = input.description?.trim() || null;
     if (Object.keys(patch).length === 0) return { budget: await this.getById(id) };
 
-    const { data, error } = await acct().from('budgets').update(patch).eq('id', id).select('*').single();
-    if (error || !data) return { budget: null, error: error?.message ?? 'Failed to update budget.' };
+    const { data, error } = await acct()
+      .from('budgets')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !data)
+      return { budget: null, error: error?.message ?? 'Failed to update budget.' };
     return { budget: mapBudgetRow(data as Row) };
   },
 
   /** Set just the lifecycle status (draft → active → archived). */
-  async setStatus(id: string, status: Budget['status']): Promise<{ budget: Budget | null; error?: string }> {
+  async setStatus(
+    id: string,
+    status: Budget['status']
+  ): Promise<{ budget: Budget | null; error?: string }> {
     return this.update(id, { status });
   },
 
@@ -147,7 +164,10 @@ export const budgetsService = {
   async getGrid(budgetId: string): Promise<BudgetGrid> {
     const budget = await this.getById(budgetId);
     if (!budget) throw new Error('Budget not found.');
-    const [accounts, lines] = await Promise.all([accountsService.getAll(), this.listLines(budgetId)]);
+    const [accounts, lines] = await Promise.all([
+      accountsService.getAll(),
+      this.listLines(budgetId),
+    ]);
     // Budget the ACTIVE chart (an inactive account can still hold legacy cells, but the
     // grid is the editable plan going forward — matches how the dimensions UI budgets).
     const activeAccounts = accounts.filter((a) => a.isActive);
@@ -237,7 +257,11 @@ export const budgetsService = {
         normalBalance: a.normalBalance,
       }));
 
-    const { rows, totalBudgetCents, totalActualCents } = buildBudgetVsActual(reportable, lines, actuals);
+    const { rows, totalBudgetCents, totalActualCents } = buildBudgetVsActual(
+      reportable,
+      lines,
+      actuals
+    );
     return {
       budgetId,
       budgetName: budget.name,
@@ -254,7 +278,9 @@ export const budgetsService = {
   /** Open AR/AP items (balance_due > 0) with their due dates, for the forecast. */
   async getCashFlowItems(): Promise<CashFlowItem[]> {
     const [ar, ap] = await Promise.all([
-      acct().from('v_ar_aging').select('invoice_id, invoice_number, customer_name, due_date, balance_due'),
+      acct()
+        .from('v_ar_aging')
+        .select('invoice_id, invoice_number, customer_name, due_date, balance_due'),
       acct().from('v_ap_aging').select('bill_id, bill_number, vendor_name, due_date, balance_due'),
     ]);
     if (ar.error) throw ar.error;

@@ -173,10 +173,7 @@ export function buildSalesTaxLiability(input: SalesTaxLiabilityInput): SalesTaxL
     const cents = lineCollectedCents(line);
     totalCollectedCents += cents;
     if (line.sourceType === 'invoice' && line.sourceId && invoiceById.has(line.sourceId)) {
-      collectedByInvoice.set(
-        line.sourceId,
-        (collectedByInvoice.get(line.sourceId) ?? 0) + cents
-      );
+      collectedByInvoice.set(line.sourceId, (collectedByInvoice.get(line.sourceId) ?? 0) + cents);
     } else {
       // Manual JE / payment / void / source not in range → cannot tie to an agency.
       unattributedCents += cents;

@@ -118,7 +118,8 @@ export const customFieldsService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { def: null, error: error?.message ?? 'Failed to create custom field.' };
+    if (error || !data)
+      return { def: null, error: error?.message ?? 'Failed to create custom field.' };
     return { def: mapCustomFieldDefRow(data as Row) };
   },
 
@@ -153,7 +154,8 @@ export const customFieldsService = {
       .eq('id', id)
       .select('*')
       .single();
-    if (error || !data) return { def: null, error: error?.message ?? 'Failed to update custom field.' };
+    if (error || !data)
+      return { def: null, error: error?.message ?? 'Failed to update custom field.' };
     return { def: mapCustomFieldDefRow(data as Row) };
   },
 
@@ -251,17 +253,15 @@ export const customFieldsService = {
       return { ok: true };
     }
 
-    const { error } = await acct()
-      .from('custom_field_values')
-      .upsert(
-        {
-          def_id: defId,
-          entity_type: entityType,
-          entity_id: entityId,
-          value: coerced,
-        },
-        { onConflict: 'def_id,entity_id' }
-      );
+    const { error } = await acct().from('custom_field_values').upsert(
+      {
+        def_id: defId,
+        entity_type: entityType,
+        entity_id: entityId,
+        value: coerced,
+      },
+      { onConflict: 'def_id,entity_id' }
+    );
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -306,12 +306,22 @@ export const customFieldsService = {
       const def = defsById.get(input.defId);
       if (!def) return { ok: false, saved: 0, error: `Unknown custom field ${input.defId}.` };
       if (def.entityType !== entityType) {
-        return { ok: false, saved: 0, error: 'A custom field does not belong to this entity type.' };
+        return {
+          ok: false,
+          saved: 0,
+          error: 'A custom field does not belong to this entity type.',
+        };
       }
       const { valid, coerced, error: vErr } = validateCustomFieldValue(def, input.value);
       if (!valid) return { ok: false, saved: 0, error: vErr ?? 'Invalid value.' };
       if (coerced == null) toDelete.push(input.defId);
-      else toUpsert.push({ def_id: input.defId, entity_type: entityType, entity_id: entityId, value: coerced });
+      else
+        toUpsert.push({
+          def_id: input.defId,
+          entity_type: entityType,
+          entity_id: entityId,
+          value: coerced,
+        });
     }
 
     // Delete the unset ones first (so flipping a value to empty clears it).

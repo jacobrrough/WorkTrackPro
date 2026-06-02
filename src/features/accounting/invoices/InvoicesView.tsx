@@ -35,7 +35,9 @@ function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void 
         {invoice.invoiceNumber || 'Draft'}
       </span>
       <span className="w-24 shrink-0 text-sm text-slate-400">{invoice.invoiceDate}</span>
-      <span className="flex-1 truncate text-white">{invoice.customerName || invoice.customerId}</span>
+      <span className="flex-1 truncate text-white">
+        {invoice.customerName || invoice.customerId}
+      </span>
       <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-400 sm:block">
         {formatMoney(invoice.total)}
       </span>
@@ -77,11 +79,7 @@ export default function InvoicesView() {
             Create an invoice from a job or from scratch. Sending it posts a balanced revenue entry
             to the general ledger.
           </p>
-          <Button
-            size="sm"
-            icon="add"
-            onClick={() => navigate(`${ACCOUNTING_BASE}/invoices/new`)}
-          >
+          <Button size="sm" icon="add" onClick={() => navigate(`${ACCOUNTING_BASE}/invoices/new`)}>
             New invoice
           </Button>
         </div>

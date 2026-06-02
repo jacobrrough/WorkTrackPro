@@ -29,7 +29,9 @@ export const journalService = {
   },
 
   /** Insert a draft entry + its lines. Returns the created (still-draft) entry. */
-  async createDraft(input: NewJournalEntryInput): Promise<{ entry: JournalEntry | null; error?: string }> {
+  async createDraft(
+    input: NewJournalEntryInput
+  ): Promise<{ entry: JournalEntry | null; error?: string }> {
     const { data: header, error: hErr } = await acct()
       .from('journal_entries')
       .insert({
@@ -80,7 +82,9 @@ export const journalService = {
    * RLS), the just-created draft is removed so no orphan drafts accumulate — the
    * caller keeps the user's input and can retry. The DB error message is returned.
    */
-  async createAndPost(input: NewJournalEntryInput): Promise<{ entryId: string | null; error?: string }> {
+  async createAndPost(
+    input: NewJournalEntryInput
+  ): Promise<{ entryId: string | null; error?: string }> {
     const { entry, error } = await this.createDraft(input);
     if (!entry) return { entryId: null, error };
     const posted = await this.post(entry.id);

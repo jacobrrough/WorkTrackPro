@@ -3,10 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { AccountPicker } from '../components/AccountPicker';
-import {
-  useBankAccount,
-  useBankTransactions,
-} from '../hooks/useAccountingQueries';
+import { useBankAccount, useBankTransactions } from '../hooks/useAccountingQueries';
 import {
   useAcceptBankTransaction,
   useCategorizeBankTransaction,
@@ -117,9 +114,7 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
             {txn.matchedJournalEntryId && (
               <button
                 type="button"
-                onClick={() =>
-                  navigate(`${ACCOUNTING_BASE}/journal/${txn.matchedJournalEntryId}`)
-                }
+                onClick={() => navigate(`${ACCOUNTING_BASE}/journal/${txn.matchedJournalEntryId}`)}
                 className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover"
               >
                 <span className="material-symbols-outlined text-base">menu_book</span>
@@ -191,8 +186,11 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
 export default function BankAccountDetailView() {
   const { bankAccountId } = useParams<{ bankAccountId: string }>();
   const navigate = useNavigate();
-  const { data: account, isPending: accountLoading, isError: accountError } =
-    useBankAccount(bankAccountId);
+  const {
+    data: account,
+    isPending: accountLoading,
+    isError: accountError,
+  } = useBankAccount(bankAccountId);
   const [tab, setTab] = useState<StatusTab>('all');
 
   const filter: BankTransactionFilter = useMemo(
@@ -322,7 +320,9 @@ export default function BankAccountDetailView() {
 
             {!txnsLoading && !txnsError && transactions.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-                <span className="material-symbols-outlined text-4xl text-slate-500">receipt_long</span>
+                <span className="material-symbols-outlined text-4xl text-slate-500">
+                  receipt_long
+                </span>
                 <p className="text-lg font-bold text-white">
                   {tab === 'all' ? 'No transactions yet' : `No ${tab} transactions`}
                 </p>

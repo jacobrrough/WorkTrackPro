@@ -351,7 +351,10 @@ describe('buildBillExpenseJournalLines', () => {
     });
     const noJob = buildBillExpenseJournalLines(totals, ACCOUNTS, { vendorId: 'v1' });
     expect(noJob.lines.every((l) => l.jobId == null)).toBe(true);
-    const withJob = buildBillExpenseJournalLines(totals, ACCOUNTS, { vendorId: 'v1', jobId: 'job-9' });
+    const withJob = buildBillExpenseJournalLines(totals, ACCOUNTS, {
+      vendorId: 'v1',
+      jobId: 'job-9',
+    });
     expect(withJob.lines.every((l) => l.jobId === 'job-9')).toBe(true);
   });
 
@@ -500,7 +503,9 @@ describe('buildCogsJournalLines (B3 FIFO COGS relief)', () => {
   });
 
   it('throws when the COGS account is not configured', () => {
-    expect(() => buildCogsJournalLines(1000, { ...ACCOUNTS, cogs: null })).toThrow(/Cost of Goods Sold/i);
+    expect(() => buildCogsJournalLines(1000, { ...ACCOUNTS, cogs: null })).toThrow(
+      /Cost of Goods Sold/i
+    );
   });
 
   it('throws when the Inventory Asset account is not configured', () => {
@@ -551,7 +556,10 @@ describe('buildDepreciationJournalLines (D3 depreciation period)', () => {
 
   it('throws when the accumulated-depreciation account is not configured', () => {
     expect(() =>
-      buildDepreciationJournalLines(1000, { ...DEP_ACCOUNTS, accumulatedDepreciationAccountId: null })
+      buildDepreciationJournalLines(1000, {
+        ...DEP_ACCOUNTS,
+        accumulatedDepreciationAccountId: null,
+      })
     ).toThrow(/Accumulated Depreciation/i);
   });
 });
@@ -646,25 +654,41 @@ describe('buildBankTransactionJournalLines (A4 categorize/accept)', () => {
 
   it('rejects a zero amount (would be a trivial/unbalanced entry)', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: 0, bankGlAccountId: BANK, categoryAccountId: CATEGORY })
+      buildBankTransactionJournalLines({
+        amount: 0,
+        bankGlAccountId: BANK,
+        categoryAccountId: CATEGORY,
+      })
     ).toThrow(/zero-amount/i);
   });
 
   it('rejects a missing bank GL account', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: -10, bankGlAccountId: null, categoryAccountId: CATEGORY })
+      buildBankTransactionJournalLines({
+        amount: -10,
+        bankGlAccountId: null,
+        categoryAccountId: CATEGORY,
+      })
     ).toThrow(/linked to a GL account/i);
   });
 
   it('rejects a missing category account', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: -10, bankGlAccountId: BANK, categoryAccountId: null })
+      buildBankTransactionJournalLines({
+        amount: -10,
+        bankGlAccountId: BANK,
+        categoryAccountId: null,
+      })
     ).toThrow(/category account/i);
   });
 
   it('rejects category === bank (would not represent a real movement)', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: -10, bankGlAccountId: BANK, categoryAccountId: BANK })
+      buildBankTransactionJournalLines({
+        amount: -10,
+        bankGlAccountId: BANK,
+        categoryAccountId: BANK,
+      })
     ).toThrow(/must differ/i);
   });
 });
@@ -724,7 +748,14 @@ describe('dimension threading on invoice revenue lines (B2)', () => {
   it('stamps class/location/department on the income credit line', () => {
     const totals = computeInvoiceTotals({
       lines: [
-        { quantity: 1, unitPrice: 100, taxable: false, classId: 'cl-1', locationId: 'lo-1', departmentId: 'de-1' },
+        {
+          quantity: 1,
+          unitPrice: 100,
+          taxable: false,
+          classId: 'cl-1',
+          locationId: 'lo-1',
+          departmentId: 'de-1',
+        },
       ],
       defaultIncomeAccountId: 'acc-sales',
       taxRateByCode: () => 0,
@@ -778,7 +809,14 @@ describe('dimension threading on bill expense lines (B2)', () => {
   it('stamps class/location/department on the expense debit line', () => {
     const totals = computeBillTotals({
       lines: [
-        { quantity: 1, unitCost: 100, accountId: 'acc-opex', classId: 'cl-1', locationId: 'lo-1', departmentId: 'de-1' },
+        {
+          quantity: 1,
+          unitCost: 100,
+          accountId: 'acc-opex',
+          classId: 'cl-1',
+          locationId: 'lo-1',
+          departmentId: 'de-1',
+        },
       ],
       resolveDebitAccount: (l) => l.accountId ?? null,
     });

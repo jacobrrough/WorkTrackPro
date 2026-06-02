@@ -45,7 +45,9 @@ describe('computeBalance', () => {
 
 describe('validateJournalDraft', () => {
   it('requires at least two lines with amounts', () => {
-    expect(validateJournalDraft([{ accountId: 'a', debit: 100, credit: 0 }])).toMatch(/at least two/i);
+    expect(validateJournalDraft([{ accountId: 'a', debit: 100, credit: 0 }])).toMatch(
+      /at least two/i
+    );
   });
 
   it('rejects a line with both a debit and a credit', () => {

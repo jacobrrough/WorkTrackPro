@@ -151,9 +151,7 @@ describe('AccountingSettingsView — books-closed (period lock)', () => {
   it('lets an admin MOVE the lock date: confirms, calls the RPC, and shows the new date', async () => {
     // First read returns the existing lock; after a successful write the query refetches
     // and returns the new date (simulating the invalidation in useSetClosedThroughDate).
-    getClosedThroughDate
-      .mockResolvedValueOnce('2026-01-31')
-      .mockResolvedValue('2026-02-28');
+    getClosedThroughDate.mockResolvedValueOnce('2026-01-31').mockResolvedValue('2026-02-28');
     setClosedThroughDate.mockResolvedValue({ ok: true });
     renderScreen();
 
@@ -182,7 +180,9 @@ describe('AccountingSettingsView — books-closed (period lock)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Re-open the books/i }));
 
     // The dialog confirms a re-open and the RPC is called with null.
-    expect(within(dialog()).getByRole('heading', { name: /Re-open the books\?/i })).toBeInTheDocument();
+    expect(
+      within(dialog()).getByRole('heading', { name: /Re-open the books\?/i })
+    ).toBeInTheDocument();
     fireEvent.click(within(dialog()).getByRole('button', { name: /^Re-open books$/i }));
 
     await waitFor(() => expect(setClosedThroughDate).toHaveBeenCalledWith(null));
@@ -279,9 +279,7 @@ describe('AccountingSettingsView — Default GL accounts (COA-EXPAND)', () => {
   it('flags an unset structural mapping as "Not configured"', async () => {
     getClosedThroughDate.mockResolvedValue(null);
     // Only one structural key is seeded; the other three are null.
-    getDefaultAccounts.mockResolvedValue(
-      defaultAccounts({ openingBalanceEquity: 'id-3050' })
-    );
+    getDefaultAccounts.mockResolvedValue(defaultAccounts({ openingBalanceEquity: 'id-3050' }));
     getAllAccounts.mockResolvedValue([account('id-3050', '3050', 'Opening Balance Equity')]);
     renderScreen();
 

@@ -249,7 +249,13 @@ describe('agingDocument', () => {
   it('labels AR with Customer/Invoice headers', () => {
     const doc = agingDocument(aging, 'ar');
     expect(doc.title).toBe('A/R Aging');
-    expect(doc.sections[0].columns).toEqual(['Invoice', 'Customer', 'Due', 'Days overdue', 'Bucket']);
+    expect(doc.sections[0].columns).toEqual([
+      'Invoice',
+      'Customer',
+      'Due',
+      'Days overdue',
+      'Bucket',
+    ]);
     expect(doc.filenameBase).toBe('ar-aging');
   });
   it('labels AP with Vendor/Bill headers', () => {
@@ -336,9 +342,16 @@ describe('salesTaxLiabilityDocument', () => {
     expect(agencies?.columns).toEqual(['Agency', 'Rate', 'Taxable sales', 'Non-taxable sales']);
     // two agencies + total
     expect(agencies?.rows).toHaveLength(3);
-    expect(agencies?.rows[0]).toMatchObject({ cells: ['CA State (CDTFA)', '7.25%', '1000.00', '200.00'], amount: 72.5 });
+    expect(agencies?.rows[0]).toMatchObject({
+      cells: ['CA State (CDTFA)', '7.25%', '1000.00', '200.00'],
+      amount: 72.5,
+    });
     const total = agencies?.rows[2];
-    expect(total).toMatchObject({ cells: ['Total tax collected', '', '', ''], amount: 95, isTotal: true });
+    expect(total).toMatchObject({
+      cells: ['Total tax collected', '', '', ''],
+      amount: 95,
+      isTotal: true,
+    });
   });
 
   it('reports an all-tied status when reconciled with no unattributed tax', () => {

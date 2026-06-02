@@ -9,7 +9,13 @@ interface AccountPickerProps {
 }
 
 /** Searchable-ish GL account select backed by the chart of accounts. */
-export function AccountPicker({ value, onChange, id, ariaLabel, className = '' }: AccountPickerProps) {
+export function AccountPicker({
+  value,
+  onChange,
+  id,
+  ariaLabel,
+  className = '',
+}: AccountPickerProps) {
   const { data: accounts = [], isLoading } = useAccounts();
   return (
     <select

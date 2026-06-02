@@ -9,10 +9,7 @@ import {
   useTaxTableDriftCurrentRates,
   useTaxTableDriftDetail,
 } from '../hooks/useAccountingQueries';
-import {
-  useApplyTaxTableDrift,
-  useDismissTaxTableDrift,
-} from '../hooks/useAccountingMutations';
+import { useApplyTaxTableDrift, useDismissTaxTableDrift } from '../hooks/useAccountingMutations';
 import { TAX_TABLES_BASE } from '../constants';
 import {
   TAX_TABLE_DRIFT_ACTIONABLE_STATUSES,
@@ -139,7 +136,10 @@ function ConfirmActionDialog({
         </p>
 
         {error && (
-          <p className="mb-3 rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300" role="alert">
+          <p
+            className="mb-3 rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+            role="alert"
+          >
             {error}
           </p>
         )}
@@ -174,7 +174,9 @@ function DriftHeader({ drift }: { drift: TaxTableDrift }) {
     <Card padding="lg" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="material-symbols-outlined text-amber-300">warning</span>
-        <span className="text-base font-bold text-white">{drift.sourceName ?? 'Unknown source'}</span>
+        <span className="text-base font-bold text-white">
+          {drift.sourceName ?? 'Unknown source'}
+        </span>
         {drift.sourceKind && (
           <Pill className="bg-slate-500/15 text-slate-300">
             {TAX_TABLE_KIND_LABELS[drift.sourceKind]}
@@ -250,7 +252,12 @@ export default function TaxTableDriftDetailView() {
               Could not load this drift. Confirm the accounting schema is exposed and you have an
               accounting role.
             </p>
-            <Button size="sm" variant="secondary" icon="refresh" onClick={() => driftQuery.refetch()}>
+            <Button
+              size="sm"
+              variant="secondary"
+              icon="refresh"
+              onClick={() => driftQuery.refetch()}
+            >
               Retry
             </Button>
           </div>
@@ -282,7 +289,10 @@ export default function TaxTableDriftDetailView() {
               </p>
 
               {ratesQuery.isError && (
-                <p className="mb-2 rounded-sm border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300" role="alert">
+                <p
+                  className="mb-2 rounded-sm border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300"
+                  role="alert"
+                >
                   Could not load your current stored rates, so the “stored” column may be
                   incomplete. The proposed values are still accurate.
                 </p>
@@ -322,7 +332,9 @@ export default function TaxTableDriftDetailView() {
                       >
                         {formatRatePct(row.newRate)}
                       </td>
-                      <td className="px-3 py-2 text-slate-300">{formatDriftDate(row.effectiveDate)}</td>
+                      <td className="px-3 py-2 text-slate-300">
+                        {formatDriftDate(row.effectiveDate)}
+                      </td>
                       <td className="px-3 py-2">
                         <ActionTag row={row} />
                       </td>

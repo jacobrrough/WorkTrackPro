@@ -28,14 +28,13 @@ import { taxService } from './tax';
  * up a failed post for us.
  */
 
-const SELECT_DETAIL =
-  '*, lines:invoice_lines(*), customer:customers(display_name)';
+const SELECT_DETAIL = '*, lines:invoice_lines(*), customer:customers(display_name)';
 
 /** Build a tax-rate resolver (code id -> decimal rate) from the seeded tax codes. */
 async function taxRateResolver(): Promise<(id: string | null | undefined) => number> {
   const codes = await taxService.getAll(true);
   const byId = new Map(codes.map((c) => [c.id, c.isTaxable ? c.rate : 0]));
-  return (id) => (id ? byId.get(id) ?? 0 : 0);
+  return (id) => (id ? (byId.get(id) ?? 0) : 0);
 }
 
 /** Compute money totals for a set of input lines (shared by create + send). */
@@ -153,10 +152,13 @@ export const invoicesService = {
       })
       .select('*')
       .single();
-    if (hErr || !header) return { invoice: null, error: hErr?.message ?? 'Failed to create invoice.' };
+    if (hErr || !header)
+      return { invoice: null, error: hErr?.message ?? 'Failed to create invoice.' };
 
     const invoiceId = (header as Row).id as string;
-    const { error: lErr } = await acct().from('invoice_lines').insert(lineRows(invoiceId, input.lines));
+    const { error: lErr } = await acct()
+      .from('invoice_lines')
+      .insert(lineRows(invoiceId, input.lines));
     if (lErr) {
       await acct().from('invoices').delete().eq('id', invoiceId);
       return { invoice: null, error: lErr.message };
@@ -178,7 +180,10 @@ export const invoicesService = {
     const existing = await this.getById(id);
     if (!existing) return { invoice: null, error: 'Invoice not found.' };
     if (existing.status !== 'draft') {
-      return { invoice: null, error: `Only draft invoices can be edited (this one is ${existing.status}).` };
+      return {
+        invoice: null,
+        error: `Only draft invoices can be edited (this one is ${existing.status}).`,
+      };
     }
     const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
     const headerTaxCode = input.taxCodeId !== undefined ? input.taxCodeId : existing.taxCodeId;
@@ -222,7 +227,10 @@ export const invoicesService = {
     const invoice = await this.getById(id);
     if (!invoice) return { invoice: null, error: 'Invoice not found.' };
     if (invoice.status !== 'draft') {
-      return { invoice: null, error: `Only draft invoices can be sent (this one is ${invoice.status}).` };
+      return {
+        invoice: null,
+        error: `Only draft invoices can be sent (this one is ${invoice.status}).`,
+      };
     }
     if (!invoice.lines || invoice.lines.length === 0) {
       return { invoice: null, error: 'Cannot send an invoice with no lines.' };
@@ -248,13 +256,14 @@ export const invoicesService = {
     try {
       je = buildInvoiceRevenueJournalLines(totals, defaults, { customerId: invoice.customerId });
     } catch (e) {
-      return { invoice: null, error: e instanceof Error ? e.message : 'Unable to build the revenue entry.' };
+      return {
+        invoice: null,
+        error: e instanceof Error ? e.message : 'Unable to build the revenue entry.',
+      };
     }
 
     // Stamp the job dimension on the AR line for job-costing when the invoice is job-linked.
-    const lines = invoice.jobId
-      ? je.lines.map((l) => ({ ...l, jobId: invoice.jobId }))
-      : je.lines;
+    const lines = invoice.jobId ? je.lines.map((l) => ({ ...l, jobId: invoice.jobId })) : je.lines;
 
     const posted = await journalService.createAndPost({
       entryDate: invoice.invoiceDate || new Date().toISOString().slice(0, 10),

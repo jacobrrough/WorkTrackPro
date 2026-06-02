@@ -28,7 +28,10 @@ export interface QuoteRateSettings {
 }
 
 export interface InvoiceLinesFromJobParams {
-  job: Pick<Job, 'id' | 'jobCode' | 'name' | 'partNumber' | 'dashQuantities' | 'parts' | 'inventoryItems'>;
+  job: Pick<
+    Job,
+    'id' | 'jobCode' | 'name' | 'partNumber' | 'dashQuantities' | 'parts' | 'inventoryItems'
+  >;
   /** Fully-loaded parts (with variants/materials) keyed by id or partNumber lookup below. */
   parts: Part[];
   inventory: InventoryItem[];
@@ -105,7 +108,9 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
     if (sets <= 0) continue;
 
     const manualSetPrice =
-      typeof part.pricePerSet === 'number' && Number.isFinite(part.pricePerSet) && part.pricePerSet > 0
+      typeof part.pricePerSet === 'number' &&
+      Number.isFinite(part.pricePerSet) &&
+      part.pricePerSet > 0
         ? part.pricePerSet
         : undefined;
 

@@ -185,7 +185,10 @@ export function detectFormat(text: string, fileName?: string): BankImportFormat 
 // ── CSV ──────────────────────────────────────────────────────────────────────
 
 /** Column-name synonyms (lower-cased, non-alphanumerics stripped) → logical field. */
-const CSV_HEADERS: Record<string, 'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid'> = {
+const CSV_HEADERS: Record<
+  string,
+  'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid'
+> = {
   date: 'date',
   transactiondate: 'date',
   posteddate: 'date',
@@ -231,7 +234,9 @@ export function parseCsv(text: string): ParseResult {
   const delimiter = detectDelimiter(rows[0]);
   const header = parseLine(rows[0], delimiter).map(normHeader);
 
-  const col: Partial<Record<'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid', number>> = {};
+  const col: Partial<
+    Record<'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid', number>
+  > = {};
   header.forEach((h, i) => {
     const logical = CSV_HEADERS[h];
     // First occurrence wins (don't let a later "name" clobber an earlier mapping).

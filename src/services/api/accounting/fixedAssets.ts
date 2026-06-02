@@ -87,7 +87,11 @@ export const fixedAssetsService = {
 
   /** A single fixed-asset header, or null when absent. */
   async getById(id: string): Promise<FixedAsset | null> {
-    const { data, error } = await acct().from('fixed_assets').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await acct()
+      .from('fixed_assets')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
     if (error || !data) return null;
     return mapFixedAssetRow(data as Row);
   },
@@ -145,7 +149,11 @@ export const fixedAssetsService = {
     const name = input.name?.trim();
     if (!name) return { asset: null, rowsScheduled: 0, error: 'A fixed asset needs a name.' };
     if (!input.assetAccountId) {
-      return { asset: null, rowsScheduled: 0, error: 'Choose the asset account this asset sits in.' };
+      return {
+        asset: null,
+        rowsScheduled: 0,
+        error: 'Choose the asset account this asset sits in.',
+      };
     }
     const cost = Number(input.cost);
     const salvage = Number(input.salvageValue ?? 0);
@@ -190,7 +198,11 @@ export const fixedAssetsService = {
       .select('*')
       .single();
     if (error || !data) {
-      return { asset: null, rowsScheduled: 0, error: error?.message ?? 'Failed to create the fixed asset.' };
+      return {
+        asset: null,
+        rowsScheduled: 0,
+        error: error?.message ?? 'Failed to create the fixed asset.',
+      };
     }
 
     const asset = mapFixedAssetRow(data as Row);
@@ -220,11 +232,14 @@ export const fixedAssetsService = {
       patch.name = name;
     }
     if (input.assetAccountId !== undefined) patch.asset_account_id = input.assetAccountId;
-    if (input.accumDeprAccountId !== undefined) patch.accum_depr_account_id = input.accumDeprAccountId;
-    if (input.deprExpenseAccountId !== undefined) patch.depr_expense_account_id = input.deprExpenseAccountId;
+    if (input.accumDeprAccountId !== undefined)
+      patch.accum_depr_account_id = input.accumDeprAccountId;
+    if (input.deprExpenseAccountId !== undefined)
+      patch.depr_expense_account_id = input.deprExpenseAccountId;
     if (input.cost !== undefined) patch.cost = Number(input.cost);
     if (input.salvageValue !== undefined) patch.salvage_value = Number(input.salvageValue);
-    if (input.usefulLifeMonths !== undefined) patch.useful_life_months = Math.trunc(Number(input.usefulLifeMonths));
+    if (input.usefulLifeMonths !== undefined)
+      patch.useful_life_months = Math.trunc(Number(input.usefulLifeMonths));
     if (input.method !== undefined) patch.method = input.method;
     if (input.inServiceDate !== undefined) patch.in_service_date = toIsoDate(input.inServiceDate);
     if (input.status !== undefined) patch.status = input.status;
@@ -236,16 +251,30 @@ export const fixedAssetsService = {
     // Validate the resulting figures (post-merge) so cost/salvage/life stay coherent.
     const merged = {
       cost: input.cost !== undefined ? Number(input.cost) : existing.cost,
-      salvage: input.salvageValue !== undefined ? Number(input.salvageValue) : existing.salvageValue,
-      life: input.usefulLifeMonths !== undefined ? Math.trunc(Number(input.usefulLifeMonths)) : existing.usefulLifeMonths,
-      inService: input.inServiceDate !== undefined ? toIsoDate(input.inServiceDate) : existing.inServiceDate,
+      salvage:
+        input.salvageValue !== undefined ? Number(input.salvageValue) : existing.salvageValue,
+      life:
+        input.usefulLifeMonths !== undefined
+          ? Math.trunc(Number(input.usefulLifeMonths))
+          : existing.usefulLifeMonths,
+      inService:
+        input.inServiceDate !== undefined ? toIsoDate(input.inServiceDate) : existing.inServiceDate,
     };
     const validation = validateAssetFigures(merged);
     if (validation) return { asset: null, rowsScheduled: 0, error: validation };
 
-    const { data, error } = await acct().from('fixed_assets').update(patch).eq('id', id).select('*').single();
+    const { data, error } = await acct()
+      .from('fixed_assets')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error || !data) {
-      return { asset: null, rowsScheduled: 0, error: error?.message ?? 'Failed to update the fixed asset.' };
+      return {
+        asset: null,
+        rowsScheduled: 0,
+        error: error?.message ?? 'Failed to update the fixed asset.',
+      };
     }
     const asset = mapFixedAssetRow(data as Row);
 
@@ -263,14 +292,18 @@ export const fixedAssetsService = {
   },
 
   /** Set just the lifecycle status (active → fully_depreciated → disposed). */
-  async setStatus(id: string, status: FixedAssetStatus): Promise<{ asset: FixedAsset | null; error?: string }> {
+  async setStatus(
+    id: string,
+    status: FixedAssetStatus
+  ): Promise<{ asset: FixedAsset | null; error?: string }> {
     const { data, error } = await acct()
       .from('fixed_assets')
       .update({ status })
       .eq('id', id)
       .select('*')
       .single();
-    if (error || !data) return { asset: null, error: error?.message ?? 'Failed to update the asset status.' };
+    if (error || !data)
+      return { asset: null, error: error?.message ?? 'Failed to update the asset status.' };
     return { asset: mapFixedAssetRow(data as Row) };
   },
 
@@ -309,7 +342,9 @@ export const fixedAssetsService = {
    * row returns its existing journal_entry_id with no re-post. Returns the posted (or
    * pre-existing) JE id, or an error message (RLS denial, a closed-period rejection, …).
    */
-  async postScheduleRow(scheduleId: string): Promise<{ journalEntryId: string | null; error?: string }> {
+  async postScheduleRow(
+    scheduleId: string
+  ): Promise<{ journalEntryId: string | null; error?: string }> {
     const { data, error } = await acct().rpc('post_depreciation_row', {
       p_schedule_id: scheduleId,
     });
@@ -332,7 +367,13 @@ export const fixedAssetsService = {
     const p_period_date = toIsoDate(date) ?? new Date().toISOString().slice(0, 10);
     const { data, error } = await acct().rpc('run_depreciation_for_period', { p_period_date });
     if (error) {
-      return { periodDate: p_period_date, postedRows: [], postedCount: 0, totalAmount: 0, error: error.message };
+      return {
+        periodDate: p_period_date,
+        postedRows: [],
+        postedCount: 0,
+        totalAmount: 0,
+        error: error.message,
+      };
     }
 
     const rows: RunDepreciationResultRow[] = rpcRows(data).map((r) => ({
@@ -368,7 +409,8 @@ function validateAssetFigures(params: {
   if (!Number.isFinite(cost) || cost < 0) return 'Cost must be zero or more.';
   if (!Number.isFinite(salvage) || salvage < 0) return 'Salvage value must be zero or more.';
   if (salvage > cost) return 'Salvage value cannot exceed cost.';
-  if (!Number.isInteger(life) || life <= 0) return 'Useful life must be a whole number of months greater than zero.';
+  if (!Number.isInteger(life) || life <= 0)
+    return 'Useful life must be a whole number of months greater than zero.';
   if (!inService) return 'Choose the date the asset was placed in service.';
   return null;
 }

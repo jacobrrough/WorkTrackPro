@@ -41,7 +41,10 @@ export const customersService = {
     return mapCustomerRow(data as Row);
   },
 
-  async update(id: string, input: Partial<NewCustomerInput> & { isActive?: boolean }): Promise<Customer | null> {
+  async update(
+    id: string,
+    input: Partial<NewCustomerInput> & { isActive?: boolean }
+  ): Promise<Customer | null> {
     const row: Record<string, unknown> = {};
     if (input.displayName != null) row.display_name = input.displayName;
     if (input.companyName !== undefined) row.company_name = input.companyName;

@@ -9,11 +9,7 @@ import {
   useDeleteBudget,
   useSetBudgetStatus,
 } from '../hooks/useAccountingMutations';
-import {
-  budgetEditorPath,
-  budgetVsActualPath,
-  cashFlowForecastPath,
-} from '../constants';
+import { budgetEditorPath, budgetVsActualPath, cashFlowForecastPath } from '../constants';
 import {
   BUDGET_STATUS_LABELS,
   BUDGET_STATUSES,
@@ -224,8 +220,15 @@ function BudgetCard({ budget }: { budget: Budget }) {
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/5 pt-2">
         {confirmDelete ? (
           <>
-            <span className="mr-auto text-xs text-slate-400">Delete this budget and its lines?</span>
-            <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={busy}>
+            <span className="mr-auto text-xs text-slate-400">
+              Delete this budget and its lines?
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmDelete(false)}
+              disabled={busy}
+            >
               Cancel
             </Button>
             <Button size="sm" variant="danger" icon="delete" onClick={onDelete} disabled={busy}>
@@ -328,8 +331,8 @@ export default function BudgetsView() {
             <span className="material-symbols-outlined text-4xl text-slate-500">savings</span>
             <p className="text-lg font-bold text-white">No budgets yet</p>
             <p className="max-w-sm text-sm text-slate-400">
-              Create a budget for a fiscal year, then enter your planned monthly amounts per account.
-              Budget-vs-Actual will compare it to your posted journal activity.
+              Create a budget for a fiscal year, then enter your planned monthly amounts per
+              account. Budget-vs-Actual will compare it to your posted journal activity.
             </p>
             <Button size="sm" icon="add" onClick={() => setShowCreate(true)}>
               New budget

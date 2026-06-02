@@ -127,11 +127,13 @@ export default function BankImportView() {
             </div>
             <ul className="space-y-1 text-sm text-slate-300">
               <li>
-                <span className="font-mono font-bold text-white">{result.inserted}</span> transaction
+                <span className="font-mono font-bold text-white">{result.inserted}</span>{' '}
+                transaction
                 {result.inserted === 1 ? '' : 's'} imported
               </li>
               <li>
-                <span className="font-mono font-bold text-white">{result.duplicates}</span> duplicate
+                <span className="font-mono font-bold text-white">{result.duplicates}</span>{' '}
+                duplicate
                 {result.duplicates === 1 ? '' : 's'} skipped
               </li>
               <li>
@@ -156,8 +158,8 @@ export default function BankImportView() {
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-slate-300">
-                Parsed{' '}
-                <span className="font-bold text-white">{parsed.transactions.length}</span> transaction
+                Parsed <span className="font-bold text-white">{parsed.transactions.length}</span>{' '}
+                transaction
                 {parsed.transactions.length === 1 ? '' : 's'} from a{' '}
                 <span className="uppercase">{parsed.format}</span> file.
               </p>
@@ -184,9 +186,7 @@ export default function BankImportView() {
                   {parsed.warnings.slice(0, 20).map((w, i) => (
                     <li key={i}>{w}</li>
                   ))}
-                  {parsed.warnings.length > 20 && (
-                    <li>…and {parsed.warnings.length - 20} more.</li>
-                  )}
+                  {parsed.warnings.length > 20 && <li>…and {parsed.warnings.length - 20} more.</li>}
                 </ul>
               </details>
             )}
@@ -200,7 +200,9 @@ export default function BankImportView() {
             >
               {previewRows.map((t, i) => (
                 <tr key={i} className="border-t border-white/5">
-                  <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-400">{t.txnDate}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-400">
+                    {t.txnDate}
+                  </td>
                   <td className="px-3 py-2 text-white">
                     {t.description || t.merchant || '—'}
                     {t.merchant && t.description && (

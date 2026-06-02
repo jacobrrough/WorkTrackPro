@@ -133,7 +133,10 @@ export function buildBudgetGrid(
 // ── Budget vs Actual ──────────────────────────────────────────────────────────
 
 /** Minimal account identity the BvA builder needs to label + sign a row. */
-export type BvaAccount = Pick<Account, 'id' | 'accountNumber' | 'name' | 'accountType' | 'normalBalance'>;
+export type BvaAccount = Pick<
+  Account,
+  'id' | 'accountNumber' | 'name' | 'accountType' | 'normalBalance'
+>;
 
 /**
  * Build the Budget-vs-Actual rows: one per account that has EITHER a budget line OR posted
@@ -244,7 +247,20 @@ function monthEndIso(year: number, month: number): string {
 }
 
 /** Short "Mon YYYY" label for a forecast bucket (e.g. "Jun 2026"). */
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_ABBR = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 function monthLabel(year: number, month: number): string {
   return `${MONTH_ABBR[month - 1]} ${year}`;
 }
@@ -309,7 +325,13 @@ export function buildCashFlowForecast(
   const bucketCount = Math.max(1, Math.min(36, Math.floor(monthsRequested) || 6));
 
   // Lay out the bucket months and their ordinals.
-  const buckets: { year: number; month: number; ordinal: number; inflowCents: number; outflowCents: number }[] = [];
+  const buckets: {
+    year: number;
+    month: number;
+    ordinal: number;
+    inflowCents: number;
+    outflowCents: number;
+  }[] = [];
   let cursor = startYm;
   for (let i = 0; i < bucketCount; i++) {
     buckets.push({
