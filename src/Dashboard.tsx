@@ -14,6 +14,8 @@ import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
 import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
 import { useScrollRestore } from './hooks/useScrollRestore';
+import { useNavigate } from 'react-router-dom';
+import { ACCOUNTING_BUILD_ENABLED } from './lib/featureFlags';
 
 const AIAssistantPanel = lazyWithRetry(
   () => import('./components/AIAssistantPanel'),
@@ -81,6 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   } = useApp();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin ?? false;
+  const navigate = useNavigate();
   const { state: navState, updateState } = useNavigation();
   const [searchInput, setSearchInput] = useState(navState.searchTerm);
   const [showScanner, setShowScanner] = useState(false);
@@ -339,6 +342,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       onClick: () => setShowAIAssistant(true),
       adminOnly: true,
     },
+    // Accounting lives at a real route (/app/accounting), gated by the build flag AND
+    // admin-only. Hidden entirely when accounting is off so it's never a dead link.
+    ...(ACCOUNTING_BUILD_ENABLED
+      ? [
+          {
+            key: 'accounting',
+            title: 'Accounting',
+            subtitle: 'Invoices, bills & ledger',
+            icon: 'account_balance',
+            iconClassName: 'text-amber-400',
+            cardClassName:
+              'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-yellow-700/20',
+            ariaLabel: 'Open accounting',
+            onClick: () => navigate('/app/accounting'),
+            adminOnly: true,
+          } satisfies DashboardQuickAction,
+        ]
+      : []),
   ];
 
   const roleFilteredActions = quickActions.filter((action) => isAdmin || !action.adminOnly);
