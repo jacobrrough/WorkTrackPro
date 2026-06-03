@@ -36,6 +36,7 @@ export function useSystemNotificationSubscription(userId: string | null, enabled
     if (!userId || !enabled) return;
 
     const unsub = subscriptions.subscribeToSystemNotifications(userId, (_action, record) => {
+      let wasNew = false;
       queryClient.setQueryData<{ pages: SystemNotification[][]; pageParams: unknown[] }>(
         ['system-notifications'],
         (old) => {
@@ -52,7 +53,11 @@ export function useSystemNotificationSubscription(userId: string | null, enabled
             createdAt: record.created_at as string,
           };
           const firstPage = old.pages[0] ?? [];
-          if (firstPage.some((n) => n.id === notification.id)) return old;
+          if (firstPage.some((n) => n.id === notification.id)) {
+            wasNew = false;
+            return old;
+          }
+          wasNew = true;
           return {
             ...old,
             pages: [[notification, ...firstPage], ...old.pages.slice(1)],
@@ -60,10 +65,12 @@ export function useSystemNotificationSubscription(userId: string | null, enabled
         }
       );
 
-      queryClient.setQueryData<number>(
-        ['system-notifications', 'unread-count'],
-        (prev) => (prev ?? 0) + 1
-      );
+      if (wasNew) {
+        queryClient.setQueryData<number>(
+          ['system-notifications', 'unread-count'],
+          (prev) => (prev ?? 0) + 1
+        );
+      }
     });
 
     return unsub;

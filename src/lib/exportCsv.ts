@@ -7,7 +7,8 @@ export function exportToCsv(filename: string, rows: Record<string, unknown>[]): 
   const headers = Object.keys(rows[0]);
   const escape = (v: unknown): string => {
     const s = v == null ? '' : String(v);
-    return `"${s.replace(/"/g, '""')}"`;
+    const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+    return `"${safe.replace(/"/g, '""')}"`;
   };
   const csv = [
     headers.join(','),

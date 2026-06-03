@@ -146,7 +146,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
         barcode: editForm.editBarcode.trim() || undefined,
         binLocation: editForm.editBinLocation.trim() || undefined,
         vendor: editForm.editVendor.trim() || undefined,
-        reorderPoint: editForm.editReorderPoint > 0 ? editForm.editReorderPoint : undefined,
+        reorderPoint: editForm.editReorderPoint > 0 ? editForm.editReorderPoint : 0,
         onOrder: editForm.editOnOrder || 0,
       };
       if (isAdmin) payload.price = editForm.editPrice || undefined;

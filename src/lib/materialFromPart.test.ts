@@ -1,6 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Part, PartMaterial, PartVariant } from '@/core/types';
-import { computeRequiredMaterials } from './materialFromPart';
+
+const mockUpdatePartMaterial = vi.fn();
+
+// Mock the parts service so syncPartMaterialFromJobQuantity's writeback is observable
+// and never hits Supabase. Only updatePartMaterial is exercised by these tests.
+vi.mock('@/services/api/parts', () => ({
+  partsService: {
+    updatePartMaterial: (...args: unknown[]) => mockUpdatePartMaterial(...args),
+  },
+}));
+
+import { computeRequiredMaterials, syncPartMaterialFromJobQuantity } from './materialFromPart';
 
 type VariantPart = Part & {
   variants?: PartVariant[];
@@ -244,5 +255,97 @@ describe('computeRequiredMaterials', () => {
     // Row A: 1 × 2 = 2. Row B: 3 × 2 = 6. Sum = 8.
     const result = computeRequiredMaterials(part, { '-01': 2, '-02': 2 });
     expect(result.get('inv-shared')?.quantity).toBe(8);
+  });
+});
+
+describe('syncPartMaterialFromJobQuantity', () => {
+  beforeEach(() => {
+    mockUpdatePartMaterial.mockReset();
+    mockUpdatePartMaterial.mockResolvedValue(null);
+  });
+
+  it('skips the writeback when the inventory appears in multiple variant BOM rows (would flatten)', async () => {
+    // Same inventoryId used by two different variants at different per-unit quantities.
+    // A blind uniform writeback would corrupt both rows, so the sync must skip.
+    const part = makeVariantPart({
+      id: 'part-multi',
+      variants: [
+        {
+          id: 'v-1',
+          variantSuffix: '01',
+          materials: [makeVariantMaterial('vm-1', 'v-1', 'inv-shared', 2, 'per_variant')],
+        },
+        {
+          id: 'v-2',
+          variantSuffix: '02',
+          materials: [makeVariantMaterial('vm-2', 'v-2', 'inv-shared', 5, 'per_variant')],
+        },
+      ],
+    });
+
+    await syncPartMaterialFromJobQuantity(part, { '-01': 4, '-02': 4 }, 'inv-shared', 12, 'ea');
+
+    expect(mockUpdatePartMaterial).not.toHaveBeenCalled();
+  });
+
+  it('skips the writeback when the inventory appears in both a part-level row and a variant row', async () => {
+    // Ambiguous across scopes (per_set part row vs. per_variant variant row): skip.
+    const part = makeVariantPart({
+      id: 'part-mixed-scope',
+      variants: [
+        {
+          id: 'v-1',
+          variantSuffix: '01',
+          materials: [makeVariantMaterial('vm-1', 'v-1', 'inv-shared', 2, 'per_variant')],
+        },
+      ],
+      materials: [makeMaterial('pm-1', 'inv-shared', 1, 'per_set')],
+    });
+
+    await syncPartMaterialFromJobQuantity(part, { '-01': 4 }, 'inv-shared', 8, 'ea');
+
+    expect(mockUpdatePartMaterial).not.toHaveBeenCalled();
+  });
+
+  it('writes back the single matching part-level row using quantityPerUnit = newJobQuantity / totalUnits', async () => {
+    const part = makeMasterPart([makeMaterial('pm-1', 'inv-1', 2, 'per_set')]);
+
+    // totalUnits = 4 → quantityPerUnit = 8 / 4 = 2.
+    await syncPartMaterialFromJobQuantity(part, { '-01': 4 }, 'inv-1', 8, 'ea');
+
+    expect(mockUpdatePartMaterial).toHaveBeenCalledTimes(1);
+    expect(mockUpdatePartMaterial).toHaveBeenCalledWith('pm-1', { quantityPerUnit: 2, unit: 'ea' });
+  });
+
+  it('writes back the single matching variant row when no other rows reference the inventory', async () => {
+    const part = makeVariantPart({
+      id: 'part-single-variant',
+      variants: [
+        {
+          id: 'v-1',
+          variantSuffix: '01',
+          materials: [makeVariantMaterial('vm-1', 'v-1', 'inv-unique', 3, 'per_variant')],
+        },
+        {
+          id: 'v-2',
+          variantSuffix: '02',
+          materials: [makeVariantMaterial('vm-2', 'v-2', 'inv-other', 1, 'per_variant')],
+        },
+      ],
+    });
+
+    // Only one row references inv-unique → unambiguous. totalUnits = 2 → 6 / 2 = 3.
+    await syncPartMaterialFromJobQuantity(part, { '-01': 2 }, 'inv-unique', 6, 'ea');
+
+    expect(mockUpdatePartMaterial).toHaveBeenCalledTimes(1);
+    expect(mockUpdatePartMaterial).toHaveBeenCalledWith('vm-1', { quantityPerUnit: 3, unit: 'ea' });
+  });
+
+  it('does nothing when the inventory is not in the Part BOM at all', async () => {
+    const part = makeMasterPart([makeMaterial('pm-1', 'inv-1', 2, 'per_set')]);
+
+    await syncPartMaterialFromJobQuantity(part, { '-01': 4 }, 'inv-absent', 8, 'ea');
+
+    expect(mockUpdatePartMaterial).not.toHaveBeenCalled();
   });
 });

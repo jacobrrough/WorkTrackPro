@@ -55,6 +55,9 @@ export const paymentsService = {
    * Record a customer payment fully applied to one or more invoices. Posts the
    * receipt JE, then writes the payment + applications. On any failure after the JE
    * posts, the entry is voided and the payment row removed so no half-states leak.
+   * If the compensating void/delete itself fails, the rows are left in place and the
+   * error names the orphaned id so it can be reconciled by hand (better than
+   * silently abandoning a posted entry on the ledger).
    */
   async record(input: NewPaymentInput): Promise<{ payment: Payment | null; error?: string }> {
     if (!input.applications.length) {
@@ -74,7 +77,10 @@ export const paymentsService = {
         customerId: input.customerId,
       });
     } catch (e) {
-      return { payment: null, error: e instanceof Error ? e.message : 'Unable to build the receipt entry.' };
+      return {
+        payment: null,
+        error: e instanceof Error ? e.message : 'Unable to build the receipt entry.',
+      };
     }
 
     const paymentDate = input.paymentDate ?? new Date().toISOString().slice(0, 10);
@@ -95,7 +101,8 @@ export const paymentsService = {
       })
       .select('*')
       .single();
-    if (pErr || !payRow) return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
+    if (pErr || !payRow)
+      return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
     const paymentId = (payRow as Row).id as string;
 
     // 2) Post the receipt JE.
@@ -107,7 +114,16 @@ export const paymentsService = {
       lines: jeLines,
     });
     if (!posted.entryId) {
-      await acct().from('payments').delete().eq('id', paymentId);
+      // The post failed, so createAndPost already removed its own draft entry — there
+      // is no posted JE to void here, only the orphan payment header to clean up. If
+      // that delete fails, surface the dangling paymentId rather than swallowing it.
+      const { error: cleanupErr } = await acct().from('payments').delete().eq('id', paymentId);
+      if (cleanupErr) {
+        return {
+          payment: null,
+          error: `Failed to post the receipt journal entry (${posted.error ?? 'unknown error'}) and could not remove the orphan payment ${paymentId}: ${cleanupErr.message}`,
+        };
+      }
       return { payment: null, error: posted.error ?? 'Failed to post the receipt journal entry.' };
     }
 
@@ -120,7 +136,17 @@ export const paymentsService = {
     }));
     const { error: aErr } = await acct().from('payment_applications').insert(appRows);
     if (aErr) {
-      await journalService.voidEntry(posted.entryId, 'Payment application failed');
+      // Void the posted JE before removing the payment. If the void fails we must
+      // NOT delete the payment: leaving both rows keeps the orphaned (still-posted)
+      // entry traceable to its source document for manual cleanup, instead of
+      // silently abandoning a posted JE on the ledger with no payment to point at.
+      const v = await journalService.voidEntry(posted.entryId, 'Payment application failed');
+      if (!v.ok) {
+        return {
+          payment: null,
+          error: `Payment recorded but cleanup failed — manual review required (orphaned journal entry ${posted.entryId}): ${v.error ?? 'unknown error'}. Original failure: ${aErr.message}`,
+        };
+      }
       await acct().from('payments').delete().eq('id', paymentId);
       return { payment: null, error: aErr.message };
     }

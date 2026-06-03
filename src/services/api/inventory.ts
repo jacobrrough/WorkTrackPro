@@ -63,7 +63,7 @@ export const inventoryService = {
   ): Promise<PaginatedInventoryResult> {
     let q = supabase.from('inventory').select('*', { count: 'exact' });
     if (filter?.trim()) {
-      const f = filter.trim();
+      const f = filter.trim().replace(/[,()\\%*]/g, ' ');
       q = q.or(`name.ilike.%${f}%,description.ilike.%${f}%`);
     }
     const asc = sort === 'name';
@@ -114,7 +114,8 @@ export const inventoryService = {
     if (data.available != null) row.available = data.available;
     if (data.disposed != null) row.disposed = data.disposed;
     if (data.onOrder != null) row.on_order = data.onOrder;
-    if (data.reorderPoint != null) row.reorder_point = data.reorderPoint;
+    if ('reorderPoint' in data)
+      row.reorder_point = data.reorderPoint && data.reorderPoint > 0 ? data.reorderPoint : null;
     if (data.price != null) row.price = data.price;
     if (data.unit != null) row.unit = data.unit;
     if (data.hasImage != null) row.has_image = data.hasImage;
@@ -146,6 +147,33 @@ export const inventoryService = {
       .update({ in_stock: inStock, updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) throw error;
+  },
+
+  /**
+   * Atomically adjust stock by DELTA via the adjust_inventory_stock RPC and return the
+   * post-update values. Use for receive/order so two concurrent writers (or a job-status
+   * reconciliation racing a receive) don't clobber each other the way an absolute write
+   * computed from a stale client cache would. Returns null on error.
+   */
+  async adjustStock(
+    id: string,
+    inStockDelta: number,
+    onOrderDelta: number
+  ): Promise<{ inStock: number; onOrder: number } | null> {
+    const { data, error } = await supabase.rpc('adjust_inventory_stock', {
+      p_id: id,
+      p_in_stock_delta: Math.round(inStockDelta),
+      p_on_order_delta: Math.round(onOrderDelta),
+    });
+    if (error) {
+      console.error('adjustStock failed:', error.message);
+      return null;
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { in_stock: number; on_order: number }
+      | undefined;
+    if (!row) return null;
+    return { inStock: row.in_stock, onOrder: row.on_order };
   },
 
   /** Get inventory item with attachments */

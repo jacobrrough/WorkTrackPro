@@ -244,6 +244,17 @@ export async function syncJobInventoryFromPart(
  * When the user edits a job material line (quantity or unit) and the job has a linked Part,
  * push the new quantity back to the Part's BOM (PartMaterial) so Part and job stay in sync.
  * Computes quantityPerUnit = newJobQuantity / totalUnits (from dash quantities or 1).
+ *
+ * Safety guard (interim): the caller (handleAddInventory) only passes
+ * (inventoryId, quantity, unit) with no variant/usageType scope. When the same inventoryId
+ * appears in more than one BOM row (across the part-level per_set row and/or multiple variants),
+ * we cannot tell which row the added job quantity belongs to, and `totalUnits` (the GLOBAL dash
+ * sum) is the wrong per-unit denominator for at least some of those rows. Writing one uniform
+ * value to every matched row would flatten and corrupt multi-variant BOMs, so in that ambiguous
+ * case we skip the writeback entirely instead of mutating the wrong rows. Only the unambiguous
+ * single-row case is pushed back. Fully scoping the writeback (per-variant dash qty for a variant
+ * row, complete sets for a per_set row) requires threading variant/usageType context from the
+ * inventory-add UI through handleAddInventory — a caller-signature change handled separately.
  */
 export async function syncPartMaterialFromJobQuantity(
   part: Part & { variants?: PartVariant[] },
@@ -270,6 +281,10 @@ export async function syncPartMaterialFromJobQuantity(
       }
     }
   }
+
+  // Ambiguous match across multiple BOM scopes (multi-variant BOM): skip rather than flatten.
+  // A blind uniform writeback here would corrupt per-variant per-unit quantities.
+  if (toUpdate.length > 1) return;
 
   for (const { id } of toUpdate) {
     await partsService.updatePartMaterial(id, { quantityPerUnit, unit });

@@ -15,6 +15,7 @@ import {
   fallbackRuleFor,
 } from '../../../features/accounting/reports/taxCalendarMath';
 import { toIsoDate } from '../../../features/accounting/periodLock';
+import { todayIsoLocal } from '../../../features/accounting/periodLockView';
 import { acct } from './accountingClient';
 import { accountingSettingsService } from './settings';
 import { mapTaxAgencyRow, parseTaxFilingRules, type Row } from './mappers';
@@ -46,11 +47,37 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** Sum the active composing tax_rates of a join (state + district) to one decimal rate. */
-function combinedRateFromRates(rates: Row[] | null | undefined): number {
+/**
+ * True when a composing tax_rates row is in effect on `asOf` (a `YYYY-MM-DD` date).
+ * `effective_date`/`end_date` are nullable Postgres `date`s stored as `YYYY-MM-DD`, so a
+ * lexicographic string compare is also a chronological one. A null bound is open-ended
+ * (a null `effective_date` has always started; a null `end_date` never ends), which
+ * preserves the prior behaviour for the common seeded case where both are unset.
+ */
+function rateInEffect(r: Row, asOf: string): boolean {
+  const eff = r.effective_date == null ? null : String(r.effective_date);
+  if (eff && eff > asOf) return false; // not yet in effect
+  const end = r.end_date == null ? null : String(r.end_date);
+  if (end && end < asOf) return false; // already expired
+  return true;
+}
+
+/**
+ * Sum the composing tax_rates of a join (state + district) to one decimal rate, counting
+ * only rows that are BOTH active AND in effect on `asOf`. Filtering to the in-effect
+ * window stops a superseded/expired or not-yet-effective rate from inflating an agency's
+ * displayed combined rate. NOTE (known limitation): when one agency owns rates spanning
+ * several jurisdictions this still over-sums across those jurisdictions — surfacing a
+ * single "mixed"/'—' rate there, and weighting the multi-agency apportionment by this
+ * invoice's composing rates, are scoped cross-file changes (see salesTaxMath.ts L241).
+ */
+export function combinedRateFromRates(rates: Row[] | null | undefined, asOf: string): number {
   let rate = 0;
   for (const r of rates ?? []) {
-    if (r && (r.is_active === undefined || r.is_active !== false)) rate += num(r.rate);
+    if (!r) continue;
+    if (r.is_active === false) continue;
+    if (!rateInEffect(r, asOf)) continue;
+    rate += num(r.rate);
   }
   return rate;
 }
@@ -77,7 +104,11 @@ async function resolveLiabilityAccount(): Promise<{ id: string | null; number: s
       .eq('id', id)
       .maybeSingle();
     const row = data as Row | null;
-    if (row) return { id: String(row.id), number: row.account_number == null ? null : String(row.account_number) };
+    if (row)
+      return {
+        id: String(row.id),
+        number: row.account_number == null ? null : String(row.account_number),
+      };
   }
 
   // Fallback: the conventional 2200 "Sales Tax Payable" chart account.
@@ -87,7 +118,11 @@ async function resolveLiabilityAccount(): Promise<{ id: string | null; number: s
     .eq('account_number', '2200')
     .maybeSingle();
   const row = data as Row | null;
-  if (row) return { id: String(row.id), number: row.account_number == null ? null : String(row.account_number) };
+  if (row)
+    return {
+      id: String(row.id),
+      number: row.account_number == null ? null : String(row.account_number),
+    };
   return { id, number: null };
 }
 
@@ -107,7 +142,10 @@ async function fetchInvoiceTaxInputs(invoiceIds: string[]): Promise<InvoiceTaxIn
   const CHUNK = 100;
   for (let i = 0; i < invoiceIds.length; i += CHUNK) {
     const slice = invoiceIds.slice(i, i + CHUNK);
-    const { data, error } = await acct().from('invoices').select(INVOICE_TAX_SELECT).in('id', slice);
+    const { data, error } = await acct()
+      .from('invoices')
+      .select(INVOICE_TAX_SELECT)
+      .in('id', slice);
     if (error) throw error;
     // The deeply-nested embed makes PostgREST infer an error-union element type; the
     // accounting schema isn't in the generated Database types anyway, so we narrow via
@@ -131,8 +169,8 @@ async function fetchInvoiceTaxInputs(invoiceIds: string[]): Promise<InvoiceTaxIn
       let taxable = 0;
       let nonTaxable = 0;
       for (const line of (raw.lines ?? []) as Row[]) {
-        // Net of any line discount; mirrors how the invoice subtotal was built.
-        const net = num(line.line_total) - num(line.discount);
+        // line_total is already net of any line discount; clamp at 0 like lineNetCents.
+        const net = Math.max(0, num(line.line_total));
         if (line.taxable === false) nonTaxable += net;
         else taxable += net;
       }
@@ -148,15 +186,22 @@ async function fetchInvoiceTaxInputs(invoiceIds: string[]): Promise<InvoiceTaxIn
   return out;
 }
 
-/** Fetch the agency master with each agency's combined (state + district) decimal rate. */
-async function fetchAgencies(): Promise<TaxAgency[]> {
+/**
+ * Fetch the agency master with each agency's combined (state + district) decimal rate.
+ * The combined rate counts only active, in-effect-on-`asOf` composing rates (defaults to
+ * today) so an expired/superseded or future rate doesn't inflate the displayed rate.
+ */
+async function fetchAgencies(asOf: string = todayIsoLocal()): Promise<TaxAgency[]> {
   const { data, error } = await acct()
     .from('tax_agencies')
-    .select('id, name, liability_account_id, filing_frequency, created_at, tax_rates(rate, is_active)')
+    .select(
+      'id, name, liability_account_id, filing_frequency, created_at,' +
+        ' tax_rates(rate, is_active, effective_date, end_date)'
+    )
     .order('name', { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as Row[]).map((r) =>
-    mapTaxAgencyRow(r, combinedRateFromRates(r.tax_rates as Row[] | null))
+  return ((data ?? []) as unknown as Row[]).map((r) =>
+    mapTaxAgencyRow(r, combinedRateFromRates(r.tax_rates as Row[] | null, asOf))
   );
 }
 
@@ -187,7 +232,9 @@ export const salesTaxService = {
     // its source_type/source_id for attribution.
     let q = acct()
       .from('journal_lines')
-      .select('debit, credit, entry:journal_entries!inner(id, status, entry_date, source_type, source_id)')
+      .select(
+        'debit, credit, entry:journal_entries!inner(id, status, entry_date, source_type, source_id)'
+      )
       .eq('account_id', liability.id)
       .eq('entry.status', 'posted');
     if (range.from) q = q.gte('entry.entry_date', range.from);
@@ -238,11 +285,11 @@ export const salesTaxService = {
    * upcoming periods to list per agency (default 4).
    */
   async getTaxFilingCalendar(asOf?: string, upcoming = 4): Promise<TaxCalendar> {
-    const asOfIso = toIsoDate(asOf) ?? new Date().toISOString().slice(0, 10);
+    const asOfIso = toIsoDate(asOf) ?? todayIsoLocal();
 
     const [rulesRaw, agencies] = await Promise.all([
       accountingSettingsService.getSetting('tax_filing_calendar'),
-      fetchAgencies(),
+      fetchAgencies(asOfIso),
     ]);
     const rules = parseTaxFilingRules(rulesRaw);
     const ruleByAgencyName = new Map(rules.map((r) => [r.agency, r]));
@@ -266,7 +313,11 @@ export const salesTaxService = {
     }
 
     entries.sort((a, b) =>
-      a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : a.agencyName.localeCompare(b.agencyName)
+      a.dueDate < b.dueDate
+        ? -1
+        : a.dueDate > b.dueDate
+          ? 1
+          : a.agencyName.localeCompare(b.agencyName)
     );
 
     return { asOf: asOfIso, entries };

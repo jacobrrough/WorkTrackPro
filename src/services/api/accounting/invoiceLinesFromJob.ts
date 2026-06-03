@@ -1,5 +1,6 @@
 import type { InventoryItem, Job, Part, PartVariant } from '../../../core/types';
 import { calculatePartQuote, normalizeDashQuantities } from '../../../lib/partsCalculations';
+import { getDashQuantity } from '../../../lib/variantMath';
 import type { NewInvoiceLineInput } from '../../../features/accounting/types';
 
 /**
@@ -28,7 +29,10 @@ export interface QuoteRateSettings {
 }
 
 export interface InvoiceLinesFromJobParams {
-  job: Pick<Job, 'id' | 'jobCode' | 'name' | 'partNumber' | 'dashQuantities' | 'parts' | 'inventoryItems'>;
+  job: Pick<
+    Job,
+    'id' | 'jobCode' | 'name' | 'partNumber' | 'dashQuantities' | 'parts' | 'inventoryItems'
+  >;
   /** Fully-loaded parts (with variants/materials) keyed by id or partNumber lookup below. */
   parts: Part[];
   inventory: InventoryItem[];
@@ -46,23 +50,25 @@ export function setsForPart(
 ): number {
   const dash = normalizeDashQuantities(dashQuantities ?? {});
   const composition = part.setComposition ?? {};
-  const norm = (s: string) => String(s ?? '').replace(/^-/, '');
 
   const compEntries = Object.entries(composition).filter(([, qty]) => (Number(qty) || 0) > 0);
   if (compEntries.length > 0) {
     // Number of complete sets = min over composing variants of floor(dashQty / perSetQty).
     let sets = Infinity;
     for (const [suffix, perSet] of compEntries) {
-      const have = dash[norm(suffix)] ?? dash[suffix] ?? 0;
+      const have = getDashQuantity(dash, suffix);
       const need = Number(perSet) || 0;
       if (need <= 0) continue;
       sets = Math.min(sets, Math.floor(have / need));
     }
     if (Number.isFinite(sets) && sets > 0) return sets;
+    // A composition was declared but didn't resolve to a complete set: invoice a single
+    // set rather than mis-summing every dash quantity into an inflated unit/set count.
+    return 1;
   }
 
-  // No set composition (or it didn't resolve): treat the summed dash quantity as the
-  // number of units/sets, falling back to 1 so a part-linked job always invoices.
+  // No set composition: treat the summed dash quantity as the number of units/sets,
+  // falling back to 1 so a part-linked job always invoices.
   const summed = Object.values(dash).reduce((s, q) => s + (Number(q) || 0), 0);
   return summed > 0 ? summed : 1;
 }
@@ -105,7 +111,9 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
     if (sets <= 0) continue;
 
     const manualSetPrice =
-      typeof part.pricePerSet === 'number' && Number.isFinite(part.pricePerSet) && part.pricePerSet > 0
+      typeof part.pricePerSet === 'number' &&
+      Number.isFinite(part.pricePerSet) &&
+      part.pricePerSet > 0
         ? part.pricePerSet
         : undefined;
 

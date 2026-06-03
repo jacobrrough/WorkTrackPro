@@ -85,11 +85,16 @@ export const reconciliationsService = {
   /** Patch the statement figures while a reconciliation is in progress. */
   async update(
     id: string,
-    patch: { statementDate?: string; statementEndingBalance?: number | null; beginningBalance?: number | null }
+    patch: {
+      statementDate?: string;
+      statementEndingBalance?: number | null;
+      beginningBalance?: number | null;
+    }
   ): Promise<{ reconciliation: Reconciliation | null; error?: string }> {
     const row: Record<string, unknown> = {};
     if (patch.statementDate !== undefined) row.statement_date = patch.statementDate;
-    if (patch.statementEndingBalance !== undefined) row.statement_ending_balance = patch.statementEndingBalance;
+    if (patch.statementEndingBalance !== undefined)
+      row.statement_ending_balance = patch.statementEndingBalance;
     if (patch.beginningBalance !== undefined) row.beginning_balance = patch.beginningBalance;
     const { data, error } = await acct()
       .from('reconciliations')
@@ -114,10 +119,18 @@ export const reconciliationsService = {
     bankTransactionId: string,
     cleared: boolean
   ): Promise<{ ok: boolean; error?: string }> {
+    const rec = await this.getById(reconciliationId);
+    if (!rec) return { ok: false, error: 'Reconciliation not found.' };
     const row = cleared
       ? { reconciliation_id: reconciliationId, cleared_at: new Date().toISOString() }
       : { reconciliation_id: null, cleared_at: null };
-    const { error } = await acct().from('bank_transactions').update(row).eq('id', bankTransactionId);
+    // Scope to the reconciliation's own account so a transaction id from another
+    // bank account can never be stamped into (or unstamped from) this reconcile.
+    const { error } = await acct()
+      .from('bank_transactions')
+      .update(row)
+      .eq('id', bankTransactionId)
+      .eq('bank_account_id', rec.bankAccountId);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
@@ -129,20 +142,41 @@ export const reconciliationsService = {
     cleared: boolean
   ): Promise<{ ok: boolean; error?: string }> {
     if (bankTransactionIds.length === 0) return { ok: true };
+    const rec = await this.getById(reconciliationId);
+    if (!rec) return { ok: false, error: 'Reconciliation not found.' };
     const row = cleared
       ? { reconciliation_id: reconciliationId, cleared_at: new Date().toISOString() }
       : { reconciliation_id: null, cleared_at: null };
-    const { error } = await acct().from('bank_transactions').update(row).in('id', bankTransactionIds);
+    // Scope to the reconciliation's own account so ids belonging to other bank
+    // accounts in the batch are silently skipped rather than mis-stamped.
+    const { error } = await acct()
+      .from('bank_transactions')
+      .update(row)
+      .in('id', bankTransactionIds)
+      .eq('bank_account_id', rec.bankAccountId);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
 
-  /** The transactions currently cleared against a reconciliation (for the screen). */
-  async clearedAmounts(reconciliationId: string): Promise<number[]> {
+  /**
+   * The transactions currently cleared against a reconciliation (for the screen).
+   * Scoped to the reconciliation's bank account so a stray cross-account stamp can
+   * never leak into the reconcile math. Callers that already hold the reconciliation
+   * (e.g. getSummary) can pass `bankAccountId` to skip the lookup; otherwise it is
+   * resolved here and an unknown reconciliation yields no amounts.
+   */
+  async clearedAmounts(reconciliationId: string, bankAccountId?: string): Promise<number[]> {
+    let accountId = bankAccountId;
+    if (accountId == null) {
+      const rec = await this.getById(reconciliationId);
+      if (!rec) return [];
+      accountId = rec.bankAccountId;
+    }
     const { data, error } = await acct()
       .from('bank_transactions')
       .select('amount')
-      .eq('reconciliation_id', reconciliationId);
+      .eq('reconciliation_id', reconciliationId)
+      .eq('bank_account_id', accountId);
     if (error) throw error;
     return ((data ?? []) as Row[]).map((r) => Number(r.amount) || 0);
   },
@@ -151,7 +185,7 @@ export const reconciliationsService = {
   async getSummary(id: string): Promise<ReconciliationSummary | null> {
     const rec = await this.getById(id);
     if (!rec) return null;
-    const amounts = await this.clearedAmounts(id);
+    const amounts = await this.clearedAmounts(id, rec.bankAccountId);
     return computeReconciliationSummary({
       beginningBalance: rec.beginningBalance,
       statementEndingBalance: rec.statementEndingBalance,
@@ -187,7 +221,10 @@ export const reconciliationsService = {
       .select('*')
       .single();
     if (error || !data) {
-      return { reconciliation: null, error: error?.message ?? 'Failed to complete reconciliation.' };
+      return {
+        reconciliation: null,
+        error: error?.message ?? 'Failed to complete reconciliation.',
+      };
     }
     // Best-effort: stamp the bank account's last_reconciled_at (non-fatal if it fails).
     await acct()

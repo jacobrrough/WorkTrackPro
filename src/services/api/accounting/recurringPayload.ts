@@ -22,7 +22,9 @@ import type {
 
 /** Add `days` to an ISO `YYYY-MM-DD` (reusing the recurrence UTC date math). */
 function addDays(iso: string, days: number): string {
-  return addInterval(iso, 'daily', days);
+  // Short-circuit non-positive offsets: addInterval clamps its step to >=1 (intentional
+  // schedule-step safety), which would push a dueInDays:0 ("due on receipt") date a day late.
+  return days > 0 ? addInterval(iso, 'daily', days) : iso;
 }
 
 /**
@@ -96,7 +98,9 @@ export function buildRecurringBillInput(
  * lines — the exact rule accounting.post_journal_entry enforces — so an unbalanced
  * template is rejected before any DB round-trip.
  */
-export function buildRecurringJournalLines(payload: RecurringJournalPayload): NewJournalLineInput[] {
+export function buildRecurringJournalLines(
+  payload: RecurringJournalPayload
+): NewJournalLineInput[] {
   const lines: NewJournalLineInput[] = payload.lines.map((l) => ({
     accountId: l.accountId,
     debit: l.debit,

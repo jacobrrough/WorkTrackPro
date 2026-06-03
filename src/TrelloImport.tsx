@@ -138,6 +138,47 @@ const DEFAULT_TRELLO_API_TOKEN = String(
   import.meta.env.VITE_TRELLO_TOKEN ?? import.meta.env.VITE_TRELLO_API_TOKEN ?? ''
 ).trim();
 
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+/**
+ * Normalize a Trello date value to a `YYYY-MM-DD` calendar date.
+ *
+ * Trello supplies two kinds of date strings:
+ *  - Instants with a time/zone component (e.g. `card.due` = "2026-06-02T23:00:00.000Z",
+ *    or custom-field `value.date`). These are converted to the LOCAL calendar date so an
+ *    evening-local due that crosses midnight UTC does not shift a day. Using
+ *    `toISOString().split('T')` / `String(due).split('T')` here would yield the UTC date,
+ *    which is off-by-one for timezones behind UTC.
+ *  - Bare calendar dates a user typed/picked (e.g. "2026-06-02" or "6/2/2026"). These carry
+ *    no instant, so they are returned verbatim (normalized) WITHOUT any timezone math —
+ *    `new Date("2026-06-02")` would parse as UTC midnight and roll back a day locally.
+ *
+ * Returns null for empty/unparseable input.
+ */
+const trelloDateToLocalISODate = (value: string | null | undefined): string | null => {
+  const raw = (value ?? '').trim();
+  if (!raw) return null;
+
+  // Bare ISO date (YYYY-MM-DD or YYYY/M/D): keep the calendar date as-is, no TZ shift.
+  const isoLike = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoLike) {
+    const [, y, m, d] = isoLike;
+    return `${y}-${pad2(Number(m))}-${pad2(Number(d))}`;
+  }
+
+  // Bare US-style date (M/D/YYYY): keep the calendar date as-is, no TZ shift.
+  const usLike = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (usLike) {
+    const [, m, d, y] = usLike;
+    return `${y}-${pad2(Number(m))}-${pad2(Number(d))}`;
+  }
+
+  // Anything with a time/zone component is a real instant -> use the LOCAL calendar date.
+  const parsed = new Date(raw);
+  if (isNaN(parsed.getTime())) return null;
+  return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(parsed.getDate())}`;
+};
+
 const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }) => {
   const [boardType, setBoardType] = useState<BoardType>('admin');
   const [trelloData, setTrelloData] = useState<TrelloExport | null>(null);
@@ -158,6 +199,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
   const [selectedCardIds, setSelectedCardIds] = useState<Record<string, boolean>>({});
   const [cardListFilter, setCardListFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cancelRef = useRef(false);
   const trelloAttachmentApiCacheRef = useRef<Map<string, TrelloAttachment[]>>(new Map());
 
   const MATERIAL_CACHE_KEY = 'worktrack_trello_material_cache';
@@ -334,13 +376,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     return Object.keys(quantities).length > 0 ? quantities : undefined;
   };
 
-  const parseDateTextToISO = (value: string): string | null => {
-    const raw = value.trim();
-    if (!raw) return null;
-    const parsed = new Date(raw);
-    if (isNaN(parsed.getTime())) return null;
-    return parsed.toISOString().split('T')[0] ?? null;
-  };
+  const parseDateTextToISO = (value: string): string | null => trelloDateToLocalISODate(value);
 
   const normalizeTrelloAttachment = (attachment: TrelloAttachment): TrelloAttachment => {
     const rawName = (attachment.name || attachment.fileName || '').trim();
@@ -1473,7 +1509,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     trelloAttachmentApiCacheRef.current.clear();
 
     for (let i = 0; i < cards.length; i++) {
-      if (isCancelled) break;
+      if (cancelRef.current) break;
 
       const card = cards[i];
       setStatus(`Importing ${i + 1}/${cards.length}...`);
@@ -1608,7 +1644,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         // Due date: from custom field first, then card.due, then description
         let dueDate =
           getCustomFieldDate(card, cfMap, ['Delivery Date', 'Due Date', 'Deadline']) ||
-          (card.due ? String(card.due).split('T')[0] : undefined);
+          (card.due ? (trelloDateToLocalISODate(card.due) ?? undefined) : undefined);
         if (!dueDate) {
           const dueField = getDescriptionField(descriptionFieldMap, [
             'due date',
@@ -1626,7 +1662,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         }
         const ecd =
           getCustomFieldDate(card, cfMap, ['ECD', 'Estimated Completion Date']) ||
-          (card.due ? String(card.due).split('T')[0] : undefined) ||
+          (card.due ? (trelloDateToLocalISODate(card.due) ?? undefined) : undefined) ||
           dueDate;
 
         // JOB CODE and ADDITIONAL STENCILING from custom fields -> append to description if missing
@@ -1916,7 +1952,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     const errors: ErrorLog[] = [];
 
     for (let i = 0; i < cards.length; i++) {
-      if (isCancelled) break;
+      if (cancelRef.current) break;
 
       const card = cards[i];
       setStatus(`Importing ${i + 1}/${cards.length}...`);
@@ -1982,6 +2018,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     if (!trelloData) return;
 
     setIsImporting(true);
+    cancelRef.current = false;
     setIsCancelled(false);
     setProgress(0);
     setResult(null);
@@ -2397,7 +2434,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           </button>
           {isImporting ? (
             <button
-              onClick={() => setIsCancelled(true)}
+              onClick={() => {
+                cancelRef.current = true;
+                setIsCancelled(true);
+              }}
               className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition hover:bg-red-600"
             >
               Cancel Import
@@ -2428,3 +2468,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 };
 
 export default TrelloImport;
+
+// Exported for unit testing of Trello date normalization (timezone semantics).
+// eslint-disable-next-line react-refresh/only-export-components
+export { trelloDateToLocalISODate };

@@ -377,6 +377,9 @@ export interface Quote {
   laborHours: number;
   laborRate: number;
   laborCost: number;
+  cncHours: number;
+  cncRate: number;
+  cncCost: number;
   markupPercent: number;
   subtotal: number;
   markupAmount: number;

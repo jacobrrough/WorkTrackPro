@@ -173,7 +173,10 @@ function JobDetailRoute() {
         searchTerm: '', // clear list search on direct detail arrival
       });
     }
-  }, [detailJob, jobId, queryClient, navigation]);
+    // navigation.updateState is a stable useCallback([]); depending on the whole
+    // `navigation` value-object (a fresh literal each render) is what caused the loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailJob, jobId, queryClient, navigation.updateState]);
 
   const job = detailJob ?? jobs.find((j) => j.id === jobId);
   if (isPending && !job) {

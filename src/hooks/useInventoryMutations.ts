@@ -130,7 +130,10 @@ export function useInventoryMutations({
         const item = inventory.find((i) => i.id === inventoryId);
         if (item) {
           const available = calculateAvailable(item);
-          if (quantity > available) return;
+          if (quantity > available) {
+            showToast('Not enough available stock to allocate.', 'warning');
+            return;
+          }
         }
         await jobService.addJobInventory(jobId, inventoryId, quantity, unit);
         await refreshJobs();
@@ -257,18 +260,25 @@ export function useInventoryMutations({
           console.error('Inventory item not found');
           return false;
         }
-        const newOnOrder = (item.onOrder || 0) + quantity;
-        await inventoryService.updateInventory(id, { onOrder: newOnOrder });
+        // Atomic delta (on_order += quantity) so a concurrent order/receive isn't clobbered.
+        const result = await inventoryService.adjustStock(id, 0, quantity);
+        if (!result) {
+          showToast('Failed to update order', 'error');
+          await refreshInventory();
+          return false;
+        }
         if (currentUser) {
+          // Order placement doesn't change in_stock; record the authoritative post-RPC value.
+          const available = Math.max(0, result.inStock - calculateAllocated(id));
           await inventoryHistoryService.createHistory({
             inventory: id,
             user: currentUser.id,
             action: 'order_placed',
             reason: `Ordered ${quantity} ${item.unit}`,
-            previousInStock: item.inStock,
-            newInStock: item.inStock,
-            previousAvailable: calculateAvailable(item),
-            newAvailable: calculateAvailable(item),
+            previousInStock: result.inStock,
+            newInStock: result.inStock,
+            previousAvailable: available,
+            newAvailable: available,
             changeAmount: 0,
           });
         }
@@ -280,7 +290,7 @@ export function useInventoryMutations({
         return false;
       }
     },
-    [inventory, currentUser, refreshInventory, calculateAvailable]
+    [inventory, currentUser, refreshInventory, calculateAllocated, showToast]
   );
 
   const receiveInventoryOrder = useCallback(
@@ -291,20 +301,26 @@ export function useInventoryMutations({
           console.error('Inventory item not found');
           return false;
         }
-        const previousAvailable = calculateAvailable(item);
-        const newInStock = item.inStock + receivedQuantity;
-        const newOnOrder = Math.max(0, (item.onOrder || 0) - receivedQuantity);
-        await inventoryService.updateInventory(id, { inStock: newInStock, onOrder: newOnOrder });
+        // Atomic deltas (in_stock += received, on_order -= received) to avoid the
+        // read-modify-write lost update against a concurrent receive or job reconciliation.
+        const result = await inventoryService.adjustStock(id, receivedQuantity, -receivedQuantity);
+        if (!result) {
+          showToast('Failed to receive order', 'error');
+          await refreshInventory();
+          return false;
+        }
         if (currentUser) {
+          const allocated = calculateAllocated(id);
+          const prevInStock = result.inStock - receivedQuantity; // authoritative previous
           await inventoryHistoryService.createHistory({
             inventory: id,
             user: currentUser.id,
             action: 'order_received',
             reason: `Received ${receivedQuantity} ${item.unit}`,
-            previousInStock: item.inStock,
-            newInStock: newInStock,
-            previousAvailable: previousAvailable,
-            newAvailable: Math.max(0, newInStock - calculateAllocated(id)),
+            previousInStock: prevInStock,
+            newInStock: result.inStock,
+            previousAvailable: Math.max(0, prevInStock - allocated),
+            newAvailable: Math.max(0, result.inStock - allocated),
             changeAmount: receivedQuantity,
           });
         }
@@ -316,7 +332,7 @@ export function useInventoryMutations({
         return false;
       }
     },
-    [inventory, currentUser, refreshInventory, calculateAvailable, calculateAllocated]
+    [inventory, currentUser, refreshInventory, calculateAllocated, showToast]
   );
 
   return {

@@ -39,6 +39,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
   const [editName, setEditName] = useState(column.name);
   const [showMenu, setShowMenu] = useState(false);
   const [showColors, setShowColors] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +53,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
         setShowColors(false);
+        setConfirmingDelete(false);
       }
     };
     document.addEventListener('mousedown', handle);
@@ -154,16 +156,41 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                   ))}
                 </div>
               )}
-              <button
-                onClick={() => {
-                  setShowMenu(false);
-                  onDelete();
-                }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-400 hover:bg-white/10"
-              >
-                <span className="material-symbols-outlined text-base">delete</span>
-                Delete column
-              </button>
+              {confirmingDelete ? (
+                <div className="space-y-1.5 px-3 py-2">
+                  <p className="text-xs text-red-400">
+                    {`Delete column${
+                      cardCount > 0 ? ` and ${cardCount} card${cardCount === 1 ? '' : 's'}` : ''
+                    }?`}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        setConfirmingDelete(false);
+                        onDelete();
+                      }}
+                      className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => setConfirmingDelete(false)}
+                      className="rounded px-3 py-1 text-xs text-slate-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-400 hover:bg-white/10"
+                >
+                  <span className="material-symbols-outlined text-base">delete</span>
+                  Delete column
+                </button>
+              )}
             </div>
           )}
         </div>

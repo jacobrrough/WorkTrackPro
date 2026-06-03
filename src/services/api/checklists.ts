@@ -53,14 +53,18 @@ export const checklistService = {
   },
 
   async getByJobAndStatus(jobId: string, status: JobStatus): Promise<Checklist | null> {
+    // Use an ordered, limited fetch rather than maybeSingle() so accidental
+    // duplicate (job_id, status) rows degrade gracefully (oldest wins) instead
+    // of throwing a "multiple rows" error.
     const { data, error } = await supabase
       .from('checklists')
       .select('*')
       .eq('job_id', jobId)
       .eq('status', status)
-      .maybeSingle();
-    if (error || !data) return null;
-    return mapRowToChecklist(data as unknown as Record<string, unknown>);
+      .order('created_at', { ascending: true })
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    return mapRowToChecklist(data[0] as unknown as Record<string, unknown>);
   },
 
   /**

@@ -31,7 +31,8 @@ import { mapBankTransactionRow, type Row } from './mappers';
  * Reads throw; writes return a result object carrying the DB error.
  */
 
-const SELECT_WITH_CATEGORY = '*, category:accounts!bank_transactions_category_account_id_fkey(name)';
+const SELECT_WITH_CATEGORY =
+  '*, category:accounts!bank_transactions_category_account_id_fkey(name)';
 
 export interface ImportResult {
   inserted: number;
@@ -87,17 +88,29 @@ export const bankTransactionsService = {
    * unique constraint — if a concurrent import slips a row in, the unique violation
    * is swallowed per-row by inserting with `ignoreDuplicates`.
    */
-  async import(
-    bankAccountId: string,
-    parsed: ParsedBankTransaction[]
-  ): Promise<ImportResult> {
+  async import(bankAccountId: string, parsed: ParsedBankTransaction[]): Promise<ImportResult> {
     if (parsed.length === 0) return { inserted: 0, duplicates: 0, autoCategorized: 0 };
 
     // 1) Assign a stable external id to every row (bank id, or synthetic fallback).
-    const withIds = parsed.map((t, i) => ({
-      ...t,
-      externalId: t.externalId ?? syntheticExternalId(t, i),
-    }));
+    //    The synthetic fallback is salted by a per-natural-key OCCURRENCE ORDINAL —
+    //    how many earlier FITID-less rows in this batch share the same natural key —
+    //    rather than the row's absolute position. That keeps a stable row's id
+    //    unchanged when a re-exported statement prepends/reorders rows (so dedup
+    //    holds) while still disambiguating two genuinely identical same-day rows.
+    //    The natural key and its normalization MUST match syntheticExternalId.
+    const occurrences = new Map<string, number>();
+    const withIds = parsed.map((t) => {
+      if (t.externalId) return { ...t, externalId: t.externalId };
+      const naturalKey = [
+        t.txnDate,
+        t.amount.toFixed(2),
+        (t.description ?? '').toLowerCase().replace(/\s+/g, ' ').trim(),
+        (t.merchant ?? '').toLowerCase().replace(/\s+/g, ' ').trim(),
+      ].join('|');
+      const ordinal = occurrences.get(naturalKey) ?? 0;
+      occurrences.set(naturalKey, ordinal + 1);
+      return { ...t, externalId: syntheticExternalId(t, ordinal) };
+    });
 
     // 2) Fetch the account's existing external ids to skip duplicates up front.
     const { data: existingRows, error: exErr } = await acct()
@@ -162,7 +175,12 @@ export const bankTransactionsService = {
       return { inserted: 0, duplicates, autoCategorized: 0, error: insErr.message };
     }
     const insertedCount = (inserted ?? []).length;
-    return { inserted: insertedCount, duplicates, autoCategorized };
+    // ignoreDuplicates returns no row for a concurrent racer that collided on the
+    // unique constraint, so insertedCount can fall short of toInsert.length. Fold the
+    // shortfall into duplicates (those rows genuinely already existed) so the
+    // user-facing inserted + duplicates always equals parsed.length.
+    const racedDuplicates = toInsert.length - insertedCount;
+    return { inserted: insertedCount, duplicates: duplicates + racedDuplicates, autoCategorized };
   },
 
   /**
@@ -178,7 +196,10 @@ export const bankTransactionsService = {
     const txn = await this.getById(id);
     if (!txn) return { transaction: null, error: 'Transaction not found.' };
     if (txn.status === 'matched') {
-      return { transaction: null, error: 'This transaction is already posted. Unmatch it first to recategorize.' };
+      return {
+        transaction: null,
+        error: 'This transaction is already posted. Unmatch it first to recategorize.',
+      };
     }
     const { error } = await acct()
       .from('bank_transactions')
@@ -208,11 +229,17 @@ export const bankTransactionsService = {
       return { transaction: null, error: 'This transaction is already matched.' };
     }
     if (txn.status === 'excluded') {
-      return { transaction: null, error: 'This transaction is excluded. Un-exclude it before accepting.' };
+      return {
+        transaction: null,
+        error: 'This transaction is excluded. Un-exclude it before accepting.',
+      };
     }
     const category = categoryAccountId ?? txn.categoryAccountId;
     if (!category) {
-      return { transaction: null, error: 'Choose a category account before accepting this transaction.' };
+      return {
+        transaction: null,
+        error: 'Choose a category account before accepting this transaction.',
+      };
     }
 
     // Resolve the bank account's GL account (the other side of the entry).
@@ -228,7 +255,10 @@ export const bankTransactionsService = {
         memo: txn.description ?? undefined,
       });
     } catch (e) {
-      return { transaction: null, error: e instanceof Error ? e.message : 'Unable to build the entry.' };
+      return {
+        transaction: null,
+        error: e instanceof Error ? e.message : 'Unable to build the entry.',
+      };
     }
 
     const posted = await journalService.createAndPost({
@@ -262,7 +292,10 @@ export const bankTransactionsService = {
    * Reverse an accept: void the posted JE and return the transaction to
    * `categorized` (keeping its category) so it can be re-accepted or recategorized.
    */
-  async unmatch(id: string, reason = 'Bank match undone'): Promise<{ transaction: BankTransaction | null; error?: string }> {
+  async unmatch(
+    id: string,
+    reason = 'Bank match undone'
+  ): Promise<{ transaction: BankTransaction | null; error?: string }> {
     const txn = await this.getById(id);
     if (!txn) return { transaction: null, error: 'Transaction not found.' };
     if (txn.status !== 'matched') {

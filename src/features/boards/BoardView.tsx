@@ -103,7 +103,15 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
       if (map[card.columnId]) map[card.columnId].push(card);
     }
     for (const colId of Object.keys(map)) {
-      map[colId].sort((a, b) => a.sortOrder - b.sortOrder);
+      // Multi-key sort so display order stays deterministic when sort_order values
+      // collide (cross-column moves can leave duplicate sort_orders). Tiebreak on
+      // createdAt (optional → guard with ?? '') then the always-present id.
+      map[colId].sort(
+        (a, b) =>
+          a.sortOrder - b.sortOrder ||
+          (a.createdAt ?? '').localeCompare(b.createdAt ?? '') ||
+          a.id.localeCompare(b.id)
+      );
     }
     return map;
   }, [columns, cards]);

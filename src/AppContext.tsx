@@ -231,7 +231,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         if (typeof record.id !== 'string') return;
         if (action === 'create') {
           queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
-            prev ? [record as Shift, ...prev] : [record as Shift]
+            !prev
+              ? [record as Shift]
+              : prev.some((s) => s.id === record.id)
+                ? prev
+                : [record as Shift, ...prev]
           );
         } else if (action === 'update') {
           queryClient.setQueryData<Shift[]>(['shifts'], (prev) =>
@@ -249,7 +253,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         if (typeof record.id !== 'string') return;
         if (action === 'create') {
           queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
-            prev ? [record as InventoryItem, ...prev] : [record as InventoryItem]
+            !prev
+              ? [record as InventoryItem]
+              : prev.some((i) => i.id === record.id)
+                ? prev
+                : [record as InventoryItem, ...prev]
           );
         } else if (action === 'update') {
           queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>

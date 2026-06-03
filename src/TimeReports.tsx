@@ -288,13 +288,19 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       periodWindow.end !== null ? new Date(periodWindow.end.getTime() - 1) : new Date();
     const chartEndDay = startOfLocalDay(chartEndBase);
 
+    // Bucket by LOCAL calendar day to match the local labels and the rest of the
+    // report; toISOString() would key by UTC and mis-attribute evening shifts that
+    // cross UTC midnight in negative-offset zones.
+    const localKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
     for (let i = 6; i >= 0; i--) {
       const date = new Date(chartEndDay);
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = localKey(date);
 
       const dayShifts = filteredShifts.filter((s) => {
-        const shiftDate = new Date(s.clockInTime).toISOString().split('T')[0];
+        const shiftDate = localKey(new Date(s.clockInTime));
         return shiftDate === dateStr;
       });
 

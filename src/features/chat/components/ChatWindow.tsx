@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useChatMessages, useConversationWithMembers } from '@/hooks/useChatQueries';
 import { useChatMutations } from '@/hooks/useChatMutations';
 import { encryptionKeyService } from '@/services/api/encryptionKeys';
@@ -59,6 +59,45 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
     return creatorPubKey;
   }, [conversationId, convData]);
 
+  // Prime the conversation key as soon as the conversation loads so message
+  // history decrypts on open — without this, ensureConversationKey only ran on
+  // send, leaving a non-sending participant's history encrypted until they
+  // typed something. `keyReady` flips once the key is cached; it is threaded
+  // into the MessageList `key` below so MessageList remounts and re-runs its
+  // decrypt effect against the now-available key. Reset to false whenever the
+  // conversation changes.
+  const [keyReady, setKeyReady] = useState(false);
+
+  useEffect(() => {
+    setKeyReady(false);
+  }, [conversationId]);
+
+  useEffect(() => {
+    // Wait until the conversation (and thus its creator) is loaded; without
+    // convData, ensureConversationKey cannot resolve the creator public key.
+    if (!convData) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await ensureConversationKey();
+        if (!cancelled) setKeyReady(true);
+      } catch (err) {
+        // Degrade gracefully into the locked / read-only path. The common
+        // cases are an unlocked identity not being present ('Keys not
+        // unlocked') or the member row lacking a key ('No conversation key');
+        // neither should crash the window. History simply stays encrypted.
+        if (!cancelled) {
+          console.warn('ChatWindow: could not prime conversation key:', err);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, convData, ensureConversationKey]);
+
   const handleSendText = useCallback(
     async (text: string) => {
       const pubKey = await ensureConversationKey();
@@ -99,6 +138,7 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
         onBack={onBack}
       />
       <MessageList
+        key={`${conversationId}:${keyReady}`}
         pages={messageData?.pages}
         currentUserId={currentUserId}
         conversationId={conversationId}

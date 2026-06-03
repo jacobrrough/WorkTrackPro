@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { Comment, Job, JobStatus, User } from '@/core/types';
+import type { Comment, Job, JobStatus, SystemNotificationType, User } from '@/core/types';
 import { buildJobNameFromConvention } from '@/lib/formatJob';
 import { getNextWorkflowStatus, isTerminalStatus } from '@/lib/jobWorkflow';
 import { dedupeJobsById } from '@/lib/jobUtils';
@@ -8,6 +8,7 @@ import { jobService } from '@/services/api/jobs';
 import { checklistService } from '@/services/api/checklists';
 import { jobStatusHistoryService } from '@/services/api/jobStatusHistory';
 import { systemNotificationService } from '@/services/api/systemNotifications';
+import { supabase } from '@/services/api/supabaseClient';
 
 // ─── Module-level helpers ─────────────────────────────────────────────────────
 // Defined outside the hook so they are stable references and never need to
@@ -40,6 +41,45 @@ function patchJobInCache(queryClient: QueryClient, jobId: string, patch: Partial
  *   2. Single-threaded safety: JS does not interleave microtasks between .has() and
  *      .set(), so the check-then-add is effectively atomic.
  */
+/**
+ * Create an in-app system notification for `userId` only if their notification
+ * preferences allow it. Gates on the SECURITY DEFINER Postgres function
+ * `should_notify`, which can read any user's preference row (client RLS limits
+ * direct preference reads to the caller's own row).
+ *
+ * Fails open: a null result or an RPC error is treated as "allowed" so a
+ * preference-lookup hiccup never suppresses a notification. Never throws — the
+ * underlying createNotification already swallows its own errors.
+ */
+async function notifyIfEnabled(data: {
+  userId: string;
+  type: SystemNotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  let allowed: boolean | null = null;
+  try {
+    const res = await supabase.rpc('should_notify', {
+      p_user_id: data.userId,
+      p_notif_type: data.type,
+      p_channel: 'in_app',
+    });
+    allowed = (res.data as boolean | null) ?? null;
+  } catch (err) {
+    // Fail open on any RPC failure.
+    console.error('should_notify check failed:', err);
+    allowed = null;
+  }
+  // Only suppress when the function explicitly returned false; null/undefined
+  // (error or no row) falls through to creating the notification.
+  if (allowed === false) return;
+  await systemNotificationService
+    .createNotification(data)
+    .catch((err) => console.error(`${data.type} notification failed:`, err));
+}
+
 const _inFlightHistoryPromises = new Map<string, Promise<void>>();
 
 function recordStatusChange(
@@ -235,30 +275,26 @@ export function useJobMutations({
               const prevSet = new Set(previousJob.assignedUsers ?? []);
               for (const uid of data.assignedUsers) {
                 if (!prevSet.has(uid) && uid !== currentUser.id) {
-                  systemNotificationService
-                    .createNotification({
-                      userId: uid,
-                      type: 'assignment',
-                      title: 'Assigned to Job',
-                      message: `${changerName} assigned you to ${jobLabel}`,
-                      link: `/app/jobs/${jobId}`,
-                      metadata: { job_id: jobId, job_code: previousJob.jobCode },
-                    })
-                    .catch((err) => console.error('Assignment notification failed:', err));
+                  await notifyIfEnabled({
+                    userId: uid,
+                    type: 'assignment',
+                    title: 'Assigned to Job',
+                    message: `${changerName} assigned you to ${jobLabel}`,
+                    link: `/app/jobs/${jobId}`,
+                    metadata: { job_id: jobId, job_code: previousJob.jobCode },
+                  });
                 }
               }
               for (const uid of previousJob.assignedUsers ?? []) {
                 if (!data.assignedUsers.includes(uid) && uid !== currentUser.id) {
-                  systemNotificationService
-                    .createNotification({
-                      userId: uid,
-                      type: 'unassignment',
-                      title: 'Removed from Job',
-                      message: `${changerName} removed you from ${jobLabel}`,
-                      link: `/app/jobs/${jobId}`,
-                      metadata: { job_id: jobId, job_code: previousJob.jobCode },
-                    })
-                    .catch((err) => console.error('Unassignment notification failed:', err));
+                  await notifyIfEnabled({
+                    userId: uid,
+                    type: 'unassignment',
+                    title: 'Removed from Job',
+                    message: `${changerName} removed you from ${jobLabel}`,
+                    link: `/app/jobs/${jobId}`,
+                    metadata: { job_id: jobId, job_code: previousJob.jobCode },
+                  });
                 }
               }
             }
@@ -266,16 +302,14 @@ export function useJobMutations({
             if (data.isRush === true && !previousJob.isRush) {
               for (const uid of previousJob.assignedUsers ?? []) {
                 if (uid !== currentUser.id) {
-                  systemNotificationService
-                    .createNotification({
-                      userId: uid,
-                      type: 'rush',
-                      title: 'Rush Job',
-                      message: `${jobLabel} has been marked as RUSH by ${changerName}`,
-                      link: `/app/jobs/${jobId}`,
-                      metadata: { job_id: jobId, job_code: previousJob.jobCode },
-                    })
-                    .catch((err) => console.error('Rush notification failed:', err));
+                  await notifyIfEnabled({
+                    userId: uid,
+                    type: 'rush',
+                    title: 'Rush Job',
+                    message: `${jobLabel} has been marked as RUSH by ${changerName}`,
+                    link: `/app/jobs/${jobId}`,
+                    metadata: { job_id: jobId, job_code: previousJob.jobCode },
+                  });
                 }
               }
             }

@@ -121,17 +121,28 @@ export const shiftService = {
       clock_in_time: new Date().toISOString(),
     });
     if (error) {
+      // The partial unique index uniq_open_shift_per_user makes a concurrent second
+      // clock-in fail with SQLSTATE 23505 (unique_violation). Treat that as the
+      // "already clocked in" case — same as the SELECT pre-check above — so the
+      // caller's re-check / clock-out-then-retry path handles it instead of erroring.
+      if ((error as { code?: string }).code === '23505') {
+        return false;
+      }
       console.error('Shift clockIn failed:', error);
       throw error;
     }
     return true;
   },
 
-  /** Throws on failure. Idempotent sync can use getShiftOpenState first. */
-  async clockOut(shiftId: string): Promise<void> {
+  /**
+   * Throws on failure. Idempotent sync can use getShiftOpenState first.
+   * `clockOutTime` lets offline sync stamp the real punch time instead of the
+   * reconnect-now time (online callers omit it and get now()).
+   */
+  async clockOut(shiftId: string, clockOutTime?: string): Promise<void> {
     const { error } = await supabase
       .from('shifts')
-      .update({ clock_out_time: new Date().toISOString() })
+      .update({ clock_out_time: clockOutTime ?? new Date().toISOString() })
       .eq('id', shiftId);
     if (error) {
       console.error('Shift clockOut failed:', error);

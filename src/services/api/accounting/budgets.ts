@@ -83,12 +83,16 @@ export const budgetsService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { budget: null, error: error?.message ?? 'Failed to create budget.' };
+    if (error || !data)
+      return { budget: null, error: error?.message ?? 'Failed to create budget.' };
     return { budget: mapBudgetRow(data as Row) };
   },
 
   /** Patch a budget header (name / fiscal year / status / description). */
-  async update(id: string, input: UpdateBudgetInput): Promise<{ budget: Budget | null; error?: string }> {
+  async update(
+    id: string,
+    input: UpdateBudgetInput
+  ): Promise<{ budget: Budget | null; error?: string }> {
     const patch: Record<string, unknown> = {};
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -96,7 +100,11 @@ export const budgetsService = {
       patch.name = name;
     }
     if (input.fiscalYear !== undefined) {
-      if (!Number.isInteger(input.fiscalYear) || input.fiscalYear < 2000 || input.fiscalYear > 2100) {
+      if (
+        !Number.isInteger(input.fiscalYear) ||
+        input.fiscalYear < 2000 ||
+        input.fiscalYear > 2100
+      ) {
         return { budget: null, error: 'Fiscal year must be a year between 2000 and 2100.' };
       }
       patch.fiscal_year = input.fiscalYear;
@@ -105,13 +113,22 @@ export const budgetsService = {
     if (input.description !== undefined) patch.description = input.description?.trim() || null;
     if (Object.keys(patch).length === 0) return { budget: await this.getById(id) };
 
-    const { data, error } = await acct().from('budgets').update(patch).eq('id', id).select('*').single();
-    if (error || !data) return { budget: null, error: error?.message ?? 'Failed to update budget.' };
+    const { data, error } = await acct()
+      .from('budgets')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !data)
+      return { budget: null, error: error?.message ?? 'Failed to update budget.' };
     return { budget: mapBudgetRow(data as Row) };
   },
 
   /** Set just the lifecycle status (draft → active → archived). */
-  async setStatus(id: string, status: Budget['status']): Promise<{ budget: Budget | null; error?: string }> {
+  async setStatus(
+    id: string,
+    status: Budget['status']
+  ): Promise<{ budget: Budget | null; error?: string }> {
     return this.update(id, { status });
   },
 
@@ -147,7 +164,10 @@ export const budgetsService = {
   async getGrid(budgetId: string): Promise<BudgetGrid> {
     const budget = await this.getById(budgetId);
     if (!budget) throw new Error('Budget not found.');
-    const [accounts, lines] = await Promise.all([accountsService.getAll(), this.listLines(budgetId)]);
+    const [accounts, lines] = await Promise.all([
+      accountsService.getAll(),
+      this.listLines(budgetId),
+    ]);
     // Budget the ACTIVE chart (an inactive account can still hold legacy cells, but the
     // grid is the editable plan going forward — matches how the dimensions UI budgets).
     const activeAccounts = accounts.filter((a) => a.isActive);
@@ -183,20 +203,40 @@ export const budgetsService = {
       else byKey.set(key, { accountId: c.accountId, periodMonth: m, cents });
     }
 
-    // Replace the whole set: clear existing cells, then insert the kept ones.
-    const { error: delErr } = await acct().from('budget_lines').delete().eq('budget_id', budgetId);
-    if (delErr) return { ok: false, saved: 0, error: delErr.message };
-
+    // Replace the set WITHOUT a destructive delete-first: upsert the kept cells on the
+    // unique key, then delete only the cells that are no longer present. The old
+    // delete-then-insert could permanently wipe the plan if the insert failed after the
+    // delete committed; this ordering can never leave the budget empty on a failed write.
     const rows = Array.from(byKey.values()).map((c) => ({
       budget_id: budgetId,
       account_id: c.accountId,
       period_month: c.periodMonth,
       amount: c.cents / 100,
     }));
-    if (rows.length === 0) return { ok: true, saved: 0 };
 
-    const { error: insErr } = await acct().from('budget_lines').insert(rows);
-    if (insErr) return { ok: false, saved: 0, error: insErr.message };
+    if (rows.length > 0) {
+      const { error: upErr } = await acct()
+        .from('budget_lines')
+        .upsert(rows, { onConflict: 'budget_id,account_id,period_month' });
+      if (upErr) return { ok: false, saved: 0, error: upErr.message };
+    }
+
+    // Remove cells that were cleared (present in the DB but not in the kept set).
+    const { data: existingRows, error: exErr } = await acct()
+      .from('budget_lines')
+      .select('id, account_id, period_month')
+      .eq('budget_id', budgetId);
+    if (exErr) return { ok: false, saved: rows.length, error: exErr.message };
+    const keep = new Set(Array.from(byKey.values()).map((c) => `${c.accountId}:${c.periodMonth}`));
+    const staleIds = (
+      (existingRows ?? []) as { id: string; account_id: string; period_month: number }[]
+    )
+      .filter((r) => !keep.has(`${r.account_id}:${r.period_month}`))
+      .map((r) => r.id);
+    if (staleIds.length > 0) {
+      const { error: delErr } = await acct().from('budget_lines').delete().in('id', staleIds);
+      if (delErr) return { ok: false, saved: rows.length, error: delErr.message };
+    }
     return { ok: true, saved: rows.length };
   },
 
@@ -237,7 +277,11 @@ export const budgetsService = {
         normalBalance: a.normalBalance,
       }));
 
-    const { rows, totalBudgetCents, totalActualCents } = buildBudgetVsActual(reportable, lines, actuals);
+    const { rows, totalBudgetCents, totalActualCents } = buildBudgetVsActual(
+      reportable,
+      lines,
+      actuals
+    );
     return {
       budgetId,
       budgetName: budget.name,
@@ -254,7 +298,9 @@ export const budgetsService = {
   /** Open AR/AP items (balance_due > 0) with their due dates, for the forecast. */
   async getCashFlowItems(): Promise<CashFlowItem[]> {
     const [ar, ap] = await Promise.all([
-      acct().from('v_ar_aging').select('invoice_id, invoice_number, customer_name, due_date, balance_due'),
+      acct()
+        .from('v_ar_aging')
+        .select('invoice_id, invoice_number, customer_name, due_date, balance_due'),
       acct().from('v_ap_aging').select('bill_id, bill_number, vendor_name, due_date, balance_due'),
     ]);
     if (ar.error) throw ar.error;

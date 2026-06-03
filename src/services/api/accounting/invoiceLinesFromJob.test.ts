@@ -69,6 +69,25 @@ describe('setsForPart', () => {
     expect(setsForPart(part, { '01': 6, '02': 4 })).toBe(3);
   });
 
+  it('normalizes composition suffixes regardless of dash form (01/02, -1)', () => {
+    // The real on-screen shape keys setComposition as bare/zero-padded suffixes ('01').
+    // Normalization must match these to the zero-padded dash keys (-01, -02) instead of
+    // collapsing to the summed dash quantity (which would over-bill 10 "sets").
+    const padded = { ...makePart(), setComposition: { '01': 2, '02': 1 } } as Part;
+    expect(setsForPart(padded, { '01': 6, '02': 4 })).toBe(3);
+
+    // Single-dash, single-digit suffix ('-1') resolves to the same -01 dash key.
+    const singleDash = { ...makePart(), setComposition: { '-1': 2 } } as Part;
+    expect(setsForPart(singleDash, { '01': 6 })).toBe(3);
+  });
+
+  it('invoices a single set when a composition is declared but no complete set exists', () => {
+    // Need 2 of -01 per set but only 1 on the job: 0 complete sets. Must NOT sum every
+    // dash quantity (which would inflate the unit/set count); fall back to 1.
+    const part = { ...makePart(), setComposition: { '01': 2 } } as Part;
+    expect(setsForPart(part, { '01': 1, '02': 99 })).toBe(1);
+  });
+
   it('falls back to 1 when a part is linked but no quantities are present', () => {
     expect(setsForPart(makePart(), {})).toBe(1);
   });
@@ -106,7 +125,10 @@ describe('buildInvoiceLinesFromJob', () => {
     expect(lines[0].incomeAccountId).toBe('acc-sales');
     expect(lines[0].taxCodeId).toBe('tax-1');
     // unitPrice * quantity reconstructs the total (within rounding)
-    expect((lines[0].unitPrice ?? 0) * (lines[0].quantity ?? 0)).toBeCloseTo(lines[0].lineTotal!, 1);
+    expect((lines[0].unitPrice ?? 0) * (lines[0].quantity ?? 0)).toBeCloseTo(
+      lines[0].lineTotal!,
+      1
+    );
   });
 
   it("anchors to a part's stored pricePerSet (manualSetPrice), matching the calculator", () => {
@@ -137,7 +159,12 @@ describe('buildInvoiceLinesFromJob', () => {
         { partId: 'part-2', partNumber: 'P-200', dashQuantities: { '01': 2 } },
       ],
     });
-    const lines = buildInvoiceLinesFromJob({ job, parts: [partA, partB], inventory, settings: SETTINGS });
+    const lines = buildInvoiceLinesFromJob({
+      job,
+      parts: [partA, partB],
+      inventory,
+      settings: SETTINGS,
+    });
     expect(lines).toHaveLength(2);
     expect(lines.map((l) => l.jobId)).toEqual(['job-1', 'job-1']);
   });
@@ -147,11 +174,14 @@ describe('buildInvoiceLinesFromJob', () => {
       partNumber: undefined,
       dashQuantities: undefined,
       parts: [],
-      inventoryItems: [
-        { id: 'ji-1', inventoryId: 'inv-1', quantity: 4, unit: 'ea' },
-      ],
+      inventoryItems: [{ id: 'ji-1', inventoryId: 'inv-1', quantity: 4, unit: 'ea' }],
     });
-    const lines = buildInvoiceLinesFromJob({ job, parts: [], inventory, settings: { ...SETTINGS, materialMultiplier: 2 } });
+    const lines = buildInvoiceLinesFromJob({
+      job,
+      parts: [],
+      inventory,
+      settings: { ...SETTINGS, materialMultiplier: 2 },
+    });
     expect(lines).toHaveLength(1);
     // 4 * $5 * 2 = $40
     expect(lines[0].lineTotal).toBeCloseTo(40, 2);
@@ -159,7 +189,12 @@ describe('buildInvoiceLinesFromJob', () => {
   });
 
   it('returns no lines when there is nothing to invoice', () => {
-    const job = makeJob({ partNumber: undefined, dashQuantities: undefined, parts: [], inventoryItems: [] });
+    const job = makeJob({
+      partNumber: undefined,
+      dashQuantities: undefined,
+      parts: [],
+      inventoryItems: [],
+    });
     expect(buildInvoiceLinesFromJob({ job, parts: [], inventory, settings: SETTINGS })).toEqual([]);
   });
 });

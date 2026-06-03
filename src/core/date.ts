@@ -202,13 +202,18 @@ export const formatDateOnly = (dateStr: string | null | undefined): string => {
 
 /**
  * Convert a date from YYYY-MM-DD input to ISO string for PocketBase
+ *
+ * Anchors the instant at UTC noon (not UTC midnight) so that no client timezone
+ * offset (within ±12h) can push the stored calendar day across a date boundary.
+ * Paired with isoToDateInput's UTC getters below, this keeps the input round-trip
+ * and formatDateOnly's literal-day parse agreeing on the same calendar day
+ * regardless of the client's UTC offset (fixes off-by-one in positive-offset TZs).
  */
 export const dateInputToISO = (dateStr: string | undefined): string | undefined => {
   if (!dateStr) return undefined;
   try {
     const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toISOString();
+    return new Date(Date.UTC(year, month - 1, day, 12)).toISOString();
   } catch {
     return undefined;
   }
@@ -216,14 +221,18 @@ export const dateInputToISO = (dateStr: string | undefined): string | undefined 
 
 /**
  * Convert UTC ISO string from PocketBase to YYYY-MM-DD for input field
+ *
+ * Reads UTC calendar components so the value mirrors dateInputToISO's UTC-noon
+ * anchor exactly. Using local getters here would shift the day for clients whose
+ * offset crosses midnight relative to the stored instant.
  */
 export const isoToDateInput = (isoStr: string | undefined): string => {
   if (!isoStr) return '';
   try {
     const date = new Date(isoStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   } catch {
     return '';

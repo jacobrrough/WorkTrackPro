@@ -73,7 +73,13 @@ export interface ReportDocument {
 // ── CSV ──────────────────────────────────────────────────────────────────────
 
 function csvCell(v: unknown): string {
-  const s = v == null ? '' : String(v);
+  const s0 = v == null ? '' : String(v);
+  // Neutralize spreadsheet formula injection: Excel/Sheets execute a cell whose
+  // text begins with = + @ tab or CR. A leading '-' is only dangerous when it is
+  // NOT the sign of a real number, so legitimate amounts like "-500.00" (from
+  // toFixed) stay numeric instead of being apostrophe-prefixed and stringified.
+  const dangerous = /^[=+@\t\r]/.test(s0) || (s0.startsWith('-') && !/^-?\d+(\.\d+)?$/.test(s0));
+  const s = dangerous ? `'${s0}` : s0;
   return `"${s.replace(/"/g, '""')}"`;
 }
 
@@ -144,10 +150,7 @@ export function reportToHtml(doc: ReportDocument): string {
           const cells = [...row.cells];
           while (cells.length < section.columns.length) cells.push('');
           const labelCells = cells
-            .map(
-              (c) =>
-                `<td style="padding:6px 8px;${weight}${border}">${escapeHtml(c)}</td>`
-            )
+            .map((c) => `<td style="padding:6px 8px;${weight}${border}">${escapeHtml(c)}</td>`)
             .join('');
           const amountCell =
             row.amount == null

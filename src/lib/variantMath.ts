@@ -17,8 +17,14 @@ export const getDashQuantity = (
   if (!dashQuantities) return 0;
   const normalized = normalizeVariantSuffix(suffix);
   if (!normalized) return 0;
+  // Also try the zero-padded dash form (e.g. '1' -> '-01') so a single-digit suffix
+  // matches keys produced by normalizeDashQuantities, which pads numeric suffixes.
+  const paddedDash = /^\d{1,2}$/.test(normalized)
+    ? `-${normalized.padStart(2, '0')}`
+    : `-${normalized}`;
   return (
     dashQuantities[toDashSuffix(normalized)] ??
+    dashQuantities[paddedDash] ??
     dashQuantities[normalized] ??
     dashQuantities[suffix] ??
     0

@@ -616,6 +616,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
             inventoryItems,
             {
               laborRate: settings.laborRate,
+              cncRate: settings.cncRate,
+              printer3DRate: settings.printer3DRate,
               manualVariantPrice: updates.pricePerVariant,
             }
           );
@@ -2755,6 +2757,7 @@ function VariantQuoteMini({
     }
     return calculateVariantQuote(partNumber, variantWithEffectiveLabor, 1, inventoryItems, {
       laborRate: settings.laborRate,
+      cncRate: settings.cncRate,
       printer3DRate: settings.printer3DRate,
       manualVariantPrice: Number.isFinite(manualPrice) ? manualPrice : undefined,
     });
@@ -2766,6 +2769,7 @@ function VariantQuoteMini({
     effectivePrinter3DHours,
     inventoryItems,
     settings.laborRate,
+    settings.cncRate,
     settings.printer3DRate,
     totalInput,
     laborHoursInput,

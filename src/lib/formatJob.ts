@@ -275,23 +275,22 @@ export function calculateSetCompletion(
   }
 
   let minSets = Infinity;
+  let minRatio = Infinity;
   for (const [suffix, requiredPerSet] of Object.entries(setComposition)) {
     if (suffix === '_') continue; // no-variant sentinel, not a real dash number
     if (requiredPerSet <= 0) continue;
     const ordered = getDashQuantity(dashQuantities, suffix);
     const setsPossible = Math.floor(ordered / requiredPerSet);
     minSets = Math.min(minSets, setsPossible);
+    // Per-variant clamped fill ratio; the bottleneck variant drives overall completion.
+    minRatio = Math.min(minRatio, Math.min(ordered / requiredPerSet, 1));
   }
 
   if (minSets === Infinity) return { completeSets: 0, percentage: 0 };
 
-  // Calculate percentage: sum of ordered quantities / sum of required quantities for one set
-  const totalOrdered = Object.values(dashQuantities).reduce((sum, q) => sum + q, 0);
-  const totalRequiredPerSet = Object.entries(setComposition)
-    .filter(([k]) => k !== '_')
-    .reduce((sum, [, q]) => sum + q, 0);
-  const percentage =
-    totalRequiredPerSet > 0 ? Math.min(100, (totalOrdered / totalRequiredPerSet) * 100) : 0;
+  // Percentage derives from the same min-set basis as completeSets: it is the fill
+  // ratio of the most-incomplete required variant, so 0 complete sets implies <100%.
+  const percentage = minRatio === Infinity ? 0 : Math.round(100 * minRatio);
 
-  return { completeSets: minSets, percentage: Math.round(percentage) };
+  return { completeSets: minSets, percentage };
 }

@@ -235,9 +235,25 @@ export function useClockMutations({
     if (!activeShift || !currentUser) return failure(false);
     try {
       if (activeShift.lunchStartTime && !activeShift.lunchEndTime) {
+        // Snapshot the break minutes ONCE so the deduction is the wall-clock value at
+        // clock-out time — never recomputed later (a recompute at sync would inflate it).
         const totalBreakMinutes = toBreakMinutes(getTotalBreakMs(activeShift));
-        const lunchOk = await shiftService.endLunch(activeShift.id, totalBreakMinutes);
+        let lunchOk = await shiftService.endLunch(activeShift.id, totalBreakMinutes);
         if (!lunchOk) {
+          // endLunch returns false on any Supabase write error (no throw), which is
+          // frequently transient. Retry the lunch-end ONCE with the same snapshotted
+          // minutes before falling back to the offline queue. This preserves the lunch
+          // deduction in the common transient-error case: the offline clock_out punch
+          // carries no lunch info and the sync path only calls clockOut(), so a dropped
+          // lunch here is otherwise lost from lunch_end_time / lunch_minutes_used (which
+          // the accounting view relies on).
+          lunchOk = await shiftService.endLunch(activeShift.id, totalBreakMinutes);
+        }
+        if (!lunchOk) {
+          // Residual gap (cross-file): a fully-offline clock-out with an open lunch still
+          // drops the snapshotted minutes because the queue cannot carry them through to
+          // sync. Fully fixing this requires QueuedPunch.lunchMinutesUsed in offlineQueue.ts
+          // and an endLunch() call in the syncOfflineClockQueue.ts clock_out handler.
           enqueueClockPunch({
             type: 'clock_out',
             userId: currentUser.id,
