@@ -45,7 +45,7 @@ import {
   computeRequiredMaterials,
   type PartWithDashQuantities,
 } from '@/lib/partsCalculations';
-import { syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
+import { syncPartMaterialFromJobQuantity, type MaterialSyncScope } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults, computeVariantBreakdown } from '@/lib/variantAllocation';
 import {
   variantLaborFromSetComposition,
@@ -1761,8 +1761,44 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [job, onUpdateJob, showToast]
   );
 
+  // BOM scopes per inventory id for the add-material picker: the part-level per_set row
+  // and/or one row per variant. When an inventory appears in more than one, the picker lets
+  // the user say which row a job-material quantity belongs to (for the Part BOM writeback).
+  const materialBomScopes = useMemo(() => {
+    const map = new Map<string, Array<{ key: string; label: string; variantSuffix?: string }>>();
+    if (!linkedPart) return map;
+    const add = (
+      invId: string | undefined,
+      scope: { key: string; label: string; variantSuffix?: string }
+    ) => {
+      if (!invId) return;
+      const arr = map.get(invId) ?? [];
+      arr.push(scope);
+      map.set(invId, arr);
+    };
+    for (const m of linkedPart.materials ?? []) {
+      add(m.inventoryId, { key: 'part', label: 'Part (per set)' });
+    }
+    for (const v of linkedPart.variants ?? []) {
+      for (const m of v.materials ?? []) {
+        add(m.inventoryId, {
+          key: `v:${v.variantSuffix}`,
+          label: `Variant ${v.variantSuffix}`,
+          variantSuffix: v.variantSuffix,
+        });
+      }
+    }
+    return map;
+  }, [linkedPart]);
+
   const handleAddInventory = useCallback(
-    async (jobId: string, inventoryId: string, quantity: number, unit: string) => {
+    async (
+      jobId: string,
+      inventoryId: string,
+      quantity: number,
+      unit: string,
+      scope?: MaterialSyncScope
+    ) => {
       await onAddInventory(jobId, inventoryId, quantity, unit);
       if (linkedPart && jobId === job.id) {
         try {
@@ -1771,7 +1807,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
             dashQuantities,
             inventoryId,
             quantity,
-            unit
+            unit,
+            scope
           );
           const updated = await partsService.getPartWithVariants(linkedPart.id);
           if (updated) setLinkedPart(updated);
@@ -3533,6 +3570,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   isSubmitting={isSubmitting}
                   onNavigate={onNavigate}
                   isMaterialAuto={isMaterialAuto}
+                  materialBomScopes={materialBomScopes}
                   onAddInventory={handleAddInventory}
                   onRemoveInventory={onRemoveInventory}
                 />

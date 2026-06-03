@@ -4,11 +4,13 @@ import { partsService } from '@/services/api/parts';
 import { calculateSetCompletion } from '@/lib/formatJob';
 import { allowMaterialAllocation, isConsumedStatus } from '@/lib/inventoryCalculations';
 import {
+  getDashQuantity,
   normalizeVariantSuffix,
   normalizeDashQuantities,
   quantityPerUnit,
   toDashSuffix,
 } from '@/lib/variantMath';
+import { deriveSetCountFromDashQuantities } from '@/lib/jobPriceFromPart';
 
 /** Epsilon for quantity comparison to avoid float drift and unnecessary updates; align with useMaterialSync isMaterialAuto. */
 const QTY_EPSILON = 1e-6;
@@ -240,53 +242,76 @@ export async function syncJobInventoryFromPart(
   return syncJobInventoryFromRequiredMap(jobId, required, { replace });
 }
 
+/** Which Part BOM scope a job-material writeback targets, for inventory shared across rows. */
+export type MaterialSyncScope = { kind: 'part' } | { kind: 'variant'; variantSuffix: string };
+
 /**
- * When the user edits a job material line (quantity or unit) and the job has a linked Part,
- * push the new quantity back to the Part's BOM (PartMaterial) so Part and job stay in sync.
- * Computes quantityPerUnit = newJobQuantity / totalUnits (from dash quantities or 1).
+ * When the user adds/edits a job material line and the job has a linked Part, push the new
+ * quantity back to the Part's BOM (PartMaterial) so Part and job stay in sync, dividing by
+ * the per-unit denominator appropriate to the targeted BOM row.
  *
- * Safety guard (interim): the caller (handleAddInventory) only passes
- * (inventoryId, quantity, unit) with no variant/usageType scope. When the same inventoryId
- * appears in more than one BOM row (across the part-level per_set row and/or multiple variants),
- * we cannot tell which row the added job quantity belongs to, and `totalUnits` (the GLOBAL dash
- * sum) is the wrong per-unit denominator for at least some of those rows. Writing one uniform
- * value to every matched row would flatten and corrupt multi-variant BOMs, so in that ambiguous
- * case we skip the writeback entirely instead of mutating the wrong rows. Only the unambiguous
- * single-row case is pushed back. Fully scoping the writeback (per-variant dash qty for a variant
- * row, complete sets for a per_set row) requires threading variant/usageType context from the
- * inventory-add UI through handleAddInventory — a caller-signature change handled separately.
+ * The same inventory can appear in more than one BOM row (the part-level per_set row and/or
+ * one row per variant), and the correct denominator differs per row (a variant row divides by
+ * THAT variant's dash quantity; the per_set row divides by the number of complete sets). When
+ * the match is ambiguous, the caller supplies `scope` (chosen via the add-material picker) to
+ * say which row the quantity belongs to. Without a matching scope on an ambiguous inventory we
+ * SKIP the writeback rather than flatten every row to one uniform value (which would corrupt a
+ * multi-variant BOM). The unambiguous single-row case needs no scope.
  */
 export async function syncPartMaterialFromJobQuantity(
-  part: Part & { variants?: PartVariant[] },
+  part: Part & { variants?: PartVariant[]; setComposition?: Record<string, number> | null },
   dashQuantities: Record<string, number>,
   inventoryId: string,
   newJobQuantity: number,
-  unit: string
+  unit: string,
+  scope?: MaterialSyncScope
 ): Promise<void> {
   const normalizedDash = normalizeDashQuantities(dashQuantities);
-  const totalUnits = Object.values(normalizedDash).reduce((sum, q) => sum + q, 0) || 1;
-  const quantityPerUnit = newJobQuantity / totalUnits;
 
-  const toUpdate: Array<{ id: string }> = [];
-  if (part.materials) {
-    for (const m of part.materials) {
-      if (m.inventoryId === inventoryId) toUpdate.push({ id: m.id });
+  // Collect every BOM row that references this inventory, tagged by its scope.
+  type Match =
+    | { id: string; kind: 'part' }
+    | { id: string; kind: 'variant'; variantSuffix: string };
+  const matches: Match[] = [];
+  for (const m of part.materials ?? []) {
+    if (m.inventoryId === inventoryId) matches.push({ id: m.id, kind: 'part' });
+  }
+  for (const v of part.variants ?? []) {
+    for (const m of v.materials ?? []) {
+      if (m.inventoryId === inventoryId)
+        matches.push({ id: m.id, kind: 'variant', variantSuffix: v.variantSuffix });
     }
   }
-  if (part.variants) {
-    for (const v of part.variants) {
-      if (!v.materials) continue;
-      for (const m of v.materials) {
-        if (m.inventoryId === inventoryId) toUpdate.push({ id: m.id });
-      }
-    }
-  }
+  if (matches.length === 0) return;
 
-  // Ambiguous match across multiple BOM scopes (multi-variant BOM): skip rather than flatten.
-  // A blind uniform writeback here would corrupt per-variant per-unit quantities.
-  if (toUpdate.length > 1) return;
-
-  for (const { id } of toUpdate) {
-    await partsService.updatePartMaterial(id, { quantityPerUnit, unit });
+  // Resolve the single row to write. An unambiguous match needs no scope; otherwise the
+  // caller's scope picks the row. No (matching) scope on an ambiguous inventory => skip.
+  let target: Match | undefined;
+  if (matches.length === 1 && !scope) {
+    target = matches[0];
+  } else if (scope) {
+    const wantSuffix =
+      scope.kind === 'variant' ? normalizeVariantSuffix(scope.variantSuffix) : null;
+    target = matches.find((m) =>
+      scope.kind === 'part'
+        ? m.kind === 'part'
+        : m.kind === 'variant' && normalizeVariantSuffix(m.variantSuffix) === wantSuffix
+    );
   }
+  if (!target) return;
+
+  // Per-unit denominator for the targeted scope.
+  let denominator: number;
+  if (target.kind === 'variant') {
+    denominator = getDashQuantity(normalizedDash, target.variantSuffix);
+  } else {
+    const sets = deriveSetCountFromDashQuantities(part.setComposition, dashQuantities);
+    denominator = sets ?? Object.values(normalizedDash).reduce((sum, q) => sum + q, 0);
+  }
+  if (!denominator || denominator <= 0) return;
+
+  await partsService.updatePartMaterial(target.id, {
+    quantityPerUnit: newJobQuantity / denominator,
+    unit,
+  });
 }

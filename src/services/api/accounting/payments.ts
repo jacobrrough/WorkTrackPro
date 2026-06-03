@@ -2,7 +2,6 @@ import type { NewPaymentInput, Payment } from '../../../features/accounting/type
 import { buildPaymentJournalLines } from '../../../features/accounting/posting';
 import { acct } from './accountingClient';
 import { mapPaymentRow, type Row } from './mappers';
-import { journalService } from './journal';
 import { accountingSettingsService } from './settings';
 
 /**
@@ -85,81 +84,41 @@ export const paymentsService = {
 
     const paymentDate = input.paymentDate ?? new Date().toISOString().slice(0, 10);
 
-    // 1) Insert the payment header (unapplied_amount starts at the full amount; the
-    //    application trigger reduces it as applications are inserted).
-    const { data: payRow, error: pErr } = await acct()
-      .from('payments')
-      .insert({
-        customer_id: input.customerId,
-        payment_date: paymentDate,
-        amount: input.amount,
-        method: input.method ?? 'other',
-        reference: input.reference ?? null,
-        deposit_account_id: depositAccount,
-        unapplied_amount: input.amount,
-        memo: input.memo ?? null,
-      })
-      .select('*')
-      .single();
-    if (pErr || !payRow)
-      return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
-    const paymentId = (payRow as Row).id as string;
-
-    // 2) Post the receipt JE.
-    const posted = await journalService.createAndPost({
-      entryDate: paymentDate,
-      memo: `Customer payment ${input.reference ? `(${input.reference})` : paymentId}`,
-      sourceType: 'payment',
-      sourceId: paymentId,
-      lines: jeLines,
+    // Record atomically: accounting.record_customer_payment inserts the payment header,
+    // posts the receipt JE (lines built above by posting.ts), inserts the applications, and
+    // links the JE — all in ONE transaction. So a mid-sequence failure (or a hard client
+    // crash) can never leave a posted JE without its applications. The DB guards (balance,
+    // over-application) still fire and roll the whole transaction back on violation.
+    const { data: paymentId, error } = await acct().rpc('record_customer_payment', {
+      p_customer_id: input.customerId,
+      p_payment_date: paymentDate,
+      p_amount: input.amount,
+      p_method: input.method ?? 'other',
+      p_reference: input.reference ?? null,
+      p_deposit_account_id: depositAccount,
+      p_memo: input.memo ?? null,
+      p_je_date: paymentDate,
+      p_je_memo: `Customer payment${input.reference ? ` (${input.reference})` : ''}`,
+      p_lines: jeLines.map((l) => ({
+        account_id: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+        line_memo: l.lineMemo ?? null,
+        job_id: l.jobId ?? null,
+        customer_id: l.customerId ?? null,
+        vendor_id: l.vendorId ?? null,
+        class_id: l.classId ?? null,
+        location_id: l.locationId ?? null,
+        department_id: l.departmentId ?? null,
+      })),
+      p_applications: input.applications.map((a) => ({
+        invoice_id: a.invoiceId,
+        amount_applied: a.amountApplied,
+      })),
     });
-    if (!posted.entryId) {
-      // The post failed, so createAndPost already removed its own draft entry — there
-      // is no posted JE to void here, only the orphan payment header to clean up. If
-      // that delete fails, surface the dangling paymentId rather than swallowing it.
-      const { error: cleanupErr } = await acct().from('payments').delete().eq('id', paymentId);
-      if (cleanupErr) {
-        return {
-          payment: null,
-          error: `Failed to post the receipt journal entry (${posted.error ?? 'unknown error'}) and could not remove the orphan payment ${paymentId}: ${cleanupErr.message}`,
-        };
-      }
-      return { payment: null, error: posted.error ?? 'Failed to post the receipt journal entry.' };
+    if (error || !paymentId) {
+      return { payment: null, error: error?.message ?? 'Failed to record the payment.' };
     }
-
-    // 3) Insert applications (trigger updates invoices + payment.unapplied_amount and
-    //    rejects over-application).
-    const appRows = input.applications.map((a) => ({
-      payment_id: paymentId,
-      invoice_id: a.invoiceId,
-      amount_applied: a.amountApplied,
-    }));
-    const { error: aErr } = await acct().from('payment_applications').insert(appRows);
-    if (aErr) {
-      // Void the posted JE before removing the payment. If the void fails we must
-      // NOT delete the payment: leaving both rows keeps the orphaned (still-posted)
-      // entry traceable to its source document for manual cleanup, instead of
-      // silently abandoning a posted JE on the ledger with no payment to point at.
-      const v = await journalService.voidEntry(posted.entryId, 'Payment application failed');
-      if (!v.ok) {
-        return {
-          payment: null,
-          error: `Payment recorded but cleanup failed — manual review required (orphaned journal entry ${posted.entryId}): ${v.error ?? 'unknown error'}. Original failure: ${aErr.message}`,
-        };
-      }
-      await acct().from('payments').delete().eq('id', paymentId);
-      return { payment: null, error: aErr.message };
-    }
-
-    // 4) Link the JE onto the payment.
-    const { error: lErr } = await acct()
-      .from('payments')
-      .update({ journal_entry_id: posted.entryId })
-      .eq('id', paymentId);
-    if (lErr) {
-      // Non-fatal for accounting integrity (the JE & applications stand); surface it.
-      return { payment: await this.getById(paymentId), error: lErr.message };
-    }
-    return { payment: await this.getById(paymentId) };
+    return { payment: await this.getById(paymentId as string) };
   },
 };

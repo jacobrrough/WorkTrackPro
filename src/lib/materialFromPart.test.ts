@@ -348,4 +348,58 @@ describe('syncPartMaterialFromJobQuantity', () => {
 
     expect(mockUpdatePartMaterial).not.toHaveBeenCalled();
   });
+
+  it('writes ONLY the chosen variant row (using that variant dash qty) when a variant scope is given', async () => {
+    // Same inventory in two variants — the picker resolves the ambiguity. Scoped to -02,
+    // the denominator is variant -02's dash qty (3), so 12 / 3 = 4, and -01 is untouched.
+    const part = makeVariantPart({
+      id: 'part-multi',
+      variants: [
+        {
+          id: 'v-1',
+          variantSuffix: '01',
+          materials: [makeVariantMaterial('vm-1', 'v-1', 'inv-shared', 2, 'per_variant')],
+        },
+        {
+          id: 'v-2',
+          variantSuffix: '02',
+          materials: [makeVariantMaterial('vm-2', 'v-2', 'inv-shared', 5, 'per_variant')],
+        },
+      ],
+    });
+
+    await syncPartMaterialFromJobQuantity(part, { '-01': 4, '-02': 3 }, 'inv-shared', 12, 'ea', {
+      kind: 'variant',
+      variantSuffix: '02',
+    });
+
+    expect(mockUpdatePartMaterial).toHaveBeenCalledTimes(1);
+    expect(mockUpdatePartMaterial).toHaveBeenCalledWith('vm-2', { quantityPerUnit: 4, unit: 'ea' });
+  });
+
+  it('writes ONLY the part-level row (using complete-sets denominator) when a part scope is given', async () => {
+    // Same inventory in a part-level per_set row and a variant row. Scoped to part, the
+    // denominator is complete sets: {-01:8,-02:8} with setComposition {-01:4,-02:4} = 2 sets,
+    // so 8 / 2 = 4, and the variant row is untouched.
+    const part = makeVariantPart({
+      id: 'part-mixed-scope',
+      variants: [
+        {
+          id: 'v-1',
+          variantSuffix: '01',
+          materials: [makeVariantMaterial('vm-1', 'v-1', 'inv-shared', 2, 'per_variant')],
+        },
+        { id: 'v-2', variantSuffix: '02', materials: [] },
+      ],
+      setComposition: { '-01': 4, '-02': 4 },
+      materials: [makeMaterial('pm-1', 'inv-shared', 1, 'per_set')],
+    });
+
+    await syncPartMaterialFromJobQuantity(part, { '-01': 8, '-02': 8 }, 'inv-shared', 8, 'ea', {
+      kind: 'part',
+    });
+
+    expect(mockUpdatePartMaterial).toHaveBeenCalledTimes(1);
+    expect(mockUpdatePartMaterial).toHaveBeenCalledWith('pm-1', { quantityPerUnit: 4, unit: 'ea' });
+  });
 });
