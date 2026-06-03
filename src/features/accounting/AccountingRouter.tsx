@@ -7,6 +7,10 @@ const ChartOfAccountsView = lazyWithRetry(
   () => import('./chart-of-accounts/ChartOfAccountsView'),
   'ChartOfAccountsView'
 );
+const QuickBooksImportView = lazyWithRetry(
+  () => import('./import/QuickBooksImportView'),
+  'QuickBooksImportView'
+);
 const JournalView = lazyWithRetry(() => import('./journal/JournalView'), 'JournalView');
 const JournalEntryDetail = lazyWithRetry(
   () => import('./journal/JournalEntryDetail'),
@@ -70,10 +74,7 @@ const JobCostingDetailView = lazyWithRetry(
   () => import('./job-costing/JobCostingDetailView'),
   'JobCostingDetailView'
 );
-const DimensionsView = lazyWithRetry(
-  () => import('./dimensions/DimensionsView'),
-  'DimensionsView'
-);
+const DimensionsView = lazyWithRetry(() => import('./dimensions/DimensionsView'), 'DimensionsView');
 const RecurringTemplatesView = lazyWithRetry(
   () => import('./recurring/RecurringTemplatesView'),
   'RecurringTemplatesView'
@@ -151,6 +152,7 @@ export default function AccountingRouter() {
       <Routes>
         <Route index element={<AccountingHome />} />
         <Route path="accounts" element={<ChartOfAccountsView />} />
+        <Route path="import" element={<QuickBooksImportView />} />
         <Route path="journal" element={<JournalView />} />
         <Route path="journal/:entryId" element={<JournalEntryDetail />} />
         <Route path="invoices" element={<InvoicesView />} />
