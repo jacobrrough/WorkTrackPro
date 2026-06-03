@@ -65,7 +65,9 @@ export type JournalSourceType =
   | 'payroll'
   | 'depreciation'
   | 'adjustment'
-  | 'opening_balance';
+  | 'opening_balance'
+  /** Historical transactions loaded from a prior system (e.g. QuickBooks) via the import wizard. */
+  | 'import';
 
 export interface JournalLine {
   id: string;

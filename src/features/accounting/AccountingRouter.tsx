@@ -11,6 +11,12 @@ const QuickBooksImportView = lazyWithRetry(
   () => import('./import/QuickBooksImportView'),
   'QuickBooksImportView'
 );
+const AccountsImport = lazyWithRetry(() => import('./import/AccountsImport'), 'AccountsImport');
+const PartyImport = lazyWithRetry(() => import('./import/PartyImport'), 'PartyImport');
+const TransactionsImport = lazyWithRetry(
+  () => import('./import/TransactionsImport'),
+  'TransactionsImport'
+);
 const JournalView = lazyWithRetry(() => import('./journal/JournalView'), 'JournalView');
 const JournalEntryDetail = lazyWithRetry(
   () => import('./journal/JournalEntryDetail'),
@@ -153,6 +159,10 @@ export default function AccountingRouter() {
         <Route index element={<AccountingHome />} />
         <Route path="accounts" element={<ChartOfAccountsView />} />
         <Route path="import" element={<QuickBooksImportView />} />
+        <Route path="import/accounts" element={<AccountsImport />} />
+        <Route path="import/customers" element={<PartyImport kind="customer" />} />
+        <Route path="import/vendors" element={<PartyImport kind="vendor" />} />
+        <Route path="import/transactions" element={<TransactionsImport />} />
         <Route path="journal" element={<JournalView />} />
         <Route path="journal/:entryId" element={<JournalEntryDetail />} />
         <Route path="invoices" element={<InvoicesView />} />
