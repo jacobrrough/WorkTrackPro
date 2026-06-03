@@ -550,11 +550,11 @@ export default async (request) => {
   }
 };
 
-// Netlify Functions V2 config:
-//   • schedule → quarterly cron (1st of Jan/Apr/Jul/Oct at 06:00 UTC).
-//   • path     → served at /api/tax-table-refresh via the netlify.toml /api/*
-//     redirect for the admin UI "check now" (taxTableSync.ts CHECK_NOW_ENDPOINT).
+// Netlify Functions V2 config: quarterly cron (1st of Jan/Apr/Jul/Oct at 06:00 UTC).
+// A scheduled function MUST NOT also declare a custom `path` — Netlify rejects that at deploy
+// time ("Scheduled functions must not specify a custom path"). The admin UI "check now"
+// (taxTableSync.ts CHECK_NOW_ENDPOINT) still reaches it at /api/tax-table-refresh via the
+// netlify.toml /api/* redirect to /.netlify/functions/tax-table-refresh.
 export const config = {
   schedule: '0 6 1 1,4,7,10 *',
-  path: '/api/tax-table-refresh',
 };
