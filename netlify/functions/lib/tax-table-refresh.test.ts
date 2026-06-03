@@ -55,7 +55,7 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 // Imported AFTER vi.mock (hoisted) so the handler uses the stubbed client.
-import handler from './tax-table-refresh.mjs';
+import handler from '../tax-table-refresh.mjs';
 
 const SECRET = 'top-secret-cron-value';
 
