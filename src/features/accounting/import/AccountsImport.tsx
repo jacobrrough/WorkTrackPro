@@ -155,7 +155,7 @@ export default function AccountsImport() {
             onPick={csv.openPicker}
             onFileInput={csv.onFileInput}
             dragHandlers={csv.dragHandlers}
-            title="Drop your Chart of Accounts CSV here"
+            title="Drop your Chart of Accounts CSV or Excel file here"
             subtitle="or choose a file to upload"
             instructions={
               <>
@@ -171,10 +171,7 @@ export default function AccountsImport() {
                     Click the small <strong>export</strong> icon above the table →{' '}
                     <strong>Export to Excel</strong>.
                   </li>
-                  <li>
-                    Open it and <strong>Save As / Download as CSV</strong>.
-                  </li>
-                  <li>Upload that .csv here.</li>
+                  <li>Upload that Excel file here — or save it as CSV first. Either works.</li>
                 </ol>
               </>
             }

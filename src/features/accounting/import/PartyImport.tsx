@@ -229,7 +229,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
             onPick={csv.openPicker}
             onFileInput={csv.onFileInput}
             dragHandlers={csv.dragHandlers}
-            title={`Drop your ${copy.listName} CSV here`}
+            title={`Drop your ${copy.listName} CSV or Excel file here`}
             subtitle="or choose a file to upload"
             instructions={
               <>
@@ -249,10 +249,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
                     Click the <strong>export</strong> icon above the list → it downloads an Excel
                     file.
                   </li>
-                  <li>
-                    Open it and <strong>Save As / Download as CSV</strong>.
-                  </li>
-                  <li>Upload that .csv here.</li>
+                  <li>Upload that Excel file here — or save it as CSV first. Either works.</li>
                 </ol>
                 <p className="mt-3 text-xs text-slate-400">
                   Existing {copy.plural} (matched by name or email) are skipped, so this is safe to

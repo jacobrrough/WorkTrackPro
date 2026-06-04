@@ -205,8 +205,8 @@ export default function TransactionsImport() {
               onPick={csv.openPicker}
               onFileInput={csv.onFileInput}
               dragHandlers={csv.dragHandlers}
-              title="Drop your QuickBooks Journal CSV here"
-              subtitle="Reports → Journal → All Dates → export to CSV"
+              title="Drop your QuickBooks Journal CSV or Excel file here"
+              subtitle="Reports → Journal → All Dates → export to Excel or CSV"
               instructions={
                 <>
                   <h3 className="mb-2 flex items-center gap-2 font-semibold text-white">
@@ -222,10 +222,9 @@ export default function TransactionsImport() {
                       Set the date range to <strong>All Dates</strong>.
                     </li>
                     <li>
-                      Use the <strong>export</strong> icon → <strong>Export to Excel</strong>, then
-                      Save As CSV.
+                      Use the <strong>export</strong> icon → <strong>Export to Excel</strong>.
                     </li>
-                    <li>Upload that .csv here.</li>
+                    <li>Upload that Excel file here — or save it as CSV first. Either works.</li>
                   </ol>
                   <p className="mt-3 text-xs text-slate-400">
                     Each transaction posts as one balanced journal entry. Re-running is safe —
