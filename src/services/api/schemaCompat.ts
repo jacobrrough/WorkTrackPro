@@ -47,22 +47,55 @@ export function getMissingColumnFromSchemaError(
 const knownMissingColumnsByTable = new Map<string, Set<string>>();
 const STORAGE_KEY_PREFIX = 'supabase_schema_omit_';
 
-/** Run once on module load to fix jobs cache so part_id is no longer stripped (job–part linking and BOM/labor work again). */
-function healJobsPartIdCache(): void {
+/**
+ * How long a column may stay on the persisted "known missing" list before it is
+ * re-probed against the database. A short TTL means a transient PostgREST
+ * stale-cache strip (the column exists, but the schema cache was momentarily
+ * stale) self-heals on the next attempt instead of silently dropping that
+ * column forever. A genuinely missing column is simply re-stripped (one extra
+ * failed attempt) and re-stamped with a fresh timestamp, so steady-state
+ * behavior is unchanged. This TTL also replaces the old hardcoded per-column
+ * "heal" lists: any historically over-persisted strip clears itself once it
+ * ages out.
+ */
+const KNOWN_MISSING_TTL_MS = 15 * 60 * 1000;
+
+/** Persisted shape: column name -> epoch ms at which it was last stripped. */
+type PersistedKnownMissing = Record<string, number>;
+
+/**
+ * Read the persisted timestamp map for a table, tolerating the historical
+ * `string[]` format. Legacy array entries carry no timestamp, so they are
+ * treated as already-expired (dropped) — this is what retires the old heal
+ * lists: any column that was permanently cached as missing under the previous
+ * no-TTL behavior is re-probed instead of silently stripped forever.
+ */
+function readPersistedKnownMissing(tableName: string): PersistedKnownMissing {
+  let raw: string | null = null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + 'jobs');
-    if (!raw) return;
-    const arr = JSON.parse(raw) as string[];
-    const set = new Set(Array.isArray(arr) ? arr : []);
-    if (!set.has('part_id')) return;
-    set.delete('part_id');
-    localStorage.setItem(STORAGE_KEY_PREFIX + 'jobs', JSON.stringify([...set]));
-    knownMissingColumnsByTable.delete('jobs');
+    raw = localStorage.getItem(STORAGE_KEY_PREFIX + tableName);
   } catch {
-    /* ignore */
+    return {};
   }
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      // Legacy format with no timestamps: drop so it re-probes (TTL self-heal).
+      return {};
+    }
+    if (parsed && typeof parsed === 'object') {
+      const out: PersistedKnownMissing = {};
+      for (const [col, ts] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof ts === 'number' && Number.isFinite(ts)) out[col] = ts;
+      }
+      return out;
+    }
+  } catch {
+    /* fall through to empty */
+  }
+  return {};
 }
-healJobsPartIdCache();
 
 /** Only for tests: clear cached missing columns so fallback retries from scratch */
 export function clearSchemaCacheForTest(tableName: string): void {
@@ -77,41 +110,38 @@ export function clearSchemaCacheForTest(tableName: string): void {
 function loadKnownMissing(tableName: string): Set<string> {
   let set = knownMissingColumnsByTable.get(tableName);
   if (set) return set;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + tableName);
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    set = new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    set = new Set();
-  }
-  // Self-heal: part_id must not be stripped for jobs (migration 20250217000001 adds it).
-  // If it was previously cached as missing, stop stripping it so job–part linking and BOM/labor work again.
-  // Also heal bin_location and CNC completion columns (migrations add them) so QR-scanned locations save.
-  if (tableName === 'jobs') {
-    const jobColumnsToHeal = [
-      'part_id',
-      'part_rev',
-      'bin_location',
-      'cnc_completed_at',
-      'cnc_completed_by',
-      'planned_completion_date',
-    ];
-    let healed = false;
-    for (const col of jobColumnsToHeal) {
-      if (set.has(col)) {
-        set.delete(col);
-        healed = true;
-      }
+
+  const persisted = readPersistedKnownMissing(tableName);
+  const now = Date.now();
+  set = new Set<string>();
+  let prunedExpired = false;
+  for (const [col, ts] of Object.entries(persisted)) {
+    if (now - ts < KNOWN_MISSING_TTL_MS) {
+      set.add(col);
+    } else {
+      // Stale entry past its TTL: drop it and let the next mutation re-probe.
+      prunedExpired = true;
     }
-    if (healed) saveKnownMissing(tableName, set);
   }
+  // Rewrite storage if we dropped expired entries so they don't linger and we
+  // don't re-prune on every load.
+  if (prunedExpired) saveKnownMissing(tableName, set);
+
   knownMissingColumnsByTable.set(tableName, set);
   return set;
 }
 
 function saveKnownMissing(tableName: string, set: Set<string>): void {
   try {
-    localStorage.setItem(STORAGE_KEY_PREFIX + tableName, JSON.stringify([...set]));
+    // Preserve existing timestamps for columns still present, stamp newly added
+    // ones with the current time, and drop any column no longer in the set.
+    const existing = readPersistedKnownMissing(tableName);
+    const now = Date.now();
+    const next: PersistedKnownMissing = {};
+    for (const col of set) {
+      next[col] = typeof existing[col] === 'number' ? existing[col] : now;
+    }
+    localStorage.setItem(STORAGE_KEY_PREFIX + tableName, JSON.stringify(next));
   } catch {
     /* ignore */
   }

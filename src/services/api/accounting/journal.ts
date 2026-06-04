@@ -29,7 +29,9 @@ export const journalService = {
   },
 
   /** Insert a draft entry + its lines. Returns the created (still-draft) entry. */
-  async createDraft(input: NewJournalEntryInput): Promise<{ entry: JournalEntry | null; error?: string }> {
+  async createDraft(
+    input: NewJournalEntryInput
+  ): Promise<{ entry: JournalEntry | null; error?: string }> {
     const { data: header, error: hErr } = await acct()
       .from('journal_entries')
       .insert({
@@ -80,7 +82,9 @@ export const journalService = {
    * RLS), the just-created draft is removed so no orphan drafts accumulate — the
    * caller keeps the user's input and can retry. The DB error message is returned.
    */
-  async createAndPost(input: NewJournalEntryInput): Promise<{ entryId: string | null; error?: string }> {
+  async createAndPost(
+    input: NewJournalEntryInput
+  ): Promise<{ entryId: string | null; error?: string }> {
     const { entry, error } = await this.createDraft(input);
     if (!entry) return { entryId: null, error };
     const posted = await this.post(entry.id);
@@ -89,6 +93,29 @@ export const journalService = {
       return { entryId: null, error: posted.error };
     }
     return { entryId: entry.id };
+  },
+
+  /**
+   * Of the given source_ids, which already exist as imported entries? Used by the
+   * QuickBooks history importer to stay idempotent — re-running skips transactions
+   * it already posted. Queries in batches against the (source_type, source_id) index.
+   */
+  async existingImportSourceIds(sourceIds: string[]): Promise<Set<string>> {
+    const found = new Set<string>();
+    for (let i = 0; i < sourceIds.length; i += 200) {
+      const batch = sourceIds.slice(i, i + 200);
+      if (batch.length === 0) continue;
+      const { data, error } = await acct()
+        .from('journal_entries')
+        .select('source_id')
+        .eq('source_type', 'import')
+        .in('source_id', batch);
+      if (error) throw error;
+      for (const r of (data ?? []) as { source_id: string | null }[]) {
+        if (r.source_id) found.add(r.source_id);
+      }
+    }
+    return found;
   },
 
   async voidEntry(entryId: string, reason: string): Promise<{ ok: boolean; error?: string }> {

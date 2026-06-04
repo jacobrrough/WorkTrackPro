@@ -7,17 +7,39 @@ import { BUDGETS_BASE, budgetEditorPath } from '../constants';
 import { ReportPage } from '../reports/ReportPage';
 import { budgetVsActualDocument } from '../reports/reportDocuments';
 import { MoneyCell, ReportEmpty, ReportError, ReportLoading } from '../reports/ReportStates';
-import { BUDGET_MONTH_LABELS, BUDGET_MONTHS, type BudgetVsActualRow } from '../types';
+import {
+  BUDGET_MONTH_LABELS,
+  BUDGET_MONTHS,
+  type AccountType,
+  type BudgetVsActualRow,
+} from '../types';
 
-/** Variance cell: green when favorable-looking (actual ≥ budget), red when under. */
-function VarianceCell({ amount }: { amount: number }) {
-  const positive = amount > 0;
-  const negative = amount < 0;
+/**
+ * Decide the variance colour for an account's natural direction.
+ *
+ * Variance is always `actual − budget`. Whether that is *favorable* depends on the
+ * account type, so a raw "positive = green" rule is misleading on real expense accounts
+ * (spending more than budgeted is bad, not good):
+ *   • income/revenue  → variance > 0 is favorable (green), < 0 unfavorable (red)
+ *   • expense         → INVERTED: variance > 0 is an overrun (red), < 0 is under budget (green)
+ *   • asset/liability/equity, or an unknown/mixed type (e.g. the grand Total row) → neutral,
+ *     because favorability is undefined.
+ * Zero variance is always neutral. The numeric value itself is never changed.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function varianceColorClass(amount: number, accountType?: AccountType): string {
+  if (amount === 0) return 'text-slate-300';
+  const favorable =
+    accountType === 'income' ? amount > 0 : accountType === 'expense' ? amount < 0 : undefined;
+  if (favorable === undefined) return 'text-slate-300';
+  return favorable ? 'text-emerald-400' : 'text-red-400';
+}
+
+/** Variance cell coloured by favorability for the account's natural direction (see varianceColorClass). */
+function VarianceCell({ amount, accountType }: { amount: number; accountType?: AccountType }) {
   return (
     <td
-      className={`px-3 py-2 text-right font-mono tabular-nums ${
-        positive ? 'text-emerald-400' : negative ? 'text-red-400' : 'text-slate-300'
-      }`}
+      className={`px-3 py-2 text-right font-mono tabular-nums ${varianceColorClass(amount, accountType)}`}
     >
       {formatMoney(amount)}
     </td>
@@ -45,7 +67,10 @@ function MonthlyDetail({ row }: { row: BudgetVsActualRow }) {
               <tr>
                 <td className="px-2 py-1 text-left text-slate-400">Budget</td>
                 {row.budgetMonthly.map((v, i) => (
-                  <td key={i} className="px-2 py-1 text-right font-mono tabular-nums text-slate-400">
+                  <td
+                    key={i}
+                    className="px-2 py-1 text-right font-mono tabular-nums text-slate-400"
+                  >
                     {formatMoney(v)}
                   </td>
                 ))}
@@ -53,7 +78,10 @@ function MonthlyDetail({ row }: { row: BudgetVsActualRow }) {
               <tr>
                 <td className="px-2 py-1 text-left text-slate-400">Actual</td>
                 {row.actualMonthly.map((v, i) => (
-                  <td key={i} className="px-2 py-1 text-right font-mono tabular-nums text-slate-300">
+                  <td
+                    key={i}
+                    className="px-2 py-1 text-right font-mono tabular-nums text-slate-300"
+                  >
                     {formatMoney(v)}
                   </td>
                 ))}
@@ -89,7 +117,7 @@ function AccountRow({ row }: { row: BudgetVsActualRow }) {
         </td>
         <MoneyCell amount={row.budget} />
         <MoneyCell amount={row.actual} />
-        <VarianceCell amount={row.variance} />
+        <VarianceCell amount={row.variance} accountType={row.accountType} />
       </tr>
       {open && <MonthlyDetail row={row} />}
     </>
@@ -149,7 +177,9 @@ export default function BudgetVsActualView() {
       </div>
 
       {isPending && <ReportLoading />}
-      {isError && <ReportError message="Could not load Budget vs Actual. The budget may have been deleted, or the accounting schema is not exposed for your role." />}
+      {isError && (
+        <ReportError message="Could not load Budget vs Actual. The budget may have been deleted, or the accounting schema is not exposed for your role." />
+      )}
       {!isPending && !isError && data && !hasRows && (
         <ReportEmpty
           icon="savings"

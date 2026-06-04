@@ -180,6 +180,13 @@ const Quotes: React.FC<QuotesProps> = ({
         }
       }
 
+      // Average material quantities per job to match averaged labor/CNC hours
+      if (similarJobs.length > 0) {
+        for (const m of materialMap.values()) {
+          m.quantity = m.quantity / similarJobs.length;
+        }
+      }
+
       // Calculate average hours per job
       const avgHours = similarJobs.length > 0 ? totalHours / similarJobs.length : 0;
 
@@ -317,6 +324,9 @@ const Quotes: React.FC<QuotesProps> = ({
         laborHours: quoteData.laborHours,
         laborRate: quoteData.laborRate,
         laborCost: quoteData.laborCost,
+        cncHours: quoteData.cncHours,
+        cncRate: quoteData.cncRate,
+        cncCost: quoteData.cncCost,
         markupPercent: quoteData.markupPercent,
         subtotal: quoteData.subtotal,
         markupAmount: quoteData.markupAmount,
@@ -710,6 +720,7 @@ const Quotes: React.FC<QuotesProps> = ({
                         <p>
                           Materials: ${quote.materialCost.toFixed(2)} • Labor:{' '}
                           {quote.laborHours.toFixed(1)}h @ ${quote.laborRate}/hr
+                          {quote.cncCost > 0 && ` • CNC: ${quote.cncHours.toFixed(1)}h`}
                         </p>
                         <p>Created: {new Date(quote.createdAt).toLocaleDateString()}</p>
                       </div>

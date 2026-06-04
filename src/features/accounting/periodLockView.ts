@@ -10,7 +10,7 @@
  * rules ("on or before", year edges) are covered by fast tests without rendering React.
  */
 
-import { isDateInClosedPeriod, toIsoDate, type IsoDate } from './periodLock';
+import { toIsoDate, type IsoDate } from './periodLock';
 
 /**
  * Today's calendar date as `YYYY-MM-DD`, derived from the LOCAL date parts (not
@@ -105,9 +105,3 @@ export function isLockChange(
 ): boolean {
   return (toIsoDate(nextDate) ?? null) !== (toIsoDate(currentClosed) ?? null);
 }
-
-/**
- * Re-export of the shared gate so post/void surfaces (e.g. the Journal) can warn before
- * attempting a doomed action without importing two modules. Pure pass-through.
- */
-export { isDateInClosedPeriod };

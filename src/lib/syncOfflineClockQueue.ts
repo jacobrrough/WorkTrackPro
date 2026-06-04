@@ -47,7 +47,29 @@ export async function syncOfflineClockQueue(opts: SyncOfflineClockQueueOptions):
           synced += 1;
           await opts.refreshShifts();
         } else {
-          bumpQueueAttempt(punch.id);
+          // clockIn returns false only when the user already has an open shift
+          // (business rule in shiftService.clockIn). A common cause is a lost ACK:
+          // the offline punch actually succeeded server-side but the response never
+          // came back, so it stayed queued. Reconcile instead of blindly bumping —
+          // otherwise this punch retries 25× and surfaces as a bogus "stale" failure.
+          const openShift = (await shiftService.getAllShifts()).find(
+            (s) => s.user === punch.userId && !s.clockOutTime
+          );
+          if (openShift && openShift.job === punch.jobId) {
+            // An open shift for this exact job already exists — the original
+            // clock-in intent is satisfied. Clear the punch as synced.
+            clearPunchFromQueue(punch.id);
+            synced += 1;
+            await opts.refreshShifts();
+          } else {
+            // No open shift, or one for a *different* job. We deliberately do NOT
+            // auto job-switch (clock out the other shift + re-clock-in) during
+            // background replay: a different-job open shift is likely the worker's
+            // current live shift, and closing it from a stale queued punch could
+            // discard active work. Leave it queued and bump the attempt counter so
+            // the existing max-attempts visibility still applies.
+            bumpQueueAttempt(punch.id);
+          }
         }
       } else if (punch.type === 'clock_out') {
         let shiftId = punch.shiftId;
@@ -80,7 +102,9 @@ export async function syncOfflineClockQueue(opts: SyncOfflineClockQueueOptions):
           continue;
         }
 
-        await shiftService.clockOut(shiftId);
+        // Stamp the shift with the queued (offline) punch time, not the reconnect time,
+        // so a worker who clocked out offline isn't credited extra hours up to reconnect.
+        await shiftService.clockOut(shiftId, punch.timestamp);
         clearPunchFromQueue(punch.id);
         synced += 1;
         await opts.refreshShifts();

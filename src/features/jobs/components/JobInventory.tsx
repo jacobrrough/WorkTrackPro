@@ -11,11 +11,14 @@ interface JobInventoryProps {
   isSubmitting: boolean;
   onNavigate: (view: ViewState, id?: string) => void;
   isMaterialAuto: (inventoryId: string, quantity: number) => boolean;
+  /** BOM scopes per inventory id (from the linked part); >1 entry => the add modal shows a picker. */
+  materialBomScopes?: Map<string, Array<{ key: string; label: string; variantSuffix?: string }>>;
   onAddInventory: (
     jobId: string,
     inventoryId: string,
     quantity: number,
-    unit: string
+    unit: string,
+    scope?: { kind: 'part' } | { kind: 'variant'; variantSuffix: string }
   ) => Promise<void>;
   onRemoveInventory: (jobId: string, jobInventoryId: string) => Promise<void>;
 }
@@ -29,6 +32,7 @@ export default function JobInventory({
   isSubmitting,
   onNavigate,
   isMaterialAuto,
+  materialBomScopes,
   onAddInventory,
   onRemoveInventory,
 }: JobInventoryProps) {
@@ -39,6 +43,8 @@ export default function JobInventory({
   const [inventorySearch, setInventorySearch] = useState('');
   const [editingMaterialQty, setEditingMaterialQty] = useState<string | null>(null);
   const [materialQtyValue, setMaterialQtyValue] = useState<string>('');
+  // Chosen Part BOM scope when the selected inventory appears in more than one BOM row.
+  const [selectedScopeKey, setSelectedScopeKey] = useState<string>('');
 
   const filteredInventory = useMemo(
     () =>
@@ -54,11 +60,23 @@ export default function JobInventory({
     if (!selectedInventory || !inventoryQty) return;
     const item = inventoryById.get(selectedInventory);
     if (!item) return;
-    await onAddInventory(job.id, selectedInventory, parseFloat(inventoryQty), item.unit);
+    // When the material is used in more than one BOM scope, carry the picked scope so the
+    // Part BOM writeback targets the right row (variant dash qty vs. complete-sets denominator).
+    const scopes = materialBomScopes?.get(selectedInventory) ?? [];
+    let scope: { kind: 'part' } | { kind: 'variant'; variantSuffix: string } | undefined;
+    if (scopes.length > 1) {
+      const picked = scopes.find((s) => s.key === selectedScopeKey) ?? scopes[0];
+      scope =
+        picked.variantSuffix != null
+          ? { kind: 'variant', variantSuffix: picked.variantSuffix }
+          : { kind: 'part' };
+    }
+    await onAddInventory(job.id, selectedInventory, parseFloat(inventoryQty), item.unit, scope);
     setShowAddInventory(false);
     setSelectedInventory('');
     setInventoryQty('1');
     setInventorySearch('');
+    setSelectedScopeKey('');
   };
 
   const handleRemoveInventory = async (jobInvId: string) => {
@@ -270,7 +288,10 @@ export default function JobInventory({
               {filteredInventory.slice(0, 20).map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setSelectedInventory(item.id)}
+                  onClick={() => {
+                    setSelectedInventory(item.id);
+                    setSelectedScopeKey('');
+                  }}
                   className={`w-full rounded-sm p-3 text-left ${
                     selectedInventory === item.id
                       ? 'border border-primary bg-primary/10'
@@ -296,6 +317,32 @@ export default function JobInventory({
                 className="h-12 w-full rounded-sm border border-white/20 bg-white/10 px-3 text-white"
               />
             </div>
+
+            {(() => {
+              const scopes = materialBomScopes?.get(selectedInventory) ?? [];
+              if (scopes.length <= 1) return null;
+              return (
+                <div className="mb-4">
+                  <label className="mb-1 block text-sm text-slate-300">
+                    Part BOM scope
+                    <span className="ml-1 text-xs text-slate-500">
+                      (used in several places — choose which to keep in sync)
+                    </span>
+                  </label>
+                  <select
+                    value={selectedScopeKey || scopes[0].key}
+                    onChange={(e) => setSelectedScopeKey(e.target.value)}
+                    className="h-12 w-full rounded-sm border border-white/20 bg-white/10 px-3 text-white"
+                  >
+                    {scopes.map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
 
             <div className="flex gap-2">
               <button

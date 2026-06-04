@@ -20,6 +20,13 @@
   command = "npm run build"
   publish = "dist"
 
+# Enable WorkTrackAccounting ONLY on PR deploy previews so this branch is testable end-to-end,
+# WITHOUT turning the module on for production users (production main stays flag-dark until the
+# module's real GA). The accounting Postgres schema is deployed + exposed in PostgREST and RLS
+# guards every row, so this only flips the UI routing on for preview builds.
+[context.deploy-preview.environment]
+  VITE_ACCOUNTING_ENABLED = "true"
+
 [functions]
   directory = "netlify/functions"
 

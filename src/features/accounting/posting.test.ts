@@ -101,6 +101,21 @@ describe('computeInvoiceTotals', () => {
     });
     expect(totals.lines[0].incomeAccountId).toBe('acc-service');
   });
+
+  it('ignores the header discount on a line carrying an explicit lineTotal', () => {
+    // lineTotal is already net-of-discount (lineNetCents takes it verbatim), so a
+    // stray discount must NOT inflate discountCents or change the total.
+    const totals = computeInvoiceTotals({
+      lines: [{ quantity: 1, unitPrice: 0, lineTotal: 200, discount: 50, taxable: true }],
+      defaultIncomeAccountId: 'acc-sales',
+      headerTaxCodeId: 'tax-7.25',
+      taxRateByCode: rate,
+    });
+    expect(totals.subtotalCents).toBe(20000);
+    expect(totals.discountCents).toBe(0); // explicit lineTotal forces zero header discount
+    expect(totals.taxCents).toBe(1450); // 7.25% of 200
+    expect(totals.totalCents).toBe(totals.subtotalCents + totals.taxCents);
+  });
 });
 
 describe('buildInvoiceRevenueJournalLines', () => {
@@ -351,7 +366,10 @@ describe('buildBillExpenseJournalLines', () => {
     });
     const noJob = buildBillExpenseJournalLines(totals, ACCOUNTS, { vendorId: 'v1' });
     expect(noJob.lines.every((l) => l.jobId == null)).toBe(true);
-    const withJob = buildBillExpenseJournalLines(totals, ACCOUNTS, { vendorId: 'v1', jobId: 'job-9' });
+    const withJob = buildBillExpenseJournalLines(totals, ACCOUNTS, {
+      vendorId: 'v1',
+      jobId: 'job-9',
+    });
     expect(withJob.lines.every((l) => l.jobId === 'job-9')).toBe(true);
   });
 
@@ -396,6 +414,87 @@ describe('buildBillExpenseJournalLines', () => {
     });
     const result = buildBillExpenseJournalLines(totals, ACCOUNTS);
     expect(sumDebit(result.lines)).toBe(sumCredit(result.lines));
+  });
+
+  // ── Header tax must NOT be capitalized into an inventory-asset debit (1300), even
+  // when that inventory line is the LARGEST debit group. Keeping the 1300 debit equal
+  // to the FIFO-costed amount is what lets v_inventory_valuation tie to GL 1300.
+  it('keeps header tax off the inventory-asset default even when it is the largest debit (id guard)', () => {
+    // Inventory line ($100 → acc-inv, the configured inventory-asset default) is larger
+    // than the supplies expense ($30 → acc-opex). Tax must land on the expense, not 1300.
+    const totals = computeBillTotals({
+      lines: [
+        { quantity: 1, unitCost: 100, accountId: 'acc-inv' },
+        { quantity: 1, unitCost: 30, accountId: 'acc-opex' },
+      ],
+      resolveDebitAccount: (l) => l.accountId ?? null,
+      taxTotal: 10,
+    });
+    const result = buildBillExpenseJournalLines(totals, ACCOUNTS, { vendorId: 'v1' });
+    const inv = result.lines.find((l) => l.accountId === 'acc-inv')!;
+    const opex = result.lines.find((l) => l.accountId === 'acc-opex')!;
+    const ap = result.lines.find((l) => l.accountId === 'acc-ap')!;
+    expect(inv.debit).toBe(100); // FIFO cost only — tax NOT capitalized into inventory
+    expect(opex.debit).toBe(40); // 30 + 10 tax folded into the expense instead
+    expect(ap.credit).toBe(140); // 130 subtotal + 10 tax; equals 100 + 40 debits
+    expect(sumDebit(result.lines)).toBe(sumCredit(result.lines));
+  });
+
+  it('keeps header tax off an inventory-asset group identified by resolved account type', () => {
+    // A per-item inventory-asset account ('acc-custom-inv') that is NOT the configured
+    // default is still recognized as inventory via its threaded type ('asset').
+    const lines: NewBillLineInput[] = [
+      { quantity: 1, unitCost: 100, accountId: 'acc-custom-inv' },
+      { quantity: 1, unitCost: 30, accountId: 'acc-opex' },
+    ];
+    const typeByAccount: Record<string, 'asset' | 'expense'> = {
+      'acc-custom-inv': 'asset',
+      'acc-opex': 'expense',
+    };
+    const totals = computeBillTotals({
+      lines,
+      resolveDebitAccount: (l) => l.accountId ?? null,
+      resolveDebitAccountType: (l) => (l.accountId ? (typeByAccount[l.accountId] ?? null) : null),
+      taxTotal: 10,
+    });
+    const result = buildBillExpenseJournalLines(totals, ACCOUNTS);
+    const inv = result.lines.find((l) => l.accountId === 'acc-custom-inv')!;
+    const opex = result.lines.find((l) => l.accountId === 'acc-opex')!;
+    expect(inv.debit).toBe(100); // capitalized cost untouched
+    expect(opex.debit).toBe(40); // tax folded into the expense group
+    expect(sumDebit(result.lines)).toBe(sumCredit(result.lines));
+  });
+
+  it('books tax on a dedicated operating-expenses line when every debit is inventory-asset', () => {
+    // Both lines are inventory-asset (the default 1300): there is no expense group to
+    // absorb tax. Rather than capitalize it into 1300, it posts as its own opex debit.
+    const totals = computeBillTotals({
+      lines: [
+        { quantity: 1, unitCost: 100, accountId: 'acc-inv' },
+        { quantity: 1, unitCost: 50, accountId: 'acc-inv' },
+      ],
+      resolveDebitAccount: (l) => l.accountId ?? null,
+      taxTotal: 12,
+    });
+    const result = buildBillExpenseJournalLines(totals, ACCOUNTS);
+    const inv = result.lines.find((l) => l.accountId === 'acc-inv')!;
+    const opex = result.lines.find((l) => l.accountId === 'acc-opex')!;
+    const ap = result.lines.find((l) => l.accountId === 'acc-ap')!;
+    expect(inv.debit).toBe(150); // 100 + 50 merged — FIFO cost only, no tax
+    expect(opex.debit).toBe(12); // tax on its own line, NOT capitalized into inventory
+    expect(ap.credit).toBe(162);
+    expect(sumDebit(result.lines)).toBe(sumCredit(result.lines));
+  });
+
+  it('throws if the only debit is inventory-asset and no operating-expenses account exists', () => {
+    const totals = computeBillTotals({
+      lines: [{ quantity: 1, unitCost: 100, accountId: 'acc-inv' }],
+      resolveDebitAccount: (l) => l.accountId ?? null,
+      taxTotal: 8,
+    });
+    expect(() =>
+      buildBillExpenseJournalLines(totals, { ...ACCOUNTS, operatingExpenses: null })
+    ).toThrow(/cannot be capitalized into inventory/i);
   });
 });
 
@@ -500,7 +599,9 @@ describe('buildCogsJournalLines (B3 FIFO COGS relief)', () => {
   });
 
   it('throws when the COGS account is not configured', () => {
-    expect(() => buildCogsJournalLines(1000, { ...ACCOUNTS, cogs: null })).toThrow(/Cost of Goods Sold/i);
+    expect(() => buildCogsJournalLines(1000, { ...ACCOUNTS, cogs: null })).toThrow(
+      /Cost of Goods Sold/i
+    );
   });
 
   it('throws when the Inventory Asset account is not configured', () => {
@@ -551,7 +652,10 @@ describe('buildDepreciationJournalLines (D3 depreciation period)', () => {
 
   it('throws when the accumulated-depreciation account is not configured', () => {
     expect(() =>
-      buildDepreciationJournalLines(1000, { ...DEP_ACCOUNTS, accumulatedDepreciationAccountId: null })
+      buildDepreciationJournalLines(1000, {
+        ...DEP_ACCOUNTS,
+        accumulatedDepreciationAccountId: null,
+      })
     ).toThrow(/Accumulated Depreciation/i);
   });
 });
@@ -586,6 +690,25 @@ describe('assertBalanced (the guard the DB also enforces)', () => {
         { accountId: 'b', debit: 0, credit: 50 },
       ])
     ).toThrow(/both a debit and a credit/i);
+  });
+
+  it('rejects a line with a negative debit or credit', () => {
+    expect(() =>
+      assertBalanced([
+        { accountId: 'a', debit: -100, credit: 0 },
+        { accountId: 'b', debit: 0, credit: -100 },
+      ])
+    ).toThrow(/cannot be negative/i);
+  });
+
+  it('rejects a zero/zero line (no debit and no credit)', () => {
+    expect(() =>
+      assertBalanced([
+        { accountId: 'a', debit: 100, credit: 0 },
+        { accountId: 'b', debit: 0, credit: 100 },
+        { accountId: 'c', debit: 0, credit: 0 },
+      ])
+    ).toThrow(/needs a debit or a credit/i);
   });
 });
 
@@ -646,25 +769,41 @@ describe('buildBankTransactionJournalLines (A4 categorize/accept)', () => {
 
   it('rejects a zero amount (would be a trivial/unbalanced entry)', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: 0, bankGlAccountId: BANK, categoryAccountId: CATEGORY })
+      buildBankTransactionJournalLines({
+        amount: 0,
+        bankGlAccountId: BANK,
+        categoryAccountId: CATEGORY,
+      })
     ).toThrow(/zero-amount/i);
   });
 
   it('rejects a missing bank GL account', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: -10, bankGlAccountId: null, categoryAccountId: CATEGORY })
+      buildBankTransactionJournalLines({
+        amount: -10,
+        bankGlAccountId: null,
+        categoryAccountId: CATEGORY,
+      })
     ).toThrow(/linked to a GL account/i);
   });
 
   it('rejects a missing category account', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: -10, bankGlAccountId: BANK, categoryAccountId: null })
+      buildBankTransactionJournalLines({
+        amount: -10,
+        bankGlAccountId: BANK,
+        categoryAccountId: null,
+      })
     ).toThrow(/category account/i);
   });
 
   it('rejects category === bank (would not represent a real movement)', () => {
     expect(() =>
-      buildBankTransactionJournalLines({ amount: -10, bankGlAccountId: BANK, categoryAccountId: BANK })
+      buildBankTransactionJournalLines({
+        amount: -10,
+        bankGlAccountId: BANK,
+        categoryAccountId: BANK,
+      })
     ).toThrow(/must differ/i);
   });
 });
@@ -724,7 +863,14 @@ describe('dimension threading on invoice revenue lines (B2)', () => {
   it('stamps class/location/department on the income credit line', () => {
     const totals = computeInvoiceTotals({
       lines: [
-        { quantity: 1, unitPrice: 100, taxable: false, classId: 'cl-1', locationId: 'lo-1', departmentId: 'de-1' },
+        {
+          quantity: 1,
+          unitPrice: 100,
+          taxable: false,
+          classId: 'cl-1',
+          locationId: 'lo-1',
+          departmentId: 'de-1',
+        },
       ],
       defaultIncomeAccountId: 'acc-sales',
       taxRateByCode: () => 0,
@@ -778,7 +924,14 @@ describe('dimension threading on bill expense lines (B2)', () => {
   it('stamps class/location/department on the expense debit line', () => {
     const totals = computeBillTotals({
       lines: [
-        { quantity: 1, unitCost: 100, accountId: 'acc-opex', classId: 'cl-1', locationId: 'lo-1', departmentId: 'de-1' },
+        {
+          quantity: 1,
+          unitCost: 100,
+          accountId: 'acc-opex',
+          classId: 'cl-1',
+          locationId: 'lo-1',
+          departmentId: 'de-1',
+        },
       ],
       resolveDebitAccount: (l) => l.accountId ?? null,
     });

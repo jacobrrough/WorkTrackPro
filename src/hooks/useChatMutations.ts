@@ -230,6 +230,24 @@ export function useChatMutations() {
         const privateKey = cryptoKeyCache.getPrivateKey();
         if (!privateKey) throw new Error('Encryption keys not unlocked');
 
+        // Only the conversation creator may add members. We wrap the new
+        // member's copy of the conversation key with ECDH(adderPrivate,
+        // memberPublic), but every decrypt path (getOrDecryptConversationKey /
+        // ChatWindow.ensureConversationKey) derives the shared secret from the
+        // *creator's* public key — ECDH(memberPrivate, creatorPublic). Those
+        // secrets only match when the adder IS the creator. If a non-creator
+        // added a member, the wrap author would be the adder, the new member
+        // could never decrypt, and we'd silently persist a permanently dead
+        // key row. Guard by confirming the adder's own public key matches the
+        // creator's before writing anything. Lifting this restriction would
+        // require storing the wrap author per key row and threading that author
+        // pubkey through both decrypt paths (a DB/schema change).
+        const myKeys = await encryptionKeyService.getMyKeys();
+        if (!myKeys) throw new Error('Encryption keys not set up');
+        if (myKeys.publicKey !== creatorPublicKeyBase64) {
+          throw new Error('Only the conversation creator can add members');
+        }
+
         const convKey = await getOrDecryptConversationKey(conversationId, creatorPublicKeyBase64);
         const memberPubKey = await encryptionKeyService.getPublicKey(userId);
         if (!memberPubKey) throw new Error('User has no encryption keys');

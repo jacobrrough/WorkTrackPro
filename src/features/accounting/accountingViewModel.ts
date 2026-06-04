@@ -11,15 +11,6 @@ export function formatMoney(amount: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(safe);
 }
 
-/** Parse a free-form money string ("$1,234.50") to a number rounded to cents. */
-export function parseMoneyToNumber(input: string): number {
-  if (!input) return 0;
-  const cleaned = String(input).replace(/[^0-9.-]/g, '');
-  const n = Number.parseFloat(cleaned);
-  if (!Number.isFinite(n)) return 0;
-  return Math.round(n * 100) / 100;
-}
-
 export const toCents = (n: number): number => Math.round((Number.isFinite(n) ? n : 0) * 100);
 
 export interface BalanceResult {
@@ -47,6 +38,8 @@ export function computeBalance(lines: { debit: number; credit: number }[]): Bala
  * Mirrors accounting.guard_journal_entry so the user gets feedback before posting.
  */
 export function validateJournalDraft(lines: NewJournalLineInput[]): string | null {
+  if (lines.some((l) => toCents(l.debit) < 0 || toCents(l.credit) < 0))
+    return 'Debit and credit amounts cannot be negative.';
   const real = lines.filter((l) => toCents(l.debit) > 0 || toCents(l.credit) > 0);
   if (real.length < 2) return 'A journal entry needs at least two lines with amounts.';
   for (const l of real) {

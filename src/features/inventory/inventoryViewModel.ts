@@ -39,7 +39,7 @@ export function computeStock(
   return {
     allocated,
     available,
-    needsReorder: reorderPoint > 0 && available < reorderPoint,
+    needsReorder: reorderPoint > 0 && available <= reorderPoint,
     lowStock: reorderPoint > 0 && available <= reorderPoint,
   };
 }

@@ -634,7 +634,11 @@ export const jobService = {
   },
 
   async createJob(data: Partial<Job>): Promise<Job | null> {
-    const nextCode = await this.getNextJobCode();
+    // Honor a client-supplied job code (the create form lets the user set/regenerate one);
+    // fall back to the server's max+1 only when none was provided.
+    const clientCode =
+      data.jobCode != null && Number.isFinite(Number(data.jobCode)) ? Number(data.jobCode) : null;
+    const nextCode = clientCode ?? (await this.getNextJobCode());
     if (nextCode == null) return null;
 
     const resolvedLaborHours = toFiniteNumber(data.laborHours);
@@ -700,23 +704,48 @@ export const jobService = {
           ? Math.max(0, Math.min(100, Number(data.progressEstimatePercent)))
           : null,
     };
-    const { data: created, error } = await runMutationWithSchemaFallback({
-      tableName: 'jobs',
-      initialPayload: row,
-      mutate: async (payload) => {
-        const { data: rowData, error: rowError } = await supabase
-          .from('jobs')
-          .insert(payload)
-          .select('*')
-          .single();
-        return {
-          data: (rowData as Record<string, unknown> | null) ?? null,
-          error: (rowError as SupabaseErrorLike | null) ?? null,
-        };
-      },
-    });
-    if (error) throw new Error(error.message ?? 'Job creation failed');
-    const createdRow = created as Record<string, unknown>;
+    // job_code is assigned read-max-then-insert against a UNIQUE column, so a concurrent
+    // createJob can grab the same code and raise 23505. Retry with a freshly-read code on
+    // a unique-violation (bounded) rather than failing the create.
+    let createdRow: Record<string, unknown> | null = null;
+    for (let attempt = 0; ; attempt++) {
+      const { data: created, error } = await runMutationWithSchemaFallback({
+        tableName: 'jobs',
+        initialPayload: row,
+        mutate: async (payload) => {
+          const { data: rowData, error: rowError } = await supabase
+            .from('jobs')
+            .insert(payload)
+            .select('*')
+            .single();
+          return {
+            data: (rowData as Record<string, unknown> | null) ?? null,
+            error: (rowError as SupabaseErrorLike | null) ?? null,
+          };
+        },
+      });
+      if (!error) {
+        createdRow = created as Record<string, unknown>;
+        break;
+      }
+      if ((error as { code?: string }).code === '23505') {
+        // A client-chosen code that collides is a user error — surface a duplicate
+        // message so AdminCreateJob can flag the jobCode field for regeneration.
+        if (clientCode != null) {
+          throw new Error(`Job code ${clientCode} already exists (duplicate)`);
+        }
+        // An auto-assigned code lost a create race — re-read the max and retry.
+        if (attempt < 4) {
+          const retryCode = await this.getNextJobCode();
+          if (retryCode != null) {
+            row.job_code = retryCode;
+            continue;
+          }
+        }
+      }
+      throw new Error(error.message ?? 'Job creation failed');
+    }
+    if (!createdRow) throw new Error('Job creation failed');
     const newJobId = createdRow.id as string;
     // Sync job_parts: either from data.parts or a single row from primary part
     try {
@@ -724,23 +753,25 @@ export const jobService = {
         for (let i = 0; i < data.parts.length; i++) {
           const link = data.parts[i];
           const rev = link.rev ?? (await getPartRev(link.partId));
-          await supabase.from('job_parts').insert({
+          const { error: insertError } = await supabase.from('job_parts').insert({
             job_id: newJobId,
             part_id: link.partId,
             dash_quantities: link.dashQuantities ?? {},
             sort_order: i,
             ...(rev != null && { rev }),
           });
+          if (insertError && !isMissingTableError(insertError)) throw insertError;
         }
       } else if (createdRow.part_id) {
         const rev = await getPartRev(createdRow.part_id as string);
-        await supabase.from('job_parts').insert({
+        const { error: insertError } = await supabase.from('job_parts').insert({
           job_id: newJobId,
           part_id: createdRow.part_id,
           dash_quantities: createdRow.dash_quantities ?? {},
           sort_order: 0,
           ...(rev != null && { rev }),
         });
+        if (insertError && !isMissingTableError(insertError)) throw insertError;
       }
     } catch (jobPartsErr) {
       if (!isMissingTableError(jobPartsErr as SupabaseErrorLike)) {
@@ -762,7 +793,10 @@ export const jobService = {
       .order('job_code', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) return 1;
+    if (error) {
+      console.warn('getNextJobCode failed to read max job_code:', error.message, error.code);
+      return null;
+    }
     const max = (data?.job_code as number) ?? 0;
     return max + 1;
   },
@@ -873,17 +907,22 @@ export const jobService = {
     }
     if (data.parts !== undefined) {
       try {
-        await supabase.from('job_parts').delete().eq('job_id', jobId);
+        const { error: deleteError } = await supabase
+          .from('job_parts')
+          .delete()
+          .eq('job_id', jobId);
+        if (deleteError && !isMissingTableError(deleteError)) throw deleteError;
         for (let i = 0; i < data.parts.length; i++) {
           const link = data.parts[i];
           const rev = link.rev ?? (await getPartRev(link.partId));
-          await supabase.from('job_parts').insert({
+          const { error: insertError } = await supabase.from('job_parts').insert({
             job_id: jobId,
             part_id: link.partId,
             dash_quantities: link.dashQuantities ?? {},
             sort_order: i,
             ...(rev != null && { rev }),
           });
+          if (insertError && !isMissingTableError(insertError)) throw insertError;
         }
       } catch (jobPartsErr) {
         if (!isMissingTableError(jobPartsErr as SupabaseErrorLike)) {

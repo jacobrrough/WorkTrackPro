@@ -4,14 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
-import {
-  useFixedAssetRegisterRow,
-  useFixedAssetSchedule,
-} from '../hooks/useAccountingQueries';
-import {
-  usePostDepreciationRow,
-  useSetFixedAssetStatus,
-} from '../hooks/useAccountingMutations';
+import { useFixedAssetRegisterRow, useFixedAssetSchedule } from '../hooks/useAccountingQueries';
+import { usePostDepreciationRow, useSetFixedAssetStatus } from '../hooks/useAccountingMutations';
 import { ACCOUNTING_BASE, FIXED_ASSETS_BASE } from '../constants';
 import {
   depreciationProgress,
@@ -203,8 +197,11 @@ function ScheduleRow({
 export default function FixedAssetDetailView() {
   const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
-  const { data: asset, isPending: assetLoading, isError: assetError } =
-    useFixedAssetRegisterRow(assetId);
+  const {
+    data: asset,
+    isPending: assetLoading,
+    isError: assetError,
+  } = useFixedAssetRegisterRow(assetId);
   const {
     data: schedule = [],
     isPending: scheduleLoading,
@@ -232,7 +229,12 @@ export default function FixedAssetDetailView() {
       active="fixed-assets"
       title={asset ? asset.name : 'Fixed asset'}
       actions={
-        <Button size="sm" variant="ghost" icon="arrow_back" onClick={() => navigate(FIXED_ASSETS_BASE)}>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="arrow_back"
+          onClick={() => navigate(FIXED_ASSETS_BASE)}
+        >
           Register
         </Button>
       }
@@ -254,7 +256,12 @@ export default function FixedAssetDetailView() {
               precision_manufacturing
             </span>
             <p className="text-slate-400">No fixed asset found for this id.</p>
-            <Button size="sm" variant="ghost" icon="arrow_back" onClick={() => navigate(FIXED_ASSETS_BASE)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon="arrow_back"
+              onClick={() => navigate(FIXED_ASSETS_BASE)}
+            >
               Back to register
             </Button>
           </div>
@@ -337,8 +344,8 @@ export default function FixedAssetDetailView() {
 
               {!scheduleLoading && !scheduleError && schedule.length === 0 && (
                 <div className="rounded-sm border border-dashed border-white/15 px-4 py-8 text-center text-sm text-slate-400">
-                  No schedule rows. This asset has nothing to depreciate (salvage may equal cost), or
-                  the schedule has not been generated.
+                  No schedule rows. This asset has nothing to depreciate (salvage may equal cost),
+                  or the schedule has not been generated.
                 </div>
               )}
 

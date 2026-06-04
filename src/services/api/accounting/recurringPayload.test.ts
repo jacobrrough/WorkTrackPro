@@ -58,6 +58,11 @@ describe('buildRecurringInvoiceInput', () => {
     const input = buildRecurringInvoiceInput({ ...payload, dueInDays: null }, '2026-06-01');
     expect(input.dueDate).toBeNull();
   });
+
+  it('dates "due on receipt" (dueInDays: 0) on the generation day, not a day late', () => {
+    const input = buildRecurringInvoiceInput({ ...payload, dueInDays: 0 }, '2026-06-01');
+    expect(input.dueDate).toBe('2026-06-01');
+  });
 });
 
 describe('buildRecurringBillInput', () => {
@@ -85,6 +90,11 @@ describe('buildRecurringBillInput', () => {
     expect(input.billDate).toBe('2026-06-01');
     expect(input.dueDate).toBe('2026-06-16'); // +15 days
     expect(input.taxTotal).toBe(8.25);
+  });
+
+  it('dates "due on receipt" (dueInDays: 0) on the generation day, not a day late', () => {
+    const input = buildRecurringBillInput({ ...payload, dueInDays: 0 }, '2026-06-01');
+    expect(input.dueDate).toBe('2026-06-01');
   });
 
   it('carries line dimensions through to the bill line', () => {

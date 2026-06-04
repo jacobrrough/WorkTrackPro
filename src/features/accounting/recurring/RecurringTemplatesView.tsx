@@ -10,7 +10,7 @@ import {
   useSetRecurringTemplateActive,
 } from '../hooks/useAccountingMutations';
 import { formatMoney } from '../accountingViewModel';
-import { todayISO } from '../recurrence';
+import { isOnOrBefore, todayISO } from '../recurrence';
 import { RECURRING_BASE } from '../constants';
 import {
   isTemplateDue,
@@ -54,6 +54,35 @@ function StatusBadge({ tpl, asOf }: { tpl: RecurringTemplate; asOf: string }) {
   );
 }
 
+/**
+ * Has a template reached its end_date and been auto-paused at its final period?
+ *
+ * When `generateDue` advances past `end_date` it deactivates the template and FREEZES
+ * the cursor at the period it just ran (next_run_date := last_run_date, since the real
+ * next cursor would be null). Such a template is "ended": its next_run_date points at an
+ * already-generated period that is still within the schedule window. Naively flipping
+ * `active` back on would make it immediately "Due" and let a Generate re-post that final
+ * period's invoice/bill/JE — a duplicate posting. We detect this so Resume can route to
+ * the editor (to set a fresh next_run_date) instead of re-activating in place.
+ *
+ * A template merely paused mid-schedule is NOT ended: its cursor was advanced past the
+ * last run (next_run_date > last_run_date), so resuming it is safe.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function isTemplateEnded(
+  tpl: Pick<RecurringTemplate, 'active' | 'endDate' | 'nextRunDate' | 'lastRunDate'>
+): boolean {
+  if (tpl.active) return false;
+  if (!tpl.endDate) return false;
+  // The cursor was frozen at (or behind) the last generated period — i.e. it was NOT
+  // advanced past the last run, the signature of an end-of-schedule auto-pause.
+  if (tpl.lastRunDate == null) return false;
+  if (!isOnOrBefore(tpl.nextRunDate, tpl.lastRunDate)) return false;
+  // …and that frozen cursor is still on/before the end date, so re-activating would
+  // immediately re-fire an already-run period.
+  return isOnOrBefore(tpl.nextRunDate, tpl.endDate);
+}
+
 function TemplateCard({
   tpl,
   asOf,
@@ -68,6 +97,7 @@ function TemplateCard({
   const navigate = useNavigate();
   const setActive = useSetRecurringTemplateActive();
   const due = isTemplateDue(tpl, asOf);
+  const ended = isTemplateEnded(tpl);
   const gross = payloadGrossCents(tpl.kind, tpl.payload);
   const lineCount = payloadLineCount(tpl.payload);
   const busy = generating || setActive.isPending;
@@ -90,8 +120,8 @@ function TemplateCard({
             <StatusBadge tpl={tpl} asOf={asOf} />
           </div>
           <p className="text-xs text-slate-400">
-            {RECURRING_KIND_LABELS[tpl.kind]} · {scheduleLabel(tpl)} ·{' '}
-            {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+            {RECURRING_KIND_LABELS[tpl.kind]} · {scheduleLabel(tpl)} · {lineCount}{' '}
+            {lineCount === 1 ? 'line' : 'lines'}
           </p>
         </div>
         <span className="shrink-0 font-mono text-sm tabular-nums text-slate-200">
@@ -108,6 +138,8 @@ function TemplateCard({
                 {tpl.nextRunDate}
               </span>
             </>
+          ) : ended ? (
+            <>Ended — reschedule to resume</>
           ) : (
             <>Paused — resume to schedule</>
           )}
@@ -121,15 +153,31 @@ function TemplateCard({
       </div>
 
       <div className="flex items-center justify-end gap-2 border-t border-white/5 pt-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={tpl.active ? 'pause' : 'play_arrow'}
-          onClick={() => setActive.mutate({ id: tpl.id, active: !tpl.active })}
-          disabled={busy}
-        >
-          {tpl.active ? 'Pause' : 'Resume'}
-        </Button>
+        {ended ? (
+          // Ended template: its cursor is frozen at an already-generated period, so a
+          // bare re-activate would let Generate re-post a duplicate. Route to the editor
+          // to set a fresh next run date past the end date instead.
+          <Button
+            size="sm"
+            variant="ghost"
+            icon="event_upcoming"
+            onClick={() => navigate(`${RECURRING_BASE}/${tpl.id}`)}
+            disabled={busy}
+            title="This template reached its end date. Set a new next run date to resume."
+          >
+            Reschedule
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={tpl.active ? 'pause' : 'play_arrow'}
+            onClick={() => setActive.mutate({ id: tpl.id, active: !tpl.active })}
+            disabled={busy}
+          >
+            {tpl.active ? 'Pause' : 'Resume'}
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -154,13 +202,7 @@ function TemplateCard({
 }
 
 /** One line of the post-run results panel: success → link, failure → reason. */
-function ResultRow({
-  result,
-  templateName,
-}: {
-  result: GenerateResult;
-  templateName: string;
-}) {
+function ResultRow({ result, templateName }: { result: GenerateResult; templateName: string }) {
   const navigate = useNavigate();
   const ok = !!result.generatedId && !isHardError(result);
   return (
@@ -179,9 +221,7 @@ function ResultRow({
             {result.error && <span className="text-amber-300"> {result.error}</span>}
           </span>
         ) : (
-          <span className="block text-xs text-red-300">
-            {result.error ?? 'Generation failed.'}
-          </span>
+          <span className="block text-xs text-red-300">{result.error ?? 'Generation failed.'}</span>
         )}
       </div>
       {ok && result.journalEntryId && (
@@ -222,10 +262,7 @@ export default function RecurringTemplatesView() {
   const [results, setResults] = useState<{ result: GenerateResult; name: string }[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const nameById = useMemo(
-    () => new Map(templates.map((t) => [t.id, t.name])),
-    [templates]
-  );
+  const nameById = useMemo(() => new Map(templates.map((t) => [t.id, t.name])), [templates]);
 
   const dueCount = useMemo(
     () => templates.filter((t) => isTemplateDue(t, asOf)).length,
@@ -246,7 +283,9 @@ export default function RecurringTemplatesView() {
   const runAll = async () => {
     setResults(null);
     const all = await generateAll.mutateAsync(asOf);
-    setResults(all.map((result) => ({ result, name: nameById.get(result.templateId) ?? 'Template' })));
+    setResults(
+      all.map((result) => ({ result, name: nameById.get(result.templateId) ?? 'Template' }))
+    );
   };
 
   const generatingAll = generateAll.isPending;

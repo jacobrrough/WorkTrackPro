@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  computeBalance,
-  formatMoney,
-  parseMoneyToNumber,
-  toCents,
-  validateJournalDraft,
-} from './accountingViewModel';
+import { computeBalance, formatMoney, toCents, validateJournalDraft } from './accountingViewModel';
 
 describe('computeBalance', () => {
   it('balances equal debits and credits', () => {
@@ -45,7 +39,18 @@ describe('computeBalance', () => {
 
 describe('validateJournalDraft', () => {
   it('requires at least two lines with amounts', () => {
-    expect(validateJournalDraft([{ accountId: 'a', debit: 100, credit: 0 }])).toMatch(/at least two/i);
+    expect(validateJournalDraft([{ accountId: 'a', debit: 100, credit: 0 }])).toMatch(
+      /at least two/i
+    );
+  });
+
+  it('rejects a line with a negative amount', () => {
+    expect(
+      validateJournalDraft([
+        { accountId: 'a', debit: -100, credit: 0 },
+        { accountId: 'b', debit: 0, credit: 100 },
+      ])
+    ).toMatch(/negative/i);
   });
 
   it('rejects a line with both a debit and a credit', () => {
@@ -86,12 +91,6 @@ describe('validateJournalDraft', () => {
 });
 
 describe('money helpers', () => {
-  it('parses currency strings to numbers', () => {
-    expect(parseMoneyToNumber('$1,234.50')).toBe(1234.5);
-    expect(parseMoneyToNumber('')).toBe(0);
-    expect(parseMoneyToNumber('not money')).toBe(0);
-  });
-
   it('formats numbers as USD', () => {
     expect(formatMoney(1234.5)).toBe('$1,234.50');
     expect(formatMoney(0)).toBe('$0.00');

@@ -47,10 +47,8 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
     if (price > 0) {
       newErrors.price = validatePrice(price);
     }
-    if (inStock < 0) {
-      newErrors.inStock = validateQuantity(inStock);
-    }
-    if (reorderPoint < 0) {
+    newErrors.inStock = validateQuantity(inStock);
+    if (reorderPoint > 0) {
       newErrors.reorderPoint = validateQuantity(reorderPoint);
     }
     setErrors(newErrors);

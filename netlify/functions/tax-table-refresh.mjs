@@ -46,13 +46,22 @@
 //     other functions use). The service role bypasses RLS; the `accounting`
 //     schema must be in the project's PostgREST exposed schemas (it already is —
 //     the browser module reads it). Reached via supabase.schema('accounting').
-//   • Manual check-now requires an accounting_admin caller (global approved admin
-//     OR the accounting_admin role) — mirrors accounting.has_role('accounting_admin').
+//   • AUTHORIZATION (explicit; never trust-by-omission). A POST runs the refresh
+//     ONLY when EITHER (a) it carries the shared secret header
+//     `x-tax-sync-secret` matching the server env `TAX_SYNC_CRON_SECRET`
+//     (trusted scheduled/on-demand cron run), OR (b) it carries a Bearer token
+//     resolving to an accounting_admin (global approved admin OR the
+//     accounting_admin role — mirrors accounting.has_role('accounting_admin'))
+//     for the manual "check now". Any other POST → 403 before any fetch/DB write.
+//     NOTE: Netlify's internal scheduler cannot attach a custom header, so the
+//     quarterly cron must deliver `x-tax-sync-secret` (e.g. via an authenticated
+//     trigger/proxy) once TAX_SYNC_CRON_SECRET is provisioned — see ops note.
 //   • Returns JSON { ok, message?, error? } for the UI seam
 //     (src/services/api/accounting/taxTableSync.ts).
 // ============================================================================
 
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'node:crypto';
 import {
   resolveParser,
   normalizeParsedSet,
@@ -63,10 +72,13 @@ import {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-tax-sync-secret',
   'Access-Control-Allow-Methods': 'POST,OPTIONS',
   'Content-Type': 'application/json',
 };
+
+/** Name of the header carrying the shared cron/on-demand secret. */
+const CRON_SECRET_HEADER = 'x-tax-sync-secret';
 
 // ── Tunables (defensive defaults for untrusted external fetches) ─────────────
 const FETCH_TIMEOUT_MS = 20000; // per-source fetch timeout
@@ -129,6 +141,29 @@ async function verifyAccountingAdmin(pub, authHeader) {
   return null;
 }
 
+/** Constant-time compare two strings (length-safe). Returns false when either is
+ * empty so a missing/unset secret can NEVER authorize a caller. */
+function secretsMatch(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length === 0 || b.length === 0) {
+    return false;
+  }
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ba.length !== bb.length) return false; // timingSafeEqual requires equal lengths
+  return timingSafeEqual(ba, bb);
+}
+
+/** TRUE only when a trusted shared-secret header matches the configured
+ * TAX_SYNC_CRON_SECRET. This marks a trusted scheduled/on-demand cron invocation
+ * WITHOUT inferring trust from the mere absence of a Bearer token. Returns false
+ * whenever the env secret is unset/empty — config must be present to authorize. */
+function cronSecretMatches(request) {
+  const configured = (process.env.TAX_SYNC_CRON_SECRET ?? '').trim();
+  if (!configured) return false;
+  const provided = (request.headers.get(CRON_SECRET_HEADER) ?? '').trim();
+  return secretsMatch(provided, configured);
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ── Fetch one source's official file (untrusted, size-capped, timed out) ─────
@@ -184,11 +219,26 @@ async function fetchSourceFile(source) {
   }
 
   // Read as text but cap defensively even when content-length lied / was absent.
-  const buf = await res.arrayBuffer();
-  if (buf.byteLength > MAX_BODY_BYTES) {
-    throw new Error(`response too large (${buf.byteLength} bytes > ${MAX_BODY_BYTES} cap)`);
+  // Stream the body so memory is bounded at MAX_BODY_BYTES regardless of how
+  // honest content-length was — abort the in-flight read the moment we exceed it.
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  let text = '';
+  if (res.body) {
+    const reader = res.body.getReader();
+    let total = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop -- sequential chunk read of one body
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        controller.abort();
+        throw new Error(`response too large (>${MAX_BODY_BYTES} cap)`);
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode(); // flush any trailing multibyte sequence
   }
-  const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
   return { text, status: res.status, finalUrl: res.url || url.toString() };
 }
 
@@ -400,13 +450,16 @@ export default async (request) => {
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
   }
 
-  // Identify a scheduled (cron) invocation. Netlify invokes scheduled functions
-  // with a JSON body carrying `next_run`; a manual admin trigger is a normal POST
-  // with a Bearer token. We branch on the presence of that token.
+  // Every real invocation (manual "check now" AND the Netlify cron) is a POST.
+  // A manual admin trigger carries a Bearer token; a trusted scheduled/on-demand
+  // cron run carries the shared-secret header. We do NOT infer trust from the
+  // mere ABSENCE of a Bearer token (that would let any anonymous POST to the
+  // public /api endpoint run as the cron). Authorization is decided explicitly
+  // below — never by omission.
   const authHeader = request.headers.get('authorization') || '';
   const isManual = authHeader.startsWith('Bearer ');
 
-  if (!isManual && request.method !== 'POST') {
+  if (request.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
       status: 405,
       headers: corsHeaders,
@@ -440,21 +493,37 @@ export default async (request) => {
     );
   }
 
-  // ── Manual "check now" must be an accounting_admin. The cron path (no Bearer)
-  //    runs with the service role and skips this user check. ──
+  // ── EXPLICIT AUTHORIZATION (no trust-by-omission). A POST may run runRefresh
+  //    ONLY when EITHER:
+  //      (a) it carries the shared cron secret (x-tax-sync-secret === env
+  //          TAX_SYNC_CRON_SECRET) — a trusted scheduled/on-demand cron run; OR
+  //      (b) it carries a Bearer token that resolves to an accounting_admin —
+  //          a manual admin "check now".
+  //    Any other POST (anonymous, wrong secret, non-admin token) is rejected
+  //    with 403 BEFORE any fetch/DB write. This closes the auth bypass on the
+  //    public /api endpoint where a tokenless POST was previously treated as the
+  //    trusted cron. ──
+  const hasCronSecret = cronSecretMatches(request);
+
+  let admin = null;
   if (isManual) {
-    let admin = null;
     try {
       admin = await verifyAccountingAdmin(client, authHeader);
     } catch {
       admin = null;
     }
-    if (!admin) {
-      return new Response(
-        JSON.stringify({ ok: false, error: 'Accounting admin access required.' }),
-        { status: 403, headers: corsHeaders }
-      );
-    }
+  }
+
+  if (!hasCronSecret && !admin) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: isManual
+          ? 'Accounting admin access required.'
+          : 'Unauthorized: missing or invalid tax-sync credentials.',
+      }),
+      { status: 403, headers: corsHeaders }
+    );
   }
 
   // All accounting-schema reads/writes go through the schema-scoped accessor
@@ -462,7 +531,9 @@ export default async (request) => {
   const acct = client.schema('accounting');
 
   try {
-    const result = await runRefresh(acct, isManual ? 'manual' : 'scheduled');
+    // Label the run by how authorization was actually granted (admin ⇒ manual,
+    // otherwise the shared-secret cron path).
+    const result = await runRefresh(acct, admin ? 'manual' : 'scheduled');
     const status = result.ok ? 200 : 500;
     return new Response(JSON.stringify(result), { status, headers: corsHeaders });
   } catch (err) {
@@ -479,11 +550,11 @@ export default async (request) => {
   }
 };
 
-// Netlify Functions V2 config:
-//   • schedule → quarterly cron (1st of Jan/Apr/Jul/Oct at 06:00 UTC).
-//   • path     → served at /api/tax-table-refresh via the netlify.toml /api/*
-//     redirect for the admin UI "check now" (taxTableSync.ts CHECK_NOW_ENDPOINT).
+// Netlify Functions V2 config: quarterly cron (1st of Jan/Apr/Jul/Oct at 06:00 UTC).
+// A scheduled function MUST NOT also declare a custom `path` — Netlify rejects that at deploy
+// time ("Scheduled functions must not specify a custom path"). The admin UI "check now"
+// (taxTableSync.ts CHECK_NOW_ENDPOINT) still reaches it at /api/tax-table-refresh via the
+// netlify.toml /api/* redirect to /.netlify/functions/tax-table-refresh.
 export const config = {
   schedule: '0 6 1 1,4,7,10 *',
-  path: '/api/tax-table-refresh',
 };

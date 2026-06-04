@@ -21,10 +21,7 @@ export { accountingSettingsService } from './settings';
 export { salesTaxService } from './salesTax';
 // ── Tax-table auto-refresh + drift alert (TAX-SYNC, advisory-only) ────────────
 export { taxTableSyncService } from './taxTableSync';
-export type {
-  ApplyDriftResult,
-  CheckNowResult,
-} from './taxTableSync';
+export type { ApplyDriftResult, CheckNowResult } from './taxTableSync';
 // ── Reporting dimensions + recurring templates (B2) ──────────────────────────
 export { dimensionsService } from './dimensions';
 export { recurringTemplatesService } from './recurringTemplates';
@@ -42,10 +39,7 @@ export {
   buildRecurringJournalLines,
 } from './recurringPayload';
 export { buildInvoiceLinesFromJob, setsForPart } from './invoiceLinesFromJob';
-export type {
-  InvoiceLinesFromJobParams,
-  QuoteRateSettings,
-} from './invoiceLinesFromJob';
+export type { InvoiceLinesFromJobParams, QuoteRateSettings } from './invoiceLinesFromJob';
 // ── Banking (A4) ─────────────────────────────────────────────────────────────
 export { bankAccountsService } from './bankAccounts';
 export { bankTransactionsService } from './bankTransactions';
@@ -63,11 +57,6 @@ export {
   BankImportError,
 } from './bankImportParsers';
 export type { BankImportFormat, ParseResult } from './bankImportParsers';
-export {
-  applyRules,
-  applyRulesToBatch,
-  ruleMatches,
-  validateRule,
-} from './bankRulesEngine';
+export { applyRules, applyRulesToBatch, ruleMatches, validateRule } from './bankRulesEngine';
 export type { RuleEvaluable } from './bankRulesEngine';
 export * from './mappers';

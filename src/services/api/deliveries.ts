@@ -42,37 +42,47 @@ export const deliveryService = {
     lineItems: DeliveryLineItem[];
     createdBy?: string;
   }): Promise<Delivery | null> {
-    const { data: existing } = await supabase
-      .from('deliveries')
-      .select('delivery_number')
-      .eq('job_id', data.jobId)
-      .order('delivery_number', { ascending: false })
-      .limit(1);
-    const nextNumber =
-      existing && existing.length > 0
-        ? ((existing[0] as { delivery_number: number }).delivery_number ?? 0) + 1
-        : 1;
+    // delivery_number is computed read-max-then-insert against a UNIQUE (job_id,
+    // delivery_number) constraint, so two concurrent creates can collide. Retry on a
+    // unique-violation (23505) by re-reading the max, rather than losing the write.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data: existing } = await supabase
+        .from('deliveries')
+        .select('delivery_number')
+        .eq('job_id', data.jobId)
+        .order('delivery_number', { ascending: false })
+        .limit(1);
+      const nextNumber =
+        existing && existing.length > 0
+          ? ((existing[0] as { delivery_number: number }).delivery_number ?? 0) + 1
+          : 1;
 
-    const { data: row, error } = await supabase
-      .from('deliveries')
-      .insert({
-        job_id: data.jobId,
-        delivery_number: nextNumber,
-        delivered_at: data.deliveredAt,
-        carrier: data.carrier ?? null,
-        tracking_number: data.trackingNumber ?? null,
-        recipient_name: data.recipientName ?? null,
-        notes: data.notes ?? null,
-        line_items: data.lineItems,
-        created_by: data.createdBy ?? null,
-      })
-      .select()
-      .single();
-    if (error || !row) {
+      const { data: row, error } = await supabase
+        .from('deliveries')
+        .insert({
+          job_id: data.jobId,
+          delivery_number: nextNumber,
+          delivered_at: data.deliveredAt,
+          carrier: data.carrier ?? null,
+          tracking_number: data.trackingNumber ?? null,
+          recipient_name: data.recipientName ?? null,
+          notes: data.notes ?? null,
+          line_items: data.lineItems,
+          created_by: data.createdBy ?? null,
+        })
+        .select()
+        .single();
+      if (!error && row) {
+        return mapDeliveryRow(row as Record<string, unknown>);
+      }
+      if ((error as { code?: string } | null)?.code === '23505') {
+        continue; // a concurrent create took this number; re-read and try again
+      }
       console.error('deliveryService.create failed:', error?.message);
       return null;
     }
-    return mapDeliveryRow(row as Record<string, unknown>);
+    console.error('deliveryService.create failed: delivery_number kept colliding');
+    return null;
   },
 
   async update(

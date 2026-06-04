@@ -92,9 +92,17 @@ describe('sortJobCosting', () => {
       row({ jobId: 'r', revenue: 0, margin: -20 }), // null pct (zero revenue)
     ];
     // desc: highest pct first, null last
-    expect(sortJobCosting(withZero, 'marginPct', 'desc').map((r) => r.jobId)).toEqual(['p', 'q', 'r']);
+    expect(sortJobCosting(withZero, 'marginPct', 'desc').map((r) => r.jobId)).toEqual([
+      'p',
+      'q',
+      'r',
+    ]);
     // asc: null first (treated as lowest), then ascending pct
-    expect(sortJobCosting(withZero, 'marginPct', 'asc').map((r) => r.jobId)).toEqual(['r', 'q', 'p']);
+    expect(sortJobCosting(withZero, 'marginPct', 'asc').map((r) => r.jobId)).toEqual([
+      'r',
+      'q',
+      'p',
+    ]);
   });
 
   it('is stable: rows tied on the key keep their input order', () => {
@@ -144,6 +152,12 @@ describe('totalJobCosting', () => {
 
   it('returns zeros and a null margin % for an empty set', () => {
     const t = totalJobCosting([]);
-    expect(t).toMatchObject({ revenue: 0, materialCost: 0, laborCost: 0, margin: 0, marginPct: null });
+    expect(t).toMatchObject({
+      revenue: 0,
+      materialCost: 0,
+      laborCost: 0,
+      margin: 0,
+      marginPct: null,
+    });
   });
 });

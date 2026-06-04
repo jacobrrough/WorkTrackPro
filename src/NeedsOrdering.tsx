@@ -342,13 +342,13 @@ const NeedsOrdering: React.FC<NeedsOrderingProps> = ({
                               </span>
                               {item.binLocation && (
                                 <>
-                                  <span className="text-white/20">\u2022</span>
+                                  <span className="text-white/20">{'\u2022'}</span>
                                   <span className="text-white/40">Bin: {item.binLocation}</span>
                                 </>
                               )}
                               {item.price && (
                                 <>
-                                  <span className="text-white/20">\u2022</span>
+                                  <span className="text-white/20">{'\u2022'}</span>
                                   <span className="text-white/40">
                                     ${item.price.toFixed(2)}/{item.unit || 'ea'}
                                   </span>

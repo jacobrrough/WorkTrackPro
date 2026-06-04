@@ -52,7 +52,8 @@ export const DEFAULT_ACCOUNT_SPECS: DefaultAccountSpec[] = [
     key: 'openingBalanceEquity',
     label: 'Opening Balance Equity',
     expectedNumber: '3050',
-    description: 'Equity offset the import/migration module posts historical opening balances against.',
+    description:
+      'Equity offset the import/migration module posts historical opening balances against.',
     group: 'structural',
   },
   {

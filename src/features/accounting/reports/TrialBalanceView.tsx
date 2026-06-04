@@ -6,13 +6,7 @@ import { DateRangeFilter } from './DateRangeFilter';
 import { ReportPage } from './ReportPage';
 import { describeRange } from './reportFormat';
 import { trialBalanceDocument } from './reportDocuments';
-import {
-  BalancedBadge,
-  MoneyCell,
-  ReportEmpty,
-  ReportError,
-  ReportLoading,
-} from './ReportStates';
+import { BalancedBadge, MoneyCell, ReportEmpty, ReportError, ReportLoading } from './ReportStates';
 
 /**
  * Trial Balance — every posted account's signed balance, with the agreeing grand

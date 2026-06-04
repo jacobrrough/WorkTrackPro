@@ -113,6 +113,21 @@ export async function handler(event) {
     if (isJobBoard) {
       // Create a job instead of a board card.
       const boardType = boardId === 'job-admin' ? 'admin' : 'shopFloor';
+
+      // Validate columnId against the known status ids for this board type
+      // (mirrors ADMIN_COLUMNS/SHOP_COLUMNS in boards-for-addon.js) so an
+      // invalid/arbitrary status can't be written straight into jobs.status.
+      const ADMIN_STATUSES = ['toBeQuoted', 'quoted', 'rfqReceived', 'rfqSent', 'pod', 'pending', 'inProgress', 'qualityControl', 'onHold', 'finished', 'delivered', 'waitingForPayment', 'projectCompleted'];
+      const SHOP_FLOOR_STATUSES = ['pending', 'inProgress', 'qualityControl', 'finished', 'delivered', 'onHold'];
+      const validStatuses = boardType === 'admin' ? ADMIN_STATUSES : SHOP_FLOOR_STATUSES;
+      if (!validStatuses.includes(columnId)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Column not found on this board.' }),
+        };
+      }
+
       const jobStatus = columnId; // columnId is the status string (e.g. 'toBeQuoted')
 
       // Fold the email subject into the description instead of the job name
@@ -122,30 +137,47 @@ export async function handler(event) {
         jobDescription = title + (jobDescription ? '\n\n' + jobDescription : '');
       }
 
-      // Auto-generate next job code.
-      const { data: latestJob } = await supabase
-        .from('jobs')
-        .select('job_code')
-        .order('job_code', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const nextJobCode = (latestJob?.job_code ?? 0) + 1;
+      // Auto-generate next job code. job_code is read-max-then-insert against a UNIQUE
+      // column, so concurrent inserts can collide; retry on a unique-violation (23505)
+      // by re-reading the max rather than dropping the email.
+      let jobRow = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: latestJob } = await supabase
+          .from('jobs')
+          .select('job_code')
+          .order('job_code', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextJobCode = (latestJob?.job_code ?? 0) + 1;
 
-      const { data: jobRow, error: jobErr } = await supabase
-        .from('jobs')
-        .insert({
-          job_code: nextJobCode,
-          name: '',
-          description: jobDescription || null,
-          status: jobStatus,
-          board_type: boardType,
-          active: true,
-        })
-        .select('id, job_code')
-        .single();
+        const { data: created, error: jobErr } = await supabase
+          .from('jobs')
+          .insert({
+            job_code: nextJobCode,
+            name: '',
+            description: jobDescription || null,
+            status: jobStatus,
+            board_type: boardType,
+            active: true,
+          })
+          .select('id, job_code')
+          .single();
 
-      if (jobErr || !jobRow) {
+        if (!jobErr && created) {
+          jobRow = created;
+          break;
+        }
+        if (jobErr && jobErr.code === '23505' && attempt < 4) {
+          continue;
+        }
         console.error('create-card-from-email: job insert failed:', jobErr?.message);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Failed to create job.' }),
+        };
+      }
+      if (!jobRow) {
         return {
           statusCode: 500,
           headers: corsHeaders,

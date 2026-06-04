@@ -1,8 +1,5 @@
 import { formatMoney } from '../accountingViewModel';
-import {
-  BANK_TXN_STATUS_LABELS,
-  type BankTransactionStatus,
-} from '../types';
+import { BANK_TXN_STATUS_LABELS, type BankTransactionStatus } from '../types';
 
 /**
  * Shared presentation helpers for the A4 Banking screens (register + reconcile).

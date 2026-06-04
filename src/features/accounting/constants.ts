@@ -121,7 +121,8 @@ export const ACCOUNTING_QUERY_KEYS = {
   taxCodes: ['accounting', 'tax-codes'] as const,
   invoices: ['accounting', 'invoices'] as const,
   invoice: (id: string) => ['accounting', 'invoices', id] as const,
-  invoicePayments: (invoiceId: string) => ['accounting', 'invoices', invoiceId, 'payments'] as const,
+  invoicePayments: (invoiceId: string) =>
+    ['accounting', 'invoices', invoiceId, 'payments'] as const,
   payments: ['accounting', 'payments'] as const,
   payment: (id: string) => ['accounting', 'payments', id] as const,
   vendors: ['accounting', 'vendors'] as const,
@@ -277,7 +278,11 @@ export interface CashFlowForecastKey {
 }
 
 /** Stable key fragment for a forecast request (null/absent bounds → 'default'). */
-function forecastKey(key?: CashFlowForecastKey): { startMonth: string; months: number | 'default'; openingBalance: number } {
+function forecastKey(key?: CashFlowForecastKey): {
+  startMonth: string;
+  months: number | 'default';
+  openingBalance: number;
+} {
   return {
     startMonth: key?.startMonth ?? 'default',
     months: key?.months ?? 'default',
@@ -307,6 +312,7 @@ export interface AccountingNavItem {
 export const ACCOUNTING_NAV: AccountingNavItem[] = [
   { key: 'overview', label: 'Overview', icon: 'dashboard', path: ACCOUNTING_BASE },
   { key: 'accounts', label: 'Accounts', icon: 'account_tree', path: `${ACCOUNTING_BASE}/accounts` },
+  { key: 'import', label: 'Import', icon: 'upload_file', path: `${ACCOUNTING_BASE}/import` },
   { key: 'journal', label: 'Journal', icon: 'menu_book', path: `${ACCOUNTING_BASE}/journal` },
   { key: 'invoices', label: 'Invoices', icon: 'receipt_long', path: `${ACCOUNTING_BASE}/invoices` },
   { key: 'bills', label: 'Bills', icon: 'request_quote', path: `${ACCOUNTING_BASE}/bills` },
@@ -316,7 +322,12 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
   { key: 'recurring', label: 'Recurring', icon: 'event_repeat', path: RECURRING_BASE },
   { key: 'dimensions', label: 'Dimensions', icon: 'sell', path: DIMENSIONS_BASE },
   { key: 'budgets', label: 'Budgets', icon: 'savings', path: BUDGETS_BASE },
-  { key: 'fixed-assets', label: 'Fixed assets', icon: 'precision_manufacturing', path: FIXED_ASSETS_BASE },
+  {
+    key: 'fixed-assets',
+    label: 'Fixed assets',
+    icon: 'precision_manufacturing',
+    path: FIXED_ASSETS_BASE,
+  },
   { key: 'reports', label: 'Reports', icon: 'analytics', path: `${ACCOUNTING_BASE}/reports` },
   { key: 'custom-fields', label: 'Custom fields', icon: 'tune', path: CUSTOM_FIELDS_BASE },
   { key: 'settings', label: 'Settings', icon: 'settings', path: `${ACCOUNTING_BASE}/settings` },

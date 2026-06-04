@@ -105,7 +105,8 @@ export const recurringTemplatesService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { template: null, error: error?.message ?? 'Failed to create template.' };
+    if (error || !data)
+      return { template: null, error: error?.message ?? 'Failed to create template.' };
     return { template: mapRecurringTemplateRow(data as Row) };
   },
 
@@ -142,7 +143,8 @@ export const recurringTemplatesService = {
       .eq('id', id)
       .select('*')
       .single();
-    if (error || !data) return { template: null, error: error?.message ?? 'Failed to update template.' };
+    if (error || !data)
+      return { template: null, error: error?.message ?? 'Failed to update template.' };
     return { template: mapRecurringTemplateRow(data as Row) };
   },
 
@@ -168,41 +170,96 @@ export const recurringTemplatesService = {
    * cursor the user can nudge).
    */
   async generateDue(id: string, onDate?: string): Promise<GenerateResult> {
-    const tpl = await this.getById(id);
-    if (!tpl) {
-      return { templateId: id, generatedId: null, journalEntryId: null, nextRunDate: null, ended: false, error: 'Template not found.' };
+    // Load the template, distinguishing a transient DB read error from a genuine
+    // not-found (getById collapses both to null, which would mislabel a live template).
+    const { data: tplRow, error: tplErr } = await acct()
+      .from('recurring_templates')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (tplErr) {
+      return {
+        templateId: id,
+        generatedId: null,
+        journalEntryId: null,
+        nextRunDate: null,
+        ended: false,
+        error: `Could not load the template: ${tplErr.message}`,
+      };
     }
+    if (!tplRow) {
+      return {
+        templateId: id,
+        generatedId: null,
+        journalEntryId: null,
+        nextRunDate: null,
+        ended: false,
+        error: 'Template not found.',
+      };
+    }
+    const tpl = mapRecurringTemplateRow(tplRow as Row);
     const runDate = onDate ?? tpl.nextRunDate;
 
-    // 1) Build + post the document for this kind. Each path posts a balanced JE.
+    // Compute the advanced cursor up front (pure), then CLAIM this period atomically: the
+    // conditional update only succeeds for the run that flips next_run_date away from
+    // runDate, so two concurrent/double-fired runs cannot both post a document for the
+    // same period (idempotency). The loser of the race posts nothing.
+    const advanced = advanceSchedule({
+      frequency: tpl.frequency,
+      intervalCount: tpl.intervalCount,
+      startDate: tpl.startDate,
+      endDate: tpl.endDate,
+      nextRunDate: runDate,
+      dayOfMonth: tpl.dayOfMonth,
+    });
+    const { data: claimed, error: claimErr } = await acct()
+      .from('recurring_templates')
+      .update({ next_run_date: advanced.nextRunDate ?? advanced.ranDate })
+      .eq('id', id)
+      .eq('next_run_date', runDate)
+      .select('id');
+    if (claimErr) {
+      return fail(tpl, `Could not claim the period: ${claimErr.message}`);
+    }
+    if (!claimed || claimed.length === 0) {
+      // Another run already advanced past this period — do not post a duplicate.
+      return {
+        templateId: id,
+        generatedId: null,
+        journalEntryId: null,
+        nextRunDate: tpl.nextRunDate,
+        ended: false,
+        error: 'Already generated for this period.',
+      };
+    }
+
+    // We own the period (the cursor is already advanced). Post the document; on ANY
+    // failure roll the claim back so the period can be retried rather than skipped.
     let generatedId: string | null = null;
     let journalEntryId: string | null = null;
     try {
       if (tpl.kind === 'invoice') {
         const input = buildRecurringInvoiceInput(tpl.payload as RecurringInvoicePayload, runDate);
         const created = await invoicesService.createDraft(input);
-        if (!created.invoice) {
-          return fail(tpl, created.error ?? 'Failed to create the recurring invoice.');
-        }
+        if (!created.invoice)
+          throw new Error(created.error ?? 'Failed to create the recurring invoice.');
         generatedId = created.invoice.id;
         const sent = await invoicesService.send(generatedId);
         if (!sent.invoice) {
           // The draft exists but could not post — void it so no unposted draft leaks.
           await invoicesService.voidInvoice(generatedId, 'Recurring generation failed to post');
-          return fail(tpl, sent.error ?? 'Failed to post the recurring invoice.');
+          throw new Error(sent.error ?? 'Failed to post the recurring invoice.');
         }
         journalEntryId = sent.invoice.journalEntryId;
       } else if (tpl.kind === 'bill') {
         const input = buildRecurringBillInput(tpl.payload as RecurringBillPayload, runDate);
         const created = await billsService.createDraft(input);
-        if (!created.bill) {
-          return fail(tpl, created.error ?? 'Failed to create the recurring bill.');
-        }
+        if (!created.bill) throw new Error(created.error ?? 'Failed to create the recurring bill.');
         generatedId = created.bill.id;
         const posted = await billsService.post(generatedId);
         if (!posted.bill) {
           await billsService.voidBill(generatedId, 'Recurring generation failed to post');
-          return fail(tpl, posted.error ?? 'Failed to post the recurring bill.');
+          throw new Error(posted.error ?? 'Failed to post the recurring bill.');
         }
         journalEntryId = posted.bill.journalEntryId;
       } else {
@@ -214,45 +271,58 @@ export const recurringTemplatesService = {
           sourceType: 'manual',
           lines,
         });
-        if (!posted.entryId) {
-          return fail(tpl, posted.error ?? 'Failed to post the recurring journal entry.');
-        }
+        if (!posted.entryId)
+          throw new Error(posted.error ?? 'Failed to post the recurring journal entry.');
         generatedId = posted.entryId;
         journalEntryId = posted.entryId;
       }
     } catch (e) {
-      return fail(tpl, e instanceof Error ? e.message : 'Failed to generate the recurring document.');
+      // Best-effort rollback of the period claim so this period isn't silently skipped.
+      try {
+        await acct().from('recurring_templates').update({ next_run_date: runDate }).eq('id', id);
+      } catch {
+        /* leave the advanced cursor; the failure below is the actionable error */
+      }
+      return fail(
+        tpl,
+        e instanceof Error ? e.message : 'Failed to generate the recurring document.'
+      );
     }
 
-    // 2) The JE is posted. Advance the schedule cursor + bookkeeping columns.
-    const advanced = advanceSchedule({
-      frequency: tpl.frequency,
-      intervalCount: tpl.intervalCount,
-      startDate: tpl.startDate,
-      endDate: tpl.endDate,
-      nextRunDate: runDate,
-      dayOfMonth: tpl.dayOfMonth,
-    });
-    const { error: uErr } = await acct()
-      .from('recurring_templates')
-      .update({
-        last_run_date: advanced.ranDate,
-        last_generated_id: generatedId,
-        occurrences_generated: tpl.occurrencesGenerated + 1,
-        next_run_date: advanced.nextRunDate ?? advanced.ranDate, // keep a valid (non-null) cursor
-        active: advanced.ended ? false : tpl.active,
-      })
-      .eq('id', id);
+    // Document posted; the claim already advanced next_run_date. Persist the remaining
+    // bookkeeping columns (do NOT re-write next_run_date — the claim owns it).
+    try {
+      const { error: uErr } = await acct()
+        .from('recurring_templates')
+        .update({
+          last_run_date: advanced.ranDate,
+          last_generated_id: generatedId,
+          occurrences_generated: tpl.occurrencesGenerated + 1,
+          active: advanced.ended ? false : tpl.active,
+        })
+        .eq('id', id);
 
-    return {
-      templateId: id,
-      generatedId,
-      journalEntryId,
-      nextRunDate: advanced.nextRunDate,
-      ended: advanced.ended,
-      // The document posted; only the cursor write failed. Surface it but don't claim failure.
-      error: uErr ? `Posted, but advancing the schedule failed: ${uErr.message}` : undefined,
-    };
+      return {
+        templateId: id,
+        generatedId,
+        journalEntryId,
+        nextRunDate: advanced.nextRunDate,
+        ended: advanced.ended,
+        // The document posted; only the bookkeeping write failed. Surface it but don't claim failure.
+        error: uErr ? `Posted, but advancing the schedule failed: ${uErr.message}` : undefined,
+      };
+    } catch (e) {
+      // The document DID post; only persisting the bookkeeping advance threw. Surface it as
+      // a result (not a propagated rejection) so generateAllDue's batch isn't aborted.
+      return {
+        templateId: id,
+        generatedId,
+        journalEntryId,
+        nextRunDate: advanced.nextRunDate,
+        ended: advanced.ended,
+        error: `Posted, but advancing the schedule failed: ${e instanceof Error ? e.message : 'unknown error'}`,
+      };
+    }
   },
 
   /**
@@ -268,7 +338,19 @@ export const recurringTemplatesService = {
     for (const tpl of due) {
       // Generate as of the template's own next_run_date (its scheduled date), not asOf,
       // so the document carries its proper period date.
-      results.push(await this.generateDue(tpl.id, tpl.nextRunDate));
+      try {
+        results.push(await this.generateDue(tpl.id, tpl.nextRunDate));
+      } catch (e) {
+        // One template throwing unexpectedly must not abort the rest of the batch.
+        results.push({
+          templateId: tpl.id,
+          generatedId: null,
+          journalEntryId: null,
+          nextRunDate: tpl.nextRunDate,
+          ended: false,
+          error: e instanceof Error ? e.message : 'Failed to generate.',
+        });
+      }
     }
     return results;
   },

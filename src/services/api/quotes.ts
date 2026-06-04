@@ -10,6 +10,9 @@ function mapRowToQuote(row: Record<string, unknown>): Quote {
     laborHours: (row.labor_hours as number) ?? 0,
     laborRate: (row.labor_rate as number) ?? 0,
     laborCost: (row.labor_cost as number) ?? 0,
+    cncHours: (row.cnc_hours as number) ?? 0,
+    cncRate: (row.cnc_rate as number) ?? 0,
+    cncCost: (row.cnc_cost as number) ?? 0,
     markupPercent: (row.markup_percent as number) ?? 0,
     subtotal: (row.subtotal as number) ?? 0,
     markupAmount: (row.markup_amount as number) ?? 0,
@@ -47,6 +50,9 @@ export const quoteService = {
       labor_hours: data.laborHours,
       labor_rate: data.laborRate,
       labor_cost: data.laborCost,
+      cnc_hours: data.cncHours ?? 0,
+      cnc_rate: data.cncRate ?? 0,
+      cnc_cost: data.cncCost ?? 0,
       markup_percent: data.markupPercent,
       subtotal: data.subtotal,
       markup_amount: data.markupAmount,
@@ -72,6 +78,9 @@ export const quoteService = {
     if (data.laborHours !== undefined) row.labor_hours = data.laborHours;
     if (data.laborRate !== undefined) row.labor_rate = data.laborRate;
     if (data.laborCost !== undefined) row.labor_cost = data.laborCost;
+    if (data.cncHours !== undefined) row.cnc_hours = data.cncHours;
+    if (data.cncRate !== undefined) row.cnc_rate = data.cncRate;
+    if (data.cncCost !== undefined) row.cnc_cost = data.cncCost;
     if (data.markupPercent !== undefined) row.markup_percent = data.markupPercent;
     if (data.subtotal !== undefined) row.subtotal = data.subtotal;
     if (data.markupAmount !== undefined) row.markup_amount = data.markupAmount;

@@ -47,6 +47,7 @@ pocketbase
 build/
 out/
 *.tsbuildinfo
+.netlify/
 
 # Testing
 coverage/

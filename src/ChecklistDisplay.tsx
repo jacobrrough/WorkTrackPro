@@ -9,6 +9,7 @@ import {
   getStatusDisplayName,
 } from '@/core/types';
 import { useToast } from './Toast';
+import { useApp } from '@/AppContext';
 import { checklistService, checklistHistoryService } from './pocketbase';
 import { inventoryService } from '@/services/api/inventory';
 
@@ -32,6 +33,9 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
   onChecklistComplete,
 }) => {
   const { showToast } = useToast();
+  // The DB `available` column is not authoritative — stock writes don't update it. Use the
+  // app's allocation-aware calculateAvailable so the material-availability gate isn't stale.
+  const { calculateAvailable } = useApp();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -125,7 +129,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
             .flatMap((ji) => {
               const live = liveMap.get(ji.inventoryId);
               if (!live) return [];
-              const have = live.available + live.onOrder;
+              const have = calculateAvailable(live) + live.onOrder;
               return have < ji.quantity
                 ? [{ name: live.name, need: ji.quantity, have, unit: ji.unit }]
                 : [];

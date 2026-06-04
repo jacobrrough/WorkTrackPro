@@ -89,13 +89,20 @@ export async function fetchStoreParts(): Promise<StorePart[]> {
     const row = p as Record<string, unknown>;
     const rawSetPrice = row.price_per_set ?? row.pricePerSet;
     const pricePerSet = rawSetPrice != null && rawSetPrice !== '' ? Number(rawSetPrice) : undefined;
+    const setPrice = Number.isFinite(pricePerSet) ? pricePerSet : undefined;
     return {
       id: p.id as string,
       partNumber: (p.part_number as string) ?? '',
       name: (p.name as string) ?? '',
       description: p.description as string | undefined,
-      pricePerSet: Number.isFinite(pricePerSet) ? pricePerSet : undefined,
-      variants: variantsByPart.get(p.id as string) ?? [],
+      pricePerSet: setPrice,
+      variants: (variantsByPart.get(p.id as string) ?? []).map((v) => ({
+        ...v,
+        pricePerVariant:
+          v.pricePerVariant != null && Number.isFinite(v.pricePerVariant)
+            ? v.pricePerVariant
+            : setPrice,
+      })),
       productImages: imagesByPart.get(p.id as string) ?? [],
     };
   });

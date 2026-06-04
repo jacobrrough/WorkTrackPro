@@ -132,7 +132,10 @@ export const reportsService = {
 
   /** Balance Sheet: assets = liabilities + equity (period net income folded in). */
   async getBalanceSheet(range: DateRange = {}): Promise<BalanceSheetReport> {
-    const rows = await getAccountBalances(range);
+    // A balance sheet is cumulative as of `to`; it must never apply a lower bound, or a
+    // preset that carries a `from` would truncate balances to a single period and show
+    // wrong (often out-of-balance) totals. Drop `from` for the fetch; keep it for the label.
+    const rows = await getAccountBalances({ ...range, from: null });
     return buildBalanceSheet(rows, range);
   },
 

@@ -41,8 +41,9 @@ export class BankImportError extends Error {
 
 /**
  * Parse a money token to a number of dollars (2dp). Handles "$1,234.56",
- * parentheses-negatives "(45.00)", trailing-minus "45.00-", and leading "+".
- * Returns null when there is no number at all.
+ * parentheses-negatives "(45.00)", trailing-minus "45.00-", leading "+", and the
+ * European comma-decimal form "1.234,56" (→ 1234.56) without misreading US grouping
+ * like "1,234" (→ 1234). Returns null when there is no number at all.
  */
 export function parseAmount(raw: string | null | undefined): number | null {
   if (raw == null) return null;
@@ -60,7 +61,22 @@ export function parseAmount(raw: string | null | undefined): number | null {
     s = s.replace(/-\s*$/, '');
   }
   if (/^\s*-/.test(s)) negative = true;
-  // Strip currency symbols, thousands separators, spaces and the leading sign.
+  // Normalize the decimal separator before stripping. European exports use a comma
+  // decimal with dot grouping ("1.234,56" = 1234.56), so a blind strip of commas would
+  // read it as ~1000x too small. Treat the comma as the decimal point only when it is
+  // unambiguous: it appears after the last dot AND is followed by exactly two trailing
+  // digits at end-of-string. That keeps US grouping intact — "1,234" (comma + 3 digits)
+  // and "$1,234.56" (comma before the dot) both fall through to the grouping branch.
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if (lastComma > lastDot && /,\d{2}\b/.test(s)) {
+    // Comma is the decimal: drop dot grouping, then promote the comma to a dot.
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    // Comma is grouping (or absent): drop all commas.
+    s = s.replace(/,/g, '');
+  }
+  // Strip currency symbols, remaining separators, spaces and the leading sign.
   const cleaned = s.replace(/[^0-9.]/g, '');
   if (cleaned === '' || cleaned === '.') return null;
   const n = Number.parseFloat(cleaned);
@@ -122,6 +138,13 @@ function isoIfValid(y: string, m: string, d: string): string | null {
   const mm = Number(m);
   const dd = Number(d);
   if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  // Reject impossible calendar days (e.g. 02/30, 04/31, 02/29 in a non-leap year) via
+  // a UTC round-trip. isoIfValid always receives a 4-digit year, so Date.UTC's 0–99
+  // century offset never applies here.
+  const dt = new Date(Date.UTC(yy, mm - 1, dd));
+  if (dt.getUTCFullYear() !== yy || dt.getUTCMonth() !== mm - 1 || dt.getUTCDate() !== dd) {
+    return null;
+  }
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${yy}-${pad(mm)}-${pad(dd)}`;
 }
@@ -136,19 +159,24 @@ const clean = (v: string | null | undefined): string | null => {
  * A stable synthetic external id for a row that arrived without one (many CSVs and
  * some OFX rows omit FITID). It is a deterministic non-crypto hash of the natural
  * key (date|signed-amount|description|merchant) so re-importing the same statement
- * dedups, while two genuinely different rows that happen to share a date+amount keep
- * their order via the per-batch `index` salt. Format: `gen:<hash>`.
+ * dedups, while two genuinely identical same-day rows stay distinct via the
+ * `ordinal` salt — a per-natural-key occurrence index (0,1,2,…), NOT the row's
+ * absolute position in the batch. Using the per-key ordinal keeps a stable row's id
+ * unchanged when a re-exported statement prepends/reorders rows (the position shifts
+ * but the ordinal does not), so dedup still holds. The caller
+ * (bankTransactions.import) computes the ordinal with the SAME natural-key
+ * normalization applied here. Format: `gen:<hash>`.
  */
 export function syntheticExternalId(
   txn: Pick<ParsedBankTransaction, 'txnDate' | 'amount' | 'description' | 'merchant'>,
-  index: number
+  ordinal: number
 ): string {
   const basis = [
     txn.txnDate,
     txn.amount.toFixed(2),
     (txn.description ?? '').toLowerCase().replace(/\s+/g, ' ').trim(),
     (txn.merchant ?? '').toLowerCase().replace(/\s+/g, ' ').trim(),
-    String(index),
+    String(ordinal),
   ].join('|');
   return `gen:${djb2(basis)}`;
 }
@@ -185,7 +213,10 @@ export function detectFormat(text: string, fileName?: string): BankImportFormat 
 // ── CSV ──────────────────────────────────────────────────────────────────────
 
 /** Column-name synonyms (lower-cased, non-alphanumerics stripped) → logical field. */
-const CSV_HEADERS: Record<string, 'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid'> = {
+const CSV_HEADERS: Record<
+  string,
+  'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid'
+> = {
   date: 'date',
   transactiondate: 'date',
   posteddate: 'date',
@@ -231,7 +262,9 @@ export function parseCsv(text: string): ParseResult {
   const delimiter = detectDelimiter(rows[0]);
   const header = parseLine(rows[0], delimiter).map(normHeader);
 
-  const col: Partial<Record<'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid', number>> = {};
+  const col: Partial<
+    Record<'date' | 'amount' | 'debit' | 'credit' | 'description' | 'merchant' | 'fitid', number>
+  > = {};
   header.forEach((h, i) => {
     const logical = CSV_HEADERS[h];
     // First occurrence wins (don't let a later "name" clobber an earlier mapping).
@@ -267,11 +300,13 @@ export function parseCsv(text: string): ParseResult {
       amount = parseAmount(at(col.amount));
     } else {
       // Split columns: debit is money out (negative), credit is money in (positive).
-      // Each is typically a positive magnitude; honor an explicit sign if present.
+      // Each is typically a positive magnitude, but honor an explicit sign so that a
+      // negative debit (reversal/return = money in) or negative credit (chargeback =
+      // money out) keeps its true direction instead of being forced by Math.abs.
       const debit = parseAmount(at(col.debit));
       const credit = parseAmount(at(col.credit));
-      if (debit != null && debit !== 0) amount = -Math.abs(debit);
-      else if (credit != null && credit !== 0) amount = Math.abs(credit);
+      if (debit != null && debit !== 0) amount = -debit;
+      else if (credit != null && credit !== 0) amount = credit;
       else amount = 0;
     }
     if (amount == null) {

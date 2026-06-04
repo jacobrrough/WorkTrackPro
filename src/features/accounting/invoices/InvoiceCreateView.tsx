@@ -34,6 +34,24 @@ const emptyLine = (): NewInvoiceLineInput => ({
 });
 
 /**
+ * Resolve the header tax code to apply, with precedence: customer's preferred code,
+ * else the org default code. Once the user has touched the Tax-code select we honor
+ * their raw choice verbatim — including an explicit "No tax" (empty string) — so an
+ * intentional No-tax selection is never re-seeded. `touched` distinguishes "the user
+ * has not chosen yet" (seed a default) from "the user explicitly picked nothing".
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function resolveEffectiveTaxCodeId(args: {
+  rawTaxCodeId: string;
+  touched: boolean;
+  customerDefaultTaxCodeId: string | null | undefined;
+  orgDefaultTaxCodeId: string | null | undefined;
+}): string {
+  if (args.touched) return args.rawTaxCodeId;
+  return args.customerDefaultTaxCodeId ?? args.orgDefaultTaxCodeId ?? '';
+}
+
+/**
  * Pull a job's parts/inventory/settings and build draft lines from the on-screen
  * quote (reuses buildInvoiceLinesFromJob -> calculatePartQuote). Reads public.* only.
  */
@@ -158,6 +176,9 @@ export default function InvoiceCreateView() {
   const [terms, setTerms] = useState('');
   const [memo, setMemo] = useState('');
   const [taxCodeId, setTaxCodeId] = useState('');
+  // Whether the user has explicitly chosen a header tax code (including "No tax").
+  // Until then the effective code is seeded from the customer/org default.
+  const [taxCodeTouched, setTaxCodeTouched] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [lines, setLines] = useState<NewInvoiceLineInput[]>([emptyLine()]);
   const [showFromJob, setShowFromJob] = useState(false);
@@ -165,11 +186,19 @@ export default function InvoiceCreateView() {
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
 
-  // Default the header tax code to the customer's preferred code, else the default code.
-  const defaultTaxCode = useMemo(
-    () => taxCodes.find((t) => t.isDefault) ?? null,
-    [taxCodes]
-  );
+  // The org-wide default tax code, used as the fallback seed below.
+  const defaultTaxCode = useMemo(() => taxCodes.find((t) => t.isDefault) ?? null, [taxCodes]);
+
+  // Effective header tax code with precedence: customer's preferred code, else the org
+  // default — but only until the user explicitly picks one (then their choice, including
+  // an intentional "No tax", is honored). Derived so it cannot fight an explicit choice
+  // or loop, unlike a setState-on-change effect.
+  const effectiveTaxCodeId = resolveEffectiveTaxCodeId({
+    rawTaxCodeId: taxCodeId,
+    touched: taxCodeTouched,
+    customerDefaultTaxCodeId: selectedCustomer?.defaultTaxCodeId,
+    orgDefaultTaxCodeId: defaultTaxCode?.id,
+  });
 
   const updateLine = (i: number, patch: Partial<NewInvoiceLineInput>) =>
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -186,11 +215,11 @@ export default function InvoiceCreateView() {
     return computeInvoiceTotals({
       lines,
       defaultIncomeAccountId: null,
-      headerTaxCodeId: taxCodeId || null,
-      taxRateByCode: (id) => (id ? rateById.get(id) ?? 0 : 0),
+      headerTaxCodeId: effectiveTaxCodeId || null,
+      taxRateByCode: (id) => (id ? (rateById.get(id) ?? 0) : 0),
       taxExempt: selectedCustomer?.taxExempt ?? false,
     });
-  }, [lines, taxCodes, taxCodeId, selectedCustomer]);
+  }, [lines, taxCodes, effectiveTaxCodeId, selectedCustomer]);
 
   const hasAmount = totals.totalCents > 0;
 
@@ -224,7 +253,7 @@ export default function InvoiceCreateView() {
       invoiceDate,
       dueDate: dueDate || null,
       terms: terms.trim() || null,
-      taxCodeId: taxCodeId || null,
+      taxCodeId: effectiveTaxCodeId || null,
       memo: memo.trim() || null,
       lines: realLines,
     };
@@ -254,11 +283,10 @@ export default function InvoiceCreateView() {
               className={inputClass}
               value={customerId}
               onChange={(e) => {
-                const id = e.target.value;
-                setCustomerId(id);
-                const cust = customers.find((c) => c.id === id);
-                // Adopt the customer's default tax code if the header is still unset.
-                if (cust?.defaultTaxCodeId && !taxCodeId) setTaxCodeId(cust.defaultTaxCodeId);
+                // The customer's preferred tax code is adopted automatically by
+                // resolveEffectiveTaxCodeId while the user has not chosen one, so no
+                // tax-code side effect is needed here.
+                setCustomerId(e.target.value);
               }}
               disabled={customersLoading}
             >
@@ -272,12 +300,21 @@ export default function InvoiceCreateView() {
             </select>
           </FormField>
 
-          <FormField label="Tax code" htmlFor="inv-tax" hint="Applied to taxable lines without their own code">
+          <FormField
+            label="Tax code"
+            htmlFor="inv-tax"
+            hint="Applied to taxable lines without their own code"
+          >
             <select
               id="inv-tax"
               className={inputClass}
-              value={taxCodeId}
-              onChange={(e) => setTaxCodeId(e.target.value)}
+              value={effectiveTaxCodeId}
+              onChange={(e) => {
+                // Record an explicit choice (including "No tax" = '') so the default
+                // is no longer seeded over the user's selection.
+                setTaxCodeTouched(true);
+                setTaxCodeId(e.target.value);
+              }}
             >
               <option value="">{defaultTaxCode ? 'No tax' : 'None'}</option>
               {taxCodes.map((t) => (
@@ -366,7 +403,10 @@ export default function InvoiceCreateView() {
                   <CurrencyInput
                     aria-label={`Line ${i + 1} quantity`}
                     value={line.quantity ?? 0}
-                    onValueChange={(v) => updateLine(i, { quantity: v })}
+                    onValueChange={(v) =>
+                      // User-entered quantity supersedes any imported explicit lineTotal.
+                      updateLine(i, { quantity: v, lineTotal: undefined })
+                    }
                   />
                   <CurrencyInput
                     aria-label={`Line ${i + 1} unit price`}
@@ -465,7 +505,7 @@ export default function InvoiceCreateView() {
 
       {showFromJob && (
         <FromJobDialog
-          taxCodeId={taxCodeId || null}
+          taxCodeId={effectiveTaxCodeId || null}
           onClose={() => setShowFromJob(false)}
           onLines={applyJobLines}
         />

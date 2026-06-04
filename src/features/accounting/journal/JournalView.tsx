@@ -9,6 +9,7 @@ import { useJournalEntries } from '../hooks/useAccountingQueries';
 import { usePostJournalEntry } from '../hooks/useAccountingMutations';
 import { computeBalance, formatMoney, toCents, validateJournalDraft } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
+import { todayIsoLocal } from '../periodLockView';
 import type { JournalEntry, JournalStatus, NewJournalLineInput } from '../types';
 
 const STATUS_STYLES: Record<JournalStatus, string> = {
@@ -19,19 +20,17 @@ const STATUS_STYLES: Record<JournalStatus, string> = {
 
 function StatusPill({ status }: { status: JournalStatus }) {
   return (
-    <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}>
+    <span
+      className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+    >
       {status}
     </span>
   );
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function NewEntryModal({ onClose }: { onClose: () => void }) {
   const postEntry = usePostJournalEntry();
-  const [entryDate, setEntryDate] = useState(todayISO());
+  const [entryDate, setEntryDate] = useState(todayIsoLocal());
   const [memo, setMemo] = useState('');
   const [lines, setLines] = useState<NewJournalLineInput[]>([
     { accountId: '', debit: 0, credit: 0 },
@@ -125,7 +124,9 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
                 <CurrencyInput
                   aria-label={`Line ${i + 1} debit`}
                   value={line.debit}
-                  onValueChange={(v) => updateLine(i, { debit: v, credit: v > 0 ? 0 : line.credit })}
+                  onValueChange={(v) =>
+                    updateLine(i, { debit: v, credit: v > 0 ? 0 : line.credit })
+                  }
                 />
                 <CurrencyInput
                   aria-label={`Line ${i + 1} credit`}
@@ -162,10 +163,10 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
               Credits{' '}
               <span className="font-bold text-white">{formatMoney(balance.totalCredit)}</span>
             </span>
-            <span
-              className={`font-bold ${balance.balanced ? 'text-green-400' : 'text-amber-400'}`}
-            >
-              {balance.balanced ? 'Balanced' : `Off by ${formatMoney(Math.abs(balance.difference))}`}
+            <span className={`font-bold ${balance.balanced ? 'text-green-400' : 'text-amber-400'}`}>
+              {balance.balanced
+                ? 'Balanced'
+                : `Off by ${formatMoney(Math.abs(balance.difference))}`}
             </span>
           </div>
 
@@ -236,9 +237,13 @@ export default function JournalView() {
       )}
 
       {entries.length > 0 && (
-        <div className="overflow-hidden rounded-sm border border-white/10 divide-y divide-white/5">
+        <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
           {entries.map((e) => (
-            <EntryRow key={e.id} entry={e} onOpen={() => navigate(`${ACCOUNTING_BASE}/journal/${e.id}`)} />
+            <EntryRow
+              key={e.id}
+              entry={e}
+              onOpen={() => navigate(`${ACCOUNTING_BASE}/journal/${e.id}`)}
+            />
           ))}
         </div>
       )}

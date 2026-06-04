@@ -73,7 +73,7 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
             jobToSet = { ...job, parts: existing.parts };
           }
           queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
-            prev ? prev.map((j) => (j.id === jobId ? jobToSet : j)) : [jobToSet]
+            prev ? dedupeJobsById([jobToSet, ...prev]) : [jobToSet]
           );
           queryClient.setQueryData(['job', jobId], jobToSet);
         }

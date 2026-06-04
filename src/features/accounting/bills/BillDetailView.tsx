@@ -8,11 +8,7 @@ import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useBill, useBillPayments } from '../hooks/useAccountingQueries';
-import {
-  usePostBill,
-  useRecordVendorPayment,
-  useVoidBill,
-} from '../hooks/useAccountingMutations';
+import { usePostBill, useRecordVendorPayment, useVoidBill } from '../hooks/useAccountingMutations';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
 import {
@@ -159,7 +155,10 @@ function RecordVendorPaymentModal({ bill, onClose }: { bill: Bill; onClose: () =
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={submit} disabled={recordPayment.isPending || amount <= 0 || overBalance}>
+            <Button
+              onClick={submit}
+              disabled={recordPayment.isPending || amount <= 0 || overBalance}
+            >
               {recordPayment.isPending ? 'Recording…' : 'Record payment'}
             </Button>
           </div>

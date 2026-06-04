@@ -1,11 +1,7 @@
-import type {
-  NewVendorPaymentInput,
-  VendorPayment,
-} from '../../../features/accounting/types';
+import type { NewVendorPaymentInput, VendorPayment } from '../../../features/accounting/types';
 import { buildVendorPaymentJournalLines } from '../../../features/accounting/posting';
 import { acct } from './accountingClient';
 import { mapVendorPaymentRow, type Row } from './mappers';
-import { journalService } from './journal';
 import { accountingSettingsService } from './settings';
 
 /**
@@ -86,61 +82,41 @@ export const vendorPaymentsService = {
 
     const paymentDate = input.paymentDate ?? new Date().toISOString().slice(0, 10);
 
-    // 1) Insert the payment header (unapplied_amount starts at the full amount; the
-    //    application trigger reduces it as applications are inserted).
-    const { data: payRow, error: pErr } = await acct()
-      .from('vendor_payments')
-      .insert({
-        vendor_id: input.vendorId,
-        payment_date: paymentDate,
-        amount: input.amount,
-        method: input.method ?? 'other',
-        reference: input.reference ?? null,
-        pay_from_account_id: payFromAccount,
-        unapplied_amount: input.amount,
-        memo: input.memo ?? null,
-      })
-      .select('*')
-      .single();
-    if (pErr || !payRow) return { payment: null, error: pErr?.message ?? 'Failed to create payment.' };
-    const paymentId = (payRow as Row).id as string;
-
-    // 2) Post the disbursement JE.
-    const posted = await journalService.createAndPost({
-      entryDate: paymentDate,
-      memo: `Vendor payment ${input.reference ? `(${input.reference})` : paymentId}`,
-      sourceType: 'vendor_payment',
-      sourceId: paymentId,
-      lines: jeLines,
+    // Record atomically: accounting.record_vendor_payment inserts the payment header, posts
+    // the disbursement JE (lines built above by posting.ts), inserts the applications, and
+    // links the JE — all in ONE transaction. So a mid-sequence failure (or a hard client
+    // crash) can never leave a posted JE without its applications. The DB guards (balance,
+    // over-application) still fire and roll the whole transaction back on violation.
+    const { data: paymentId, error } = await acct().rpc('record_vendor_payment', {
+      p_vendor_id: input.vendorId,
+      p_payment_date: paymentDate,
+      p_amount: input.amount,
+      p_method: input.method ?? 'other',
+      p_reference: input.reference ?? null,
+      p_pay_from_account_id: payFromAccount,
+      p_memo: input.memo ?? null,
+      p_je_date: paymentDate,
+      p_je_memo: `Vendor payment${input.reference ? ` (${input.reference})` : ''}`,
+      p_lines: jeLines.map((l) => ({
+        account_id: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+        line_memo: l.lineMemo ?? null,
+        job_id: l.jobId ?? null,
+        customer_id: l.customerId ?? null,
+        vendor_id: l.vendorId ?? null,
+        class_id: l.classId ?? null,
+        location_id: l.locationId ?? null,
+        department_id: l.departmentId ?? null,
+      })),
+      p_applications: input.applications.map((a) => ({
+        bill_id: a.billId,
+        amount_applied: a.amountApplied,
+      })),
     });
-    if (!posted.entryId) {
-      await acct().from('vendor_payments').delete().eq('id', paymentId);
-      return { payment: null, error: posted.error ?? 'Failed to post the disbursement journal entry.' };
+    if (error || !paymentId) {
+      return { payment: null, error: error?.message ?? 'Failed to record the payment.' };
     }
-
-    // 3) Insert applications (trigger updates bills + payment.unapplied_amount and
-    //    rejects over-application).
-    const appRows = input.applications.map((a) => ({
-      vendor_payment_id: paymentId,
-      bill_id: a.billId,
-      amount_applied: a.amountApplied,
-    }));
-    const { error: aErr } = await acct().from('vendor_payment_applications').insert(appRows);
-    if (aErr) {
-      await journalService.voidEntry(posted.entryId, 'Vendor payment application failed');
-      await acct().from('vendor_payments').delete().eq('id', paymentId);
-      return { payment: null, error: aErr.message };
-    }
-
-    // 4) Link the JE onto the payment.
-    const { error: lErr } = await acct()
-      .from('vendor_payments')
-      .update({ journal_entry_id: posted.entryId })
-      .eq('id', paymentId);
-    if (lErr) {
-      // Non-fatal for accounting integrity (the JE & applications stand); surface it.
-      return { payment: await this.getById(paymentId), error: lErr.message };
-    }
-    return { payment: await this.getById(paymentId) };
+    return { payment: await this.getById(paymentId as string) };
   },
 };

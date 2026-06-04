@@ -42,10 +42,15 @@ const ALL_NOTIFICATION_TYPES: SystemNotificationType[] = [
   'maintenance_notice',
 ];
 
+// Types whose in-app default is on only for admins. This MUST stay in parity
+// with the SQL seed in supabase/migrations/20260511000001_notification_preferences.sql
+// (build_default_notification_preferences), which is the realized source of truth:
+// every profile gets that seed stored on insert (trigger) + backfill, and stored
+// values win in mergeWithDefaults. NOTE: 'user_approved'/'user_rejected' are
+// intentionally NOT admin-only — they notify the *affected* user about their own
+// account status, so the seed defaults both to true for everyone.
 const ADMIN_ONLY_TYPES: SystemNotificationType[] = [
   'new_user_pending_approval',
-  'user_approved',
-  'user_rejected',
   'proposal_submitted',
   'critical_stock',
   'allocation_complete',

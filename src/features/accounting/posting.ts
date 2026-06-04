@@ -13,6 +13,7 @@
  */
 import { toCents } from './accountingViewModel';
 import type {
+  AccountType,
   DefaultAccounts,
   LineDimensions,
   NewBillLineInput,
@@ -49,7 +50,9 @@ function dimGroupKey(
   accountId: string,
   dims: { classId: string | null; locationId: string | null; departmentId: string | null }
 ): string {
-  return [accountId, dims.classId ?? '∅', dims.locationId ?? '∅', dims.departmentId ?? '∅'].join('|');
+  return [accountId, dims.classId ?? '∅', dims.locationId ?? '∅', dims.departmentId ?? '∅'].join(
+    '|'
+  );
 }
 
 /** Only spread dimension ids that are non-null, so JE lines stay clean. */
@@ -134,7 +137,7 @@ export function computeInvoiceTotals(params: {
 
   for (const line of lines) {
     const netCents = lineNetCents(line);
-    const lineDiscountCents = toCents(line.discount ?? 0);
+    const lineDiscountCents = line.lineTotal != null ? 0 : toCents(line.discount ?? 0);
     const taxable = line.taxable !== false; // default taxable
     const codeForLine = line.taxCodeId ?? headerTaxCodeId ?? null;
     const rate = taxExempt || !taxable ? 0 : taxRateByCode(codeForLine);
@@ -208,11 +211,16 @@ export function buildInvoiceRevenueJournalLines(
 
   // Cr Income, grouped by (income account × dimensions) so the revenue can be sliced
   // by class/location/department. Each distinct combination posts its own credit line.
-  const incomeByGroup = new Map<string, { accountId: string; cents: number; dims: ReturnType<typeof pickDimensions> }>();
+  const incomeByGroup = new Map<
+    string,
+    { accountId: string; cents: number; dims: ReturnType<typeof pickDimensions> }
+  >();
   for (const line of totals.lines) {
     const acct = line.incomeAccountId ?? accounts.salesIncome;
     if (!acct) {
-      throw new Error('No income account configured for an invoice line (default_accounts.sales_income).');
+      throw new Error(
+        'No income account configured for an invoice line (default_accounts.sales_income).'
+      );
     }
     const dims = pickDimensions(line);
     const key = dimGroupKey(acct, dims);
@@ -235,7 +243,9 @@ export function buildInvoiceRevenueJournalLines(
   if (totals.taxCents > 0) {
     const taxAccount = accounts.salesTaxPayable;
     if (!taxAccount) {
-      throw new Error('Sales Tax Payable account is not configured (default_accounts.sales_tax_payable).');
+      throw new Error(
+        'Sales Tax Payable account is not configured (default_accounts.sales_tax_payable).'
+      );
     }
     lines.push({
       accountId: taxAccount,
@@ -246,9 +256,7 @@ export function buildInvoiceRevenueJournalLines(
   }
 
   // Stamp the customer dimension on every line for AR reporting.
-  const stamped = customerId
-    ? lines.map((l) => ({ ...l, customerId }))
-    : lines;
+  const stamped = customerId ? lines.map((l) => ({ ...l, customerId })) : lines;
 
   assertBalanced(stamped);
 
@@ -290,7 +298,9 @@ export function buildPaymentJournalLines(params: {
   }
   const appliedCents = applications.reduce((s, a) => s + toCents(a.amountApplied), 0);
   if (appliedCents !== amountCents) {
-    throw new Error('Applied amount must equal the payment amount (no unapplied receipts in Phase A).');
+    throw new Error(
+      'Applied amount must equal the payment amount (no unapplied receipts in Phase A).'
+    );
   }
 
   const lines: NewJournalLineInput[] = [
@@ -324,6 +334,14 @@ export function buildPaymentJournalLines(params: {
  */
 export interface ComputedBillLine {
   debitAccountId: string | null;
+  /**
+   * Account type of `debitAccountId` (accounting.accounts.type), when the service
+   * resolved it. Lets buildBillExpenseJournalLines avoid capitalizing header sales/use
+   * tax into an inventory-asset debit. `null`/absent when the type was not threaded
+   * (older callers) — the builder then falls back to the configured inventory-asset
+   * default id as its guard.
+   */
+  debitAccountType?: AccountType | null;
   /** Line extended cost (quantity * unitCost, or an explicit lineTotal), in cents. */
   netCents: number;
   jobId: string | null;
@@ -363,13 +381,20 @@ export function billLineNetCents(line: NewBillLineInput): number {
  * default resolution); `taxTotal` is the header tax in dollars. Bills are not taxed
  * per line, so tax is a single header figure folded into the expense debit by
  * buildBillExpenseJournalLines.
+ *
+ * `resolveDebitAccountType` (optional) maps a line to the *type* of its resolved debit
+ * account (accounting.accounts.type). When supplied it lets buildBillExpenseJournalLines
+ * keep header sales/use tax off inventory-asset debits (so the 1300 debit still ties to
+ * the FIFO-costed amount). When omitted, the builder falls back to matching the
+ * configured inventory-asset default id.
  */
 export function computeBillTotals(params: {
   lines: NewBillLineInput[];
   resolveDebitAccount: (line: NewBillLineInput) => string | null;
+  resolveDebitAccountType?: (line: NewBillLineInput) => AccountType | null | undefined;
   taxTotal?: number | null;
 }): BillTotals {
-  const { lines, resolveDebitAccount, taxTotal } = params;
+  const { lines, resolveDebitAccount, resolveDebitAccountType, taxTotal } = params;
   let subtotalCents = 0;
   const computed: ComputedBillLine[] = [];
 
@@ -378,6 +403,7 @@ export function computeBillTotals(params: {
     subtotalCents += netCents;
     computed.push({
       debitAccountId: resolveDebitAccount(line),
+      debitAccountType: resolveDebitAccountType?.(line) ?? null,
       netCents,
       jobId: line.jobId ?? null,
       ...pickDimensions(line),
@@ -409,19 +435,28 @@ export interface BillJournalResult {
  * Debits are grouped by (account × dimensions) so a multi-account or multi-dimension
  * bill posts one debit per distinct combination — letting expenses be sliced by
  * class/location/department. Header tax (non-recoverable sales/use tax) has no line of
- * its own on a bill, so it is folded into the *largest* expense debit group — the
- * bill's primary expense — which keeps the entry balanced (Σ debits == AP credit).
+ * its own on a bill, so it is folded into the *largest non-inventory* expense debit
+ * group — the bill's primary expense — which keeps the entry balanced (Σ debits == AP
+ * credit). Inventory-asset debits (1300) are deliberately EXCLUDED from the tax fold so
+ * their balance keeps tying to the FIFO-costed amount (v_inventory_valuation ↔ GL 1300):
+ * capitalizing sales/use tax into inventory would silently overstate the asset. A group
+ * is treated as inventory-asset when its resolved account type is `asset` (threaded via
+ * computeBillTotals' resolveDebitAccountType) or its account id is the configured
+ * inventory-asset default. If every debit group is inventory-asset, the tax is booked on
+ * its own operating-expenses debit line instead of being capitalized.
  * Throws if the entry would be unbalanced or trivial (the DB enforces the same; we
  * fail fast with a clear msg).
  */
 export function buildBillExpenseJournalLines(
   totals: BillTotals,
-  accounts: Pick<DefaultAccounts, 'accountsPayable' | 'operatingExpenses'>,
+  accounts: Pick<DefaultAccounts, 'accountsPayable' | 'operatingExpenses' | 'inventoryAsset'>,
   opts?: { vendorId?: string | null; jobId?: string | null }
 ): BillJournalResult {
   const apAccount = accounts.accountsPayable;
   if (!apAccount) {
-    throw new Error('Accounts Payable account is not configured (default_accounts.accounts_payable).');
+    throw new Error(
+      'Accounts Payable account is not configured (default_accounts.accounts_payable).'
+    );
   }
   const totalCents = totals.totalCents;
   if (totalCents <= 0) {
@@ -429,9 +464,17 @@ export function buildBillExpenseJournalLines(
   }
 
   // Group line debits by (resolved expense/asset account × dimensions), net of tax.
+  // Each group remembers whether it is an inventory-asset group so header tax is never
+  // capitalized into inventory (see the tax-fold step below).
   const debitByGroup = new Map<
     string,
-    { accountId: string; cents: number; dims: ReturnType<typeof pickDimensions> }
+    {
+      accountId: string;
+      cents: number;
+      dims: ReturnType<typeof pickDimensions>;
+      type: AccountType | null;
+      isInventoryAsset: boolean;
+    }
   >();
   for (const line of totals.lines) {
     const acct = line.debitAccountId ?? accounts.operatingExpenses;
@@ -442,27 +485,67 @@ export function buildBillExpenseJournalLines(
     }
     const dims = pickDimensions(line);
     const key = dimGroupKey(acct, dims);
+    // Inventory-asset when the resolved account type is `asset`, or (when the type was
+    // not threaded) the account is the configured inventory-asset default. Per-item
+    // inventory-asset accounts may differ from the default, so the type signal is what
+    // makes this precise; the id check is the safety net for older callers.
+    const type = line.debitAccountType ?? null;
+    const isInventoryAsset =
+      type === 'asset' || (accounts.inventoryAsset != null && acct === accounts.inventoryAsset);
     const existing = debitByGroup.get(key);
     if (existing) existing.cents += line.netCents;
-    else debitByGroup.set(key, { accountId: acct, cents: line.netCents, dims });
+    else
+      debitByGroup.set(key, {
+        accountId: acct,
+        cents: line.netCents,
+        dims,
+        type,
+        isInventoryAsset,
+      });
   }
 
-  // Fold header tax into the largest debit group (the bill's primary expense). With
-  // no positive-net line there is nowhere to book tax — reject rather than unbalance.
+  // Fold header tax into the largest *non-inventory* debit group (the bill's primary
+  // expense), preferring an explicit expense-typed group. Inventory-asset groups are
+  // excluded so the 1300 debit keeps tying to the FIFO-costed amount. When the only
+  // debit groups are inventory-asset, book tax on its own operating-expenses line rather
+  // than capitalizing it into inventory. With no debit group at all there is nowhere to
+  // book tax — reject rather than unbalance.
+  let taxLine: { accountId: string; cents: number } | null = null;
   if (totals.taxCents > 0) {
-    let largestKey: string | null = null;
-    let largestCents = -1;
-    for (const [key, g] of debitByGroup) {
-      if (g.cents > largestCents) {
-        largestCents = g.cents;
-        largestKey = key;
-      }
-    }
-    if (!largestKey) {
+    if (debitByGroup.size === 0) {
       throw new Error('Cannot book bill tax without at least one expense line.');
     }
-    const g = debitByGroup.get(largestKey)!;
-    g.cents += totals.taxCents;
+    const pickLargest = (
+      predicate: (g: { isInventoryAsset: boolean; type: AccountType | null }) => boolean
+    ): string | null => {
+      let bestKey: string | null = null;
+      let bestCents = -1;
+      for (const [key, g] of debitByGroup) {
+        if (predicate(g) && g.cents > bestCents) {
+          bestCents = g.cents;
+          bestKey = key;
+        }
+      }
+      return bestKey;
+    };
+
+    // 1) largest expense-typed group, else 2) largest non-inventory group of any type.
+    const targetKey =
+      pickLargest((g) => g.type === 'expense') ?? pickLargest((g) => !g.isInventoryAsset);
+
+    if (targetKey) {
+      debitByGroup.get(targetKey)!.cents += totals.taxCents;
+    } else {
+      // Every debit group is inventory-asset: do NOT capitalize tax into inventory.
+      // Post it to a dedicated operating-expenses debit line so the entry stays balanced
+      // and the inventory-asset debits keep tying to FIFO cost.
+      if (!accounts.operatingExpenses) {
+        throw new Error(
+          'Bill tax cannot be capitalized into inventory and no operating-expenses account is configured (default_accounts.operating_expenses).'
+        );
+      }
+      taxLine = { accountId: accounts.operatingExpenses, cents: totals.taxCents };
+    }
   }
 
   const vendorId = opts?.vendorId ?? null;
@@ -478,6 +561,17 @@ export function buildBillExpenseJournalLines(
       credit: 0,
       lineMemo: 'Expense',
       ...dimsSpread(dims),
+    });
+  }
+
+  // Dr the dedicated tax line when header tax could not be folded into a non-inventory
+  // group (every debit was inventory-asset) — keeps tax out of the capitalized cost.
+  if (taxLine) {
+    lines.push({
+      accountId: taxLine.accountId,
+      debit: centsToAmount(taxLine.cents),
+      credit: 0,
+      lineMemo: 'Sales/use tax',
     });
   }
 
@@ -527,7 +621,9 @@ export function buildVendorPaymentJournalLines(params: {
     throw new Error('No pay-from account configured for the vendor payment (cash/bank).');
   }
   if (!accountsPayableId) {
-    throw new Error('Accounts Payable account is not configured (default_accounts.accounts_payable).');
+    throw new Error(
+      'Accounts Payable account is not configured (default_accounts.accounts_payable).'
+    );
   }
   const amountCents = toCents(amount);
   if (amountCents <= 0) {
@@ -535,7 +631,9 @@ export function buildVendorPaymentJournalLines(params: {
   }
   const appliedCents = applications.reduce((s, a) => s + toCents(a.amountApplied), 0);
   if (appliedCents !== amountCents) {
-    throw new Error('Applied amount must equal the payment amount (no unapplied payments in Phase A).');
+    throw new Error(
+      'Applied amount must equal the payment amount (no unapplied payments in Phase A).'
+    );
   }
 
   const lines: NewJournalLineInput[] = [
@@ -592,7 +690,9 @@ export function buildCogsJournalLines(
   }
   const inventoryAccount = accounts.inventoryAsset;
   if (!inventoryAccount) {
-    throw new Error('Inventory Asset account is not configured (default_accounts.inventory_asset).');
+    throw new Error(
+      'Inventory Asset account is not configured (default_accounts.inventory_asset).'
+    );
   }
   if (!Number.isFinite(costCents) || costCents <= 0) {
     throw new Error('Cannot post COGS with a zero or negative cost.');
@@ -647,7 +747,10 @@ export interface DepreciationJournalResult {
  */
 export function buildDepreciationJournalLines(
   amountCents: number,
-  accounts: { depreciationExpenseAccountId: string | null; accumulatedDepreciationAccountId: string | null }
+  accounts: {
+    depreciationExpenseAccountId: string | null;
+    accumulatedDepreciationAccountId: string | null;
+  }
 ): DepreciationJournalResult {
   const expenseAccount = accounts.depreciationExpenseAccountId;
   if (!expenseAccount) {
@@ -655,7 +758,9 @@ export function buildDepreciationJournalLines(
   }
   const accumAccount = accounts.accumulatedDepreciationAccountId;
   if (!accumAccount) {
-    throw new Error('Accumulated Depreciation account is not configured (default_accounts.accumulated_depreciation).');
+    throw new Error(
+      'Accumulated Depreciation account is not configured (default_accounts.accumulated_depreciation).'
+    );
   }
   if (!Number.isFinite(amountCents) || amountCents <= 0) {
     throw new Error('Cannot post depreciation with a zero or negative amount.');
@@ -719,7 +824,9 @@ export function buildBankTransactionJournalLines(params: {
 }): BankTransactionJournalResult {
   const { amount, bankGlAccountId, categoryAccountId, vendorId, memo } = params;
   if (!bankGlAccountId) {
-    throw new Error('The bank account is not linked to a GL account — link one before categorizing.');
+    throw new Error(
+      'The bank account is not linked to a GL account — link one before categorizing.'
+    );
   }
   if (!categoryAccountId) {
     throw new Error('Choose a category account before posting this transaction.');
@@ -805,12 +912,16 @@ export function assertBalanced(lines: NewJournalLineInput[]): void {
   for (const l of lines) {
     const d = toCents(l.debit);
     const c = toCents(l.credit);
+    if (d < 0 || c < 0) throw new Error('A journal line cannot be negative.');
+    if (d === 0 && c === 0) throw new Error('Each journal line needs a debit or a credit amount.');
     if (d > 0 && c > 0) throw new Error('A journal line cannot have both a debit and a credit.');
     debit += d;
     credit += c;
   }
   if (debit !== credit) {
-    throw new Error(`Journal entry is unbalanced: debits ${debit / 100} <> credits ${credit / 100}.`);
+    throw new Error(
+      `Journal entry is unbalanced: debits ${debit / 100} <> credits ${credit / 100}.`
+    );
   }
   if (debit === 0) {
     throw new Error('Journal entry has no amounts.');

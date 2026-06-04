@@ -2,8 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 
 // Public endpoint: customer proposal form. No user JWT required; Turnstile + body validation used.
 
+// Lock the allowed origin via env without a code change; default '*' keeps the live form working.
+const allowedOrigin = process.env.PROPOSAL_ALLOWED_ORIGIN || '*';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST,OPTIONS',
   'Content-Type': 'application/json',
@@ -71,6 +74,15 @@ async function verifyTurnstile(token, remoteIp) {
 
 function sanitizeText(input) {
   return String(input ?? '').trim();
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function sanitizeFileName(input) {
@@ -323,26 +335,46 @@ export async function handler(event) {
       };
     }
 
+    // Validate the email format. `email` is reflected into a customer confirmation sent
+    // FROM our verified domain, so an unvalidated value makes this an open-relay /
+    // email-bombing vector toward an attacker-chosen recipient.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Please enter a valid email address.' }),
+      };
+    }
+
     const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
-    if (turnstileSecret) {
-      if (!turnstileToken) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Missing required proposal fields.' }),
-        };
-      }
-      const turnstileValid = await verifyTurnstile(
-        turnstileToken,
-        event.headers['x-nf-client-connection-ip']
-      );
-      if (!turnstileValid) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'Anti-spam validation failed. Please try again.' }),
-        };
-      }
+    // Fail CLOSED: a missing secret must not silently disable anti-spam (that would leave
+    // this public, unauthenticated endpoint fully open). TURNSTILE_SECRET_KEY must be set
+    // in the Netlify environment (netlify.toml lists it as required).
+    if (!turnstileSecret) {
+      console.error('submit-proposal: TURNSTILE_SECRET_KEY is not configured; rejecting request.');
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Server configuration error. Please contact us directly.' }),
+      };
+    }
+    if (!turnstileToken) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Missing required proposal fields.' }),
+      };
+    }
+    const turnstileValid = await verifyTurnstile(
+      turnstileToken,
+      event.headers['x-nf-client-connection-ip']
+    );
+    if (!turnstileValid) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Anti-spam validation failed. Please try again.' }),
+      };
     }
 
     const supabase = createClient(
@@ -352,6 +384,26 @@ export async function handler(event) {
         auth: { persistSession: false, autoRefreshToken: false },
       }
     );
+
+    // Per-IP rate limit for this public, unauthenticated endpoint. Fail-open on rpc error so a
+    // limiter outage can never block legitimate submissions.
+    const ip = event.headers['x-nf-client-connection-ip'] || 'unknown';
+    try {
+      const { data: allowed } = await supabase.rpc('check_rate_limit', {
+        p_key: 'submit-proposal:' + ip,
+        p_max: 5,
+        p_window_seconds: 60,
+      });
+      if (allowed === false) {
+        return {
+          statusCode: 429,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Too many requests. Please try again shortly.' }),
+        };
+      }
+    } catch (rateLimitError) {
+      console.error('submit-proposal rate limit check failed (failing open):', rateLimitError?.message || rateLimitError);
+    }
 
     const { data: latestJob } = await supabase
       .from('jobs')
@@ -438,13 +490,37 @@ export async function handler(event) {
       }
     }
 
-    const { data: insertedJob, error: jobError } = await supabase
-      .from('jobs')
-      .insert(jobInsert)
-      .select('id, job_code')
-      .single();
-
-    if (jobError || !insertedJob) {
+    // job_code is computed read-max-then-insert against a UNIQUE column, so two
+    // concurrent proposals can collide (losing one after its files were uploaded). Retry
+    // with a freshly-read code on a unique-violation (23505) instead of failing.
+    let insertedJob = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data: created, error: jobError } = await supabase
+        .from('jobs')
+        .insert(jobInsert)
+        .select('id, job_code')
+        .single();
+      if (!jobError && created) {
+        insertedJob = created;
+        break;
+      }
+      if (jobError && jobError.code === '23505' && attempt < 4) {
+        const { data: latest } = await supabase
+          .from('jobs')
+          .select('job_code')
+          .order('job_code', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        jobInsert.job_code = (latest?.job_code ?? 0) + 1;
+        continue;
+      }
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Unable to route proposal to admin board.' }),
+      };
+    }
+    if (!insertedJob) {
       return {
         statusCode: 500,
         headers: corsHeaders,
@@ -518,10 +594,10 @@ export async function handler(event) {
         subject: `New Proposal - ${contactName}`,
         html: `
           <h2>New Customer Proposal</h2>
-          <p><strong>Contact:</strong> ${contactName}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone}</p>
-          <p><strong>Description:</strong><br/>${description.replace(/\n/g, '<br/>')}</p>
+          <p><strong>Contact:</strong> ${escapeHtml(contactName)}</p>
+          <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+          <p><strong>Phone:</strong> ${escapeHtml(phone)}</p>
+          <p><strong>Description:</strong><br/>${escapeHtml(description).replace(/\n/g, '<br/>')}</p>
           <p><strong>Admin Job Code:</strong> ${insertedJob.job_code}</p>
           <p><a href="${appUrl}">Open Employee App</a></p>
         `,
@@ -562,7 +638,7 @@ export async function handler(event) {
       subject: 'Proposal received - Rough Cut Manufacturing',
       html: `
         <h2>Thanks for your proposal</h2>
-        <p>Hi ${contactName},</p>
+        <p>Hi ${escapeHtml(contactName)},</p>
         <p>We received your proposal and routed it to our quoting board.</p>
         <p>Our team will contact you soon with next steps.</p>
         <p>- Rough Cut Manufacturing</p>

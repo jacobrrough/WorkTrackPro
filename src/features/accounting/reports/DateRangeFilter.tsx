@@ -12,8 +12,15 @@ interface Preset {
   resolve: (today: Date) => DateRange;
 }
 
+/** Format a Date as a `YYYY-MM-DD` string using its LOCAL calendar fields. */
+function toLocalIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
+}
+
 function iso(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return toLocalIso(d);
 }
 
 /**

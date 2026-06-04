@@ -45,14 +45,18 @@ import {
   computeRequiredMaterials,
   type PartWithDashQuantities,
 } from '@/lib/partsCalculations';
-import { syncPartMaterialFromJobQuantity } from '@/lib/materialFromPart';
+import { syncPartMaterialFromJobQuantity, type MaterialSyncScope } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults, computeVariantBreakdown } from '@/lib/variantAllocation';
 import {
   variantLaborFromSetComposition,
   variantCncFromSetComposition,
   variantPrinter3DFromSetComposition,
 } from '@/lib/partDistribution';
-import { isPartsEditingAllowed, getPartsLockedReason } from '@/lib/jobWorkflow';
+import {
+  isPartsEditingAllowed,
+  getPartsLockedReason,
+  getNextWorkflowStatus,
+} from '@/lib/jobWorkflow';
 import type { VariantDefaultOverrides } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
@@ -310,9 +314,23 @@ const JobDetail: React.FC<JobDetailProps> = ({
   }, [onClockOut, showToast]);
 
   const handleChecklistComplete = useCallback(async () => {
-    await advanceJobToNextStatus(job.id);
+    // advanceJobToNextStatus returns false for several reasons. Most are silent by
+    // design: intentional no-ops (onHold/rush or a terminal status have no next step)
+    // and real failures already surface a specific toast from updateJobStatus
+    // (useJobMutations.ts) — re-toasting here would double up. The one false-return
+    // that is BOTH actionable AND silent is a non-admin completing the
+    // projectCompleted → paid checklist: the hook refuses before calling
+    // updateJobStatus, so the worker gets no feedback. Detect exactly that case
+    // (using the same workflow + admin checks the hook applies) and explain it; for
+    // every other path, defer to the hook's own messaging and just reload.
+    const blockedPaidAdvance = getNextWorkflowStatus(job.status) === 'paid' && !currentUser.isAdmin;
+    if (blockedPaidAdvance) {
+      showToast('Only an admin can mark this job as paid.', 'warning');
+    } else {
+      await advanceJobToNextStatus(job.id);
+    }
     await onReloadJob?.();
-  }, [advanceJobToNextStatus, job.id, onReloadJob]);
+  }, [advanceJobToNextStatus, job.id, job.status, currentUser.isAdmin, onReloadJob, showToast]);
 
   const [timer, setTimer] = useState('00:00:00');
   const [newComment, setNewComment] = useState('');
@@ -723,13 +741,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
       return;
     }
     let cancelled = false;
-    Promise.all(
-      job.parts.map((link) =>
-        partsService.getPartWithVariants(link.partId).then((p) => (cancelled ? null : p))
-      )
-    ).then((parts) => {
-      if (!cancelled) setLinkedParts(parts);
-    });
+    Promise.allSettled(job.parts.map((link) => partsService.getPartWithVariants(link.partId)))
+      .then((results) => {
+        if (cancelled) return;
+        setLinkedParts(results.map((r) => (r.status === 'fulfilled' ? r.value : null)));
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Load linked parts failed', err);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -1296,17 +1317,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
       const comment = await onAddComment(job.id, commentText);
       if (comment) {
         setNewComment('');
-        const mentionPattern = /@([\w][\w\s]*[\w]|[\w]+)/g;
-        let match: RegExpExecArray | null;
-        const mentionedNames = new Set<string>();
-        while ((match = mentionPattern.exec(commentText)) !== null) {
-          mentionedNames.add(match[1].toLowerCase());
-        }
-        if (mentionedNames.size > 0 && users.length > 0) {
+        if (users.length > 0) {
           const { systemNotificationService } = await import('@/services/api/systemNotifications');
           for (const user of users) {
-            const name = (user.name ?? user.email).toLowerCase();
-            if (user.id !== currentUser.id && mentionedNames.has(name)) {
+            const name = user.name ?? user.email;
+            const re = new RegExp(
+              '@' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w])',
+              'i'
+            );
+            if (user.id !== currentUser.id && re.test(commentText)) {
               systemNotificationService
                 .notifyMention({
                   mentionedUserId: user.id,
@@ -1742,8 +1761,44 @@ const JobDetail: React.FC<JobDetailProps> = ({
     [job, onUpdateJob, showToast]
   );
 
+  // BOM scopes per inventory id for the add-material picker: the part-level per_set row
+  // and/or one row per variant. When an inventory appears in more than one, the picker lets
+  // the user say which row a job-material quantity belongs to (for the Part BOM writeback).
+  const materialBomScopes = useMemo(() => {
+    const map = new Map<string, Array<{ key: string; label: string; variantSuffix?: string }>>();
+    if (!linkedPart) return map;
+    const add = (
+      invId: string | undefined,
+      scope: { key: string; label: string; variantSuffix?: string }
+    ) => {
+      if (!invId) return;
+      const arr = map.get(invId) ?? [];
+      arr.push(scope);
+      map.set(invId, arr);
+    };
+    for (const m of linkedPart.materials ?? []) {
+      add(m.inventoryId, { key: 'part', label: 'Part (per set)' });
+    }
+    for (const v of linkedPart.variants ?? []) {
+      for (const m of v.materials ?? []) {
+        add(m.inventoryId, {
+          key: `v:${v.variantSuffix}`,
+          label: `Variant ${v.variantSuffix}`,
+          variantSuffix: v.variantSuffix,
+        });
+      }
+    }
+    return map;
+  }, [linkedPart]);
+
   const handleAddInventory = useCallback(
-    async (jobId: string, inventoryId: string, quantity: number, unit: string) => {
+    async (
+      jobId: string,
+      inventoryId: string,
+      quantity: number,
+      unit: string,
+      scope?: MaterialSyncScope
+    ) => {
       await onAddInventory(jobId, inventoryId, quantity, unit);
       if (linkedPart && jobId === job.id) {
         try {
@@ -1752,7 +1807,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
             dashQuantities,
             inventoryId,
             quantity,
-            unit
+            unit,
+            scope
           );
           const updated = await partsService.getPartWithVariants(linkedPart.id);
           if (updated) setLinkedPart(updated);
@@ -3033,7 +3089,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         const num =
                           v === '' ? null : Math.max(0, Math.min(100, parseFloat(v) || 0));
                         try {
-                          await onUpdateJob(job.id, { progressEstimatePercent: num });
+                          const updated = await onUpdateJob(job.id, {
+                            progressEstimatePercent: num,
+                          });
+                          if (!updated) {
+                            showToast('Failed to update progress estimate', 'error');
+                            return;
+                          }
                           showToast(
                             num != null ? 'Progress estimate set' : 'Progress estimate cleared',
                             'success'
@@ -3045,7 +3107,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       onClear={async () => {
                         setProgressEstimateInput('');
                         try {
-                          await onUpdateJob(job.id, { progressEstimatePercent: null });
+                          const updated = await onUpdateJob(job.id, {
+                            progressEstimatePercent: null,
+                          });
+                          if (!updated) {
+                            showToast('Failed to clear', 'error');
+                            return;
+                          }
                           showToast('Progress estimate cleared', 'success');
                         } catch {
                           showToast('Failed to clear', 'error');
@@ -3096,15 +3164,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     );
                   }
                   const estRemaining =
-                    currentUser.isAdmin &&
-                    job.progressEstimatePercent != null &&
-                    job.progressEstimatePercent > 0 &&
-                    job.progressEstimatePercent < 100 &&
-                    loggedLaborHours > 0
-                      ? (() => {
-                          const totalEst = loggedLaborHours / (job.progressEstimatePercent! / 100);
-                          return Math.max(0, totalEst - loggedLaborHours);
-                        })()
+                    currentUser.isAdmin && completionProgress.remainingLaborHours > 0
+                      ? completionProgress.remainingLaborHours
                       : null;
 
                   return (
@@ -3509,6 +3570,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   isSubmitting={isSubmitting}
                   onNavigate={onNavigate}
                   isMaterialAuto={isMaterialAuto}
+                  materialBomScopes={materialBomScopes}
                   onAddInventory={handleAddInventory}
                   onRemoveInventory={onRemoveInventory}
                 />
