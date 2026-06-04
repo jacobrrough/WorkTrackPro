@@ -339,6 +339,16 @@ export default function TransactionsImport() {
               )}
             </div>
 
+            {entries.length === 0 && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                No transactions found in this file. Check that the <strong>Date</strong>,{' '}
+                <strong>Account</strong>, and <strong>Debit</strong>/<strong>Credit</strong> columns
+                are mapped above. Make sure you exported the <strong>Journal</strong> report
+                (Reports → Journal → All Dates) — the General Ledger report isn’t structured for
+                this import.
+              </div>
+            )}
+
             <div className="max-h-[50vh] overflow-auto rounded-md border border-white/10">
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-slate-400">
