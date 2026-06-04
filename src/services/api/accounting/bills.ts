@@ -107,7 +107,11 @@ async function computeTotalsFor(
   taxTotal: number | null | undefined
 ): Promise<BillTotals> {
   const defaults = await accountingSettingsService.getDefaultAccounts();
-  const resolveDebitAccount = await debitAccountResolver(lines, vendorId, defaults.operatingExpenses);
+  const resolveDebitAccount = await debitAccountResolver(
+    lines,
+    vendorId,
+    defaults.operatingExpenses
+  );
   return computeBillTotals({ lines, resolveDebitAccount, taxTotal });
 }
 
@@ -232,7 +236,10 @@ export const billsService = {
     const existing = await this.getById(id);
     if (!existing) return { bill: null, error: 'Bill not found.' };
     if (existing.status !== 'draft') {
-      return { bill: null, error: `Only draft bills can be edited (this one is ${existing.status}).` };
+      return {
+        bill: null,
+        error: `Only draft bills can be edited (this one is ${existing.status}).`,
+      };
     }
     const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
     const vendorId = input.vendorId ?? existing.vendorId;
@@ -281,7 +288,11 @@ export const billsService = {
       return { bill: null, error: 'Cannot post a bill with no lines.' };
     }
 
-    const totals = await computeTotalsFor(bill.lines.map(toLineInput), bill.vendorId, bill.taxTotal);
+    const totals = await computeTotalsFor(
+      bill.lines.map(toLineInput),
+      bill.vendorId,
+      bill.taxTotal
+    );
     const defaults = await accountingSettingsService.getDefaultAccounts();
 
     let je;
@@ -291,7 +302,10 @@ export const billsService = {
         jobId: bill.jobId,
       });
     } catch (e) {
-      return { bill: null, error: e instanceof Error ? e.message : 'Unable to build the expense entry.' };
+      return {
+        bill: null,
+        error: e instanceof Error ? e.message : 'Unable to build the expense entry.',
+      };
     }
 
     const posted = await journalService.createAndPost({

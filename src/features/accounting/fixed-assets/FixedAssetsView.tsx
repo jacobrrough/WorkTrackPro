@@ -76,7 +76,9 @@ function SummaryStat({
 /** Lifecycle pill. */
 function StatusBadge({ status }: { status: FixedAssetRegisterRow['status'] }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClass(status)}`}>
+    <span
+      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClass(status)}`}
+    >
       {statusLabel(status)}
     </span>
   );
@@ -226,12 +228,7 @@ export default function FixedAssetsView() {
       title="Fixed assets"
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            icon="play_arrow"
-            onClick={() => setShowRun(true)}
-          >
+          <Button size="sm" variant="secondary" icon="play_arrow" onClick={() => setShowRun(true)}>
             Run depreciation
           </Button>
           <Button size="sm" icon="add" onClick={() => navigate(`${FIXED_ASSETS_BASE}/new`)}>
@@ -329,7 +326,9 @@ export default function FixedAssetsView() {
                             : ' · fully scheduled'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-slate-300">{formatAssetDate(row.inServiceDate)}</td>
+                      <td className="px-3 py-2 text-slate-300">
+                        {formatAssetDate(row.inServiceDate)}
+                      </td>
                       <MoneyCell amount={row.cost} />
                       <MoneyCell amount={row.accumulatedDepreciation} muted />
                       <MoneyCell amount={row.netBookValue} strong />
@@ -351,10 +350,11 @@ export default function FixedAssetsView() {
             </div>
 
             <p className="text-xs leading-relaxed text-slate-500">
-              <span className="font-semibold text-slate-400">How these are figured:</span> Accumulated
-              depreciation is the sum of an asset&apos;s POSTED schedule periods; net book value is
-              cost minus that, clamped so it never drops below salvage. Remaining is the still-unposted
-              plan. Tap a row to see the asset&apos;s full schedule and post individual periods.
+              <span className="font-semibold text-slate-400">How these are figured:</span>{' '}
+              Accumulated depreciation is the sum of an asset&apos;s POSTED schedule periods; net
+              book value is cost minus that, clamped so it never drops below salvage. Remaining is
+              the still-unposted plan. Tap a row to see the asset&apos;s full schedule and post
+              individual periods.
             </p>
           </>
         )}

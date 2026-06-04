@@ -45,7 +45,15 @@ function StatCard({
 }
 
 /** A read-only "fact" row in the breakdown list. */
-function FactRow({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+function FactRow({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2">
       <span className="text-sm text-slate-400">{label}</span>
@@ -123,23 +131,25 @@ export default function InventoryValuationItemView() {
                 Lifetime activity
               </h2>
               <div className="divide-y divide-white/5 rounded-sm border border-white/10 bg-card-dark">
-                <FactRow label="Units received (all layers)" value={formatQty(row.qtyReceivedTotal)} />
-                <FactRow label="Units consumed (all jobs)" value={formatQty(row.qtyConsumedTotal)} />
-                <FactRow label="Units on hand" value={formatQty(row.qtyOnHand)} />
                 <FactRow
-                  label="COGS relieved to 5000"
-                  value={formatMoney(row.cogsTotal)}
-                  muted
+                  label="Units received (all layers)"
+                  value={formatQty(row.qtyReceivedTotal)}
                 />
+                <FactRow
+                  label="Units consumed (all jobs)"
+                  value={formatQty(row.qtyConsumedTotal)}
+                />
+                <FactRow label="Units on hand" value={formatQty(row.qtyOnHand)} />
+                <FactRow label="COGS relieved to 5000" value={formatMoney(row.cogsTotal)} muted />
                 <FactRow label="FIFO asset value (1300)" value={formatMoney(row.assetValue)} />
               </div>
             </section>
 
             <p className="text-xs leading-relaxed text-slate-500">
-              Asset value and average cost reflect only OPEN FIFO layers (remaining quantity &gt; 0).
-              Receiving this item on a posted bill adds a cost layer; a job consuming it relieves cost
-              oldest-layer-first to Cost of Goods Sold. Post a consuming job&apos;s COGS from the work
-              list.
+              Asset value and average cost reflect only OPEN FIFO layers (remaining quantity &gt;
+              0). Receiving this item on a posted bill adds a cost layer; a job consuming it
+              relieves cost oldest-layer-first to Cost of Goods Sold. Post a consuming job&apos;s
+              COGS from the work list.
             </p>
 
             <div className="flex justify-end">

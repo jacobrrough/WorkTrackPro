@@ -31,10 +31,9 @@ import type {
 } from '../../../features/accounting/types';
 
 /** The subset of a transaction the engine reads (works for parsed or persisted rows). */
-export type RuleEvaluable = Pick<
-  BankTransaction,
-  'amount' | 'description' | 'merchant'
-> & { bankAccountId?: string | null };
+export type RuleEvaluable = Pick<BankTransaction, 'amount' | 'description' | 'merchant'> & {
+  bankAccountId?: string | null;
+};
 
 const lc = (v: string | null | undefined): string => (v ?? '').toLowerCase();
 
@@ -66,7 +65,11 @@ export function ruleMatches(rule: BankRule, txn: RuleEvaluable): boolean {
 }
 
 /** Case-insensitive text comparison for contains/equals/regex. `haystack` is pre-lowercased. */
-function textMatch(op: 'contains' | 'equals' | 'regex', rawValue: string, haystack: string): boolean {
+function textMatch(
+  op: 'contains' | 'equals' | 'regex',
+  rawValue: string,
+  haystack: string
+): boolean {
   const needle = rawValue.toLowerCase();
   if (op === 'contains') return needle !== '' && haystack.includes(needle);
   if (op === 'equals') return haystack === needle;
@@ -114,7 +117,10 @@ export function applyRulesToBatch(
   bankAccountId: string
 ): (RuleMatch | null)[] {
   return txns.map((t) =>
-    applyRules({ amount: t.amount, description: t.description, merchant: t.merchant, bankAccountId }, rules)
+    applyRules(
+      { amount: t.amount, description: t.description, merchant: t.merchant, bankAccountId },
+      rules
+    )
   );
 }
 

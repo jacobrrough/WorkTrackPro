@@ -72,7 +72,10 @@ describe('normalizeDiffEntry', () => {
   });
 
   it('trims the rate name and drops a stray ISO timestamp suffix on the date', () => {
-    const e = normalizeDiffEntry({ rate_name: '  Trimmed  ', effective_date: '2026-07-01T00:00:00Z' });
+    const e = normalizeDiffEntry({
+      rate_name: '  Trimmed  ',
+      effective_date: '2026-07-01T00:00:00Z',
+    });
     expect(e.rateName).toBe('Trimmed');
     expect(e.effectiveDate).toBe('2026-07-01');
   });
@@ -91,7 +94,11 @@ describe('normalizeDiffEntry', () => {
   });
 
   it('nulls an unparseable effective_date and a non-numeric new_rate', () => {
-    const e = normalizeDiffEntry({ rate_name: 'X', new_rate: 'not-a-number', effective_date: 'soon' });
+    const e = normalizeDiffEntry({
+      rate_name: 'X',
+      new_rate: 'not-a-number',
+      effective_date: 'soon',
+    });
     expect(e.newRate).toBeNull();
     expect(e.effectiveDate).toBeNull();
   });
@@ -123,30 +130,43 @@ describe('parseDiff', () => {
   });
 
   it('preserves order', () => {
-    const diff = parseDiff([{ rate_name: 'first', new_rate: 1 }, { rate_name: 'second', new_rate: 2 }]);
+    const diff = parseDiff([
+      { rate_name: 'first', new_rate: 1 },
+      { rate_name: 'second', new_rate: 2 },
+    ]);
     expect(diff.map((e) => e.rateName)).toEqual(['first', 'second']);
   });
 });
 
 describe('isApplicableDiffEntry / applicableDiffEntries (mirrors the RPC skip rules)', () => {
   it('accepts an entry with a usable name and a non-negative numeric rate', () => {
-    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: 0.05 }))).toBe(true);
+    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: 0.05 }))).toBe(
+      true
+    );
     expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: 0 }))).toBe(true);
   });
 
   it('rejects an entry missing a rate name (RPC skips it)', () => {
     expect(isApplicableDiffEntry(normalizeDiffEntry({ new_rate: 0.05 }))).toBe(false);
-    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: '   ', new_rate: 0.05 }))).toBe(false);
+    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: '   ', new_rate: 0.05 }))).toBe(
+      false
+    );
   });
 
   it('rejects an entry with a missing or non-numeric new_rate (RPC skips it)', () => {
     expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A' }))).toBe(false);
-    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: null }))).toBe(false);
-    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: 'x' }))).toBe(false);
+    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: null }))).toBe(
+      false
+    );
+    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: 'x' }))).toBe(
+      false
+    );
   });
 
   it('rejects a negative rate (matches the tax_rates CHECK rate >= 0; RPC skips it)', () => {
-    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: -0.01 }))).toBe(false);
+    expect(isApplicableDiffEntry(normalizeDiffEntry({ rate_name: 'A', new_rate: -0.01 }))).toBe(
+      false
+    );
   });
 
   it('filters a mixed diff to exactly the applicable entries', () => {
@@ -174,25 +194,36 @@ describe('classifyDiffEntry (update vs insert — mirrors the RPC UPDATE-then-IN
 
   it('classifies an existing active rate name as an UPDATE', () => {
     expect(
-      classifyDiffEntry(normalizeDiffEntry({ rate_name: 'CA Statewide Base', new_rate: 0.0775 }), existing)
+      classifyDiffEntry(
+        normalizeDiffEntry({ rate_name: 'CA Statewide Base', new_rate: 0.0775 }),
+        existing
+      )
     ).toBe('update');
   });
 
   it('classifies a new rate name as an INSERT', () => {
     expect(
-      classifyDiffEntry(normalizeDiffEntry({ rate_name: 'Brand New District', new_rate: 0.01 }), existing)
+      classifyDiffEntry(
+        normalizeDiffEntry({ rate_name: 'Brand New District', new_rate: 0.01 }),
+        existing
+      )
     ).toBe('insert');
   });
 
   it('matches on EXACT name (the RPC does not lower-case)', () => {
     // Different casing → not the same active rate → would INSERT.
     expect(
-      classifyDiffEntry(normalizeDiffEntry({ rate_name: 'ca statewide base', new_rate: 0.0775 }), existing)
+      classifyDiffEntry(
+        normalizeDiffEntry({ rate_name: 'ca statewide base', new_rate: 0.0775 }),
+        existing
+      )
     ).toBe('insert');
   });
 
   it('returns null for a non-applicable entry', () => {
-    expect(classifyDiffEntry(normalizeDiffEntry({ rate_name: '', new_rate: 0.05 }), existing)).toBeNull();
+    expect(
+      classifyDiffEntry(normalizeDiffEntry({ rate_name: '', new_rate: 0.05 }), existing)
+    ).toBeNull();
     expect(classifyDiffEntry(normalizeDiffEntry({ rate_name: 'X' }), existing)).toBeNull();
   });
 });

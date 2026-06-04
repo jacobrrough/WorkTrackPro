@@ -131,7 +131,9 @@ function CalendarRow({ entry, isNext }: { entry: TaxCalendarEntry; isNext: boole
       </td>
       <td className="px-3 py-2 text-slate-400">{TAX_FILING_FREQUENCY_LABELS[entry.frequency]}</td>
       <td className="px-3 py-2 text-slate-300">{entry.periodLabel}</td>
-      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">{entry.dueDate}</td>
+      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+        {entry.dueDate}
+      </td>
       <td className={`px-3 py-2 text-right text-xs font-semibold ${statusClass}`}>
         {dueInLabel(entry.daysUntilDue)}
       </td>

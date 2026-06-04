@@ -61,9 +61,11 @@ export default function RecurringTemplateEditView() {
   const { templateId } = useParams<{ templateId: string }>();
   const isEdit = !!templateId && templateId !== 'new';
 
-  const { data: existing, isPending: loadingExisting, isError } = useRecurringTemplate(
-    isEdit ? templateId : undefined
-  );
+  const {
+    data: existing,
+    isPending: loadingExisting,
+    isError,
+  } = useRecurringTemplate(isEdit ? templateId : undefined);
   const create = useCreateRecurringTemplate();
   const update = useUpdateRecurringTemplate();
 
@@ -122,7 +124,9 @@ export default function RecurringTemplateEditView() {
     if (kind === 'invoice') {
       const p = payload as RecurringInvoicePayload;
       if (!p.customerId) return 'Select a customer for the recurring invoice.';
-      const real = p.lines.filter((l) => (l.quantity ?? 0) > 0 && ((l.unitPrice ?? 0) > 0 || (l.lineTotal ?? 0) > 0));
+      const real = p.lines.filter(
+        (l) => (l.quantity ?? 0) > 0 && ((l.unitPrice ?? 0) > 0 || (l.lineTotal ?? 0) > 0)
+      );
       if (real.length === 0) return 'Add at least one invoice line with an amount.';
     } else if (kind === 'bill') {
       const p = payload as RecurringBillPayload;
@@ -131,8 +135,11 @@ export default function RecurringTemplateEditView() {
       if (real.length === 0) return 'Add at least one bill line with an amount.';
     } else {
       const p = payload as RecurringJournalPayload;
-      const real = p.lines.filter((l) => l.accountId && ((l.debit ?? 0) > 0 || (l.credit ?? 0) > 0));
-      if (real.length < 2) return 'A journal entry needs at least two lines with an account and an amount.';
+      const real = p.lines.filter(
+        (l) => l.accountId && ((l.debit ?? 0) > 0 || (l.credit ?? 0) > 0)
+      );
+      if (real.length < 2)
+        return 'A journal entry needs at least two lines with an account and an amount.';
       const debit = real.reduce((s, l) => s + Math.round((l.debit ?? 0) * 100), 0);
       const credit = real.reduce((s, l) => s + Math.round((l.credit ?? 0) * 100), 0);
       if (debit !== credit) return 'Journal debits and credits must balance before saving.';
@@ -149,7 +156,9 @@ export default function RecurringTemplateEditView() {
       const p = payload as RecurringInvoicePayload;
       return {
         ...p,
-        lines: p.lines.filter((l) => (l.quantity ?? 0) > 0 && ((l.unitPrice ?? 0) > 0 || (l.lineTotal ?? 0) > 0)),
+        lines: p.lines.filter(
+          (l) => (l.quantity ?? 0) > 0 && ((l.unitPrice ?? 0) > 0 || (l.lineTotal ?? 0) > 0)
+        ),
       };
     }
     if (kind === 'bill') {
@@ -319,7 +328,11 @@ export default function RecurringTemplateEditView() {
               </select>
             </FormField>
 
-            <FormField label="Repeat every" htmlFor="rec-interval" hint="Number of frequency units between runs">
+            <FormField
+              label="Repeat every"
+              htmlFor="rec-interval"
+              hint="Number of frequency units between runs"
+            >
               <input
                 id="rec-interval"
                 type="number"
@@ -327,7 +340,9 @@ export default function RecurringTemplateEditView() {
                 className={`${inputClass} text-right`}
                 value={schedule.intervalCount}
                 onChange={(e) =>
-                  patchSchedule({ intervalCount: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })
+                  patchSchedule({
+                    intervalCount: Math.max(1, Number.parseInt(e.target.value, 10) || 1),
+                  })
                 }
               />
             </FormField>
@@ -364,7 +379,11 @@ export default function RecurringTemplateEditView() {
               />
             </FormField>
 
-            <FormField label="End date" htmlFor="rec-end" hint="Optional — leave blank for open-ended.">
+            <FormField
+              label="End date"
+              htmlFor="rec-end"
+              hint="Optional — leave blank for open-ended."
+            >
               <input
                 id="rec-end"
                 type="date"

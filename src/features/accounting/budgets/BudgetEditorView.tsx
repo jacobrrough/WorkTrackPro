@@ -225,14 +225,19 @@ export default function BudgetEditorView() {
             </div>
 
             {saveError && (
-              <p className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300" role="alert">
+              <p
+                className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+                role="alert"
+              >
                 {saveError}
               </p>
             )}
 
             {grid.rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-                <span className="material-symbols-outlined text-4xl text-slate-500">account_tree</span>
+                <span className="material-symbols-outlined text-4xl text-slate-500">
+                  account_tree
+                </span>
                 <p className="text-lg font-bold text-white">No accounts to budget</p>
                 <p className="max-w-sm text-sm text-slate-400">
                   There are no active accounts in the chart of accounts. Add accounts first, then
@@ -288,9 +293,9 @@ export default function BudgetEditorView() {
             )}
 
             <p className="text-xs text-slate-500">
-              Cleared (zero) cells are not stored — only the non-zero plan is saved. Totals update as
-              you type; click <span className="font-semibold text-slate-300">Save budget</span> to
-              persist.
+              Cleared (zero) cells are not stored — only the non-zero plan is saved. Totals update
+              as you type; click <span className="font-semibold text-slate-300">Save budget</span>{' '}
+              to persist.
             </p>
           </>
         )}

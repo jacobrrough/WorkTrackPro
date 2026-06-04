@@ -44,11 +44,7 @@ export const dimensionsService = {
   },
 
   async getById(id: string): Promise<Dimension | null> {
-    const { data, error } = await acct()
-      .from('dimensions')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
+    const { data, error } = await acct().from('dimensions').select('*').eq('id', id).maybeSingle();
     if (error || !data) return null;
     return mapDimensionRow(data as Row);
   },
@@ -67,7 +63,8 @@ export const dimensionsService = {
       })
       .select('*')
       .single();
-    if (error || !data) return { dimension: null, error: error?.message ?? 'Failed to create dimension.' };
+    if (error || !data)
+      return { dimension: null, error: error?.message ?? 'Failed to create dimension.' };
     return { dimension: mapDimensionRow(data as Row) };
   },
 
@@ -98,7 +95,8 @@ export const dimensionsService = {
       .eq('id', id)
       .select('*')
       .single();
-    if (error || !data) return { dimension: null, error: error?.message ?? 'Failed to update dimension.' };
+    if (error || !data)
+      return { dimension: null, error: error?.message ?? 'Failed to update dimension.' };
     return { dimension: mapDimensionRow(data as Row) };
   },
 

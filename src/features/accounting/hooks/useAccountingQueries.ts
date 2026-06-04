@@ -246,7 +246,9 @@ export function useBankAccounts(includeInactive = false) {
 /** A single bank account with its linked GL account hydrated. */
 export function useBankAccount(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.bankAccount(id) : ['accounting', 'bank', 'accounts', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.bankAccount(id)
+      : ['accounting', 'bank', 'accounts', 'none'],
     queryFn: () => bankAccountsService.getById(id as string),
     enabled: !!id,
   });
@@ -285,7 +287,9 @@ export function useReconciliations(bankAccountId?: string) {
 /** A single reconciliation header. */
 export function useReconciliation(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.reconciliation(id) : ['accounting', 'bank', 'reconciliations', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.reconciliation(id)
+      : ['accounting', 'bank', 'reconciliations', 'none'],
     queryFn: () => reconciliationsService.getById(id as string),
     enabled: !!id,
   });
@@ -393,7 +397,9 @@ export function useRecurringTemplates(includeInactive = true) {
 /** A single recurring template (with its payload). */
 export function useRecurringTemplate(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.recurringTemplate(id) : ['accounting', 'recurring', 'none'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.recurringTemplate(id)
+      : ['accounting', 'recurring', 'none'],
     queryFn: () => recurringTemplatesService.getById(id as string),
     enabled: !!id,
   });
@@ -511,7 +517,9 @@ export function useBudgetGrid(id: string | undefined) {
 /** Budget-vs-Actual for a budget's fiscal year (actuals = posted journal lines). */
 export function useBudgetVsActual(id: string | undefined) {
   return useQuery({
-    queryKey: id ? ACCOUNTING_QUERY_KEYS.budgetVsActual(id) : ['accounting', 'budgets', 'none', 'vs-actual'],
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.budgetVsActual(id)
+      : ['accounting', 'budgets', 'none', 'vs-actual'],
     queryFn: () => budgetsService.getBudgetVsActual(id as string),
     enabled: !!id,
   });
@@ -592,10 +600,7 @@ export function useFixedAssetSchedule(fixedAssetId: string | undefined) {
  * consume); without one it returns all defs across entity types for the admin screen.
  * `includeInactive` surfaces deactivated defs (admin management).
  */
-export function useCustomFieldDefs(
-  entityType?: CustomFieldEntityType,
-  includeInactive = false
-) {
+export function useCustomFieldDefs(entityType?: CustomFieldEntityType, includeInactive = false) {
   return useQuery({
     queryKey: [...ACCOUNTING_QUERY_KEYS.customFieldDefs(entityType), { includeInactive }] as const,
     queryFn: () =>
@@ -620,7 +625,10 @@ export function useEntityCustomFields(
   return useQuery({
     queryKey:
       entityType && entityId
-        ? ([...ACCOUNTING_QUERY_KEYS.customFieldValues(entityType, entityId), { includeInactive }] as const)
+        ? ([
+            ...ACCOUNTING_QUERY_KEYS.customFieldValues(entityType, entityId),
+            { includeInactive },
+          ] as const)
         : ['accounting', 'custom-fields', 'values', 'none'],
     queryFn: () =>
       customFieldsService.listForEntity(

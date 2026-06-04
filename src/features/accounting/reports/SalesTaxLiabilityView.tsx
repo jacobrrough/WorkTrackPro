@@ -91,8 +91,9 @@ export default function SalesTaxLiabilityView() {
             >
               <span className="font-bold">Reconciliation failed.</span> The per-agency tax does not
               sum back to the posted total (off by{' '}
-              <span className="font-mono">{formatMoney(data.reconciliationDifference)}</span>). Do not
-              rely on these figures — investigate the 2200 Sales Tax Payable postings before filing.
+              <span className="font-mono">{formatMoney(data.reconciliationDifference)}</span>). Do
+              not rely on these figures — investigate the 2200 Sales Tax Payable postings before
+              filing.
             </div>
           )}
 
@@ -117,9 +118,9 @@ export default function SalesTaxLiabilityView() {
               <span className="font-bold">
                 {formatMoney(data.unattributedTax)} of collected tax is unattributed.
               </span>{' '}
-              It posted to Sales Tax Payable but could not be tied to a source invoice/agency (manual
-              entries, voided/edited sources, or tax codes with no agency). It is listed in the
-              highlighted “Unattributed / review” row below — verify it before filing.
+              It posted to Sales Tax Payable but could not be tied to a source invoice/agency
+              (manual entries, voided/edited sources, or tax codes with no agency). It is listed in
+              the highlighted “Unattributed / review” row below — verify it before filing.
             </div>
           )}
 

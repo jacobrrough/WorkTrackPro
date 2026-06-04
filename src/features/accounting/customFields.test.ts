@@ -109,19 +109,25 @@ describe('validateCustomFieldValue — boolean', () => {
     expect(validateCustomFieldValue(def('boolean'), 'yes').coerced).toBe(true);
     expect(validateCustomFieldValue(def('boolean'), 1).coerced).toBe(true);
     // 'false'/0 are real (not empty) → coerce to false, still valid.
-    expect(validateCustomFieldValue(def('boolean'), 'false')).toEqual({ valid: true, coerced: false });
+    expect(validateCustomFieldValue(def('boolean'), 'false')).toEqual({
+      valid: true,
+      coerced: false,
+    });
     expect(validateCustomFieldValue(def('boolean'), 0)).toEqual({ valid: true, coerced: false });
   });
 });
 
 describe('validateCustomFieldValue — select', () => {
   it('accepts a value that is one of the def options', () => {
-    expect(
-      validateCustomFieldValue(def('select', { options: SELECT_OPTIONS }), 'hi').coerced
-    ).toBe('hi');
+    expect(validateCustomFieldValue(def('select', { options: SELECT_OPTIONS }), 'hi').coerced).toBe(
+      'hi'
+    );
   });
   it('rejects a value not in the options', () => {
-    const r = validateCustomFieldValue(def('select', { label: 'Priority', options: SELECT_OPTIONS }), 'mid');
+    const r = validateCustomFieldValue(
+      def('select', { label: 'Priority', options: SELECT_OPTIONS }),
+      'mid'
+    );
     expect(r.valid).toBe(false);
     expect(r.coerced).toBeNull();
     expect(r.error).toMatch(/not one of the choices/);
@@ -145,7 +151,9 @@ describe('formatCustomFieldValue', () => {
   });
   it('formats a select value as its option label, falling back to the raw value', () => {
     expect(formatCustomFieldValue(def('select', { options: SELECT_OPTIONS }), 'hi')).toBe('High');
-    expect(formatCustomFieldValue(def('select', { options: SELECT_OPTIONS }), 'removed')).toBe('removed');
+    expect(formatCustomFieldValue(def('select', { options: SELECT_OPTIONS }), 'removed')).toBe(
+      'removed'
+    );
   });
   it('formats number/text and returns emptyText for null', () => {
     expect(formatCustomFieldValue(def('number'), 9)).toBe('9');

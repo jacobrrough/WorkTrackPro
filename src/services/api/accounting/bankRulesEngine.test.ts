@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  applyRules,
-  applyRulesToBatch,
-  ruleMatches,
-  validateRule,
-} from './bankRulesEngine';
+import { applyRules, applyRulesToBatch, ruleMatches, validateRule } from './bankRulesEngine';
 import type { BankRule, ParsedBankTransaction } from '../../../features/accounting/types';
 
 /**
@@ -29,7 +24,14 @@ function rule(partial: Partial<BankRule>): BankRule {
   };
 }
 
-const txn = (over: Partial<{ amount: number; description: string | null; merchant: string | null; bankAccountId: string | null }>) => ({
+const txn = (
+  over: Partial<{
+    amount: number;
+    description: string | null;
+    merchant: string | null;
+    bankAccountId: string | null;
+  }>
+) => ({
   amount: over.amount ?? -10,
   description: over.description ?? null,
   merchant: over.merchant ?? null,
@@ -140,8 +142,20 @@ describe('applyRulesToBatch', () => {
   it('returns a parallel array of matches/nulls keyed to the given account', () => {
     const rules = [rule({ bankAccountId: 'ba-1', matchValue: 'fee', setAccountId: 'gl-fee' })];
     const txns: ParsedBankTransaction[] = [
-      { txnDate: '2026-06-01', amount: -3, description: 'service fee', merchant: null, externalId: null },
-      { txnDate: '2026-06-02', amount: -8, description: 'groceries', merchant: null, externalId: null },
+      {
+        txnDate: '2026-06-01',
+        amount: -3,
+        description: 'service fee',
+        merchant: null,
+        externalId: null,
+      },
+      {
+        txnDate: '2026-06-02',
+        amount: -8,
+        description: 'groceries',
+        merchant: null,
+        externalId: null,
+      },
     ];
     const out = applyRulesToBatch(txns, rules, 'ba-1');
     expect(out).toHaveLength(2);
@@ -153,7 +167,12 @@ describe('applyRulesToBatch', () => {
 describe('validateRule', () => {
   it('accepts a well-formed contains rule', () => {
     expect(
-      validateRule({ matchField: 'description', matchOp: 'contains', matchValue: 'shell', setAccountId: 'gl' })
+      validateRule({
+        matchField: 'description',
+        matchOp: 'contains',
+        matchValue: 'shell',
+        setAccountId: 'gl',
+      })
     ).toBeNull();
   });
   it('requires a field, op, value, and an assignment', () => {
@@ -171,12 +190,22 @@ describe('validateRule', () => {
   });
   it('rejects gt/lt on a text field', () => {
     expect(
-      validateRule({ matchField: 'description', matchOp: 'gt', matchValue: '5', setAccountId: 'gl' })
+      validateRule({
+        matchField: 'description',
+        matchOp: 'gt',
+        matchValue: '5',
+        setAccountId: 'gl',
+      })
     ).toMatch(/amount field/i);
   });
   it('rejects an invalid regex', () => {
     expect(
-      validateRule({ matchField: 'description', matchOp: 'regex', matchValue: '([', setAccountId: 'gl' })
+      validateRule({
+        matchField: 'description',
+        matchOp: 'regex',
+        matchValue: '([',
+        setAccountId: 'gl',
+      })
     ).toMatch(/regular expression/i);
   });
 });

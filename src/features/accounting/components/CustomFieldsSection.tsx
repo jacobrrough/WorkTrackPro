@@ -169,12 +169,7 @@ function CustomFieldRow({
           {formatCustomFieldValue(def, rawValue, '—')}
         </p>
       ) : (
-        <CustomFieldInput
-          def={def}
-          entityType={entityType}
-          value={rawValue}
-          onChange={onChange}
-        />
+        <CustomFieldInput def={def} entityType={entityType} value={rawValue} onChange={onChange} />
       )}
       {error ? (
         <p className="mt-1 text-xs text-red-400" role="alert">
@@ -228,11 +223,7 @@ export function CustomFieldsSection({
   readOnly = false,
   draftPreview,
 }: CustomFieldsSectionProps) {
-  const {
-    data: pairs = [],
-    isPending,
-    isError,
-  } = useEntityCustomFields(entityType, entityId);
+  const { data: pairs = [], isPending, isError } = useEntityCustomFields(entityType, entityId);
   const saveValues = useSaveCustomFieldValues();
 
   // Local edit-state, seeded from the loaded values and re-seeded whenever they change
@@ -356,7 +347,9 @@ export function CustomFieldsSection({
             key={pair.def.id}
             pair={pair}
             entityType={entityType}
-            rawValue={Object.prototype.hasOwnProperty.call(raw, pair.def.id) ? raw[pair.def.id] : null}
+            rawValue={
+              Object.prototype.hasOwnProperty.call(raw, pair.def.id) ? raw[pair.def.id] : null
+            }
             onChange={(v) => setField(pair.def.id, v)}
             readOnly={readOnly}
             error={fieldErrors[pair.def.id]}

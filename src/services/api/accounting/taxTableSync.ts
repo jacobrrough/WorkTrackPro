@@ -176,9 +176,7 @@ export const taxTableSyncService = {
    * looked up. Reads throw.
    */
   async getCurrentRatesForDrift(drift: TaxTableDrift): Promise<Map<string, TaxRate>> {
-    const names = Array.from(
-      new Set(applicableDiffEntries(drift.diff).map((e) => e.rateName))
-    );
+    const names = Array.from(new Set(applicableDiffEntries(drift.diff).map((e) => e.rateName)));
     if (names.length === 0) return new Map();
     const { data, error } = await acct()
       .from('tax_rates')
@@ -211,7 +209,10 @@ export const taxTableSyncService = {
    * reference data, not a financial transaction (G3 vacuous). It only affects how FUTURE
    * invoices compute tax, each of which posts its own balanced JE through the A1 path.
    */
-  async applyDrift(driftId: string, diffForCount?: TaxTableDrift['diff']): Promise<ApplyDriftResult> {
+  async applyDrift(
+    driftId: string,
+    diffForCount?: TaxTableDrift['diff']
+  ): Promise<ApplyDriftResult> {
     const { error } = await acct().rpc('apply_tax_table_drift', { p_drift_id: driftId });
     if (error) return { ok: false, applied: 0, error: error.message };
     const applied = diffForCount ? applicableDiffEntries(diffForCount).length : 0;
@@ -268,13 +269,18 @@ export const taxTableSyncService = {
       });
     } catch (e) {
       // Network error / function not reachable — advisory, so degrade gracefully.
-      return { ok: false, error: e instanceof Error ? e.message : 'Could not reach the refresh service.' };
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : 'Could not reach the refresh service.',
+      };
     }
 
     // Parse a JSON body when present; tolerate an empty/non-JSON body.
-    const body = (await response.json().catch(() => null)) as
-      | { ok?: boolean; message?: string; error?: string }
-      | null;
+    const body = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      message?: string;
+      error?: string;
+    } | null;
 
     if (!response.ok) {
       if (response.status === 404) {

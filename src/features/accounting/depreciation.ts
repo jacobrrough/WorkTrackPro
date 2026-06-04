@@ -115,7 +115,11 @@ export function depreciableBaseCents(cost: number, salvageValue: number): number
  * so far, in cents. Mirrors the view's
  *   greatest(cost − accumulated_depreciation, salvage_value).
  */
-export function netBookValueCents(cost: number, salvageValue: number, accumulatedCents: number): number {
+export function netBookValueCents(
+  cost: number,
+  salvageValue: number,
+  accumulatedCents: number
+): number {
   const costCents = toCents(cost);
   const salvageCents = toCents(salvageValue);
   const nbv = costCents - Math.max(0, Math.round(accumulatedCents));
@@ -123,6 +127,10 @@ export function netBookValueCents(cost: number, salvageValue: number, accumulate
 }
 
 /** Convenience: net book value in dollars (see netBookValueCents). */
-export function netBookValue(cost: number, salvageValue: number, accumulatedDollars: number): number {
+export function netBookValue(
+  cost: number,
+  salvageValue: number,
+  accumulatedDollars: number
+): number {
   return centsToAmount(netBookValueCents(cost, salvageValue, toCents(accumulatedDollars)));
 }

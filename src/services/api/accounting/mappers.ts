@@ -188,7 +188,11 @@ export function mapTaxCodeRow(row: Row, rateOverride?: number): TaxCode {
 
 // ── Tax agencies & filing calendar (C1) ──────────────────────────────────────
 
-const VALID_TAX_FILING_FREQUENCIES = new Set<TaxFilingFrequency>(['monthly', 'quarterly', 'annual']);
+const VALID_TAX_FILING_FREQUENCIES = new Set<TaxFilingFrequency>([
+  'monthly',
+  'quarterly',
+  'annual',
+]);
 
 /** Narrow a raw filing_frequency cell to the union, or null when unset/invalid. */
 function taxFilingFrequency(v: unknown): TaxFilingFrequency | null {
@@ -523,11 +527,7 @@ export function mapJobCostingRow(row: Row): JobCostingRow {
 
 // ── Banking (A4) ─────────────────────────────────────────────────────────────
 
-const VALID_BANK_ACCOUNT_TYPES = new Set<BankAccountType>([
-  'checking',
-  'savings',
-  'credit_card',
-]);
+const VALID_BANK_ACCOUNT_TYPES = new Set<BankAccountType>(['checking', 'savings', 'credit_card']);
 const VALID_BANK_TXN_STATUS = new Set<BankTransactionStatus>([
   'unreviewed',
   'categorized',
@@ -747,7 +747,8 @@ export function mapReconciliationRow(row: Row): Reconciliation {
     id: str(row.id),
     bankAccountId: str(row.bank_account_id),
     statementDate: str(row.statement_date),
-    statementEndingBalance: row.statement_ending_balance == null ? null : num(row.statement_ending_balance),
+    statementEndingBalance:
+      row.statement_ending_balance == null ? null : num(row.statement_ending_balance),
     beginningBalance: row.beginning_balance == null ? null : num(row.beginning_balance),
     status: status === 'completed' ? 'completed' : 'in_progress',
     reconciledBy: nstr(row.reconciled_by),
@@ -804,7 +805,10 @@ export function mapBudgetLineRow(row: Row): BudgetLine {
 
 // ── Fixed assets & depreciation (D3) ──────────────────────────────────────────
 
-const VALID_DEPRECIATION_METHODS = new Set<DepreciationMethod>(['straight_line', 'declining_balance']);
+const VALID_DEPRECIATION_METHODS = new Set<DepreciationMethod>([
+  'straight_line',
+  'declining_balance',
+]);
 const VALID_FIXED_ASSET_STATUSES = new Set<FixedAssetStatus>([
   'active',
   'fully_depreciated',

@@ -64,7 +64,10 @@ export const bankRulesService = {
     return { rule: mapBankRuleRow(data as Row) };
   },
 
-  async update(id: string, input: UpdateBankRuleInput): Promise<{ rule: BankRule | null; error?: string }> {
+  async update(
+    id: string,
+    input: UpdateBankRuleInput
+  ): Promise<{ rule: BankRule | null; error?: string }> {
     // Validate the merged shape when match fields are being changed.
     if (
       input.matchField !== undefined ||
@@ -94,7 +97,12 @@ export const bankRulesService = {
     if (input.setVendorId !== undefined) row.set_vendor_id = input.setVendorId;
     if (input.priority !== undefined) row.priority = input.priority;
     if (input.isActive !== undefined) row.is_active = input.isActive;
-    const { data, error } = await acct().from('bank_rules').update(row).eq('id', id).select('*').single();
+    const { data, error } = await acct()
+      .from('bank_rules')
+      .update(row)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error || !data) return { rule: null, error: error?.message ?? 'Failed to update rule.' };
     return { rule: mapBankRuleRow(data as Row) };
   },

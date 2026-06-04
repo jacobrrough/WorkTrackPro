@@ -59,7 +59,9 @@ export function normalizeDiffEntry(raw: unknown): TaxTableDriftDiffEntry {
   const jurisdiction = nstr(o.jurisdiction);
   const currentRate = toRate(o.current_rate ?? o.currentRate);
   const newRate = toRate(o.new_rate ?? o.newRate);
-  const effectiveDate = toIsoDate((o.effective_date ?? o.effectiveDate) as string | null | undefined);
+  const effectiveDate = toIsoDate(
+    (o.effective_date ?? o.effectiveDate) as string | null | undefined
+  );
   const label = nstr(o.label);
   return { rateName, jurisdiction, currentRate, newRate, effectiveDate, label };
 }

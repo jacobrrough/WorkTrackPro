@@ -68,7 +68,10 @@ export function InvoicePayloadEditor({
 
   const setHeader = (patch: Partial<RecurringInvoicePayload>) => onChange({ ...payload, ...patch });
   const setLine = (i: number, patch: Partial<RecurringInvoiceLine>) =>
-    onChange({ ...payload, lines: payload.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)) });
+    onChange({
+      ...payload,
+      lines: payload.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)),
+    });
   const setLineDims = (i: number, patch: Partial<LineDimensions>) => setLine(i, patch);
   const addLine = () => onChange({ ...payload, lines: [...payload.lines, emptyInvoiceLine()] });
   const removeLine = (i: number) =>
@@ -81,7 +84,9 @@ export function InvoicePayloadEditor({
     () =>
       payload.lines.reduce((sum, l) => {
         const gross =
-          l.lineTotal != null ? l.lineTotal : (l.quantity ?? 0) * (l.unitPrice ?? 0) - (l.discount ?? 0);
+          l.lineTotal != null
+            ? l.lineTotal
+            : (l.quantity ?? 0) * (l.unitPrice ?? 0) - (l.discount ?? 0);
         return sum + toCents(gross);
       }, 0),
     [payload.lines]
@@ -108,7 +113,11 @@ export function InvoicePayloadEditor({
           </select>
         </FormField>
 
-        <FormField label="Tax code" htmlFor="rec-taxcode" hint="Applied to taxable lines without their own code">
+        <FormField
+          label="Tax code"
+          htmlFor="rec-taxcode"
+          hint="Applied to taxable lines without their own code"
+        >
           <select
             id="rec-taxcode"
             className={inputClass}
@@ -153,7 +162,10 @@ export function InvoicePayloadEditor({
 
       <LineEditorFrame title="Invoice lines" total={grossCents}>
         {payload.lines.map((line, i) => (
-          <div key={i} className="flex flex-col gap-2 rounded-sm border border-white/5 bg-white/[0.02] p-2">
+          <div
+            key={i}
+            className="flex flex-col gap-2 rounded-sm border border-white/5 bg-white/[0.02] p-2"
+          >
             <div className="grid grid-cols-[1fr_60px_84px_32px] items-center gap-2">
               <input
                 aria-label={`Line ${i + 1} description`}
@@ -172,7 +184,11 @@ export function InvoicePayloadEditor({
                 value={line.unitPrice ?? 0}
                 onValueChange={(v) => setLine(i, { unitPrice: v, lineTotal: undefined })}
               />
-              <RemoveLineButton index={i} count={payload.lines.length} onRemove={() => removeLine(i)} />
+              <RemoveLineButton
+                index={i}
+                count={payload.lines.length}
+                onRemove={() => removeLine(i)}
+              />
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -207,7 +223,10 @@ export function BillPayloadEditor({
 
   const setHeader = (patch: Partial<RecurringBillPayload>) => onChange({ ...payload, ...patch });
   const setLine = (i: number, patch: Partial<RecurringBillLine>) =>
-    onChange({ ...payload, lines: payload.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)) });
+    onChange({
+      ...payload,
+      lines: payload.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)),
+    });
   const setLineDims = (i: number, patch: Partial<LineDimensions>) => setLine(i, patch);
   const addLine = () => onChange({ ...payload, lines: [...payload.lines, emptyBillLine()] });
   const removeLine = (i: number) =>
@@ -244,7 +263,11 @@ export function BillPayloadEditor({
           </select>
         </FormField>
 
-        <FormField label="Due in (days)" htmlFor="rec-bduein" hint="Days after each generation date">
+        <FormField
+          label="Due in (days)"
+          htmlFor="rec-bduein"
+          hint="Days after each generation date"
+        >
           <input
             id="rec-bduein"
             type="number"
@@ -259,7 +282,11 @@ export function BillPayloadEditor({
           />
         </FormField>
 
-        <FormField label="Tax total" htmlFor="rec-btax" hint="Header sales/use tax in dollars (bills tax at the header)">
+        <FormField
+          label="Tax total"
+          htmlFor="rec-btax"
+          hint="Header sales/use tax in dollars (bills tax at the header)"
+        >
           <CurrencyInput
             id="rec-btax"
             value={payload.taxTotal ?? 0}
@@ -280,7 +307,10 @@ export function BillPayloadEditor({
 
       <LineEditorFrame title="Bill lines" total={grossCents}>
         {payload.lines.map((line, i) => (
-          <div key={i} className="flex flex-col gap-2 rounded-sm border border-white/5 bg-white/[0.02] p-2">
+          <div
+            key={i}
+            className="flex flex-col gap-2 rounded-sm border border-white/5 bg-white/[0.02] p-2"
+          >
             <div className="grid grid-cols-[1fr_60px_84px_32px] items-center gap-2">
               <input
                 aria-label={`Line ${i + 1} description`}
@@ -299,7 +329,11 @@ export function BillPayloadEditor({
                 value={line.unitCost ?? 0}
                 onValueChange={(v) => setLine(i, { unitCost: v, lineTotal: undefined })}
               />
-              <RemoveLineButton index={i} count={payload.lines.length} onRemove={() => removeLine(i)} />
+              <RemoveLineButton
+                index={i}
+                count={payload.lines.length}
+                onRemove={() => removeLine(i)}
+              />
             </div>
             <FormField label="Expense account" htmlFor={`rec-bacct-${i}`} className="!mb-0">
               <AccountPicker
@@ -327,7 +361,10 @@ export function JournalPayloadEditor({
   onChange: (p: RecurringJournalPayload) => void;
 }) {
   const setLine = (i: number, patch: Partial<RecurringJournalLine>) =>
-    onChange({ ...payload, lines: payload.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)) });
+    onChange({
+      ...payload,
+      lines: payload.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)),
+    });
   const setLineDims = (i: number, patch: Partial<LineDimensions>) => setLine(i, patch);
   const addLine = () => onChange({ ...payload, lines: [...payload.lines, emptyJournalLine()] });
   const removeLine = (i: number) =>
@@ -372,7 +409,10 @@ export function JournalPayloadEditor({
 
         <div className="flex flex-col gap-2">
           {payload.lines.map((line, i) => (
-            <div key={i} className="flex flex-col gap-2 rounded-sm border border-white/5 bg-white/[0.02] p-2">
+            <div
+              key={i}
+              className="flex flex-col gap-2 rounded-sm border border-white/5 bg-white/[0.02] p-2"
+            >
               <div className="grid grid-cols-[1fr_84px_84px_32px] items-center gap-2">
                 <AccountPicker
                   ariaLabel={`Line ${i + 1} account`}
@@ -389,7 +429,11 @@ export function JournalPayloadEditor({
                   value={line.credit ?? 0}
                   onValueChange={(v) => setLine(i, { credit: v, debit: v > 0 ? 0 : line.debit })}
                 />
-                <RemoveLineButton index={i} count={payload.lines.length} onRemove={() => removeLine(i)} />
+                <RemoveLineButton
+                  index={i}
+                  count={payload.lines.length}
+                  onRemove={() => removeLine(i)}
+                />
               </div>
               <input
                 aria-label={`Line ${i + 1} memo`}
@@ -409,10 +453,16 @@ export function JournalPayloadEditor({
         <div className="mt-3 flex items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm">
           <span className="flex items-center gap-4">
             <span className="text-slate-400">
-              Debits <span className="font-mono tabular-nums text-slate-200">{formatMoney(debitCents / 100)}</span>
+              Debits{' '}
+              <span className="font-mono tabular-nums text-slate-200">
+                {formatMoney(debitCents / 100)}
+              </span>
             </span>
             <span className="text-slate-400">
-              Credits <span className="font-mono tabular-nums text-slate-200">{formatMoney(creditCents / 100)}</span>
+              Credits{' '}
+              <span className="font-mono tabular-nums text-slate-200">
+                {formatMoney(creditCents / 100)}
+              </span>
             </span>
           </span>
           {balanced ? (
