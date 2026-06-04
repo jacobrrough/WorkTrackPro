@@ -8,7 +8,7 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { parseCsv } from './csvImport';
+import { readSpreadsheet } from './spreadsheetImport';
 
 export type ImportStep = 'upload' | 'review' | 'done';
 export type AnyColumnMap = Record<string, string | undefined>;
@@ -40,7 +40,7 @@ export function useCsvUpload(autoDetect: (headers: string[]) => AnyColumnMap) {
     async (file: File) => {
       setError(null);
       try {
-        const parsed = parseCsv(await file.text());
+        const parsed = await readSpreadsheet(file);
         if (parsed.headers.length === 0 || parsed.rows.length === 0) {
           setError('That file has no data rows. Export the report from QuickBooks and try again.');
           return;
@@ -50,8 +50,12 @@ export function useCsvUpload(autoDetect: (headers: string[]) => AnyColumnMap) {
         setRows(parsed.rows);
         setColumnMap(autoDetect(parsed.headers));
         setStep('review');
-      } catch {
-        setError('Could not read that file. Make sure it is a .csv exported from QuickBooks.');
+      } catch (e) {
+        setError(
+          e instanceof Error && e.message
+            ? e.message
+            : 'Could not read that file. Upload a .csv or .xlsx exported from QuickBooks.'
+        );
       }
     },
     [autoDetect]
@@ -179,7 +183,7 @@ export function UploadDropzone({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,text/csv,text/plain"
+          accept=".csv,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={onFileInput}
         />
