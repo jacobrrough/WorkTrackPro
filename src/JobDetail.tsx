@@ -48,16 +48,10 @@ import {
 import { syncPartMaterialFromJobQuantity, type MaterialSyncScope } from '@/lib/materialFromPart';
 import { buildPartVariantDefaults, computeVariantBreakdown } from '@/lib/variantAllocation';
 import {
-  variantLaborFromSetComposition,
-  variantCncFromSetComposition,
-  variantPrinter3DFromSetComposition,
-} from '@/lib/partDistribution';
-import {
   isPartsEditingAllowed,
   getPartsLockedReason,
   getNextWorkflowStatus,
 } from '@/lib/jobWorkflow';
-import type { VariantDefaultOverrides } from '@/lib/variantAllocation';
 import { useApp } from '@/AppContext';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
@@ -188,71 +182,6 @@ function getMachineOverrideFromJob(
     };
   }
   return out;
-}
-
-/**
- * When the Part has set composition and set-level labor/CNC/3D, use those so the job card
- * matches the Part's quote calculator (e.g. 12.74 labor, 1.0 CNC per set). Otherwise use
- * variant-level sums from buildPartVariantDefaults.
- */
-function getPartDerivedDefaultsForJob(
-  part: (Part & { variants?: PartVariant[] }) | null,
-  dashQuantities: Record<string, number>
-): VariantDefaultOverrides {
-  const defaults = buildPartVariantDefaults(part, dashQuantities);
-  if (
-    !part?.variants?.length ||
-    !part?.setComposition ||
-    Object.keys(part.setComposition).length === 0
-  ) {
-    return defaults;
-  }
-  const setLabor = Number(part.laborHours) || 0;
-  const setCnc = Number(part.cncTimeHours) || 0;
-  const setPrinter = Number(part.printer3DTimeHours) || 0;
-  if (setLabor <= 0 && setCnc <= 0 && setPrinter <= 0) return defaults;
-
-  const normalizedDash = normalizeDashQuantities(dashQuantities);
-  const { completeSets } = calculateSetCompletion(normalizedDash, part.setComposition);
-  const setCount = completeSets > 0 ? completeSets : 1;
-
-  const laborPerUnit: Record<string, number> = { ...defaults.laborPerUnit };
-  const machinePerUnit: Record<
-    string,
-    { cncHoursPerUnit?: number; printer3DHoursPerUnit?: number }
-  > = { ...defaults.machinePerUnit };
-
-  for (const v of part.variants) {
-    const key = toDashSuffix(v.variantSuffix);
-    if (setLabor > 0) {
-      const val = variantLaborFromSetComposition(v.variantSuffix, setLabor, part.setComposition);
-      laborPerUnit[key] = val ?? 0;
-    }
-    if (setCnc > 0 || setPrinter > 0) {
-      const cncVal =
-        setCnc > 0
-          ? variantCncFromSetComposition(v.variantSuffix, setCnc, part.setComposition)
-          : undefined;
-      const printerVal =
-        setPrinter > 0
-          ? variantPrinter3DFromSetComposition(v.variantSuffix, setPrinter, part.setComposition)
-          : undefined;
-      machinePerUnit[key] = {
-        cncHoursPerUnit: cncVal ?? 0,
-        printer3DHoursPerUnit: printerVal ?? 0,
-      };
-    }
-  }
-
-  return {
-    laborPerUnit,
-    machinePerUnit,
-    totals: {
-      laborHours: setLabor * setCount,
-      cncHours: setCnc * setCount,
-      printer3DHours: setPrinter * setCount,
-    },
-  };
 }
 
 /** Returns the toast message shown when a BOM sync is skipped because the job is consumed. */
@@ -908,7 +837,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     if (!Object.values(dashQuantities).some((qty) => qty > 0)) return;
     const seedKey = `${job.id}:${linkedPart.id}`;
     if (editSeedRef.current === seedKey) return;
-    const defaults = getPartDerivedDefaultsForJob(linkedPart, dashQuantities);
+    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
     setAllocationSource('variant');
     setLaborPerUnitOverrides(defaults.laborPerUnit);
     setMachinePerUnitOverrides(defaults.machinePerUnit);
@@ -1899,7 +1828,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleApplyFromPart = useCallback(() => {
     if (!linkedPart?.variants?.length) return;
     setAllocationSource('variant');
-    const defaults = getPartDerivedDefaultsForJob(linkedPart, dashQuantities);
+    const defaults = buildPartVariantDefaults(linkedPart, dashQuantities);
     setLaborPerUnitOverrides(defaults.laborPerUnit);
     setMachinePerUnitOverrides(defaults.machinePerUnit);
     setLaborHoursFromPart(true);
