@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
@@ -6,7 +6,7 @@ import { jobService } from '@/services/api/jobs';
 import { partsService } from '@/services/api/parts';
 import { inventoryService } from '@/services/api/inventory';
 import { adminSettingsService } from '@/services/api/adminSettings';
-import { buildInvoiceLinesFromJob } from '@/services/api/accounting';
+import { buildInvoiceLinesFromJob, taxJurisdictionsService } from '@/services/api/accounting';
 import { AccountingShell } from '../components/AccountingShell';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
@@ -34,21 +34,25 @@ const emptyLine = (): NewInvoiceLineInput => ({
 });
 
 /**
- * Resolve the header tax code to apply, with precedence: customer's preferred code,
- * else the org default code. Once the user has touched the Tax-code select we honor
- * their raw choice verbatim — including an explicit "No tax" (empty string) — so an
- * intentional No-tax selection is never re-seeded. `touched` distinguishes "the user
- * has not chosen yet" (seed a default) from "the user explicitly picked nothing".
+ * Resolve the header tax code to apply, with precedence: customer's preferred code, else the
+ * address-based auto-suggestion (#13 — resolved from the customer's billing/shipping address),
+ * else the org default code. Once the user has touched the Tax-code select we honor their raw
+ * choice verbatim — including an explicit "No tax" (empty string) — so an intentional No-tax
+ * selection is never re-seeded. `touched` distinguishes "the user has not chosen yet" (seed a
+ * default) from "the user explicitly picked nothing". The address suggestion sits BELOW a
+ * per-customer preferred code (an explicit customer setting wins) but ABOVE the org-wide
+ * default, and is ADVISORY — the user can always override it.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function resolveEffectiveTaxCodeId(args: {
   rawTaxCodeId: string;
   touched: boolean;
   customerDefaultTaxCodeId: string | null | undefined;
+  addressTaxCodeId?: string | null | undefined;
   orgDefaultTaxCodeId: string | null | undefined;
 }): string {
   if (args.touched) return args.rawTaxCodeId;
-  return args.customerDefaultTaxCodeId ?? args.orgDefaultTaxCodeId ?? '';
+  return args.customerDefaultTaxCodeId ?? args.addressTaxCodeId ?? args.orgDefaultTaxCodeId ?? '';
 }
 
 /**
@@ -179,6 +183,10 @@ export default function InvoiceCreateView() {
   // Whether the user has explicitly chosen a header tax code (including "No tax").
   // Until then the effective code is seeded from the customer/org default.
   const [taxCodeTouched, setTaxCodeTouched] = useState(false);
+  // #13 — tax code auto-suggested from the selected customer's billing/shipping address
+  // (advisory; only used while the user has not chosen a code and the customer has no
+  // preferred code). `addressSuggested` drives the subtle "auto-selected from address" hint.
+  const [addressTaxCodeId, setAddressTaxCodeId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [lines, setLines] = useState<NewInvoiceLineInput[]>([emptyLine()]);
   const [showFromJob, setShowFromJob] = useState(false);
@@ -189,16 +197,50 @@ export default function InvoiceCreateView() {
   // The org-wide default tax code, used as the fallback seed below.
   const defaultTaxCode = useMemo(() => taxCodes.find((t) => t.isDefault) ?? null, [taxCodes]);
 
-  // Effective header tax code with precedence: customer's preferred code, else the org
-  // default — but only until the user explicitly picks one (then their choice, including
-  // an intentional "No tax", is honored). Derived so it cannot fight an explicit choice
-  // or loop, unlike a setState-on-change effect.
+  // #13 — when a customer is selected and the user has not chosen a code AND the customer has
+  // no preferred code, resolve a suggestion from the customer's billing/shipping address. This
+  // is ADVISORY: it only PRE-FILLS the select (the derived precedence below slots it under a
+  // per-customer code and above the org default); the user can always override. Resolution is
+  // best-effort — any failure just leaves no suggestion. Cleared when the customer clears.
+  useEffect(() => {
+    let cancelled = false;
+    setAddressTaxCodeId(null);
+    if (!customerId || taxCodeTouched || selectedCustomer?.defaultTaxCodeId) return;
+    taxJurisdictionsService
+      .getCustomerAddress(customerId)
+      .then((addr) => (addr ? taxJurisdictionsService.resolveForAddress(addr) : null))
+      .then((codeId) => {
+        // Only adopt a suggestion that is a currently-selectable tax code.
+        if (cancelled || !codeId) return;
+        if (taxCodes.some((t) => t.id === codeId)) setAddressTaxCodeId(codeId);
+      })
+      .catch(() => {
+        /* advisory — ignore resolution errors */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, taxCodeTouched, selectedCustomer?.defaultTaxCodeId, taxCodes]);
+
+  // Effective header tax code with precedence: customer's preferred code, else the
+  // address-based suggestion (#13), else the org default — but only until the user explicitly
+  // picks one (then their choice, including an intentional "No tax", is honored). Derived so it
+  // cannot fight an explicit choice or loop, unlike a setState-on-change effect.
   const effectiveTaxCodeId = resolveEffectiveTaxCodeId({
     rawTaxCodeId: taxCodeId,
     touched: taxCodeTouched,
     customerDefaultTaxCodeId: selectedCustomer?.defaultTaxCodeId,
+    addressTaxCodeId,
     orgDefaultTaxCodeId: defaultTaxCode?.id,
   });
+
+  // True when the code currently shown came from the address auto-suggestion (not a user
+  // choice, not a customer/org default) — drives the subtle "auto-selected from address" hint.
+  const showAddressHint =
+    !taxCodeTouched &&
+    !selectedCustomer?.defaultTaxCodeId &&
+    !!addressTaxCodeId &&
+    effectiveTaxCodeId === addressTaxCodeId;
 
   const updateLine = (i: number, patch: Partial<NewInvoiceLineInput>) =>
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -324,6 +366,12 @@ export default function InvoiceCreateView() {
                 </option>
               ))}
             </select>
+            {showAddressHint && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-amber-300">
+                <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                Auto-selected from the customer&apos;s address — verify before sending.
+              </p>
+            )}
           </FormField>
 
           <FormField label="Invoice date" htmlFor="inv-date">

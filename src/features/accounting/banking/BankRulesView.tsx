@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { AccountingShell } from '../components/AccountingShell';
 import { AccountPicker } from '../components/AccountPicker';
-import { useBankAccount, useBankRules, useAccounts } from '../hooks/useAccountingQueries';
+import { AccountingDrawer } from '../components/AccountingDrawer';
+import {
+  useBankAccount,
+  useBankRules,
+  useAccounts,
+  useVendors,
+} from '../hooks/useAccountingQueries';
 import {
   useCreateBankRule,
   useDeleteBankRule,
@@ -39,6 +45,7 @@ interface RuleDraft {
   matchOp: BankRuleOp;
   matchValue: string;
   setAccountId: string;
+  setVendorId: string;
   priority: number;
   scopeAll: boolean;
 }
@@ -49,6 +56,7 @@ function draftFromRule(rule: BankRule): RuleDraft {
     matchOp: rule.matchOp ?? 'contains',
     matchValue: rule.matchValue ?? '',
     setAccountId: rule.setAccountId ?? '',
+    setVendorId: rule.setVendorId ?? '',
     priority: rule.priority,
     // Scope is "all accounts" when the rule has no bank account binding; otherwise
     // it is bound to this page's account.
@@ -60,14 +68,18 @@ function draftFromRule(rule: BankRule): RuleDraft {
 function RuleEditorModal({
   rule,
   bankAccountId,
+  initial,
   onClose,
 }: {
   rule: BankRule | null;
   bankAccountId: string | undefined;
+  /** Optional seed for a NEW rule (e.g. "Make a rule" from a categorized transaction). */
+  initial?: Partial<RuleDraft>;
   onClose: () => void;
 }) {
   const create = useCreateBankRule();
   const update = useUpdateBankRule();
+  const { data: vendors = [] } = useVendors();
   const [draft, setDraft] = useState<RuleDraft>(
     rule
       ? draftFromRule(rule)
@@ -76,8 +88,10 @@ function RuleEditorModal({
           matchOp: 'contains',
           matchValue: '',
           setAccountId: '',
+          setVendorId: '',
           priority: 0,
           scopeAll: !bankAccountId,
+          ...initial,
         }
   );
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +128,7 @@ function RuleEditorModal({
           matchOp: draft.matchOp,
           matchValue: draft.matchValue.trim(),
           setAccountId: draft.setAccountId,
+          setVendorId: draft.setVendorId || null,
           priority: draft.priority,
         },
       });
@@ -128,6 +143,7 @@ function RuleEditorModal({
         matchOp: draft.matchOp,
         matchValue: draft.matchValue.trim(),
         setAccountId: draft.setAccountId,
+        setVendorId: draft.setVendorId || null,
         priority: draft.priority,
       };
       const res = await create.mutateAsync(input);
@@ -142,127 +158,139 @@ function RuleEditorModal({
   const busy = create.isPending || update.isPending;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">{rule ? 'Edit Rule' : 'New Rule'}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
+    <AccountingDrawer
+      open
+      onClose={onClose}
+      title={rule ? 'Edit Rule' : 'New Rule'}
+      width="lg"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={busy}>
+            {busy ? 'Saving…' : rule ? 'Save rule' : 'Create rule'}
+          </Button>
         </div>
+      }
+    >
+      <p className="mb-3 text-sm text-slate-400">
+        When a transaction matches, it is auto-categorized to the chosen account. Higher priority
+        wins when several rules match.
+      </p>
 
-        <p className="mb-3 text-sm text-slate-400">
-          When a transaction matches, it is auto-categorized to the chosen account. Higher priority
-          wins when several rules match.
-        </p>
-
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="When" htmlFor="rule-field">
-              <select
-                id="rule-field"
-                className={inputClass}
-                value={draft.matchField}
-                onChange={(e) => onFieldChange(e.target.value as BankRuleField)}
-              >
-                {FIELDS.map((f) => (
-                  <option key={f} value={f}>
-                    {BANK_RULE_FIELD_LABELS[f]}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label="Condition" htmlFor="rule-op">
-              <select
-                id="rule-op"
-                className={inputClass}
-                value={draft.matchOp}
-                onChange={(e) => patch({ matchOp: e.target.value as BankRuleOp })}
-              >
-                {OPS.filter((o) => validOps.includes(o)).map((o) => (
-                  <option key={o} value={o}>
-                    {BANK_RULE_OP_LABELS[o]}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          </div>
-
-          <FormField
-            label="Value"
-            htmlFor="rule-value"
-            required
-            hint={
-              isAmount
-                ? 'A dollar amount; compared to the transaction magnitude.'
-                : draft.matchOp === 'regex'
-                  ? 'A regular expression (invalid patterns never match).'
-                  : 'Text to look for in the chosen field.'
-            }
-          >
-            <input
-              id="rule-value"
+      <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="When" htmlFor="rule-field">
+            <select
+              id="rule-field"
               className={inputClass}
-              value={draft.matchValue}
-              onChange={(e) => patch({ matchValue: e.target.value })}
-              inputMode={isAmount ? 'decimal' : 'text'}
-              placeholder={isAmount ? '100.00' : 'e.g. SHELL'}
-            />
+              value={draft.matchField}
+              onChange={(e) => onFieldChange(e.target.value as BankRuleField)}
+            >
+              {FIELDS.map((f) => (
+                <option key={f} value={f}>
+                  {BANK_RULE_FIELD_LABELS[f]}
+                </option>
+              ))}
+            </select>
           </FormField>
-
-          <FormField label="Categorize to" htmlFor="rule-account" required>
-            <AccountPicker
-              id="rule-account"
-              ariaLabel="Category account"
-              value={draft.setAccountId}
-              onChange={(id) => patch({ setAccountId: id })}
-            />
+          <FormField label="Condition" htmlFor="rule-op">
+            <select
+              id="rule-op"
+              className={inputClass}
+              value={draft.matchOp}
+              onChange={(e) => patch({ matchOp: e.target.value as BankRuleOp })}
+            >
+              {OPS.filter((o) => validOps.includes(o)).map((o) => (
+                <option key={o} value={o}>
+                  {BANK_RULE_OP_LABELS[o]}
+                </option>
+              ))}
+            </select>
           </FormField>
-
-          <div className="grid grid-cols-2 items-end gap-3">
-            <FormField label="Priority" htmlFor="rule-priority" hint="Higher wins">
-              <input
-                id="rule-priority"
-                type="number"
-                className={`${inputClass} text-right`}
-                value={draft.priority}
-                onChange={(e) => patch({ priority: Number.parseInt(e.target.value, 10) || 0 })}
-              />
-            </FormField>
-            <label className="flex items-center gap-2 pb-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={draft.scopeAll}
-                disabled={!bankAccountId}
-                onChange={(e) => patch({ scopeAll: e.target.checked })}
-                className="size-4 accent-primary"
-              />
-              Apply to all accounts
-            </label>
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-400" role="alert">
-              {error}
-            </p>
-          )}
-
-          <div className="mt-1 flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={submit} disabled={busy}>
-              {busy ? 'Saving…' : rule ? 'Save rule' : 'Create rule'}
-            </Button>
-          </div>
         </div>
+
+        <FormField
+          label="Value"
+          htmlFor="rule-value"
+          required
+          hint={
+            isAmount
+              ? 'A dollar amount; compared to the transaction magnitude.'
+              : draft.matchOp === 'regex'
+                ? 'A regular expression (invalid patterns never match).'
+                : 'Text to look for in the chosen field.'
+          }
+        >
+          <input
+            id="rule-value"
+            className={inputClass}
+            value={draft.matchValue}
+            onChange={(e) => patch({ matchValue: e.target.value })}
+            inputMode={isAmount ? 'decimal' : 'text'}
+            placeholder={isAmount ? '100.00' : 'e.g. SHELL'}
+          />
+        </FormField>
+
+        <FormField label="Categorize to" htmlFor="rule-account" required>
+          <AccountPicker
+            id="rule-account"
+            ariaLabel="Category account"
+            value={draft.setAccountId}
+            onChange={(id) => patch({ setAccountId: id })}
+          />
+        </FormField>
+
+        <FormField
+          label="Also set vendor"
+          htmlFor="rule-vendor"
+          hint="Optional — stamps this vendor on matching transactions (no money moves)."
+        >
+          <select
+            id="rule-vendor"
+            className={inputClass}
+            value={draft.setVendorId}
+            onChange={(e) => patch({ setVendorId: e.target.value })}
+          >
+            <option value="">No vendor</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.displayName}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <div className="grid grid-cols-2 items-end gap-3">
+          <FormField label="Priority" htmlFor="rule-priority" hint="Higher wins">
+            <input
+              id="rule-priority"
+              type="number"
+              className={`${inputClass} text-right`}
+              value={draft.priority}
+              onChange={(e) => patch({ priority: Number.parseInt(e.target.value, 10) || 0 })}
+            />
+          </FormField>
+          <label className="flex items-center gap-2 pb-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={draft.scopeAll}
+              disabled={!bankAccountId}
+              onChange={(e) => patch({ scopeAll: e.target.checked })}
+              className="size-4 accent-primary"
+            />
+            Apply to all accounts
+          </label>
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-400" role="alert">
+            {error}
+          </p>
+        )}
       </div>
-    </div>
+    </AccountingDrawer>
   );
 }
 
@@ -291,7 +319,7 @@ function RuleRow({
   const opLabel = rule.matchOp ? BANK_RULE_OP_LABELS[rule.matchOp] : '';
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5">
+    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.04]">
       <span className="w-8 shrink-0 text-center font-mono text-xs text-slate-500">
         {rule.priority}
       </span>
@@ -342,11 +370,16 @@ function RuleRow({
 export default function BankRulesView() {
   const { bankAccountId } = useParams<{ bankAccountId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: account } = useBankAccount(bankAccountId);
   const { data: rules = [], isPending, isError } = useBankRules(bankAccountId);
   const { data: accounts = [] } = useAccounts();
   const [editing, setEditing] = useState<BankRule | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  // A "Make a rule" jump from the transactions list arrives with a pre-filled draft in
+  // navigation state; capture it once so it seeds (and auto-opens) the create modal.
+  const suggestedFromNav = (location.state as { suggested?: Partial<RuleDraft> } | null)?.suggested;
+  const [suggested, setSuggested] = useState<Partial<RuleDraft> | undefined>(suggestedFromNav);
+  const [showCreate, setShowCreate] = useState(Boolean(suggestedFromNav));
 
   const accountName = (id: string | null): string => {
     if (!id) return 'Uncategorized';
@@ -399,12 +432,12 @@ export default function BankRulesView() {
 
         {rules.length > 0 && (
           <>
-            <div className="flex items-center gap-3 px-3 text-xs font-semibold uppercase text-slate-500">
+            <div className="flex items-center gap-3 px-4 pb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <span className="w-8 shrink-0 text-center">Pri</span>
               <span className="flex-1">Rule</span>
               <span className="w-[120px] shrink-0 text-right">Actions</span>
             </div>
-            <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+            <div className="divide-y divide-white/10 overflow-hidden rounded-sm border border-white/10">
               {rules.map((rule) => (
                 <RuleRow
                   key={rule.id}
@@ -422,7 +455,11 @@ export default function BankRulesView() {
         <RuleEditorModal
           rule={null}
           bankAccountId={bankAccountId}
-          onClose={() => setShowCreate(false)}
+          initial={suggested}
+          onClose={() => {
+            setShowCreate(false);
+            setSuggested(undefined);
+          }}
         />
       )}
       {editing && (

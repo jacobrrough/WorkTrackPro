@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   accountingSettingsService,
   accountsService,
+  attachmentsService,
   bankAccountsService,
   bankRulesService,
   bankTransactionsService,
@@ -10,11 +11,19 @@ import {
   customFieldsService,
   customersService,
   dimensionsService,
+  estimatesService,
+  progressBillingService,
+  projectsService,
+  purchaseOrdersService,
+  vendor1099Service,
+  taxJurisdictionsService,
   fixedAssetsService,
   inventoryCogsService,
   invoicesService,
+  invoiceEmailsService,
   jobCostingService,
   journalService,
+  managementReportsService,
   paymentsService,
   reconciliationsService,
   recurringTemplatesService,
@@ -28,6 +37,7 @@ import {
 } from '@/services/api/accounting';
 import type { CashFlowForecastOptions } from '../reports/budgetMath';
 import type {
+  AttachmentEntityType,
   CustomFieldEntityType,
   DateRange,
   DimensionType,
@@ -214,6 +224,205 @@ export function useBalanceSheet(range: DateRange = {}) {
   return useQuery({
     queryKey: ACCOUNTING_QUERY_KEYS.balanceSheet(range),
     queryFn: () => reportsService.getBalanceSheet(range),
+  });
+}
+
+/** General-ledger account register (#3) — posted lines for one account in a window. */
+export function useAccountLedger(accountId: string | undefined, range: DateRange = {}) {
+  return useQuery({
+    queryKey: accountId
+      ? ACCOUNTING_QUERY_KEYS.accountLedger(accountId, range)
+      : ['accounting', 'reports', 'account-ledger', 'none'],
+    queryFn: () => reportsService.getAccountLedger(accountId as string, range),
+    enabled: !!accountId,
+  });
+}
+
+/** Statement of Cash Flows (#5, indirect method) over a from–to window. */
+export function useCashFlowStatement(range: DateRange = {}) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.cashFlowStatement(range),
+    queryFn: () => reportsService.getCashFlowStatement(range),
+  });
+}
+
+/** Sales by customer (#4) — pre-tax invoiced revenue per customer over a window. */
+export function useSalesByCustomer(range: DateRange = {}) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.salesByCustomer(range),
+    queryFn: () => managementReportsService.getSalesByCustomer(range),
+  });
+}
+
+/** Sales by item (#4) — pre-tax invoiced revenue per item over a window. */
+export function useSalesByItem(range: DateRange = {}) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.salesByItem(range),
+    queryFn: () => managementReportsService.getSalesByItem(range),
+  });
+}
+
+/** Purchases by vendor (#4) — pre-tax billed spend per vendor over a window. */
+export function usePurchasesByVendor(range: DateRange = {}) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.purchasesByVendor(range),
+    queryFn: () => managementReportsService.getPurchasesByVendor(range),
+  });
+}
+
+/**
+ * Document attachments (#2) for ONE accounting entity, oldest-first. Disabled until the
+ * entity has an id (a draft has none). Pure file metadata — nothing here moves money.
+ */
+export function useEntityAttachments(
+  entityType: AttachmentEntityType,
+  entityId: string | undefined
+) {
+  return useQuery({
+    queryKey: entityId
+      ? ACCOUNTING_QUERY_KEYS.attachmentsForEntity(entityType, entityId)
+      : ['accounting', 'attachments', entityType, 'none'],
+    queryFn: () => attachmentsService.listForEntity(entityType, entityId as string),
+    enabled: !!entityId,
+  });
+}
+
+/** #6 — email + reminder history for an invoice, newest first. */
+export function useInvoiceEmails(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: invoiceId
+      ? ACCOUNTING_QUERY_KEYS.invoiceEmails(invoiceId)
+      : ['accounting', 'invoices', 'none', 'emails'],
+    queryFn: () => invoiceEmailsService.listForInvoice(invoiceId as string),
+    enabled: !!invoiceId,
+  });
+}
+
+/** #8 — estimate list (most recent first). */
+export function useEstimates() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.estimates,
+    queryFn: () => estimatesService.list(),
+  });
+}
+
+/** #8 — a single estimate with its lines (customer name hydrated). */
+export function useEstimate(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ACCOUNTING_QUERY_KEYS.estimate(id) : ['accounting', 'estimates', 'none'],
+    queryFn: () => estimatesService.getById(id as string),
+    enabled: !!id,
+  });
+}
+
+// ── #10 Progress billing ───────────────────────────────────────────────────────
+/** All progress-billing projects (most recent first). */
+export function useProjects() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.projects,
+    queryFn: () => projectsService.list(),
+  });
+}
+
+/** A single project (customer name hydrated). */
+export function useProject(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ACCOUNTING_QUERY_KEYS.project(id) : ['accounting', 'projects', 'none'],
+    queryFn: () => projectsService.getById(id as string),
+    enabled: !!id,
+  });
+}
+
+/** A project's schedule-of-values lines (in sort order). */
+export function useSovLines(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId
+      ? ACCOUNTING_QUERY_KEYS.sovLines(projectId)
+      : ['accounting', 'projects', 'none', 'sov-lines'],
+    queryFn: () => progressBillingService.listSovLines(projectId as string),
+    enabled: !!projectId,
+  });
+}
+
+/** A project's change orders (oldest first). */
+export function useChangeOrders(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId
+      ? ACCOUNTING_QUERY_KEYS.changeOrders(projectId)
+      : ['accounting', 'projects', 'none', 'change-orders'],
+    queryFn: () => progressBillingService.listChangeOrders(projectId as string),
+    enabled: !!projectId,
+  });
+}
+
+/** A project's progress invoices / applications (by sequence, with their lines). */
+export function useProgressInvoices(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId
+      ? ACCOUNTING_QUERY_KEYS.progressInvoices(projectId)
+      : ['accounting', 'projects', 'none', 'progress-invoices'],
+    queryFn: () => progressBillingService.listProgressInvoices(projectId as string),
+    enabled: !!projectId,
+  });
+}
+
+// ── #11 Purchase orders ────────────────────────────────────────────────────────
+/** Purchase order list (most recent first). */
+export function usePurchaseOrders() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders,
+    queryFn: () => purchaseOrdersService.list(),
+  });
+}
+
+/** A single purchase order with its lines (vendor name hydrated). */
+export function usePurchaseOrder(id: string | undefined) {
+  return useQuery({
+    queryKey: id
+      ? ACCOUNTING_QUERY_KEYS.purchaseOrder(id)
+      : ['accounting', 'purchase-orders', 'none'],
+    queryFn: () => purchaseOrdersService.getById(id as string),
+    enabled: !!id,
+  });
+}
+
+/** Bills produced from a PO (for the 3-way-match variance panel). */
+export function usePurchaseOrderBills(poId: string | undefined) {
+  return useQuery({
+    queryKey: poId
+      ? ACCOUNTING_QUERY_KEYS.purchaseOrderBills(poId)
+      : ['accounting', 'purchase-orders', 'none', 'bills'],
+    queryFn: () => purchaseOrdersService.listBillsForPo(poId as string),
+    enabled: !!poId,
+  });
+}
+
+// ── #12 1099 vendor tracking (advisory; moves no money) ───────────────────────
+/** One vendor's W-9 record (null until recorded). Reads THROW so React Query surfaces them. */
+export function useVendorTaxInfo(vendorId: string | undefined) {
+  return useQuery({
+    queryKey: vendorId
+      ? ACCOUNTING_QUERY_KEYS.vendorTaxInfo(vendorId)
+      : ['accounting', 'vendors', 'none', 'tax-info'],
+    queryFn: () => vendor1099Service.getTaxInfo(vendorId as string),
+    enabled: !!vendorId,
+  });
+}
+
+/** The ranked 1099-NEC worklist for a calendar year (advisory; no e-file). */
+export function use1099Totals(year: number) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.form1099Totals(year),
+    queryFn: () => vendor1099Service.list1099Totals(year),
+  });
+}
+
+// ── #13 Sales-tax jurisdictions (reference data; moves no money) ──────────────
+/** The address → tax-code jurisdiction map, most specific first. */
+export function useTaxJurisdictions() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.taxJurisdictions,
+    queryFn: () => taxJurisdictionsService.list(),
   });
 }
 

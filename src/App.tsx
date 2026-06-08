@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
@@ -9,6 +9,10 @@ import Login from './Login';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
 import { CommandPalette } from './components/CommandPalette';
+
+// #7 — public customer portal (/portal/<token>). Lazy so the invoice PDF builder and the
+// portal view stay out of the main app bundle and only load for portal visitors.
+const CustomerPortal = lazy(() => import('./public/portal/CustomerPortal'));
 
 export default function App() {
   const {
@@ -85,6 +89,21 @@ export default function App() {
     // under the employee app — otherwise pressing back from /app exits the app
     // back to localhost:3000 (public home).
     const onEmployeeLogin = () => window.location.assign('/app');
+    // #7 — public customer portal. Token-gated, read-only invoice view; talks only to the
+    // /api/portal-invoice function (never the accounting client). Sits beside /shop.
+    if (pathname.startsWith('/portal/')) {
+      return (
+        <Suspense
+          fallback={
+            <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-500">
+              Loading…
+            </div>
+          }
+        >
+          <CustomerPortal />
+        </Suspense>
+      );
+    }
     if (pathname === '/shop' || pathname.startsWith('/shop/')) {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
     }

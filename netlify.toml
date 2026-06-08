@@ -15,16 +15,37 @@
 #   live CDTFA/EDD files. The function uses SUPABASE_SERVICE_ROLE_KEY and stays
 #   entirely within the accounting.* schema (advisory-only: it never mutates stored
 #   tax rates).
+#
+# WorkTrackAccounting invoice reminders (dunning) scheduled function:
+#   netlify/functions/invoice-reminders.mjs runs DAILY via an in-code V2 schedule
+#   (export const config = { schedule: "0 14 * * *" }) — no toml schedule block needed.
+#   It is ALSO reachable on-demand for the admin "run now" at /api/invoice-reminders
+#   (Bearer accounting_admin) via the /api/* redirect below. It is HARD-GATED on the
+#   server env var ACCOUNTING_DUNNING_ENABLED (default OFF): when off it sends no email
+#   and performs no DB write. The per-tenant settings.dunning.enabled flag is an ADDITIONAL
+#   soft switch. It uses RESEND_API_KEY + SUPABASE_SERVICE_ROLE_KEY and writes only
+#   accounting.invoice_emails / accounting.portal_tokens (no journal entries, no money).
+#   Set ACCOUNTING_FROM_EMAIL (or rely on settings.dunning.fromEmail) for the sender.
+#
+# WorkTrackAccounting customer portal:
+#   netlify/functions/send-invoice-email.mjs (admin "Email invoice") and
+#   netlify/functions/portal-invoice.mjs (the PUBLIC token-gated invoice read) are plain
+#   on-demand functions reached via the /api/* redirect. portal-invoice CORS is locked to
+#   the APP_PUBLIC_URL origin and only ever returns the safe projection from
+#   accounting.portal_invoice_payload (service-role).
 
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Enable WorkTrackAccounting ONLY on PR deploy previews so this branch is testable end-to-end,
-# WITHOUT turning the module on for production users (production main stays flag-dark until the
-# module's real GA). The accounting Postgres schema is deployed + exposed in PostgREST and RLS
-# guards every row, so this only flips the UI routing on for preview builds.
+# WorkTrackAccounting UI is enabled on PR deploy previews AND on production. Accounting routes
+# are admin-gated (AdminGuard) and every accounting.* row is RLS-protected, so flipping the UI on
+# only exposes it to ADMIN users; the Postgres schema is already deployed + exposed in PostgREST.
+# (Production was previously flag-dark; enabled 2026-06-08 for live admin testing.)
 [context.deploy-preview.environment]
+  VITE_ACCOUNTING_ENABLED = "true"
+
+[context.production.environment]
   VITE_ACCOUNTING_ENABLED = "true"
 
 [functions]

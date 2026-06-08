@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LedgerTable } from '../components/LedgerTable';
 import { useTrialBalance } from '../hooks/useAccountingQueries';
 import type { DateRange } from '../types';
+import { AccountLink } from './AccountLink';
 import { DateRangeFilter } from './DateRangeFilter';
 import { ReportPage } from './ReportPage';
 import { describeRange } from './reportFormat';
@@ -57,11 +58,13 @@ export default function TrialBalanceView() {
             const credit = r.balance < 0 ? -r.balance : 0;
             return (
               <tr key={r.accountId} className="border-t border-white/5">
-                <td className="px-3 py-2 text-white">
-                  {r.accountNumber ? (
-                    <span className="mr-2 font-mono text-xs text-slate-500">{r.accountNumber}</span>
-                  ) : null}
-                  {r.name}
+                <td className="px-3 py-2">
+                  <AccountLink
+                    accountId={r.accountId}
+                    accountNumber={r.accountNumber}
+                    name={r.name}
+                    range={range}
+                  />
                 </td>
                 <MoneyCell amount={debit} />
                 <MoneyCell amount={credit} />

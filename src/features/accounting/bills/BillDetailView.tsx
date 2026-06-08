@@ -6,6 +6,8 @@ import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
+import { AttachmentsSection } from '../components/AttachmentsSection';
+import { VendorTaxInfoSection } from '../components/VendorTaxInfoSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useBill, useBillPayments } from '../hooks/useAccountingQueries';
 import { usePostBill, useRecordVendorPayment, useVoidBill } from '../hooks/useAccountingMutations';
@@ -369,6 +371,16 @@ export default function BillDetailView() {
               defined; otherwise edits/saves them into accounting.custom_field_values
               without touching this bill's own record. */}
           <CustomFieldsSection entityType="bill" entityId={bill.id} />
+
+          {/* Additive document attachments. Owns its own data; attaching a file moves no
+              money and posts no journal entry, and never touches this bill's record. */}
+          <AttachmentsSection entityType="bill" entityId={bill.id} />
+
+          {/* #12 W-9 / 1099 tax info for this bill's vendor. Self-contained editor over
+              accounting.vendor_tax_info — saving it moves no money and never touches this
+              bill or the vendor's own record. Surfaced here because there is no standalone
+              vendor detail screen; the bill is the natural place to record a vendor's W-9. */}
+          <VendorTaxInfoSection vendorId={bill.vendorId} />
         </div>
       )}
 

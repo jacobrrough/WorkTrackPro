@@ -6,6 +6,7 @@ import { AccountPicker } from '../components/AccountPicker';
 import { useBankAccount, useBankTransactions } from '../hooks/useAccountingQueries';
 import {
   useAcceptBankTransaction,
+  useApplyRulesToUnreviewed,
   useCategorizeBankTransaction,
   useSetBankTransactionExcluded,
   useUnmatchBankTransaction,
@@ -78,6 +79,21 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
     setError(null);
     const res = await setExcluded.mutateAsync({ id: txn.id, excluded });
     if (res.error) setError(res.error);
+  };
+
+  /** Jump to the rules screen with a rule pre-filled from this txn + its chosen category. */
+  const onMakeRule = () => {
+    navigate(`${BANKING_BASE}/${txn.bankAccountId}/rules`, {
+      state: {
+        suggested: {
+          matchField: txn.merchant ? 'merchant' : 'description',
+          matchOp: 'contains',
+          matchValue: (txn.merchant || txn.description || '').trim(),
+          setAccountId: category,
+          scopeAll: false,
+        },
+      },
+    });
   };
 
   const isMatched = txn.status === 'matched';
@@ -161,6 +177,18 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
             <Button size="sm" icon="check" onClick={onAccept} disabled={busy || !category}>
               {accept.isPending ? 'Posting…' : 'Accept'}
             </Button>
+            {category && (
+              <button
+                type="button"
+                onClick={onMakeRule}
+                disabled={busy}
+                title="Create a rule that auto-categorizes transactions like this"
+                className="flex items-center gap-1 text-sm font-semibold text-slate-400 hover:text-primary disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined text-base">rule_folder</span>
+                Make a rule
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onToggleExcluded(true)}
@@ -192,6 +220,23 @@ export default function BankAccountDetailView() {
     isError: accountError,
   } = useBankAccount(bankAccountId);
   const [tab, setTab] = useState<StatusTab>('all');
+  const applyRules = useApplyRulesToUnreviewed();
+  const [ruleMsg, setRuleMsg] = useState<string | null>(null);
+
+  const onRunRules = async () => {
+    if (!bankAccountId) return;
+    setRuleMsg(null);
+    const res = await applyRules.mutateAsync(bankAccountId);
+    if (res.error) {
+      setRuleMsg(`Rules ran with an error: ${res.error}`);
+    } else {
+      setRuleMsg(
+        res.categorized === 0
+          ? 'No unreviewed transactions matched a rule.'
+          : `Categorized ${res.categorized} transaction${res.categorized === 1 ? '' : 's'} by rule.`
+      );
+    }
+  };
 
   const filter: BankTransactionFilter = useMemo(
     () => (tab === 'all' ? {} : { status: tab }),
@@ -214,6 +259,15 @@ export default function BankAccountDetailView() {
       actions={
         bankAccountId ? (
           <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon="bolt"
+              onClick={onRunRules}
+              disabled={applyRules.isPending}
+            >
+              {applyRules.isPending ? 'Running…' : 'Run rules'}
+            </Button>
             <Button
               size="sm"
               variant="secondary"
@@ -287,6 +341,15 @@ export default function BankAccountDetailView() {
               <div className="rounded-sm border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
                 This bank account is not linked to a general-ledger account, so transactions cannot
                 be posted. Link one before accepting transactions.
+              </div>
+            )}
+
+            {ruleMsg && (
+              <div
+                className="rounded-sm border border-sky-500/30 bg-sky-500/10 p-2 text-sm text-sky-300"
+                role="status"
+              >
+                {ruleMsg}
               </div>
             )}
 

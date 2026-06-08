@@ -269,6 +269,246 @@ export function buildInvoiceRevenueJournalLines(
   };
 }
 
+// ── Progress billing (#10): AIA-style application + retainage ─────────────────
+
+/**
+ * One SOV line's earned figures for ONE billing period, reduced to the cents the ledger
+ * cares about. The service computes these from the percent-complete entry (see
+ * progressBilling.ts): `currentPeriodCents` is the work earned THIS period (W for the
+ * period, the income to recognize), `retainageCents` is the portion of that work WITHHELD
+ * this period (R for the period, parked in 1210 Retainage Receivable rather than 1200 AR).
+ * `taxable`/`taxCents` carry per-line sales tax computed on the WORK (tax-on-W), never on
+ * the net-of-retainage amount. Dimensions are stamped onto the income credit for slicing.
+ */
+export interface ComputedProgressLine {
+  /** Income account this line's work credits; falls back to the document default. */
+  incomeAccountId: string | null;
+  /** Work earned this period (the income to recognize), in cents. Never negative. */
+  currentPeriodCents: number;
+  /** Retainage withheld on this period's work (debits 1210, not 1200), in cents. */
+  retainageCents: number;
+  /** Whether this line's work participates in sales tax. */
+  taxable: boolean;
+  /** Sales tax on this period's work (tax-on-W), in cents. */
+  taxCents: number;
+  /** B2 reporting dimensions carried onto the income JE line. */
+  classId: string | null;
+  locationId: string | null;
+  departmentId: string | null;
+}
+
+export interface ProgressInvoiceTotals {
+  /** Σ work earned this period (W), in cents — the income recognized. */
+  workCents: number;
+  /** Σ retainage withheld this period (R), in cents — the 1210 debit. */
+  retainageCents: number;
+  /** Σ line tax on this period's work (tax-on-W), in cents. */
+  taxCents: number;
+  lines: ComputedProgressLine[];
+}
+
+export interface ProgressInvoiceJournalResult {
+  lines: NewJournalLineInput[];
+  /** Work earned this period (income recognized), in dollars. */
+  work: number;
+  /** Retainage withheld this period (debited to 1210), in dollars. */
+  retainage: number;
+  /** Sales tax on this period's work, in dollars. */
+  taxTotal: number;
+  /** The current amount due this period: (W − R) + tax, in dollars (the 1200 AR debit + tax). */
+  currentDue: number;
+}
+
+/**
+ * Build the revenue journal for ONE progress-billing period (an AIA-style application):
+ *   Dr 1200 Accounts Receivable   (W − R)              ← billed and currently due
+ *   Dr 1210 Retainage Receivable  (R)                  ← billed but withheld this period
+ *   Cr 4000/41xx Income           (W, by income account × dims)
+ *   Cr 2200 Sales Tax Payable     (tax on W, if any)   ← tax-on-WORK, not net-of-retainage
+ *
+ * Income credits are grouped by (income account × class × location × department) just like a
+ * regular invoice, so a multi-SOV-account application still posts one credit per combination.
+ * The total debits are (W − R) + R + tax = W + tax = the income credit + the tax credit, so the
+ * entry balances by construction. Working in integer cents guarantees (W − R) + R == W exactly
+ * (no split-rounding gap). Throws if the period has nothing to bill (W ≤ 0), if R > W (a period
+ * cannot withhold more than it earned), or — via assertBalanced — if the entry is ever
+ * unbalanced/trivial. Tax is credited to 2200 (sales-tax payable) only when there is taxable
+ * work. `customerId` is stamped on every line for AR reporting.
+ */
+export function buildProgressInvoiceJournalLines(
+  totals: ProgressInvoiceTotals,
+  accounts: Pick<
+    DefaultAccounts,
+    'accountsReceivable' | 'retainageReceivable' | 'salesIncome' | 'salesTaxPayable'
+  >,
+  opts?: { customerId?: string | null }
+): ProgressInvoiceJournalResult {
+  const arAccount = accounts.accountsReceivable;
+  if (!arAccount) {
+    throw new Error('Accounts Receivable account is not configured (default_accounts).');
+  }
+  const workCents = totals.workCents;
+  if (workCents <= 0) {
+    throw new Error('Cannot post a progress billing with no work completed this period.');
+  }
+  const retainageCents = totals.retainageCents;
+  if (retainageCents < 0) {
+    throw new Error('Retainage withheld this period cannot be negative.');
+  }
+  if (retainageCents > workCents) {
+    throw new Error('Retainage withheld this period cannot exceed the work completed.');
+  }
+
+  const customerId = opts?.customerId ?? null;
+  const lines: NewJournalLineInput[] = [];
+
+  // Dr Accounts Receivable for the currently-due portion (work minus retainage withheld).
+  const arCents = workCents - retainageCents;
+  if (arCents > 0) {
+    lines.push({
+      accountId: arAccount,
+      debit: centsToAmount(arCents),
+      credit: 0,
+      lineMemo: 'Accounts receivable (progress billing)',
+    });
+  }
+
+  // Dr Retainage Receivable for the withheld portion (parked until release).
+  if (retainageCents > 0) {
+    const retainageAccount = accounts.retainageReceivable;
+    if (!retainageAccount) {
+      throw new Error(
+        'Retainage Receivable account is not configured (default_accounts.retainage_receivable).'
+      );
+    }
+    lines.push({
+      accountId: retainageAccount,
+      debit: centsToAmount(retainageCents),
+      credit: 0,
+      lineMemo: 'Retainage receivable',
+    });
+  }
+
+  // Cr Income, grouped by (income account × dimensions) for the work earned this period.
+  const incomeByGroup = new Map<
+    string,
+    { accountId: string; cents: number; dims: ReturnType<typeof pickDimensions> }
+  >();
+  for (const line of totals.lines) {
+    if (line.currentPeriodCents <= 0) continue;
+    const acct = line.incomeAccountId ?? accounts.salesIncome;
+    if (!acct) {
+      throw new Error(
+        'No income account configured for a progress billing line (default_accounts.sales_income).'
+      );
+    }
+    const dims = pickDimensions(line);
+    const key = dimGroupKey(acct, dims);
+    const existing = incomeByGroup.get(key);
+    if (existing) existing.cents += line.currentPeriodCents;
+    else incomeByGroup.set(key, { accountId: acct, cents: line.currentPeriodCents, dims });
+  }
+  for (const { accountId, cents, dims } of incomeByGroup.values()) {
+    if (cents <= 0) continue;
+    lines.push({
+      accountId,
+      debit: 0,
+      credit: centsToAmount(cents),
+      lineMemo: 'Progress revenue',
+      ...dimsSpread(dims),
+    });
+  }
+
+  // Cr Sales Tax Payable for tax on the work (tax-on-W), when any line is taxed.
+  if (totals.taxCents > 0) {
+    const taxAccount = accounts.salesTaxPayable;
+    if (!taxAccount) {
+      throw new Error(
+        'Sales Tax Payable account is not configured (default_accounts.sales_tax_payable).'
+      );
+    }
+    lines.push({
+      accountId: taxAccount,
+      debit: 0,
+      credit: centsToAmount(totals.taxCents),
+      lineMemo: 'Sales tax payable',
+    });
+  }
+
+  // Stamp the customer dimension on every line for AR reporting.
+  const stamped = customerId ? lines.map((l) => ({ ...l, customerId })) : lines;
+
+  assertBalanced(stamped);
+
+  return {
+    lines: stamped,
+    work: centsToAmount(workCents),
+    retainage: centsToAmount(retainageCents),
+    taxTotal: centsToAmount(totals.taxCents),
+    currentDue: centsToAmount(arCents + totals.taxCents),
+  };
+}
+
+export interface RetainageReleaseJournalResult {
+  lines: NewJournalLineInput[];
+  /** The retainage amount released (posted on both sides), in dollars. */
+  amount: number;
+}
+
+/**
+ * Build the journal that RELEASES previously-withheld retainage into a current receivable:
+ *   Dr 1200 Accounts Receivable   = amount released   ← now due
+ *   Cr 1210 Retainage Receivable  = amount released   ← reverse the withholding
+ *
+ * Equal by construction — a single amount books on both sides — so the entry always balances
+ * (the DB balance trigger is the final gate). No new revenue is recognized here (the income was
+ * already recognized when the work was billed); this only moves the withheld balance from the
+ * retainage asset to ordinary AR so the customer is now billed for it. `amountCents` is the
+ * integer-cents retainage to release; a zero or negative amount has nothing to release, so this
+ * throws rather than emit a degenerate 0/0 entry. Both account ids are required. `customerId`
+ * is stamped on both lines for AR reporting.
+ */
+export function buildRetainageReleaseJournalLines(
+  amountCents: number,
+  accounts: Pick<DefaultAccounts, 'accountsReceivable' | 'retainageReceivable'>,
+  opts?: { customerId?: string | null }
+): RetainageReleaseJournalResult {
+  const arAccount = accounts.accountsReceivable;
+  if (!arAccount) {
+    throw new Error('Accounts Receivable account is not configured (default_accounts).');
+  }
+  const retainageAccount = accounts.retainageReceivable;
+  if (!retainageAccount) {
+    throw new Error(
+      'Retainage Receivable account is not configured (default_accounts.retainage_receivable).'
+    );
+  }
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    throw new Error('Cannot release a zero or negative retainage amount.');
+  }
+
+  const value = centsToAmount(amountCents);
+  const customerId = opts?.customerId ?? null;
+  const lines: NewJournalLineInput[] = [
+    {
+      accountId: arAccount,
+      debit: value,
+      credit: 0,
+      lineMemo: 'Retainage released to accounts receivable',
+    },
+    {
+      accountId: retainageAccount,
+      debit: 0,
+      credit: value,
+      lineMemo: 'Retainage receivable released',
+    },
+  ];
+  const stamped = customerId ? lines.map((l) => ({ ...l, customerId })) : lines;
+  assertBalanced(stamped);
+
+  return { lines: stamped, amount: value };
+}
+
 /**
  * Build the receipt journal for a customer payment:
  *   Dr 1000 Cash / 1050 Undeposited Funds  (amount received)

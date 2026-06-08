@@ -53,6 +53,7 @@ import type {
   RecurringTemplate,
   TaxAgency,
   TaxCode,
+  TaxJurisdiction,
   TaxFilingFrequency,
   TaxFilingRule,
   TaxRate,
@@ -66,6 +67,8 @@ import type {
   Vendor,
   VendorPayment,
   VendorPaymentApplication,
+  VendorTaxInfo,
+  FederalEntityType,
 } from '../../../features/accounting/types';
 import { parseDiff } from '../../../features/accounting/taxTableDiff';
 
@@ -183,6 +186,23 @@ export function mapTaxCodeRow(row: Row, rateOverride?: number): TaxCode {
     isActive: row.is_active !== false,
     rate: rateOverride != null ? rateOverride : num(row.rate),
     createdAt: str(row.created_at),
+  };
+}
+
+// ── Tax jurisdictions (#13, address-based tax-code selection) ─────────────────
+/** Map an `accounting.tax_jurisdictions` row (geography → composite tax_code mapping). */
+export function mapTaxJurisdictionRow(row: Row): TaxJurisdiction {
+  return {
+    id: str(row.id),
+    country: str(row.country) || 'US',
+    state: nstr(row.state),
+    county: nstr(row.county),
+    city: nstr(row.city),
+    zip: nstr(row.zip),
+    taxCodeId: str(row.tax_code_id),
+    priority: num(row.priority),
+    createdAt: str(row.created_at),
+    updatedAt: str(row.updated_at),
   };
 }
 
@@ -373,6 +393,9 @@ export function mapBillLineRow(row: Row): BillLine {
     locationId: nstr(row.location_id),
     departmentId: nstr(row.department_id),
     sourceInventoryId: nstr(row.source_inventory_id),
+    // #11 3-way-match link back to the purchase_order_line this bill line fulfils (null
+    // on a bill that did not originate from a PO). Additive — no existing bill flow sets it.
+    poLineId: nstr(row.po_line_id),
     sortOrder: num(row.sort_order),
   };
 }
@@ -581,6 +604,7 @@ export function mapBankTransactionRow(row: Row): BankTransaction {
     reconciliationId: nstr(row.reconciliation_id),
     clearedAt: nstr(row.cleared_at),
     appliedRuleId: nstr(row.applied_rule_id),
+    vendorId: nstr(row.vendor_id),
     importedAt: str(row.imported_at),
     createdAt: str(row.created_at),
     categoryAccountName: category ? str(category.name) : undefined,
@@ -1172,5 +1196,46 @@ export function mapTaxRateRow(row: Row): TaxRate {
     endDate: nstr(row.end_date),
     isActive: row.is_active !== false,
     createdAt: str(row.created_at),
+  };
+}
+
+/** The W-9 federal tax classifications (accounting.vendor_tax_info.federal_entity_type). */
+const VALID_FEDERAL_ENTITY_TYPES: ReadonlySet<FederalEntityType> = new Set([
+  'individual',
+  'sole_prop',
+  'c_corp',
+  's_corp',
+  'partnership',
+  'llc',
+  'other',
+]);
+
+/** Narrow a raw entity-type cell to the union, or null when unset/unrecognized. */
+function federalEntityType(v: unknown): FederalEntityType | null {
+  if (v == null) return null;
+  const s = String(v) as FederalEntityType;
+  return VALID_FEDERAL_ENTITY_TYPES.has(s) ? s : null;
+}
+
+/**
+ * Map an `accounting.vendor_tax_info` row (the #12 W-9 record) to the VendorTaxInfo domain
+ * shape. `address` is jsonb (supabase-js returns it pre-parsed); a non-object value
+ * degrades to null. tax_id is PII — it is mapped through here for the editor but the
+ * 1099-NEC report shape never echoes it (only a "present?" flag).
+ */
+export function mapVendorTaxInfoRow(row: Row): VendorTaxInfo {
+  const addr = row.address;
+  return {
+    vendorId: str(row.vendor_id),
+    legalName: nstr(row.legal_name),
+    taxId: nstr(row.tax_id),
+    address:
+      addr != null && typeof addr === 'object' && !Array.isArray(addr)
+        ? (addr as Record<string, unknown>)
+        : null,
+    federalEntityType: federalEntityType(row.federal_entity_type),
+    exempt: bool(row.exempt),
+    createdAt: str(row.created_at),
+    updatedAt: str(row.updated_at),
   };
 }

@@ -780,6 +780,7 @@ describe('mapBankTransactionRow', () => {
       reconciliation_id: 'rec-1',
       cleared_at: '2026-06-02',
       applied_rule_id: 'rule-7',
+      vendor_id: 'v-9',
       imported_at: '2026-06-01',
       created_at: '2026-06-01',
       category: { name: 'Operating Expenses' },
@@ -795,6 +796,7 @@ describe('mapBankTransactionRow', () => {
       reconciliationId: 'rec-1',
       clearedAt: '2026-06-02',
       appliedRuleId: 'rule-7',
+      vendorId: 'v-9',
       categoryAccountName: 'Operating Expenses',
     });
   });
@@ -811,6 +813,7 @@ describe('mapBankTransactionRow', () => {
     expect(t.amount).toBe(100);
     expect(t.reconciliationId).toBeNull();
     expect(t.appliedRuleId).toBeNull();
+    expect(t.vendorId).toBeNull();
   });
 });
 

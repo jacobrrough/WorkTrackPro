@@ -162,6 +162,7 @@ export const bankTransactionsService = {
         // the JE). Unmatched rows stay `unreviewed`.
         status: match?.setAccountId ? 'categorized' : 'unreviewed',
         category_account_id: match?.setAccountId ?? null,
+        vendor_id: match?.setVendorId ?? null,
         applied_rule_id: match?.ruleId ?? null,
       };
     });
@@ -181,6 +182,60 @@ export const bankTransactionsService = {
     // user-facing inserted + duplicates always equals parsed.length.
     const racedDuplicates = toInsert.length - insertedCount;
     return { inserted: insertedCount, duplicates: duplicates + racedDuplicates, autoCategorized };
+  },
+
+  /**
+   * Re-run the active rules against this account's still-UNREVIEWED transactions and
+   * stamp the matches (category_account_id + applied_rule_id, status → categorized).
+   * This is what makes a rule created AFTER an import useful: import only auto-
+   * categorizes at insert time, so transactions imported earlier need an explicit
+   * re-apply once a new rule exists.
+   *
+   * Touches ONLY rows still `unreviewed` — the `.eq('status','unreviewed')` guard means
+   * a row the user categorized / accepted / excluded in the meantime is never
+   * overwritten — and posts NO journal entry (it just pre-fills the category for review,
+   * exactly like the import path). Returns how many rows it categorized (and the first
+   * error, if any row failed to update).
+   */
+  async applyRulesToUnreviewed(
+    bankAccountId: string
+  ): Promise<{ categorized: number; error?: string }> {
+    let rules: BankRule[];
+    try {
+      rules = await bankRulesService.listActiveForAccount(bankAccountId);
+    } catch (e) {
+      return { categorized: 0, error: e instanceof Error ? e.message : 'Could not load rules.' };
+    }
+    if (rules.length === 0) return { categorized: 0 };
+
+    const unreviewed = await this.listForAccount(bankAccountId, { status: 'unreviewed' });
+    let categorized = 0;
+    let firstError: string | undefined;
+    for (const txn of unreviewed) {
+      const match = applyRules(
+        { amount: txn.amount, description: txn.description, merchant: txn.merchant, bankAccountId },
+        rules
+      );
+      // Only a rule that assigns a category can pre-fill one (a vendor-only rule has no
+      // effect until transactions carry a vendor) — mirrors the import path's behaviour.
+      if (!match?.setAccountId) continue;
+      const { error } = await acct()
+        .from('bank_transactions')
+        .update({
+          category_account_id: match.setAccountId,
+          vendor_id: match.setVendorId ?? null,
+          applied_rule_id: match.ruleId ?? null,
+          status: 'categorized',
+        })
+        .eq('id', txn.id)
+        .eq('status', 'unreviewed');
+      if (error) {
+        if (firstError === undefined) firstError = error.message;
+        continue;
+      }
+      categorized += 1;
+    }
+    return { categorized, error: firstError };
   },
 
   /**

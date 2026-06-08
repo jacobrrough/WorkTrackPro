@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
+import { AttachmentsSection } from '../components/AttachmentsSection';
 import { LedgerTable } from '../components/LedgerTable';
 import { useJournalEntry } from '../hooks/useAccountingQueries';
 import { useVoidJournalEntry } from '../hooks/useAccountingMutations';
@@ -106,6 +107,10 @@ export default function JournalEntryDetail() {
               {error}
             </p>
           )}
+
+          {/* Additive document attachments. Owns its own data; attaching a file moves no
+              money and posts no journal entry, and never touches this entry's record. */}
+          <AttachmentsSection entityType="journal_entry" entityId={entry.id} />
         </div>
       )}
     </AccountingShell>

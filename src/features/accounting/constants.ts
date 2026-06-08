@@ -11,6 +11,9 @@ export const BUDGETS_BASE = `${ACCOUNTING_BASE}/budgets`;
 export const FIXED_ASSETS_BASE = `${ACCOUNTING_BASE}/fixed-assets`;
 export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
 export const SETTINGS_BASE = `${ACCOUNTING_BASE}/settings`;
+export const ESTIMATES_BASE = `${ACCOUNTING_BASE}/estimates`;
+export const PROGRESS_BASE = `${ACCOUNTING_BASE}/progress`;
+export const PURCHASE_ORDERS_BASE = `${ACCOUNTING_BASE}/purchase-orders`;
 /**
  * QuickBooks Online connection (import Phase 0). A single AccountingShell-wrapped
  * screen that runs the OAuth connect/disconnect handshake and a test call. The OAuth
@@ -35,6 +38,13 @@ export const TAX_TABLE_DRIFT_SEGMENT = 'settings/tax-tables/drift/:driftId';
 export const taxTablesPath = (): string => TAX_TABLES_BASE;
 /** Absolute path to one drift's detail screen. */
 export const taxTableDriftPath = (driftId: string): string => `${TAX_TABLES_BASE}/drift/${driftId}`;
+
+// ── #13 Sales-tax rate automation — the address → tax-code jurisdiction map, an
+// accounting_admin-only screen UNDER Settings (advisory; a mapping only points an address at
+// an EXISTING composite tax code — it never moves money).
+export const TAX_JURISDICTIONS_BASE = `${SETTINGS_BASE}/tax-jurisdictions`;
+export const TAX_JURISDICTIONS_SETTINGS_SEGMENT = 'settings/tax-jurisdictions';
+export const taxJurisdictionsPath = (): string => TAX_JURISDICTIONS_BASE;
 
 /** The five A3 financial reports, used by the Reports index and the router. */
 export interface ReportLink {
@@ -106,6 +116,37 @@ export const salesTaxLiabilityPath = (): string => `${REPORTS_BASE}/${SALES_TAX_
 /** Path to the read-only Tax Calendar dashboard. */
 export const taxCalendarPath = (): string => `${REPORTS_BASE}/${TAX_CALENDAR_SLUG}`;
 
+// ── #3/#4/#5 report routes (GL detail + drill-down, cash-flow statement, mgmt reports). ──
+export const GENERAL_LEDGER_SLUG = 'general-ledger';
+export const CASH_FLOW_STATEMENT_SLUG = 'cash-flow-statement';
+export const SALES_BY_CUSTOMER_SLUG = 'sales-by-customer';
+export const SALES_BY_ITEM_SLUG = 'sales-by-item';
+export const PURCHASES_BY_VENDOR_SLUG = 'purchases-by-vendor';
+
+/** General-ledger account-picker landing. */
+export const generalLedgerPath = (): string => `${REPORTS_BASE}/${GENERAL_LEDGER_SLUG}`;
+/** One account's GL register, carrying the current date range as a `?from=&to=` query. */
+export const accountLedgerPath = (accountId: string, range?: ReportRangeKey): string => {
+  const base = `${REPORTS_BASE}/${GENERAL_LEDGER_SLUG}/${accountId}`;
+  const params = new URLSearchParams();
+  if (range?.from) params.set('from', range.from);
+  if (range?.to) params.set('to', range.to);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+};
+/** Statement of Cash Flows (indirect method). */
+export const cashFlowStatementPath = (): string => `${REPORTS_BASE}/${CASH_FLOW_STATEMENT_SLUG}`;
+/** Sales by customer (management report). */
+export const salesByCustomerPath = (): string => `${REPORTS_BASE}/${SALES_BY_CUSTOMER_SLUG}`;
+/** Sales by item (management report). */
+export const salesByItemPath = (): string => `${REPORTS_BASE}/${SALES_BY_ITEM_SLUG}`;
+/** Purchases by vendor (management report). */
+export const purchasesByVendorPath = (): string => `${REPORTS_BASE}/${PURCHASES_BY_VENDOR_SLUG}`;
+
+/** #12 1099-NEC worklist (advisory; no e-file). */
+export const FORM_1099_SLUG = 'form-1099';
+export const form1099WorklistPath = (): string => `${REPORTS_BASE}/${FORM_1099_SLUG}`;
+
 /** Path to a budget's editor grid. */
 export const budgetEditorPath = (budgetId: string): string => `${BUDGETS_BASE}/${budgetId}`;
 /** Path to a budget's Budget-vs-Actual report. */
@@ -127,6 +168,11 @@ export const ACCOUNTING_QUERY_KEYS = {
   customers: ['accounting', 'customers'] as const,
   customer: (id: string) => ['accounting', 'customers', id] as const,
   taxCodes: ['accounting', 'tax-codes'] as const,
+  // #13 — address → tax-code jurisdiction map (reference data; moves no money).
+  taxJurisdictions: ['accounting', 'tax-jurisdictions'] as const,
+  // #12 — 1099 vendor tracking: the W-9 record hangs under the vendor; worklist totals by year.
+  vendorTaxInfo: (vendorId: string) => ['accounting', 'vendors', vendorId, 'tax-info'] as const,
+  form1099Totals: (year: number) => ['accounting', 'reports', 'form-1099', year] as const,
   invoices: ['accounting', 'invoices'] as const,
   invoice: (id: string) => ['accounting', 'invoices', id] as const,
   invoicePayments: (invoiceId: string) =>
@@ -153,6 +199,19 @@ export const ACCOUNTING_QUERY_KEYS = {
     ['accounting', 'reports', 'balance-sheet', rangeKey(range)] as const,
   arAging: ['accounting', 'reports', 'ar-aging'] as const,
   apAging: ['accounting', 'reports', 'ap-aging'] as const,
+  // ── GL detail (#3) + management reports (#4) + cash-flow statement (#5). Read-only
+  // over the posted ledger, keyed by range under the `reports` subtree (the account
+  // ledger also by accountId). Never invalidated directly — a posting invalidates `reports`.
+  accountLedger: (accountId: string, range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'account-ledger', accountId, rangeKey(range)] as const,
+  cashFlowStatement: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'cash-flow-statement', rangeKey(range)] as const,
+  salesByCustomer: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'sales-by-customer', rangeKey(range)] as const,
+  salesByItem: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'sales-by-item', rangeKey(range)] as const,
+  purchasesByVendor: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'purchases-by-vendor', rangeKey(range)] as const,
   // ── Banking (A4). `bank` is the subtree root for scoped invalidation; the
   // detail/list keys hang under it so a bank action invalidates only banking. ──
   bank: ['accounting', 'bank'] as const,
@@ -244,6 +303,33 @@ export const ACCOUNTING_QUERY_KEYS = {
     ['accounting', 'custom-fields', 'defs', entityType ?? 'all'] as const,
   customFieldValues: (entityType: string, entityId: string) =>
     ['accounting', 'custom-fields', 'values', entityType, entityId] as const,
+  // ── #2 Document attachments. `attachments` is the subtree root; the per-entity list
+  // hangs under it. Attachments move NO money — mutations invalidate only this subtree.
+  attachments: ['accounting', 'attachments'] as const,
+  attachmentsForEntity: (entityType: string, entityId: string) =>
+    ['accounting', 'attachments', entityType, entityId] as const,
+  // ── #6 Invoice emails / #7 portal tokens. Both hang under the invoices subtree so an
+  // invoice mutation that touches them invalidates cleanly. They move NO money. ──────────
+  invoiceEmails: (invoiceId: string) => ['accounting', 'invoices', invoiceId, 'emails'] as const,
+  portalTokensForInvoice: (invoiceId: string) =>
+    ['accounting', 'invoices', invoiceId, 'portal-tokens'] as const,
+  // ── #8 Estimates. `estimates` is the subtree root; the per-estimate detail hangs under it.
+  estimates: ['accounting', 'estimates'] as const,
+  estimate: (id: string) => ['accounting', 'estimates', id] as const,
+  // ── #10 Progress billing. `projects` is the subtree root; per-project SOV/change-order/
+  // application lists hang under it. Posting an application or releasing retainage posts a
+  // balanced JE + invoice, so those mutations also invalidate journal+reports+jobCosting+invoices.
+  projects: ['accounting', 'projects'] as const,
+  project: (id: string) => ['accounting', 'projects', id] as const,
+  sovLines: (projectId: string) => ['accounting', 'projects', projectId, 'sov-lines'] as const,
+  changeOrders: (projectId: string) =>
+    ['accounting', 'projects', projectId, 'change-orders'] as const,
+  progressInvoices: (projectId: string) =>
+    ['accounting', 'projects', projectId, 'progress-invoices'] as const,
+  // ── #11 Purchase orders. A PO posts no JE; CONVERT creates a draft bill (invalidates bills).
+  purchaseOrders: ['accounting', 'purchase-orders'] as const,
+  purchaseOrder: (id: string) => ['accounting', 'purchase-orders', id] as const,
+  purchaseOrderBills: (id: string) => ['accounting', 'purchase-orders', id, 'bills'] as const,
   // ── Sales-tax reporting & tax calendar (C1). `salesTax` is the subtree root for
   // scoped invalidation. The liability report keys by date range (changing the filter
   // refetches; an empty range = all-time). The calendar keys by "as of". Both are
@@ -309,35 +395,183 @@ function rangeKey(range?: ReportRangeKey): { from: string; to: string } {
   return { from: range?.from ?? 'all', to: range?.to ?? 'all' };
 }
 
+/** QuickBooks-style sidebar sections the nav items group under. */
+export type AccountingNavGroup =
+  | 'overview'
+  | 'sales'
+  | 'expenses'
+  | 'accounting'
+  | 'reports'
+  | 'setup';
+
 export interface AccountingNavItem {
   key: string;
   label: string;
   icon: string;
   path: string;
+  /** Which left-rail section this item lives under. */
+  group: AccountingNavGroup;
 }
 
-/** Sub-navigation for the module shell. */
+/** Sub-navigation for the module shell. The left rail AND the home tiles both derive from this. */
 export const ACCOUNTING_NAV: AccountingNavItem[] = [
-  { key: 'overview', label: 'Overview', icon: 'dashboard', path: ACCOUNTING_BASE },
-  { key: 'accounts', label: 'Accounts', icon: 'account_tree', path: `${ACCOUNTING_BASE}/accounts` },
-  { key: 'import', label: 'Import', icon: 'upload_file', path: `${ACCOUNTING_BASE}/import` },
-  { key: 'integrations', label: 'Integrations', icon: 'sync_alt', path: INTEGRATIONS_BASE },
-  { key: 'journal', label: 'Journal', icon: 'menu_book', path: `${ACCOUNTING_BASE}/journal` },
-  { key: 'invoices', label: 'Invoices', icon: 'receipt_long', path: `${ACCOUNTING_BASE}/invoices` },
-  { key: 'bills', label: 'Bills', icon: 'request_quote', path: `${ACCOUNTING_BASE}/bills` },
-  { key: 'banking', label: 'Banking', icon: 'account_balance_wallet', path: BANKING_BASE },
-  { key: 'job-costing', label: 'Job costing', icon: 'query_stats', path: JOB_COSTING_BASE },
-  { key: 'inventory', label: 'Inventory', icon: 'inventory_2', path: INVENTORY_BASE },
-  { key: 'recurring', label: 'Recurring', icon: 'event_repeat', path: RECURRING_BASE },
-  { key: 'dimensions', label: 'Dimensions', icon: 'sell', path: DIMENSIONS_BASE },
-  { key: 'budgets', label: 'Budgets', icon: 'savings', path: BUDGETS_BASE },
+  {
+    key: 'overview',
+    label: 'Overview',
+    icon: 'dashboard',
+    path: ACCOUNTING_BASE,
+    group: 'overview',
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    icon: 'account_tree',
+    path: `${ACCOUNTING_BASE}/accounts`,
+    group: 'accounting',
+  },
+  {
+    key: 'import',
+    label: 'Import',
+    icon: 'upload_file',
+    path: `${ACCOUNTING_BASE}/import`,
+    group: 'setup',
+  },
+  {
+    key: 'integrations',
+    label: 'Integrations',
+    icon: 'sync_alt',
+    path: INTEGRATIONS_BASE,
+    group: 'setup',
+  },
+  {
+    key: 'journal',
+    label: 'Journal',
+    icon: 'menu_book',
+    path: `${ACCOUNTING_BASE}/journal`,
+    group: 'accounting',
+  },
+  {
+    key: 'invoices',
+    label: 'Invoices',
+    icon: 'receipt_long',
+    path: `${ACCOUNTING_BASE}/invoices`,
+    group: 'sales',
+  },
+  {
+    key: 'estimates',
+    label: 'Estimates',
+    icon: 'description',
+    path: ESTIMATES_BASE,
+    group: 'sales',
+  },
+  {
+    key: 'progress',
+    label: 'Progress billing',
+    icon: 'foundation',
+    path: PROGRESS_BASE,
+    group: 'sales',
+  },
+  {
+    key: 'purchase-orders',
+    label: 'Purchase orders',
+    icon: 'shopping_cart',
+    path: PURCHASE_ORDERS_BASE,
+    group: 'sales',
+  },
+  {
+    key: 'bills',
+    label: 'Bills',
+    icon: 'request_quote',
+    path: `${ACCOUNTING_BASE}/bills`,
+    group: 'expenses',
+  },
+  {
+    key: 'banking',
+    label: 'Banking',
+    icon: 'account_balance_wallet',
+    path: BANKING_BASE,
+    group: 'expenses',
+  },
+  {
+    key: 'job-costing',
+    label: 'Job costing',
+    icon: 'query_stats',
+    path: JOB_COSTING_BASE,
+    group: 'accounting',
+  },
+  {
+    key: 'inventory',
+    label: 'Inventory',
+    icon: 'inventory_2',
+    path: INVENTORY_BASE,
+    group: 'accounting',
+  },
+  {
+    key: 'recurring',
+    label: 'Recurring',
+    icon: 'event_repeat',
+    path: RECURRING_BASE,
+    group: 'accounting',
+  },
+  {
+    key: 'dimensions',
+    label: 'Dimensions',
+    icon: 'sell',
+    path: DIMENSIONS_BASE,
+    group: 'accounting',
+  },
+  { key: 'budgets', label: 'Budgets', icon: 'savings', path: BUDGETS_BASE, group: 'setup' },
   {
     key: 'fixed-assets',
     label: 'Fixed assets',
     icon: 'precision_manufacturing',
     path: FIXED_ASSETS_BASE,
+    group: 'accounting',
   },
-  { key: 'reports', label: 'Reports', icon: 'analytics', path: `${ACCOUNTING_BASE}/reports` },
-  { key: 'custom-fields', label: 'Custom fields', icon: 'tune', path: CUSTOM_FIELDS_BASE },
-  { key: 'settings', label: 'Settings', icon: 'settings', path: `${ACCOUNTING_BASE}/settings` },
+  {
+    key: 'reports',
+    label: 'Reports',
+    icon: 'analytics',
+    path: `${ACCOUNTING_BASE}/reports`,
+    group: 'reports',
+  },
+  {
+    key: 'custom-fields',
+    label: 'Custom fields',
+    icon: 'tune',
+    path: CUSTOM_FIELDS_BASE,
+    group: 'setup',
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    icon: 'settings',
+    path: `${ACCOUNTING_BASE}/settings`,
+    group: 'setup',
+  },
 ];
+
+/** Ordered left-rail sections (QuickBooks-style). `overview` is pinned at the top, no header. */
+export const ACCOUNTING_NAV_SECTIONS: { group: AccountingNavGroup; label: string }[] = [
+  { group: 'sales', label: 'Sales' },
+  { group: 'expenses', label: 'Expenses' },
+  { group: 'accounting', label: 'Accounting' },
+  { group: 'reports', label: 'Reports' },
+  { group: 'setup', label: 'Setup' },
+];
+
+/** The pinned `overview` item (rendered at the top of the rail/home with no section header). */
+export const ACCOUNTING_NAV_OVERVIEW: AccountingNavItem =
+  ACCOUNTING_NAV.find((n) => n.group === 'overview') ?? ACCOUNTING_NAV[0];
+
+/** Group the nav items into the fixed section order (overview excluded — rendered specially). */
+export function accountingNavByGroup(): {
+  group: AccountingNavGroup;
+  label: string;
+  items: AccountingNavItem[];
+}[] {
+  return ACCOUNTING_NAV_SECTIONS.map((s) => ({
+    ...s,
+    items: ACCOUNTING_NAV.filter((n) => n.group === s.group),
+  }));
+}

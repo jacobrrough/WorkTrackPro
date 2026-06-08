@@ -32,6 +32,7 @@ function defaults(overrides: Partial<DefaultAccounts> = {}): DefaultAccounts {
     cash: null,
     undepositedFunds: null,
     accountsReceivable: null,
+    retainageReceivable: null,
     inventoryAsset: null,
     accountsPayable: null,
     salesTaxPayable: null,

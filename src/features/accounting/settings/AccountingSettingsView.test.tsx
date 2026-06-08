@@ -24,6 +24,18 @@ vi.mock('@/services/api/accounting', () => ({
     getClosedThroughDate: () => getClosedThroughDate(),
     setClosedThroughDate: (date: string | null) => setClosedThroughDate(date),
     getDefaultAccounts: () => getDefaultAccounts(),
+    // #6 dunning panel reads this on mount; these tests don't exercise dunning, so a static
+    // resolved config keeps the panel happy without extra wiring.
+    getDunningConfig: () =>
+      Promise.resolve({
+        enabled: false,
+        offsetsDays: [-3, 0, 7],
+        fromEmail: '',
+        subjectTemplate: '',
+        bodyTemplate: '',
+        maxPerRun: 50,
+      }),
+    setDunningConfig: () => Promise.resolve({ ok: true }),
   },
   accountsService: {
     getAll: () => getAllAccounts(),
@@ -39,6 +51,7 @@ function defaultAccounts(overrides: Partial<DefaultAccounts> = {}): DefaultAccou
     cash: null,
     undepositedFunds: null,
     accountsReceivable: null,
+    retainageReceivable: null,
     inventoryAsset: null,
     accountsPayable: null,
     salesTaxPayable: null,

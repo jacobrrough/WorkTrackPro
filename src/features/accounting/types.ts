@@ -391,6 +391,8 @@ export interface BillLine {
   locationId: string | null;
   departmentId: string | null;
   sourceInventoryId: string | null;
+  /** #11 3-way-match link to the purchase_order_line this bill line fulfils (null unless from a PO). */
+  poLineId: string | null;
   sortOrder: number;
 }
 
@@ -513,6 +515,8 @@ export interface DefaultAccounts {
   cash: string | null;
   undepositedFunds: string | null;
   accountsReceivable: string | null;
+  /** #10 progress-billing retainage asset (migration adds the retainage_receivable key). */
+  retainageReceivable: string | null;
   inventoryAsset: string | null;
   accountsPayable: string | null;
   salesTaxPayable: string | null;
@@ -635,6 +639,671 @@ export interface BalanceSheetReport {
   /** totalAssets - (totalLiabilities + totalEquity); zero when balanced. */
   difference: number;
   balanced: boolean;
+}
+
+// ── #2 Document attachments (polymorphic file attachments) ─────────────────────
+/** Entity kinds a document attachment can be filed against (accounting.attachments). */
+export type AttachmentEntityType =
+  | 'invoice'
+  | 'bill'
+  | 'journal_entry'
+  | 'account'
+  | 'vendor'
+  | 'customer';
+
+/**
+ * One uploaded document attached to an accounting entity (accounting.attachments). The
+ * file lives in the private `accounting-attachments` Storage bucket at `storagePath`;
+ * this row is the metadata. Polymorphic via (entityType, entityId) with no cross-table
+ * FK. Pure metadata — attaching a document moves NO money and posts NO journal entry.
+ */
+export interface Attachment {
+  id: string;
+  entityType: AttachmentEntityType;
+  entityId: string;
+  bucket: string;
+  storagePath: string;
+  filename: string;
+  mimeType: string;
+  byteSize: number;
+  uploadedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── #3 General-ledger account register (drill-down) ────────────────────────────
+/** One posted line in an account register, with its running natural-signed balance. */
+export interface AccountLedgerLine {
+  entryId: string;
+  entryNumber: number;
+  date: string;
+  memo: string | null;
+  debit: number;
+  credit: number;
+  /** Running natural-signed balance after this line. */
+  balance: number;
+}
+
+/** An account's general-ledger register over a window (opening + lines + closing). */
+export interface AccountLedgerReport {
+  range: DateRange;
+  accountId: string;
+  accountNumber: string | null;
+  accountName: string;
+  normalBalance: NormalBalance;
+  openingBalance: number;
+  lines: AccountLedgerLine[];
+  totalDebit: number;
+  totalCredit: number;
+  closingBalance: number;
+}
+
+// ── #5 Statement of Cash Flows (indirect method) ───────────────────────────────
+/** Where an account's period movement lands on the Statement of Cash Flows. */
+export type CashFlowCategory = 'operating' | 'investing' | 'financing' | 'cash' | 'non_cash';
+
+/** A Statement of Cash Flows (indirect method) over a period. */
+export interface CashFlowStatementReport {
+  range: DateRange;
+  netIncome: number;
+  operating: ReportSection;
+  investing: ReportSection;
+  financing: ReportSection;
+  netOperating: number;
+  netInvesting: number;
+  netFinancing: number;
+  /** Net change implied by the three sections (ties to cashChange when balanced). */
+  netChangeInCash: number;
+  /** Actual signed change in the cash-category accounts over the period. */
+  cashChange: number;
+  difference: number;
+  balanced: boolean;
+}
+
+// ── #4 Management reports (sales by customer/item, purchases by vendor) ─────────
+/** One customer's pre-tax invoiced revenue over a window. */
+export interface SalesByCustomerRow {
+  customerId: string | null;
+  customerName: string;
+  invoiceCount: number;
+  amount: number;
+}
+export interface SalesByCustomerReport {
+  range: DateRange;
+  rows: SalesByCustomerRow[];
+  total: number;
+}
+
+/** One item's pre-tax invoiced revenue over a window. */
+export interface SalesByItemRow {
+  itemId: string | null;
+  itemName: string;
+  lineCount: number;
+  amount: number;
+}
+export interface SalesByItemReport {
+  range: DateRange;
+  rows: SalesByItemRow[];
+  total: number;
+}
+
+/** One vendor's pre-tax billed spend over a window. */
+export interface PurchasesByVendorRow {
+  vendorId: string | null;
+  vendorName: string;
+  billCount: number;
+  amount: number;
+}
+export interface PurchasesByVendorReport {
+  range: DateRange;
+  rows: PurchasesByVendorRow[];
+  total: number;
+}
+
+// ── #6 Invoice emails + dunning ───────────────────────────────────────────────
+export type InvoiceEmailKind = 'manual_send' | 'reminder';
+export type InvoiceEmailStatus = 'queued' | 'sent' | 'failed' | 'bounced';
+
+export interface InvoiceEmail {
+  id: string;
+  invoiceId: string;
+  kind: InvoiceEmailKind;
+  /** Due-date offset rung for a reminder (null for a manual send). */
+  reminderOffsetDays: number | null;
+  toEmail: string;
+  fromEmail: string;
+  subject: string | null;
+  status: InvoiceEmailStatus;
+  providerMessageId: string | null;
+  providerLastEvent: string | null;
+  error: string | null;
+  portalTokenId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** #7 Customer portal token scope. */
+export type PortalTokenScope = 'customer' | 'invoice';
+
+/** Options for the on-demand "Email invoice" send (serverless mints the portal link). */
+export interface SendInvoiceEmailInput {
+  /** Override recipient; defaults server-side to the customer's email. */
+  toEmail?: string;
+  subject?: string;
+  /** 'invoice' (default) = link shows this invoice; 'customer' = link shows the statement. */
+  scope?: PortalTokenScope;
+  /** Link lifetime in days (server default 30). */
+  expiresInDays?: number;
+}
+
+/** The dunning (automated reminder) config stored under the 'dunning' settings key. */
+export interface DunningConfig {
+  enabled: boolean;
+  /** Due-date offsets to remind on (negative = before, 0 = on, positive = after). */
+  offsetsDays: number[];
+  fromEmail: string;
+  /** Tokens: {{invoiceNumber}} {{customerName}} {{balanceDue}}. */
+  subjectTemplate: string;
+  bodyTemplate: string;
+  maxPerRun: number;
+}
+
+// ── #7 Customer portal tokens ─────────────────────────────────────────────────
+export interface PortalToken {
+  id: string;
+  customerId: string;
+  scope: PortalTokenScope;
+  invoiceId: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── #8 Estimates (quotes → invoice) ───────────────────────────────────────────
+export type EstimateStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'converted';
+
+export const ESTIMATE_STATUS_LABELS: Record<EstimateStatus, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  accepted: 'Accepted',
+  declined: 'Declined',
+  expired: 'Expired',
+  converted: 'Converted',
+};
+
+export interface EstimateLine {
+  id: string;
+  estimateId: string;
+  itemId: string | null;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  discount: number;
+  taxCodeId: string | null;
+  taxable: boolean;
+  incomeAccountId: string | null;
+  jobId: string | null;
+  /** B2 reporting dimensions carried on the line (copied to the invoice line on convert). */
+  classId: string | null;
+  locationId: string | null;
+  departmentId: string | null;
+  sortOrder: number;
+}
+
+export interface Estimate {
+  id: string;
+  estimateNumber: string | null;
+  customerId: string;
+  jobId: string | null;
+  /** Read-only link back to the inbound public.customer_proposals lead this quote came from. */
+  sourceProposalId: string | null;
+  estimateDate: string;
+  expiryDate: string | null;
+  terms: string | null;
+  status: EstimateStatus;
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  total: number;
+  taxCodeId: string | null;
+  /** The invoice this estimate was converted into (null until converted). */
+  convertedInvoiceId: string | null;
+  acceptedAt: string | null;
+  memo: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lines?: EstimateLine[];
+  customerName?: string;
+}
+
+/** A line as supplied by the UI/job-importer before it has a DB id. */
+export interface NewEstimateLineInput {
+  itemId?: string | null;
+  description?: string | null;
+  quantity: number;
+  unitPrice: number;
+  /** Optional explicit line total; defaults to quantity * unitPrice - discount. */
+  lineTotal?: number;
+  discount?: number;
+  taxCodeId?: string | null;
+  taxable?: boolean;
+  incomeAccountId?: string | null;
+  jobId?: string | null;
+  classId?: string | null;
+  locationId?: string | null;
+  departmentId?: string | null;
+}
+
+export interface NewEstimateInput {
+  customerId: string;
+  jobId?: string | null;
+  sourceProposalId?: string | null;
+  estimateDate?: string;
+  expiryDate?: string | null;
+  terms?: string | null;
+  /** Header-level tax code applied to taxable lines lacking their own code. */
+  taxCodeId?: string | null;
+  memo?: string | null;
+  notes?: string | null;
+  lines: NewEstimateLineInput[];
+}
+
+/** Patch for a still-draft estimate (header + full line replacement). */
+export interface UpdateEstimateInput {
+  customerId?: string;
+  jobId?: string | null;
+  estimateDate?: string;
+  expiryDate?: string | null;
+  terms?: string | null;
+  taxCodeId?: string | null;
+  memo?: string | null;
+  notes?: string | null;
+  lines?: NewEstimateLineInput[];
+}
+
+// ── Progress billing + retainage + change orders (#10) ─────────────────────────
+export type ProjectStatus = 'active' | 'closed';
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  active: 'Active',
+  closed: 'Closed',
+};
+
+export interface Project {
+  id: string;
+  customerId: string;
+  jobId: string | null;
+  name: string;
+  contractSum: number;
+  /** Fraction withheld each period (0.10 = 10%). */
+  retainagePercent: number;
+  status: ProjectStatus;
+  createdAt: string;
+  updatedAt: string;
+  /** Hydrated for display from the linked customer. */
+  customerName?: string;
+}
+
+export interface NewProjectInput {
+  customerId: string;
+  jobId?: string | null;
+  name: string;
+  contractSum?: number;
+  /** Fraction (0–1). Defaults to 0.10 at the DB. */
+  retainagePercent?: number;
+}
+
+export interface UpdateProjectInput {
+  customerId?: string;
+  jobId?: string | null;
+  name?: string;
+  contractSum?: number;
+  retainagePercent?: number;
+  status?: ProjectStatus;
+}
+
+/** One Schedule-of-Values line: a billable slice of the contract. */
+export interface SovLine {
+  id: string;
+  projectId: string;
+  description: string | null;
+  scheduledValue: number;
+  incomeAccountId: string | null;
+  /** null = original scope; non-null = scope from an approved change order. */
+  changeOrderId: string | null;
+  sortOrder: number;
+}
+
+export interface NewSovLineInput {
+  description?: string | null;
+  scheduledValue?: number;
+  incomeAccountId?: string | null;
+  changeOrderId?: string | null;
+  sortOrder?: number;
+}
+
+/** Patch for an existing SOV line (carries its id for upsert). */
+export interface UpdateSovLineInput extends NewSovLineInput {
+  id: string;
+}
+
+export type ChangeOrderStatus = 'draft' | 'approved' | 'rejected';
+
+export const CHANGE_ORDER_STATUS_LABELS: Record<ChangeOrderStatus, string> = {
+  draft: 'Draft',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
+
+export interface ChangeOrder {
+  id: string;
+  projectId: string;
+  coNumber: string | null;
+  description: string | null;
+  /** Contract-sum delta; may be negative (a deduct change order). */
+  amount: number;
+  status: ChangeOrderStatus;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewChangeOrderInput {
+  coNumber?: string | null;
+  description?: string | null;
+  amount?: number;
+}
+
+export type ProgressInvoiceStatus = 'draft' | 'posted' | 'void';
+
+/** One billing period's application (AIA G702 header). */
+export interface ProgressInvoice {
+  id: string;
+  projectId: string;
+  /** The real accounting.invoices row this application created + posted (null pre-post). */
+  invoiceId: string | null;
+  periodEnd: string;
+  sequence: number;
+  workCompletedToDate: number;
+  retainageToDate: number;
+  previouslyBilled: number;
+  currentDue: number;
+  status: ProgressInvoiceStatus;
+  createdAt: string;
+  updatedAt: string;
+  lines?: ProgressInvoiceLine[];
+}
+
+/** One application continuation line (AIA G703). */
+export interface ProgressInvoiceLine {
+  id: string;
+  progressInvoiceId: string;
+  sovLineId: string;
+  percentComplete: number;
+  completedToDate: number;
+  retainageThisPeriod: number;
+  currentPeriod: number;
+  sortOrder: number;
+}
+
+/** One SOV line's percent-complete entry for a new application. */
+export interface NewProgressInvoiceLineInput {
+  sovLineId: string;
+  /** Fraction (0–1) complete to date for this line. */
+  percentComplete: number;
+  /** Whether this period's work on the line is taxable (tax-on-work). Defaults false. */
+  taxable?: boolean;
+}
+
+export interface NewProgressInvoiceInput {
+  projectId: string;
+  periodEnd?: string;
+  /** Header tax code applied to taxable lines (tax computed on the period's work). */
+  taxCodeId?: string | null;
+  lines: NewProgressInvoiceLineInput[];
+}
+
+// ── #11 Purchase orders + 3-way match ─────────────────────────────────────────
+export type PoStatus =
+  | 'draft'
+  | 'open'
+  | 'partially_received'
+  | 'received'
+  | 'closed'
+  | 'cancelled';
+
+export const PO_STATUS_LABELS: Record<PoStatus, string> = {
+  draft: 'Draft',
+  open: 'Open',
+  partially_received: 'Partially received',
+  received: 'Received',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
+
+export interface PurchaseOrderLine {
+  id: string;
+  poId: string;
+  /** Item whose expense/inventory-asset account resolves the cost (item-based line). */
+  itemId: string | null;
+  /** Direct GL account (account-based line). At least one of item_id/account_id is set. */
+  accountId: string | null;
+  description: string | null;
+  quantityOrdered: number;
+  unitCost: number;
+  quantityReceived: number;
+  lineTotal: number;
+  jobId: string | null;
+  /** B2 reporting dimensions carried on the line (copied to the bill line on convert). */
+  classId: string | null;
+  locationId: string | null;
+  departmentId: string | null;
+  sortOrder: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  vendorId: string;
+  poNumber: string | null;
+  orderDate: string;
+  expectedDate: string | null;
+  status: PoStatus;
+  jobId: string | null;
+  subtotal: number;
+  taxTotal: number;
+  total: number;
+  memo: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lines?: PurchaseOrderLine[];
+  vendorName?: string;
+}
+
+/** A PO line as supplied by the UI before it has a DB id. */
+export interface NewPurchaseOrderLineInput {
+  itemId?: string | null;
+  accountId?: string | null;
+  description?: string | null;
+  quantityOrdered: number;
+  unitCost: number;
+  /** Set on receipt; defaults to 0 on a new line. */
+  quantityReceived?: number;
+  /** Optional explicit line total; defaults to quantityOrdered * unitCost. */
+  lineTotal?: number;
+  jobId?: string | null;
+  classId?: string | null;
+  locationId?: string | null;
+  departmentId?: string | null;
+}
+
+export interface NewPurchaseOrderInput {
+  vendorId: string;
+  poNumber?: string | null;
+  orderDate?: string;
+  expectedDate?: string | null;
+  /** Initial status; defaults to 'draft'. */
+  status?: PoStatus;
+  /** Sales/use tax on the PO, in dollars (a PO taxes at the header, like a bill). */
+  taxTotal?: number;
+  jobId?: string | null;
+  memo?: string | null;
+  lines: NewPurchaseOrderLineInput[];
+}
+
+/** Patch for an editable (draft/open) purchase order — header + full line replacement. */
+export interface UpdatePurchaseOrderInput {
+  vendorId?: string;
+  poNumber?: string | null;
+  orderDate?: string;
+  expectedDate?: string | null;
+  status?: PoStatus;
+  taxTotal?: number;
+  jobId?: string | null;
+  memo?: string | null;
+  lines?: NewPurchaseOrderLineInput[];
+}
+
+/** One PO line's 3-way-match variance (ordered vs received qty; PO cost vs billed cost). */
+export interface PoLineVariance {
+  poLineId: string;
+  description: string | null;
+  quantityOrdered: number;
+  quantityReceived: number;
+  /** quantityReceived − quantityOrdered (negative = short, positive = over-received). */
+  quantityVariance: number;
+  poUnitCost: number;
+  /** Quantity-weighted unit cost from linked bill lines; null when nothing is billed yet. */
+  billedUnitCost: number | null;
+  /** billedUnitCost − poUnitCost; null when nothing billed. */
+  costVariance: number | null;
+  /** Total quantity billed against this PO line. */
+  billedQuantity: number;
+  /** Number of distinct bills that reference this PO line. */
+  billCount: number;
+  fullyReceived: boolean;
+}
+
+// ── #12 1099 vendor tracking (W-9 master data + 1099-NEC worklist) ─────────────
+/** W-9 federal tax classification (accounting.vendor_tax_info.federal_entity_type). */
+export type FederalEntityType =
+  | 'individual'
+  | 'sole_prop'
+  | 'c_corp'
+  | 's_corp'
+  | 'partnership'
+  | 'llc'
+  | 'other';
+
+export const FEDERAL_ENTITY_TYPE_LABELS: Record<FederalEntityType, string> = {
+  individual: 'Individual',
+  sole_prop: 'Sole proprietor',
+  c_corp: 'C corporation',
+  s_corp: 'S corporation',
+  partnership: 'Partnership',
+  llc: 'LLC',
+  other: 'Other',
+};
+
+/** A vendor's W-9 record (1:1 with accounting.vendors). Master data — moves no money. */
+export interface VendorTaxInfo {
+  vendorId: string;
+  legalName: string | null;
+  /** PII (SSN/EIN). Phase-E pgcrypto encryption target. */
+  taxId: string | null;
+  /** Free-form jsonb address ({ line1?: string } today). */
+  address: Record<string, unknown> | null;
+  federalEntityType: FederalEntityType | null;
+  exempt: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Upsert input for a vendor's W-9 record (blank fields persist as null). */
+export interface VendorTaxInfoInput {
+  legalName?: string | null;
+  taxId?: string | null;
+  address?: Record<string, unknown> | null;
+  federalEntityType?: FederalEntityType | null;
+  exempt?: boolean;
+}
+
+/** One reportable vendor on the 1099-NEC worklist (the TIN itself is never carried). */
+export interface Form1099Row {
+  vendorId: string;
+  vendorName: string;
+  legalName: string | null;
+  /** Whether a TIN is on file (the value itself is intentionally not exposed). */
+  hasTaxId: boolean;
+  exempt: boolean;
+  /** True when BOTH a legal name and a TIN are on file. */
+  wComplete: boolean;
+  paymentCount: number;
+  /** Total non-card posted payments for the year, in dollars. */
+  amount: number;
+}
+
+/** The 1099-NEC worklist for one calendar year (advisory — not a filing). */
+export interface Form1099Report {
+  year: number;
+  /** Reporting threshold in dollars ($600). */
+  thresholdAmount: number;
+  rows: Form1099Row[];
+  reportableTotal: number;
+  belowThresholdCount: number;
+  belowThresholdTotal: number;
+  /** Reportable vendors missing a complete W-9 (legal name + TIN). */
+  incompleteCount: number;
+}
+
+// ── #13 Sales-tax jurisdictions (address-based tax-code selection) ─────────────
+/**
+ * Normalized customer address used for address-based tax-code resolution. Parsed from the
+ * customer's billing/shipping jsonb (tolerates common key variants). country defaults to 'US'.
+ */
+export interface CustomerAddress {
+  country: string;
+  line1: string | null;
+  city: string | null;
+  state: string | null;
+  county: string | null;
+  zip: string | null;
+}
+
+/**
+ * A geography → composite tax-code mapping (accounting.tax_jurisdictions). A null component is
+ * a wildcard. ADVISORY: drives the invoice/estimate auto-suggest; never defines a rate.
+ */
+export interface TaxJurisdiction {
+  id: string;
+  country: string;
+  state: string | null;
+  county: string | null;
+  city: string | null;
+  zip: string | null;
+  taxCodeId: string;
+  /** Manual tie-breaker among equally-specific rules (higher wins). */
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewTaxJurisdictionInput {
+  country?: string | null;
+  state?: string | null;
+  county?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  taxCodeId: string;
+  priority?: number;
+}
+
+/** Upsert input: an `id` switches the service from create to update. */
+export interface UpdateTaxJurisdictionInput extends NewTaxJurisdictionInput {
+  id?: string;
 }
 
 /** Aging buckets shared by AR and AP aging, ordered oldest-last. */
@@ -937,6 +1606,8 @@ export interface BankTransaction {
   clearedAt: string | null;
   /** Which bank_rule auto-categorized this txn, for audit/explain (migration 012). */
   appliedRuleId: string | null;
+  /** Vendor a matching rule assigned (informational AP link; moves no money). */
+  vendorId: string | null;
   importedAt: string;
   createdAt: string;
   /** Hydrated for display from the category GL account. */

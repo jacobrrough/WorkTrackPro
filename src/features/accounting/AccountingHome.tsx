@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { AccountingShell } from './components/AccountingShell';
-import { ACCOUNTING_NAV } from './constants';
+import { accountingNavByGroup } from './constants';
 
 export default function AccountingHome() {
   const navigate = useNavigate();
-  const tiles = ACCOUNTING_NAV.filter((n) => n.key !== 'overview');
+  const sections = accountingNavByGroup();
 
   return (
     <AccountingShell active="overview" title="Accounting">
@@ -14,16 +14,25 @@ export default function AccountingHome() {
         figures with a CPA/EA. You are responsible for tax accuracy and timely filing.
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {tiles.map((t) => (
-          <Card
-            key={t.key}
-            onClick={() => navigate(t.path)}
-            className="flex flex-col items-start gap-2"
-          >
-            <span className="material-symbols-outlined text-2xl text-primary">{t.icon}</span>
-            <span className="font-bold text-white">{t.label}</span>
-          </Card>
+      <div className="flex flex-col gap-6">
+        {sections.map((section) => (
+          <section key={section.group}>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+              {section.label}
+            </h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              {section.items.map((t) => (
+                <Card
+                  key={t.key}
+                  onClick={() => navigate(t.path)}
+                  className="flex flex-col items-start gap-2"
+                >
+                  <span className="material-symbols-outlined text-2xl text-primary">{t.icon}</span>
+                  <span className="font-bold text-white">{t.label}</span>
+                </Card>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </AccountingShell>

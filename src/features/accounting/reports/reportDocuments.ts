@@ -4,18 +4,29 @@
  * is unit-testable and identical to what the on-screen tables show.
  */
 import type {
+  AccountLedgerReport,
   AgingReport,
   BalanceSheetReport,
   BudgetVsActualReport,
   CashFlowForecast,
+  CashFlowStatementReport,
+  Form1099Report,
   ProfitAndLossReport,
+  PurchasesByVendorReport,
+  SalesByCustomerReport,
+  SalesByItemReport,
   SalesTaxLiabilityReport,
   TaxCalendar,
   TrialBalanceReport,
 } from '../types';
 import { AGING_BUCKETS, AGING_BUCKET_LABELS, TAX_FILING_FREQUENCY_LABELS } from '../types';
 import { describeRange, asOfToday, rangeSlug } from './reportFormat';
-import { SALES_TAX_DISCLAIMER, type ReportDocument, type ReportRow } from './reportExport';
+import {
+  REPORT_DISCLAIMER,
+  SALES_TAX_DISCLAIMER,
+  type ReportDocument,
+  type ReportRow,
+} from './reportExport';
 
 /** Render a decimal rate (0.0725) as a percent string ("7.25%"); blank for 0/none. */
 function formatRate(rate: number): string {
@@ -336,5 +347,189 @@ export function taxCalendarDocument(calendar: TaxCalendar): ReportDocument {
       },
     ],
     filenameBase: `tax-calendar_${calendar.asOf}`,
+  };
+}
+
+/**
+ * General-ledger account register (#3): the opening balance row, one row per posted
+ * line (date / entry # / memo, with debit and credit riding in the leading label cells
+ * so the export stays single-amount), and a closing-balance total. The amount column
+ * carries the running natural-signed balance.
+ */
+export function accountLedgerDocument(report: AccountLedgerReport): ReportDocument {
+  const rows: ReportRow[] = [
+    {
+      cells: ['Opening balance', '', '', ''],
+      amount: report.openingBalance,
+      isTotal: true,
+    },
+  ];
+  for (const l of report.lines) {
+    rows.push({
+      cells: [l.date, String(l.entryNumber), l.memo ?? '', l.debit.toFixed(2), l.credit.toFixed(2)],
+      amount: l.balance,
+    });
+  }
+  rows.push({
+    cells: ['Closing balance', '', '', ''],
+    amount: report.closingBalance,
+    isTotal: true,
+  });
+
+  return {
+    title: 'General Ledger',
+    subtitle: `${accountLabel(report.accountNumber, report.accountName)} · ${describeRange(report.range)}`,
+    status: `Closing balance ${report.closingBalance.toFixed(2)}`,
+    sections: [
+      {
+        title: 'Transactions',
+        columns: ['Date', 'Entry #', 'Memo', 'Debit', 'Credit'],
+        rows,
+      },
+    ],
+    filenameBase: `general-ledger_${report.accountNumber ?? report.accountId}_${rangeSlug(report.range)}`,
+  };
+}
+
+/**
+ * Statement of Cash Flows (#5, indirect): the three activity sections each with their
+ * lines + subtotal, then a reconciliation summary (net change implied by the sections
+ * vs. the actual change in cash). The amount column carries each figure.
+ */
+export function cashFlowStatementDocument(report: CashFlowStatementReport): ReportDocument {
+  const sectionDoc = (
+    title: string,
+    lines: { name: string; amount: number }[],
+    subtotal: number
+  ) => {
+    const rows: ReportRow[] = lines.map((l) => ({ cells: [l.name], amount: l.amount }));
+    rows.push({ cells: [`Net cash from ${title.toLowerCase()}`], amount: subtotal, isTotal: true });
+    return { title, columns: ['Item'], rows };
+  };
+
+  const summaryRows: ReportRow[] = [
+    { cells: ['Net change in cash'], amount: report.netChangeInCash, isTotal: true },
+    { cells: ['Change in cash accounts'], amount: report.cashChange, isTotal: true },
+  ];
+
+  return {
+    title: 'Statement of Cash Flows',
+    subtitle: describeRange(report.range),
+    status: report.balanced
+      ? 'Reconciled (net change ties to the change in cash)'
+      : `Does not reconcile — off by ${report.difference.toFixed(2)}`,
+    sections: [
+      sectionDoc('Operating activities', report.operating.lines, report.netOperating),
+      sectionDoc('Investing activities', report.investing.lines, report.netInvesting),
+      sectionDoc('Financing activities', report.financing.lines, report.netFinancing),
+      { title: 'Summary', columns: [''], rows: summaryRows },
+    ],
+    filenameBase: `cash-flow-statement_${rangeSlug(report.range)}`,
+  };
+}
+
+/** Sales by Customer (#4): one row per customer (with its invoice-line count) + total. */
+export function salesByCustomerDocument(report: SalesByCustomerReport): ReportDocument {
+  const rows: ReportRow[] = report.rows.map((r) => ({
+    cells: [r.customerName, String(r.invoiceCount)],
+    amount: r.amount,
+  }));
+  rows.push({ cells: ['Total sales', ''], amount: report.total, isTotal: true });
+
+  return {
+    title: 'Sales by Customer',
+    subtitle: describeRange(report.range),
+    status: `Total sales ${report.total.toFixed(2)} (pre-tax)`,
+    sections: [{ title: 'By customer', columns: ['Customer', 'Lines'], rows }],
+    filenameBase: `sales-by-customer_${rangeSlug(report.range)}`,
+  };
+}
+
+/** Sales by Item (#4): one row per item (with its line count) + total. */
+export function salesByItemDocument(report: SalesByItemReport): ReportDocument {
+  const rows: ReportRow[] = report.rows.map((r) => ({
+    cells: [r.itemName, String(r.lineCount)],
+    amount: r.amount,
+  }));
+  rows.push({ cells: ['Total sales', ''], amount: report.total, isTotal: true });
+
+  return {
+    title: 'Sales by Item',
+    subtitle: describeRange(report.range),
+    status: `Total sales ${report.total.toFixed(2)} (pre-tax)`,
+    sections: [{ title: 'By item', columns: ['Item', 'Lines'], rows }],
+    filenameBase: `sales-by-item_${rangeSlug(report.range)}`,
+  };
+}
+
+/** Purchases by Vendor (#4): one row per vendor (with its bill-line count) + total. */
+export function purchasesByVendorDocument(report: PurchasesByVendorReport): ReportDocument {
+  const rows: ReportRow[] = report.rows.map((r) => ({
+    cells: [r.vendorName, String(r.billCount)],
+    amount: r.amount,
+  }));
+  rows.push({ cells: ['Total purchases', ''], amount: report.total, isTotal: true });
+
+  return {
+    title: 'Purchases by Vendor',
+    subtitle: describeRange(report.range),
+    status: `Total purchases ${report.total.toFixed(2)} (pre-tax)`,
+    sections: [{ title: 'By vendor', columns: ['Vendor', 'Lines'], rows }],
+    filenameBase: `purchases-by-vendor_${rangeSlug(report.range)}`,
+  };
+}
+
+/**
+ * 1099-NEC worklist (#12): the reportable vendors for a calendar year — every 1099 vendor
+ * AT OR OVER the $600 threshold, ranked by total paid, each with its W-9 legal name, a
+ * "Tax ID present?" flag (the actual TIN is never exported), an "exempt?" flag, the payment
+ * count and the total. A leading summary states the threshold, the reportable total, and
+ * how many reportable vendors still need a complete W-9. ADVISORY ONLY — this is a worklist,
+ * not a filing; card / third-party-network payments are excluded (1099-K, not 1099-NEC),
+ * and no e-file is included. Carries the base G9 disclaimer.
+ */
+export function form1099WorklistDocument(report: Form1099Report): ReportDocument {
+  const rows: ReportRow[] = report.rows.map((r) => ({
+    cells: [
+      r.vendorName,
+      r.legalName ?? '',
+      r.hasTaxId ? 'Yes' : 'No',
+      r.exempt ? 'Yes' : 'No',
+      String(r.paymentCount),
+    ],
+    amount: r.amount,
+  }));
+  rows.push({
+    cells: ['Total reportable', '', '', '', ''],
+    amount: report.reportableTotal,
+    isTotal: true,
+  });
+
+  const summaryRows: ReportRow[] = [
+    { cells: ['Reportable threshold (at or over)'], amount: report.thresholdAmount, isTotal: true },
+    { cells: ['Total reportable payments'], amount: report.reportableTotal, isTotal: true },
+  ];
+
+  const status =
+    report.incompleteCount > 0
+      ? `${report.rows.length} reportable vendor${report.rows.length === 1 ? '' : 's'} — ${report.incompleteCount} missing a complete W-9 (legal name + TIN)`
+      : `${report.rows.length} reportable vendor${report.rows.length === 1 ? '' : 's'}`;
+
+  return {
+    title: `1099-NEC Worklist — ${report.year}`,
+    subtitle: `Calendar year ${report.year} · vendors at or over ${report.thresholdAmount.toFixed(2)}`,
+    status,
+    // Base G9 notice (not the sales-tax "representative rates" variant). Card / third-party
+    // payments are excluded upstream (1099-K), and no e-file is included.
+    disclaimer: `${REPORT_DISCLAIMER} Card / third-party-network payments are excluded (reported on 1099-K by the processor). Reporting only — no e-file.`,
+    sections: [
+      { title: 'Summary', columns: [''], rows: summaryRows },
+      {
+        title: 'Reportable vendors',
+        columns: ['Vendor', 'Legal name', 'Tax ID?', 'Exempt?', 'Payments'],
+        rows,
+      },
+    ],
+    filenameBase: `1099-nec-worklist_${report.year}`,
   };
 }

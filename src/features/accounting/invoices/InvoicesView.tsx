@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
+import { LIST_CONTAINER, LIST_HEADER, LIST_ROW } from '../components/listRowStyles';
 import { useInvoices } from '../hooks/useAccountingQueries';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
@@ -26,11 +27,7 @@ function StatusPill({ status }: { status: InvoiceStatus }) {
 
 function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
-    >
+    <button type="button" onClick={onOpen} className={LIST_ROW}>
       <span className="w-24 shrink-0 truncate font-mono text-xs text-slate-500">
         {invoice.invoiceNumber || 'Draft'}
       </span>
@@ -87,7 +84,7 @@ export default function InvoicesView() {
 
       {invoices.length > 0 && (
         <>
-          <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-slate-500 sm:flex">
+          <div className={LIST_HEADER}>
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Date</span>
             <span className="flex-1">Customer</span>
@@ -95,7 +92,7 @@ export default function InvoicesView() {
             <span className="w-28 shrink-0 text-right">Balance</span>
             <span className="w-[58px] shrink-0" />
           </div>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className={LIST_CONTAINER}>
             {invoices.map((inv) => (
               <InvoiceRow
                 key={inv.id}

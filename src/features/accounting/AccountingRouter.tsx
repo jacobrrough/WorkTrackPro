@@ -35,6 +35,27 @@ const InvoiceDetailView = lazyWithRetry(
   () => import('./invoices/InvoiceDetailView'),
   'InvoiceDetailView'
 );
+const EstimatesView = lazyWithRetry(() => import('./estimates/EstimatesView'), 'EstimatesView');
+const EstimateCreateView = lazyWithRetry(
+  () => import('./estimates/EstimateCreateView'),
+  'EstimateCreateView'
+);
+const EstimateDetailView = lazyWithRetry(
+  () => import('./estimates/EstimateDetailView'),
+  'EstimateDetailView'
+);
+const ProjectsView = lazyWithRetry(() => import('./progress/ProjectsView'), 'ProjectsView');
+const ProjectDetailView = lazyWithRetry(
+  () => import('./progress/ProjectDetailView'),
+  'ProjectDetailView'
+);
+const ProgressInvoiceCreateView = lazyWithRetry(
+  () => import('./progress/ProgressInvoiceCreateView'),
+  'ProgressInvoiceCreateView'
+);
+const POsView = lazyWithRetry(() => import('./purchase-orders/POsView'), 'POsView');
+const POCreateView = lazyWithRetry(() => import('./purchase-orders/POCreateView'), 'POCreateView');
+const PODetailView = lazyWithRetry(() => import('./purchase-orders/PODetailView'), 'PODetailView');
 const BillsView = lazyWithRetry(() => import('./bills/BillsView'), 'BillsView');
 const BillCreateView = lazyWithRetry(() => import('./bills/BillCreateView'), 'BillCreateView');
 const BillDetailView = lazyWithRetry(() => import('./bills/BillDetailView'), 'BillDetailView');
@@ -58,6 +79,31 @@ const SalesTaxLiabilityView = lazyWithRetry(
   'SalesTaxLiabilityView'
 );
 const TaxCalendarView = lazyWithRetry(() => import('./reports/TaxCalendarView'), 'TaxCalendarView');
+const GeneralLedgerView = lazyWithRetry(
+  () => import('./reports/GeneralLedgerView'),
+  'GeneralLedgerView'
+);
+const AccountLedgerView = lazyWithRetry(
+  () => import('./reports/AccountLedgerView'),
+  'AccountLedgerView'
+);
+const CashFlowStatementView = lazyWithRetry(
+  () => import('./reports/CashFlowStatementView'),
+  'CashFlowStatementView'
+);
+const SalesByCustomerView = lazyWithRetry(
+  () => import('./reports/SalesByCustomerView'),
+  'SalesByCustomerView'
+);
+const SalesByItemView = lazyWithRetry(() => import('./reports/SalesByItemView'), 'SalesByItemView');
+const PurchasesByVendorView = lazyWithRetry(
+  () => import('./reports/PurchasesByVendorView'),
+  'PurchasesByVendorView'
+);
+const Form1099WorklistView = lazyWithRetry(
+  () => import('./reports/Form1099WorklistView'),
+  'Form1099WorklistView'
+);
 const BankAccountsView = lazyWithRetry(
   () => import('./banking/BankAccountsView'),
   'BankAccountsView'
@@ -117,6 +163,10 @@ const TaxTableDriftDetailView = lazyWithRetry(
   () => import('./tax-tables/TaxTableDriftDetailView'),
   'TaxTableDriftDetailView'
 );
+const TaxJurisdictionsView = lazyWithRetry(
+  () => import('./tax-tables/TaxJurisdictionsView'),
+  'TaxJurisdictionsView'
+);
 const BudgetsView = lazyWithRetry(() => import('./budgets/BudgetsView'), 'BudgetsView');
 const BudgetEditorView = lazyWithRetry(
   () => import('./budgets/BudgetEditorView'),
@@ -175,6 +225,15 @@ export default function AccountingRouter() {
         <Route path="invoices" element={<InvoicesView />} />
         <Route path="invoices/new" element={<InvoiceCreateView />} />
         <Route path="invoices/:invoiceId" element={<InvoiceDetailView />} />
+        <Route path="estimates" element={<EstimatesView />} />
+        <Route path="estimates/new" element={<EstimateCreateView />} />
+        <Route path="estimates/:estimateId" element={<EstimateDetailView />} />
+        <Route path="progress" element={<ProjectsView />} />
+        <Route path="progress/:projectId" element={<ProjectDetailView />} />
+        <Route path="progress/:projectId/bill" element={<ProgressInvoiceCreateView />} />
+        <Route path="purchase-orders" element={<POsView />} />
+        <Route path="purchase-orders/new" element={<POCreateView />} />
+        <Route path="purchase-orders/:poId" element={<PODetailView />} />
         <Route path="bills" element={<BillsView />} />
         <Route path="bills/new" element={<BillCreateView />} />
         <Route path="bills/:billId" element={<BillDetailView />} />
@@ -186,6 +245,17 @@ export default function AccountingRouter() {
         <Route path="reports/ap-aging" element={<ApAgingView />} />
         <Route path="reports/sales-tax" element={<SalesTaxLiabilityView />} />
         <Route path="reports/tax-calendar" element={<TaxCalendarView />} />
+        {/* #3 GL detail + drill-down: static segment ranks above :accountId. */}
+        <Route path="reports/general-ledger" element={<GeneralLedgerView />} />
+        <Route path="reports/general-ledger/:accountId" element={<AccountLedgerView />} />
+        {/* #5 Statement of Cash Flows (distinct slug from the D2 budgets/cash-flow forecast). */}
+        <Route path="reports/cash-flow-statement" element={<CashFlowStatementView />} />
+        {/* #4 management reports. */}
+        <Route path="reports/sales-by-customer" element={<SalesByCustomerView />} />
+        <Route path="reports/sales-by-item" element={<SalesByItemView />} />
+        <Route path="reports/purchases-by-vendor" element={<PurchasesByVendorView />} />
+        {/* #12 1099-NEC worklist (advisory; no e-file). */}
+        <Route path="reports/form-1099" element={<Form1099WorklistView />} />
         <Route path="banking" element={<BankAccountsView />} />
         <Route path="banking/:bankAccountId" element={<BankAccountDetailView />} />
         <Route path="banking/:bankAccountId/import" element={<BankImportView />} />
@@ -208,6 +278,8 @@ export default function AccountingRouter() {
         {/* TAX-SYNC (ADVISORY-ONLY) — accounting_admin-only screens under Settings. */}
         <Route path="settings/tax-tables" element={<TaxTableUpdatesView />} />
         <Route path="settings/tax-tables/drift/:driftId" element={<TaxTableDriftDetailView />} />
+        {/* #13 Sales-tax jurisdictions (address → tax-code map; advisory). */}
+        <Route path="settings/tax-jurisdictions" element={<TaxJurisdictionsView />} />
         <Route path="budgets" element={<BudgetsView />} />
         {/* Static segment ranks above :budgetId, so the forecast resolves correctly. */}
         <Route path="budgets/cash-flow" element={<CashFlowForecastView />} />
