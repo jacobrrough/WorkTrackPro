@@ -38,25 +38,34 @@ const nstr = (v: unknown): string | null => (v == null ? null : String(v));
 /** Chunk size for the follow-up W-9 lookup (matches managementReports.ts). */
 const CHUNK = 100;
 
+/** The W-9 completeness signal for the worklist — presence only, never the raw TIN. */
+interface VendorW9Status {
+  legalName: string | null;
+  hasTaxId: boolean;
+  exempt: boolean;
+}
+
 /**
- * Resolve W-9 records for a set of vendor ids (chunked IN). Returns a Map of
- * vendorId -> VendorTaxInfo; vendors with no W-9 row simply stay absent.
+ * Resolve the W-9 completeness signal for a set of vendor ids (chunked IN). Reads the
+ * accounting.v_vendor_w9_status view, which exposes a `has_tax_id` BOOLEAN and NEVER the raw
+ * tax_id, so the plaintext TIN is never materialized client-side on this path. Vendors with no
+ * W-9 row simply stay absent.
  */
-async function fetchTaxInfoByVendor(vendorIds: string[]): Promise<Map<string, VendorTaxInfo>> {
-  const out = new Map<string, VendorTaxInfo>();
+async function fetchW9StatusByVendor(vendorIds: string[]): Promise<Map<string, VendorW9Status>> {
+  const out = new Map<string, VendorW9Status>();
   for (let i = 0; i < vendorIds.length; i += CHUNK) {
     const slice = vendorIds.slice(i, i + CHUNK);
-    // The worklist needs only the completeness signal (legal name + TIN presence + exempt),
-    // so select the minimal columns rather than the full record. TODO Phase-E: encrypt tax_id
-    // and expose a has_tax_id boolean so the raw TIN never reaches the client on this path.
     const { data, error } = await acct()
-      .from('vendor_tax_info')
-      .select('vendor_id, legal_name, tax_id, exempt')
+      .from('v_vendor_w9_status')
+      .select('vendor_id, legal_name, has_tax_id, exempt')
       .in('vendor_id', slice);
     if (error) throw error;
     for (const raw of (data ?? []) as Row[]) {
-      const info = mapVendorTaxInfoRow(raw);
-      out.set(info.vendorId, info);
+      out.set(String(raw.vendor_id), {
+        legalName: nstr(raw.legal_name),
+        hasTaxId: raw.has_tax_id === true,
+        exempt: raw.exempt === true,
+      });
     }
   }
   return out;
@@ -100,8 +109,9 @@ export const vendor1099Service = {
   /**
    * The ranked 1099-NEC worklist for a calendar year. Reads v_1099_vendor_totals (already
    * scoped to 1099 vendors, non-card posted payments) filtered to `year`, joins each row to
-   * its W-9 record for the completeness flag, and rolls them up via build1099Worklist
-   * (integer cents, $600 threshold). Reads THROW so React Query surfaces them.
+   * its W-9 completeness signal (v_vendor_w9_status — a has_tax_id boolean, never the raw
+   * TIN), and rolls them up via build1099Worklist (integer cents, $600 threshold). Reads
+   * THROW so React Query surfaces them.
    */
   async list1099Totals(year: number): Promise<Form1099Report> {
     const { data, error } = await acct()
@@ -114,8 +124,8 @@ export const vendor1099Service = {
     const vendorIds = Array.from(new Set(totals.map((r) => String(r.vendor_id))));
     const w9ByVendor =
       vendorIds.length > 0
-        ? await fetchTaxInfoByVendor(vendorIds)
-        : new Map<string, VendorTaxInfo>();
+        ? await fetchW9StatusByVendor(vendorIds)
+        : new Map<string, VendorW9Status>();
 
     const inputs: Form1099VendorInput[] = totals.map((r) => {
       const vendorId = String(r.vendor_id);
@@ -124,7 +134,7 @@ export const vendor1099Service = {
         vendorId,
         vendorName: nstr(r.vendor_name) ?? '',
         legalName: w9?.legalName ?? null,
-        taxId: w9?.taxId ?? null,
+        hasTaxId: w9?.hasTaxId ?? false,
         exempt: w9?.exempt ?? false,
         totalPaid: num(r.total_paid),
         paymentCount: num(r.payment_count),

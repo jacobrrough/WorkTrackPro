@@ -13,7 +13,7 @@ function vendor(
     vendorId: p.vendorId,
     vendorName: p.vendorName ?? `Vendor ${p.vendorId}`,
     legalName: p.legalName ?? null,
-    taxId: p.taxId ?? null,
+    hasTaxId: p.hasTaxId ?? false,
     exempt: p.exempt ?? false,
     totalPaid: p.totalPaid ?? 0,
     paymentCount: p.paymentCount ?? 1,
@@ -62,10 +62,10 @@ describe('build1099Worklist', () => {
   it('flags wComplete only when BOTH a legal name and a tax id are present', () => {
     const report = build1099Worklist(
       [
-        vendor({ vendorId: 'full', totalPaid: 800, legalName: 'Acme LLC', taxId: '12-3456789' }),
-        vendor({ vendorId: 'noTin', totalPaid: 800, legalName: 'Bravo Co', taxId: null }),
-        vendor({ vendorId: 'noName', totalPaid: 800, legalName: null, taxId: '98-7654321' }),
-        vendor({ vendorId: 'blankName', totalPaid: 800, legalName: '   ', taxId: '11-1111111' }),
+        vendor({ vendorId: 'full', totalPaid: 800, legalName: 'Acme LLC', hasTaxId: true }),
+        vendor({ vendorId: 'noTin', totalPaid: 800, legalName: 'Bravo Co', hasTaxId: false }),
+        vendor({ vendorId: 'noName', totalPaid: 800, legalName: null, hasTaxId: true }),
+        vendor({ vendorId: 'blankName', totalPaid: 800, legalName: '   ', hasTaxId: true }),
       ],
       { year: 2026 }
     );
@@ -80,15 +80,13 @@ describe('build1099Worklist', () => {
     expect(report.incompleteCount).toBe(3);
   });
 
-  it('never echoes the TIN — only a hasTaxId flag is exposed', () => {
-    const report = build1099Worklist(
-      [vendor({ vendorId: 'a', totalPaid: 800, taxId: '12-3456789' })],
-      { year: 2026 }
-    );
+  it('exposes only a hasTaxId flag — the raw TIN never enters this layer', () => {
+    const report = build1099Worklist([vendor({ vendorId: 'a', totalPaid: 800, hasTaxId: true })], {
+      year: 2026,
+    });
     const row = report.rows[0] as unknown as Record<string, unknown>;
     expect(row.hasTaxId).toBe(true);
     expect('taxId' in row).toBe(false);
-    expect(JSON.stringify(report)).not.toContain('12-3456789');
   });
 
   it('carries the exempt flag through to reportable rows', () => {

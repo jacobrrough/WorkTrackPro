@@ -447,8 +447,14 @@ export const progressBillingService = {
       (s, _l, i) => s + toCents(num(lineRows[i].completed_to_date)),
       0
     );
-    const retainageToDateCents =
-      workToDateCents > 0 ? Math.round(workToDateCents * retainageRate) : 0;
+    // Header cumulative retainage = SUM of each line's rounded cumulative retainage, NOT a
+    // fresh round(totalWorkToDate * rate). Per-line rounding here matches how each line's
+    // period retainage is rounded above, so the header ties to the lines and to the GL 1210
+    // Retainage Receivable balance to the penny (accounting review #7).
+    const retainageToDateCents = lineRows.reduce(
+      (s, r) => s + Math.round(toCents(num(r.completed_to_date)) * retainageRate),
+      0
+    );
     const previouslyBilledCents = [...billed.values()].reduce((s, v) => s + toCents(v), 0);
 
     // 1) Create the AR invoice header (status 'sent'; balance = current due).

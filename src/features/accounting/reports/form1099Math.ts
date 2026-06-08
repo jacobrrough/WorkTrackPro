@@ -34,8 +34,11 @@ export interface Form1099VendorInput {
   vendorName: string;
   /** W-9 legal name (vendor_tax_info.legal_name), or null when no W-9 is on file. */
   legalName: string | null;
-  /** W-9 Taxpayer Identification Number (vendor_tax_info.tax_id), or null when absent. */
-  taxId: string | null;
+  /**
+   * Whether a TIN is on file (the `has_tax_id` boolean of the accounting.v_vendor_w9_status
+   * view). The raw TIN never enters this layer — only its presence, for the W-9-complete check.
+   */
+  hasTaxId: boolean;
   /** Marked exempt from 1099 reporting on the W-9. */
   exempt: boolean;
   /** Total non-card payments to this vendor in the year, in dollars (view total_paid). */
@@ -72,15 +75,14 @@ export function build1099Worklist(
     if (cents >= thresholdCents) {
       reportableTotalCents += cents;
       const legalName = row.legalName?.trim() || null;
-      const taxId = row.taxId?.trim() || null;
       reportable.push({
         vendorId: row.vendorId,
         vendorName: row.vendorName,
         legalName,
-        // Never echo the actual TIN into the report shape — only whether one is on file.
-        hasTaxId: taxId != null,
+        // Only the presence of a TIN is carried — the raw value never reaches this layer.
+        hasTaxId: row.hasTaxId,
         exempt: row.exempt,
-        wComplete: legalName != null && taxId != null,
+        wComplete: legalName != null && row.hasTaxId,
         paymentCount: row.paymentCount,
         amount: centsToAmount(cents),
       });

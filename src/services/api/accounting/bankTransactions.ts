@@ -162,6 +162,7 @@ export const bankTransactionsService = {
         // the JE). Unmatched rows stay `unreviewed`.
         status: match?.setAccountId ? 'categorized' : 'unreviewed',
         category_account_id: match?.setAccountId ?? null,
+        vendor_id: match?.setVendorId ?? null,
         applied_rule_id: match?.ruleId ?? null,
       };
     });
@@ -222,6 +223,7 @@ export const bankTransactionsService = {
         .from('bank_transactions')
         .update({
           category_account_id: match.setAccountId,
+          vendor_id: match.setVendorId ?? null,
           applied_rule_id: match.ruleId ?? null,
           status: 'categorized',
         })

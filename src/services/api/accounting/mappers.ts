@@ -604,6 +604,7 @@ export function mapBankTransactionRow(row: Row): BankTransaction {
     reconciliationId: nstr(row.reconciliation_id),
     clearedAt: nstr(row.cleared_at),
     appliedRuleId: nstr(row.applied_rule_id),
+    vendorId: nstr(row.vendor_id),
     importedAt: str(row.imported_at),
     createdAt: str(row.created_at),
     categoryAccountName: category ? str(category.name) : undefined,

@@ -4,7 +4,12 @@ import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { AccountingShell } from '../components/AccountingShell';
 import { AccountPicker } from '../components/AccountPicker';
-import { useBankAccount, useBankRules, useAccounts } from '../hooks/useAccountingQueries';
+import {
+  useBankAccount,
+  useBankRules,
+  useAccounts,
+  useVendors,
+} from '../hooks/useAccountingQueries';
 import {
   useCreateBankRule,
   useDeleteBankRule,
@@ -39,6 +44,7 @@ interface RuleDraft {
   matchOp: BankRuleOp;
   matchValue: string;
   setAccountId: string;
+  setVendorId: string;
   priority: number;
   scopeAll: boolean;
 }
@@ -49,6 +55,7 @@ function draftFromRule(rule: BankRule): RuleDraft {
     matchOp: rule.matchOp ?? 'contains',
     matchValue: rule.matchValue ?? '',
     setAccountId: rule.setAccountId ?? '',
+    setVendorId: rule.setVendorId ?? '',
     priority: rule.priority,
     // Scope is "all accounts" when the rule has no bank account binding; otherwise
     // it is bound to this page's account.
@@ -71,6 +78,7 @@ function RuleEditorModal({
 }) {
   const create = useCreateBankRule();
   const update = useUpdateBankRule();
+  const { data: vendors = [] } = useVendors();
   const [draft, setDraft] = useState<RuleDraft>(
     rule
       ? draftFromRule(rule)
@@ -79,6 +87,7 @@ function RuleEditorModal({
           matchOp: 'contains',
           matchValue: '',
           setAccountId: '',
+          setVendorId: '',
           priority: 0,
           scopeAll: !bankAccountId,
           ...initial,
@@ -118,6 +127,7 @@ function RuleEditorModal({
           matchOp: draft.matchOp,
           matchValue: draft.matchValue.trim(),
           setAccountId: draft.setAccountId,
+          setVendorId: draft.setVendorId || null,
           priority: draft.priority,
         },
       });
@@ -132,6 +142,7 @@ function RuleEditorModal({
         matchOp: draft.matchOp,
         matchValue: draft.matchValue.trim(),
         setAccountId: draft.setAccountId,
+        setVendorId: draft.setVendorId || null,
         priority: draft.priority,
       };
       const res = await create.mutateAsync(input);
@@ -226,6 +237,26 @@ function RuleEditorModal({
               value={draft.setAccountId}
               onChange={(id) => patch({ setAccountId: id })}
             />
+          </FormField>
+
+          <FormField
+            label="Also set vendor"
+            htmlFor="rule-vendor"
+            hint="Optional — stamps this vendor on matching transactions (no money moves)."
+          >
+            <select
+              id="rule-vendor"
+              className={inputClass}
+              value={draft.setVendorId}
+              onChange={(e) => patch({ setVendorId: e.target.value })}
+            >
+              <option value="">No vendor</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.displayName}
+                </option>
+              ))}
+            </select>
           </FormField>
 
           <div className="grid grid-cols-2 items-end gap-3">

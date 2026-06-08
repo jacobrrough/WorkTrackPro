@@ -1606,6 +1606,8 @@ export interface BankTransaction {
   clearedAt: string | null;
   /** Which bank_rule auto-categorized this txn, for audit/explain (migration 012). */
   appliedRuleId: string | null;
+  /** Vendor a matching rule assigned (informational AP link; moves no money). */
+  vendorId: string | null;
   importedAt: string;
   createdAt: string;
   /** Hydrated for display from the category GL account. */
