@@ -96,6 +96,10 @@ const PurchasesByVendorView = lazyWithRetry(
   () => import('./reports/PurchasesByVendorView'),
   'PurchasesByVendorView'
 );
+const Form1099WorklistView = lazyWithRetry(
+  () => import('./reports/Form1099WorklistView'),
+  'Form1099WorklistView'
+);
 const BankAccountsView = lazyWithRetry(
   () => import('./banking/BankAccountsView'),
   'BankAccountsView'
@@ -154,6 +158,10 @@ const TaxTableUpdatesView = lazyWithRetry(
 const TaxTableDriftDetailView = lazyWithRetry(
   () => import('./tax-tables/TaxTableDriftDetailView'),
   'TaxTableDriftDetailView'
+);
+const TaxJurisdictionsView = lazyWithRetry(
+  () => import('./tax-tables/TaxJurisdictionsView'),
+  'TaxJurisdictionsView'
 );
 const BudgetsView = lazyWithRetry(() => import('./budgets/BudgetsView'), 'BudgetsView');
 const BudgetEditorView = lazyWithRetry(
@@ -239,6 +247,8 @@ export default function AccountingRouter() {
         <Route path="reports/sales-by-customer" element={<SalesByCustomerView />} />
         <Route path="reports/sales-by-item" element={<SalesByItemView />} />
         <Route path="reports/purchases-by-vendor" element={<PurchasesByVendorView />} />
+        {/* #12 1099-NEC worklist (advisory; no e-file). */}
+        <Route path="reports/form-1099" element={<Form1099WorklistView />} />
         <Route path="banking" element={<BankAccountsView />} />
         <Route path="banking/:bankAccountId" element={<BankAccountDetailView />} />
         <Route path="banking/:bankAccountId/import" element={<BankImportView />} />
@@ -261,6 +271,8 @@ export default function AccountingRouter() {
         {/* TAX-SYNC (ADVISORY-ONLY) — accounting_admin-only screens under Settings. */}
         <Route path="settings/tax-tables" element={<TaxTableUpdatesView />} />
         <Route path="settings/tax-tables/drift/:driftId" element={<TaxTableDriftDetailView />} />
+        {/* #13 Sales-tax jurisdictions (address → tax-code map; advisory). */}
+        <Route path="settings/tax-jurisdictions" element={<TaxJurisdictionsView />} />
         <Route path="budgets" element={<BudgetsView />} />
         {/* Static segment ranks above :budgetId, so the forecast resolves correctly. */}
         <Route path="budgets/cash-flow" element={<CashFlowForecastView />} />

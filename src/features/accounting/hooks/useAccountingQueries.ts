@@ -15,6 +15,8 @@ import {
   progressBillingService,
   projectsService,
   purchaseOrdersService,
+  vendor1099Service,
+  taxJurisdictionsService,
   fixedAssetsService,
   inventoryCogsService,
   invoicesService,
@@ -392,6 +394,35 @@ export function usePurchaseOrderBills(poId: string | undefined) {
       : ['accounting', 'purchase-orders', 'none', 'bills'],
     queryFn: () => purchaseOrdersService.listBillsForPo(poId as string),
     enabled: !!poId,
+  });
+}
+
+// ── #12 1099 vendor tracking (advisory; moves no money) ───────────────────────
+/** One vendor's W-9 record (null until recorded). Reads THROW so React Query surfaces them. */
+export function useVendorTaxInfo(vendorId: string | undefined) {
+  return useQuery({
+    queryKey: vendorId
+      ? ACCOUNTING_QUERY_KEYS.vendorTaxInfo(vendorId)
+      : ['accounting', 'vendors', 'none', 'tax-info'],
+    queryFn: () => vendor1099Service.getTaxInfo(vendorId as string),
+    enabled: !!vendorId,
+  });
+}
+
+/** The ranked 1099-NEC worklist for a calendar year (advisory; no e-file). */
+export function use1099Totals(year: number) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.form1099Totals(year),
+    queryFn: () => vendor1099Service.list1099Totals(year),
+  });
+}
+
+// ── #13 Sales-tax jurisdictions (reference data; moves no money) ──────────────
+/** The address → tax-code jurisdiction map, most specific first. */
+export function useTaxJurisdictions() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.taxJurisdictions,
+    queryFn: () => taxJurisdictionsService.list(),
   });
 }
 

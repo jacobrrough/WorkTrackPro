@@ -14,7 +14,7 @@ import {
   useOpenTaxTableDriftCount,
 } from '../hooks/useAccountingQueries';
 import { useSetClosedThroughDate } from '../hooks/useAccountingMutations';
-import { TAX_TABLES_BASE } from '../constants';
+import { TAX_JURISDICTIONS_BASE, TAX_TABLES_BASE } from '../constants';
 import { openDriftBadgeLabel } from '../taxTableSyncView';
 import {
   confirmCloseMessage,
@@ -331,6 +331,42 @@ function TaxTableUpdatesPanel() {
   );
 }
 
+/**
+ * #13 — entry into the sales-tax jurisdictions screen (address → tax-code map). ADVISORY-ONLY:
+ * a mapping points an address at an EXISTING composite tax code to PRE-FILL the tax code on new
+ * invoices/estimates. Nothing here moves money or defines a rate.
+ */
+function TaxJurisdictionsPanel() {
+  const navigate = useNavigate();
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-base font-bold text-white">
+        <span className="material-symbols-outlined text-primary">map</span>
+        Sales-tax jurisdictions
+      </h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Map a customer&apos;s address (state / county / city / ZIP) to the sales-tax code to apply.
+        New invoices and estimates use the most specific match to suggest a tax code — you can
+        always override it. A mapping never defines a rate.
+      </p>
+      <Card
+        className="mt-3 flex items-center gap-3"
+        padding="lg"
+        onClick={() => navigate(TAX_JURISDICTIONS_BASE)}
+      >
+        <span className="material-symbols-outlined text-primary">location_on</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-white">Open the sales-tax jurisdictions screen</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            View and edit the address-to-tax-code map (ZIP-level; verify with a CPA/EA).
+          </p>
+        </div>
+        <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+      </Card>
+    </div>
+  );
+}
+
 /** Parse the "-3, 0, 7, 14" offsets text input into a clean, sorted int[]. */
 function parseOffsets(text: string): number[] {
   const nums = text
@@ -625,6 +661,10 @@ export default function AccountingSettingsView() {
 
         <div className="border-t border-white/10 pt-5">
           <TaxTableUpdatesPanel />
+        </div>
+
+        <div className="border-t border-white/10 pt-5">
+          <TaxJurisdictionsPanel />
         </div>
       </div>
 

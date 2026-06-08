@@ -8,6 +8,7 @@ import {
   REPORTS_BASE,
   cashFlowForecastPath,
   cashFlowStatementPath,
+  form1099WorklistPath,
   generalLedgerPath,
   purchasesByVendorPath,
   salesByCustomerPath,
@@ -159,6 +160,16 @@ export default function ReportsView() {
             <span className="text-xs text-slate-400">
               Upcoming sales-tax filing deadlines per agency, soonest first. Read-only — no
               reminders are sent.
+            </span>
+          </Card>
+          <Card onClick={() => navigate(form1099WorklistPath())} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-2xl text-primary">badge</span>
+              <span className="font-bold text-white">1099-NEC Worklist</span>
+            </span>
+            <span className="text-xs text-slate-400">
+              1099 vendors paid $600+ in a calendar year, with W-9 completeness. Card / third-party
+              payments excluded. Reporting only — no e-file.
             </span>
           </Card>
         </div>

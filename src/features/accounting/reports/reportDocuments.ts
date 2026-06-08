@@ -10,6 +10,7 @@ import type {
   BudgetVsActualReport,
   CashFlowForecast,
   CashFlowStatementReport,
+  Form1099Report,
   ProfitAndLossReport,
   PurchasesByVendorReport,
   SalesByCustomerReport,
@@ -20,7 +21,12 @@ import type {
 } from '../types';
 import { AGING_BUCKETS, AGING_BUCKET_LABELS, TAX_FILING_FREQUENCY_LABELS } from '../types';
 import { describeRange, asOfToday, rangeSlug } from './reportFormat';
-import { SALES_TAX_DISCLAIMER, type ReportDocument, type ReportRow } from './reportExport';
+import {
+  REPORT_DISCLAIMER,
+  SALES_TAX_DISCLAIMER,
+  type ReportDocument,
+  type ReportRow,
+} from './reportExport';
 
 /** Render a decimal rate (0.0725) as a percent string ("7.25%"); blank for 0/none. */
 function formatRate(rate: number): string {
@@ -470,5 +476,60 @@ export function purchasesByVendorDocument(report: PurchasesByVendorReport): Repo
     status: `Total purchases ${report.total.toFixed(2)} (pre-tax)`,
     sections: [{ title: 'By vendor', columns: ['Vendor', 'Lines'], rows }],
     filenameBase: `purchases-by-vendor_${rangeSlug(report.range)}`,
+  };
+}
+
+/**
+ * 1099-NEC worklist (#12): the reportable vendors for a calendar year — every 1099 vendor
+ * AT OR OVER the $600 threshold, ranked by total paid, each with its W-9 legal name, a
+ * "Tax ID present?" flag (the actual TIN is never exported), an "exempt?" flag, the payment
+ * count and the total. A leading summary states the threshold, the reportable total, and
+ * how many reportable vendors still need a complete W-9. ADVISORY ONLY — this is a worklist,
+ * not a filing; card / third-party-network payments are excluded (1099-K, not 1099-NEC),
+ * and no e-file is included. Carries the base G9 disclaimer.
+ */
+export function form1099WorklistDocument(report: Form1099Report): ReportDocument {
+  const rows: ReportRow[] = report.rows.map((r) => ({
+    cells: [
+      r.vendorName,
+      r.legalName ?? '',
+      r.hasTaxId ? 'Yes' : 'No',
+      r.exempt ? 'Yes' : 'No',
+      String(r.paymentCount),
+    ],
+    amount: r.amount,
+  }));
+  rows.push({
+    cells: ['Total reportable', '', '', '', ''],
+    amount: report.reportableTotal,
+    isTotal: true,
+  });
+
+  const summaryRows: ReportRow[] = [
+    { cells: ['Reportable threshold (at or over)'], amount: report.thresholdAmount, isTotal: true },
+    { cells: ['Total reportable payments'], amount: report.reportableTotal, isTotal: true },
+  ];
+
+  const status =
+    report.incompleteCount > 0
+      ? `${report.rows.length} reportable vendor${report.rows.length === 1 ? '' : 's'} — ${report.incompleteCount} missing a complete W-9 (legal name + TIN)`
+      : `${report.rows.length} reportable vendor${report.rows.length === 1 ? '' : 's'}`;
+
+  return {
+    title: `1099-NEC Worklist — ${report.year}`,
+    subtitle: `Calendar year ${report.year} · vendors at or over ${report.thresholdAmount.toFixed(2)}`,
+    status,
+    // Base G9 notice (not the sales-tax "representative rates" variant). Card / third-party
+    // payments are excluded upstream (1099-K), and no e-file is included.
+    disclaimer: `${REPORT_DISCLAIMER} Card / third-party-network payments are excluded (reported on 1099-K by the processor). Reporting only — no e-file.`,
+    sections: [
+      { title: 'Summary', columns: [''], rows: summaryRows },
+      {
+        title: 'Reportable vendors',
+        columns: ['Vendor', 'Legal name', 'Tax ID?', 'Exempt?', 'Payments'],
+        rows,
+      },
+    ],
+    filenameBase: `1099-nec-worklist_${report.year}`,
   };
 }

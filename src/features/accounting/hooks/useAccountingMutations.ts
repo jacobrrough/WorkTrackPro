@@ -21,6 +21,8 @@ import {
   projectsService,
   progressBillingService,
   purchaseOrdersService,
+  vendor1099Service,
+  taxJurisdictionsService,
   journalService,
   paymentsService,
   reconciliationsService,
@@ -43,6 +45,8 @@ import type {
   NewProgressInvoiceInput,
   NewPurchaseOrderInput,
   UpdatePurchaseOrderInput,
+  VendorTaxInfoInput,
+  UpdateTaxJurisdictionInput,
   BudgetCellInput,
   BudgetStatus,
   CustomFieldEntityType,
@@ -1262,6 +1266,37 @@ export function useConvertPurchaseOrder() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bills });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
     },
+  });
+}
+
+// ── #12 1099 vendor tracking: W-9 upsert (master data; moves NO money) ─────────
+export function useUpsertVendorTaxInfo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vendorId, input }: { vendorId: string; input: VendorTaxInfoInput }) =>
+      vendor1099Service.upsertTaxInfo(vendorId, input),
+    onSuccess: (_res, { vendorId }) => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.vendorTaxInfo(vendorId) });
+      // The 1099 worklist joins the W-9 for its completeness check — refresh any open year.
+      qc.invalidateQueries({ queryKey: ['accounting', 'reports', 'form-1099'] });
+    },
+  });
+}
+
+// ── #13 Sales-tax jurisdictions: upsert/delete (reference data; moves NO money) ─
+export function useUpsertTaxJurisdiction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateTaxJurisdictionInput) => taxJurisdictionsService.upsert(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.taxJurisdictions }),
+  });
+}
+
+export function useDeleteTaxJurisdiction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => taxJurisdictionsService.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.taxJurisdictions }),
   });
 }
 

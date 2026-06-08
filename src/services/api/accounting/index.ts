@@ -48,6 +48,9 @@ export {
   computePurchaseOrderTotals,
   computePoVariances,
 } from './purchaseOrders';
+// ── #12 1099 vendor tracking / #13 sales-tax jurisdictions ────────────────────
+export { vendor1099Service } from './vendor1099';
+export { taxJurisdictionsService, parseCustomerAddress } from './taxJurisdictions';
 export {
   buildRecurringInvoiceInput,
   buildRecurringBillInput,

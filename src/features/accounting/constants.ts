@@ -31,6 +31,13 @@ export const taxTablesPath = (): string => TAX_TABLES_BASE;
 /** Absolute path to one drift's detail screen. */
 export const taxTableDriftPath = (driftId: string): string => `${TAX_TABLES_BASE}/drift/${driftId}`;
 
+// ── #13 Sales-tax rate automation — the address → tax-code jurisdiction map, an
+// accounting_admin-only screen UNDER Settings (advisory; a mapping only points an address at
+// an EXISTING composite tax code — it never moves money).
+export const TAX_JURISDICTIONS_BASE = `${SETTINGS_BASE}/tax-jurisdictions`;
+export const TAX_JURISDICTIONS_SETTINGS_SEGMENT = 'settings/tax-jurisdictions';
+export const taxJurisdictionsPath = (): string => TAX_JURISDICTIONS_BASE;
+
 /** The five A3 financial reports, used by the Reports index and the router. */
 export interface ReportLink {
   key: string;
@@ -128,6 +135,10 @@ export const salesByItemPath = (): string => `${REPORTS_BASE}/${SALES_BY_ITEM_SL
 /** Purchases by vendor (management report). */
 export const purchasesByVendorPath = (): string => `${REPORTS_BASE}/${PURCHASES_BY_VENDOR_SLUG}`;
 
+/** #12 1099-NEC worklist (advisory; no e-file). */
+export const FORM_1099_SLUG = 'form-1099';
+export const form1099WorklistPath = (): string => `${REPORTS_BASE}/${FORM_1099_SLUG}`;
+
 /** Path to a budget's editor grid. */
 export const budgetEditorPath = (budgetId: string): string => `${BUDGETS_BASE}/${budgetId}`;
 /** Path to a budget's Budget-vs-Actual report. */
@@ -149,6 +160,11 @@ export const ACCOUNTING_QUERY_KEYS = {
   customers: ['accounting', 'customers'] as const,
   customer: (id: string) => ['accounting', 'customers', id] as const,
   taxCodes: ['accounting', 'tax-codes'] as const,
+  // #13 — address → tax-code jurisdiction map (reference data; moves no money).
+  taxJurisdictions: ['accounting', 'tax-jurisdictions'] as const,
+  // #12 — 1099 vendor tracking: the W-9 record hangs under the vendor; worklist totals by year.
+  vendorTaxInfo: (vendorId: string) => ['accounting', 'vendors', vendorId, 'tax-info'] as const,
+  form1099Totals: (year: number) => ['accounting', 'reports', 'form-1099', year] as const,
   invoices: ['accounting', 'invoices'] as const,
   invoice: (id: string) => ['accounting', 'invoices', id] as const,
   invoicePayments: (invoiceId: string) =>

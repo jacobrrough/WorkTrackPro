@@ -1187,6 +1187,125 @@ export interface PoLineVariance {
   fullyReceived: boolean;
 }
 
+// ── #12 1099 vendor tracking (W-9 master data + 1099-NEC worklist) ─────────────
+/** W-9 federal tax classification (accounting.vendor_tax_info.federal_entity_type). */
+export type FederalEntityType =
+  | 'individual'
+  | 'sole_prop'
+  | 'c_corp'
+  | 's_corp'
+  | 'partnership'
+  | 'llc'
+  | 'other';
+
+export const FEDERAL_ENTITY_TYPE_LABELS: Record<FederalEntityType, string> = {
+  individual: 'Individual',
+  sole_prop: 'Sole proprietor',
+  c_corp: 'C corporation',
+  s_corp: 'S corporation',
+  partnership: 'Partnership',
+  llc: 'LLC',
+  other: 'Other',
+};
+
+/** A vendor's W-9 record (1:1 with accounting.vendors). Master data — moves no money. */
+export interface VendorTaxInfo {
+  vendorId: string;
+  legalName: string | null;
+  /** PII (SSN/EIN). Phase-E pgcrypto encryption target. */
+  taxId: string | null;
+  /** Free-form jsonb address ({ line1?: string } today). */
+  address: Record<string, unknown> | null;
+  federalEntityType: FederalEntityType | null;
+  exempt: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Upsert input for a vendor's W-9 record (blank fields persist as null). */
+export interface VendorTaxInfoInput {
+  legalName?: string | null;
+  taxId?: string | null;
+  address?: Record<string, unknown> | null;
+  federalEntityType?: FederalEntityType | null;
+  exempt?: boolean;
+}
+
+/** One reportable vendor on the 1099-NEC worklist (the TIN itself is never carried). */
+export interface Form1099Row {
+  vendorId: string;
+  vendorName: string;
+  legalName: string | null;
+  /** Whether a TIN is on file (the value itself is intentionally not exposed). */
+  hasTaxId: boolean;
+  exempt: boolean;
+  /** True when BOTH a legal name and a TIN are on file. */
+  wComplete: boolean;
+  paymentCount: number;
+  /** Total non-card posted payments for the year, in dollars. */
+  amount: number;
+}
+
+/** The 1099-NEC worklist for one calendar year (advisory — not a filing). */
+export interface Form1099Report {
+  year: number;
+  /** Reporting threshold in dollars ($600). */
+  thresholdAmount: number;
+  rows: Form1099Row[];
+  reportableTotal: number;
+  belowThresholdCount: number;
+  belowThresholdTotal: number;
+  /** Reportable vendors missing a complete W-9 (legal name + TIN). */
+  incompleteCount: number;
+}
+
+// ── #13 Sales-tax jurisdictions (address-based tax-code selection) ─────────────
+/**
+ * Normalized customer address used for address-based tax-code resolution. Parsed from the
+ * customer's billing/shipping jsonb (tolerates common key variants). country defaults to 'US'.
+ */
+export interface CustomerAddress {
+  country: string;
+  line1: string | null;
+  city: string | null;
+  state: string | null;
+  county: string | null;
+  zip: string | null;
+}
+
+/**
+ * A geography → composite tax-code mapping (accounting.tax_jurisdictions). A null component is
+ * a wildcard. ADVISORY: drives the invoice/estimate auto-suggest; never defines a rate.
+ */
+export interface TaxJurisdiction {
+  id: string;
+  country: string;
+  state: string | null;
+  county: string | null;
+  city: string | null;
+  zip: string | null;
+  taxCodeId: string;
+  /** Manual tie-breaker among equally-specific rules (higher wins). */
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewTaxJurisdictionInput {
+  country?: string | null;
+  state?: string | null;
+  county?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  taxCodeId: string;
+  priority?: number;
+}
+
+/** Upsert input: an `id` switches the service from create to update. */
+export interface UpdateTaxJurisdictionInput extends NewTaxJurisdictionInput {
+  id?: string;
+}
+
 /** Aging buckets shared by AR and AP aging, ordered oldest-last. */
 export type AgingBucket = 'current' | '1-30' | '31-60' | '61-90' | '90+';
 
