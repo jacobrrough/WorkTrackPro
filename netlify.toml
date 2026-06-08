@@ -38,11 +38,14 @@
   command = "npm run build"
   publish = "dist"
 
-# Enable WorkTrackAccounting ONLY on PR deploy previews so this branch is testable end-to-end,
-# WITHOUT turning the module on for production users (production main stays flag-dark until the
-# module's real GA). The accounting Postgres schema is deployed + exposed in PostgREST and RLS
-# guards every row, so this only flips the UI routing on for preview builds.
+# WorkTrackAccounting UI is enabled on PR deploy previews AND on production. Accounting routes
+# are admin-gated (AdminGuard) and every accounting.* row is RLS-protected, so flipping the UI on
+# only exposes it to ADMIN users; the Postgres schema is already deployed + exposed in PostgREST.
+# (Production was previously flag-dark; enabled 2026-06-08 for live admin testing.)
 [context.deploy-preview.environment]
+  VITE_ACCOUNTING_ENABLED = "true"
+
+[context.production.environment]
   VITE_ACCOUNTING_ENABLED = "true"
 
 [functions]
