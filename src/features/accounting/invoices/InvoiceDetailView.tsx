@@ -5,6 +5,7 @@ import { FormField } from '@/components/ui/FormField';
 import { adminSettingsService } from '@/services/api/adminSettings';
 import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
+import { AccountingDrawer } from '../components/AccountingDrawer';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { AttachmentsSection } from '../components/AttachmentsSection';
@@ -112,93 +113,81 @@ function RecordPaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Record Payment</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
+    <AccountingDrawer
+      open
+      onClose={onClose}
+      title="Record Payment"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={recordPayment.isPending || amount <= 0 || overBalance}>
+            {recordPayment.isPending ? 'Recording…' : 'Record payment'}
+          </Button>
+        </div>
+      }
+    >
+      <p className="mb-3 text-sm text-slate-400">
+        Balance due{' '}
+        <span className="font-mono font-bold text-white">{formatMoney(invoice.balanceDue)}</span>.
+        Posts a balanced receipt entry (Dr Cash / Cr Accounts Receivable).
+      </p>
+
+      <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Amount" htmlFor="pay-amount" required>
+            <CurrencyInput
+              id="pay-amount"
+              aria-label="Payment amount"
+              value={amount}
+              onValueChange={setAmount}
+            />
+          </FormField>
+          <FormField label="Date" htmlFor="pay-date">
+            <input
+              id="pay-date"
+              type="date"
+              className={inputClass}
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+            />
+          </FormField>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
-          Balance due{' '}
-          <span className="font-mono font-bold text-white">{formatMoney(invoice.balanceDue)}</span>.
-          Posts a balanced receipt entry (Dr Cash / Cr Accounts Receivable).
-        </p>
-
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Amount" htmlFor="pay-amount" required>
-              <CurrencyInput
-                id="pay-amount"
-                aria-label="Payment amount"
-                value={amount}
-                onValueChange={setAmount}
-              />
-            </FormField>
-            <FormField label="Date" htmlFor="pay-date">
-              <input
-                id="pay-date"
-                type="date"
-                className={inputClass}
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-              />
-            </FormField>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Method" htmlFor="pay-method">
-              <select
-                id="pay-method"
-                className={inputClass}
-                value={method}
-                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-              >
-                {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
-                  <option key={m} value={m}>
-                    {PAYMENT_METHOD_LABELS[m]}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label="Reference" htmlFor="pay-ref" hint="Check # or txn id">
-              <input
-                id="pay-ref"
-                className={inputClass}
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
-                placeholder="Optional"
-              />
-            </FormField>
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-400" role="alert">
-              {error}
-            </p>
-          )}
-
-          <div className="mt-1 flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              onClick={submit}
-              disabled={recordPayment.isPending || amount <= 0 || overBalance}
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Method" htmlFor="pay-method">
+            <select
+              id="pay-method"
+              className={inputClass}
+              value={method}
+              onChange={(e) => setMethod(e.target.value as PaymentMethod)}
             >
-              {recordPayment.isPending ? 'Recording…' : 'Record payment'}
-            </Button>
-          </div>
+              {(Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                <option key={m} value={m}>
+                  {PAYMENT_METHOD_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Reference" htmlFor="pay-ref" hint="Check # or txn id">
+            <input
+              id="pay-ref"
+              className={inputClass}
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Optional"
+            />
+          </FormField>
         </div>
+
+        {error && (
+          <p className="text-sm text-red-400" role="alert">
+            {error}
+          </p>
+        )}
       </div>
-    </div>
+    </AccountingDrawer>
   );
 }
 
@@ -242,76 +231,68 @@ function EmailInvoiceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Email invoice</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-
-        {sentTo ? (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-slate-300">
-              Invoice emailed to <span className="font-semibold text-white">{sentTo}</span> with a
-              secure portal link.
-            </p>
-            <div className="flex justify-end">
-              <Button onClick={onClose}>Done</Button>
-            </div>
+    <AccountingDrawer
+      open
+      onClose={onClose}
+      title="Email invoice"
+      footer={
+        sentTo ? (
+          <div className="flex justify-end">
+            <Button onClick={onClose}>Done</Button>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-slate-400">
-              Sends invoice{' '}
-              <span className="font-semibold text-white">{invoice.invoiceNumber ?? 'Draft'}</span>{' '}
-              with a secure link the customer can use to view and download it. No payment is taken.
-            </p>
-
-            <FormField label="To" htmlFor="email-to" required>
-              <input
-                id="email-to"
-                type="email"
-                className={inputClass}
-                value={toEmail}
-                onChange={(e) => setToEmail(e.target.value)}
-                placeholder="customer@example.com"
-              />
-            </FormField>
-            <FormField label="Subject" htmlFor="email-subject" hint="Optional — a default is used">
-              <input
-                id="email-subject"
-                className={inputClass}
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder={`Invoice ${invoice.invoiceNumber ?? ''}`.trim()}
-              />
-            </FormField>
-
-            {error && (
-              <p className="text-sm text-red-400" role="alert">
-                {error}
-              </p>
-            )}
-
-            <div className="mt-1 flex justify-end gap-2">
-              <Button variant="ghost" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button onClick={submit} disabled={sendEmail.isPending}>
-                {sendEmail.isPending ? 'Sending…' : 'Send email'}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={submit} disabled={sendEmail.isPending}>
+              {sendEmail.isPending ? 'Sending…' : 'Send email'}
+            </Button>
           </div>
-        )}
-      </div>
-    </div>
+        )
+      }
+    >
+      {sentTo ? (
+        <p className="text-sm text-slate-300">
+          Invoice emailed to <span className="font-semibold text-white">{sentTo}</span> with a
+          secure portal link.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-400">
+            Sends invoice{' '}
+            <span className="font-semibold text-white">{invoice.invoiceNumber ?? 'Draft'}</span>{' '}
+            with a secure link the customer can use to view and download it. No payment is taken.
+          </p>
+
+          <FormField label="To" htmlFor="email-to" required>
+            <input
+              id="email-to"
+              type="email"
+              className={inputClass}
+              value={toEmail}
+              onChange={(e) => setToEmail(e.target.value)}
+              placeholder="customer@example.com"
+            />
+          </FormField>
+          <FormField label="Subject" htmlFor="email-subject" hint="Optional — a default is used">
+            <input
+              id="email-subject"
+              className={inputClass}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={`Invoice ${invoice.invoiceNumber ?? ''}`.trim()}
+            />
+          </FormField>
+
+          {error && (
+            <p className="text-sm text-red-400" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+      )}
+    </AccountingDrawer>
   );
 }
 

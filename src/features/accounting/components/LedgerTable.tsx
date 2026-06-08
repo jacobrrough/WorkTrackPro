@@ -8,21 +8,59 @@ export interface LedgerColumn {
 interface LedgerTableProps {
   columns: LedgerColumn[];
   children: ReactNode; // <tr> rows
+  /**
+   * Row density. 'comfortable' (default) = roomier, QuickBooks-like rows; 'compact' tightens
+   * them back down for very long ledgers (e.g. a full-year account register).
+   */
+  density?: 'comfortable' | 'compact';
+  /** Subtle zebra striping. OFF by default — it would stripe report subtotal/section rows. */
+  zebra?: boolean;
+  /** Keep the column header pinned while a long body scrolls. */
+  stickyHeader?: boolean;
 }
 
-/** Dense, dark-theme data table for ledgers, journal lines, and reports. Consumers
- *  supply <tr> rows as children; use <td className="text-right tabular-nums"> for
- *  money cells. */
-export function LedgerTable({ columns, children }: LedgerTableProps) {
+/**
+ * Dark-theme data table for ledgers, journal lines, and reports. Consumers supply <tr> rows as
+ * children; use <td className="text-right tabular-nums"> for money cells.
+ *
+ * Body cell padding, row hover, and (optional) zebra are applied centrally here via wrapper
+ * child-selectors, so every consumer gets the same roomier QuickBooks-like spacing WITHOUT
+ * editing each <td>. The descendant selectors out-specify any per-cell `px-3 py-2` a consumer
+ * still hardcodes, so spacing stays single-sourced.
+ */
+export function LedgerTable({
+  columns,
+  children,
+  density = 'comfortable',
+  zebra = false,
+  stickyHeader = false,
+}: LedgerTableProps) {
+  const bodyPadY = density === 'compact' ? '[&_tbody_td]:py-2' : '[&_tbody_td]:py-3';
+  const tableClass = [
+    'w-full border-collapse text-sm',
+    '[&_tbody_td]:px-4 [&_tbody_td]:align-middle',
+    bodyPadY,
+    '[&_tbody_tr:hover]:bg-white/[0.03]',
+    zebra ? '[&_tbody_tr:nth-child(even)]:bg-white/[0.02]' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="overflow-x-auto rounded-sm border border-white/10">
-      <table className="w-full border-collapse text-sm">
+      <table className={tableClass}>
         <thead>
-          <tr className="border-b border-white/10 bg-white/5 text-slate-400">
+          <tr
+            className={`border-b border-white/10 bg-white/5 text-slate-400 ${
+              stickyHeader ? 'sticky top-0 z-10' : ''
+            }`}
+          >
             {columns.map((c, i) => (
               <th
                 key={i}
-                className={`px-3 py-2 font-semibold ${c.align === 'right' ? 'text-right' : 'text-left'}`}
+                className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${
+                  c.align === 'right' ? 'text-right' : 'text-left'
+                }`}
               >
                 {c.label}
               </th>

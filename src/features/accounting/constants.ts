@@ -387,42 +387,176 @@ function rangeKey(range?: ReportRangeKey): { from: string; to: string } {
   return { from: range?.from ?? 'all', to: range?.to ?? 'all' };
 }
 
+/** QuickBooks-style sidebar sections the nav items group under. */
+export type AccountingNavGroup =
+  | 'overview'
+  | 'sales'
+  | 'expenses'
+  | 'accounting'
+  | 'reports'
+  | 'setup';
+
 export interface AccountingNavItem {
   key: string;
   label: string;
   icon: string;
   path: string;
+  /** Which left-rail section this item lives under. */
+  group: AccountingNavGroup;
 }
 
-/** Sub-navigation for the module shell. */
+/** Sub-navigation for the module shell. The left rail AND the home tiles both derive from this. */
 export const ACCOUNTING_NAV: AccountingNavItem[] = [
-  { key: 'overview', label: 'Overview', icon: 'dashboard', path: ACCOUNTING_BASE },
-  { key: 'accounts', label: 'Accounts', icon: 'account_tree', path: `${ACCOUNTING_BASE}/accounts` },
-  { key: 'import', label: 'Import', icon: 'upload_file', path: `${ACCOUNTING_BASE}/import` },
-  { key: 'journal', label: 'Journal', icon: 'menu_book', path: `${ACCOUNTING_BASE}/journal` },
-  { key: 'invoices', label: 'Invoices', icon: 'receipt_long', path: `${ACCOUNTING_BASE}/invoices` },
-  { key: 'estimates', label: 'Estimates', icon: 'description', path: ESTIMATES_BASE },
-  { key: 'progress', label: 'Progress billing', icon: 'foundation', path: PROGRESS_BASE },
+  {
+    key: 'overview',
+    label: 'Overview',
+    icon: 'dashboard',
+    path: ACCOUNTING_BASE,
+    group: 'overview',
+  },
+  {
+    key: 'accounts',
+    label: 'Accounts',
+    icon: 'account_tree',
+    path: `${ACCOUNTING_BASE}/accounts`,
+    group: 'accounting',
+  },
+  {
+    key: 'import',
+    label: 'Import',
+    icon: 'upload_file',
+    path: `${ACCOUNTING_BASE}/import`,
+    group: 'setup',
+  },
+  {
+    key: 'journal',
+    label: 'Journal',
+    icon: 'menu_book',
+    path: `${ACCOUNTING_BASE}/journal`,
+    group: 'accounting',
+  },
+  {
+    key: 'invoices',
+    label: 'Invoices',
+    icon: 'receipt_long',
+    path: `${ACCOUNTING_BASE}/invoices`,
+    group: 'sales',
+  },
+  {
+    key: 'estimates',
+    label: 'Estimates',
+    icon: 'description',
+    path: ESTIMATES_BASE,
+    group: 'sales',
+  },
+  {
+    key: 'progress',
+    label: 'Progress billing',
+    icon: 'foundation',
+    path: PROGRESS_BASE,
+    group: 'sales',
+  },
   {
     key: 'purchase-orders',
     label: 'Purchase orders',
     icon: 'shopping_cart',
     path: PURCHASE_ORDERS_BASE,
+    group: 'sales',
   },
-  { key: 'bills', label: 'Bills', icon: 'request_quote', path: `${ACCOUNTING_BASE}/bills` },
-  { key: 'banking', label: 'Banking', icon: 'account_balance_wallet', path: BANKING_BASE },
-  { key: 'job-costing', label: 'Job costing', icon: 'query_stats', path: JOB_COSTING_BASE },
-  { key: 'inventory', label: 'Inventory', icon: 'inventory_2', path: INVENTORY_BASE },
-  { key: 'recurring', label: 'Recurring', icon: 'event_repeat', path: RECURRING_BASE },
-  { key: 'dimensions', label: 'Dimensions', icon: 'sell', path: DIMENSIONS_BASE },
-  { key: 'budgets', label: 'Budgets', icon: 'savings', path: BUDGETS_BASE },
+  {
+    key: 'bills',
+    label: 'Bills',
+    icon: 'request_quote',
+    path: `${ACCOUNTING_BASE}/bills`,
+    group: 'expenses',
+  },
+  {
+    key: 'banking',
+    label: 'Banking',
+    icon: 'account_balance_wallet',
+    path: BANKING_BASE,
+    group: 'expenses',
+  },
+  {
+    key: 'job-costing',
+    label: 'Job costing',
+    icon: 'query_stats',
+    path: JOB_COSTING_BASE,
+    group: 'accounting',
+  },
+  {
+    key: 'inventory',
+    label: 'Inventory',
+    icon: 'inventory_2',
+    path: INVENTORY_BASE,
+    group: 'accounting',
+  },
+  {
+    key: 'recurring',
+    label: 'Recurring',
+    icon: 'event_repeat',
+    path: RECURRING_BASE,
+    group: 'accounting',
+  },
+  {
+    key: 'dimensions',
+    label: 'Dimensions',
+    icon: 'sell',
+    path: DIMENSIONS_BASE,
+    group: 'accounting',
+  },
+  { key: 'budgets', label: 'Budgets', icon: 'savings', path: BUDGETS_BASE, group: 'setup' },
   {
     key: 'fixed-assets',
     label: 'Fixed assets',
     icon: 'precision_manufacturing',
     path: FIXED_ASSETS_BASE,
+    group: 'accounting',
   },
-  { key: 'reports', label: 'Reports', icon: 'analytics', path: `${ACCOUNTING_BASE}/reports` },
-  { key: 'custom-fields', label: 'Custom fields', icon: 'tune', path: CUSTOM_FIELDS_BASE },
-  { key: 'settings', label: 'Settings', icon: 'settings', path: `${ACCOUNTING_BASE}/settings` },
+  {
+    key: 'reports',
+    label: 'Reports',
+    icon: 'analytics',
+    path: `${ACCOUNTING_BASE}/reports`,
+    group: 'reports',
+  },
+  {
+    key: 'custom-fields',
+    label: 'Custom fields',
+    icon: 'tune',
+    path: CUSTOM_FIELDS_BASE,
+    group: 'setup',
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    icon: 'settings',
+    path: `${ACCOUNTING_BASE}/settings`,
+    group: 'setup',
+  },
 ];
+
+/** Ordered left-rail sections (QuickBooks-style). `overview` is pinned at the top, no header. */
+export const ACCOUNTING_NAV_SECTIONS: { group: AccountingNavGroup; label: string }[] = [
+  { group: 'sales', label: 'Sales' },
+  { group: 'expenses', label: 'Expenses' },
+  { group: 'accounting', label: 'Accounting' },
+  { group: 'reports', label: 'Reports' },
+  { group: 'setup', label: 'Setup' },
+];
+
+/** The pinned `overview` item (rendered at the top of the rail/home with no section header). */
+export const ACCOUNTING_NAV_OVERVIEW: AccountingNavItem =
+  ACCOUNTING_NAV.find((n) => n.group === 'overview') ?? ACCOUNTING_NAV[0];
+
+/** Group the nav items into the fixed section order (overview excluded — rendered specially). */
+export function accountingNavByGroup(): {
+  group: AccountingNavGroup;
+  label: string;
+  items: AccountingNavItem[];
+}[] {
+  return ACCOUNTING_NAV_SECTIONS.map((s) => ({
+    ...s,
+    items: ACCOUNTING_NAV.filter((n) => n.group === s.group),
+  }));
+}
