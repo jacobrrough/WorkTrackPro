@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LedgerTable } from '../components/LedgerTable';
 import { useProfitAndLoss } from '../hooks/useAccountingQueries';
 import type { DateRange, ReportLine } from '../types';
+import { AccountLink } from './AccountLink';
 import { DateRangeFilter } from './DateRangeFilter';
 import { ReportPage } from './ReportPage';
 import { describeRange, formatAccounting } from './reportFormat';
@@ -15,14 +16,16 @@ import {
   SubtotalRow,
 } from './ReportStates';
 
-function AccountRow({ line }: { line: ReportLine }) {
+function AccountRow({ line, range }: { line: ReportLine; range: DateRange }) {
   return (
     <tr className="border-t border-white/5">
-      <td className="px-3 py-2 text-white">
-        {line.accountNumber ? (
-          <span className="mr-2 font-mono text-xs text-slate-500">{line.accountNumber}</span>
-        ) : null}
-        {line.name}
+      <td className="px-3 py-2">
+        <AccountLink
+          accountId={line.accountId}
+          accountNumber={line.accountNumber}
+          name={line.name}
+          range={range}
+        />
       </td>
       <MoneyCell amount={line.amount} />
     </tr>
@@ -68,7 +71,7 @@ export default function ProfitAndLossView() {
           <LedgerTable columns={[{ label: 'Account' }, { label: 'Amount', align: 'right' }]}>
             <SectionHeaderRow title="Income" span={2} />
             {data.income.lines.map((l) => (
-              <AccountRow key={l.accountId} line={l} />
+              <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             {data.income.lines.length === 0 && (
               <tr className="border-t border-white/5">
@@ -81,7 +84,7 @@ export default function ProfitAndLossView() {
 
             <SectionHeaderRow title="Expenses" span={2} />
             {data.expense.lines.map((l) => (
-              <AccountRow key={l.accountId} line={l} />
+              <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             {data.expense.lines.length === 0 && (
               <tr className="border-t border-white/5">

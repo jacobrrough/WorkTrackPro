@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LedgerTable } from '../components/LedgerTable';
 import { useBalanceSheet } from '../hooks/useAccountingQueries';
 import type { DateRange, ReportLine } from '../types';
+import { AccountLink } from './AccountLink';
 import { DateRangeFilter } from './DateRangeFilter';
 import { ReportPage } from './ReportPage';
 import { describeRange } from './reportFormat';
@@ -16,14 +17,17 @@ import {
   SubtotalRow,
 } from './ReportStates';
 
-function AccountRow({ line }: { line: ReportLine }) {
+function AccountRow({ line, range }: { line: ReportLine; range: DateRange }) {
   return (
     <tr className="border-t border-white/5">
-      <td className="px-3 py-2 text-white">
-        {line.accountNumber ? (
-          <span className="mr-2 font-mono text-xs text-slate-500">{line.accountNumber}</span>
-        ) : null}
-        {line.name}
+      <td className="px-3 py-2">
+        {/* The synthetic "Net income" line (sentinel id) renders as plain, non-clickable text. */}
+        <AccountLink
+          accountId={line.accountId}
+          accountNumber={line.accountNumber}
+          name={line.name}
+          range={range}
+        />
       </td>
       <MoneyCell amount={line.amount} />
     </tr>
@@ -80,20 +84,20 @@ export default function BalanceSheetView() {
           <LedgerTable columns={[{ label: 'Account' }, { label: 'Amount', align: 'right' }]}>
             <SectionHeaderRow title="Assets" span={2} />
             {data.assets.lines.map((l) => (
-              <AccountRow key={l.accountId} line={l} />
+              <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             <SubtotalRow label="Total assets" amount={data.totalAssets} colSpan={1} />
 
             <SectionHeaderRow title="Liabilities" span={2} />
             {data.liabilities.lines.map((l) => (
-              <AccountRow key={l.accountId} line={l} />
+              <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             <SubtotalRow label="Total liabilities" amount={data.totalLiabilities} colSpan={1} />
 
             <SectionHeaderRow title="Equity" span={2} />
             {data.equity.lines.map((l) => (
               // The synthetic net-income line has a sentinel id, still unique.
-              <AccountRow key={l.accountId} line={l} />
+              <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             <SubtotalRow label="Total equity" amount={data.totalEquity} colSpan={1} />
           </LedgerTable>

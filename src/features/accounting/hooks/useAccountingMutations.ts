@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   accountingSettingsService,
   accountsService,
+  attachmentsService,
   bankAccountsService,
   bankRulesService,
   bankTransactionsService,
@@ -13,6 +14,13 @@ import {
   fixedAssetsService,
   inventoryCogsService,
   invoicesService,
+  invoiceEmailsService,
+  estimatesService,
+  portalTokensService,
+  type CreatePortalLinkParams,
+  projectsService,
+  progressBillingService,
+  purchaseOrdersService,
   journalService,
   paymentsService,
   reconciliationsService,
@@ -23,6 +31,18 @@ import {
 } from '@/services/api/accounting';
 import type {
   Account,
+  AttachmentEntityType,
+  NewEstimateInput,
+  UpdateEstimateInput,
+  SendInvoiceEmailInput,
+  NewProjectInput,
+  UpdateProjectInput,
+  NewSovLineInput,
+  UpdateSovLineInput,
+  NewChangeOrderInput,
+  NewProgressInvoiceInput,
+  NewPurchaseOrderInput,
+  UpdatePurchaseOrderInput,
   BudgetCellInput,
   BudgetStatus,
   CustomFieldEntityType,
@@ -438,6 +458,20 @@ export function useDeleteBankRule() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => bankRulesService.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bank }),
+  });
+}
+
+/**
+ * Re-apply the active rules to this account's still-unreviewed transactions (pre-fills
+ * categories for review; posts no JE). Invalidates the bank subtree so the list and the
+ * "to review" count refresh. Returns { categorized } so the caller can report the count.
+ */
+export function useApplyRulesToUnreviewed() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bankAccountId: string) =>
+      bankTransactionsService.applyRulesToUnreviewed(bankAccountId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bank }),
   });
 }
@@ -899,6 +933,335 @@ export function useSaveCustomFieldValues() {
       qc.invalidateQueries({
         queryKey: ACCOUNTING_QUERY_KEYS.customFieldValues(entityType, entityId),
       }),
+  });
+}
+
+// ── #2 Document attachments ────────────────────────────────────────────────────
+// Pure file metadata: uploading/deleting an attachment moves NO money, so neither
+// mutation posts a journal entry or invalidates journal/reports — only the attachments
+// subtree (the host detail screen's list) refetches.
+
+/**
+ * Upload a document attachment to an accounting entity (Storage upload + metadata row,
+ * with cleanup-on-failure handled in the service). Invalidates that entity's list.
+ */
+export function useUploadAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      entityType,
+      entityId,
+      file,
+    }: {
+      entityType: AttachmentEntityType;
+      entityId: string;
+      file: File;
+    }) => attachmentsService.upload(entityType, entityId, file),
+    onSuccess: (_result, { entityType, entityId }) =>
+      qc.invalidateQueries({
+        queryKey: ACCOUNTING_QUERY_KEYS.attachmentsForEntity(entityType, entityId),
+      }),
+  });
+}
+
+/**
+ * Delete a document attachment (metadata row + the Storage object). The caller knows the
+ * attachment id but not its entity key, so this invalidates the whole `attachments`
+ * subtree (mirrors useDeleteCustomFieldDef invalidating the customFields root).
+ */
+export function useDeleteAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: string) => attachmentsService.remove(attachmentId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.attachments }),
+  });
+}
+
+// ── #6 Email invoice / #7 portal links ────────────────────────────────────────
+/** Send an invoice email (mints a portal link server-side). Invalidates the email history. */
+export function useSendInvoiceEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, opts }: { invoiceId: string; opts?: SendInvoiceEmailInput }) =>
+      invoiceEmailsService.send(invoiceId, opts),
+    onSuccess: (_res, { invoiceId }) => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoiceEmails(invoiceId) });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.portalTokensForInvoice(invoiceId) });
+    },
+  });
+}
+
+/** Mint a customer-portal link. Invalidates the per-invoice token list when invoice-scoped. */
+export function useCreatePortalLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: CreatePortalLinkParams) => portalTokensService.createLink(params),
+    onSuccess: (_res, params) => {
+      if (params.invoiceId) {
+        qc.invalidateQueries({
+          queryKey: ACCOUNTING_QUERY_KEYS.portalTokensForInvoice(params.invoiceId),
+        });
+      }
+    },
+  });
+}
+
+/** Revoke a portal link. Pass invoiceId so the per-invoice token list refetches. */
+export function useRevokePortalToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tokenId }: { tokenId: string; invoiceId?: string }) =>
+      portalTokensService.revoke(tokenId),
+    onSuccess: (_res, { invoiceId }) => {
+      if (invoiceId) {
+        qc.invalidateQueries({
+          queryKey: ACCOUNTING_QUERY_KEYS.portalTokensForInvoice(invoiceId),
+        });
+      }
+    },
+  });
+}
+
+// ── #8 Estimates ──────────────────────────────────────────────────────────────
+export function useCreateEstimateDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      input,
+      customerTaxExempt,
+    }: {
+      input: NewEstimateInput;
+      customerTaxExempt?: boolean;
+    }) => estimatesService.createDraft(input, { customerTaxExempt }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+export function useUpdateEstimateDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+      customerTaxExempt,
+    }: {
+      id: string;
+      input: UpdateEstimateInput;
+      customerTaxExempt?: boolean;
+    }) => estimatesService.updateDraft(id, input, { customerTaxExempt }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+export function useSendEstimate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.send(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+export function useAcceptEstimate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.accept(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+export function useDeclineEstimate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.decline(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+/**
+ * Convert an estimate into a DRAFT invoice (no JE posts here — the invoice still needs sending).
+ * Invalidates estimates + invoices (a new draft exists) + jobCosting (a job-linked draft moves
+ * that job's revenue, since v_job_costing sums non-void invoices).
+ */
+export function useConvertEstimate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.convert(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+// ── #10 Progress billing ───────────────────────────────────────────────────────
+// Project + SOV + change-order CRUD move no money (invalidate only the projects subtree).
+// Posting an application or releasing retainage posts a balanced JE backed by a real invoice,
+// so those invalidate journal + reports + jobCosting + invoices too (the AR/posting fan-out).
+export function useCreateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewProjectInput) => projectsService.create(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects }),
+  });
+}
+
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateProjectInput }) =>
+      projectsService.update(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects }),
+  });
+}
+
+export function useUpsertSovLine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      input,
+    }: {
+      projectId: string;
+      input: NewSovLineInput | UpdateSovLineInput;
+    }) => progressBillingService.upsertSovLine(projectId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects }),
+  });
+}
+
+export function useCreateChangeOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, input }: { projectId: string; input: NewChangeOrderInput }) =>
+      progressBillingService.createChangeOrder(projectId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects }),
+  });
+}
+
+export function useSetChangeOrderStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      projectId: string;
+      id: string;
+      status: 'approved' | 'rejected';
+    }) => progressBillingService.setChangeOrderStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects }),
+  });
+}
+
+/** Post one progress-billing period: builds + posts the balanced revenue JE behind a real invoice. */
+export function useCreateProgressInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewProgressInvoiceInput) =>
+      progressBillingService.createProgressInvoice(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/** Release withheld retainage: posts Dr AR / Cr 1210 behind a real invoice. */
+export function useReleaseRetainage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { projectId: string; amount: number; periodEnd?: string }) =>
+      progressBillingService.releaseRetainage(params),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.projects });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+// ── #11 Purchase orders ────────────────────────────────────────────────────────
+// A PO is a commitment — it posts NO journal entry, so PO CRUD/receive/close/cancel invalidate
+// only the purchaseOrders subtree. CONVERT creates a DRAFT bill (still no JE — the bill posts
+// later via bills.post), so it additionally invalidates bills + jobCosting.
+export function useCreatePurchaseOrderDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewPurchaseOrderInput) => purchaseOrdersService.createDraft(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+export function useUpdatePurchaseOrderDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdatePurchaseOrderInput }) =>
+      purchaseOrdersService.updateDraft(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/** Issue a draft PO (→ open). No money moves. */
+export function useIssuePurchaseOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => purchaseOrdersService.issue(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders }),
+  });
+}
+
+/** Record received quantities per line + advance status (no JE). */
+export function useReceivePurchaseOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      received,
+    }: {
+      id: string;
+      received: { poLineId: string; quantityReceived: number }[];
+    }) => purchaseOrdersService.receive(id, received),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders }),
+  });
+}
+
+export function useClosePurchaseOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => purchaseOrdersService.close(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders }),
+  });
+}
+
+export function useCancelPurchaseOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => purchaseOrdersService.cancel(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders }),
+  });
+}
+
+/** Convert a PO into a DRAFT bill (stamps po_line_id). No JE here — the bill posts later. */
+export function useConvertPurchaseOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => purchaseOrdersService.convertToBill(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.purchaseOrders });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bills });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
   });
 }
 

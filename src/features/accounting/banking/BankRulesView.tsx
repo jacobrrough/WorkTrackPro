@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { AccountingShell } from '../components/AccountingShell';
@@ -60,10 +60,13 @@ function draftFromRule(rule: BankRule): RuleDraft {
 function RuleEditorModal({
   rule,
   bankAccountId,
+  initial,
   onClose,
 }: {
   rule: BankRule | null;
   bankAccountId: string | undefined;
+  /** Optional seed for a NEW rule (e.g. "Make a rule" from a categorized transaction). */
+  initial?: Partial<RuleDraft>;
   onClose: () => void;
 }) {
   const create = useCreateBankRule();
@@ -78,6 +81,7 @@ function RuleEditorModal({
           setAccountId: '',
           priority: 0,
           scopeAll: !bankAccountId,
+          ...initial,
         }
   );
   const [error, setError] = useState<string | null>(null);
@@ -342,11 +346,16 @@ function RuleRow({
 export default function BankRulesView() {
   const { bankAccountId } = useParams<{ bankAccountId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: account } = useBankAccount(bankAccountId);
   const { data: rules = [], isPending, isError } = useBankRules(bankAccountId);
   const { data: accounts = [] } = useAccounts();
   const [editing, setEditing] = useState<BankRule | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  // A "Make a rule" jump from the transactions list arrives with a pre-filled draft in
+  // navigation state; capture it once so it seeds (and auto-opens) the create modal.
+  const suggestedFromNav = (location.state as { suggested?: Partial<RuleDraft> } | null)?.suggested;
+  const [suggested, setSuggested] = useState<Partial<RuleDraft> | undefined>(suggestedFromNav);
+  const [showCreate, setShowCreate] = useState(Boolean(suggestedFromNav));
 
   const accountName = (id: string | null): string => {
     if (!id) return 'Uncategorized';
@@ -422,7 +431,11 @@ export default function BankRulesView() {
         <RuleEditorModal
           rule={null}
           bankAccountId={bankAccountId}
-          onClose={() => setShowCreate(false)}
+          initial={suggested}
+          onClose={() => {
+            setShowCreate(false);
+            setSuggested(undefined);
+          }}
         />
       )}
       {editing && (

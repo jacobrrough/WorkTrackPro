@@ -373,6 +373,9 @@ export function mapBillLineRow(row: Row): BillLine {
     locationId: nstr(row.location_id),
     departmentId: nstr(row.department_id),
     sourceInventoryId: nstr(row.source_inventory_id),
+    // #11 3-way-match link back to the purchase_order_line this bill line fulfils (null
+    // on a bill that did not originate from a PO). Additive — no existing bill flow sets it.
+    poLineId: nstr(row.po_line_id),
     sortOrder: num(row.sort_order),
   };
 }

@@ -21,6 +21,7 @@ const ACCOUNTS: DefaultAccounts = {
   cash: 'acc-cash',
   undepositedFunds: 'acc-undeposited',
   accountsReceivable: 'acc-ar',
+  retainageReceivable: 'acc-retainage',
   inventoryAsset: 'acc-inv',
   accountsPayable: 'acc-ap',
   salesTaxPayable: 'acc-tax',

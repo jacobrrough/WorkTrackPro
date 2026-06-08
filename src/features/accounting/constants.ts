@@ -11,6 +11,9 @@ export const BUDGETS_BASE = `${ACCOUNTING_BASE}/budgets`;
 export const FIXED_ASSETS_BASE = `${ACCOUNTING_BASE}/fixed-assets`;
 export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
 export const SETTINGS_BASE = `${ACCOUNTING_BASE}/settings`;
+export const ESTIMATES_BASE = `${ACCOUNTING_BASE}/estimates`;
+export const PROGRESS_BASE = `${ACCOUNTING_BASE}/progress`;
+export const PURCHASE_ORDERS_BASE = `${ACCOUNTING_BASE}/purchase-orders`;
 
 /**
  * TAX-SYNC (ADVISORY-ONLY) lives UNDER Settings: an accounting_admin-only "Tax table
@@ -98,6 +101,33 @@ export const salesTaxLiabilityPath = (): string => `${REPORTS_BASE}/${SALES_TAX_
 /** Path to the read-only Tax Calendar dashboard. */
 export const taxCalendarPath = (): string => `${REPORTS_BASE}/${TAX_CALENDAR_SLUG}`;
 
+// ── #3/#4/#5 report routes (GL detail + drill-down, cash-flow statement, mgmt reports). ──
+export const GENERAL_LEDGER_SLUG = 'general-ledger';
+export const CASH_FLOW_STATEMENT_SLUG = 'cash-flow-statement';
+export const SALES_BY_CUSTOMER_SLUG = 'sales-by-customer';
+export const SALES_BY_ITEM_SLUG = 'sales-by-item';
+export const PURCHASES_BY_VENDOR_SLUG = 'purchases-by-vendor';
+
+/** General-ledger account-picker landing. */
+export const generalLedgerPath = (): string => `${REPORTS_BASE}/${GENERAL_LEDGER_SLUG}`;
+/** One account's GL register, carrying the current date range as a `?from=&to=` query. */
+export const accountLedgerPath = (accountId: string, range?: ReportRangeKey): string => {
+  const base = `${REPORTS_BASE}/${GENERAL_LEDGER_SLUG}/${accountId}`;
+  const params = new URLSearchParams();
+  if (range?.from) params.set('from', range.from);
+  if (range?.to) params.set('to', range.to);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+};
+/** Statement of Cash Flows (indirect method). */
+export const cashFlowStatementPath = (): string => `${REPORTS_BASE}/${CASH_FLOW_STATEMENT_SLUG}`;
+/** Sales by customer (management report). */
+export const salesByCustomerPath = (): string => `${REPORTS_BASE}/${SALES_BY_CUSTOMER_SLUG}`;
+/** Sales by item (management report). */
+export const salesByItemPath = (): string => `${REPORTS_BASE}/${SALES_BY_ITEM_SLUG}`;
+/** Purchases by vendor (management report). */
+export const purchasesByVendorPath = (): string => `${REPORTS_BASE}/${PURCHASES_BY_VENDOR_SLUG}`;
+
 /** Path to a budget's editor grid. */
 export const budgetEditorPath = (budgetId: string): string => `${BUDGETS_BASE}/${budgetId}`;
 /** Path to a budget's Budget-vs-Actual report. */
@@ -145,6 +175,19 @@ export const ACCOUNTING_QUERY_KEYS = {
     ['accounting', 'reports', 'balance-sheet', rangeKey(range)] as const,
   arAging: ['accounting', 'reports', 'ar-aging'] as const,
   apAging: ['accounting', 'reports', 'ap-aging'] as const,
+  // ── GL detail (#3) + management reports (#4) + cash-flow statement (#5). Read-only
+  // over the posted ledger, keyed by range under the `reports` subtree (the account
+  // ledger also by accountId). Never invalidated directly — a posting invalidates `reports`.
+  accountLedger: (accountId: string, range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'account-ledger', accountId, rangeKey(range)] as const,
+  cashFlowStatement: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'cash-flow-statement', rangeKey(range)] as const,
+  salesByCustomer: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'sales-by-customer', rangeKey(range)] as const,
+  salesByItem: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'sales-by-item', rangeKey(range)] as const,
+  purchasesByVendor: (range?: ReportRangeKey) =>
+    ['accounting', 'reports', 'purchases-by-vendor', rangeKey(range)] as const,
   // ── Banking (A4). `bank` is the subtree root for scoped invalidation; the
   // detail/list keys hang under it so a bank action invalidates only banking. ──
   bank: ['accounting', 'bank'] as const,
@@ -236,6 +279,33 @@ export const ACCOUNTING_QUERY_KEYS = {
     ['accounting', 'custom-fields', 'defs', entityType ?? 'all'] as const,
   customFieldValues: (entityType: string, entityId: string) =>
     ['accounting', 'custom-fields', 'values', entityType, entityId] as const,
+  // ── #2 Document attachments. `attachments` is the subtree root; the per-entity list
+  // hangs under it. Attachments move NO money — mutations invalidate only this subtree.
+  attachments: ['accounting', 'attachments'] as const,
+  attachmentsForEntity: (entityType: string, entityId: string) =>
+    ['accounting', 'attachments', entityType, entityId] as const,
+  // ── #6 Invoice emails / #7 portal tokens. Both hang under the invoices subtree so an
+  // invoice mutation that touches them invalidates cleanly. They move NO money. ──────────
+  invoiceEmails: (invoiceId: string) => ['accounting', 'invoices', invoiceId, 'emails'] as const,
+  portalTokensForInvoice: (invoiceId: string) =>
+    ['accounting', 'invoices', invoiceId, 'portal-tokens'] as const,
+  // ── #8 Estimates. `estimates` is the subtree root; the per-estimate detail hangs under it.
+  estimates: ['accounting', 'estimates'] as const,
+  estimate: (id: string) => ['accounting', 'estimates', id] as const,
+  // ── #10 Progress billing. `projects` is the subtree root; per-project SOV/change-order/
+  // application lists hang under it. Posting an application or releasing retainage posts a
+  // balanced JE + invoice, so those mutations also invalidate journal+reports+jobCosting+invoices.
+  projects: ['accounting', 'projects'] as const,
+  project: (id: string) => ['accounting', 'projects', id] as const,
+  sovLines: (projectId: string) => ['accounting', 'projects', projectId, 'sov-lines'] as const,
+  changeOrders: (projectId: string) =>
+    ['accounting', 'projects', projectId, 'change-orders'] as const,
+  progressInvoices: (projectId: string) =>
+    ['accounting', 'projects', projectId, 'progress-invoices'] as const,
+  // ── #11 Purchase orders. A PO posts no JE; CONVERT creates a draft bill (invalidates bills).
+  purchaseOrders: ['accounting', 'purchase-orders'] as const,
+  purchaseOrder: (id: string) => ['accounting', 'purchase-orders', id] as const,
+  purchaseOrderBills: (id: string) => ['accounting', 'purchase-orders', id, 'bills'] as const,
   // ── Sales-tax reporting & tax calendar (C1). `salesTax` is the subtree root for
   // scoped invalidation. The liability report keys by date range (changing the filter
   // refetches; an empty range = all-time). The calendar keys by "as of". Both are
@@ -315,6 +385,14 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
   { key: 'import', label: 'Import', icon: 'upload_file', path: `${ACCOUNTING_BASE}/import` },
   { key: 'journal', label: 'Journal', icon: 'menu_book', path: `${ACCOUNTING_BASE}/journal` },
   { key: 'invoices', label: 'Invoices', icon: 'receipt_long', path: `${ACCOUNTING_BASE}/invoices` },
+  { key: 'estimates', label: 'Estimates', icon: 'description', path: ESTIMATES_BASE },
+  { key: 'progress', label: 'Progress billing', icon: 'foundation', path: PROGRESS_BASE },
+  {
+    key: 'purchase-orders',
+    label: 'Purchase orders',
+    icon: 'shopping_cart',
+    path: PURCHASE_ORDERS_BASE,
+  },
   { key: 'bills', label: 'Bills', icon: 'request_quote', path: `${ACCOUNTING_BASE}/bills` },
   { key: 'banking', label: 'Banking', icon: 'account_balance_wallet', path: BANKING_BASE },
   { key: 'job-costing', label: 'Job costing', icon: 'query_stats', path: JOB_COSTING_BASE },

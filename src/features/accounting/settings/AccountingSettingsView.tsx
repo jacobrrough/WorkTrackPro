@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormField } from '@/components/ui/FormField';
+import { accountingSettingsService } from '@/services/api/accounting';
+import type { DunningConfig } from '../types';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import {
@@ -329,6 +331,185 @@ function TaxTableUpdatesPanel() {
   );
 }
 
+/** Parse the "-3, 0, 7, 14" offsets text input into a clean, sorted int[]. */
+function parseOffsets(text: string): number[] {
+  const nums = text
+    .split(',')
+    .map((s) => Math.trunc(Number(s.trim())))
+    .filter((n) => Number.isFinite(n));
+  return [...new Set(nums)].sort((a, b) => a - b);
+}
+
+/**
+ * #6 — Dunning (automated invoice reminders) settings. Reads/writes the 'dunning' settings
+ * key. The SCHEDULED sender is ALSO hard-gated by the server env ACCOUNTING_DUNNING_ENABLED
+ * (default OFF); the "Enable reminders" toggle here is the per-tenant soft switch on top of
+ * that gate, so reminders only go out when BOTH are on. No money moves here.
+ *
+ * Manages its own data (load via the service, local form state) so it needs no new query
+ * hooks — mirroring how the other lightweight panels stay self-contained.
+ */
+function DunningSettingsPanel() {
+  const [config, setConfig] = useState<DunningConfig | null>(null);
+  const [offsetsText, setOffsetsText] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    accountingSettingsService
+      .getDunningConfig()
+      .then((cfg) => {
+        if (cancelled) return;
+        setConfig(cfg);
+        setOffsetsText(cfg.offsetsDays.join(', '));
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError('Could not load the reminder settings.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const update = <K extends keyof DunningConfig>(key: K, value: DunningConfig[K]) => {
+    setConfig((c) => (c ? { ...c, [key]: value } : c));
+    setSavedAt(null);
+  };
+
+  const save = async () => {
+    if (!config) return;
+    setSaveError(null);
+    setSaving(true);
+    const next: DunningConfig = { ...config, offsetsDays: parseOffsets(offsetsText) };
+    const res = await accountingSettingsService.setDunningConfig(next);
+    setSaving(false);
+    if (!res.ok) {
+      setSaveError(res.error ?? 'Could not save the reminder settings.');
+      return;
+    }
+    setConfig(next);
+    setOffsetsText(next.offsetsDays.join(', '));
+    setSavedAt(Date.now());
+  };
+
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-base font-bold text-white">
+        <span className="material-symbols-outlined text-primary">forward_to_inbox</span>
+        Invoice reminders (dunning)
+      </h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Automatically email customers about unpaid invoices on a schedule relative to each invoice’s
+        due date. Reminders only send when this is enabled here AND the feature is switched on for
+        the server.
+      </p>
+
+      {loadError && <p className="mt-3 text-sm text-red-400">{loadError}</p>}
+
+      {config && (
+        <Card className="mt-3 flex flex-col gap-4" padding="lg">
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={config.enabled}
+              onChange={(e) => update('enabled', e.target.checked)}
+              className="size-4 rounded border-white/20 bg-background-dark text-primary focus:ring-primary"
+            />
+            <span className="text-sm font-medium text-white">Enable automated reminders</span>
+          </label>
+
+          <FormField
+            label="Reminder days (relative to due date)"
+            htmlFor="dunning-offsets"
+            hint="Comma-separated. Negative = before due, 0 = on the due date, positive = after. e.g. -3, 0, 7, 14"
+          >
+            <input
+              id="dunning-offsets"
+              className={inputClass}
+              value={offsetsText}
+              onChange={(e) => {
+                setOffsetsText(e.target.value);
+                setSavedAt(null);
+              }}
+              placeholder="-3, 0, 7, 14"
+            />
+          </FormField>
+
+          <FormField label="From address" htmlFor="dunning-from" hint="Must be a verified sender">
+            <input
+              id="dunning-from"
+              type="email"
+              className={inputClass}
+              value={config.fromEmail}
+              onChange={(e) => update('fromEmail', e.target.value)}
+              placeholder="billing@yourcompany.com"
+            />
+          </FormField>
+
+          <FormField
+            label="Subject template"
+            htmlFor="dunning-subject"
+            hint="Tokens: {{invoiceNumber}} {{customerName}} {{balanceDue}}"
+          >
+            <input
+              id="dunning-subject"
+              className={inputClass}
+              value={config.subjectTemplate}
+              onChange={(e) => update('subjectTemplate', e.target.value)}
+            />
+          </FormField>
+
+          <FormField
+            label="Body template"
+            htmlFor="dunning-body"
+            hint="Tokens: {{invoiceNumber}} {{customerName}} {{balanceDue}}"
+          >
+            <textarea
+              id="dunning-body"
+              className={`${inputClass} min-h-[120px] resize-y`}
+              value={config.bodyTemplate}
+              onChange={(e) => update('bodyTemplate', e.target.value)}
+            />
+          </FormField>
+
+          <FormField
+            label="Max emails per run"
+            htmlFor="dunning-max"
+            hint="Safety cap on how many reminders a single scheduled run will send"
+          >
+            <input
+              id="dunning-max"
+              type="number"
+              min={1}
+              className={inputClass}
+              value={config.maxPerRun}
+              onChange={(e) =>
+                update('maxPerRun', Math.max(1, Math.trunc(Number(e.target.value)) || 1))
+              }
+            />
+          </FormField>
+
+          {saveError && (
+            <p className="text-sm text-red-400" role="alert">
+              {saveError}
+            </p>
+          )}
+
+          <div className="flex items-center justify-end gap-3">
+            {savedAt && <span className="text-xs text-green-400">Saved.</span>}
+            <Button icon="save" onClick={save} disabled={saving}>
+              {saving ? 'Saving…' : 'Save reminder settings'}
+            </Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 /**
  * D1 — Books-closed (period lock) date. Accounting-admin control to "close the books"
  * through a date: once set, the DB rejects posting or voiding any journal entry dated on
@@ -436,6 +617,10 @@ export default function AccountingSettingsView() {
 
         <div className="border-t border-white/10 pt-5">
           <DefaultAccountsPanel />
+        </div>
+
+        <div className="border-t border-white/10 pt-5">
+          <DunningSettingsPanel />
         </div>
 
         <div className="border-t border-white/10 pt-5">

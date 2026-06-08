@@ -7,6 +7,11 @@ import {
   BUDGETS_BASE,
   REPORTS_BASE,
   cashFlowForecastPath,
+  cashFlowStatementPath,
+  generalLedgerPath,
+  purchasesByVendorPath,
+  salesByCustomerPath,
+  salesByItemPath,
   salesTaxLiabilityPath,
   taxCalendarPath,
 } from '../constants';
@@ -43,6 +48,67 @@ export default function ReportsView() {
               <span className="text-xs text-slate-400">{r.description}</span>
             </Card>
           ))}
+        </div>
+
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+          General ledger &amp; cash flow
+        </h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Card onClick={() => navigate(generalLedgerPath())} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-2xl text-primary">menu_book</span>
+              <span className="font-bold text-white">General Ledger</span>
+            </span>
+            <span className="text-xs text-slate-400">
+              Every posted transaction for an account, with a running balance. Drill in from any
+              statement’s account row.
+            </span>
+          </Card>
+          <Card onClick={() => navigate(cashFlowStatementPath())} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-2xl text-primary">water_drop</span>
+              <span className="font-bold text-white">Statement of Cash Flows</span>
+            </span>
+            <span className="text-xs text-slate-400">
+              Net income adjusted for balance-sheet changes (indirect method), split into operating,
+              investing and financing.
+            </span>
+          </Card>
+        </div>
+
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+          Management reports
+        </h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Card onClick={() => navigate(salesByCustomerPath())} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-2xl text-primary">groups</span>
+              <span className="font-bold text-white">Sales by Customer</span>
+            </span>
+            <span className="text-xs text-slate-400">
+              Pre-tax invoice revenue grouped by customer, ranked. Non-void invoices.
+            </span>
+          </Card>
+          <Card onClick={() => navigate(salesByItemPath())} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-2xl text-primary">category</span>
+              <span className="font-bold text-white">Sales by Item</span>
+            </span>
+            <span className="text-xs text-slate-400">
+              Pre-tax invoice revenue grouped by item or service, ranked. Non-void invoices.
+            </span>
+          </Card>
+          <Card onClick={() => navigate(purchasesByVendorPath())} className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-2xl text-primary">
+                local_shipping
+              </span>
+              <span className="font-bold text-white">Purchases by Vendor</span>
+            </span>
+            <span className="text-xs text-slate-400">
+              Bill spend grouped by vendor, ranked. Non-void bills.
+            </span>
+          </Card>
         </div>
 
         <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">

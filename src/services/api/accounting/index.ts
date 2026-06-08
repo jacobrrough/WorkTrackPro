@@ -33,6 +33,21 @@ export { budgetsService } from './budgets';
 export { fixedAssetsService } from './fixedAssets';
 // ── Custom fields on accounting entities (D4) ─────────────────────────────────
 export { customFieldsService } from './customFields';
+// ── #2 Document attachments / #3-#5 management reports ────────────────────────
+export { attachmentsService } from './attachments';
+export { managementReportsService } from './managementReports';
+// ── #6 invoice emails / #7 portal tokens / #8 estimates ───────────────────────
+export { invoiceEmailsService } from './invoiceEmails';
+export { portalTokensService, portalLinkFor } from './portalTokens';
+export type { CreatePortalLinkParams } from './portalTokens';
+export { estimatesService } from './estimates';
+// ── #10 Progress billing / #11 Purchase orders ───────────────────────────────
+export { projectsService, progressBillingService } from './progressBilling';
+export {
+  purchaseOrdersService,
+  computePurchaseOrderTotals,
+  computePoVariances,
+} from './purchaseOrders';
 export {
   buildRecurringInvoiceInput,
   buildRecurringBillInput,
