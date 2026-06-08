@@ -465,6 +465,37 @@ describe('buildBillExpenseJournalLines', () => {
     expect(sumDebit(result.lines)).toBe(sumCredit(result.lines));
   });
 
+  // The GL tie-out bug (accounting-math audit): a bill whose ONLY line maps to a CUSTOM
+  // inventory-asset account (id != the configured 1300 default) plus header tax. Before
+  // the type was threaded through bills.ts the builder matched inventory only by the
+  // default id, so a custom account looked like a plain expense and tax was folded into
+  // it — capitalizing $110 and breaking v_inventory_valuation ↔ GL by the tax amount.
+  // With the resolved type ('asset') threaded, the custom inventory debit stays at the
+  // FIFO cost ($100) and the $10 tax posts to its own operating-expenses line.
+  it('does not capitalize header tax into a custom inventory-asset account (id != default 1300)', () => {
+    const lines: NewBillLineInput[] = [
+      // 1 unit @ $100 → a custom inventory-asset account, NOT the configured 1300 default.
+      { quantity: 1, unitCost: 100, accountId: 'acc-custom-inv-1305' },
+    ];
+    const typeByAccount: Record<string, 'asset' | 'expense'> = {
+      'acc-custom-inv-1305': 'asset',
+    };
+    const totals = computeBillTotals({
+      lines,
+      resolveDebitAccount: (l) => l.accountId ?? null,
+      resolveDebitAccountType: (l) => (l.accountId ? (typeByAccount[l.accountId] ?? null) : null),
+      taxTotal: 10,
+    });
+    const result = buildBillExpenseJournalLines(totals, ACCOUNTS, { vendorId: 'v1' });
+    const inv = result.lines.find((l) => l.accountId === 'acc-custom-inv-1305')!;
+    const opex = result.lines.find((l) => l.accountId === 'acc-opex')!;
+    const ap = result.lines.find((l) => l.accountId === 'acc-ap')!;
+    expect(inv.debit).toBe(100); // FIFO cost only — tax is NOT capitalized ($100, not $110)
+    expect(opex.debit).toBe(10); // $10 tax booked to operating expenses, not the asset
+    expect(ap.credit).toBe(110); // 100 subtotal + 10 tax; equals 100 + 10 debits
+    expect(sumDebit(result.lines)).toBe(sumCredit(result.lines)); // JE stays balanced
+  });
+
   it('books tax on a dedicated operating-expenses line when every debit is inventory-asset', () => {
     // Both lines are inventory-asset (the default 1300): there is no expense group to
     // absorb tax. Rather than capitalize it into 1300, it posts as its own opex debit.

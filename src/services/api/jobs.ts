@@ -116,6 +116,9 @@ function mapJobRow(
     revision: row.revision as string | undefined,
     partId: row.part_id as string | undefined,
     partRev: row.part_rev as string | undefined,
+    quotedPrice: toFiniteNumber(row.quoted_price),
+    quotedMaterialCost: toFiniteNumber(row.quoted_material_cost),
+    quotedLaborHours: toFiniteNumber(row.quoted_labor_hours),
     ...(expand?.job_parts && expand.job_parts.length > 0
       ? {
           parts: expand.job_parts
@@ -703,6 +706,11 @@ export const jobService = {
         data.progressEstimatePercent != null
           ? Math.max(0, Math.min(100, Number(data.progressEstimatePercent)))
           : null,
+      // Quoted price snapshot: persisted so the invoice bills the quote captured here,
+      // not a re-quote from a since-edited part. Null when not supplied (older callers).
+      quoted_price: toFiniteNumber(data.quotedPrice) ?? null,
+      quoted_material_cost: toFiniteNumber(data.quotedMaterialCost) ?? null,
+      quoted_labor_hours: toFiniteNumber(data.quotedLaborHours) ?? null,
     };
     // job_code is assigned read-max-then-insert against a UNIQUE column, so a concurrent
     // createJob can grab the same code and raise 23505. Retry with a freshly-read code on
@@ -860,6 +868,11 @@ export const jobService = {
       row.allocation_source_updated_at = new Date().toISOString();
     }
     if (data.revision !== undefined) row.revision = data.revision;
+    if (data.quotedPrice !== undefined) row.quoted_price = toFiniteNumber(data.quotedPrice) ?? null;
+    if (data.quotedMaterialCost !== undefined)
+      row.quoted_material_cost = toFiniteNumber(data.quotedMaterialCost) ?? null;
+    if (data.quotedLaborHours !== undefined)
+      row.quoted_labor_hours = toFiniteNumber(data.quotedLaborHours) ?? null;
     if (data.partId !== undefined) row.part_id = data.partId;
     if (data.parts !== undefined) {
       const primary = data.parts.length > 0 ? data.parts[0] : null;

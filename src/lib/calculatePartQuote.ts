@@ -161,8 +161,15 @@ export function calculatePartQuote(
 
   for (const [invId, { quantity: qty, unit }] of requirementsOneSet.entries()) {
     const price = priceById.get(invId) ?? 0;
-    const totalQty = qty * totalQtyMultiplier;
-    const lineOur = totalQty * price;
+    // Clamp per-line quantity so a negative/NaN quantity contributes 0 cost
+    // (mirrors the sanitization partsCalculations.ts applies at the public layer).
+    const safeQty = Number.isFinite(qty) ? Math.max(0, qty) : 0;
+    const totalQty = safeQty * totalQtyMultiplier;
+    // Guard the line total too: an absurdly large (but finite) qty can overflow to
+    // Infinity, and Infinity * 0 price = NaN. Treat any non-finite/negative result as 0
+    // so a line never contributes negative or NaN cost.
+    const rawLineOur = totalQty * price;
+    const lineOur = Number.isFinite(rawLineOur) ? Math.max(0, rawLineOur) : 0;
     const lineCustomer = lineOur * multiplier;
     materialCostOur += lineOur;
     materialLineItems.push({

@@ -197,4 +197,135 @@ describe('buildInvoiceLinesFromJob', () => {
     });
     expect(buildInvoiceLinesFromJob({ job, parts: [], inventory, settings: SETTINGS })).toEqual([]);
   });
+
+  describe('quoted price snapshot', () => {
+    it('bills the saved snapshot, not the live re-quote, when quotedPrice is present', () => {
+      const part = makePart();
+      const job = makeJob({ dashQuantities: { '01': 3 }, quotedPrice: 1234.56 });
+
+      const lines = buildInvoiceLinesFromJob({ job, parts: [part], inventory, settings: SETTINGS });
+
+      expect(lines).toHaveLength(1);
+      // The line total equals the snapshot exactly, regardless of what the part re-quotes to.
+      expect(lines[0].lineTotal).toBeCloseTo(1234.56, 2);
+      // unitPrice * quantity still reconstructs the (snapshot) total within rounding.
+      expect((lines[0].unitPrice ?? 0) * (lines[0].quantity ?? 0)).toBeCloseTo(
+        lines[0].lineTotal!,
+        1
+      );
+    });
+
+    it('does NOT change the invoice line total when the part is edited after the snapshot', () => {
+      const job = makeJob({ dashQuantities: { '01': 3 }, quotedPrice: 1234.56 });
+
+      // Original part used at quote time.
+      const original = makePart();
+      const before = buildInvoiceLinesFromJob({
+        job,
+        parts: [original],
+        inventory,
+        settings: SETTINGS,
+      });
+
+      // Simulate editing the part AFTER the job was created: bump labor + add materials so
+      // a live re-quote would be materially different/higher.
+      const editedPart = {
+        ...makePart(),
+        laborHours: 99,
+        pricePerSet: 50000,
+        materials: [
+          {
+            id: 'm-1',
+            inventoryId: 'inv-1',
+            quantityPerUnit: 200,
+            unit: 'ea',
+            usageType: 'per_set',
+          },
+        ],
+      } as unknown as Part;
+      const after = buildInvoiceLinesFromJob({
+        job,
+        parts: [editedPart],
+        inventory,
+        settings: SETTINGS,
+      });
+
+      // Snapshot wins both times: the edit does not move the invoice total.
+      expect(before[0].lineTotal).toBeCloseTo(1234.56, 2);
+      expect(after[0].lineTotal).toBeCloseTo(1234.56, 2);
+      expect(after[0].lineTotal).toBeCloseTo(before[0].lineTotal!, 2);
+
+      // Sanity: a re-quote of the edited part really would differ (so the test is meaningful) —
+      // i.e. without the snapshot the total would have moved.
+      const noSnapshot = buildInvoiceLinesFromJob({
+        job: { ...job, quotedPrice: undefined },
+        parts: [editedPart],
+        inventory,
+        settings: SETTINGS,
+      });
+      expect(noSnapshot[0].lineTotal).not.toBeCloseTo(1234.56, 2);
+    });
+
+    it('falls back to the live re-quote when no snapshot is present (older jobs)', () => {
+      const part = makePart();
+      const job = makeJob({ dashQuantities: { '01': 3 } }); // no quotedPrice
+
+      const expected = calculatePartQuote(part, 3, inventory, {
+        laborRate: SETTINGS.laborRate,
+        cncRate: SETTINGS.cncRate,
+        printer3DRate: SETTINGS.printer3DRate,
+        overrideLaborHours: part.laborHours,
+      });
+
+      const lines = buildInvoiceLinesFromJob({ job, parts: [part], inventory, settings: SETTINGS });
+      expect(lines).toHaveLength(1);
+      expect(lines[0].lineTotal).toBeCloseTo(Math.round((expected!.total ?? 0) * 100) / 100, 2);
+    });
+
+    it('ignores a non-finite or non-positive snapshot and re-quotes', () => {
+      const part = makePart();
+      const expected = calculatePartQuote(part, 3, inventory, {
+        laborRate: SETTINGS.laborRate,
+        cncRate: SETTINGS.cncRate,
+        printer3DRate: SETTINGS.printer3DRate,
+        overrideLaborHours: part.laborHours,
+      });
+      const expectedTotal = Math.round((expected!.total ?? 0) * 100) / 100;
+
+      for (const bad of [0, -10, Number.NaN]) {
+        const job = makeJob({ dashQuantities: { '01': 3 }, quotedPrice: bad });
+        const lines = buildInvoiceLinesFromJob({
+          job,
+          parts: [part],
+          inventory,
+          settings: SETTINGS,
+        });
+        expect(lines[0].lineTotal).toBeCloseTo(expectedTotal, 2);
+      }
+    });
+
+    it('splits a multi-part snapshot across lines so the invoice sum equals the snapshot', () => {
+      const partA = makePart();
+      const partB = { ...makePart(), id: 'part-2', partNumber: 'P-200', name: 'Plate' } as Part;
+      const job = makeJob({
+        partNumber: undefined,
+        dashQuantities: undefined,
+        quotedPrice: 1000,
+        parts: [
+          { partId: 'part-1', partNumber: 'P-100', dashQuantities: { '01': 1 } },
+          { partId: 'part-2', partNumber: 'P-200', dashQuantities: { '01': 2 } },
+        ],
+      });
+
+      const lines = buildInvoiceLinesFromJob({
+        job,
+        parts: [partA, partB],
+        inventory,
+        settings: SETTINGS,
+      });
+      expect(lines).toHaveLength(2);
+      const sum = lines.reduce((s, l) => s + (l.lineTotal ?? 0), 0);
+      expect(sum).toBeCloseTo(1000, 2);
+    });
+  });
 });

@@ -2,6 +2,35 @@ import type { Part, PartVariant, PartMaterial } from '@/core/types';
 
 const norm = (s: string) => s.replace(/^-/, '');
 
+/** Round to a fixed number of decimal places. */
+const roundTo = (value: number, decimals: number): number => {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+};
+
+/**
+ * Split a total into `count` even parts that each round to `decimals` places and
+ * ALWAYS sum back to round(total) with no rounding leakage — e.g. 10 split 3 ways
+ * => [3.33, 3.33, 3.34], not 3 × 3.33 = 9.99.
+ *
+ * Uses cumulative ("largest-remainder") rounding: each part is the difference of
+ * successive rounded cumulative targets. Because the ideal cumulative total is
+ * monotonically non-decreasing and capped at round(total), every part is
+ * non-negative and the telescoping sum is exactly round(total).
+ */
+const splitEvenlyWithRemainder = (total: number, count: number, decimals: number): number[] => {
+  if (count <= 0) return [];
+  const roundedTotal = roundTo(total, decimals);
+  const parts: number[] = [];
+  let prevCumulative = 0;
+  for (let i = 1; i <= count; i++) {
+    const cumulative = roundTo((roundedTotal * i) / count, decimals);
+    parts.push(roundTo(cumulative - prevCumulative, decimals));
+    prevCumulative = cumulative;
+  }
+  return parts;
+};
+
 /**
  * Effective set-level pricing/labor for display. Single source of truth:
  * - Part with variants + set composition: use variant-derived values only.
@@ -169,10 +198,12 @@ export function distributeLaborEvenly(
 ): Record<string, number> {
   const targets = variants.filter((v) => v.id !== excludeVariantId);
   if (targets.length === 0 || totalLaborHours <= 0) return {};
-  const perVariant = totalLaborHours / targets.length;
+  // Largest-remainder split so per-variant hours always sum to round(totalLaborHours)
+  // (e.g. 10/3 => 3.33 + 3.33 + 3.34, not 3*3.33 = 9.99).
+  const shares = splitEvenlyWithRemainder(totalLaborHours, targets.length, 2);
   const out: Record<string, number> = {};
-  targets.forEach((v) => {
-    out[v.id] = Math.round(perVariant * 100) / 100;
+  targets.forEach((v, i) => {
+    out[v.id] = shares[i];
   });
   return out;
 }
@@ -350,20 +381,38 @@ export function distributeSetMaterialToVariants(
   }, 0);
   if (totalUnits <= 0 || totalQuantity <= 0) return [];
 
-  const quantityPerUnit = Math.round((totalQuantity / totalUnits) * 1000) / 1000;
-  const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> =
-    [];
+  const roundedTotal = roundTo(totalQuantity, 3);
+  const quantityPerUnit = roundTo(roundedTotal / totalUnits, 3);
+
+  // Collect the included variants (in order) with their qty in the set so we can
+  // reconstruct the per-set total as sum(quantityPerUnit * qtyInSet).
+  const included: Array<{ variant: PartVariant; qtyInSet: number }> = [];
   for (const v of variants) {
     const suffixNorm = norm(v.variantSuffix);
     const qtyInSet = Object.entries(setComposition).find(([s]) => norm(s) === suffixNorm)?.[1] ?? 0;
-    if (qtyInSet > 0) {
-      toAdd.push({
-        variantId: v.id,
-        inventoryId,
-        quantity: quantityPerUnit,
-        unit: unit || 'units',
-      });
-    }
+    if (qtyInSet > 0) included.push({ variant: v, qtyInSet });
   }
+
+  const toAdd: Array<{ variantId: string; inventoryId: string; quantity: number; unit: string }> =
+    [];
+  let reconstructed = 0;
+  included.forEach(({ variant, qtyInSet }, i) => {
+    let perUnit = quantityPerUnit;
+    if (i === included.length - 1) {
+      // Last variant absorbs the residual via its qtyInSet weight so the parts
+      // reconstruct (quantityPerUnit × qtyInSet) back to round(totalQuantity) with
+      // no accumulating rounding leakage (e.g. 10 across 3 units => 3.333 + remainder).
+      // Clamp to >= 0: a per-unit quantity is never negative even if upstream
+      // rounding briefly over-allocated (mirrors the >= 0 quantity policy elsewhere).
+      perUnit = Math.max(0, roundTo((roundedTotal - reconstructed) / qtyInSet, 3));
+    }
+    reconstructed += perUnit * qtyInSet;
+    toAdd.push({
+      variantId: variant.id,
+      inventoryId,
+      quantity: perUnit,
+      unit: unit || 'units',
+    });
+  });
   return toAdd;
 }

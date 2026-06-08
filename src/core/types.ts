@@ -223,6 +223,16 @@ export interface Job {
   partId?: string;
   /** Part drawing rev this job was built to (when linked to a part). */
   partRev?: string;
+  /**
+   * Customer-facing quoted total captured at job creation (price snapshot). When present,
+   * the invoice prefers this over re-quoting the (possibly since-edited) part. Undefined on
+   * older jobs created before the snapshot existed — those fall back to the re-quote path.
+   */
+  quotedPrice?: number;
+  /** Quoted material cost captured at job creation (snapshot). Undefined when unknown at creation. */
+  quotedMaterialCost?: number;
+  /** Quoted labor hours captured at job creation (snapshot). Undefined on older jobs. */
+  quotedLaborHours?: number;
   /** When present, full list of parts linked to this job (job_parts). partId/partNumber/dashQuantities are the primary/first part. */
   parts?: JobPartLink[];
   /** User-estimated completion percent (0–100). When set, drives progress bar and at-risk if implied labor exceeds estimate. */

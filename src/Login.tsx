@@ -20,7 +20,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [logoError, setLogoError] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showContactAdmin, setShowContactAdmin] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -70,20 +69,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-[#2b1a3d] px-6">
       <div className="mb-8 flex w-full max-w-[400px] flex-col items-center">
-        {/* Company Logo - fallback icon if image missing */}
-        <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-md bg-white shadow-xl">
-          {logoError ? (
-            <span className="material-symbols-outlined text-5xl text-primary" aria-hidden>
-              precision_manufacturing
-            </span>
-          ) : (
-            <img
-              src="/logo"
-              alt="Company Logo"
-              className="h-20 w-20 object-contain"
-              onError={() => setLogoError(true)}
-            />
-          )}
+        {/* Company logo — same brand mark as the main site (Landing) */}
+        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-md bg-amber-500/20 text-amber-400 shadow-xl">
+          <span className="material-symbols-outlined text-6xl" aria-hidden>
+            precision_manufacturing
+          </span>
         </div>
         <h1 className="text-center text-[32px] font-bold leading-tight tracking-tight text-white">
           WorkTrack Pro

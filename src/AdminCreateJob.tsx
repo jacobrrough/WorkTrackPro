@@ -22,7 +22,7 @@ import {
   buildPersistedVariantBreakdowns,
   buildNoVariantMachineBreakdown,
 } from '@/features/jobs/hooks/variantBreakdownUtils';
-import { calculateJobPriceFromPart } from '@/lib/jobPriceFromPart';
+import { calculateJobPriceFromPart, calculateJobPriceFromParts } from '@/lib/jobPriceFromPart';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
@@ -75,6 +75,9 @@ interface AdminCreateJobProps {
     >;
     allocationSource?: 'variant' | 'total';
     parts?: JobPartLink[];
+    quotedPrice?: number;
+    quotedMaterialCost?: number;
+    quotedLaborHours?: number;
   }) => Promise<Job | null>;
   onNavigate: (view: ViewState) => void;
   users: User[];
@@ -440,6 +443,30 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           ]
         : undefined;
 
+    // Quoted price snapshot: capture the customer-facing total now so the invoice bills
+    // this quote, not a re-quote from a part that may be edited later. Computed from the
+    // same calculator that drives the on-screen Auto Price, summed across all linked parts
+    // (mirrors the per-part invoice line summation in buildInvoiceLinesFromJob).
+    const quotePriceParts = [
+      ...(selectedPart
+        ? [{ part: selectedPart, dashQuantities: buildEffectiveQuantities(selectedPart) }]
+        : []),
+      ...additionalParts.map(({ part, dashQuantities: dq }) => ({
+        part,
+        dashQuantities: dq ?? {},
+      })),
+    ];
+    const quotedPriceResult =
+      quotePriceParts.length > 0 ? calculateJobPriceFromParts(quotePriceParts) : null;
+    const quotedPriceForCreate =
+      quotedPriceResult && Number.isFinite(quotedPriceResult.totalPrice)
+        ? quotedPriceResult.totalPrice
+        : undefined;
+    const quotedLaborHoursForCreate =
+      typeof laborHoursForCreate === 'number' && Number.isFinite(laborHoursForCreate)
+        ? laborHoursForCreate
+        : undefined;
+
     try {
       const job = await onCreate({
         jobCode: formData.jobCode,
@@ -471,6 +498,8 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           persistedBreakdowns?.persistedMachineBreakdown ?? noVariantMachineBreakdown ?? undefined,
         allocationSource: persistedBreakdowns || noVariantMachineBreakdown ? 'variant' : undefined,
         parts: partsForCreate,
+        quotedPrice: quotedPriceForCreate,
+        quotedLaborHours: quotedLaborHoursForCreate,
       });
 
       if (job) {

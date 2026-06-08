@@ -1,4 +1,5 @@
 import type {
+  AccountType,
   Bill,
   NewBillInput,
   NewBillLineInput,
@@ -41,16 +42,30 @@ interface ItemAccountInfo {
   inventoryAssetAccountId: string | null;
 }
 
+/** Resolves both the debit account id AND its GL account type for each bill line. */
+interface DebitResolvers {
+  resolveDebitAccount: (line: NewBillLineInput) => string | null;
+  resolveDebitAccountType: (line: NewBillLineInput) => AccountType | null;
+}
+
 /**
- * Build a per-line debit-account resolver for a set of bill lines. Fetches the items
- * referenced by item-based lines and the vendor's default expense account in one pass
- * so computeBillTotals (pure) can resolve each line without any DB lookups of its own.
+ * Build per-line debit resolvers for a set of bill lines. Fetches the items referenced
+ * by item-based lines, the vendor's default expense account, and the GL type of every
+ * account those lines could debit — all in one pass — so computeBillTotals (pure) can
+ * resolve each line, with its account *type*, without any DB lookups of its own.
+ *
+ * The type resolver is what lets buildBillExpenseJournalLines keep header sales/use tax
+ * off an inventory-asset debit even when the item maps to a CUSTOM inventory-asset
+ * account (id != the configured 1300 default): an `asset`-typed debit is never folded,
+ * so the inventory-asset balance keeps tying to the FIFO-costed amount (GL ↔
+ * v_inventory_valuation). Without the type, the builder can only fall back to matching
+ * the default id and would wrongly capitalize tax into the custom account.
  */
 async function debitAccountResolver(
   lines: NewBillLineInput[],
   vendorId: string,
   operatingExpensesId: string | null
-): Promise<(line: NewBillLineInput) => string | null> {
+): Promise<DebitResolvers> {
   const itemIds = Array.from(
     new Set(lines.map((l) => l.itemId).filter((id): id is string => !!id))
   );
@@ -82,7 +97,7 @@ async function debitAccountResolver(
     vendorDefaultExpense = v == null ? null : String(v);
   }
 
-  return (line: NewBillLineInput): string | null => {
+  const resolveDebitAccount = (line: NewBillLineInput): string | null => {
     // Account-based line: debit its explicit account.
     if (line.accountId) return line.accountId;
     // Item-based line: inventory items capitalize to the inventory-asset account;
@@ -98,21 +113,46 @@ async function debitAccountResolver(
     }
     return vendorDefaultExpense ?? operatingExpensesId;
   };
+
+  // Fetch the GL type of every account these lines could actually debit, so the type
+  // resolver always reports the type of the *resolved* account (no id/type divergence).
+  const debitAccountIds = Array.from(
+    new Set(lines.map((l) => resolveDebitAccount(l)).filter((id): id is string => !!id))
+  );
+  const typeByAccount = new Map<string, AccountType>();
+  if (debitAccountIds.length) {
+    const { data } = await acct()
+      .from('accounts')
+      .select('id, account_type')
+      .in('id', debitAccountIds);
+    for (const r of (data ?? []) as Row[]) {
+      if (r.account_type != null) {
+        typeByAccount.set(String(r.id), String(r.account_type) as AccountType);
+      }
+    }
+  }
+
+  const resolveDebitAccountType = (line: NewBillLineInput): AccountType | null => {
+    const accountId = resolveDebitAccount(line);
+    return accountId ? (typeByAccount.get(accountId) ?? null) : null;
+  };
+
+  return { resolveDebitAccount, resolveDebitAccountType };
 }
 
-/** Compute money totals + per-line debit accounts for a set of input lines. */
+/** Compute money totals + per-line debit accounts (and their types) for input lines. */
 async function computeTotalsFor(
   lines: NewBillLineInput[],
   vendorId: string,
   taxTotal: number | null | undefined
 ): Promise<BillTotals> {
   const defaults = await accountingSettingsService.getDefaultAccounts();
-  const resolveDebitAccount = await debitAccountResolver(
+  const { resolveDebitAccount, resolveDebitAccountType } = await debitAccountResolver(
     lines,
     vendorId,
     defaults.operatingExpenses
   );
-  return computeBillTotals({ lines, resolveDebitAccount, taxTotal });
+  return computeBillTotals({ lines, resolveDebitAccount, resolveDebitAccountType, taxTotal });
 }
 
 function lineRows(billId: string, lines: NewBillLineInput[]): Record<string, unknown>[] {

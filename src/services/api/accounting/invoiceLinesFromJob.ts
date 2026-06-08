@@ -16,6 +16,11 @@ import type { NewInvoiceLineInput } from '../../../features/accounting/types';
  * the quote (manualSetPrice) exactly like the on-screen calculator. If no part can
  * be quoted, falls back to a single line built from the job's inventory BOM.
  *
+ * IMPORTANT: when the job carries a saved quoted snapshot (`job.quotedPrice`, captured at
+ * job creation), that snapshot is billed instead of the live re-quote, so editing a part
+ * after the job was created does NOT change the invoice price. The re-quote-from-part path
+ * is the fallback for older jobs created before the snapshot existed.
+ *
  * Pure (no Supabase) so it is unit-testable; the caller supplies the resolved parts,
  * inventory, and rate settings.
  */
@@ -31,7 +36,14 @@ export interface QuoteRateSettings {
 export interface InvoiceLinesFromJobParams {
   job: Pick<
     Job,
-    'id' | 'jobCode' | 'name' | 'partNumber' | 'dashQuantities' | 'parts' | 'inventoryItems'
+    | 'id'
+    | 'jobCode'
+    | 'name'
+    | 'partNumber'
+    | 'dashQuantities'
+    | 'parts'
+    | 'inventoryItems'
+    | 'quotedPrice'
   >;
   /** Fully-loaded parts (with variants/materials) keyed by id or partNumber lookup below. */
   parts: Part[];
@@ -104,6 +116,9 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
         ? [{ partId: undefined, partNumber: job.partNumber, dashQuantities: job.dashQuantities }]
         : [];
 
+  // Re-quote each linked part from its current state. The per-part `total` is the live
+  // quote; it is what we bill ONLY when the job has no saved quoted snapshot (older jobs).
+  const partTotals: { description: string; sets: number; total: number }[] = [];
   for (const link of links) {
     const part = findPart(parts, link);
     if (!part) continue;
@@ -130,16 +145,58 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
     });
     if (!quote || quote.total <= 0) continue;
 
-    const total = round2(quote.total);
-    lines.push({
+    partTotals.push({
       description: `${part.partNumber}${part.name ? ` — ${part.name}` : ''} (${sets} set${sets === 1 ? '' : 's'})`,
-      quantity: sets,
-      unitPrice: round2(total / sets),
-      lineTotal: total,
-      taxCodeId: taxCodeId ?? null,
-      taxable: true,
-      incomeAccountId: incomeAccountId ?? null,
-      jobId: job.id,
+      sets,
+      total: round2(quote.total),
+    });
+  }
+
+  if (partTotals.length > 0) {
+    // Prefer the job's saved quoted snapshot when present (finite, positive) so the invoice
+    // bills what was quoted — NOT a re-quote from a part that may have been edited after the
+    // job was created. The snapshot is a single combined total across all linked parts; for a
+    // multi-part job we split it across the lines in proportion to their live re-quote so the
+    // invoice sum equals the snapshot exactly. When the snapshot is absent (older jobs), each
+    // line bills its own live re-quote, preserving the existing behavior.
+    const snapshot = job.quotedPrice;
+    const useSnapshot = typeof snapshot === 'number' && Number.isFinite(snapshot) && snapshot > 0;
+    const reQuoteSum = partTotals.reduce((s, p) => s + p.total, 0);
+
+    partTotals.forEach((p, idx) => {
+      let lineTotal: number;
+      if (!useSnapshot) {
+        lineTotal = p.total;
+      } else if (partTotals.length === 1) {
+        lineTotal = round2(snapshot!);
+      } else if (reQuoteSum > 0) {
+        // Proportional split; assign the rounding remainder to the last line so the sum is exact.
+        lineTotal =
+          idx === partTotals.length - 1
+            ? round2(
+                snapshot! -
+                  partTotals
+                    .slice(0, idx)
+                    .reduce((s, q) => s + round2(snapshot! * (q.total / reQuoteSum)), 0)
+              )
+            : round2(snapshot! * (p.total / reQuoteSum));
+      } else {
+        // Re-quote summed to 0 (cannot proportion): split the snapshot evenly.
+        lineTotal =
+          idx === partTotals.length - 1
+            ? round2(snapshot! - round2(snapshot! / partTotals.length) * (partTotals.length - 1))
+            : round2(snapshot! / partTotals.length);
+      }
+      lines.push({
+        description: p.description,
+        quantity: p.sets,
+        unitPrice: round2(lineTotal / p.sets),
+        lineTotal,
+        taxCodeId: taxCodeId ?? null,
+        taxable: true,
+        incomeAccountId: incomeAccountId ?? null,
+        jobId: job.id,
+      });
     });
   }
 
