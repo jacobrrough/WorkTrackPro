@@ -11,6 +11,14 @@ export const BUDGETS_BASE = `${ACCOUNTING_BASE}/budgets`;
 export const FIXED_ASSETS_BASE = `${ACCOUNTING_BASE}/fixed-assets`;
 export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
 export const SETTINGS_BASE = `${ACCOUNTING_BASE}/settings`;
+/**
+ * QuickBooks Online connection (import Phase 0). A single AccountingShell-wrapped
+ * screen that runs the OAuth connect/disconnect handshake and a test call. The OAuth
+ * callback redirects back here with ?qbo=connected|error.
+ */
+export const INTEGRATIONS_BASE = `${ACCOUNTING_BASE}/integrations`;
+/** Relative route segment (mounted under /app/accounting in the router). */
+export const INTEGRATIONS_SEGMENT = 'integrations';
 
 /**
  * TAX-SYNC (ADVISORY-ONLY) lives UNDER Settings: an accounting_admin-only "Tax table
@@ -313,6 +321,7 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
   { key: 'overview', label: 'Overview', icon: 'dashboard', path: ACCOUNTING_BASE },
   { key: 'accounts', label: 'Accounts', icon: 'account_tree', path: `${ACCOUNTING_BASE}/accounts` },
   { key: 'import', label: 'Import', icon: 'upload_file', path: `${ACCOUNTING_BASE}/import` },
+  { key: 'integrations', label: 'Integrations', icon: 'sync_alt', path: INTEGRATIONS_BASE },
   { key: 'journal', label: 'Journal', icon: 'menu_book', path: `${ACCOUNTING_BASE}/journal` },
   { key: 'invoices', label: 'Invoices', icon: 'receipt_long', path: `${ACCOUNTING_BASE}/invoices` },
   { key: 'bills', label: 'Bills', icon: 'request_quote', path: `${ACCOUNTING_BASE}/bills` },
