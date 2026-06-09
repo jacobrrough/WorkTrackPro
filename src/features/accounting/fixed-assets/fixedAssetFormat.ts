@@ -63,6 +63,32 @@ export function methodLabel(method: DepreciationMethod): string {
   return DEPRECIATION_METHOD_LABELS[method] ?? method;
 }
 
+/**
+ * Which depreciation methods are actually IMPLEMENTED end-to-end (real schedule math). Only
+ * straight-line is — `declining_balance` is an accepted enum value but both the JS preview
+ * (computeStraightLineSchedule) and the DB generator (accounting.generate_depreciation_schedule)
+ * currently emit a STRAIGHT-LINE plan for it, so its interim expense/NBV would be wrong. Until a
+ * real declining-balance generator lands it must not be saveable.
+ */
+export const IMPLEMENTED_DEPRECIATION_METHODS: DepreciationMethod[] = ['straight_line'];
+
+/** True when `method` has a faithful schedule generator (i.e. is safe to save). */
+export function isDepreciationMethodSupported(method: DepreciationMethod): boolean {
+  return IMPLEMENTED_DEPRECIATION_METHODS.includes(method);
+}
+
+/**
+ * Guard the chosen depreciation method before a save. Returns an error message when the method
+ * is accepted by the type/DB but not yet faithfully implemented (today: `declining_balance`),
+ * steering the user to straight-line; returns null when the method is safe to save. Keeps a
+ * user from silently persisting an asset whose declining-balance schedule would actually be
+ * straight-line. Mirror of the figures guard in fixedAssets.ts (validateAssetFigures).
+ */
+export function validateDepreciationMethod(method: DepreciationMethod): string | null {
+  if (isDepreciationMethodSupported(method)) return null;
+  return `${methodLabel(method)} depreciation is not supported yet — choose Straight-line.`;
+}
+
 /** Human label for an asset's lifecycle status. */
 export function statusLabel(status: FixedAssetStatus): string {
   return FIXED_ASSET_STATUS_LABELS[status] ?? status;

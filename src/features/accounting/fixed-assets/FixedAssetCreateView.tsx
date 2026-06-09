@@ -9,7 +9,12 @@ import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useCreateFixedAsset } from '../hooks/useAccountingMutations';
 import { computeStraightLineSchedule, depreciableBaseCents } from '../depreciation';
 import { FIXED_ASSETS_BASE } from '../constants';
-import { formatAssetDate, formatMoney } from './fixedAssetFormat';
+import {
+  formatAssetDate,
+  formatMoney,
+  isDepreciationMethodSupported,
+  validateDepreciationMethod,
+} from './fixedAssetFormat';
 import {
   DEPRECIATION_METHOD_LABELS,
   DEPRECIATION_METHODS,
@@ -79,7 +84,10 @@ export default function FixedAssetCreateView() {
     Number.isInteger(usefulLifeMonths) &&
     usefulLifeMonths > 0 &&
     !!inServiceDate;
-  const canSave = !!name.trim() && !!assetAccountId && figuresValid;
+  // Block methods that are accepted by the type/DB but not yet faithfully implemented
+  // (declining_balance schedules straight-line today, so its interim figures would be wrong).
+  const methodSupported = isDepreciationMethodSupported(method);
+  const canSave = !!name.trim() && !!assetAccountId && figuresValid && methodSupported;
 
   const submit = async () => {
     setError(null);
@@ -97,6 +105,11 @@ export default function FixedAssetCreateView() {
     }
     if (!Number.isInteger(usefulLifeMonths) || usefulLifeMonths <= 0) {
       setError('Useful life must be a whole number of months greater than zero.');
+      return;
+    }
+    const methodError = validateDepreciationMethod(method);
+    if (methodError) {
+      setError(methodError);
       return;
     }
     const input: NewFixedAssetInput = {
@@ -240,7 +253,7 @@ export default function FixedAssetCreateView() {
           <FormField
             label="Method"
             htmlFor="fa-method"
-            hint="Straight-line is posted today; declining balance is reserved (schedules straight-line for now)."
+            hint="Straight-line is supported today. Declining balance is not yet implemented, so it can't be saved."
           >
             <select
               id="fa-method"
@@ -248,12 +261,19 @@ export default function FixedAssetCreateView() {
               value={method}
               onChange={(e) => setMethod(e.target.value as DepreciationMethod)}
             >
-              {DEPRECIATION_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {DEPRECIATION_METHOD_LABELS[m]}
-                </option>
-              ))}
+              {DEPRECIATION_METHODS.map((m) => {
+                const supported = isDepreciationMethodSupported(m);
+                return (
+                  <option key={m} value={m} disabled={!supported}>
+                    {DEPRECIATION_METHOD_LABELS[m]}
+                    {supported ? '' : ' (not yet supported)'}
+                  </option>
+                );
+              })}
             </select>
+            {!methodSupported && (
+              <p className="mt-1 text-xs text-amber-300">{validateDepreciationMethod(method)}</p>
+            )}
           </FormField>
         </section>
 

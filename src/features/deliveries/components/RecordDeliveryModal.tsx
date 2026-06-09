@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Delivery, DeliveryLineItem, Job } from '@/core/types';
+import { deliveryLineKey, validateDeliveryQuantities } from '../deliveryValidation';
 
 interface RecordDeliveryModalProps {
   job: Job;
@@ -131,13 +132,35 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
     buildInitialLines(job, alreadyDeliveredByKey, existing)
   );
   const [saving, setSaving] = useState(false);
+  const [overDeliveryError, setOverDeliveryError] = useState<string | null>(null);
 
   const totalQty = useMemo(
     () => lines.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0),
     [lines]
   );
 
+  // Cap per part/variant: only lines with a real ordered quantity (> 0) are bounded.
+  // Zero-ordered and custom lines have no cap and are intentionally omitted (unbounded).
+  const remainingByKey = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const l of lines) {
+      if (l.ordered != null && l.ordered > 0 && l.remaining != null) {
+        map[deliveryLineKey(l.partNumber, l.variantSuffix)] = l.remaining;
+      }
+    }
+    return map;
+  }, [lines]);
+
+  const overDeliveredKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const err of validateDeliveryQuantities(lines, remainingByKey)) {
+      keys.add(deliveryLineKey(err.partNumber, err.variantSuffix));
+    }
+    return keys;
+  }, [lines, remainingByKey]);
+
   const updateLine = (idx: number, patch: Partial<EditableLine>) => {
+    setOverDeliveryError(null);
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   };
 
@@ -155,6 +178,21 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (totalQty === 0) return;
+
+    const overDelivered = validateDeliveryQuantities(lines, remainingByKey);
+    if (overDelivered.length > 0) {
+      const labels = overDelivered.map((err) => {
+        const label = [err.partNumber, err.variantSuffix].filter(Boolean).join('-') || 'an item';
+        return `${label} (${err.quantity} > ${err.remaining} remaining)`;
+      });
+      setOverDeliveryError(
+        `Quantity exceeds what's left to deliver for ${labels.join(', ')}. ` +
+          `Reduce to the remaining amount or less.`
+      );
+      return;
+    }
+    setOverDeliveryError(null);
+
     setSaving(true);
     const lineItems: DeliveryLineItem[] = lines
       .filter((l) => l.quantity > 0 && l.description.trim())
@@ -264,7 +302,15 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                         : 'Custom'}
                     </span>
                     {line.ordered != null && (
-                      <span className="text-[10px] text-slate-500">
+                      <span
+                        className={`text-[10px] ${
+                          overDeliveredKeys.has(
+                            deliveryLineKey(line.partNumber, line.variantSuffix)
+                          )
+                            ? 'font-medium text-red-400'
+                            : 'text-slate-500'
+                        }`}
+                      >
                         Ordered {line.ordered} · {line.remaining} remaining
                       </span>
                     )}
@@ -282,7 +328,11 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                       step="any"
                       value={line.quantity}
                       onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) || 0 })}
-                      className="col-span-3 rounded border border-white/10 bg-transparent px-2 py-1 text-right text-sm text-white focus:border-primary focus:outline-none"
+                      className={`col-span-3 rounded border bg-transparent px-2 py-1 text-right text-sm text-white focus:outline-none ${
+                        overDeliveredKeys.has(deliveryLineKey(line.partNumber, line.variantSuffix))
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-white/10 focus:border-primary'
+                      }`}
                     />
                     <input
                       value={line.unit ?? ''}
@@ -315,6 +365,15 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
             />
           </div>
         </div>
+
+        {overDeliveryError && (
+          <div
+            role="alert"
+            className="border-t border-red-500/30 bg-red-500/10 px-6 py-2 text-xs text-red-300"
+          >
+            {overDeliveryError}
+          </div>
+        )}
 
         <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3">
           <p className="text-sm text-slate-400">
