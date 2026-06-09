@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- useApp is the public API for this context */
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -97,6 +98,11 @@ export interface AppContextType {
   pendingOfflinePunchCount: number;
   /** True when some queued punches exceeded sync retries (needs admin attention). */
   staleOfflinePunch: boolean;
+  /**
+   * Manually drain the offline clock-punch queue (same path as the automatic
+   * reconnect/focus/timer sync). Resolves with how many punches were applied.
+   */
+  syncOfflinePunchesNow: () => Promise<number>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -117,6 +123,22 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const staleOfflinePunch = useMemo(() => hasQueuedPunchAtMaxAttempts(), [offlineQueueVersion]);
+
+  // Shared queue-drain path used by both the automatic sync (reconnect / tab
+  // focus / ~90s timer) below and the manual "Sync now" banner button.
+  const syncOfflinePunchesNow = useCallback(async (): Promise<number> => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return 0;
+    if (getQueue().length === 0) return 0;
+    const synced = await syncOfflineClockQueue({
+      refreshShifts: queries.refreshShifts,
+      refreshJobs: queries.refreshJobs,
+    });
+    if (synced > 0) {
+      setOfflineQueueVersion((v) => v + 1);
+      showToast(`Synced ${synced} clock punch${synced === 1 ? '' : 'es'}`, 'success');
+    }
+    return synced;
+  }, [queries.refreshShifts, queries.refreshJobs, showToast]);
 
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
@@ -156,42 +178,29 @@ function AppProviderInner({ children }: { children: ReactNode }) {
 
   // Offline clock queue: sync on reconnect, tab focus, and periodic while pending
   useEffect(() => {
-    const runSync = async () => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-      if (getQueue().length === 0) return;
-      const synced = await syncOfflineClockQueue({
-        refreshShifts: queries.refreshShifts,
-        refreshJobs: queries.refreshJobs,
-      });
-      if (synced > 0) {
-        setOfflineQueueVersion((v) => v + 1);
-        showToast(`Synced ${synced} clock punch${synced === 1 ? '' : 'es'}`, 'success');
-      }
-    };
-
     const onOnline = () => {
-      void runSync();
+      void syncOfflinePunchesNow();
     };
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void runSync();
+      if (document.visibilityState === 'visible') void syncOfflinePunchesNow();
     };
 
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);
     const intervalId = window.setInterval(() => {
       if (typeof navigator !== 'undefined' && navigator.onLine && getQueue().length > 0) {
-        void runSync();
+        void syncOfflinePunchesNow();
       }
     }, 90_000);
 
-    void runSync();
+    void syncOfflinePunchesNow();
 
     return () => {
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisible);
       window.clearInterval(intervalId);
     };
-  }, [queries.refreshShifts, queries.refreshJobs, showToast, offlineQueueVersion]);
+  }, [syncOfflinePunchesNow, offlineQueueVersion]);
 
   // Realtime subscriptions — single consolidated channel for all core tables.
   const debouncerRef = useRef(createRealtimeDebouncer(300));
@@ -385,6 +394,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       calculateAllocated,
       pendingOfflinePunchCount,
       staleOfflinePunch,
+      syncOfflinePunchesNow,
     }),
     [
       auth.currentUser,
@@ -413,6 +423,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       calculateAllocated,
       pendingOfflinePunchCount,
       staleOfflinePunch,
+      syncOfflinePunchesNow,
     ]
   );
 

@@ -96,3 +96,31 @@ export function bumpQueueAttempt(id: string): void {
 export function hasQueuedPunchAtMaxAttempts(): boolean {
   return getQueue().some((p) => (p.attemptCount ?? 0) >= MAX_SYNC_ATTEMPTS_PER_PUNCH);
 }
+
+export interface OfflinePunchWarning {
+  /** 'stale' = some punch hit the retry cap and needs attention; 'pending' = punches still waiting to sync. */
+  severity: 'stale' | 'pending';
+  pendingCount: number;
+  /** True when the device is offline, so a manual "Sync now" cannot help yet. */
+  isOffline: boolean;
+}
+
+/**
+ * Pure predicate deciding whether a clocked-in worker should see the
+ * stuck/pending offline-punch banner. Returns null when nothing is queued
+ * (no banner). `stale` takes precedence so a punch stuck at max retries is
+ * never masked by the softer "pending" styling.
+ */
+export function getOfflinePunchWarning(args: {
+  pendingCount: number;
+  staleOfflinePunch: boolean;
+  isOnline: boolean;
+}): OfflinePunchWarning | null {
+  const { pendingCount, staleOfflinePunch, isOnline } = args;
+  if (pendingCount <= 0) return null;
+  return {
+    severity: staleOfflinePunch ? 'stale' : 'pending',
+    pendingCount,
+    isOffline: !isOnline,
+  };
+}

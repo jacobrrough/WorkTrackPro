@@ -1,8 +1,9 @@
 // AppShell is provided by App.tsx — do NOT add AppShell inside any route wrapper.
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useApp } from './AppContext';
+import ErrorBoundary from './ErrorBoundary';
 import { useAppNavigate } from './hooks/useAppNavigate';
 import { useInAppBack } from './hooks/useInAppBack';
 import { useClockInByCode } from './hooks/useClockInByCode';
@@ -74,6 +75,28 @@ function NotFound({
       </button>
     </div>
   );
+}
+
+// ─── Per-route error isolation ───────────────────────────────────────────────
+// Wraps a single route element in its own ErrorBoundary so a crash in one feature
+// (e.g. JobDetail) shows a scoped fallback while the rest of the app — the nav and
+// every other route — keeps working. The top-level boundary in App.tsx remains as a
+// final safety net for anything thrown outside a route (e.g. AppShell providers).
+
+function RouteFallback() {
+  // Full reload from the home route is the safest recovery: it remounts the app and
+  // clears whatever transient state crashed the route, without trapping the user here.
+  return (
+    <NotFound
+      message="This page hit an unexpected error."
+      description="The rest of the app is still available. Go back home, or reload to try again."
+      onBack={() => window.location.assign('/app')}
+    />
+  );
+}
+
+function RouteErrorBoundary({ children }: { children: ReactNode }) {
+  return <ErrorBoundary fallback={<RouteFallback />}>{children}</ErrorBoundary>;
 }
 
 // ─── Shared inventory props ───────────────────────────────────────────────────
@@ -543,37 +566,113 @@ function NotificationSettingsRoute() {
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/app" element={<DashboardRoute />} />
+      <Route
+        path="/app"
+        element={
+          <RouteErrorBoundary>
+            <DashboardRoute />
+          </RouteErrorBoundary>
+        }
+      />
       <Route
         path="/app/jobs/new"
         element={
           <AdminGuard>
-            <CreateJobRoute />
+            <RouteErrorBoundary>
+              <CreateJobRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
-      <Route path="/app/jobs/:jobId" element={<JobDetailRoute />} />
-      <Route path="/app/clock-in" element={<ClockInRoute />} />
-      <Route path="/app/scanner" element={<ScannerRoute />} />
-      <Route path="/app/inventory" element={<InventoryRoute />} />
-      <Route path="/app/inventory/:itemId" element={<InventoryDetailRoute />} />
-      <Route path="/app/board/shop" element={<KanbanBoardRoute boardType="shopFloor" />} />
+      <Route
+        path="/app/jobs/:jobId"
+        element={
+          <RouteErrorBoundary>
+            <JobDetailRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/clock-in"
+        element={
+          <RouteErrorBoundary>
+            <ClockInRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/scanner"
+        element={
+          <RouteErrorBoundary>
+            <ScannerRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/inventory"
+        element={
+          <RouteErrorBoundary>
+            <InventoryRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/inventory/:itemId"
+        element={
+          <RouteErrorBoundary>
+            <InventoryDetailRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/board/shop"
+        element={
+          <RouteErrorBoundary>
+            <KanbanBoardRoute boardType="shopFloor" />
+          </RouteErrorBoundary>
+        }
+      />
       <Route
         path="/app/board/admin"
         element={
           <AdminGuard>
-            <KanbanBoardRoute boardType="admin" />
+            <RouteErrorBoundary>
+              <KanbanBoardRoute boardType="admin" />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
-      <Route path="/app/boards" element={<BoardsRoute />} />
-      <Route path="/app/boards/:boardId" element={<BoardDetailRoute />} />
-      <Route path="/app/boards/:boardId/cards/:cardId" element={<BoardCardDetailRoute />} />
+      <Route
+        path="/app/boards"
+        element={
+          <RouteErrorBoundary>
+            <BoardsRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/boards/:boardId"
+        element={
+          <RouteErrorBoundary>
+            <BoardDetailRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/boards/:boardId/cards/:cardId"
+        element={
+          <RouteErrorBoundary>
+            <BoardCardDetailRoute />
+          </RouteErrorBoundary>
+        }
+      />
       <Route
         path="/app/parts"
         element={
           <AdminGuard>
-            <PartsRoute />
+            <RouteErrorBoundary>
+              <PartsRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
@@ -581,7 +680,9 @@ export function AppRouter() {
         path="/app/parts/:partId"
         element={
           <AdminGuard>
-            <PartDetailRoute />
+            <RouteErrorBoundary>
+              <PartDetailRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
@@ -589,16 +690,27 @@ export function AppRouter() {
         path="/app/quotes"
         element={
           <AdminGuard>
-            <QuotesRoute />
+            <RouteErrorBoundary>
+              <QuotesRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
-      <Route path="/app/time-reports" element={<TimeReportsRoute />} />
+      <Route
+        path="/app/time-reports"
+        element={
+          <RouteErrorBoundary>
+            <TimeReportsRoute />
+          </RouteErrorBoundary>
+        }
+      />
       <Route
         path="/app/calendar"
         element={
           <AdminGuard>
-            <CalendarRoute />
+            <RouteErrorBoundary>
+              <CalendarRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
@@ -606,7 +718,9 @@ export function AppRouter() {
         path="/app/settings"
         element={
           <AdminGuard>
-            <AdminSettingsRoute />
+            <RouteErrorBoundary>
+              <AdminSettingsRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
@@ -614,16 +728,50 @@ export function AppRouter() {
         path="/app/import"
         element={
           <AdminGuard>
-            <TrelloImportRoute />
+            <RouteErrorBoundary>
+              <TrelloImportRoute />
+            </RouteErrorBoundary>
           </AdminGuard>
         }
       />
-      <Route path="/app/chat" element={<ChatRoute />} />
-      <Route path="/app/chat/:conversationId" element={<ChatConversationRoute />} />
-      <Route path="/app/notifications/settings" element={<NotificationSettingsRoute />} />
+      <Route
+        path="/app/chat"
+        element={
+          <RouteErrorBoundary>
+            <ChatRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/chat/:conversationId"
+        element={
+          <RouteErrorBoundary>
+            <ChatConversationRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/notifications/settings"
+        element={
+          <RouteErrorBoundary>
+            <NotificationSettingsRoute />
+          </RouteErrorBoundary>
+        }
+      />
       {/* WorkTrackAccounting — mounted only when the build-time flag is on, so the
-          module is unreachable AND excluded from the build when the flag is off. */}
-      {AccountingRouter && <Route path="/app/accounting/*" element={<AccountingRouter />} />}
+          module is unreachable AND excluded from the build when the flag is off.
+          The whole accounting subtree gets one boundary so a crash in any
+          accounting view falls back without taking down the rest of the app. */}
+      {AccountingRouter && (
+        <Route
+          path="/app/accounting/*"
+          element={
+            <RouteErrorBoundary>
+              <AccountingRouter />
+            </RouteErrorBoundary>
+          }
+        />
+      )}
       <Route path="/app/*" element={<Navigate to="/app" replace />} />
     </Routes>
   );

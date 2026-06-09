@@ -5,6 +5,7 @@ import { ViewState } from '@/core/types';
 import { useToast } from './Toast';
 import { SkipLink } from './components/SkipLink';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { OfflinePunchBanner } from './components/OfflinePunchBanner';
 import { NotificationBell } from './components/NotificationBell';
 import { formatDurationHMS } from './lib/timeUtils';
 import { getWorkedShiftMs } from './lib/lunchUtils';
@@ -446,6 +447,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
       </header>
+
+      <OfflinePunchBanner />
 
       <main
         ref={scrollRef}

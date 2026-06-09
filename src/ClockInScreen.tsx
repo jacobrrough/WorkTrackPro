@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import type { ClockPunchResult } from '@/core/clockPunch';
 import { ViewState, Shift, Job } from '@/core/types';
 import { useClockIn } from '@/contexts/ClockInContext';
+import { OfflinePunchBanner } from './components/OfflinePunchBanner';
 import { useToast } from './Toast';
 
 interface ClockInScreenProps {
@@ -113,6 +114,8 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
           </div>
         </div>
       </header>
+
+      <OfflinePunchBanner />
 
       <main className="content-above-nav flex min-h-0 flex-1 flex-col items-center justify-center p-4">
         {/* Active Job Alert */}

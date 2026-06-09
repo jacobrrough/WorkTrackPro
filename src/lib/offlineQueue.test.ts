@@ -6,6 +6,7 @@ import {
   getPendingPunchCount,
   bumpQueueAttempt,
   hasQueuedPunchAtMaxAttempts,
+  getOfflinePunchWarning,
   MAX_SYNC_ATTEMPTS_PER_PUNCH,
 } from './offlineQueue';
 
@@ -116,5 +117,46 @@ describe('offlineQueue', () => {
       bumpQueueAttempt(id);
     }
     expect(hasQueuedPunchAtMaxAttempts()).toBe(true);
+  });
+});
+
+describe('getOfflinePunchWarning', () => {
+  it('returns null when nothing is queued (no banner)', () => {
+    expect(
+      getOfflinePunchWarning({ pendingCount: 0, staleOfflinePunch: false, isOnline: true })
+    ).toBeNull();
+    // A stale flag with an empty queue still produces no banner.
+    expect(
+      getOfflinePunchWarning({ pendingCount: 0, staleOfflinePunch: true, isOnline: false })
+    ).toBeNull();
+  });
+
+  it('warns at "pending" severity while punches are queued and not stale', () => {
+    const warning = getOfflinePunchWarning({
+      pendingCount: 2,
+      staleOfflinePunch: false,
+      isOnline: true,
+    });
+    expect(warning).toEqual({ severity: 'pending', pendingCount: 2, isOffline: false });
+  });
+
+  it('escalates to "stale" severity even if still online', () => {
+    const warning = getOfflinePunchWarning({
+      pendingCount: 1,
+      staleOfflinePunch: true,
+      isOnline: true,
+    });
+    expect(warning?.severity).toBe('stale');
+  });
+
+  it('reports isOffline so the banner can hide the (useless) Sync now button', () => {
+    expect(
+      getOfflinePunchWarning({ pendingCount: 1, staleOfflinePunch: false, isOnline: false })
+        ?.isOffline
+    ).toBe(true);
+    expect(
+      getOfflinePunchWarning({ pendingCount: 1, staleOfflinePunch: false, isOnline: true })
+        ?.isOffline
+    ).toBe(false);
   });
 });
