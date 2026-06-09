@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAuthorized } from './boards-for-addon.js';
+import { isAuthorized } from '../boards-for-addon.js';
 
 /**
  * Unit tests for the PURE auth helper in the boards-for-addon Netlify function.
@@ -58,7 +58,7 @@ describe('module import side-effects', () => {
     // If importing ran the handler, the import at the top of this file would have
     // thrown/hung (it expects a Netlify event). Re-import and assert the handler
     // is an uncalled function.
-    const mod = await import('./boards-for-addon.js');
+    const mod = await import('../boards-for-addon.js');
     expect(typeof mod.handler).toBe('function');
   });
 });

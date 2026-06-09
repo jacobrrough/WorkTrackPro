@@ -4,7 +4,7 @@ import {
   sanitizeText,
   sanitizeFileName,
   parseCardInput,
-} from './create-card-from-email.js';
+} from '../create-card-from-email.js';
 
 /**
  * Unit tests for the PURE helpers in the create-card-from-email Netlify function.
@@ -147,7 +147,7 @@ describe('module import side-effects', () => {
     // If importing ran the handler, the import at the top of this file would have
     // thrown/hung (it expects a Netlify event). Re-import and assert the handler
     // is an uncalled function.
-    const mod = await import('./create-card-from-email.js');
+    const mod = await import('../create-card-from-email.js');
     expect(typeof mod.handler).toBe('function');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectContext, clampContext, isRequestTooLarge } from './ai-chat.mjs';
+import { detectContext, clampContext, isRequestTooLarge } from '../ai-chat.mjs';
 
 /**
  * Unit tests for the PURE helpers in the ai-chat Netlify V2 function.
@@ -147,7 +147,7 @@ describe('module import side-effects', () => {
     // If importing the module ran the default-export handler, the import at the
     // top of this file would already have thrown or hung (it expects a Request).
     // Re-import explicitly and assert the handler is an uncalled function.
-    const mod = await import('./ai-chat.mjs');
+    const mod = await import('../ai-chat.mjs');
     expect(typeof mod.default).toBe('function');
   });
 });

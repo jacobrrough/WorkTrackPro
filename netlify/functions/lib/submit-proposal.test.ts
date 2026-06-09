@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isValidProposalEmail, sanitizeText, firstNonEmpty } from './submit-proposal.js';
+import { isValidProposalEmail, sanitizeText, firstNonEmpty } from '../submit-proposal.js';
 
 /**
  * Unit tests for the PURE input-validation helpers in the submit-proposal Netlify
