@@ -106,6 +106,7 @@ function useInventoryRouteProps() {
   const {
     inventory,
     jobs,
+    dataPending,
     updateInventoryStock,
     updateInventoryItem,
     createInventory,
@@ -122,6 +123,7 @@ function useInventoryRouteProps() {
   return {
     inventory,
     jobs,
+    isLoading: dataPending,
     isAdmin: currentUser?.isAdmin ?? false,
     onUpdateStock: updateInventoryStock,
     onUpdateItem: updateInventoryItem,
@@ -351,8 +353,16 @@ function InventoryDetailRoute() {
 // Shared KanbanBoard route — only boardType differs between shop and admin
 function KanbanBoardRoute({ boardType }: { boardType: 'shopFloor' | 'admin' }) {
   const appNavigate = useAppNavigate();
-  const { jobs, shifts, deleteJob, deleteAttachment, currentUser, updateJobStatus, updateJob } =
-    useApp();
+  const {
+    jobs,
+    shifts,
+    dataPending,
+    deleteJob,
+    deleteAttachment,
+    currentUser,
+    updateJobStatus,
+    updateJob,
+  } = useApp();
   const isAdmin = currentUser?.isAdmin ?? false;
   return (
     <>
@@ -360,6 +370,7 @@ function KanbanBoardRoute({ boardType }: { boardType: 'shopFloor' | 'admin' }) {
         <KanbanBoard
           jobs={jobs}
           shifts={shifts}
+          isLoading={dataPending}
           onNavigate={appNavigate}
           onCreateJob={() => appNavigate('create-job')}
           onDeleteJob={deleteJob}

@@ -4,6 +4,8 @@ import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
+import { EmptyState } from '@/components/EmptyState';
+import { LoadingSpinner } from '@/Loading';
 import AllocateToJobModal from './AllocateToJobModal';
 
 import {
@@ -20,6 +22,8 @@ interface InventoryMainViewProps {
   inventory: InventoryItem[];
   jobs: Job[];
   isAdmin: boolean;
+  /** True while the initial inventory fetch is in flight (first load, nothing cached). */
+  isLoading?: boolean;
   onBack: () => void;
   filters: InventoryFilters;
   onFiltersChange: (patch: Partial<InventoryFilters>) => void;
@@ -52,6 +56,7 @@ const CATEGORY_OPTIONS: Array<InventoryCategory | 'all'> = [
 export default function InventoryMainView({
   inventory,
   jobs,
+  isLoading = false,
   onBack,
   filters,
   onFiltersChange,
@@ -414,7 +419,23 @@ export default function InventoryMainView({
         onScroll={handleScroll}
         className="content-above-nav flex-1 overflow-y-auto p-3"
       >
-        {tab === 'byBin' ? (
+        {isLoading && inventory.length === 0 ? (
+          <div className="flex justify-center py-16" role="status" aria-live="polite">
+            <LoadingSpinner text="Loading inventory…" />
+          </div>
+        ) : inventory.length === 0 ? (
+          <EmptyState
+            icon="inventory_2"
+            title="No inventory items yet"
+            hint="Add your first part to start tracking stock, allocations, and reorder levels."
+          />
+        ) : tabFiltered.length === 0 && tab !== 'byBin' ? (
+          <EmptyState
+            icon="search_off"
+            title="No matching items"
+            hint="No parts match the current filters. Try a different search, category, or tab."
+          />
+        ) : tab === 'byBin' ? (
           <div className="space-y-3">
             {bins.map((group) => (
               <details

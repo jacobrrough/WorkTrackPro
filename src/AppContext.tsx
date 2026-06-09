@@ -31,6 +31,8 @@ import { useToast } from '@/Toast';
 export interface AppContextType {
   currentUser: User | null;
   isLoading: boolean;
+  /** True while the initial jobs/inventory fetch is in flight (first load, nothing cached). */
+  dataPending: boolean;
   authError: string | null;
   jobs: Job[];
   shifts: Shift[];
@@ -350,6 +352,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     () => ({
       currentUser: auth.currentUser,
       isLoading: auth.isLoading,
+      dataPending: queries.isPending,
       authError: auth.authError,
       jobs: queries.jobs,
       shifts: queries.shifts,
@@ -399,6 +402,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     [
       auth.currentUser,
       auth.isLoading,
+      queries.isPending,
       auth.authError,
       queries.jobs,
       queries.shifts,

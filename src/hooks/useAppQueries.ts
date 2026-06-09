@@ -12,6 +12,14 @@ export interface UseAppQueriesResult {
   shifts: Shift[];
   users: User[];
   inventory: InventoryItem[];
+  /**
+   * True while the core jobs/inventory queries are loading their first page of
+   * data (and have nothing cached yet). Lets list views show a spinner instead
+   * of rendering blank during the initial fetch. Stays false when queries are
+   * disabled (logged out), so the UI falls through to its empty state rather
+   * than spinning forever.
+   */
+  isPending: boolean;
   refreshJobs: () => Promise<void>;
   refreshJob: (jobId: string) => Promise<void>;
   refreshShifts: () => Promise<void>;
@@ -22,7 +30,7 @@ export interface UseAppQueriesResult {
 export function useAppQueries(enabled: boolean): UseAppQueriesResult {
   const queryClient = useQueryClient();
 
-  const { data: jobsData = [] } = useQuery({
+  const { data: jobsData = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['jobs'],
     queryFn: async () => {
       const list = await jobService.getAllJobs();
@@ -48,11 +56,17 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
     enabled,
   });
 
-  const { data: inventoryData = [] } = useQuery({
+  const { data: inventoryData = [], isLoading: inventoryLoading } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => inventoryService.getAllInventory(),
     enabled,
   });
+
+  // `isLoading` from react-query is (isPending && isFetching): true only on the
+  // first fetch with no cached data, and false when the query is disabled. That
+  // makes it the right signal for an initial-load spinner — it won't re-trigger
+  // on background refetches or realtime-driven cache updates.
+  const isPending = enabled && (jobsLoading || inventoryLoading);
 
   const refreshJobs = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['jobs'] });
@@ -102,6 +116,7 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
     shifts: shiftsData,
     users: usersData,
     inventory: inventoryData,
+    isPending,
     refreshJobs,
     refreshJob,
     refreshShifts,

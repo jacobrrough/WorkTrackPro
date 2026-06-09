@@ -12,17 +12,21 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-const requiredBaseEnv = [
-  'VITE_SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'RESEND_API_KEY',
-];
+const requiredBaseEnv = ['VITE_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY'];
 
-function firstNonEmpty(...values) {
+export function firstNonEmpty(...values) {
   for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) return value.trim();
   }
   return '';
+}
+
+// Pure email-shape check used to gate the customer confirmation email. `email` is
+// reflected into a message sent FROM our verified domain, so an unvalidated value
+// is an open-relay / email-bombing vector toward an attacker-chosen recipient.
+// Kept as a tiny exported helper so the boundary can be unit-tested.
+export function isValidProposalEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function resolveProposalEmailConfig() {
@@ -72,7 +76,7 @@ async function verifyTurnstile(token, remoteIp) {
   return payload.success === true;
 }
 
-function sanitizeText(input) {
+export function sanitizeText(input) {
   return String(input ?? '').trim();
 }
 
@@ -287,7 +291,8 @@ export async function handler(event) {
     const files = Array.isArray(payload.files) ? payload.files : [];
     const partId = sanitizeText(payload.partId) || null;
     const partNumber = sanitizeText(payload.partNumber) || null;
-    const quantity = payload.quantity != null ? Math.max(1, Math.floor(Number(payload.quantity)) || 1) : null;
+    const quantity =
+      payload.quantity != null ? Math.max(1, Math.floor(Number(payload.quantity)) || 1) : null;
     const variantSuffix = sanitizeText(payload.variantSuffix) || null;
     const cart = Array.isArray(payload.cart) ? payload.cart : null;
 
@@ -312,7 +317,8 @@ export async function handler(event) {
       for (const item of cart) {
         const pn = sanitizeText(item.partNumber) || '—';
         const name = sanitizeText(item.partName) || '';
-        const suf = item.variantSuffix != null && item.variantSuffix !== '' ? `-${item.variantSuffix}` : '';
+        const suf =
+          item.variantSuffix != null && item.variantSuffix !== '' ? `-${item.variantSuffix}` : '';
         const q = Math.max(1, Math.floor(Number(item.quantity)) || 1);
         lines.push(`  ${pn}${suf} ${name ? `(${name})` : ''} — Qty: ${q}`);
       }
@@ -338,7 +344,7 @@ export async function handler(event) {
     // Validate the email format. `email` is reflected into a customer confirmation sent
     // FROM our verified domain, so an unvalidated value makes this an open-relay /
     // email-bombing vector toward an attacker-chosen recipient.
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidProposalEmail(email)) {
       return {
         statusCode: 400,
         headers: corsHeaders,
@@ -402,7 +408,10 @@ export async function handler(event) {
         };
       }
     } catch (rateLimitError) {
-      console.error('submit-proposal rate limit check failed (failing open):', rateLimitError?.message || rateLimitError);
+      console.error(
+        'submit-proposal rate limit check failed (failing open):',
+        rateLimitError?.message || rateLimitError
+      );
     }
 
     const { data: latestJob } = await supabase
@@ -445,7 +454,9 @@ export async function handler(event) {
       const first = cart[0];
       firstPartId = sanitizeText(first.partId) || null;
       firstPartNumber = sanitizeText(first.partNumber) || null;
-      jobQty = String(cart.reduce((sum, i) => sum + (Math.max(1, Math.floor(Number(i.quantity)) || 1)), 0));
+      jobQty = String(
+        cart.reduce((sum, i) => sum + Math.max(1, Math.floor(Number(i.quantity)) || 1), 0)
+      );
     } else if (isStoreQuote) {
       firstPartId = partId;
       firstPartNumber = partNumber;
@@ -475,7 +486,8 @@ export async function handler(event) {
       for (const item of cart) {
         const pid = sanitizeText(item.partId);
         if (!pid) continue;
-        const suffix = item.variantSuffix != null && item.variantSuffix !== '' ? String(item.variantSuffix) : '';
+        const suffix =
+          item.variantSuffix != null && item.variantSuffix !== '' ? String(item.variantSuffix) : '';
         const q = Math.max(1, Math.floor(Number(item.quantity)) || 1);
         const rec = cartByPart.get(pid) || {};
         rec[suffix] = (rec[suffix] || 0) + q;

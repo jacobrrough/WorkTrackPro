@@ -13,6 +13,8 @@ import { lazyWithRetry } from './lib/lazyWithRetry';
 import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
+import { EmptyState } from './components/EmptyState';
+import { LoadingSpinner } from './Loading';
 import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
 import { useScrollRestore } from './hooks/useScrollRestore';
 import { useNavigate } from 'react-router-dom';
@@ -73,6 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     currentUser,
     jobs,
     inventory,
+    dataPending,
     activeShift,
     activeJob,
     logout,
@@ -591,6 +594,41 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               );
             })}
           </ul>
+        </section>
+
+        <section aria-labelledby="active-jobs-heading" className="mt-6">
+          <h2 id="active-jobs-heading" className="mb-3 text-lg font-bold tracking-tight text-white">
+            Active Jobs
+          </h2>
+          {dataPending ? (
+            <div className="flex justify-center py-12" role="status" aria-live="polite">
+              <LoadingSpinner size="small" text="Loading jobs…" />
+            </div>
+          ) : activeCount + pendingCount === 0 ? (
+            <EmptyState
+              icon="work_off"
+              title="No active jobs"
+              hint="Jobs that are pending or in progress will show up here. Use the Shop Floor board to get started."
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => onNavigate('board-shop')}
+              className="flex w-full touch-manipulation items-center justify-between gap-3 rounded-sm border border-white/10 bg-white/5 p-4 text-left transition-colors hover:bg-white/10"
+            >
+              <div>
+                <p className="font-bold text-white">
+                  {activeCount} in progress · {pendingCount} pending
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                  Tap to open the shop floor board
+                </p>
+              </div>
+              <span aria-hidden="true" className="material-symbols-outlined text-primary">
+                arrow_forward
+              </span>
+            </button>
+          )}
         </section>
       </main>
 

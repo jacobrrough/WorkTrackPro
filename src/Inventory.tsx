@@ -28,6 +28,7 @@ interface InventoryProps {
     quantity: number,
     notes?: string
   ) => Promise<boolean>;
+  isLoading?: boolean;
   initialItemId?: string;
   onBackFromDetail?: () => void;
 }
@@ -50,6 +51,7 @@ const Inventory: React.FC<InventoryProps> = ({
   calculateAvailable,
   calculateAllocated,
   onAllocateToJob,
+  isLoading = false,
   initialItemId,
   onBackFromDetail,
 }) => {
@@ -120,6 +122,7 @@ const Inventory: React.FC<InventoryProps> = ({
       inventory={inventory}
       jobs={jobs}
       isAdmin={isAdmin}
+      isLoading={isLoading}
       onBack={() => onNavigate('dashboard')}
       filters={filters}
       onFiltersChange={(patch) => {

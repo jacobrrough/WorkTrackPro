@@ -161,7 +161,7 @@ const CONTEXT_PATTERNS = {
   boards: /\b(boards?|columns?|cards?|kanban)\b/i,
 };
 
-function detectContext(messages) {
+export function detectContext(messages) {
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
   if (!lastUserMsg) return { categories: new Set(['jobs']), jobCode: null };
 
@@ -192,6 +192,33 @@ function detectContext(messages) {
 
 const MAX_CONTEXT_ITEMS = 50;
 const MAX_CONTEXT_CHARS = 12000;
+
+// Request-size guard limits for the inbound chat payload. Kept as named constants
+// so the handler and the pure helper below can never drift apart.
+const MAX_REQUEST_MESSAGES = 50;
+const MAX_REQUEST_BODY_CHARS = 100000;
+
+// Marker appended when the app-data context block is clamped to MAX_CONTEXT_CHARS.
+const CONTEXT_TRUNCATION_MARKER = '\n…[context truncated to limit size]';
+
+// Pure: clamp a context block to `max` chars, appending the truncation marker only
+// when the block actually exceeds the limit. Returns the input unchanged otherwise.
+export function clampContext(text, max = MAX_CONTEXT_CHARS) {
+  const value = typeof text === 'string' ? text : '';
+  if (value.length <= max) return value;
+  return value.slice(0, max) + CONTEXT_TRUNCATION_MARKER;
+}
+
+// Pure: true when the inbound messages payload is too large to process (too many
+// messages, or a serialized body over the byte-ish char budget). Non-arrays are
+// not "too large" here — emptiness/shape is validated separately in the handler.
+export function isRequestTooLarge(messages) {
+  if (!Array.isArray(messages)) return false;
+  return (
+    messages.length > MAX_REQUEST_MESSAGES ||
+    JSON.stringify(messages).length > MAX_REQUEST_BODY_CHARS
+  );
+}
 
 async function fetchAppContext(supabase, categories, jobCode) {
   const sections = [];
@@ -739,7 +766,7 @@ async function handlePost(request) {
     });
   }
 
-  if (messages.length > 50 || JSON.stringify(messages).length > 100000) {
+  if (isRequestTooLarge(messages)) {
     return new Response(JSON.stringify({ error: 'Request too large' }), {
       status: 400,
       headers: corsHeaders,
@@ -776,11 +803,7 @@ async function handlePost(request) {
   if (supabase) {
     const { categories, jobCode } = detectContext(messages);
     try {
-      contextBlock = await fetchAppContext(supabase, categories, jobCode);
-      if (contextBlock.length > MAX_CONTEXT_CHARS) {
-        contextBlock =
-          contextBlock.slice(0, MAX_CONTEXT_CHARS) + '\n…[context truncated to limit size]';
-      }
+      contextBlock = clampContext(await fetchAppContext(supabase, categories, jobCode));
     } catch (err) {
       console.error('Context fetch error (non-fatal):', err.message);
     }

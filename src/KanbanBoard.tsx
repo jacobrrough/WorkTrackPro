@@ -13,6 +13,8 @@ import QRScanner from './components/QRScanner';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { validateBinLocation } from '@/core/validation';
 import { computeJobCompletionProgress } from '@/lib/jobProgress';
+import { EmptyState } from './components/EmptyState';
+import { LoadingSpinner } from './Loading';
 
 interface KanbanBoardProps {
   jobs: Job[];
@@ -27,6 +29,8 @@ interface KanbanBoardProps {
   isAdmin: boolean;
   currentUser: User;
   inventory?: InventoryItem[];
+  /** True while the initial jobs fetch is in flight (first load, nothing cached). */
+  isLoading?: boolean;
 }
 
 const SHOP_FLOOR_COLUMNS: { id: JobStatus; title: string; color: string }[] = [
@@ -613,6 +617,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   isAdmin,
   currentUser: _currentUser,
   inventory: _inventory = [],
+  isLoading = false,
 }) => {
   const jobs = useMemo(() => excludePaid(allJobs), [allJobs]);
   const { state: navState, updateState } = useNavigation();
@@ -1169,145 +1174,169 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         )}
       </header>
 
-      {/* Board: mobile = one column at a time, swipe L/R; desktop = multi-column, horizontal scroll */}
-      <div
-        ref={boardContainerRef}
-        onScroll={handleHorizontalScroll}
-        className="min-h-0 flex-1 snap-x snap-mandatory overflow-y-hidden overflow-x-scroll md:snap-none md:overflow-x-scroll"
-        style={{
-          WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-x',
-          overscrollBehavior: 'contain',
-          overscrollBehaviorX: 'contain',
-          scrollPaddingInline: 0,
-        }}
-      >
-        <div className="flex h-full w-max min-w-full flex-nowrap gap-2 px-2 py-3 md:gap-2 md:px-2">
-          {columns.map((column) => {
-            const columnJobs = getJobsForColumn(column.id);
-            const isOver = dragOverColumn === column.id;
+      {/* Initial load: show a spinner instead of bare empty columns. */}
+      {isLoading && jobs.length === 0 ? (
+        <div
+          className="flex min-h-0 flex-1 items-center justify-center"
+          role="status"
+          aria-live="polite"
+        >
+          <LoadingSpinner text="Loading jobs…" />
+        </div>
+      ) : jobs.length === 0 ? (
+        /* No jobs at all — a board full of empty columns reads as broken, so show one clear message. */
+        <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+          <EmptyState
+            icon="view_kanban"
+            title="No jobs yet"
+            hint={
+              isAdmin
+                ? 'Create a job with the New button above and it will appear here on the board.'
+                : 'Jobs assigned to the shop will appear here on the board.'
+            }
+          />
+        </div>
+      ) : (
+        /* Board: mobile = one column at a time, swipe L/R; desktop = multi-column, horizontal scroll */
+        <div
+          ref={boardContainerRef}
+          onScroll={handleHorizontalScroll}
+          className="min-h-0 flex-1 snap-x snap-mandatory overflow-y-hidden overflow-x-scroll md:snap-none md:overflow-x-scroll"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-x',
+            overscrollBehavior: 'contain',
+            overscrollBehaviorX: 'contain',
+            scrollPaddingInline: 0,
+          }}
+        >
+          <div className="flex h-full w-max min-w-full flex-nowrap gap-2 px-2 py-3 md:gap-2 md:px-2">
+            {columns.map((column) => {
+              const columnJobs = getJobsForColumn(column.id);
+              const isOver = dragOverColumn === column.id;
 
-            return (
-              <div
-                key={column.id}
-                data-kanban-column-root="true"
-                className={`flex h-full shrink-0 snap-center flex-col rounded-sm border bg-black/20 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
-                style={
-                  columnWidth
-                    ? {
-                        width: `${columnWidth}px`,
-                        minWidth: `${columnWidth}px`,
-                        maxWidth: `${columnWidth}px`,
-                      }
-                    : undefined
-                }
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOverColumn(column.id);
-                }}
-                onDragLeave={() => setDragOverColumn(null)}
-                onDrop={(e) => handleDrop(e, column.id)}
-              >
-                {/* Column Header - Compact */}
+              return (
                 <div
-                  className={`flex items-center justify-between rounded-t-lg px-2.5 py-2 ${column.color} relative`}
+                  key={column.id}
+                  data-kanban-column-root="true"
+                  className={`flex h-full shrink-0 snap-center flex-col rounded-sm border bg-black/20 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                  style={
+                    columnWidth
+                      ? {
+                          width: `${columnWidth}px`,
+                          minWidth: `${columnWidth}px`,
+                          maxWidth: `${columnWidth}px`,
+                        }
+                      : undefined
+                  }
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverColumn(column.id);
+                  }}
+                  onDragLeave={() => setDragOverColumn(null)}
+                  onDrop={(e) => handleDrop(e, column.id)}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-xs font-bold text-white">{column.title}</h3>
-                    <span className="rounded-sm bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {columnJobs.length}
-                    </span>
+                  {/* Column Header - Compact */}
+                  <div
+                    className={`flex items-center justify-between rounded-t-lg px-2.5 py-2 ${column.color} relative`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-xs font-bold text-white">{column.title}</h3>
+                      <span className="rounded-sm bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {columnJobs.length}
+                      </span>
+                    </div>
+
+                    {/* Admin Column Menu */}
+                    {isAdmin && (
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setColumnMenuOpen(columnMenuOpen === column.id ? null : column.id);
+                          }}
+                          className="rounded p-1 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                        >
+                          <span className="material-symbols-outlined text-sm">more_vert</span>
+                        </button>
+
+                        {columnMenuOpen === column.id && (
+                          <div
+                            data-column-menu="true"
+                            className="absolute right-0 top-8 z-50 min-w-[180px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-xl"
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setColumnMenuOpen(null);
+                                setEditingChecklistFor(column.id);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+                            >
+                              <span className="material-symbols-outlined text-sm">checklist</span>
+                              Manage Checklist
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Admin Column Menu */}
-                  {isAdmin && (
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setColumnMenuOpen(columnMenuOpen === column.id ? null : column.id);
-                        }}
-                        className="rounded p-1 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-                      >
-                        <span className="material-symbols-outlined text-sm">more_vert</span>
-                      </button>
-
-                      {columnMenuOpen === column.id && (
-                        <div
-                          data-column-menu="true"
-                          className="absolute right-0 top-8 z-50 min-w-[180px] rounded-sm border border-white/20 bg-[#2a1f35] py-1 shadow-xl"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setColumnMenuOpen(null);
-                              setEditingChecklistFor(column.id);
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-                          >
-                            <span className="material-symbols-outlined text-sm">checklist</span>
-                            Manage Checklist
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Cards */}
+                  <div
+                    ref={(el) => {
+                      columnRefs.current[column.id] = el;
+                    }}
+                    data-kanban-column-scroll="true"
+                    onScroll={(e) => handleColumnScroll(e, column.id)}
+                    className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-1.5"
+                    style={{
+                      WebkitOverflowScrolling: 'touch',
+                      overscrollBehavior: 'contain',
+                    }}
+                  >
+                    {columnJobs.map((job) => {
+                      const progress = jobProgressByJobId.get(job.id);
+                      return (
+                        <KanbanJobCard
+                          key={job.id}
+                          job={job}
+                          checklistState={checklistStates[job.id]}
+                          isAdmin={isAdmin}
+                          bulkSelectMode={bulkSelectMode}
+                          isSelected={selectedJobIds.has(job.id)}
+                          canDragCards={canDragCards}
+                          isDragged={draggedJob?.id === job.id}
+                          isMenuOpen={menuOpenFor === job.id}
+                          isMoveColumnOpen={moveColumnForJobId === job.id}
+                          jobHours={calculateJobHoursFromShifts(job.id, shiftsProp)}
+                          atRiskFromProgress={progress?.atRiskFromProgressEstimate ?? false}
+                          partsByNumber={partsByNumber}
+                          columns={columns}
+                          onCardClick={handleCardClick}
+                          onBulkToggle={handleBulkToggle}
+                          onDragStart={handleDragStart}
+                          onNavigate={onNavigate}
+                          onMenuClick={handleMenuClick}
+                          onScanBin={handleScanBinForCard}
+                          onMoveColumnForJob={setMoveColumnForJobId}
+                          onUpdateJobStatus={onUpdateJobStatus}
+                          onUpdateJob={onUpdateJob}
+                          onFilesClick={handleFilesForCard}
+                          onDeleteClick={handleDeleteClickForCard}
+                          showToast={showToast}
+                          didScrollRef={didScrollRef}
+                          setMenuOpenFor={setMenuOpenFor}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-
-                {/* Cards */}
-                <div
-                  ref={(el) => {
-                    columnRefs.current[column.id] = el;
-                  }}
-                  data-kanban-column-scroll="true"
-                  onScroll={(e) => handleColumnScroll(e, column.id)}
-                  className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-1.5"
-                  style={{
-                    WebkitOverflowScrolling: 'touch',
-                    overscrollBehavior: 'contain',
-                  }}
-                >
-                  {columnJobs.map((job) => {
-                    const progress = jobProgressByJobId.get(job.id);
-                    return (
-                      <KanbanJobCard
-                        key={job.id}
-                        job={job}
-                        checklistState={checklistStates[job.id]}
-                        isAdmin={isAdmin}
-                        bulkSelectMode={bulkSelectMode}
-                        isSelected={selectedJobIds.has(job.id)}
-                        canDragCards={canDragCards}
-                        isDragged={draggedJob?.id === job.id}
-                        isMenuOpen={menuOpenFor === job.id}
-                        isMoveColumnOpen={moveColumnForJobId === job.id}
-                        jobHours={calculateJobHoursFromShifts(job.id, shiftsProp)}
-                        atRiskFromProgress={progress?.atRiskFromProgressEstimate ?? false}
-                        partsByNumber={partsByNumber}
-                        columns={columns}
-                        onCardClick={handleCardClick}
-                        onBulkToggle={handleBulkToggle}
-                        onDragStart={handleDragStart}
-                        onNavigate={onNavigate}
-                        onMenuClick={handleMenuClick}
-                        onScanBin={handleScanBinForCard}
-                        onMoveColumnForJob={setMoveColumnForJobId}
-                        onUpdateJobStatus={onUpdateJobStatus}
-                        onUpdateJob={onUpdateJob}
-                        onFilesClick={handleFilesForCard}
-                        onDeleteClick={handleDeleteClickForCard}
-                        showToast={showToast}
-                        didScrollRef={didScrollRef}
-                        setMenuOpenFor={setMenuOpenFor}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bulk action bar */}
       {bulkSelectMode && selectedJobIds.size > 0 && (
