@@ -15,22 +15,48 @@ const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5 MB per file (before base64 enc
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 2000;
 
-function verifyApiKey(event) {
-  const key = process.env.GMAIL_ADDON_API_KEY;
-  if (!key) return false;
-  const auth = (event.headers.authorization || event.headers.Authorization || '').trim();
+// Pure Bearer-token check. Holds the exact comparison used to gate this
+// endpoint: a missing/empty expected key never authorizes, the header must
+// carry a "Bearer " prefix, and the trimmed token must equal the key exactly.
+// Exported so the boundary can be unit-tested without invoking the handler.
+export function isAuthorized(authHeader, expectedKey) {
+  if (!expectedKey) return false;
+  const auth = (authHeader || '').trim();
   if (!auth.startsWith('Bearer ')) return false;
-  return auth.slice(7).trim() === key;
+  return auth.slice(7).trim() === expectedKey;
 }
 
-function sanitizeText(input) {
+function verifyApiKey(event) {
+  const key = process.env.GMAIL_ADDON_API_KEY;
+  const auth = event.headers.authorization || event.headers.Authorization;
+  return isAuthorized(auth, key);
+}
+
+export function sanitizeText(input) {
   return String(input ?? '').trim();
 }
 
-function sanitizeFileName(input) {
+export function sanitizeFileName(input) {
   const base = sanitizeText(input);
   const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, '_');
   return cleaned.length > 0 ? cleaned : 'file.bin';
+}
+
+// Pure parse + required-field validation for the create-card payload. Mirrors
+// the handler's existing logic exactly: it sanitizes the four scalar fields,
+// coerces attachments/emailMetadata to safe shapes, and flags the missing
+// boardId/columnId/title case. Exported so the parsing boundary can be
+// unit-tested without invoking the handler or touching Supabase.
+export function parseCardInput(payload) {
+  const data = payload || {};
+  const boardId = sanitizeText(data.boardId);
+  const columnId = sanitizeText(data.columnId);
+  const title = sanitizeText(data.title);
+  const description = sanitizeText(data.description);
+  const attachments = Array.isArray(data.attachments) ? data.attachments : [];
+  const emailMeta = data.emailMetadata || {};
+  const valid = Boolean(boardId && columnId && title);
+  return { boardId, columnId, title, description, attachments, emailMeta, valid };
 }
 
 export async function handler(event) {
@@ -65,15 +91,12 @@ export async function handler(event) {
 
   try {
     const payload = JSON.parse(event.body || '{}');
-    const boardId = sanitizeText(payload.boardId);
-    const columnId = sanitizeText(payload.columnId);
-    let title = sanitizeText(payload.title);
-    let description = sanitizeText(payload.description);
-    const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
-    const emailMeta = payload.emailMetadata || {};
+    const parsed = parseCardInput(payload);
+    const { boardId, columnId, attachments, emailMeta } = parsed;
+    let { title, description } = parsed;
 
     // ── Validate required fields ─────────────────────────
-    if (!boardId || !columnId || !title) {
+    if (!parsed.valid) {
       return {
         statusCode: 400,
         headers: corsHeaders,

@@ -10,12 +10,21 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+// Pure Bearer-token check. Holds the exact comparison used to gate this
+// endpoint: a missing/empty expected key never authorizes, the header must
+// carry a "Bearer " prefix, and the trimmed token must equal the key exactly.
+// Exported so the boundary can be unit-tested without invoking the handler.
+export function isAuthorized(authHeader, expectedKey) {
+  if (!expectedKey) return false;
+  const auth = (authHeader || '').trim();
+  if (!auth.startsWith('Bearer ')) return false;
+  return auth.slice(7).trim() === expectedKey;
+}
+
 function verifyApiKey(event) {
   const key = process.env.GMAIL_ADDON_API_KEY;
-  if (!key) return false;
-  const auth = (event.headers.authorization || event.headers.Authorization || '').trim();
-  if (!auth.startsWith('Bearer ')) return false;
-  return auth.slice(7).trim() === key;
+  const auth = event.headers.authorization || event.headers.Authorization;
+  return isAuthorized(auth, key);
 }
 
 export async function handler(event) {
