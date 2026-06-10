@@ -35,6 +35,9 @@ export const customersService = {
       terms: input.terms ?? null,
       notes: input.notes ?? null,
       source_proposal_id: input.sourceProposalId ?? null,
+      billing_address: input.billingAddress ?? null,
+      shipping_address: input.shippingAddress ?? null,
+      external_qbo_id: input.externalQboId ?? null,
     };
     const { data, error } = await acct().from('customers').insert(row).select('*').single();
     if (error || !data) return null;
@@ -56,6 +59,9 @@ export const customersService = {
     if (input.defaultTaxCodeId !== undefined) row.default_tax_code_id = input.defaultTaxCodeId;
     if (input.terms !== undefined) row.terms = input.terms;
     if (input.notes !== undefined) row.notes = input.notes;
+    if (input.billingAddress !== undefined) row.billing_address = input.billingAddress;
+    if (input.shippingAddress !== undefined) row.shipping_address = input.shippingAddress;
+    if (input.externalQboId !== undefined) row.external_qbo_id = input.externalQboId;
     if (input.isActive !== undefined) row.is_active = input.isActive;
     const { data, error } = await acct()
       .from('customers')

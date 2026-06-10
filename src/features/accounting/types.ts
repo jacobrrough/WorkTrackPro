@@ -50,6 +50,8 @@ export interface NewAccountInput {
   parentAccountId?: string | null;
   normalBalance: NormalBalance;
   description?: string | null;
+  /** QBO id when this account was created/matched by the QuickBooks sync. */
+  externalQboId?: string | null;
 }
 
 // ── General ledger ───────────────────────────────────────────────────────────
@@ -162,6 +164,11 @@ export interface NewCustomerInput {
   terms?: string | null;
   notes?: string | null;
   sourceProposalId?: string | null;
+  /** Structured address jsonb ({line1, city, state, postalCode, …}); shape matches the table columns. */
+  billingAddress?: Record<string, unknown> | null;
+  shippingAddress?: Record<string, unknown> | null;
+  /** QBO id when this customer was created/matched by the QuickBooks sync. */
+  externalQboId?: string | null;
 }
 
 // ── Sales tax ────────────────────────────────────────────────────────────────
@@ -175,6 +182,45 @@ export interface TaxCode {
   /** Combined rate as a decimal fraction (e.g. 0.0725 = 7.25%), summed from composing tax_rates. */
   rate: number;
   createdAt: string;
+}
+
+// ── Items (products & services) ──────────────────────────────────────────────
+export type ItemType = 'inventory' | 'non_inventory' | 'service' | 'assembly' | 'bundle';
+
+/** A sellable/purchasable product or service (accounting.items) mapped to GL accounts. */
+export interface Item {
+  id: string;
+  name: string;
+  sku: string | null;
+  itemType: ItemType;
+  incomeAccountId: string | null;
+  expenseAccountId: string | null;
+  inventoryAssetAccountId: string | null;
+  defaultTaxCodeId: string | null;
+  salesPrice: number | null;
+  purchaseCost: number | null;
+  isActive: boolean;
+  sourceInventoryId: string | null;
+  sourcePartId: string | null;
+  externalQboId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewItemInput {
+  name: string;
+  sku?: string | null;
+  itemType?: ItemType;
+  incomeAccountId?: string | null;
+  expenseAccountId?: string | null;
+  inventoryAssetAccountId?: string | null;
+  defaultTaxCodeId?: string | null;
+  salesPrice?: number | null;
+  purchaseCost?: number | null;
+  sourceInventoryId?: string | null;
+  sourcePartId?: string | null;
+  /** QBO id when this item was created/matched by the QuickBooks sync. */
+  externalQboId?: string | null;
 }
 
 // ── Invoices (AR) ────────────────────────────────────────────────────────────
@@ -361,6 +407,10 @@ export interface NewVendorInput {
   taxId?: string | null;
   is1099?: boolean;
   notes?: string | null;
+  /** Structured address jsonb ({line1, city, state, postalCode, …}). */
+  address?: Record<string, unknown> | null;
+  /** QBO id when this vendor was created/matched by the QuickBooks sync. */
+  externalQboId?: string | null;
 }
 
 // ── Bills (AP) ───────────────────────────────────────────────────────────────
@@ -2993,4 +3043,69 @@ export interface TaxRate {
   endDate: string | null;
   isActive: boolean;
   createdAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QuickBooks Online full-replica sync (accounting.qbo_import_runs / qbo_import_log)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type QboSyncMode = 'full' | 'incremental';
+export type QboRunStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+
+/** Per-entity tallies accumulated as a sync run processes pages. */
+export interface QboEntityCounts {
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+}
+
+/**
+ * Resumable cursor state for one sync phase. The client-stepped engine persists this
+ * to qbo_import_runs.progress after EVERY page, so an interrupted run (closed tab,
+ * function hiccup) resumes from the next page instead of restarting — re-running a
+ * page is harmless anyway because every upsert is keyed on external_qbo_id.
+ */
+export interface QboPhaseProgress {
+  /** Next QBO STARTPOSITION to request (1-based). */
+  startPosition: number;
+  /** True once the phase returned a short/empty page (no more records). */
+  done: boolean;
+}
+
+/** One sync run (accounting.qbo_import_runs). */
+export interface QboImportRun {
+  id: string;
+  mode: QboSyncMode;
+  status: QboRunStatus;
+  /** Current phase key ('accounts', 'invoices', 'reconcile', …) or null when finished. */
+  phase: string | null;
+  /** Per-phase resumable cursors, keyed by phase key. */
+  progress: Record<string, QboPhaseProgress>;
+  /** Per-phase tallies, keyed by phase key. */
+  counts: Record<string, QboEntityCounts>;
+  error: string | null;
+  /** Incremental high-water mark this run queried from (null on a full run). */
+  changedSince: string | null;
+  startedBy: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  updatedAt: string;
+}
+
+export type QboLogAction = 'create' | 'update' | 'skip' | 'post' | 'void' | 'apply' | 'error';
+
+/** One per-record audit line (accounting.qbo_import_log). */
+export interface QboImportLogEntry {
+  id: string;
+  runId: string;
+  /** QBO entity name ('Account', 'Item', 'Customer', 'Invoice', …). */
+  entity: string;
+  qboId: string | null;
+  action: QboLogAction;
+  status: 'ok' | 'error';
+  message: string | null;
+  /** The accounting.* row this touched, when applicable. */
+  recordId: string | null;
+  at: string;
 }
