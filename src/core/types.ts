@@ -194,6 +194,12 @@ export interface Job {
   binLocation?: string;
   partNumber?: string;
   variantSuffix?: string;
+  /**
+   * Billing customer (accounting.customers id). The job is the spine that links
+   * operational work to its AR party: estimates/invoices created from the job
+   * pre-fill this customer. Null/undefined when unlinked (all legacy jobs).
+   */
+  customerId?: string | null;
   estNumber?: string;
   invNumber?: string;
   rfqNumber?: string;

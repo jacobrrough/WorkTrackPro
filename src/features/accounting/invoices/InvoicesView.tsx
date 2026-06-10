@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { LIST_CONTAINER, LIST_HEADER, LIST_ROW } from '../components/listRowStyles';
@@ -25,6 +26,26 @@ function StatusPill({ status }: { status: InvoiceStatus }) {
   );
 }
 
+/** Compact "open the linked job" affordance (stops row-click navigation). */
+function JobCell({ jobId }: { jobId: string | null }) {
+  if (!jobId) {
+    return (
+      <span className="hidden w-14 shrink-0 text-center text-xs text-slate-600 md:block">—</span>
+    );
+  }
+  return (
+    <Link
+      to={`/app/jobs/${jobId}`}
+      onClick={(e) => e.stopPropagation()}
+      className="hidden w-14 shrink-0 items-center justify-center gap-0.5 text-xs font-semibold text-primary hover:underline md:flex"
+      title="Open the linked job"
+    >
+      <span className="material-symbols-outlined text-sm">work</span>
+      Job
+    </Link>
+  );
+}
+
 function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} className={LIST_ROW}>
@@ -35,6 +56,7 @@ function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void 
       <span className="flex-1 truncate text-white">
         {invoice.customerName || invoice.customerId}
       </span>
+      <JobCell jobId={invoice.jobId} />
       <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-400 sm:block">
         {formatMoney(invoice.total)}
       </span>
@@ -46,9 +68,18 @@ function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void 
   );
 }
 
+type JobFilter = 'all' | 'with-job' | 'without-job';
+
 export default function InvoicesView() {
   const navigate = useNavigate();
   const { data: invoices = [], isPending, isError } = useInvoices();
+  const [jobFilter, setJobFilter] = useState<JobFilter>('all');
+
+  const filtered = useMemo(() => {
+    if (jobFilter === 'with-job') return invoices.filter((i) => i.jobId);
+    if (jobFilter === 'without-job') return invoices.filter((i) => !i.jobId);
+    return invoices;
+  }, [invoices, jobFilter]);
 
   return (
     <AccountingShell
@@ -84,22 +115,40 @@ export default function InvoicesView() {
 
       {invoices.length > 0 && (
         <>
+          <div className="mb-2 flex justify-end">
+            <select
+              aria-label="Filter by job link"
+              className="rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-slate-300"
+              value={jobFilter}
+              onChange={(e) => setJobFilter(e.target.value as JobFilter)}
+            >
+              <option value="all">All invoices</option>
+              <option value="with-job">Linked to a job</option>
+              <option value="without-job">No job link</option>
+            </select>
+          </div>
           <div className={LIST_HEADER}>
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Date</span>
             <span className="flex-1">Customer</span>
+            <span className="hidden w-14 shrink-0 text-center md:block">Job</span>
             <span className="w-28 shrink-0 text-right">Total</span>
             <span className="w-28 shrink-0 text-right">Balance</span>
             <span className="w-[58px] shrink-0" />
           </div>
           <div className={LIST_CONTAINER}>
-            {invoices.map((inv) => (
+            {filtered.map((inv) => (
               <InvoiceRow
                 key={inv.id}
                 invoice={inv}
                 onOpen={() => navigate(`${ACCOUNTING_BASE}/invoices/${inv.id}`)}
               />
             ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-6 text-center text-sm text-slate-500">
+                No invoices match this filter.
+              </p>
+            )}
           </div>
         </>
       )}

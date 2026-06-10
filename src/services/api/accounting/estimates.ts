@@ -178,6 +178,22 @@ export const estimatesService = {
     return mapEstimateRow(data as Row);
   },
 
+  /**
+   * Estimates quoted against a given job (the job page's billing panel and the
+   * job-costing drill-down). Header rows only — newest first. Mirrors
+   * invoicesService.listForJob.
+   */
+  async listForJob(jobId: string, limit = 200): Promise<Estimate[]> {
+    const { data, error } = await acct()
+      .from('estimates')
+      .select('*, customer:customers(display_name)')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapEstimateRow);
+  },
+
   /** Insert a draft estimate + its lines, with money fields computed from the lines. */
   async createDraft(
     input: NewEstimateInput,

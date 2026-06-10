@@ -72,4 +72,24 @@ export const customersService = {
     if (error || !data) return null;
     return mapCustomerRow(data as Row);
   },
+
+  /**
+   * Bridge one inbound lead (public.customer_proposals) to a customer: reuses a
+   * customer already carrying the proposal backlink, adopts an existing one by
+   * email/display-name (stamping the backlink only when free), or creates a fresh
+   * customer from the lead's contact fields — and links the lead's job when that
+   * job has no customer yet. Idempotent + safe to re-run (SECURITY DEFINER RPC
+   * `ensure_customer_from_proposal`, accounting-writer-gated).
+   */
+  async ensureFromProposal(
+    proposalId: string
+  ): Promise<{ customerId: string | null; error?: string }> {
+    const { data, error } = await acct().rpc('ensure_customer_from_proposal', {
+      p_proposal_id: proposalId,
+    });
+    if (error || !data) {
+      return { customerId: null, error: error?.message ?? 'Could not create the customer.' };
+    }
+    return { customerId: data as string };
+  },
 };
