@@ -68,8 +68,10 @@ export type JournalSourceType =
   | 'depreciation'
   | 'adjustment'
   | 'opening_balance'
-  /** Historical transactions loaded from a prior system (e.g. QuickBooks) via the import wizard. */
-  | 'import';
+  /** Historical transactions loaded from a prior system (e.g. QuickBooks) via the CSV import wizard. */
+  | 'import'
+  /** Transactions replicated from the live QuickBooks company by the API sync's completeness pass. */
+  | 'qbo';
 
 export interface JournalLine {
   id: string;
@@ -3071,6 +3073,8 @@ export interface QboPhaseProgress {
   startPosition: number;
   /** True once the phase returned a short/empty page (no more records). */
   done: boolean;
+  /** Gated phases (the legacy-GL void) only run after an explicit user approval. */
+  confirmed?: boolean;
 }
 
 /** One sync run (accounting.qbo_import_runs). */

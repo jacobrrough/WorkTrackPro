@@ -9,6 +9,8 @@ import type { QboImportLogEntry, QboImportRun } from '../types';
 import { ACCOUNTING_BASE } from '../constants';
 import { AccountingShell } from '../components/AccountingShell';
 import { QboSyncEngine, SYNC_PHASES, startSyncRun } from './sync/syncEngine';
+import { countLegacyImportEntries } from './sync/syncCompletenessPhases';
+import { runVerification, type VerificationResult } from './sync/qboVerification';
 
 /**
  * QuickBooks Online data sync — the client-stepped runner UI.
@@ -21,7 +23,118 @@ import { QboSyncEngine, SYNC_PHASES, startSyncRun } from './sync/syncEngine';
  * accountant's RLS.
  */
 
-type LoopState = 'idle' | 'running' | 'waiting' | 'done' | 'failed' | 'cancelled';
+type LoopState = 'idle' | 'running' | 'waiting' | 'gated' | 'done' | 'failed' | 'cancelled';
+
+const money = (v: number | null): string =>
+  v == null ? '—' : v.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+
+/** The QBO-vs-WorkTrack delta report (the migration sign-off artifact). */
+function VerificationCard({ disabled }: { disabled: boolean }) {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<VerificationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setError(null);
+    try {
+      setResult(await runVerification());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Verification failed.');
+    }
+    setRunning(false);
+  };
+
+  return (
+    <Card className="flex flex-col gap-3" padding="lg">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-white">Verify against QuickBooks</h3>
+          <p className="mt-0.5 text-xs text-slate-400">
+            Compares QuickBooks&rsquo; own P&amp;L, balance sheet, and AR/AP aging against
+            WorkTrack&rsquo;s reports, line by line. Every section must tie to the penny before
+            cutover.
+          </p>
+        </div>
+        <Button icon="rule" onClick={handleRun} disabled={disabled || running}>
+          {running ? 'Comparing…' : 'Run verification'}
+        </Button>
+      </div>
+
+      {error && (
+        <p
+          className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
+      {result && (
+        <div className="flex flex-col gap-2">
+          <p
+            className={`rounded-sm border p-2 text-sm font-semibold ${
+              result.allTied
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+            }`}
+            role="status"
+          >
+            {result.allTied
+              ? 'All sections tie to QuickBooks exactly.'
+              : 'Differences found — chase each line below before signing off.'}
+          </p>
+
+          {result.warnings.map((w) => (
+            <p key={w} className="text-xs text-amber-300">
+              {w}
+            </p>
+          ))}
+
+          {result.sections.map((s) => (
+            <div key={s.title} className="rounded-sm border border-white/10 p-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="font-semibold text-slate-200">{s.title}</span>
+                <span className={s.tied ? 'text-emerald-300' : 'text-amber-300'}>
+                  {s.tied
+                    ? `Tied at ${money(s.qboTotal)}`
+                    : `QBO ${money(s.qboTotal)} vs WorkTrack ${money(s.ourTotal)}`}
+                </span>
+              </div>
+              {s.mismatches.length > 0 && (
+                <table className="mt-1 w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-slate-400">
+                      <th className="py-1 pr-2 font-semibold">Line</th>
+                      <th className="px-2 py-1 text-right font-semibold">QuickBooks</th>
+                      <th className="px-2 py-1 text-right font-semibold">WorkTrack</th>
+                      <th className="py-1 pl-2 text-right font-semibold">Delta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.mismatches.map((m) => (
+                      <tr
+                        key={`${s.title}-${m.label}`}
+                        className="border-t border-white/5 text-slate-300"
+                      >
+                        <td className="py-1 pr-2">{m.label}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{money(m.qboAmount)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{money(m.ourAmount)}</td>
+                        <td className="py-1 pl-2 text-right tabular-nums text-amber-300">
+                          {money(m.deltaCents / 100)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
 
 function formatWhen(value: string | null): string {
   if (!value) return '—';
@@ -87,6 +200,7 @@ export default function QuickBooksSyncView() {
   const [loopState, setLoopState] = useState<LoopState>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<QboImportLogEntry[]>([]);
+  const [gate, setGate] = useState<{ phaseKey: string; legacyCount: number | null } | null>(null);
   const engineRef = useRef<QboSyncEngine | null>(null);
   const stopRequested = useRef(false);
 
@@ -142,6 +256,19 @@ export default function QuickBooksSyncView() {
           setLoopState('running');
           continue;
         }
+        if (out.state === 'gate') {
+          // The reconcile step needs explicit approval — pause and show the gate card.
+          setLoopState('gated');
+          let legacyCount: number | null = null;
+          try {
+            legacyCount = await countLegacyImportEntries();
+          } catch {
+            legacyCount = null;
+          }
+          setGate({ phaseKey: out.gatePhaseKey ?? 'reconcile', legacyCount });
+          setMessage(null);
+          break;
+        }
         if (out.state === 'done') {
           setLoopState('done');
           setMessage('Sync complete.');
@@ -187,20 +314,42 @@ export default function QuickBooksSyncView() {
     setMessage('Stopping after the current page…');
   };
 
+  /** Approve the gated reconcile step and continue the run. */
+  const handleApproveGate = async () => {
+    if (!run || !gate) return;
+    const engine = engineRef.current ?? new QboSyncEngine(run.id);
+    engineRef.current = engine;
+    const updated = await engine.confirmGate(run, gate.phaseKey);
+    if (updated) setRun(updated);
+    setGate(null);
+    await loop(engine, run.id);
+  };
+
+  /** Decline the gate: stop here (run stays resumable; books remain double-counted). */
+  const handleDeclineGate = async () => {
+    if (!run) return;
+    setGate(null);
+    await qboSyncService.updateRun(run.id, { status: 'cancelled', finished: true });
+    const cancelled = await qboSyncService.getRun(run.id);
+    if (cancelled) setRun(cancelled);
+    setLoopState('cancelled');
+    setMessage(
+      'Stopped before retiring the legacy import. NOTE: until that step runs, the ledger counts both the old import and the new QuickBooks documents.'
+    );
+  };
+
   // Surface a resumable run found on mount.
   const resumable = activeRunQuery.data ?? null;
 
   // Leaving the page mid-run leaves the run 'running' (resumable) — warn the user.
   useEffect(() => {
-    if (loopState !== 'running' && loopState !== 'waiting') return;
+    if (loopState !== 'running' && loopState !== 'waiting' && loopState !== 'gated') return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [loopState]);
-
-  const busy = loopState === 'running' || loopState === 'waiting';
 
   return (
     <AccountingShell active="integrations" title="QuickBooks Sync">
@@ -248,11 +397,11 @@ export default function QuickBooksSyncView() {
                 ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {busy ? (
+                {loopState === 'running' || loopState === 'waiting' ? (
                   <Button variant="danger" icon="stop_circle" onClick={handleCancel}>
                     Stop
                   </Button>
-                ) : resumable ? (
+                ) : loopState === 'gated' ? null : resumable ? (
                   <Button icon="resume" onClick={() => handleResume(resumable)}>
                     Resume interrupted sync
                   </Button>
@@ -290,6 +439,38 @@ export default function QuickBooksSyncView() {
               </p>
             )}
 
+            {loopState === 'gated' && gate && (
+              <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3">
+                <p className="flex items-center gap-2 text-sm font-bold text-amber-200">
+                  <span className="material-symbols-outlined text-lg">warning</span>
+                  Approve the final step: retire the legacy GL import
+                </p>
+                <p className="mt-1 text-sm text-amber-100/90">
+                  Every QuickBooks transaction has now been re-posted from the live company as
+                  documents and journal entries. The original CSV-imported ledger
+                  {gate.legacyCount != null ? (
+                    <>
+                      {' '}
+                      (<span className="font-semibold">
+                        {gate.legacyCount.toLocaleString()}
+                      </span>{' '}
+                      posted entries)
+                    </>
+                  ) : null}{' '}
+                  must be voided so the books don&rsquo;t double-count. Voiding keeps every entry
+                  (marked void, fully auditable) — nothing is deleted.
+                </p>
+                <div className="mt-2 flex flex-wrap justify-end gap-2">
+                  <Button variant="secondary" onClick={handleDeclineGate}>
+                    Not now
+                  </Button>
+                  <Button icon="task_alt" onClick={handleApproveGate}>
+                    Void legacy entries & finish
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {run && <PhaseTable run={run} />}
 
             {run?.error && (
@@ -314,6 +495,12 @@ export default function QuickBooksSyncView() {
               </div>
             )}
           </Card>
+        )}
+
+        {status.connected && (
+          <VerificationCard
+            disabled={loopState === 'running' || loopState === 'waiting' || loopState === 'gated'}
+          />
         )}
 
         {(runsQuery.data?.length ?? 0) > 0 && (
