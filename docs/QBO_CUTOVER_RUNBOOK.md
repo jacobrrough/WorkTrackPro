@@ -7,14 +7,14 @@ to a verified cutover.
 
 ## What was built
 
-| Piece | Where |
-|---|---|
-| QBO read-only API proxy (count/query/report, admin-gated, tokens server-side) | `netlify/functions/qbo-sync.mjs` |
-| Client-stepped sync engine (resumable; masters → documents → completeness → gated reconcile) | `src/features/accounting/integrations/sync/` |
-| Sync runner UI + verification report (`/app/accounting/integrations/sync`) | `QuickBooksSyncView.tsx` |
-| `external_qbo_id` on 9 entity tables + run/log tracking | migration `20260610170000_qbo_sync_foundation.sql` |
-| `'qbo'` journal source type + one-transaction legacy-GL void | migration `20260610190000_qbo_reconcile_support.sql` |
-| `jobs.customer_id` FK + lead→customer bridge RPC | migrations `20260610200000` + `20260610200100` |
+| Piece                                                                                            | Where                                                           |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| QBO read-only API proxy (count/query/report, admin-gated, tokens server-side)                    | `netlify/functions/qbo-sync.mjs`                                |
+| Client-stepped sync engine (resumable; masters → documents → completeness → gated reconcile)     | `src/features/accounting/integrations/sync/`                    |
+| Sync runner UI + verification report (`/app/accounting/integrations/sync`)                       | `QuickBooksSyncView.tsx`                                        |
+| `external_qbo_id` on 9 entity tables + run/log tracking                                          | migration `20260610170000_qbo_sync_foundation.sql`              |
+| `'qbo'` journal source type + one-transaction legacy-GL void                                     | migration `20260610190000_qbo_reconcile_support.sql`            |
+| `jobs.customer_id` FK + lead→customer bridge RPC                                                 | migrations `20260610200000` + `20260610200100`                  |
 | Job billing panel, customer picker, `?jobId=` prefilled create views, job column/filter on lists | `src/features/accounting/jobs/`, JobDetail/AdminCreateJob edits |
 
 Already verified: typecheck, lint, 1139 tests (incl. 56 sync-specific), prettier,
@@ -27,21 +27,29 @@ security advisors show no new findings.
 
 1. Create an app at **developer.intuit.com** (sandbox first). Single-company internal
    use does not need Intuit's app review.
-2. Netlify env (Site settings → Environment variables):
-   `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_ENVIRONMENT` (`sandbox` →
-   `production` later), `QBO_REDIRECT_URI` = `https://<site>/api/qbo-oauth/callback`.
-3. Redeploy so the functions pick the env up.
+2. Enable the hosted test rig: Netlify → Site configuration → Build & deploy →
+   Branches and deploy contexts → add branch `claude/amazing-lehmann-42803b`.
+   The **branch deploy** gets its own URL and — via the
+   `[context.branch-deploy.environment]` section of `netlify.toml` — builds
+   against the **unified-billing-dev** Supabase branch, never production.
+3. Netlify env vars **scoped to the "Branch deploys" context** (Site settings →
+   Environment variables → per-context values):
+   - `SUPABASE_SERVICE_ROLE_KEY` = the **branch project's** service key
+     (Dashboard → switch to branch unified-billing-dev → Settings → API)
+   - `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_ENVIRONMENT` (`sandbox` →
+     `production` later), `QBO_REDIRECT_URI` =
+     `https://<branch-deploy-url>/api/qbo-oauth/callback`
+4. Register that same callback URL under the Intuit app's Redirect URIs, then
+   re-trigger the branch deploy so the functions pick the env up.
 
 ## Phase 1 — rehearsal (no production change)
 
-Run the app **locally against the Supabase branch DB** (deploy-preview points at the
+On the **branch-deploy URL** (do not use deploy previews — those build against the
 prod DB, which does not have the new columns yet):
 
-1. `.env.local`: point `VITE_SUPABASE_URL`/anon key at the **unified-billing-dev**
-   branch (Supabase Dashboard → Branches → connection info), set
-   `VITE_ACCOUNTING_ENABLED=true`. `npm run dev`.
-   - The branch DB has schema but no data: create your admin user (sign-up +
-     approve + admin + accounting role) or seed minimal fixtures.
+1. Sign up a fresh user (the branch DB has schema but no users), then have the
+   account approved + made admin + granted the accounting role on the branch DB
+   (SQL or via Claude's Supabase access).
 2. **Connect QuickBooks** at `/app/accounting/integrations` (sandbox realm first;
    "Test connection" must show the company name).
 3. **Full sync** at `/app/accounting/integrations/sync`. Watch the phase table:
