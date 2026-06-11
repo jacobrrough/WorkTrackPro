@@ -21,6 +21,10 @@ const QuickBooksConnectView = lazyWithRetry(
   () => import('./integrations/QuickBooksConnectView'),
   'QuickBooksConnectView'
 );
+const QuickBooksSyncView = lazyWithRetry(
+  () => import('./integrations/QuickBooksSyncView'),
+  'QuickBooksSyncView'
+);
 const JournalView = lazyWithRetry(() => import('./journal/JournalView'), 'JournalView');
 const JournalEntryDetail = lazyWithRetry(
   () => import('./journal/JournalEntryDetail'),
@@ -220,6 +224,8 @@ export default function AccountingRouter() {
         {/* QuickBooks Online OAuth connection (import Phase 0). The /api/qbo-oauth/callback
             redirects back here with ?qbo=connected|error. */}
         <Route path="integrations" element={<QuickBooksConnectView />} />
+        {/* QuickBooks API data sync (replica import Phases 1+). */}
+        <Route path="integrations/sync" element={<QuickBooksSyncView />} />
         <Route path="journal" element={<JournalView />} />
         <Route path="journal/:entryId" element={<JournalEntryDetail />} />
         <Route path="invoices" element={<InvoicesView />} />

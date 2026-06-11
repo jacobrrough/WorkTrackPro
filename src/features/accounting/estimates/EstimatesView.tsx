@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { useEstimates } from '../hooks/useAccountingQueries';
@@ -25,6 +26,26 @@ function StatusPill({ status }: { status: EstimateStatus }) {
   );
 }
 
+/** Compact "open the linked job" affordance (stops row-click navigation). */
+function JobCell({ jobId }: { jobId: string | null }) {
+  if (!jobId) {
+    return (
+      <span className="hidden w-14 shrink-0 text-center text-xs text-slate-600 md:block">—</span>
+    );
+  }
+  return (
+    <Link
+      to={`/app/jobs/${jobId}`}
+      onClick={(e) => e.stopPropagation()}
+      className="hidden w-14 shrink-0 items-center justify-center gap-0.5 text-xs font-semibold text-primary hover:underline md:flex"
+      title="Open the linked job"
+    >
+      <span className="material-symbols-outlined text-sm">work</span>
+      Job
+    </Link>
+  );
+}
+
 function EstimateRow({ estimate, onOpen }: { estimate: Estimate; onOpen: () => void }) {
   return (
     <button
@@ -39,6 +60,7 @@ function EstimateRow({ estimate, onOpen }: { estimate: Estimate; onOpen: () => v
       <span className="flex-1 truncate text-white">
         {estimate.customerName || estimate.customerId}
       </span>
+      <JobCell jobId={estimate.jobId} />
       <span className="hidden w-28 shrink-0 text-right text-sm text-slate-400 sm:block">
         {estimate.expiryDate || '—'}
       </span>
@@ -50,9 +72,18 @@ function EstimateRow({ estimate, onOpen }: { estimate: Estimate; onOpen: () => v
   );
 }
 
+type JobFilter = 'all' | 'with-job' | 'without-job';
+
 export default function EstimatesView() {
   const navigate = useNavigate();
   const { data: estimates = [], isPending, isError } = useEstimates();
+  const [jobFilter, setJobFilter] = useState<JobFilter>('all');
+
+  const filtered = useMemo(() => {
+    if (jobFilter === 'with-job') return estimates.filter((e) => e.jobId);
+    if (jobFilter === 'without-job') return estimates.filter((e) => !e.jobId);
+    return estimates;
+  }, [estimates, jobFilter]);
 
   return (
     <AccountingShell
@@ -88,22 +119,40 @@ export default function EstimatesView() {
 
       {estimates.length > 0 && (
         <>
+          <div className="mb-2 flex justify-end">
+            <select
+              aria-label="Filter by job link"
+              className="rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-slate-300"
+              value={jobFilter}
+              onChange={(e) => setJobFilter(e.target.value as JobFilter)}
+            >
+              <option value="all">All estimates</option>
+              <option value="with-job">Linked to a job</option>
+              <option value="without-job">No job link</option>
+            </select>
+          </div>
           <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-slate-500 sm:flex">
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Date</span>
             <span className="flex-1">Customer</span>
+            <span className="hidden w-14 shrink-0 text-center md:block">Job</span>
             <span className="w-28 shrink-0 text-right">Expires</span>
             <span className="w-28 shrink-0 text-right">Total</span>
             <span className="w-[58px] shrink-0" />
           </div>
           <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
-            {estimates.map((est) => (
+            {filtered.map((est) => (
               <EstimateRow
                 key={est.id}
                 estimate={est}
                 onOpen={() => navigate(`${ACCOUNTING_BASE}/estimates/${est.id}`)}
               />
             ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-6 text-center text-sm text-slate-500">
+                No estimates match this filter.
+              </p>
+            )}
           </div>
         </>
       )}

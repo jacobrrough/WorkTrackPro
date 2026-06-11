@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
+import type { Job } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
 import { partsService } from '@/services/api/parts';
 import { inventoryService } from '@/services/api/inventory';
@@ -56,9 +57,29 @@ export function resolveEffectiveTaxCodeId(args: {
 }
 
 /**
- * Pull a job's parts/inventory/settings and build draft lines from the on-screen
- * quote (reuses buildInvoiceLinesFromJob -> calculatePartQuote). Reads public.* only.
+ * Pull a job's parts/inventory/settings and price them with the same quote calculator
+ * the job screen uses (buildInvoiceLinesFromJob -> calculatePartQuote). Reads public.* only.
  */
+async function buildLinesForJob(job: Job, taxCodeId: string | null) {
+  const [parts, inventory, settings] = await Promise.all([
+    partsService.getAllParts(),
+    inventoryService.getAllInventory(),
+    adminSettingsService.getOrganizationSettings(),
+  ]);
+  return buildInvoiceLinesFromJob({
+    job,
+    parts,
+    inventory,
+    settings: {
+      laborRate: settings?.laborRate ?? 0,
+      cncRate: settings?.cncRate ?? 0,
+      printer3DRate: settings?.printer3DRate ?? 0,
+      materialMultiplier: settings?.materialUpcharge,
+    },
+    taxCodeId,
+  });
+}
+
 function FromJobDialog({
   taxCodeId,
   onClose,
@@ -66,7 +87,7 @@ function FromJobDialog({
 }: {
   taxCodeId: string | null;
   onClose: () => void;
-  onLines: (lines: NewInvoiceLineInput[], jobId: string) => void;
+  onLines: (lines: NewInvoiceLineInput[], jobId: string, customerId: string | null) => void;
 }) {
   const [jobCode, setJobCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -86,28 +107,13 @@ function FromJobDialog({
         setError(`No job found with code ${code}.`);
         return;
       }
-      const [parts, inventory, settings] = await Promise.all([
-        partsService.getAllParts(),
-        inventoryService.getAllInventory(),
-        adminSettingsService.getOrganizationSettings(),
-      ]);
-      const lines = buildInvoiceLinesFromJob({
-        job,
-        parts,
-        inventory,
-        settings: {
-          laborRate: settings?.laborRate ?? 0,
-          cncRate: settings?.cncRate ?? 0,
-          printer3DRate: settings?.printer3DRate ?? 0,
-          materialMultiplier: settings?.materialUpcharge,
-        },
-        taxCodeId,
-      });
+      const lines = await buildLinesForJob(job, taxCodeId);
       if (lines.length === 0) {
         setError('That job has no quotable parts or inventory to invoice.');
         return;
       }
-      onLines(lines, job.id);
+      // The job's linked customer rides along so the header pre-fills.
+      onLines(lines, job.id, job.customerId ?? null);
       onClose();
     } catch {
       setError('Could not load the job. Check the job code and your connection.');
@@ -167,6 +173,7 @@ function FromJobDialog({
 
 export default function InvoiceCreateView() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: customers = [], isPending: customersLoading } = useCustomers();
   const { data: taxCodes = [] } = useTaxCodes();
   // Active invoice custom fields, shown read-only here as a preview — they become
@@ -265,8 +272,15 @@ export default function InvoiceCreateView() {
 
   const hasAmount = totals.totalCents > 0;
 
-  const applyJobLines = (jobLines: NewInvoiceLineInput[], newJobId: string) => {
+  const applyJobLines = (
+    jobLines: NewInvoiceLineInput[],
+    newJobId: string,
+    newCustomerId: string | null
+  ) => {
     setJobId(newJobId);
+    // Pre-fill the job's customer — but never fight a choice the user already made.
+    if (newCustomerId) setCustomerId((prev) => prev || newCustomerId);
+    if (jobLines.length === 0) return;
     // Replace empty starter lines; otherwise append.
     setLines((prev) => {
       const meaningful = prev.filter(
@@ -275,6 +289,23 @@ export default function InvoiceCreateView() {
       return [...meaningful, ...jobLines];
     });
   };
+
+  // Deep link from a job page (…/invoices/new?jobId=<id>): load that job once and
+  // pre-fill its customer + quoted lines, exactly like the "From job" dialog.
+  const prefillJobId = searchParams.get('jobId');
+  const [prefillDone, setPrefillDone] = useState(false);
+  useEffect(() => {
+    if (!prefillJobId || prefillDone) return;
+    setPrefillDone(true);
+    (async () => {
+      const job = await jobService.getJobById(prefillJobId);
+      if (!job) return;
+      const jobLines = await buildLinesForJob(job, null).catch(() => [] as NewInvoiceLineInput[]);
+      applyJobLines(jobLines, job.id, job.customerId ?? null);
+    })().catch(() => {
+      /* best-effort prefill — the form still works empty */
+    });
+  }, [prefillJobId, prefillDone]);
 
   const submit = async () => {
     setError(null);

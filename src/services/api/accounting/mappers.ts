@@ -34,6 +34,8 @@ import type {
   InventoryCogsEvent,
   InventoryValuationRow,
   Invoice,
+  Item,
+  ItemType,
   InvoiceLine,
   InvoiceStatus,
   JobCostingRow,
@@ -45,6 +47,13 @@ import type {
   Payment,
   PaymentApplication,
   PaymentMethod,
+  QboEntityCounts,
+  QboImportLogEntry,
+  QboImportRun,
+  QboLogAction,
+  QboPhaseProgress,
+  QboRunStatus,
+  QboSyncMode,
   Reconciliation,
   ReconciliationStatus,
   RecurringFrequency,
@@ -1237,5 +1246,72 @@ export function mapVendorTaxInfoRow(row: Row): VendorTaxInfo {
     exempt: bool(row.exempt),
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
+  };
+}
+
+/** Narrow a jsonb column to a plain object (degrades to {} on any other shape). */
+function jsonObject<T>(v: unknown): Record<string, T> {
+  return v != null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, T>) : {};
+}
+
+/** Numeric column that may be null (e.g. items.sales_price). */
+const nnum = (v: unknown): number | null => {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Map an `accounting.items` row (products & services master). */
+export function mapItemRow(row: Row): Item {
+  return {
+    id: str(row.id),
+    name: str(row.name),
+    sku: nstr(row.sku),
+    itemType: (row.item_type as ItemType) ?? 'service',
+    incomeAccountId: nstr(row.income_account_id),
+    expenseAccountId: nstr(row.expense_account_id),
+    inventoryAssetAccountId: nstr(row.inventory_asset_account_id),
+    defaultTaxCodeId: nstr(row.default_tax_code_id),
+    salesPrice: nnum(row.sales_price),
+    purchaseCost: nnum(row.purchase_cost),
+    isActive: bool(row.is_active, true),
+    sourceInventoryId: nstr(row.source_inventory_id),
+    sourcePartId: nstr(row.source_part_id),
+    externalQboId: nstr(row.external_qbo_id),
+    createdAt: str(row.created_at),
+    updatedAt: str(row.updated_at),
+  };
+}
+
+/** Map an `accounting.qbo_import_runs` row (QBO sync run tracking). */
+export function mapQboImportRunRow(row: Row): QboImportRun {
+  return {
+    id: str(row.id),
+    mode: (row.mode as QboSyncMode) ?? 'full',
+    status: (row.status as QboRunStatus) ?? 'running',
+    phase: nstr(row.phase),
+    progress: jsonObject<QboPhaseProgress>(row.progress),
+    counts: jsonObject<QboEntityCounts>(row.counts),
+    error: nstr(row.error),
+    changedSince: nstr(row.changed_since),
+    startedBy: nstr(row.started_by),
+    startedAt: str(row.started_at),
+    finishedAt: nstr(row.finished_at),
+    updatedAt: str(row.updated_at),
+  };
+}
+
+/** Map an `accounting.qbo_import_log` row (per-record sync audit line). */
+export function mapQboImportLogRow(row: Row): QboImportLogEntry {
+  return {
+    id: str(row.id),
+    runId: str(row.run_id),
+    entity: str(row.entity),
+    qboId: nstr(row.qbo_id),
+    action: (row.action as QboLogAction) ?? 'error',
+    status: row.status === 'error' ? 'error' : 'ok',
+    message: nstr(row.message),
+    recordId: nstr(row.record_id),
+    at: str(row.at),
   };
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, useState, useMemo } from 'react';
 import {
   Job,
   User,
@@ -9,6 +9,14 @@ import {
   Part,
   getStatusDisplayName,
 } from '@/core/types';
+import { ACCOUNTING_BUILD_ENABLED } from '@/lib/featureFlags';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
+
+// Lazy + flag-gated so a flag-off build contains zero accounting code (the same
+// dead-ternary seam as AppRouter's AccountingRouter).
+const JobCustomerSelect = ACCOUNTING_BUILD_ENABLED
+  ? lazyWithRetry(() => import('@/features/accounting/jobs/JobCustomerSelect'), 'JobCustomerSelect')
+  : null;
 import { dateInputToISO } from '@/core/date';
 import { getLaborSuggestion } from '@/lib/laborSuggestion';
 import {
@@ -55,6 +63,7 @@ interface AdminCreateJobProps {
     estNumber?: string;
     invNumber?: string;
     rfqNumber?: string;
+    customerId?: string | null;
     partNumber?: string;
     revision?: string;
     variantSuffix?: string;
@@ -146,9 +155,12 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     description: '',
     status: 'toBeQuoted' as JobStatus,
     binLocation: '',
+    // EST#/INV#/RFQ# free-text entry is retired (real estimates/invoices link by id);
+    // the fields remain in state so name composition + legacy plumbing stay inert.
     estNumber: '',
     invNumber: '',
     rfqNumber: '',
+    customerId: '',
     revision: '',
   });
 
@@ -490,6 +502,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         estNumber: formData.estNumber.trim() || undefined,
         invNumber: formData.invNumber.trim() || undefined,
         rfqNumber: formData.rfqNumber.trim() || undefined,
+        customerId: formData.customerId || null,
         partNumber: partNumberForCreate || undefined,
         revision: formData.revision.trim() || undefined,
         dashQuantities: normalizedDashQuantities,
@@ -872,26 +885,26 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   </p>
                 )}
               </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">EST #</label>
-                <input
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                  placeholder="Enter EST number"
-                  value={formData.estNumber}
-                  onChange={(e) => setFormData({ ...formData, estNumber: e.target.value })}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">RFQ #</label>
-                <input
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                  placeholder="Enter RFQ number"
-                  value={formData.rfqNumber}
-                  onChange={(e) => setFormData({ ...formData, rfqNumber: e.target.value })}
-                  disabled={isSubmitting}
-                />
-              </div>
+              {/* EST#/RFQ#/INV# free-text entry retired — the customer link (and real
+                  estimates/invoices created from the job) replace them. */}
+              {JobCustomerSelect && (
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-slate-300">Customer</label>
+                  <Suspense
+                    fallback={
+                      <div className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32]" />
+                    }
+                  >
+                    <JobCustomerSelect
+                      value={formData.customerId || null}
+                      onChange={(customerId) =>
+                        setFormData({ ...formData, customerId: customerId ?? '' })
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </Suspense>
+                </div>
+              )}
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-slate-300">PO #</label>
                 <input
@@ -899,16 +912,6 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   placeholder="5300170272"
                   value={formData.po}
                   onChange={(e) => setFormData({ ...formData, po: e.target.value })}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">INV#</label>
-                <input
-                  className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                  placeholder="Enter INV number"
-                  value={formData.invNumber}
-                  onChange={(e) => setFormData({ ...formData, invNumber: e.target.value })}
                   disabled={isSubmitting}
                 />
               </div>

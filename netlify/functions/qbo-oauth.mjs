@@ -261,6 +261,9 @@ async function handleStatus(supabase) {
     companyName: conn.company_name || null,
     connectedAt: conn.connected_at || null,
     lastSyncAt: conn.last_sync_at || null,
+    // Incremental-sync high-water mark (set to the prior run's START time, so records
+    // changed during that run are still picked up by the next one).
+    lastCdcCursor: conn.last_cdc_cursor || null,
   });
 }
 

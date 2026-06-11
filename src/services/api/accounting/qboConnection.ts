@@ -26,6 +26,8 @@ export interface QboStatus {
   companyName?: string | null;
   connectedAt?: string | null;
   lastSyncAt?: string | null;
+  /** High-water mark for incremental syncs (the prior sync run's start time). */
+  lastCdcCursor?: string | null;
 }
 
 /** Live company info fetched from the Intuit API (used by "Test connection"). */

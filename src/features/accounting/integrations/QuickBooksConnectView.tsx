@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { qboConnectionService, type QboStatus } from '@/services/api/accounting/qboConnection';
+import { ACCOUNTING_BASE } from '../constants';
 import { AccountingShell } from '../components/AccountingShell';
 
 /**
@@ -200,6 +201,9 @@ export default function QuickBooksConnectView() {
             <div className="flex flex-wrap items-center justify-end gap-2">
               {status.connected ? (
                 <>
+                  <Link to={`${ACCOUNTING_BASE}/integrations/sync`}>
+                    <Button icon="cloud_sync">Open data sync</Button>
+                  </Link>
                   <Button
                     variant="secondary"
                     icon="wifi_tethering"

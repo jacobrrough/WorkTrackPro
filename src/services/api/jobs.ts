@@ -87,6 +87,7 @@ function mapJobRow(
     binLocation: row.bin_location as string | undefined,
     partNumber: row.part_number as string | undefined,
     variantSuffix: row.variant_suffix as string | undefined,
+    customerId: (row.customer_id as string | null | undefined) ?? null,
     estNumber: row.est_number as string | undefined,
     invNumber: row.inv_number as string | undefined,
     rfqNumber: row.rfq_number as string | undefined,
@@ -711,6 +712,7 @@ export const jobService = {
       quoted_price: toFiniteNumber(data.quotedPrice) ?? null,
       quoted_material_cost: toFiniteNumber(data.quotedMaterialCost) ?? null,
       quoted_labor_hours: toFiniteNumber(data.quotedLaborHours) ?? null,
+      customer_id: data.customerId ?? null,
     };
     // job_code is assigned read-max-then-insert against a UNIQUE column, so a concurrent
     // createJob can grab the same code and raise 23505. Retry with a freshly-read code on
@@ -882,6 +884,7 @@ export const jobService = {
     }
     if (data.partRev !== undefined) row.part_rev = data.partRev;
     else if (row.part_id) row.part_rev = await getPartRev(row.part_id as string);
+    if (data.customerId !== undefined) row.customer_id = data.customerId ?? null;
     if (data.progressEstimatePercent !== undefined) {
       const p =
         typeof data.progressEstimatePercent === 'number'
