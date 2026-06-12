@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Delivery, DeliveryLineItem, Job } from '@/core/types';
 import { deliveryLineKey, validateDeliveryQuantities } from '../deliveryValidation';
+import { buildInitialLines, type EditableLine } from './buildInitialLines';
 
 interface RecordDeliveryModalProps {
   job: Job;
@@ -15,104 +16,6 @@ interface RecordDeliveryModalProps {
     notes?: string;
     lineItems: DeliveryLineItem[];
   }) => Promise<unknown>;
-}
-
-interface EditableLine extends DeliveryLineItem {
-  ordered?: number;
-  remaining?: number;
-}
-
-function buildInitialLines(
-  job: Job,
-  alreadyDelivered: Record<string, number>,
-  existing?: Delivery
-): EditableLine[] {
-  if (existing) {
-    return existing.lineItems.map((li) => ({ ...li }));
-  }
-
-  const lines: EditableLine[] = [];
-
-  if (job.parts && job.parts.length > 0) {
-    for (const part of job.parts) {
-      const dq = part.dashQuantities ?? {};
-      const variants = Object.keys(dq).sort();
-      if (variants.length === 0) {
-        const key = `${part.partNumber}|`;
-        lines.push({
-          partNumber: part.partNumber,
-          description: part.partNumber,
-          quantity: 0,
-          unit: 'units',
-          ordered: 0,
-          remaining: 0 - (alreadyDelivered[key] ?? 0),
-        });
-      } else {
-        for (const v of variants) {
-          const ordered = Number(dq[v]) || 0;
-          const key = `${part.partNumber}|${v}`;
-          const delivered = alreadyDelivered[key] ?? 0;
-          const remaining = Math.max(0, ordered - delivered);
-          lines.push({
-            partNumber: part.partNumber,
-            variantSuffix: v,
-            description: `${part.partNumber}-${v}`,
-            quantity: remaining,
-            unit: 'units',
-            ordered,
-            remaining,
-          });
-        }
-      }
-    }
-  } else if (job.partNumber) {
-    const dq = job.dashQuantities ?? {};
-    const variants = Object.keys(dq).sort();
-    if (variants.length > 0) {
-      for (const v of variants) {
-        const ordered = Number(dq[v]) || 0;
-        const key = `${job.partNumber}|${v}`;
-        const delivered = alreadyDelivered[key] ?? 0;
-        const remaining = Math.max(0, ordered - delivered);
-        lines.push({
-          partNumber: job.partNumber,
-          variantSuffix: v,
-          description: `${job.partNumber}-${v}`,
-          quantity: remaining,
-          unit: 'units',
-          ordered,
-          remaining,
-        });
-      }
-    } else {
-      const ordered = Number(job.qty) || 0;
-      const key = `${job.partNumber}|`;
-      const delivered = alreadyDelivered[key] ?? 0;
-      const remaining = Math.max(0, ordered - delivered);
-      lines.push({
-        partNumber: job.partNumber,
-        description: job.partNumber,
-        quantity: remaining,
-        unit: 'units',
-        ordered,
-        remaining,
-      });
-    }
-  } else {
-    const ordered = Number(job.qty) || 0;
-    const key = `|`;
-    const delivered = alreadyDelivered[key] ?? 0;
-    const remaining = Math.max(0, ordered - delivered);
-    lines.push({
-      description: job.name || 'Item',
-      quantity: remaining,
-      unit: 'units',
-      ordered,
-      remaining,
-    });
-  }
-
-  return lines;
 }
 
 const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
