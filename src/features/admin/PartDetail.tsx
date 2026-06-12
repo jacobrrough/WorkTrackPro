@@ -28,6 +28,7 @@ import MaterialCostDisplay from '@/components/MaterialCostDisplay';
 import QuoteCalculator from '@/components/QuoteCalculator';
 import FileUploadButton from '@/FileUploadButton';
 import { calculatePartQuote, calculateVariantQuote } from '@/lib/partsCalculations';
+import { buildSyntheticPartUpdates } from '@/lib/syntheticPartPrice';
 import { useSettings } from '@/contexts/SettingsContext';
 import {
   calculateSetPriceFromVariants,
@@ -59,6 +60,12 @@ interface PartDetailProps {
 }
 
 const SYNTHETIC_VARIANT_PREFIX = 'synthetic-set-';
+
+/** A machine-time value counts as actively typed only when it differs from the saved
+ * hours — clicking "Manual" prefills the saved value and must not change billing. */
+function isActivelyTyped(edited: boolean, typedHours: number, savedHours?: number): boolean {
+  return edited && typedHours > 0 && Math.abs(typedHours - (savedHours ?? 0)) > 0.001;
+}
 
 function syntheticVariantFromPart(part: Part): PartVariant {
   return {
@@ -147,11 +154,13 @@ const PartDetail: React.FC<PartDetailProps> = ({
   onNavigateBack,
 }) => {
   const { currentUser } = useApp();
-  const { settings } = useSettings();
+  const { settings, isSyncing: settingsSyncing } = useSettings();
   const [part, setPart] = useState<Part | null>(null);
   const [loading, setLoading] = useState(true);
   const [isVirtualPart, setIsVirtualPart] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  // Gate the no-variant price resync until inventory loads, else materials price at $0.
+  const [inventoryLoaded, setInventoryLoaded] = useState(false);
   const [editingVariant, setEditingVariant] = useState<string | null>(null);
   const [showAddMaterial, setShowAddMaterial] = useState<{
     partId?: string;
@@ -421,6 +430,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     try {
       const data = await inventoryService.getAllInventory();
       setInventoryItems(data);
+      setInventoryLoaded(true);
     } catch (error) {
       console.error('Error loading inventory:', error);
     }
@@ -469,37 +479,32 @@ const PartDetail: React.FC<PartDetailProps> = ({
   ) => {
     try {
       if (variantId.startsWith(SYNTHETIC_VARIANT_PREFIX) && part) {
-        const partUpdates: Partial<Part> = {};
-        if (updates.laborHours !== undefined) partUpdates.laborHours = updates.laborHours;
-        if (updates.cncTimeHours !== undefined) partUpdates.cncTimeHours = updates.cncTimeHours;
-        if (updates.requiresCNC !== undefined) partUpdates.requiresCNC = updates.requiresCNC;
-        if (updates.printer3DTimeHours !== undefined)
-          partUpdates.printer3DTimeHours = updates.printer3DTimeHours;
-        if (updates.requires3DPrint !== undefined)
-          partUpdates.requires3DPrint = updates.requires3DPrint;
-        if (
-          canViewFinancials &&
-          updates.pricePerVariant !== undefined &&
-          Number.isFinite(updates.pricePerVariant)
-        ) {
-          partUpdates.pricePerSet = updates.pricePerVariant;
+        // No-variant part: forward math is the source of truth, so a cost edit also resyncs
+        // the stored price. buildSyntheticPartUpdates is a pure, tested decision.
+        const partUpdates = buildSyntheticPartUpdates(updates, part, {
+          canViewFinancials,
+          inventoryLoaded,
+          settingsReady: !settingsSyncing,
+          inventoryItems,
+          laborRate: settings.laborRate,
+          cncRate: settings.cncRate,
+          printer3DRate: settings.printer3DRate,
+        });
+        if (Object.keys(partUpdates).length === 0) return;
+        // Optimistic update so the Quote Calculator and Quick Reference move together.
+        const previousValues: Partial<Part> = {};
+        for (const key of Object.keys(partUpdates) as (keyof Part)[]) {
+          (previousValues as Record<string, unknown>)[key] = part[key];
         }
-        if (Object.keys(partUpdates).length > 0) {
-          // Optimistic update so QuoteCalculator reflects immediately (same time as VariantQuoteMini)
-          const snapshot = part;
-          setPart((prev) => (prev ? { ...prev, ...partUpdates } : null));
-          setEditingVariant(null);
-          try {
-            await handleUpdatePart(partUpdates);
-          } catch {
-            setPart(snapshot);
-            return;
-          }
-          try {
-            await loadPart(true);
-          } catch {
-            // non-critical: DB write already committed, UI has server-confirmed state
-          }
+        setPart((prev) => (prev ? { ...prev, ...partUpdates } : null));
+        setEditingVariant(null);
+        // handleUpdatePart merges the saved row back into `part` (and preserves
+        // materials/variants — mapRowToPart omits them), so no extra reload is needed.
+        // These cost fields save per keystroke; a refetch each time would thrash.
+        const saved = await handleUpdatePart(partUpdates);
+        if (!saved) {
+          // Roll back only the fields this save touched.
+          setPart((prev) => (prev ? { ...prev, ...previousValues } : prev));
         }
         return;
       }
@@ -917,12 +922,15 @@ const PartDetail: React.FC<PartDetailProps> = ({
     });
   };
 
-  const handleUpdatePart = async (updates: Partial<Part>) => {
-    if (!part) return;
+  /** Returns false when the save is known to have failed (callers that chain derived
+   * writes, e.g. the synthetic price resync, must roll back their optimistic state).
+   * An unconfirmed/partial save (write sent, no row returned) still returns true. */
+  const handleUpdatePart = async (updates: Partial<Part>): Promise<boolean> => {
+    if (!part) return false;
     if (isVirtualPart) {
       setPart((prev) => (prev ? { ...prev, ...updates } : null));
       showToast('Part updated locally. Create in repository to save.', 'success');
-      return;
+      return true;
     }
     try {
       let updated = await partsService.updatePart(part.id, updates);
@@ -936,7 +944,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             'Set composition could not be saved. Run migration to add set_composition to parts table.',
             'error'
           );
-          return;
+          return false;
         }
       }
       if (updated) {
@@ -958,9 +966,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
         setPart((prev) => (prev ? { ...prev, ...updates } : null));
         showToast('Part updated (save may be partial)', 'warning');
       }
+      return true;
     } catch (error) {
       showToast('Failed to update part', 'error');
       console.error('Error updating part:', error);
+      return false;
     }
   };
 
@@ -1010,7 +1020,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
     const previousRev = part.rev ?? '--';
     setSavingPartInfo(true);
     try {
-      await handleUpdatePart(updates);
+      const saved = await handleUpdatePart(updates);
+      // A failed save must not advance the draft or show the rev banner: the draft would
+      // diverge from `part` and the dirty-check would treat the change as landed.
+      if (!saved) return;
       setPartInfoDraft({
         partNumber: nextPartNumber,
         name: nextName,
@@ -1752,8 +1765,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         <input
                           type="checkbox"
                           checked={!!part.requiresCNC}
+                          // Route no-variant cost edits through the synthetic-variant path so
+                          // the stored price resyncs to forward math (see handleUpdateVariant).
                           onChange={(e) =>
-                            handleUpdatePart({
+                            handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
                               requiresCNC: e.target.checked,
                               ...(e.target.checked && part.cncTimeHours == null
                                 ? { cncTimeHours: 0 }
@@ -1773,14 +1788,16 @@ const PartDetail: React.FC<PartDetailProps> = ({
                             min={0}
                             value={part.cncTimeHours ?? ''}
                             onChange={(e) =>
-                              handleUpdatePart({
+                              handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
                                 cncTimeHours: e.target.value ? Number(e.target.value) : undefined,
                               })
                             }
                             onBlur={(e) => {
                               const value = e.target.value ? Number(e.target.value) : undefined;
                               if (value !== part.cncTimeHours)
-                                handleUpdatePart({ cncTimeHours: value ?? 0 });
+                                handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
+                                  cncTimeHours: value ?? 0,
+                                });
                             }}
                             className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
                             placeholder="0"
@@ -1794,7 +1811,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           type="checkbox"
                           checked={!!part.requires3DPrint}
                           onChange={(e) =>
-                            handleUpdatePart({
+                            handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
                               requires3DPrint: e.target.checked,
                               ...(e.target.checked && part.printer3DTimeHours == null
                                 ? { printer3DTimeHours: 0 }
@@ -1816,7 +1833,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                             min={0}
                             value={part.printer3DTimeHours ?? ''}
                             onChange={(e) =>
-                              handleUpdatePart({
+                              handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
                                 printer3DTimeHours: e.target.value
                                   ? Number(e.target.value)
                                   : undefined,
@@ -1825,7 +1842,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                             onBlur={(e) => {
                               const value = e.target.value ? Number(e.target.value) : undefined;
                               if (value !== part.printer3DTimeHours)
-                                handleUpdatePart({ printer3DTimeHours: value ?? 0 });
+                                handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
+                                  printer3DTimeHours: value ?? 0,
+                                });
                             }}
                             className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
                             placeholder="0"
@@ -2626,6 +2645,9 @@ function VariantQuoteMini({
   onVariant3DChange?: (variantId: string, printer3DTimeHours: number | undefined) => void;
 }) {
   const { settings } = useSettings();
+  // No-variant parts render through a synthetic variant; their price is derived forward from
+  // labor/materials/machine time rather than reverse-calculated from a stored snapshot.
+  const isSynthetic = variant.id.startsWith(SYNTHETIC_VARIANT_PREFIX);
   const autoLaborHours =
     partLaborHours != null && setComposition && Object.keys(setComposition).length > 0
       ? variantLaborFromSetComposition(variant.variantSuffix, partLaborHours, setComposition)
@@ -2711,9 +2733,20 @@ function VariantQuoteMini({
     if (!hasUserEditedTotal) {
       setTotalInput(variant.pricePerVariant != null ? variant.pricePerVariant.toString() : '');
       lastSentTotalRef.current = null;
+    } else if (
+      lastSentTotalRef.current != null &&
+      variant.pricePerVariant != null &&
+      Math.abs(variant.pricePerVariant - lastSentTotalRef.current) > 0.01
+    ) {
+      // The stored price moved away from what we typed (e.g. a later labor edit resynced
+      // it to forward math): the typed value no longer owns the total, so exit manual
+      // mode rather than display a price the DB no longer holds.
+      setHasUserEditedTotal(false);
+      setTotalInput(variant.pricePerVariant.toString());
+      lastSentTotalRef.current = null;
     }
-    // Do not revert to auto when variant matches lastSentTotalRef: manual stays manual until
-    // the user explicitly clicks "Use auto".
+    // Otherwise do not revert to auto when variant matches lastSentTotalRef: manual stays
+    // manual until the user explicitly clicks "Use auto".
   }, [variant.pricePerVariant, hasUserEditedTotal]);
 
   const result = useMemo(() => {
@@ -2740,18 +2773,37 @@ function VariantQuoteMini({
         : effectivePrinter3DHours;
     const variantWithEffectiveLabor = {
       ...variant,
+      // Synthetic (no-variant) quotes must agree with calculatePartQuote (used by the
+      // Quote Calculator and the stored-price resync), which counts only per_set
+      // materials and bills CNC/3D only when the requires flags are set. A just-typed
+      // machine time still bills immediately for preview — saving it flips the flag.
+      materials: isSynthetic
+        ? (variant.materials ?? []).filter((m) => (m.usageType ?? 'per_set') === 'per_set')
+        : variant.materials,
       laborHours: laborHoursForQuote,
-      requiresCNC: cncHoursForQuote > 0 || variant.requiresCNC === true,
+      // "Actively typed" = the parsed input differs from the saved hours; merely clicking
+      // "Manual" (which prefills the saved value) must not flip billing on a flag-off part.
+      requiresCNC: isSynthetic
+        ? variant.requiresCNC === true ||
+          isActivelyTyped(hasUserEditedCnc, cncHoursForQuote, variant.cncTimeHours)
+        : cncHoursForQuote > 0 || variant.requiresCNC === true,
       cncTimeHours: cncHoursForQuote > 0 ? cncHoursForQuote : variant.cncTimeHours,
-      requires3DPrint: printer3DHoursForQuote > 0 || variant.requires3DPrint === true,
+      requires3DPrint: isSynthetic
+        ? variant.requires3DPrint === true ||
+          isActivelyTyped(hasUserEdited3D, printer3DHoursForQuote, variant.printer3DTimeHours)
+        : printer3DHoursForQuote > 0 || variant.requires3DPrint === true,
       printer3DTimeHours:
         printer3DHoursForQuote > 0 ? printer3DHoursForQuote : variant.printer3DTimeHours,
     };
+    // Synthetic (no-variant) parts: forward math is the source of truth — only a price
+    // the admin actively types this session reverse-calcs; a stored price is just an
+    // auto snapshot (it drifts stale otherwise). Real variants also honor a saved price.
     let manualPrice: number | undefined;
-    if (totalInput.trim()) {
+    const considerTypedPrice = isSynthetic ? hasUserEditedTotal : true;
+    if (considerTypedPrice && totalInput.trim()) {
       const p = parseFloat(totalInput);
       manualPrice = Number.isFinite(p) && p >= 0 ? p : undefined;
-    } else if (typeof variant.pricePerVariant === 'number') {
+    } else if (!isSynthetic && typeof variant.pricePerVariant === 'number') {
       const p = variant.pricePerVariant;
       manualPrice = Number.isFinite(p) && p >= 0 ? p : undefined;
     }
@@ -2772,6 +2824,8 @@ function VariantQuoteMini({
     settings.cncRate,
     settings.printer3DRate,
     totalInput,
+    hasUserEditedTotal,
+    isSynthetic,
     laborHoursInput,
     hasUserEditedLabor,
     cncHoursInput,
@@ -2783,7 +2837,10 @@ function VariantQuoteMini({
   const isLaborAuto = variant.laborHours == null && autoLaborHours != null;
   const isCncAuto = variant.cncTimeHours == null && autoCncHours != null;
   const isPrinter3DAuto = variant.printer3DTimeHours == null && autoPrinter3DHours != null;
-  const isTotalAuto = !hasUserEditedTotal && result != null && variant.pricePerVariant == null;
+  // For synthetic (no-variant) parts a stored price is just an auto snapshot, so treat the total
+  // as auto unless the admin is actively editing it. For real variants keep honoring a saved price.
+  const isTotalAuto =
+    !hasUserEditedTotal && result != null && (isSynthetic || variant.pricePerVariant == null);
   const persistedVariantTotal = variant.pricePerVariant;
 
   const handleLaborHoursBlur = () => {
@@ -2878,7 +2935,7 @@ function VariantQuoteMini({
       : '';
   const displayTotal = hasUserEditedTotal
     ? totalInput
-    : persistedVariantTotal != null
+    : !isSynthetic && persistedVariantTotal != null
       ? persistedVariantTotal.toFixed(2)
       : result != null
         ? result.total.toFixed(2)
