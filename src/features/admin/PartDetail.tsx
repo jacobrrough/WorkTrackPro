@@ -535,12 +535,25 @@ const PartDetail: React.FC<PartDetailProps> = ({
       );
       notifyPartUpdated();
       let updated = await loadPart(true);
-      if (!updated || updates.pricePerVariant === undefined || !updated.variants?.length) return;
+      // Propagate when the edit changed price, labor, OR CNC — not price alone. A
+      // labor-only or CNC-only variant edit must still reach the set-total and sibling
+      // recompute below (previously this early-returned unless price changed).
+      if (
+        !updated ||
+        !updated.variants?.length ||
+        (updates.pricePerVariant === undefined &&
+          updates.laborHours === undefined &&
+          updates.cncTimeHours === undefined)
+      )
+        return;
 
       const composition = buildEffectiveSetComposition(updated.variants, updated.setComposition);
 
       // Seed missing variant prices from the first entered/edited variant price.
-      const seededPrices = seedMissingVariantPrices(updated.variants, variantId);
+      // Only on a price edit — a labor/CNC-only edit must not seed prices.
+      const seededPrices = hasPriceInPayload
+        ? seedMissingVariantPrices(updated.variants, variantId)
+        : [];
       for (const seed of seededPrices) {
         await partsService.updateVariant(seed.variantId, { pricePerVariant: seed.price });
       }
@@ -552,42 +565,54 @@ const PartDetail: React.FC<PartDetailProps> = ({
       const variants = updated.variants ?? [];
       if (!variants.length) return;
 
-      const newSetPrice = calculateSetPriceFromVariants(variants, composition);
-      if (newSetPrice == null) return;
+      const partUpdates: Partial<Part> = {};
 
-      const roundedSetPrice = Number(newSetPrice.toFixed(2));
-      const derivedSetQuote = calculatePartQuote(
-        { ...updated, pricePerSet: roundedSetPrice, variants },
-        1,
-        inventoryItems,
-        {
-          laborRate: settings.laborRate,
-          cncRate: settings.cncRate,
-          printer3DRate: settings.printer3DRate,
-          manualSetPrice: roundedSetPrice,
+      // Recompute the set total and price-driven set labor ONLY when price changed.
+      // On a labor/CNC-only edit, derive set labor forward from variant labor so we never
+      // reverse-calc from price (which would clobber the labor the user just entered).
+      let nextSetLaborHours: number | undefined;
+      if (hasPriceInPayload) {
+        const newSetPrice = calculateSetPriceFromVariants(variants, composition);
+        if (newSetPrice != null) {
+          const roundedSetPrice = Number(newSetPrice.toFixed(2));
+          if (Math.abs((updated.pricePerSet ?? 0) - roundedSetPrice) > 0.01) {
+            partUpdates.pricePerSet = roundedSetPrice;
+          }
+          const derivedSetQuote = calculatePartQuote(
+            { ...updated, pricePerSet: roundedSetPrice, variants },
+            1,
+            inventoryItems,
+            {
+              laborRate: settings.laborRate,
+              cncRate: settings.cncRate,
+              printer3DRate: settings.printer3DRate,
+              manualSetPrice: roundedSetPrice,
+            }
+          );
+          nextSetLaborHours = derivedSetQuote?.isLaborAutoAdjusted
+            ? Number(derivedSetQuote.laborHours.toFixed(2))
+            : undefined;
         }
-      );
-      const nextSetLaborHours = derivedSetQuote?.isLaborAutoAdjusted
-        ? Number(derivedSetQuote.laborHours.toFixed(2))
-        : undefined;
+      } else {
+        const forwardSetLabor = calculateSetLaborFromVariants(variants, composition);
+        nextSetLaborHours =
+          forwardSetLabor != null ? Number(forwardSetLabor.toFixed(2)) : undefined;
+      }
+
       const nextSetCncHours =
         updates.cncTimeHours !== undefined || updates.requiresCNC !== undefined
           ? calculateSetCncFromVariants(variants, composition)
           : undefined;
 
-      const partUpdates: Partial<Part> = {};
-      if (Math.abs((updated.pricePerSet ?? 0) - roundedSetPrice) > 0.01) {
-        partUpdates.pricePerSet = roundedSetPrice;
-      }
       if (
         nextSetLaborHours != null &&
-        Math.abs((updated.laborHours ?? 0) - nextSetLaborHours) > 0.01
+        Math.abs((updated.laborHours ?? 0) - nextSetLaborHours) > 0.001
       ) {
         partUpdates.laborHours = nextSetLaborHours;
       }
       if (
         nextSetCncHours != null &&
-        Math.abs((updated.cncTimeHours ?? 0) - nextSetCncHours) > 0.01
+        Math.abs((updated.cncTimeHours ?? 0) - nextSetCncHours) > 0.001
       ) {
         partUpdates.cncTimeHours = nextSetCncHours;
         if (nextSetCncHours > 0) partUpdates.requiresCNC = true;
@@ -632,7 +657,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             variantQuote.laborHours >= 0
           ) {
             const roundedLabor = Number(variantQuote.laborHours.toFixed(2));
-            if (Math.abs((editedVariant.laborHours ?? 0) - roundedLabor) > 0.01) {
+            if (Math.abs((editedVariant.laborHours ?? 0) - roundedLabor) > 0.001) {
               await partsService.updateVariant(variantId, { laborHours: roundedLabor });
               laborVariantsChanged = true;
             }
@@ -655,7 +680,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           if (!current) continue;
           // Keep explicit manual labor for sibling variants unchanged.
           if (current.laborHours != null && current.laborHours !== undefined) continue;
-          if (Math.abs((current.laborHours ?? 0) - target.laborHours) <= 0.01) continue;
+          if (Math.abs((current.laborHours ?? 0) - target.laborHours) <= 0.001) continue;
           await partsService.updateVariant(target.variantId, { laborHours: target.laborHours });
           laborVariantsChanged = true;
         }
@@ -677,7 +702,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           // Keep explicit manual CNC values for sibling variants unchanged.
           if (current.cncTimeHours != null && current.cncTimeHours !== undefined) continue;
           if (
-            Math.abs((current.cncTimeHours ?? 0) - target.cncTimeHours) <= 0.01 &&
+            Math.abs((current.cncTimeHours ?? 0) - target.cncTimeHours) <= 0.001 &&
             current.requiresCNC
           )
             continue;
@@ -1784,7 +1809,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           <label className="text-sm text-slate-400">CNC time (hours per set)</label>
                           <input
                             type="number"
-                            step="0.1"
+                            step="0.01"
                             min={0}
                             value={part.cncTimeHours ?? ''}
                             onChange={(e) =>
@@ -1829,7 +1854,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           </label>
                           <input
                             type="number"
-                            step="0.1"
+                            step="0.01"
                             min={0}
                             value={part.printer3DTimeHours ?? ''}
                             onChange={(e) =>
@@ -2302,7 +2327,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             </div>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               value={laborHours}
               onChange={(e) => setLaborHours(e.target.value)}
               className="w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-white"
@@ -2324,7 +2349,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             </div>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               min={0}
               value={cncHours}
               onChange={(e) => setCncHours(e.target.value)}
@@ -2336,7 +2361,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             <label className="mb-1 block text-xs text-slate-400">3D print time (hours)</label>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               min={0}
               value={printer3DHours}
               onChange={(e) => setPrinter3DHours(e.target.value)}
@@ -2619,6 +2644,11 @@ const VariantCard: React.FC<VariantCardProps> = ({
   );
 };
 
+/** Round a parsed hours input to the 2-decimal precision the engine stores so a
+ * step="0.01" value never drifts. Passes undefined/NaN/Infinity through unchanged. */
+const roundHoursInput = (parsed: number | undefined): number | undefined =>
+  parsed !== undefined && Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : parsed;
+
 function VariantQuoteMini({
   partNumber,
   variant,
@@ -2844,7 +2874,8 @@ function VariantQuoteMini({
   const persistedVariantTotal = variant.pricePerVariant;
 
   const handleLaborHoursBlur = () => {
-    const val = laborHoursInput.trim() === '' ? undefined : parseFloat(laborHoursInput);
+    const parsed = laborHoursInput.trim() === '' ? undefined : parseFloat(laborHoursInput);
+    const val = roundHoursInput(parsed);
     if (val !== undefined && !Number.isNaN(val) && val >= 0) {
       if (Math.abs((variant.laborHours ?? 0) - val) > 0.001) {
         onVariantLaborChange?.(variant.id, val);
@@ -2857,7 +2888,8 @@ function VariantQuoteMini({
   };
 
   const handleCncHoursBlur = () => {
-    const val = cncHoursInput.trim() === '' ? undefined : parseFloat(cncHoursInput);
+    const parsed = cncHoursInput.trim() === '' ? undefined : parseFloat(cncHoursInput);
+    const val = roundHoursInput(parsed);
     if (val !== undefined && !Number.isNaN(val) && val >= 0) {
       if (Math.abs((variant.cncTimeHours ?? 0) - val) > 0.001) {
         onVariantCncChange?.(variant.id, val);
@@ -2869,7 +2901,8 @@ function VariantQuoteMini({
   };
 
   const handlePrinter3DBlur = () => {
-    const val = printer3DHoursInput.trim() === '' ? undefined : parseFloat(printer3DHoursInput);
+    const parsed = printer3DHoursInput.trim() === '' ? undefined : parseFloat(printer3DHoursInput);
+    const val = roundHoursInput(parsed);
     if (val !== undefined && !Number.isNaN(val) && val >= 0) {
       if (Math.abs((variant.printer3DTimeHours ?? 0) - val) > 0.001) {
         onVariant3DChange?.(variant.id, val);
@@ -2974,7 +3007,7 @@ function VariantQuoteMini({
             </span>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               min={0}
               value={displayLaborHours}
               onChange={(e) => {
@@ -3010,7 +3043,7 @@ function VariantQuoteMini({
             </span>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               min={0}
               value={displayCncHours}
               onChange={(e) => {
@@ -3046,7 +3079,7 @@ function VariantQuoteMini({
             </span>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               min={0}
               value={displayPrinter3DHours}
               onChange={(e) => {
@@ -3132,7 +3165,7 @@ function VariantQuoteMini({
             </span>
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               min={0}
               value={displayLaborHours}
               onChange={(e) => {
