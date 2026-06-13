@@ -1335,8 +1335,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       linkedPart &&
       !linkedPart.variants?.length
         ? buildNoVariantMachineBreakdown(
-            (parseFloat(editForm.cncHours) || 0) / editQty,
-            (parseFloat(editForm.printer3DHours) || 0) / editQty,
+            Number((parseFloat(editForm.cncHours) || 0).toFixed(2)) / editQty,
+            Number((parseFloat(editForm.printer3DHours) || 0).toFixed(2)) / editQty,
             editQty
           )
         : null;
@@ -1356,7 +1356,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         const v = editForm.laborHours?.trim();
         if (v === '' || v == null) return undefined;
         const n = parseFloat(v);
-        return Number.isFinite(n) && n >= 0 ? n : undefined;
+        return Number.isFinite(n) && n >= 0 ? Number(n.toFixed(2)) : undefined;
       })(),
       status: editForm.status,
       isRush: editForm.isRush,
@@ -2625,7 +2625,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </div>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                     value={editForm.laborHours}
                     onChange={(e) => {
@@ -2657,7 +2657,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <label className="mb-0.5 block text-[11px] text-slate-400">CNC hrs</label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                     value={editForm.cncHours}
                     onChange={(e) => {
@@ -2672,7 +2672,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <label className="mb-0.5 block text-[11px] text-slate-400">3D hrs</label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                     value={editForm.printer3DHours}
                     onChange={(e) => {
