@@ -14,19 +14,22 @@ export const dashboardPreferencesService = {
       .maybeSingle();
 
     if (error) {
+      // Propagate so React Query treats this as an error (and retries) instead
+      // of caching a fake default. A swallowed read error used to surface as an
+      // empty default that the sync mistook for "no customization" and locked
+      // in, blanking a real saved layout — especially on flaky mobile networks.
       console.error('Failed to get dashboard preferences:', error);
-      return {
-        userId: '',
-        preferences: DEFAULT_PREFERENCES,
-        updatedAt: new Date().toISOString(),
-      };
+      throw error;
     }
 
     if (!data) {
+      // No row yet (new profile before the auto-create trigger fires). An empty
+      // updatedAt sorts as the oldest possible version, so the sync never treats
+      // a missing row as a fresh server state that should win over local edits.
       return {
         userId: '',
         preferences: DEFAULT_PREFERENCES,
-        updatedAt: new Date().toISOString(),
+        updatedAt: '',
       };
     }
 
@@ -42,17 +45,23 @@ export const dashboardPreferencesService = {
     };
   },
 
-  async updatePreferences(preferences: DashboardPreferences): Promise<boolean> {
+  async updatePreferences(
+    preferences: DashboardPreferences,
+    updatedAt: string = new Date().toISOString()
+  ): Promise<boolean> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return false;
 
+    // Persist the caller-supplied timestamp so the value written here matches
+    // the marker the sync records locally — that exact-version match is what
+    // lets a device tell "server changed elsewhere" from "this is my own write".
     const { error } = await supabase.from('user_dashboard_preferences').upsert(
       {
         user_id: user.id,
         preferences,
-        updated_at: new Date().toISOString(),
+        updated_at: updatedAt,
       },
       { onConflict: 'user_id' }
     );

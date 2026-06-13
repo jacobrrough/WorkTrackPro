@@ -4,7 +4,6 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
   ReactNode,
 } from 'react';
 
@@ -74,19 +73,6 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
       console.error('Failed to save navigation state:', error);
     }
   }, [state]);
-
-  const dashboardPrefsInited = useRef(false);
-  useEffect(() => {
-    if (!dashboardPrefsInited.current) {
-      dashboardPrefsInited.current = true;
-      return;
-    }
-    try {
-      localStorage.setItem('dashboardPrefs_updatedAt', new Date().toISOString());
-    } catch {
-      // best-effort timestamp
-    }
-  }, [state.quickActionOrder, state.hiddenQuickActions]);
 
   const updateState = useCallback((newState: Partial<NavigationState>) => {
     setState((prev) => ({ ...prev, ...newState }));
