@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { User } from '@/core/types';
-import { authService, withTimeout } from '@/services/api/auth';
+import { authService } from '@/services/api/auth';
+import { withTimeout } from '@/lib/withTimeout';
 import { supabase } from '@/services/api/supabaseClient';
 import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
 import { cryptoKeyCache } from '@/lib/crypto/keyCache';
