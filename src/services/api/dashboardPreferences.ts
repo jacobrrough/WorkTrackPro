@@ -48,11 +48,16 @@ export const dashboardPreferencesService = {
   async updatePreferences(
     preferences: DashboardPreferences,
     updatedAt: string = new Date().toISOString()
-  ): Promise<boolean> {
+  ): Promise<void> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return false;
+    // Throw (rather than silently no-op) so the mutation rejects and the caller
+    // can surface the failure: a missing user means an expired session, and the
+    // write the user just made was NOT saved.
+    if (!user) {
+      throw new Error('Not authenticated — dashboard preferences were not saved.');
+    }
 
     // Persist the caller-supplied timestamp so the value written here matches
     // the marker the sync records locally — that exact-version match is what
@@ -67,9 +72,11 @@ export const dashboardPreferencesService = {
     );
 
     if (error) {
+      // Propagate so React Query's onError fires — that both rolls back the
+      // optimistic cache and lets the hook show the user an error toast instead
+      // of leaving them believing a failed save succeeded.
       console.error('Failed to update dashboard preferences:', error);
-      return false;
+      throw error;
     }
-    return true;
   },
 };
