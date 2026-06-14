@@ -5,6 +5,7 @@ import type { Shift } from '@/core/types';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 import { isAuthError } from '@/lib/authErrors';
 import { enqueueClockPunch } from '@/lib/offlineQueue';
+import { withTimeout } from '@/lib/withTimeout';
 import { shiftService } from '@/services/api/shifts';
 import { jobService } from '@/services/api/jobs';
 import { isConsumedStatus } from '@/lib/inventoryCalculations';
@@ -26,6 +27,18 @@ export interface UseClockMutationsParams {
 
 const success = (): ClockPunchResult => ({ ok: true, queued: false });
 const failure = (queued: boolean): ClockPunchResult => ({ ok: false, queued });
+
+// On degraded/captive Wi-Fi ("lie-fi") navigator.onLine stays true but the Supabase
+// write neither resolves nor rejects, so the punch hangs forever and never falls back
+// to the offline queue. Cap each clock-in write so a hang rejects and routes into the
+// existing catch -> enqueueClockPunch path instead of spinning indefinitely.
+//
+// Trade-off: a write that actually succeeds server-side but answers slower than this
+// timeout will be treated as failed and re-enqueued, so the replay could attempt a
+// second punch. That stays safe because shiftService.clockIn no-ops when an open shift
+// already exists (partial unique index on open shifts) and syncOfflineClockQueue clears
+// such a punch as already-synced. Kept generous to avoid re-queueing merely-slow writes.
+const CLOCK_IN_TIMEOUT_MS = 8000;
 
 export function useClockMutations({
   currentUser,
@@ -173,7 +186,10 @@ export function useClockMutations({
       };
 
       try {
-        let clockInSucceeded = await shiftService.clockIn(jobId, currentUser.id);
+        let clockInSucceeded = await withTimeout(
+          shiftService.clockIn(jobId, currentUser.id),
+          CLOCK_IN_TIMEOUT_MS
+        );
 
         if (!clockInSucceeded) {
           const latestShifts = await shiftService.getAllShifts();
@@ -192,7 +208,10 @@ export function useClockMutations({
               }
               await shiftService.clockOut(latestActiveShift.id);
               await refreshShifts();
-              clockInSucceeded = await shiftService.clockIn(jobId, currentUser.id);
+              clockInSucceeded = await withTimeout(
+                shiftService.clockIn(jobId, currentUser.id),
+                CLOCK_IN_TIMEOUT_MS
+              );
             } catch (retryErr) {
               console.error('Clock in retry path error:', retryErr);
               if (isAuthError(retryErr)) return { ok: false, queued: false, authExpired: true };

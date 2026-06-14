@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import type { ClockPunchResult } from '@/core/clockPunch';
 import { ViewState, Shift, Job } from '@/core/types';
 import { useClockIn } from '@/contexts/ClockInContext';
@@ -35,6 +35,12 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   );
   const [jobCode, setJobCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Synchronous re-entrancy guard. The Clock In button's `disabled={isLoading}` can't
+  // stop a burst of taps that land before React re-renders — on a laggy terminal that
+  // opens several in-flight punches at once, which all resolve "success" and record
+  // duplicate shifts. A ref flips synchronously, so the 2nd+ submit in the same burst
+  // is dropped before it ever calls onClockInByCode.
+  const isSubmittingRef = useRef(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
@@ -60,30 +66,35 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (isSubmittingRef.current || isLoading) return;
     if (!jobCode.trim()) return;
-
-    setIsLoading(true);
-    setResult(null);
 
     const code = parseInt(jobCode, 10);
     if (isNaN(code)) {
       setResult({ success: false, message: 'Invalid code' });
-      setIsLoading(false);
       return;
     }
 
-    const res = await effectiveOnClockInByCode(code);
-    setResult(res);
-    setIsLoading(false);
-    if (res.success) {
-      setJobCode('');
-      setTimeout(() => onNavigate('dashboard'), 1000);
-    } else if (res.authExpired) {
-      // logout() was already called upstream in ClockInContext.clockInWithAuth.
-      // App.tsx will switch to the Login screen automatically once currentUser clears.
-      showToast('Session expired — please log in again', 'error');
-    } else if (res.queued) {
-      showToast('Saved offline — will sync when connected', 'warning');
+    isSubmittingRef.current = true;
+    setIsLoading(true);
+    setResult(null);
+
+    try {
+      const res = await effectiveOnClockInByCode(code);
+      setResult(res);
+      if (res.success) {
+        setJobCode('');
+        setTimeout(() => onNavigate('dashboard'), 1000);
+      } else if (res.authExpired) {
+        // logout() was already called upstream in ClockInContext.clockInWithAuth.
+        // App.tsx will switch to the Login screen automatically once currentUser clears.
+        showToast('Session expired — please log in again', 'error');
+      } else if (res.queued) {
+        showToast('Saved offline — will sync when connected', 'warning');
+      }
+    } finally {
+      setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
