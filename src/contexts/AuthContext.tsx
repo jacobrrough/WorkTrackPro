@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/core/types';
 import { authService, withTimeout } from '@/services/api/auth';
 import { supabase } from '@/services/api/supabaseClient';
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // --- Session expiry guards ---
   // True once Supabase confirms a valid session this page load.
@@ -169,10 +171,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     userInitiatedLogout.current = true;
-    cryptoKeyCache.clear();
-    authService.logout();
+    // Clear currentUser first so per-user query consumers re-render with
+    // `enabled: false` (e.g. useDashboardPreferencesSync, gated on !!currentUser).
+    // Dropping the cache while a consumer is still enabled on the still-valid
+    // session could let an in-flight refetch repopulate it with this user's data.
     setCurrentUser(null);
-  }, []);
+    cryptoKeyCache.clear();
+    // Drop the previous user's cached dashboard layout so the next user on this
+    // browser never sees it. The query key is intentionally user-agnostic, so the
+    // cache must be cleared on logout. cancelQueries aborts any in-flight refetch
+    // first; removeQueries (not invalidate) guarantees the stale layout is never
+    // served for a frame before a fresh fetch.
+    queryClient.cancelQueries({ queryKey: ['dashboard-preferences'] });
+    queryClient.removeQueries({ queryKey: ['dashboard-preferences'] });
+    authService.logout();
+  }, [queryClient]);
 
   // Initial auth check
   useEffect(() => {
