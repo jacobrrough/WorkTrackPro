@@ -172,19 +172,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     userInitiatedLogout.current = true;
-    // Clear currentUser first so per-user query consumers re-render with
-    // `enabled: false` (e.g. useDashboardPreferencesSync, gated on !!currentUser).
-    // Dropping the cache while a consumer is still enabled on the still-valid
-    // session could let an in-flight refetch repopulate it with this user's data.
+    // Clear currentUser so per-user query consumers re-render disabled
+    // (e.g. useDashboardPreferencesSync, gated on !!currentUser) and the app
+    // swaps to the login screen.
     setCurrentUser(null);
     cryptoKeyCache.clear();
-    // Drop the previous user's cached dashboard layout so the next user on this
-    // browser never sees it. The query key is intentionally user-agnostic, so the
-    // cache must be cleared on logout. cancelQueries aborts any in-flight refetch
-    // first; removeQueries (not invalidate) guarantees the stale layout is never
-    // served for a frame before a fresh fetch.
-    queryClient.cancelQueries({ queryKey: ['dashboard-preferences'] });
-    queryClient.removeQueries({ queryKey: ['dashboard-preferences'] });
+    // Wipe every cached query + mutation so nothing from this user survives in
+    // memory for the next user on a shared browser. Several per-user queries use
+    // intentionally user-agnostic keys (e.g. dashboard-preferences), so a
+    // targeted removeQueries would miss them — and this is a button logout, an
+    // in-memory transition with no page reload to clear the cache for us.
+    // clear() also drops the mutation cache, so an in-flight save cannot linger.
+    // (Any save that still rejects post-logout is an auth error its own onError
+    // now swallows, so it can't re-populate the cache we just cleared.)
+    queryClient.clear();
     authService.logout();
   }, [queryClient]);
 

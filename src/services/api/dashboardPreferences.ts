@@ -1,5 +1,6 @@
 import type { DashboardPreferences, UserDashboardPreferences } from '../../core/types';
 import { supabase } from './supabaseClient';
+import { AuthSessionError } from '../../lib/authErrors';
 
 const DEFAULT_PREFERENCES: DashboardPreferences = {
   quickActionOrder: [],
@@ -54,9 +55,11 @@ export const dashboardPreferencesService = {
     } = await supabase.auth.getUser();
     // Throw (rather than silently no-op) so the mutation rejects and the caller
     // can surface the failure: a missing user means an expired session, and the
-    // write the user just made was NOT saved.
+    // write the user just made was NOT saved. A typed AuthSessionError lets the
+    // mutation's onError distinguish "session gone" (e.g. mid-logout) from a real
+    // save failure and stay silent instead of firing a misleading error toast.
     if (!user) {
-      throw new Error('Not authenticated — dashboard preferences were not saved.');
+      throw new AuthSessionError('Not authenticated — dashboard preferences were not saved.');
     }
 
     // Persist the caller-supplied timestamp so the value written here matches
