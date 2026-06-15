@@ -33,9 +33,12 @@ security advisors show no new findings.
    `[context.branch-deploy.environment]` section of `netlify.toml` — builds
    against the **unified-billing-dev** Supabase branch, never production.
 3. Netlify env vars **scoped to the "Branch deploys" context** (Site settings →
-   Environment variables → per-context values):
-   - `SUPABASE_SERVICE_ROLE_KEY` = the **branch project's** service key
+   Environment variables → per-context values). `netlify.toml` already pins the
+   branch's `VITE_SUPABASE_URL` + `VITE_ACCOUNTING_ENABLED` for this context; set
+   the rest here (no credential is committed):
+   - `VITE_SUPABASE_ANON_KEY` = the **branch project's** anon/publishable key
      (Dashboard → switch to branch unified-billing-dev → Settings → API)
+   - `SUPABASE_SERVICE_ROLE_KEY` = the **branch project's** service key (same page)
    - `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_ENVIRONMENT` (`sandbox` →
      `production` later), `QBO_REDIRECT_URI` =
      `https://<branch-deploy-url>/api/qbo-oauth/callback`

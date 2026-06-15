@@ -53,15 +53,15 @@
 # + QuickBooks replica work (docs/QBO_CUTOVER_RUNBOOK.md). They point the BUILD at
 # the Supabase development branch `unified-billing-dev` — NOT production — so the
 # QBO sync rehearsal and the jobs↔billing click-path run entirely against test
-# data. The anon key is public by design (it ships in every client bundle); the
-# branch's SERVICE key + the QBO_* credentials are set in the Netlify UI scoped to
-# the "Branch deploys" context, never committed. This context affects no
-# production or deploy-preview build. REMOVE this section at cutover, when the
-# feature merges and the Supabase branch is deleted.
+# data. Only the non-secret URL + flag are pinned here; the matching
+# VITE_SUPABASE_ANON_KEY (and the branch SERVICE key + QBO_* creds) are set in the
+# Netlify UI scoped to the "Branch deploys" context — no credential is committed
+# (keeps the secret scanner green). This context affects no production or
+# deploy-preview build. REMOVE this section at cutover, when the feature merges and
+# the Supabase branch is deleted.
 [context.branch-deploy.environment]
   VITE_ACCOUNTING_ENABLED = "true"
   VITE_SUPABASE_URL = "https://lvcufbmyhbqhvowjxmst.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2Y3VmYm15aGJxaHZvd2p4bXN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDI5MzksImV4cCI6MjA5NjY3ODkzOX0.lYAuD88h92hgbEu021iZ_0BRMmbNjyfr9GaJQ_ClwWo"
 
 [functions]
   directory = "netlify/functions"
