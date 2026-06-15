@@ -32,13 +32,17 @@ export const accountsService = {
       parent_account_id: input.parentAccountId ?? null,
       normal_balance: input.normalBalance,
       description: input.description ?? null,
+      external_qbo_id: input.externalQboId ?? null,
     };
     const { data, error } = await acct().from('accounts').insert(row).select('*').single();
     if (error || !data) return null;
     return mapAccountRow(data as Row);
   },
 
-  async update(id: string, input: Partial<Account>): Promise<Account | null> {
+  async update(
+    id: string,
+    input: Partial<Account> & { externalQboId?: string | null }
+  ): Promise<Account | null> {
     const row: Record<string, unknown> = {};
     if (input.accountNumber !== undefined) row.account_number = input.accountNumber;
     if (input.name != null) row.name = input.name;
@@ -48,6 +52,7 @@ export const accountsService = {
     if (input.normalBalance != null) row.normal_balance = input.normalBalance;
     if (input.isActive != null) row.is_active = input.isActive;
     if (input.description !== undefined) row.description = input.description;
+    if (input.externalQboId !== undefined) row.external_qbo_id = input.externalQboId;
     const { data, error } = await acct()
       .from('accounts')
       .update(row)

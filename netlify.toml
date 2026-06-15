@@ -48,6 +48,21 @@
 [context.production.environment]
   VITE_ACCOUNTING_ENABLED = "true"
 
+# ── Unified-billing TEST RIG (branch deploys only) ───────────────────────────
+# Branch deploys are the hosted rehearsal environment for the unified jobs↔billing
+# + QuickBooks replica work (docs/QBO_CUTOVER_RUNBOOK.md). They point the BUILD at
+# the Supabase development branch `unified-billing-dev` — NOT production — so the
+# QBO sync rehearsal and the jobs↔billing click-path run entirely against test
+# data. Only the non-secret URL + flag are pinned here; the matching
+# VITE_SUPABASE_ANON_KEY (and the branch SERVICE key + QBO_* creds) are set in the
+# Netlify UI scoped to the "Branch deploys" context — no credential is committed
+# (keeps the secret scanner green). This context affects no production or
+# deploy-preview build. REMOVE this section at cutover, when the feature merges and
+# the Supabase branch is deleted.
+[context.branch-deploy.environment]
+  VITE_ACCOUNTING_ENABLED = "true"
+  VITE_SUPABASE_URL = "https://lvcufbmyhbqhvowjxmst.supabase.co"
+
 [functions]
   directory = "netlify/functions"
 

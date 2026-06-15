@@ -560,6 +560,17 @@ export function useJobBills(jobId: string | undefined) {
   });
 }
 
+/** Estimates quoted against a job (job billing panel + job-costing drill-down). */
+export function useJobEstimates(jobId: string | undefined) {
+  return useQuery({
+    queryKey: jobId
+      ? ACCOUNTING_QUERY_KEYS.jobEstimates(jobId)
+      : ['accounting', 'job-costing', 'none', 'estimates'],
+    queryFn: () => estimatesService.listForJob(jobId as string),
+    enabled: !!jobId,
+  });
+}
+
 // ── Reporting dimensions (B2) ─────────────────────────────────────────────────
 // Class/location/department tags. Pure master data — only dimension CRUD mutates it.
 

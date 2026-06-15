@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Job,
   ViewState,
@@ -10,6 +10,17 @@ import {
   Attachment,
   JobPartLink,
 } from '@/core/types';
+import { ACCOUNTING_BUILD_ENABLED } from './lib/featureFlags';
+import { lazyWithRetry } from './lib/lazyWithRetry';
+
+// Billing surfaces live in the accounting module and mount LAZILY so a flag-off build
+// contains zero accounting code (same dead-ternary seam as AppRouter's AccountingRouter).
+const JobBillingPanel = ACCOUNTING_BUILD_ENABLED
+  ? lazyWithRetry(() => import('./features/accounting/jobs/JobBillingPanel'), 'JobBillingPanel')
+  : null;
+const JobCustomerSelect = ACCOUNTING_BUILD_ENABLED
+  ? lazyWithRetry(() => import('./features/accounting/jobs/JobCustomerSelect'), 'JobCustomerSelect')
+  : null;
 import { jobService } from './pocketbase';
 import FileUploadButton from './FileUploadButton';
 import FileViewer from './FileViewer';
@@ -431,6 +442,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     invNumber: job.invNumber || '',
     rfqNumber: job.rfqNumber || '',
     owrNumber: job.owrNumber || '',
+    customerId: job.customerId || '',
     progressEstimatePercent:
       job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
   });
@@ -1173,6 +1185,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
       owrNumber: job.owrNumber || '',
+      customerId: job.customerId || '',
       progressEstimatePercent:
         job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
     }));
@@ -1376,6 +1389,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: editForm.invNumber?.trim() || undefined,
       rfqNumber: editForm.rfqNumber?.trim() || undefined,
       owrNumber: editForm.owrNumber?.trim() || undefined,
+      // '' = explicitly no customer (NULL); undefined would mean "leave unchanged".
+      customerId: editForm.customerId || null,
       ...(canEditParts
         ? {
             dashQuantities:
@@ -1519,6 +1534,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       invNumber: job.invNumber || '',
       rfqNumber: job.rfqNumber || '',
       owrNumber: job.owrNumber || '',
+      customerId: job.customerId || '',
       progressEstimatePercent:
         job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : '',
     });
@@ -2270,26 +2286,26 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 Job details
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">EST #</label>
-                  <input
-                    type="text"
-                    value={editForm.estNumber}
-                    onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
-                    placeholder="EST#"
-                  />
-                </div>
-                <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">RFQ #</label>
-                  <input
-                    type="text"
-                    value={editForm.rfqNumber}
-                    onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
-                    placeholder="RFQ#"
-                  />
-                </div>
+                {/* EST#/RFQ#/INV# free-text editing is retired: real estimates/invoices
+                    link through the billing panel; legacy values stay stored + visible. */}
+                {JobCustomerSelect && (
+                  <div className="col-span-2">
+                    <label className="mb-0.5 block text-[11px] text-slate-400">Customer</label>
+                    <Suspense
+                      fallback={
+                        <div className="h-[34px] w-full rounded border border-white/10 bg-white/5" />
+                      }
+                    >
+                      <JobCustomerSelect
+                        value={editForm.customerId || null}
+                        onChange={(customerId) =>
+                          setEditForm({ ...editForm, customerId: customerId ?? '' })
+                        }
+                        className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                      />
+                    </Suspense>
+                  </div>
+                )}
                 <div>
                   <label className="mb-0.5 block text-[11px] text-slate-400">PO #</label>
                   <input
@@ -2298,16 +2314,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     onChange={(e) => setEditForm({ ...editForm, po: e.target.value })}
                     className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="PO"
-                  />
-                </div>
-                <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">INV#</label>
-                  <input
-                    type="text"
-                    value={editForm.invNumber}
-                    onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
-                    placeholder="INV#"
                   />
                 </div>
                 <div>
@@ -3050,6 +3056,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       }}
                     />
                   </div>
+                </div>
+              )}
+
+              {/* Billing — the job's customer + linked estimates/invoices (admin-only;
+                  zero accounting code in flag-off builds). */}
+              {JobBillingPanel && canViewFinancials && (
+                <div className="mb-3">
+                  <Suspense fallback={null}>
+                    <JobBillingPanel job={job} />
+                  </Suspense>
                 </div>
               )}
 

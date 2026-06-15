@@ -33,6 +33,8 @@ export const vendorsService = {
       tax_id: input.taxId ?? null,
       is_1099: input.is1099 ?? false,
       notes: input.notes ?? null,
+      address: input.address ?? null,
+      external_qbo_id: input.externalQboId ?? null,
     };
     const { data, error } = await acct().from('vendors').insert(row).select('*').single();
     if (error || !data) return null;
@@ -54,6 +56,8 @@ export const vendorsService = {
     if (input.taxId !== undefined) row.tax_id = input.taxId;
     if (input.is1099 !== undefined) row.is_1099 = input.is1099;
     if (input.notes !== undefined) row.notes = input.notes;
+    if (input.address !== undefined) row.address = input.address;
+    if (input.externalQboId !== undefined) row.external_qbo_id = input.externalQboId;
     if (input.isActive !== undefined) row.is_active = input.isActive;
     const { data, error } = await acct()
       .from('vendors')

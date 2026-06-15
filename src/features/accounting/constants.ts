@@ -237,6 +237,7 @@ export const ACCOUNTING_QUERY_KEYS = {
   jobCostingDetail: (jobId: string) => ['accounting', 'job-costing', jobId] as const,
   jobInvoices: (jobId: string) => ['accounting', 'job-costing', jobId, 'invoices'] as const,
   jobBills: (jobId: string) => ['accounting', 'job-costing', jobId, 'bills'] as const,
+  jobEstimates: (jobId: string) => ['accounting', 'job-costing', jobId, 'estimates'] as const,
   // ── Reporting dimensions (B2). `dimensions` is the subtree root for scoped
   // invalidation; the per-type list and per-id detail hang under it. ────────────
   dimensions: ['accounting', 'dimensions'] as const,

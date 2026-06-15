@@ -3,15 +3,23 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { LedgerTable } from '../components/LedgerTable';
-import { useJobBills, useJobCostingDetail, useJobInvoices } from '../hooks/useAccountingQueries';
+import {
+  useJobBills,
+  useJobCostingDetail,
+  useJobEstimates,
+  useJobInvoices,
+} from '../hooks/useAccountingQueries';
 import { marginPct } from '../jobCosting';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE, JOB_COSTING_BASE } from '../constants';
 import {
   BILL_STATUS_LABELS,
+  ESTIMATE_STATUS_LABELS,
   INVOICE_STATUS_LABELS,
   type Bill,
   type BillStatus,
+  type Estimate,
+  type EstimateStatus,
   type Invoice,
   type InvoiceStatus,
   type JobCostingRow,
@@ -42,6 +50,15 @@ const BILL_STATUS_STYLES: Record<BillStatus, string> = {
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
   void: 'bg-red-500/15 text-red-400',
+};
+
+const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
+  draft: 'bg-white/10 text-slate-300',
+  sent: 'bg-sky-500/15 text-sky-400',
+  accepted: 'bg-green-500/15 text-green-400',
+  declined: 'bg-red-500/15 text-red-400',
+  expired: 'bg-amber-500/15 text-amber-400',
+  converted: 'bg-violet-500/15 text-violet-400',
 };
 
 function StatusPill({ label, className }: { label: string; className: string }) {
@@ -178,12 +195,55 @@ function BillsTable({ bills, onOpen }: { bills: Bill[]; onOpen: (id: string) => 
   );
 }
 
+/** Estimates quoted to this job (pre-sale; no ledger impact until converted + sent). */
+function EstimatesTable({
+  estimates,
+  onOpen,
+}: {
+  estimates: Estimate[];
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <LedgerTable
+      columns={[
+        { label: 'Estimate' },
+        { label: 'Date' },
+        { label: 'Status' },
+        { label: 'Total', align: 'right' },
+      ]}
+    >
+      {estimates.map((est) => (
+        <tr
+          key={est.id}
+          onClick={() => onOpen(est.id)}
+          className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+        >
+          <td className="px-3 py-2 font-mono text-xs text-slate-400">
+            {est.estimateNumber || 'Draft'}
+          </td>
+          <td className="px-3 py-2 text-slate-400">{est.estimateDate}</td>
+          <td className="px-3 py-2">
+            <StatusPill
+              label={ESTIMATE_STATUS_LABELS[est.status]}
+              className={ESTIMATE_STATUS_STYLES[est.status]}
+            />
+          </td>
+          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+            {formatMoney(est.total)}
+          </td>
+        </tr>
+      ))}
+    </LedgerTable>
+  );
+}
+
 export default function JobCostingDetailView() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: row, isPending, isError } = useJobCostingDetail(jobId);
   const { data: invoices = [], isPending: invoicesPending } = useJobInvoices(jobId);
   const { data: bills = [], isPending: billsPending } = useJobBills(jobId);
+  const { data: estimates = [], isPending: estimatesPending } = useJobEstimates(jobId);
 
   return (
     <AccountingShell
@@ -239,6 +299,25 @@ export default function JobCostingDetailView() {
             Labor cost is an estimate (worked minutes ÷ 60 × the org labor rate). Revenue counts
             every non-void invoice, including unsent drafts.
           </p>
+
+          {/* Estimates drill-down */}
+          <section>
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+              Estimates
+            </h2>
+            {estimatesPending && <p className="text-sm text-slate-500">Loading estimates…</p>}
+            {!estimatesPending && estimates.length === 0 && (
+              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
+                No estimates quoted to this job.
+              </p>
+            )}
+            {estimates.length > 0 && (
+              <EstimatesTable
+                estimates={estimates}
+                onOpen={(id) => navigate(`${ACCOUNTING_BASE}/estimates/${id}`)}
+              />
+            )}
+          </section>
 
           {/* Invoices drill-down */}
           <section>
