@@ -842,7 +842,7 @@ const Calendar: React.FC<CalendarProps> = ({
               <input
                 type="number"
                 min="0.1"
-                step="0.1"
+                step="0.01"
                 value={plannerLaborHours}
                 onChange={(e) => setPlannerLaborHours(e.target.value)}
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
@@ -853,7 +853,7 @@ const Calendar: React.FC<CalendarProps> = ({
               <input
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.01"
                 value={plannerCncHours}
                 onChange={(e) => setPlannerCncHours(e.target.value)}
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
@@ -864,7 +864,7 @@ const Calendar: React.FC<CalendarProps> = ({
               <input
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.01"
                 value={plannerPrinter3DHours}
                 onChange={(e) => setPlannerPrinter3DHours(e.target.value)}
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"

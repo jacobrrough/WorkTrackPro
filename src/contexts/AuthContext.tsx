@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/core/types';
-import { authService, withTimeout } from '@/services/api/auth';
+import { authService } from '@/services/api/auth';
+import { withTimeout } from '@/lib/withTimeout';
 import { supabase } from '@/services/api/supabaseClient';
 import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
 import { cryptoKeyCache } from '@/lib/crypto/keyCache';
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // --- Session expiry guards ---
   // True once Supabase confirms a valid session this page load.
@@ -169,10 +172,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     userInitiatedLogout.current = true;
-    cryptoKeyCache.clear();
-    authService.logout();
+    // Clear currentUser so per-user query consumers re-render disabled
+    // (e.g. useDashboardPreferencesSync, gated on !!currentUser) and the app
+    // swaps to the login screen.
     setCurrentUser(null);
-  }, []);
+    cryptoKeyCache.clear();
+    // Wipe every cached query + mutation so nothing from this user survives in
+    // memory for the next user on a shared browser. Several per-user queries use
+    // intentionally user-agnostic keys (e.g. dashboard-preferences), so a
+    // targeted removeQueries would miss them — and this is a button logout, an
+    // in-memory transition with no page reload to clear the cache for us.
+    // clear() also drops the mutation cache, so an in-flight save cannot linger.
+    // (Any save that still rejects post-logout is an auth error its own onError
+    // now swallows, so it can't re-populate the cache we just cleared.)
+    queryClient.clear();
+    authService.logout();
+  }, [queryClient]);
 
   // Initial auth check
   useEffect(() => {

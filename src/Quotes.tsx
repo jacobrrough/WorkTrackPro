@@ -573,10 +573,12 @@ const Quotes: React.FC<QuotesProps> = ({
                   type="number"
                   value={quoteData.laborHours}
                   onChange={(e) =>
-                    updateQuoteCalculations({ laborHours: parseFloat(e.target.value) || 0 })
+                    updateQuoteCalculations({
+                      laborHours: Number((parseFloat(e.target.value) || 0).toFixed(2)),
+                    })
                   }
                   className="w-32 rounded border border-white/10 bg-background-dark px-3 py-2 text-sm text-white"
-                  step="0.1"
+                  step="0.01"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -603,10 +605,12 @@ const Quotes: React.FC<QuotesProps> = ({
                       type="number"
                       value={quoteData.cncHours}
                       onChange={(e) =>
-                        updateQuoteCalculations({ cncHours: parseFloat(e.target.value) || 0 })
+                        updateQuoteCalculations({
+                          cncHours: Number((parseFloat(e.target.value) || 0).toFixed(2)),
+                        })
                       }
                       className="w-32 rounded border border-white/10 bg-background-dark px-3 py-2 text-sm text-white"
-                      step="0.1"
+                      step="0.01"
                     />
                   </div>
                   <div className="flex items-center justify-between">

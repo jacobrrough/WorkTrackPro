@@ -1,17 +1,8 @@
 import type { User } from '../../core/types';
 import { supabase } from './supabaseClient';
-
-// Prevents Supabase network calls from hanging the loading screen indefinitely.
-// On timeout the promise rejects with an error — callers decide how to handle it
-// (initApp catches and clears isLoading; refreshAuthWithRetry retries then hard-logs out).
-export function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Auth call timed out after ${ms}ms`)), ms)
-    ),
-  ]);
-}
+// withTimeout lives in a neutral util (src/lib/withTimeout.ts) so non-auth callers
+// (e.g. the clock-in punch) can reuse it without an auth-specific timeout message.
+import { withTimeout } from '../../lib/withTimeout';
 
 function mapProfileToUser(profile: {
   id: string;

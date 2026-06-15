@@ -524,7 +524,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               partNumber: basePartNumber,
               name: (selectedPart ? partNameEdit.trim() : '') || nameForCreate,
               description: formData.description.trim() || undefined,
-              laborHours: formData.laborHours ? parseFloat(formData.laborHours) : undefined,
+              laborHours: formData.laborHours
+                ? Number(parseFloat(formData.laborHours).toFixed(2))
+                : undefined,
               pricePerSet: undefined, // Will be set later
             });
             showToast('Master part created in Parts repository', 'success');
@@ -1100,7 +1102,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 </div>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0"
                   className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
                   placeholder={
