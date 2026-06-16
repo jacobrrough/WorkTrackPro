@@ -27,6 +27,7 @@
 // a retryAfter hint so the client-stepped sync can back off.
 
 import { createClient } from '@supabase/supabase-js';
+import { encryptSecret, decryptSecret } from './lib/tokenCrypto.mjs';
 
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 const MINOR_VERSION = '75';
@@ -188,10 +189,14 @@ async function ensureValidAccessToken(supabase, cfg, conn) {
     new Date(conn.access_token_expires_at).getTime() - skewMs > Date.now();
 
   if (notExpired) {
-    return { accessToken: conn.access_token, realmId: conn.realm_id };
+    // Decrypt the stored access token (passthrough for legacy plaintext). If it can't be
+    // decrypted, fall through to a refresh rather than handing back a null bearer.
+    const accessToken = decryptSecret(conn.access_token);
+    if (accessToken) return { accessToken, realmId: conn.realm_id };
   }
 
-  const tokens = await refreshAccessToken(cfg, conn.refresh_token);
+  const refreshToken = decryptSecret(conn.refresh_token);
+  const tokens = await refreshAccessToken(cfg, refreshToken);
   if (!tokens || !tokens.access_token) return null;
 
   const expiresAt = new Date(Date.now() + (Number(tokens.expires_in) || 3600) * 1000).toISOString();
@@ -199,9 +204,9 @@ async function ensureValidAccessToken(supabase, cfg, conn) {
     .schema('accounting')
     .from('qbo_connection')
     .update({
-      access_token: tokens.access_token,
+      access_token: encryptSecret(tokens.access_token),
       access_token_expires_at: expiresAt,
-      refresh_token: tokens.refresh_token || conn.refresh_token,
+      refresh_token: encryptSecret(tokens.refresh_token || refreshToken),
       updated_at: new Date().toISOString(),
     })
     .eq('id', conn.id);
@@ -276,10 +281,7 @@ function buildWhere(url, entity) {
 
   const clauses = [];
   if (changedSince) clauses.push(`Metadata.LastUpdatedTime > '${changedSince}'`);
-  if (
-    url.searchParams.get('includeInactive') === 'true' &&
-    ENTITIES_WITH_ACTIVE_FLAG.has(entity)
-  ) {
+  if (url.searchParams.get('includeInactive') === 'true' && ENTITIES_WITH_ACTIVE_FLAG.has(entity)) {
     clauses.push('Active IN (true, false)');
   }
   return clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';

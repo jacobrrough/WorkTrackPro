@@ -18,6 +18,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
+import { encryptSecret, decryptSecret } from './lib/tokenCrypto.mjs';
 
 // ── Intuit constants ────────────────────────────────────
 const AUTH_URL = 'https://appcenter.intuit.com/connect/oauth2';
@@ -194,21 +195,26 @@ async function ensureValidAccessToken(supabase, cfg, conn) {
     new Date(conn.access_token_expires_at).getTime() - skewMs > Date.now();
 
   if (notExpired) {
-    return { accessToken: conn.access_token, realmId: conn.realm_id };
+    // Decrypt the stored access token (passthrough if it's a legacy plaintext row). If it
+    // can't be decrypted — e.g. the key was rotated — fall through and mint a fresh one
+    // rather than handing back a null bearer.
+    const accessToken = decryptSecret(conn.access_token);
+    if (accessToken) return { accessToken, realmId: conn.realm_id };
   }
 
-  const tokens = await refreshAccessToken(cfg, conn.refresh_token);
+  const refreshToken = decryptSecret(conn.refresh_token);
+  const tokens = await refreshAccessToken(cfg, refreshToken);
   if (!tokens || !tokens.access_token) return null;
 
   const expiresAt = new Date(Date.now() + (Number(tokens.expires_in) || 3600) * 1000).toISOString();
 
-  // PERSIST the rotated refresh token (fall back to the old one if Intuit omitted it).
-  const { error } = await supabase
-    .from('qbo_connection')
+  // PERSIST the rotated refresh token (fall back to the old one if Intuit omitted it),
+  // encrypting both secrets at rest. qboTable() scopes this to accounting.qbo_connection.
+  const { error } = await qboTable(supabase)
     .update({
-      access_token: tokens.access_token,
+      access_token: encryptSecret(tokens.access_token),
       access_token_expires_at: expiresAt,
-      refresh_token: tokens.refresh_token || conn.refresh_token,
+      refresh_token: encryptSecret(tokens.refresh_token || refreshToken),
       updated_at: new Date().toISOString(),
     })
     .eq('id', conn.id);
@@ -370,8 +376,8 @@ async function handleCallback(request, cfg, supabase) {
   const existing = await loadConnection(supabase);
   const row = {
     realm_id: realmId,
-    refresh_token: tokens.refresh_token,
-    access_token: tokens.access_token,
+    refresh_token: encryptSecret(tokens.refresh_token),
+    access_token: encryptSecret(tokens.access_token),
     access_token_expires_at: expiresAt,
     connected_at: nowIso,
     updated_at: nowIso,
