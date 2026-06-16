@@ -28,6 +28,26 @@ type LoopState = 'idle' | 'running' | 'waiting' | 'gated' | 'done' | 'failed' | 
 const money = (v: number | null): string =>
   v == null ? '—' : v.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
 
+/**
+ * Surface the real reason from any thrown shape. runVerification can reject with a Supabase
+ * (PostgREST) error — a PLAIN OBJECT, not an Error instance — so `e instanceof Error` missed it
+ * and the user only saw a generic "Verification failed." Pull message/details/hint/code instead.
+ */
+function verificationErrorMessage(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === 'string' && e) return e;
+  if (e && typeof e === 'object') {
+    const o = e as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    const parts = [o.message, o.details, o.hint].filter(
+      (p): p is string => typeof p === 'string' && p.length > 0
+    );
+    if (parts.length) {
+      return parts.join(' — ') + (typeof o.code === 'string' ? ` (${o.code})` : '');
+    }
+  }
+  return 'Verification failed — open the browser console for details.';
+}
+
 /** The QBO-vs-WorkTrack delta report (the migration sign-off artifact). */
 function VerificationCard({ disabled }: { disabled: boolean }) {
   const [running, setRunning] = useState(false);
@@ -40,7 +60,8 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
     try {
       setResult(await runVerification());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Verification failed.');
+      console.error('QBO verification failed:', e);
+      setError(verificationErrorMessage(e));
     }
     setRunning(false);
   };
