@@ -113,6 +113,28 @@ export function useInvoice(id: string | undefined) {
   });
 }
 
+/** Resolve an estimate by its number — powers the job card's est# deep link. */
+export function useEstimateByNumber(estimateNumber: string | null | undefined) {
+  const num = estimateNumber?.trim() || undefined;
+  return useQuery({
+    queryKey: ['accounting', 'estimates', 'byNumber', num] as const,
+    queryFn: () => estimatesService.findByNumber(num as string),
+    enabled: !!num,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Resolve an invoice by its number — powers the job card's inv# deep link. */
+export function useInvoiceByNumber(invoiceNumber: string | null | undefined) {
+  const num = invoiceNumber?.trim() || undefined;
+  return useQuery({
+    queryKey: ['accounting', 'invoices', 'byNumber', num] as const,
+    queryFn: () => invoicesService.findByNumber(num as string),
+    enabled: !!num,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 /** Payments applied to a given invoice. */
 export function useInvoicePayments(invoiceId: string | undefined) {
   return useQuery({

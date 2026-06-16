@@ -178,6 +178,28 @@ export const estimatesService = {
     return mapEstimateRow(data as Row);
   },
 
+  /** Resolve an estimate by its unique number → a light ref for job-card deep links. */
+  async findByNumber(
+    estimateNumber: string
+  ): Promise<{ id: string; status: string; customerName: string | null } | null> {
+    const num = estimateNumber.trim();
+    if (!num) return null;
+    const { data, error } = await acct()
+      .from('estimates')
+      .select('id, status, customer:customers(display_name)')
+      .eq('estimate_number', num)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as Row;
+    const customer = (row.customer ?? null) as Row | null;
+    return {
+      id: String(row.id),
+      status: String(row.status ?? ''),
+      customerName: customer?.display_name ? String(customer.display_name) : null,
+    };
+  },
+
   /**
    * Estimates quoted against a given job (the job page's billing panel and the
    * job-costing drill-down). Header rows only — newest first. Mirrors

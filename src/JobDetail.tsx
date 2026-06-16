@@ -21,6 +21,35 @@ const JobBillingPanel = ACCOUNTING_BUILD_ENABLED
 const JobCustomerSelect = ACCOUNTING_BUILD_ENABLED
   ? lazyWithRetry(() => import('./features/accounting/jobs/JobCustomerSelect'), 'JobCustomerSelect')
   : null;
+// EST#/INV# pills that resolve to the real estimate/invoice documents (+ customer). Lazy +
+// flag-gated like the panels above; PlainEstInvPills is the accounting-free fallback used when
+// the flag is off, the chunk is loading, or a number doesn't resolve.
+const JobReferencePills = ACCOUNTING_BUILD_ENABLED
+  ? lazyWithRetry(() => import('./features/accounting/jobs/JobReferencePills'), 'JobReferencePills')
+  : null;
+
+function PlainEstInvPills({
+  estNumber,
+  invNumber,
+}: {
+  estNumber?: string | null;
+  invNumber?: string | null;
+}) {
+  return (
+    <>
+      {estNumber && (
+        <span className="rounded bg-purple-500/20 px-2 py-1 text-xs font-medium text-purple-300">
+          EST #{estNumber}
+        </span>
+      )}
+      {invNumber && (
+        <span className="rounded bg-green-500/20 px-2 py-1 text-xs font-medium text-green-300">
+          INV# {invNumber}
+        </span>
+      )}
+    </>
+  );
+}
 import { jobService } from './pocketbase';
 import FileUploadButton from './FileUploadButton';
 import FileViewer from './FileViewer';
@@ -2915,13 +2944,20 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <span className="text-xs font-bold text-primary">{formatJobCode(job.jobCode)}</span>
               </div>
 
-              {/* Reference Numbers - EST #, RFQ #, PO #, INV#, OWR# */}
+              {/* Reference Numbers — EST #/INV # deep-link to the real estimate/invoice (and show
+                  the customer) when accounting is built in; RFQ/PO/OWR stay plain. */}
               {(job.estNumber || job.rfqNumber || job.po || job.invNumber || job.owrNumber) && (
                 <div className="mb-3 flex flex-wrap gap-2">
-                  {job.estNumber && (
-                    <span className="rounded bg-purple-500/20 px-2 py-1 text-xs font-medium text-purple-300">
-                      EST #{job.estNumber}
-                    </span>
+                  {JobReferencePills ? (
+                    <Suspense
+                      fallback={
+                        <PlainEstInvPills estNumber={job.estNumber} invNumber={displayInvNumber} />
+                      }
+                    >
+                      <JobReferencePills estNumber={job.estNumber} invNumber={displayInvNumber} />
+                    </Suspense>
+                  ) : (
+                    <PlainEstInvPills estNumber={job.estNumber} invNumber={displayInvNumber} />
                   )}
                   {job.rfqNumber && (
                     <span className="rounded bg-orange-500/20 px-2 py-1 text-xs font-medium text-orange-300">
@@ -2931,11 +2967,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   {job.po && (
                     <span className="rounded bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-300">
                       PO #{job.po}
-                    </span>
-                  )}
-                  {displayInvNumber && (
-                    <span className="rounded bg-green-500/20 px-2 py-1 text-xs font-medium text-green-300">
-                      INV# {displayInvNumber}
                     </span>
                   )}
                   {job.owrNumber && (

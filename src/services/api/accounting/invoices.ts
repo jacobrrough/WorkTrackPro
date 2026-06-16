@@ -104,6 +104,28 @@ export const invoicesService = {
     return mapInvoiceRow(data as Row);
   },
 
+  /** Resolve an invoice by its number → a light ref for job-card deep links. */
+  async findByNumber(
+    invoiceNumber: string
+  ): Promise<{ id: string; status: string; customerName: string | null } | null> {
+    const num = invoiceNumber.trim();
+    if (!num) return null;
+    const { data, error } = await acct()
+      .from('invoices')
+      .select('id, status, customer:customers(display_name)')
+      .eq('invoice_number', num)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as Row;
+    const customer = (row.customer ?? null) as Row | null;
+    return {
+      id: String(row.id),
+      status: String(row.status ?? ''),
+      customerName: customer?.display_name ? String(customer.display_name) : null,
+    };
+  },
+
   /**
    * Invoices billed against a given job (for the B1 job-costing detail screen).
    * Header rows only (no lines) — newest first. Mirrors billsService.listForVendor.
