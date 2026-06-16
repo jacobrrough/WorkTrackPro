@@ -45,7 +45,7 @@ function DroppableColumn({ column, children }: { column: BoardColumn; children: 
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-[80px] flex-1 flex-col gap-2 rounded-b-lg p-2 transition-colors ${
+      className={`flex min-h-[80px] flex-1 flex-col gap-2 overflow-y-auto overscroll-contain rounded-b-lg p-2 transition-colors ${
         isOver ? 'bg-primary/5' : ''
       }`}
     >
@@ -384,9 +384,12 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
           {columns.map((col) => {
             const colCards = cardsByColumn[col.id] ?? [];
             return (
+              // min-h-0 makes the stretched column height an explicit bound so the card
+              // list's `overflow-y-auto` actually scrolls. Without it, scroll silently
+              // relies on the flex container's default align-items:stretch.
               <div
                 key={col.id}
-                className="flex w-[calc(100vw-2rem)] flex-shrink-0 snap-center flex-col rounded-lg border border-white/10 bg-surface-dark md:w-72"
+                className="flex min-h-0 w-[calc(100vw-2rem)] flex-shrink-0 snap-center flex-col rounded-lg border border-white/10 bg-surface-dark md:w-72"
               >
                 <div className="p-3 pb-0">
                   <BoardColumnHeader
