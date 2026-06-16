@@ -86,6 +86,10 @@ export const checklistService = {
             id: item.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             text: item.text,
             checked: false,
+            // Preserve the material-check flag so the PO'd "check inventory" item still
+            // triggers the availability gate in ChecklistDisplay. Without this, the flag is
+            // stripped on seeding and the inventory check never fires for the job.
+            isMaterialCheck: item.isMaterialCheck,
           }))
         : [{ id: `item_${Date.now()}`, text: 'MOVE', checked: false }];
 
