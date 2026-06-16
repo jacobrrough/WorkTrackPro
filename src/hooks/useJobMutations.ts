@@ -495,12 +495,11 @@ export function useJobMutations({
         console.error('Update job status error:', error);
         const err = error as { message?: string; code?: string };
         const msg = err?.message ?? '';
-        if (msg.includes('insufficient_stock') || err?.code === '23514') {
-          showToast?.(
-            'Not enough stock to complete this status change. Check inventory levels.',
-            'error'
-          );
-        } else if (msg.includes('consumed_at_race_reversal')) {
+        // Note: status changes no longer raise insufficient_stock — finishing a built job
+        // always succeeds and the deduction may go negative (migration 20260615000000).
+        // The stock gate lives at PO'd (job_inventory_allocate_guard), surfaced by the
+        // allocation path in useInventoryMutations.ts, not here.
+        if (msg.includes('consumed_at_race_reversal')) {
           // Two sessions tried to restore the same finished job simultaneously (e.g., admin
           // double-click on rework). The second restore was correctly blocked by the DB.
           showToast?.(
