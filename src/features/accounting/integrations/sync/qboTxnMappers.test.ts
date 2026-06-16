@@ -114,6 +114,33 @@ describe('mapQboJournalEntry', () => {
     );
     expect(je.problem).toContain('unmapped account');
   });
+
+  it('skips a voided/zero entry (all lines $0) as fewer than two mappable lines', () => {
+    // QBO keeps voided/empty JEs (e.g. "AJE17.2 VOID: Recisy") at $0 on every line; they carry
+    // no posting, so the mapper correctly flags them out rather than creating an empty entry.
+    const je = mapQboJournalEntry(
+      {
+        Id: '22',
+        TxnDate: '2017-06-30',
+        DocNumber: 'AJE17.2',
+        Line: [
+          {
+            DetailType: 'JournalEntryLineDetail',
+            Amount: 0,
+            JournalEntryLineDetail: { PostingType: 'Debit', AccountRef: { value: '80' } },
+          },
+          {
+            DetailType: 'JournalEntryLineDetail',
+            Amount: 0,
+            JournalEntryLineDetail: { PostingType: 'Debit', AccountRef: { value: '35' } },
+          },
+        ],
+      },
+      r
+    );
+    expect(je.problem).toContain('Fewer than two mappable lines');
+    expect(je.lines).toHaveLength(0);
+  });
 });
 
 describe('mapQboDeposit', () => {
@@ -157,6 +184,34 @@ describe('mapQboDeposit', () => {
     expect(je.problem).toBeNull();
     expect(() => assertBalanced(je.lines)).not.toThrow();
     expect(je.lines).toContainEqual(expect.objectContaining({ accountId: 'acct-cc', debit: 50 }));
+  });
+
+  it('maps a negative add-funds line (cash over/short) as a debit and still balances', () => {
+    // Deposit #1945 shape: $500 of payments banked, less a $150 cash-over/short adjustment,
+    // nets to a $350 deposit. The negative line must post as a debit, not be dropped.
+    const je = mapQboDeposit(
+      {
+        Id: '32',
+        TxnDate: '2023-02-03',
+        TotalAmt: 350,
+        DepositToAccountRef: { value: '35' },
+        Line: [
+          { Amount: 500, LinkedTxn: [{ TxnId: '902', TxnType: 'Payment' }] },
+          { Amount: -150, DepositLineDetail: { AccountRef: { value: '80' } } },
+        ],
+      },
+      r,
+      d
+    );
+    expect(je.problem).toBeNull();
+    expect(je.lines).toContainEqual(
+      expect.objectContaining({ accountId: 'acct-checking', debit: 350 })
+    );
+    expect(je.lines).toContainEqual(expect.objectContaining({ accountId: 'acct-uf', credit: 500 }));
+    expect(je.lines).toContainEqual(
+      expect.objectContaining({ accountId: 'acct-materials', debit: 150 })
+    );
+    expect(() => assertBalanced(je.lines)).not.toThrow();
   });
 });
 
@@ -320,5 +375,44 @@ describe('mapQboPurchase', () => {
     expect(je.lines).toContainEqual(
       expect.objectContaining({ accountId: 'acct-opex', debit: 320 })
     );
+  });
+
+  it('maps a negative contra line (e.g. owner distribution) as an opposite-side credit', () => {
+    // Check #9616 shape: $500 of expenses less a $300 S-corp distribution nets to a $200
+    // check. Positive lines debit expense; the negative contra line flips to a credit.
+    const je = mapQboPurchase(
+      {
+        Id: '81',
+        TxnDate: '2023-07-02',
+        AccountRef: { value: '35' },
+        EntityRef: { value: '41' },
+        TotalAmt: 200,
+        Line: [
+          {
+            DetailType: 'AccountBasedExpenseLineDetail',
+            Amount: 500,
+            AccountBasedExpenseLineDetail: { AccountRef: { value: '80' } },
+          },
+          {
+            DetailType: 'AccountBasedExpenseLineDetail',
+            Amount: -300,
+            AccountBasedExpenseLineDetail: { AccountRef: { value: '36' } },
+          },
+        ],
+      },
+      r,
+      d
+    );
+    expect(je.problem).toBeNull();
+    expect(je.lines).toContainEqual(
+      expect.objectContaining({ accountId: 'acct-materials', debit: 500 })
+    );
+    expect(je.lines).toContainEqual(
+      expect.objectContaining({ accountId: 'acct-savings', credit: 300 })
+    );
+    expect(je.lines).toContainEqual(
+      expect.objectContaining({ accountId: 'acct-checking', credit: 200, vendorId: 'vend-41' })
+    );
+    expect(() => assertBalanced(je.lines)).not.toThrow();
   });
 });
