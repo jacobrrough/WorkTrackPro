@@ -42,6 +42,16 @@ export function qboJeSourceKey(entity: string, qboId: string): string {
   return `qbo:${entity}:${qboId}`;
 }
 
+/**
+ * A mapper "problem" that represents a record with NO ledger effect: QBO keeps voided and $0
+ * transactions for the audit trail, and an all-zero journal entry posts nothing. These are
+ * intentionally skipped, not failures to chase — counted as "skipped (no effect)" and kept out
+ * of the "needs attention" error list.
+ */
+export function isNoEffectSkip(problem: string): boolean {
+  return problem.startsWith('Zero-amount') || problem === 'Fewer than two mappable lines';
+}
+
 type TxnMapper = (json: QboJson, ctx: SyncContext) => MappedTxnJe;
 
 /** Generic completeness phase: map each record to a JE and post it idempotently. */
@@ -64,12 +74,16 @@ function txnPhase(
       for (const json of records) {
         const mapped = mapFn(json, ctx);
         if (mapped.problem) {
-          counts.failed += 1;
+          // No-effect records (voided / $0) are SKIPPED, not failed — count + log them as a
+          // skip so the UI shows them under "skipped (no effect)" instead of the alarming
+          // failure list. Real problems (unmapped account, can't reconcile) stay errors.
+          const noEffect = isNoEffectSkip(mapped.problem);
+          counts[noEffect ? 'skipped' : 'failed'] += 1;
           logs.push({
             entity,
             qboId: mapped.qboId || null,
-            action: 'error',
-            status: 'error',
+            action: noEffect ? 'skip' : 'error',
+            status: noEffect ? 'ok' : 'error',
             message: `${mapped.memo}: ${mapped.problem}`,
           });
           continue;

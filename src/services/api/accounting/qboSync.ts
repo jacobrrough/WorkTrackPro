@@ -306,4 +306,18 @@ export const qboSyncService = {
     if (error) throw error;
     return ((data ?? []) as Row[]).map(mapQboImportLogRow);
   },
+
+  /** No-effect skips (voided / $0 records) for a run — surfaced separately from real errors. */
+  async listSkips(runId: string, limit = 500): Promise<QboImportLogEntry[]> {
+    const { data, error } = await acct()
+      .from('qbo_import_log')
+      .select('*')
+      .eq('run_id', runId)
+      .eq('action', 'skip')
+      .not('message', 'is', null)
+      .order('at', { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapQboImportLogRow);
+  },
 };
