@@ -72,65 +72,17 @@ async function getAccountBalances(range?: DateRange): Promise<AccountBalanceRow[
     return ((data ?? []) as Row[]).map(mapAccountBalanceRow);
   }
 
-  // Windowed path: aggregate posted lines by account in JS (PostgREST can't GROUP BY).
-  // Inner-join the parent entry so we can filter on entry_date + status='posted'.
-  let q = acct()
-    .from('journal_lines')
-    .select(
-      'debit, credit, account:accounts!inner(id, account_number, name, account_type, normal_balance), entry:journal_entries!inner(entry_date, status)'
-    )
-    .eq('entry.status', 'posted');
-  if (range?.from) q = q.gte('entry.entry_date', range.from);
-  if (range?.to) q = q.lte('entry.entry_date', range.to);
-
-  const { data, error } = await q;
+  // Windowed path: aggregate SERVER-SIDE. Fetching every posted line to sum in JS times out at
+  // production scale (49k+ rows exceed the statement timeout — P&L / Balance Sheet / the QBO
+  // verification all pass a date bound and hit this path). The GROUP BY runs in Postgres and
+  // returns one row per account — the same shape as the v_trial_balance fast path above.
+  const { data, error } = await acct().rpc('report_account_balances', {
+    p_from: range?.from ?? null,
+    p_to: range?.to ?? null,
+  });
   if (error) throw error;
-
-  // Accumulate debit/credit in integer cents keyed by account id.
-  interface Acc {
-    accountId: string;
-    accountNumber: string | null;
-    name: string;
-    accountType: string;
-    normalBalance: string;
-    debitCents: number;
-    creditCents: number;
-  }
-  const byAccount = new Map<string, Acc>();
-  for (const raw of (data ?? []) as Row[]) {
-    const account = (raw.account ?? null) as Row | null;
-    if (!account) continue;
-    const id = String(account.id);
-    let acc = byAccount.get(id);
-    if (!acc) {
-      acc = {
-        accountId: id,
-        accountNumber: account.account_number == null ? null : String(account.account_number),
-        name: String(account.name ?? ''),
-        accountType: String(account.account_type ?? 'asset'),
-        normalBalance: String(account.normal_balance ?? 'debit'),
-        debitCents: 0,
-        creditCents: 0,
-      };
-      byAccount.set(id, acc);
-    }
-    acc.debitCents += Math.round((Number(raw.debit) || 0) * 100);
-    acc.creditCents += Math.round((Number(raw.credit) || 0) * 100);
-  }
-
-  // Re-use the row mapper so the rest of the pipeline is identical to the view path.
-  return Array.from(byAccount.values())
-    .map((a) =>
-      mapAccountBalanceRow({
-        account_id: a.accountId,
-        account_number: a.accountNumber,
-        name: a.name,
-        account_type: a.accountType,
-        normal_balance: a.normalBalance,
-        total_debit: a.debitCents / 100,
-        total_credit: a.creditCents / 100,
-      })
-    )
+  return ((data ?? []) as Row[])
+    .map(mapAccountBalanceRow)
     .sort((x, y) => (x.accountNumber ?? '').localeCompare(y.accountNumber ?? ''));
 }
 
