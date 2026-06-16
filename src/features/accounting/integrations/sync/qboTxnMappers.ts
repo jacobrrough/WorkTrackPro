@@ -61,23 +61,33 @@ interface CentLine {
   netCents: number;
 }
 
-/** Drop zero lines, then turn cent-lines into journal debit/credit lines. */
+/**
+ * Turn cent-lines into journal debit/credit lines on `side`. A NEGATIVE itemized line is a
+ * contra posting (e.g. an S-corp distribution that offsets a credit-card check, or a
+ * cash-over/short adjustment on a deposit) — it lands on the OPPOSITE side as its absolute
+ * value so the entry still balances. Zero or account-less lines are dropped.
+ */
 function toJeLines(
   lines: CentLine[],
   side: 'debit' | 'credit',
   memo: string,
   stamp: { customerId?: string | null; vendorId?: string | null }
 ): NewJournalLineInput[] {
+  const opposite: 'debit' | 'credit' = side === 'debit' ? 'credit' : 'debit';
   return lines
-    .filter((l) => l.netCents > 0 && l.accountId)
-    .map((l) => ({
-      accountId: l.accountId!,
-      debit: side === 'debit' ? dollars(l.netCents) : 0,
-      credit: side === 'credit' ? dollars(l.netCents) : 0,
-      lineMemo: memo,
-      ...(stamp.customerId ? { customerId: stamp.customerId } : {}),
-      ...(stamp.vendorId ? { vendorId: stamp.vendorId } : {}),
-    }));
+    .filter((l) => l.netCents !== 0 && l.accountId)
+    .map((l) => {
+      const onSide = l.netCents > 0 ? side : opposite;
+      const amount = dollars(Math.abs(l.netCents));
+      return {
+        accountId: l.accountId!,
+        debit: onSide === 'debit' ? amount : 0,
+        credit: onSide === 'credit' ? amount : 0,
+        lineMemo: memo,
+        ...(stamp.customerId ? { customerId: stamp.customerId } : {}),
+        ...(stamp.vendorId ? { vendorId: stamp.vendorId } : {}),
+      };
+    });
 }
 
 /** Sales-side itemized lines (CreditMemo / SalesReceipt / RefundReceipt). */
@@ -107,7 +117,9 @@ function expenseCentLines(
   for (const line of arr(json.Line)) {
     const detailType = qstr(line.DetailType);
     const cents = centsOf(line.Amount);
-    if (cents <= 0) continue;
+    // Keep NEGATIVE lines (a contra/distribution line nets the total down) — only a true zero
+    // carries no posting. toJeLines() routes a negative to the opposite side so the JE balances.
+    if (cents === 0) continue;
     if (detailType === 'AccountBasedExpenseLineDetail') {
       const accountId = r.accountId(refValue(obj(line.AccountBasedExpenseLineDetail)?.AccountRef));
       out.push({ accountId: accountId ?? fallbackAccountId, netCents: cents });
@@ -137,7 +149,8 @@ function tieToTotal(
   const copy = lines.map((l) => ({ ...l }));
   const delta = targetCents - copy.reduce((s, l) => s + l.netCents, 0);
   if (!foldDelta(copy, delta)) return null;
-  return copy.filter((l) => l.netCents > 0);
+  // Keep negatives (contra lines) — toJeLines() posts them to the opposite side; drop only zeros.
+  return copy.filter((l) => l.netCents !== 0);
 }
 
 // ── JournalEntry ──────────────────────────────────────────────────────────────
@@ -203,7 +216,9 @@ export function mapQboDeposit(json: QboJson, r: DocResolvers, d: DefaultAccounts
   const credits: CentLine[] = [];
   for (const line of arr(json.Line)) {
     const cents = centsOf(line.Amount);
-    if (cents <= 0) continue;
+    // Keep negative "add funds" lines (e.g. a cash-over/short adjustment that nets the deposit
+    // down) — they post as a debit via toJeLines(); skip only true zeros.
+    if (cents === 0) continue;
     const linked = arr(line.LinkedTxn).length > 0;
     if (linked) {
       // Undeposited-funds movement (the linked payment/receipt already posted the AR side).

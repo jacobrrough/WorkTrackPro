@@ -200,6 +200,7 @@ export default function QuickBooksSyncView() {
   const [loopState, setLoopState] = useState<LoopState>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<QboImportLogEntry[]>([]);
+  const [skips, setSkips] = useState<QboImportLogEntry[]>([]);
   const [gate, setGate] = useState<{ phaseKey: string; legacyCount: number | null } | null>(null);
   const engineRef = useRef<QboSyncEngine | null>(null);
   const stopRequested = useRef(false);
@@ -223,9 +224,15 @@ export default function QuickBooksSyncView() {
 
   const loadErrors = useCallback(async (runId: string) => {
     try {
-      setErrors(await qboSyncService.listErrors(runId));
+      const [errs, skipped] = await Promise.all([
+        qboSyncService.listErrors(runId),
+        qboSyncService.listSkips(runId),
+      ]);
+      setErrors(errs);
+      setSkips(skipped);
     } catch {
       setErrors([]);
+      setSkips([]);
     }
   }, []);
 
@@ -288,6 +295,7 @@ export default function QuickBooksSyncView() {
   const handleStart = async (mode: 'full' | 'incremental') => {
     setMessage(null);
     setErrors([]);
+    setSkips([]);
     const newRun = await startSyncRun(mode, status.lastCdcCursor ?? null);
     if (!newRun) {
       setMessage('Could not start a sync run.');
@@ -303,6 +311,7 @@ export default function QuickBooksSyncView() {
   const handleResume = async (existing: QboImportRun) => {
     setMessage(null);
     setErrors([]);
+    setSkips([]);
     setRun(existing);
     const engine = new QboSyncEngine(existing.id);
     engineRef.current = engine;
@@ -493,6 +502,27 @@ export default function QuickBooksSyncView() {
                   ))}
                 </ul>
               </div>
+            )}
+
+            {skips.length > 0 && (
+              <details className="rounded-sm border border-white/10 bg-white/5 p-2">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-300">
+                  {skips.length} record{skips.length === 1 ? '' : 's'} skipped — no effect on your
+                  books
+                </summary>
+                <p className="mt-1 text-xs text-slate-400">
+                  Voided or $0 transactions QuickBooks keeps for its audit trail. They post nothing,
+                  so skipping them does not change the ledger.
+                </p>
+                <ul className="mt-1 max-h-48 overflow-y-auto text-xs text-slate-400">
+                  {skips.map((e) => (
+                    <li key={e.id} className="border-b border-white/5 py-1 last:border-0">
+                      <span className="font-semibold">{e.entity}</span>
+                      {e.qboId ? ` #${e.qboId}` : ''} — {e.message ?? 'skipped'}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </Card>
         )}
