@@ -131,7 +131,9 @@ export function AccountingShell({ active, title, actions, children }: Accounting
   };
 
   return (
-    <div className="flex min-h-[100dvh] bg-background-dark">
+    // Bounded to the viewport (NOT min-h): the app root is `overflow:hidden`, so the shell
+    // must fit and scroll its own <main> internally rather than overflowing the clipped root.
+    <div className="flex h-[100dvh] bg-background-dark">
       {/* Desktop left rail (sticky; the page body scrolls beside it). */}
       <aside
         className={`sticky top-0 hidden h-[100dvh] shrink-0 flex-col self-start border-r border-white/10 bg-background-dark md:flex ${
@@ -184,7 +186,9 @@ export function AccountingShell({ active, title, actions, children }: Accounting
           <h1 className="flex-1 truncate text-lg font-bold text-white">{title ?? 'Accounting'}</h1>
           {actions}
         </header>
-        <main className="flex-1 p-4">{children}</main>
+        {/* min-h-0 lets this flex child shrink below content height so overflow-y-auto can
+            actually scroll; without it the content would push past the clipped root. */}
+        <main className="min-h-0 flex-1 overflow-y-auto p-4">{children}</main>
       </div>
 
       {/* Mobile drawer */}
