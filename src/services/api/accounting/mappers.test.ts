@@ -18,6 +18,10 @@ import {
   mapFixedAssetRow,
   mapFixedAssetRegisterRow,
   mapInventoryCogsEventRow,
+  mapInventoryPriceHistoryRow,
+  mapInventoryReconciliationHeaderRow,
+  mapInventoryReconciliationRow,
+  mapInventoryRevaluationRow,
   mapInventoryValuationRow,
   mapInvoiceRow,
   mapInvoiceLineRow,
@@ -1082,6 +1086,229 @@ describe('mapInventoryCogsEventRow', () => {
     expect(e.jobId).toBeNull();
     expect(e.sourceInventoryId).toBeNull();
     expect(e.journalEntryId).toBe('je-2');
+  });
+});
+
+// ── Inventory ↔ Accounting reconciliation & cost sync ─────────────────────────
+
+describe('mapInventoryReconciliationRow', () => {
+  it('maps a v_inventory_reconciliation row, including flags and variances', () => {
+    const r = mapInventoryReconciliationRow({
+      source_inventory_id: 'inv-9',
+      inventory_name: 'M8 Bolt',
+      unit: 'ea',
+      vendor: 'Acme Fasteners',
+      in_stock: 10,
+      unit_price: 8,
+      op_value: 80,
+      qty_on_hand: 10,
+      asset_value: 50,
+      avg_unit_cost: 5,
+      qty_variance: 0,
+      value_variance: 30,
+      pending_reval_amount: 30,
+      pending_reval_count: 1,
+      uncosted: false,
+      null_price: false,
+      negative_stock: false,
+      qty_mismatch: false,
+    });
+    expect(r).toMatchObject({
+      sourceInventoryId: 'inv-9',
+      inventoryName: 'M8 Bolt',
+      unit: 'ea',
+      vendor: 'Acme Fasteners',
+      inStock: 10,
+      unitPrice: 8,
+      opValue: 80,
+      qtyOnHand: 10,
+      assetValue: 50,
+      avgUnitCost: 5,
+      qtyVariance: 0,
+      valueVariance: 30,
+      pendingRevalAmount: 30,
+      pendingRevalCount: 1,
+      uncosted: false,
+      nullPrice: false,
+      negativeStock: false,
+      qtyMismatch: false,
+    });
+  });
+
+  it('keeps a null unit_price null (the null_price flag still narrows to boolean)', () => {
+    const r = mapInventoryReconciliationRow({
+      source_inventory_id: 'inv-1',
+      inventory_name: 'Uncosted item',
+      in_stock: 5,
+      unit_price: null,
+      qty_on_hand: 0,
+      null_price: true,
+      uncosted: true,
+    });
+    expect(r.unitPrice).toBeNull();
+    expect(r.nullPrice).toBe(true);
+    expect(r.uncosted).toBe(true);
+    // numeric cells default to 0; unset flags default to false.
+    expect(r.opValue).toBe(0);
+    expect(r.assetValue).toBe(0);
+    expect(r.negativeStock).toBe(false);
+    expect(r.qtyMismatch).toBe(false);
+  });
+
+  it('coerces stringified numerics from PostgREST (negative stock)', () => {
+    const r = mapInventoryReconciliationRow({
+      source_inventory_id: 'inv-2',
+      inventory_name: 'Backorder',
+      in_stock: '-3',
+      unit_price: '4',
+      qty_variance: '-3',
+      value_variance: '-12',
+      negative_stock: true,
+    });
+    expect(r.inStock).toBe(-3);
+    expect(r.unitPrice).toBe(4);
+    expect(r.qtyVariance).toBe(-3);
+    expect(r.valueVariance).toBe(-12);
+    expect(r.negativeStock).toBe(true);
+  });
+});
+
+describe('mapInventoryReconciliationHeaderRow', () => {
+  it('maps the header tie row', () => {
+    const h = mapInventoryReconciliationHeaderRow({
+      total_asset_value: 300,
+      total_op_value: 330,
+      total_pending_reval: 30,
+      gl_1300_balance: 300,
+      asset_value_vs_gl_variance: 0,
+    });
+    expect(h).toEqual({
+      totalAssetValue: 300,
+      totalOpValue: 330,
+      totalPendingReval: 30,
+      gl1300Balance: 300,
+      assetValueVsGlVariance: 0,
+    });
+  });
+
+  it('defaults all cells to 0 on an empty row', () => {
+    const h = mapInventoryReconciliationHeaderRow({});
+    expect(h).toEqual({
+      totalAssetValue: 0,
+      totalOpValue: 0,
+      totalPendingReval: 0,
+      gl1300Balance: 0,
+      assetValueVsGlVariance: 0,
+    });
+  });
+});
+
+describe('mapInventoryRevaluationRow', () => {
+  it('maps an inventory_revaluations row (pending)', () => {
+    const r = mapInventoryRevaluationRow({
+      id: 'rv-1',
+      source_inventory_id: 'inv-9',
+      item_id: 'item-7',
+      old_cost: 5,
+      new_cost: 8,
+      on_hand_qty: 10,
+      delta_amount: 30,
+      status: 'pending',
+      journal_entry_id: null,
+      reason: 'Manual cost edit',
+      enqueued_at: '2026-06-16T10:00:00Z',
+      posted_at: null,
+      created_by: 'user-1',
+      created_at: '2026-06-16T10:00:00Z',
+      updated_at: '2026-06-16T10:00:00Z',
+    });
+    expect(r).toMatchObject({
+      id: 'rv-1',
+      sourceInventoryId: 'inv-9',
+      itemId: 'item-7',
+      oldCost: 5,
+      newCost: 8,
+      onHandQty: 10,
+      deltaAmount: 30,
+      status: 'pending',
+      journalEntryId: null,
+      reason: 'Manual cost edit',
+      postedAt: null,
+      createdBy: 'user-1',
+    });
+  });
+
+  it('maps a posted row with its journal entry and falls back to pending for an unknown status', () => {
+    const posted = mapInventoryRevaluationRow({
+      id: 'rv-2',
+      source_inventory_id: 'inv-9',
+      status: 'posted',
+      journal_entry_id: 'je-reval-1',
+      posted_at: '2026-06-16T11:00:00Z',
+    });
+    expect(posted.status).toBe('posted');
+    expect(posted.journalEntryId).toBe('je-reval-1');
+    expect(posted.postedAt).toBe('2026-06-16T11:00:00Z');
+
+    const weird = mapInventoryRevaluationRow({
+      id: 'rv-3',
+      source_inventory_id: 'x',
+      status: 'zzz',
+    });
+    expect(weird.status).toBe('pending');
+    // numeric cost cells default to 0; optional links null.
+    expect(weird.oldCost).toBe(0);
+    expect(weird.itemId).toBeNull();
+  });
+});
+
+describe('mapInventoryPriceHistoryRow', () => {
+  it('maps an inventory_price_history row with its source', () => {
+    const e = mapInventoryPriceHistoryRow({
+      id: 'ph-1',
+      inventory_id: 'inv-9',
+      old_price: 5,
+      new_price: 8,
+      change_amount: 3,
+      source: 'manual',
+      user_id: 'user-1',
+      reason: 'Vendor increase',
+      created_at: '2026-06-16T10:00:00Z',
+    });
+    expect(e).toEqual({
+      id: 'ph-1',
+      inventoryId: 'inv-9',
+      oldPrice: 5,
+      newPrice: 8,
+      changeAmount: 3,
+      source: 'manual',
+      userId: 'user-1',
+      reason: 'Vendor increase',
+      createdAt: '2026-06-16T10:00:00Z',
+    });
+  });
+
+  it('keeps a null old_price null (first-ever price) and narrows an unknown source to manual', () => {
+    const e = mapInventoryPriceHistoryRow({
+      id: 'ph-2',
+      inventory_id: 'inv-9',
+      old_price: null,
+      new_price: 8,
+      change_amount: 8,
+      source: 'not-a-source',
+      created_at: '2026-06-16T10:00:00Z',
+    });
+    expect(e.oldPrice).toBeNull();
+    expect(e.newPrice).toBe(8);
+    expect(e.source).toBe('manual');
+    expect(e.userId).toBeNull();
+    expect(e.reason).toBeNull();
+  });
+
+  it('preserves each valid source label (bill / seed / reval)', () => {
+    expect(mapInventoryPriceHistoryRow({ source: 'bill' }).source).toBe('bill');
+    expect(mapInventoryPriceHistoryRow({ source: 'seed' }).source).toBe('seed');
+    expect(mapInventoryPriceHistoryRow({ source: 'reval' }).source).toBe('reval');
   });
 });
 

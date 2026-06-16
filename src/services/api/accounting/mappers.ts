@@ -32,6 +32,12 @@ import type {
   FixedAssetRegisterRow,
   FixedAssetStatus,
   InventoryCogsEvent,
+  InventoryPriceHistoryEntry,
+  InventoryPriceChangeSource,
+  InventoryReconciliationHeader,
+  InventoryReconciliationRow,
+  InventoryRevaluation,
+  InventoryRevaluationStatus,
   InventoryValuationRow,
   Invoice,
   Item,
@@ -788,6 +794,111 @@ export function mapReconciliationRow(row: Row): Reconciliation {
     reconciledAt: nstr(row.reconciled_at),
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
+  };
+}
+
+// ── Inventory ↔ Accounting reconciliation & cost sync ─────────────────────────
+
+/**
+ * Map an `accounting.v_inventory_reconciliation` row. Numeric cells default to 0 via
+ * `num`; `unit_price` is left nullable (a null price is itself an exception flag). All
+ * variance/value columns are computed in the view (no JS arithmetic here).
+ */
+export function mapInventoryReconciliationRow(row: Row): InventoryReconciliationRow {
+  return {
+    sourceInventoryId: str(row.source_inventory_id),
+    inventoryName: str(row.inventory_name),
+    unit: nstr(row.unit),
+    vendor: nstr(row.vendor),
+    inStock: num(row.in_stock),
+    unitPrice: row.unit_price == null ? null : num(row.unit_price),
+    opValue: num(row.op_value),
+    qtyOnHand: num(row.qty_on_hand),
+    assetValue: num(row.asset_value),
+    avgUnitCost: num(row.avg_unit_cost),
+    qtyVariance: num(row.qty_variance),
+    valueVariance: num(row.value_variance),
+    pendingRevalAmount: num(row.pending_reval_amount),
+    pendingRevalCount: num(row.pending_reval_count),
+    uncosted: bool(row.uncosted),
+    nullPrice: bool(row.null_price),
+    negativeStock: bool(row.negative_stock),
+    qtyMismatch: bool(row.qty_mismatch),
+  };
+}
+
+/** Map the single `accounting.v_inventory_reconciliation_header` tie row. */
+export function mapInventoryReconciliationHeaderRow(row: Row): InventoryReconciliationHeader {
+  return {
+    totalAssetValue: num(row.total_asset_value),
+    totalOpValue: num(row.total_op_value),
+    totalPendingReval: num(row.total_pending_reval),
+    gl1300Balance: num(row.gl_1300_balance),
+    assetValueVsGlVariance: num(row.asset_value_vs_gl_variance),
+  };
+}
+
+const VALID_REVAL_STATUSES = new Set<InventoryRevaluationStatus>(['pending', 'posted', 'void']);
+
+/** Narrow a raw inventory_revaluations.status cell (defaults to 'pending'). */
+function revalStatus(v: unknown): InventoryRevaluationStatus {
+  const s = str(v) as InventoryRevaluationStatus;
+  return VALID_REVAL_STATUSES.has(s) ? s : 'pending';
+}
+
+/**
+ * Map an `accounting.inventory_revaluations` row (a queued gated revaluation). `oldCost`/
+ * `newCost`/`onHandQty`/`deltaAmount` are the preview the DB computed at enqueue; the
+ * poster recomputes the actual GL movement in cents at post time.
+ */
+export function mapInventoryRevaluationRow(row: Row): InventoryRevaluation {
+  return {
+    id: str(row.id),
+    sourceInventoryId: str(row.source_inventory_id),
+    itemId: nstr(row.item_id),
+    oldCost: num(row.old_cost),
+    newCost: num(row.new_cost),
+    onHandQty: num(row.on_hand_qty),
+    deltaAmount: num(row.delta_amount),
+    status: revalStatus(row.status),
+    journalEntryId: nstr(row.journal_entry_id),
+    reason: nstr(row.reason),
+    enqueuedAt: str(row.enqueued_at),
+    postedAt: nstr(row.posted_at),
+    createdBy: nstr(row.created_by),
+    createdAt: str(row.created_at),
+    updatedAt: str(row.updated_at),
+  };
+}
+
+const VALID_PRICE_SOURCES = new Set<InventoryPriceChangeSource>([
+  'manual',
+  'bill',
+  'seed',
+  'reval',
+]);
+
+/** Narrow a raw inventory_price_history.source cell (defaults to 'manual'). */
+function priceChangeSource(v: unknown): InventoryPriceChangeSource {
+  const s = str(v) as InventoryPriceChangeSource;
+  return VALID_PRICE_SOURCES.has(s) ? s : 'manual';
+}
+
+/**
+ * Map a `public.inventory_price_history` row (an append-only cost-change record). Prices
+ * are nullable (the column is plain `numeric`); `changeAmount` defaults to 0.
+ */
+export function mapInventoryPriceHistoryRow(row: Row): InventoryPriceHistoryEntry {
+  return {
+    id: str(row.id),
+    inventoryId: str(row.inventory_id),
+    oldPrice: row.old_price == null ? null : num(row.old_price),
+    newPrice: row.new_price == null ? null : num(row.new_price),
+    changeAmount: num(row.change_amount),
+    source: priceChangeSource(row.source),
+    userId: nstr(row.user_id),
+    reason: nstr(row.reason),
+    createdAt: str(row.created_at),
   };
 }
 

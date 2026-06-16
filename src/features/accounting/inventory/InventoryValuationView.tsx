@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useInventoryValuation } from '../hooks/useAccountingQueries';
-import { INVENTORY_BASE } from '../constants';
+import { INVENTORY_BASE, INVENTORY_RECONCILE_BASE } from '../constants';
 import { formatMoney, formatQty, formatUnitCost, totalInventoryValuation } from './inventoryFormat';
 import type { InventoryValuationRow } from '../types';
 
@@ -82,14 +82,24 @@ export default function InventoryValuationView() {
       active="inventory"
       title="Inventory valuation"
       actions={
-        <Button
-          size="sm"
-          variant="secondary"
-          icon="checklist"
-          onClick={() => navigate(`${INVENTORY_BASE}/cogs`)}
-        >
-          COGS work list
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="balance"
+            onClick={() => navigate(INVENTORY_RECONCILE_BASE)}
+          >
+            Reconcile
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="checklist"
+            onClick={() => navigate(`${INVENTORY_BASE}/cogs`)}
+          >
+            COGS work list
+          </Button>
+        </div>
       }
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-4">

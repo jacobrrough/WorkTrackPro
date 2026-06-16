@@ -7,6 +7,11 @@ export const JOB_COSTING_BASE = `${ACCOUNTING_BASE}/job-costing`;
 export const DIMENSIONS_BASE = `${ACCOUNTING_BASE}/dimensions`;
 export const RECURRING_BASE = `${ACCOUNTING_BASE}/recurring`;
 export const INVENTORY_BASE = `${ACCOUNTING_BASE}/inventory`;
+/** Inventory ↔ Accounting reconciliation & cost-sync screen (under the Inventory area). */
+export const INVENTORY_RECONCILE_BASE = `${INVENTORY_BASE}/reconcile`;
+/** Absolute path to one stock item's reconciliation detail. */
+export const inventoryReconcileItemPath = (sourceInventoryId: string): string =>
+  `${INVENTORY_RECONCILE_BASE}/items/${sourceInventoryId}`;
 export const BUDGETS_BASE = `${ACCOUNTING_BASE}/budgets`;
 export const FIXED_ASSETS_BASE = `${ACCOUNTING_BASE}/fixed-assets`;
 export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
@@ -260,6 +265,24 @@ export const ACCOUNTING_QUERY_KEYS = {
   inventoryConsumableJobs: ['accounting', 'inventory', 'consumable-jobs'] as const,
   inventoryCogsEvents: (jobId?: string) =>
     ['accounting', 'inventory', 'cogs-events', jobId ?? 'all'] as const,
+  // ── Inventory ↔ Accounting reconciliation & cost sync. All hang under the
+  // `inventory` subtree root above, so the seed / gated-revaluation mutations (which
+  // change on-hand cost basis + GL 1300) invalidate the whole subtree at once — and,
+  // because they post a balanced JE, ALSO journal + reports (see useAccountingMutations).
+  inventoryReconciliation: ['accounting', 'inventory', 'reconciliation'] as const,
+  inventoryReconciliationItem: (sourceInventoryId: string) =>
+    ['accounting', 'inventory', 'reconciliation', sourceInventoryId] as const,
+  inventoryReconciliationHeader: ['accounting', 'inventory', 'reconciliation', 'header'] as const,
+  inventoryRevaluationsPending: (sourceInventoryId?: string) =>
+    ['accounting', 'inventory', 'revaluations', 'pending', sourceInventoryId ?? 'all'] as const,
+  inventoryRevaluationsByStatus: (status: string) =>
+    ['accounting', 'inventory', 'revaluations', 'status', status] as const,
+  inventorySeedPreview: (asOf?: string) =>
+    ['accounting', 'inventory', 'seed-preview', asOf ?? 'today'] as const,
+  inventoryPriceHistory: (inventoryId: string) =>
+    ['accounting', 'inventory', 'price-history', inventoryId] as const,
+  inventoryPriceHistoryRecent: (source?: string) =>
+    ['accounting', 'inventory', 'price-history', 'recent', source ?? 'all'] as const,
   // ── Books-closed (period lock) date (D1). A single scalar value (the lock date or
   // null). Setting it does not move money, but it changes WHICH dates the journal +
   // reports may be posted/voided into, so the setter mutation invalidates this key

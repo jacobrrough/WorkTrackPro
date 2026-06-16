@@ -19,6 +19,10 @@ import {
   taxJurisdictionsService,
   fixedAssetsService,
   inventoryCogsService,
+  inventoryPriceHistoryService,
+  inventoryReconciliationService,
+  inventoryRevaluationsService,
+  inventorySeederService,
   invoicesService,
   invoiceEmailsService,
   jobCostingService,
@@ -41,6 +45,8 @@ import type {
   CustomFieldEntityType,
   DateRange,
   DimensionType,
+  InventoryPriceChangeSource,
+  InventoryRevaluationStatus,
   TaxTableDrift,
   TaxTableDriftStatus,
 } from '../types';
@@ -669,6 +675,86 @@ export function useJobCogsEvents(jobId?: string) {
   return useQuery({
     queryKey: ACCOUNTING_QUERY_KEYS.inventoryCogsEvents(jobId),
     queryFn: () => inventoryCogsService.listCogsEvents(jobId),
+  });
+}
+
+// ── Inventory ↔ Accounting reconciliation & cost sync ─────────────────────────
+// Read-only views over the operational stock vs. the FIFO valuation + the gated
+// revaluation queue + the append-only price-history feed. The money paths (seed,
+// post-revaluation) are mutations (useAccountingMutations); these only read.
+
+/** The reconciliation grid: per-item operational ↔ accounting variance, flags, pending reval. */
+export function useInventoryReconciliation() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.inventoryReconciliation,
+    queryFn: () => inventoryReconciliationService.grid(),
+  });
+}
+
+/** One stock item's reconciliation row (detail drill-down). */
+export function useInventoryReconciliationItem(sourceInventoryId: string | undefined) {
+  return useQuery({
+    queryKey: sourceInventoryId
+      ? ACCOUNTING_QUERY_KEYS.inventoryReconciliationItem(sourceInventoryId)
+      : ['accounting', 'inventory', 'reconciliation', 'none'],
+    queryFn: () => inventoryReconciliationService.getRowFor(sourceInventoryId as string),
+    enabled: !!sourceInventoryId,
+  });
+}
+
+/** The header tie: Σ asset value vs. the live GL 1300 balance (+ Σ op value, Σ pending reval). */
+export function useInventoryReconciliationHeader() {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.inventoryReconciliationHeader,
+    queryFn: () => inventoryReconciliationService.header(),
+  });
+}
+
+/** The pending gated-revaluation queue (the batch-post panel), optionally per stock item. */
+export function usePendingInventoryRevaluations(sourceInventoryId?: string) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.inventoryRevaluationsPending(sourceInventoryId),
+    queryFn: () => inventoryRevaluationsService.listPending(sourceInventoryId),
+  });
+}
+
+/** Revaluation rows by status (default 'posted') — the revaluation history/audit view. */
+export function useInventoryRevaluationsByStatus(status: InventoryRevaluationStatus = 'posted') {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.inventoryRevaluationsByStatus(status),
+    queryFn: () => inventoryRevaluationsService.listByStatus(status),
+  });
+}
+
+/**
+ * Dry-run preview of the opening-balance seed (totals + per-item rows + exceptions). Reads
+ * WITHOUT writing — the actual seed is a mutation. Disabled until `enabled` so the preview
+ * only runs when the user opens the seed panel. `asOf` defaults to today.
+ */
+export function useInventorySeedPreview(asOf?: string, enabled = true) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.inventorySeedPreview(asOf),
+    queryFn: () => inventorySeederService.preview(asOf),
+    enabled,
+  });
+}
+
+/** Per-item cost-change history (newest first) — for the inventory/item detail feed. */
+export function useInventoryPriceHistory(inventoryId: string | undefined) {
+  return useQuery({
+    queryKey: inventoryId
+      ? ACCOUNTING_QUERY_KEYS.inventoryPriceHistory(inventoryId)
+      : ['accounting', 'inventory', 'price-history', 'none'],
+    queryFn: () => inventoryPriceHistoryService.listForInventory(inventoryId as string),
+    enabled: !!inventoryId,
+  });
+}
+
+/** Recent cost changes across all stock items (the reconciliation activity feed). */
+export function useRecentInventoryPriceHistory(source?: InventoryPriceChangeSource) {
+  return useQuery({
+    queryKey: ACCOUNTING_QUERY_KEYS.inventoryPriceHistoryRecent(source),
+    queryFn: () => inventoryPriceHistoryService.listRecent(200, source),
   });
 }
 

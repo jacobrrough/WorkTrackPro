@@ -13,6 +13,8 @@ import {
   dimensionsService,
   fixedAssetsService,
   inventoryCogsService,
+  inventoryRevaluationsService,
+  inventorySeederService,
   invoicesService,
   invoiceEmailsService,
   estimatesService,
@@ -669,6 +671,70 @@ export function useConsumeJobCogs() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // The job now carries booked COGS → its job-costing detail changed.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+// ── Inventory ↔ Accounting reconciliation & cost sync ─────────────────────────
+// Two money/state actions. Seeding opening balances posts a BALANCED opening JE
+// (Dr 1300 / Cr 3050). Posting a gated revaluation batch posts a BALANCED reval JE
+// (Dr/Cr 1300 ↔ 1310 by net) AND re-marks the open FIFO layers. Both change on-hand
+// cost basis + GL 1300, so each invalidates the inventory subtree (valuation +
+// reconciliation + the pending queue) PLUS journal + reports — the same fan-out the
+// AR/AP/COGS money mutations use, all scoped under ['accounting', ...].
+
+/**
+ * Post the gated revaluation batch (the reconciliation "post pending revaluations" action).
+ * The RPC posts ONE balanced JE for the net movement and re-marks the affected items' open
+ * layers to the new cost. A null journalEntryId means the batch netted to zero cents (no JE
+ * posted, rows still closed). Invalidates inventory + journal + reports.
+ */
+export function usePostInventoryRevaluation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (revaluationIds: string[]) =>
+      inventoryRevaluationsService.postBatch(revaluationIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.inventory });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      // The reval moves the inventory asset (1300) ↔ revaluation (1310) on the statements.
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+    },
+  });
+}
+
+/** Post EVERY currently-pending revaluation (the "post all" convenience action). */
+export function usePostAllInventoryRevaluations() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => inventoryRevaluationsService.postAllPending(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.inventory });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+    },
+  });
+}
+
+/**
+ * Seed opening inventory balances (the reconciliation "seed opening balances" confirm
+ * action). Posts ONE balanced opening JE (Dr 1300 = Σ in_stock × price / Cr 3050) and
+ * creates the opening FIFO layers. Idempotent — a prior opening JE yields
+ * `alreadySeeded: true` and posts nothing. `asOf` is the opening-balance date (defaults to
+ * today). Invalidates inventory + journal + reports.
+ *
+ * NOTE: the DRY-RUN preview is a query (useInventorySeedPreview), not this mutation — this
+ * hook is the real, writing seed (p_dry_run = false).
+ */
+export function useSeedOpeningInventory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (asOf?: string) => inventorySeederService.seed(asOf),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.inventory });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      // Opening JE establishes the 1300 / 3050 balances → refresh statements.
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
     },
   });
 }

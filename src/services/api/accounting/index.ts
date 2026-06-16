@@ -27,6 +27,11 @@ export { dimensionsService } from './dimensions';
 export { recurringTemplatesService } from './recurringTemplates';
 // ── Inventory valuation (FIFO) → COGS (B3) ────────────────────────────────────
 export { inventoryCogsService } from './inventoryCogs';
+// ── Inventory ↔ Accounting reconciliation & cost sync ─────────────────────────
+export { inventoryReconciliationService } from './inventoryReconciliation';
+export { inventoryRevaluationsService } from './inventoryRevaluations';
+export { inventorySeederService } from './inventorySeeder';
+export { inventoryPriceHistoryService } from './inventoryPriceHistory';
 // ── Budgeting & forecasting (D2) ──────────────────────────────────────────────
 export { budgetsService } from './budgets';
 // ── Fixed assets & depreciation (D3) ──────────────────────────────────────────

@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useInventoryValuationItem } from '../hooks/useAccountingQueries';
-import { INVENTORY_BASE } from '../constants';
+import { INVENTORY_BASE, inventoryReconcileItemPath } from '../constants';
 import { formatMoney, formatQty, formatUnitCost } from './inventoryFormat';
+import { PriceHistoryFeed } from './PriceHistoryFeed';
 
 /**
  * B3 — per-stock-item inventory valuation detail. Read-only drill-down from the
@@ -152,7 +153,18 @@ export default function InventoryValuationItemView() {
               COGS from the work list.
             </p>
 
-            <div className="flex justify-end">
+            {/* Per-unit cost-change history (synced manual edits, bill receipts, seed, revals). */}
+            <PriceHistoryFeed inventoryId={row.sourceInventoryId} />
+
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="balance"
+                onClick={() => navigate(inventoryReconcileItemPath(row.sourceInventoryId))}
+              >
+                Reconcile
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"

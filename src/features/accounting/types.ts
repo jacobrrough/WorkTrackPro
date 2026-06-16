@@ -2247,6 +2247,219 @@ export interface FifoConsumeResult {
   draws: FifoDraw[];
 }
 
+// ── Inventory ↔ Accounting reconciliation & cost sync ─────────────────────────
+//
+// Reconciles the operationally-entered stock (public.inventory) against the accounting
+// FIFO valuation (accounting.v_inventory_valuation → GL 1300), keeps the ONE per-unit
+// COST synced on both sides automatically, records every price change, and seeds opening
+// balances so 1300 ties to real on-hand stock. Backed by migrations 20260616000001–04.
+//
+// COST/MONEY (G6): public.inventory.price IS the per-unit cost (a VERIFIED FACT). It is
+// plain `numeric` in the DB (no fixed scale), so prices/deltas are plain dollars at this
+// boundary; all variance/delta/seed-total aggregation runs in integer cents in
+// inventoryReconcileMath.ts so nothing drifts on floating-point error. The DB owns the
+// authoritative postings — these types model the read views + the gated-reval / seeder
+// RPC payloads the services wrap.
+
+/**
+ * One row of accounting.v_inventory_reconciliation — per source_inventory_id, the
+ * operational side (in_stock, unit cost, op_value = in_stock × price) joined against the
+ * accounting FIFO valuation (qty_on_hand, asset_value, avg cost) with variances, the open
+ * pending-revaluation amount, and exception flags. A FULL OUTER JOIN, so uncosted stock
+ * (no FIFO layer) and orphan layers both surface.
+ */
+export interface InventoryReconciliationRow {
+  /** public.inventory id — the crosswalk/match key. */
+  sourceInventoryId: string;
+  /** public.inventory.name (read-only join); may be empty for an orphan layer. */
+  inventoryName: string;
+  /** public.inventory.unit (e.g. "ea", "ft"); nullable. */
+  unit: string | null;
+  /** public.inventory.vendor; nullable. */
+  vendor: string | null;
+  /** Operational on-hand units (public.inventory.in_stock). May be negative by design. */
+  inStock: number;
+  /** Operational per-unit cost (public.inventory.price); null when uncosted operationally. */
+  unitPrice: number | null;
+  /** Operational value = in_stock × price (price IS the unit cost), in dollars. */
+  opValue: number;
+  /** Accounting FIFO on-hand units (Σ qty_remaining across open layers). */
+  qtyOnHand: number;
+  /** Accounting FIFO asset value in dollars (ties to GL 1300). */
+  assetValue: number;
+  /** Weighted-average unit cost of open layers (asset_value ÷ qty_on_hand), 0 when none. */
+  avgUnitCost: number;
+  /** Quantity variance = operational in_stock − accounting qty_on_hand. */
+  qtyVariance: number;
+  /** Value variance = operational op_value − accounting asset_value, in dollars. */
+  valueVariance: number;
+  /** Σ delta_amount of this item's PENDING revaluations (the un-posted GL move), in dollars. */
+  pendingRevalAmount: number;
+  /** Count of this item's PENDING revaluation rows (normally 0 or 1). */
+  pendingRevalCount: number;
+  /** No FIFO layer exists for this stock (uncosted on the accounting side). */
+  uncosted: boolean;
+  /** Operational price is null (cannot value or seed). */
+  nullPrice: boolean;
+  /** Operational on-hand is negative (allowed by design; flagged for attention). */
+  negativeStock: boolean;
+  /** Operational on-hand ≠ accounting on-hand (a quantity discrepancy to investigate). */
+  qtyMismatch: boolean;
+}
+
+/**
+ * The reconciliation header tie (accounting.v_inventory_reconciliation_header — one row):
+ * Σ accounting asset value vs. the LIVE GL 1300 balance, plus Σ operational value and Σ
+ * pending revaluation. `assetValueVsGlVariance` should be 0 once everything is posted;
+ * legacy/uncosted stock can make it diverge (surfaced as row flags, not an error).
+ */
+export interface InventoryReconciliationHeader {
+  /** Σ asset_value across all reconciliation rows (the FIFO inventory asset), in dollars. */
+  totalAssetValue: number;
+  /** Σ op_value across all rows (operational in_stock × price), in dollars. */
+  totalOpValue: number;
+  /** Σ pending_reval_amount across all rows (un-posted GL movement queued), in dollars. */
+  totalPendingReval: number;
+  /** The live GL 1300 balance from posted journal lines (via v_trial_balance), in dollars. */
+  gl1300Balance: number;
+  /** totalAssetValue − gl1300Balance. 0 when the asset subledger ties to the GL. */
+  assetValueVsGlVariance: number;
+}
+
+/** Lifecycle of a queued inventory revaluation. */
+export type InventoryRevaluationStatus = 'pending' | 'posted' | 'void';
+
+/**
+ * One accounting.inventory_revaluations row — a GATED cost revaluation for stock already
+ * on hand (decision 1, "Gated revaluation"). Enqueued by the price-sync trigger when the
+ * per-unit cost changes; the cost VALUE already synced on both sides, but the JOURNAL
+ * ENTRY that moves GL 1300 is posted later in an APPROVED batch via
+ * accounting.post_inventory_revaluation. At most ONE pending row per stock item (successive
+ * edits collapse into it, carrying the latest target cost).
+ */
+export interface InventoryRevaluation {
+  id: string;
+  /** public.inventory id this revaluation is for (the crosswalk key). */
+  sourceInventoryId: string;
+  /** Representative accounting.items id (reporting); nullable when unmapped. */
+  itemId: string | null;
+  /** Cost basis as of the first enqueue (what the open layers were carried at), in dollars. */
+  oldCost: number;
+  /** Target per-unit cost to revalue to (the latest synced price), in dollars. */
+  newCost: number;
+  /** On-hand qty snapshot from open FIFO layers at enqueue (refreshed on re-enqueue). */
+  onHandQty: number;
+  /** Δ = on_hand_qty × (new_cost − old_cost), the previewed GL movement, in dollars. */
+  deltaAmount: number;
+  status: InventoryRevaluationStatus;
+  /** The balanced revaluation JE this row posted in; null while pending or for a zero-Δ post. */
+  journalEntryId: string | null;
+  reason: string | null;
+  enqueuedAt: string;
+  postedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Result of posting a gated revaluation batch (accounting.post_inventory_revaluation).
+ * `journalEntryId` is the single balanced JE posted for the batch (Dr/Cr 1300 ↔ 1310 by
+ * net sign), or null when the batch netted to zero cents (no GL movement — rows still
+ * closed). Skips ids that are not pending, so a re-run is a no-op.
+ */
+export interface PostRevaluationResult {
+  /** The posted revaluation JE id, or null for a net-zero (no-op) batch. */
+  journalEntryId: string | null;
+  /** True when at least one targeted id was still pending and got posted/closed. */
+  posted: boolean;
+  error?: string;
+}
+
+/**
+ * One public.inventory_price_history row — an append-only record of a per-unit COST change
+ * on a stock item, with its source. The log is written only by the DB trigger (manual UI
+ * edit, bill receipt, opening seed, or a revaluation post); the app reads it read-only.
+ */
+export type InventoryPriceChangeSource = 'manual' | 'bill' | 'seed' | 'reval';
+
+export interface InventoryPriceHistoryEntry {
+  id: string;
+  /** public.inventory id whose price changed. */
+  inventoryId: string;
+  /** Cost before the change, in dollars; null when the prior price was null. */
+  oldPrice: number | null;
+  /** Cost after the change, in dollars; null when cleared to null. */
+  newPrice: number | null;
+  /** newPrice − oldPrice (null-coalesced to 0 on either side), in dollars. */
+  changeAmount: number;
+  /** Where the change originated. */
+  source: InventoryPriceChangeSource;
+  /** auth.uid() captured at change time; null when unattributed (e.g. system path). */
+  userId: string | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+/** One per-item line of the opening-balance seeder preview (a row that WILL be seeded). */
+export interface SeedOpeningInventoryPreviewRow {
+  sourceInventoryId: string;
+  /** public.inventory.name. */
+  name: string;
+  /** Units to seed (public.inventory.in_stock). */
+  inStock: number;
+  /** Per-unit opening cost (public.inventory.price). */
+  unitCost: number;
+  /** Extended opening value = in_stock × unit_cost, in dollars. */
+  extended: number;
+}
+
+/** Why a stock row was EXCLUDED from the opening seed (reported, never seeded). */
+export type SeedOpeningInventoryExceptionReason = 'null_price' | 'non_positive_stock' | 'unknown';
+
+/** One per-item line of the seeder's exceptions list (a row that CANNOT be seeded). */
+export interface SeedOpeningInventoryExceptionRow {
+  sourceInventoryId: string;
+  name: string;
+  /** public.inventory.in_stock (may be null/<=0 — part of why it's an exception). */
+  inStock: number | null;
+  /** public.inventory.price (null is itself an exception reason). */
+  price: number | null;
+  reason: SeedOpeningInventoryExceptionReason;
+}
+
+/**
+ * Result of accounting.seed_opening_inventory_layers(as_of, dry_run). On a dry run nothing
+ * is written: `preview` lists the rows that WOULD seed and `exceptions` the rows that
+ * cannot (null price / non-positive stock), with totals. On a real run (dry_run=false) it
+ * seeds the opening FIFO layers and posts ONE balanced opening JE (Dr 1300 = Σ extended /
+ * Cr 3050) — unless `alreadySeeded` (a prior opening JE exists), in which case nothing
+ * posts. Idempotent: a second real run reports `alreadySeeded` and writes nothing more.
+ */
+export interface SeedOpeningInventoryResult {
+  /** The opening-balance as-of date echoed back (`YYYY-MM-DD`). */
+  asOf: string;
+  /** True when this was a preview (no writes); false when it actually seeded. */
+  dryRun: boolean;
+  /** True when a prior opening JE already exists → the seeder posted nothing. */
+  alreadySeeded: boolean;
+  /** True when a real run actually posted the opening JE. */
+  posted: boolean;
+  /** The posted opening JE id, when posted; null otherwise. */
+  journalEntryId: string | null;
+  /** Σ in_stock across the eligible rows. */
+  totalQty: number;
+  /** Σ(in_stock × price) across the eligible rows, in dollars (the opening JE amount). */
+  totalValue: number;
+  /** Count of eligible (seedable) rows. */
+  itemCount: number;
+  /** The rows that will (or did) seed. */
+  preview: SeedOpeningInventoryPreviewRow[];
+  /** The rows excluded from seeding, with the reason. */
+  exceptions: SeedOpeningInventoryExceptionRow[];
+  error?: string;
+}
+
 // ── Budgeting & forecasting (D2) ──────────────────────────────────────────────
 //
 // A BUDGET is a named plan for a fiscal year (accounting.budgets). Its cells live in

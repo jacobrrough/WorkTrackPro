@@ -155,6 +155,14 @@ const InventoryCogsWorklistView = lazyWithRetry(
   () => import('./inventory/InventoryCogsWorklistView'),
   'InventoryCogsWorklistView'
 );
+const InventoryReconciliationView = lazyWithRetry(
+  () => import('./inventory/InventoryReconciliationView'),
+  'InventoryReconciliationView'
+);
+const InventoryReconciliationItemView = lazyWithRetry(
+  () => import('./inventory/InventoryReconciliationItemView'),
+  'InventoryReconciliationItemView'
+);
 const AccountingSettingsView = lazyWithRetry(
   () => import('./settings/AccountingSettingsView'),
   'AccountingSettingsView'
@@ -279,6 +287,13 @@ export default function AccountingRouter() {
         <Route path="recurring/:templateId" element={<RecurringTemplateEditView />} />
         <Route path="inventory" element={<InventoryValuationView />} />
         <Route path="inventory/cogs" element={<InventoryCogsWorklistView />} />
+        {/* Reconciliation hub + per-item detail. Static `reconcile` segments rank above the
+            `inventory/items/:sourceInventoryId` valuation drill-down below. */}
+        <Route path="inventory/reconcile" element={<InventoryReconciliationView />} />
+        <Route
+          path="inventory/reconcile/items/:sourceInventoryId"
+          element={<InventoryReconciliationItemView />}
+        />
         <Route path="inventory/items/:sourceInventoryId" element={<InventoryValuationItemView />} />
         <Route path="settings" element={<AccountingSettingsView />} />
         {/* TAX-SYNC (ADVISORY-ONLY) — accounting_admin-only screens under Settings. */}
