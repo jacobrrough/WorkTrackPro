@@ -3,8 +3,10 @@
 -- Bridges the EXISTING public job-consumption moment to double-entry COGS, additively.
 --
 -- WHY THIS SHAPE
---   public.inventory has NO cost column (only `price`, the SELL price), so a FIFO COST
---   basis cannot come from public.*. It is captured on the accounting side when stock is
+--   public.inventory.`price` IS a per-unit COST (the vendor price per unit, used directly
+--   as the material cost in quoting) — but it holds only ONE current value, not the
+--   per-receipt cost layering a FIFO basis needs, so a FIFO COST basis still cannot come
+--   from public.*. The per-layer cost is captured on the accounting side when stock is
 --   received via a bill: accounting.bill_lines.unit_cost. This migration therefore:
 --     1) accounting.inventory_layers  — one open FIFO cost layer per received bill line
 --        (qty_received, qty_remaining, unit_cost), keyed back to public.inventory by the
