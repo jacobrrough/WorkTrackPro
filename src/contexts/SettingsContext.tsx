@@ -68,14 +68,25 @@ function sanitizeBranding(
   partial: Partial<BrandingSettings> | null | undefined
 ): BrandingSettings {
   const src = partial && typeof partial === 'object' ? partial : {};
-  const pick = (key: keyof BrandingSettings) =>
-    typeof src[key] === 'string' ? (src[key] as string) : base[key];
+  // Only the string-valued branding fields go through pick (documentTemplate is handled below).
+  const pick = (
+    key: 'companyName' | 'companyAddress' | 'companyPhone' | 'companyEmail' | 'logoDataUrl'
+  ): string => (typeof src[key] === 'string' ? (src[key] as string) : (base[key] as string));
+  // Preserve the opaque documentTemplate blob: carry through the incoming value when
+  // it is an object, otherwise keep the base. resolveTemplateConfig reads it
+  // defensively, so we deliberately do not deep-validate it here — we just must not
+  // drop it (rebuilding from only the string fields silently erased it on every load).
+  const documentTemplate =
+    src.documentTemplate && typeof src.documentTemplate === 'object'
+      ? src.documentTemplate
+      : base.documentTemplate;
   return {
     companyName: pick('companyName'),
     companyAddress: pick('companyAddress'),
     companyPhone: pick('companyPhone'),
     companyEmail: pick('companyEmail'),
     logoDataUrl: pick('logoDataUrl'),
+    documentTemplate,
   };
 }
 

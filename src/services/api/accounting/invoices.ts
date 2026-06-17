@@ -65,6 +65,7 @@ function lineRows(invoiceId: string, lines: NewInvoiceLineInput[]): Record<strin
     return {
       invoice_id: invoiceId,
       item_id: l.itemId ?? null,
+      part_id: l.partId ?? null,
       description: l.description ?? null,
       quantity: l.quantity ?? 1,
       unit_price: l.unitPrice ?? 0,
@@ -227,6 +228,7 @@ export const invoicesService = {
     if (input.taxCodeId !== undefined) patch.tax_code_id = input.taxCodeId;
     if (input.memo !== undefined) patch.memo = input.memo;
     if (input.notes !== undefined) patch.notes = input.notes;
+    if (input.layout !== undefined) patch.layout = input.layout;
 
     const { error: uErr } = await acct().from('invoices').update(patch).eq('id', id);
     if (uErr) return { invoice: null, error: uErr.message };
@@ -337,11 +339,26 @@ export const invoicesService = {
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   },
+
+  /**
+   * Void a sent invoice and clone it into a fresh DRAFT via
+   * accounting.void_and_reissue_invoice (atomic). The RPC guards amount_paid=0 and
+   * rejects draft/void/paid invoices; it returns the NEW draft invoice id so the UI
+   * can navigate to it (the reissued draft still needs SENDING to post its JE).
+   */
+  async voidAndReissue(id: string): Promise<{ invoiceId: string | null; error?: string }> {
+    const { data, error } = await acct().rpc('void_and_reissue_invoice', { p_invoice_id: id });
+    if (error) return { invoiceId: null, error: error.message };
+    const invoiceId = typeof data === 'string' ? data : data == null ? null : String(data);
+    if (!invoiceId) return { invoiceId: null, error: 'Reissue did not return a draft invoice.' };
+    return { invoiceId };
+  },
 };
 
 /** Adapt a persisted InvoiceLine back to the create/update input shape. */
 function toLineInput(l: {
   itemId: string | null;
+  partId: string | null;
   description: string | null;
   quantity: number;
   unitPrice: number;
@@ -357,6 +374,7 @@ function toLineInput(l: {
 }): NewInvoiceLineInput {
   return {
     itemId: l.itemId,
+    partId: l.partId,
     description: l.description,
     quantity: l.quantity,
     unitPrice: l.unitPrice,

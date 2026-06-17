@@ -220,6 +220,25 @@ export function useVoidInvoice() {
   });
 }
 
+/**
+ * Void-and-reissue an invoice: voids the original (reversing its posted JE) and issues a
+ * replacement. Because the ledger/reports move, this invalidates the same subtree as
+ * useVoidInvoice — invoices + journal + reports + jobCosting.
+ */
+export function useVoidAndReissueInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => invoicesService.voidAndReissue(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+      // Reissuing a job-linked invoice moves that job's revenue/margin.
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
 // ── Customer payments ────────────────────────────────────────────────────────
 /**
  * Record a customer payment: posts the balanced receipt JE (Dr Cash/Undeposited /
@@ -1095,6 +1114,18 @@ export function useConvertEstimate() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
     },
+  });
+}
+
+/**
+ * Reissue an estimate (supersede the original with a fresh revision). No JE posts — estimates
+ * move no money — so this stays within the estimates subtree, invalidating only that key set.
+ */
+export function useReissueEstimate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.reissue(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
   });
 }
 

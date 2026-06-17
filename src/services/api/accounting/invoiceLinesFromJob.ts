@@ -100,6 +100,47 @@ function findPart(parts: Part[], link: { partId?: string; partNumber?: string })
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
+/**
+ * Quote a single part at a given set count, the shared part-pricing core. Reuses
+ * `calculatePartQuote` with the same rate inputs the QuoteCalculator/PartDetail use, so the
+ * total matches the on-screen calculator exactly. A stored `pricePerSet` anchors the quote
+ * (manualSetPrice); a stored `laborHours` overrides labor only when there is no manual price.
+ * Returns null when the part cannot be quoted (no quote or a non-positive total).
+ */
+export function quotePartLine(
+  part: Part,
+  sets: number,
+  inventory: InventoryItem[],
+  settings: QuoteRateSettings
+): { description: string; unitPrice: number; lineTotal: number } | null {
+  const manualSetPrice =
+    typeof part.pricePerSet === 'number' &&
+    Number.isFinite(part.pricePerSet) &&
+    part.pricePerSet > 0
+      ? part.pricePerSet
+      : undefined;
+
+  const quote = calculatePartQuote(part as Part & { variants?: PartVariant[] }, sets, inventory, {
+    laborRate: settings.laborRate,
+    cncRate: settings.cncRate,
+    printer3DRate: settings.printer3DRate,
+    materialMultiplier: settings.materialMultiplier,
+    manualSetPrice,
+    overrideLaborHours:
+      part.laborHours != null && Number.isFinite(part.laborHours) && manualSetPrice == null
+        ? part.laborHours
+        : undefined,
+  });
+  if (!quote || quote.total <= 0) return null;
+
+  const lineTotal = round2(quote.total);
+  return {
+    description: `${part.partNumber}${part.name ? ` — ${part.name}` : ''} (${sets} set${sets === 1 ? '' : 's'})`,
+    unitPrice: round2(lineTotal / sets),
+    lineTotal,
+  };
+}
+
 export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): NewInvoiceLineInput[] {
   const { job, parts, inventory, settings, incomeAccountId, taxCodeId } = params;
   const lines: NewInvoiceLineInput[] = [];
@@ -125,30 +166,13 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
     const sets = setsForPart(part, link.dashQuantities);
     if (sets <= 0) continue;
 
-    const manualSetPrice =
-      typeof part.pricePerSet === 'number' &&
-      Number.isFinite(part.pricePerSet) &&
-      part.pricePerSet > 0
-        ? part.pricePerSet
-        : undefined;
-
-    const quote = calculatePartQuote(part as Part & { variants?: PartVariant[] }, sets, inventory, {
-      laborRate: settings.laborRate,
-      cncRate: settings.cncRate,
-      printer3DRate: settings.printer3DRate,
-      materialMultiplier: settings.materialMultiplier,
-      manualSetPrice,
-      overrideLaborHours:
-        part.laborHours != null && Number.isFinite(part.laborHours) && manualSetPrice == null
-          ? part.laborHours
-          : undefined,
-    });
-    if (!quote || quote.total <= 0) continue;
+    const quoted = quotePartLine(part, sets, inventory, settings);
+    if (!quoted) continue;
 
     partTotals.push({
-      description: `${part.partNumber}${part.name ? ` — ${part.name}` : ''} (${sets} set${sets === 1 ? '' : 's'})`,
+      description: quoted.description,
       sets,
-      total: round2(quote.total),
+      total: quoted.lineTotal,
     });
   }
 

@@ -189,10 +189,13 @@ export function reportToHtml(doc: ReportDocument): string {
  */
 export async function exportReportPdf(doc: ReportDocument): Promise<void> {
   const host = document.createElement('div');
-  // Keep it laid out (so html2canvas can measure) but off-screen.
+  // Keep it on-screen and painted (behind everything via z-index) so html2canvas
+  // captures real pixels. Parking it off-screen at left:-10000px makes the browser
+  // skip painting, which is what produced a blank PDF.
   host.style.position = 'fixed';
-  host.style.left = '-10000px';
+  host.style.left = '0';
   host.style.top = '0';
+  host.style.zIndex = '-1';
   host.style.width = '7.5in';
   host.style.background = '#ffffff';
   host.innerHTML = reportToHtml(doc);

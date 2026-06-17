@@ -2,6 +2,32 @@ import { supabase } from './supabaseClient';
 
 const ORG_SETTINGS_KEY = 'default';
 
+/**
+ * Self-contained shape of the optional document-template blob persisted on the
+ * branding record (stored as jsonb). The accounting document editor writes it
+ * and `resolveTemplateConfig` (under src/features/accounting/documents) reads it
+ * defensively, applying defaults at read time.
+ *
+ * NOTE: This is intentionally duplicated here rather than imported from
+ * src/features/accounting/* — adminSettings.ts is core and must stay free of any
+ * accounting-feature imports (even type-only). `sectionOrder` items are typed as
+ * a plain string[] to avoid pulling in the accounting `SalesDocSection` type.
+ */
+export interface BrandingDocumentTemplate {
+  accentColor?: string;
+  footerText?: string;
+  showLogo?: boolean;
+  columns?: {
+    qty?: boolean;
+    unitPrice?: boolean;
+    taxable?: boolean;
+  };
+  /** Ordered list of sales-doc section keys (typed loosely to avoid feature coupling). */
+  sectionOrder?: string[];
+  showMemo?: boolean;
+  showNotes?: boolean;
+}
+
 export interface BrandingRecord {
   companyName: string;
   companyAddress: string;
@@ -9,6 +35,11 @@ export interface BrandingRecord {
   companyEmail: string;
   /** Base64 data URL of the uploaded logo, or '' when none. */
   logoDataUrl: string;
+  /**
+   * Optional document-template overrides. Left undefined when unset;
+   * `resolveTemplateConfig` supplies the full set of defaults at read time.
+   */
+  documentTemplate?: BrandingDocumentTemplate | null;
 }
 
 export const EMPTY_BRANDING: BrandingRecord = {
@@ -35,6 +66,13 @@ export interface OrganizationSettingsRecord {
   branding: BrandingRecord;
 }
 
+function mapDocumentTemplate(raw: unknown): BrandingDocumentTemplate | undefined {
+  // Pass the blob through opaquely: the editor owns the schema and
+  // resolveTemplateConfig validates/defaults every field at read time.
+  if (!raw || typeof raw !== 'object') return undefined;
+  return raw as BrandingDocumentTemplate;
+}
+
 function mapBranding(raw: unknown): BrandingRecord {
   if (!raw || typeof raw !== 'object') return { ...EMPTY_BRANDING };
   const b = raw as Record<string, unknown>;
@@ -45,6 +83,7 @@ function mapBranding(raw: unknown): BrandingRecord {
     companyPhone: str(b.companyPhone),
     companyEmail: str(b.companyEmail),
     logoDataUrl: str(b.logoDataUrl),
+    documentTemplate: mapDocumentTemplate(b.documentTemplate),
   };
 }
 

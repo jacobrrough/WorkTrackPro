@@ -3,6 +3,8 @@
  * Postgres schema; row<->domain mapping lives in src/services/api/accounting/mappers.ts.
  */
 
+import type { PerDocLayout } from './documents/salesDocumentTypes';
+
 // ── Chart of accounts ────────────────────────────────────────────────────────
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 export type NormalBalance = 'debit' | 'credit';
@@ -240,6 +242,8 @@ export interface InvoiceLine {
   id: string;
   invoiceId: string;
   itemId: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId: string | null;
   description: string | null;
   quantity: number;
   unitPrice: number;
@@ -275,6 +279,8 @@ export interface Invoice {
   journalEntryId: string | null;
   memo: string | null;
   notes: string | null;
+  /** Per-document section-layout override (jsonb); null = fall back to the org/template default. */
+  layout: PerDocLayout | null;
   createdAt: string;
   updatedAt: string;
   // Optional hydrated fields for display
@@ -285,6 +291,8 @@ export interface Invoice {
 /** A line as supplied by the UI/job-importer before it has a DB id. */
 export interface NewInvoiceLineInput {
   itemId?: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId?: string | null;
   description?: string | null;
   quantity: number;
   unitPrice: number;
@@ -325,6 +333,8 @@ export interface UpdateInvoiceInput {
   taxCodeId?: string | null;
   memo?: string | null;
   notes?: string | null;
+  /** Per-document section-layout override; omit to leave unchanged, null clears it. */
+  layout?: PerDocLayout | null;
   lines?: NewInvoiceLineInput[];
 }
 
@@ -889,6 +899,8 @@ export interface EstimateLine {
   id: string;
   estimateId: string;
   itemId: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId: string | null;
   description: string | null;
   quantity: number;
   unitPrice: number;
@@ -926,6 +938,8 @@ export interface Estimate {
   acceptedAt: string | null;
   memo: string | null;
   notes: string | null;
+  /** Per-document section-layout override (jsonb); null = fall back to the org/template default. */
+  layout: PerDocLayout | null;
   createdAt: string;
   updatedAt: string;
   lines?: EstimateLine[];
@@ -935,6 +949,8 @@ export interface Estimate {
 /** A line as supplied by the UI/job-importer before it has a DB id. */
 export interface NewEstimateLineInput {
   itemId?: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId?: string | null;
   description?: string | null;
   quantity: number;
   unitPrice: number;
@@ -974,6 +990,8 @@ export interface UpdateEstimateInput {
   taxCodeId?: string | null;
   memo?: string | null;
   notes?: string | null;
+  /** Per-document section-layout override; omit to leave unchanged, null clears it. */
+  layout?: PerDocLayout | null;
   lines?: NewEstimateLineInput[];
 }
 
