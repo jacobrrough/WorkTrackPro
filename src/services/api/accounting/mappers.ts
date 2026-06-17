@@ -79,6 +79,7 @@ import type {
   VendorTaxInfo,
   FederalEntityType,
 } from '../../../features/accounting/types';
+import type { PerDocLayout } from '../../../features/accounting/documents/salesDocumentTypes';
 import { parseDiff } from '../../../features/accounting/taxTableDiff';
 
 /**
@@ -290,6 +291,7 @@ export function mapInvoiceLineRow(row: Row): InvoiceLine {
     id: str(row.id),
     invoiceId: str(row.invoice_id),
     itemId: nstr(row.item_id),
+    partId: nstr(row.part_id),
     description: nstr(row.description),
     quantity: num(row.quantity, 1),
     unitPrice: num(row.unit_price),
@@ -328,6 +330,7 @@ export function mapInvoiceRow(row: Row): Invoice {
     journalEntryId: nstr(row.journal_entry_id),
     memo: nstr(row.memo),
     notes: nstr(row.notes),
+    layout: (row.layout as PerDocLayout | null) ?? null,
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
     lines: rawLines
@@ -587,6 +590,11 @@ export function mapBankAccountRow(row: Row): BankAccount {
     updatedAt: str(row.updated_at),
     glAccountName: account ? str(account.name) : undefined,
     glAccountNumber: account ? nstr(account.account_number) : undefined,
+    // Plaid link columns (migration 20260617000200); null on a manual account.
+    plaidItemId: nstr(row.plaid_item_id),
+    plaidAccountId: nstr(row.plaid_account_id),
+    plaidMask: nstr(row.plaid_mask),
+    plaidSubtype: nstr(row.plaid_subtype),
   };
 }
 

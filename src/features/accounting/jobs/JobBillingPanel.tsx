@@ -98,6 +98,28 @@ export default function JobBillingPanel({ job }: { job: Job }) {
     job.owrNumber ? `OWR ${job.owrNumber}` : null,
   ].filter(Boolean) as string[];
 
+  // Billing roll-up derived from the already-fetched invoices — mirrors the server-side
+  // sync_job_paid_from_invoice trigger so an auto-'paid' job is legible here. "Paid" ⇔ at least
+  // one non-void, positive-total invoice AND no non-void invoice still carrying a balance.
+  const billableInvoices = invoices.filter((i) => i.status !== 'void' && i.total > 0);
+  const openInvoices = invoices.filter((i) => i.status !== 'void' && i.balanceDue > 0);
+  const totalDue = invoices.reduce(
+    (sum, i) => (i.status !== 'void' ? sum + Math.max(0, i.balanceDue) : sum),
+    0
+  );
+  const billingRollup: { label: string; tone: string } = invoicesPending
+    ? { label: 'Loading…', tone: 'text-slate-500' }
+    : billableInvoices.length === 0
+      ? { label: 'Not invoiced', tone: 'text-slate-500' }
+      : openInvoices.length === 0
+        ? { label: 'Paid', tone: 'text-emerald-400' }
+        : {
+            label: `${formatMoney(totalDue)} due across ${openInvoices.length} invoice${
+              openInvoices.length === 1 ? '' : 's'
+            }`,
+            tone: 'text-amber-300',
+          };
+
   return (
     <section className="rounded-md border border-[#4d3465] bg-[#261a32]/60 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -122,6 +144,12 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           </Link>
         </div>
       </div>
+
+      {/* Billing roll-up — mirrors the auto-paid trigger; explains a job that reads "Paid". */}
+      <p className="mb-3 flex items-center gap-2 text-sm">
+        <span className="text-slate-400">Billing:</span>
+        <span className={`font-semibold ${billingRollup.tone}`}>{billingRollup.label}</span>
+      </p>
 
       {/* Customer */}
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">

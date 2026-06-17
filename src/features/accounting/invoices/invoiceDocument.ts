@@ -188,8 +188,9 @@ export async function exportInvoicePdf(
 ): Promise<void> {
   const host = document.createElement('div');
   host.style.position = 'fixed';
-  host.style.left = '-10000px';
+  host.style.left = '0';
   host.style.top = '0';
+  host.style.zIndex = '-1'; // behind the app; painted but not seen
   host.style.width = '7.5in';
   host.style.background = '#ffffff';
   host.innerHTML = invoiceToHtml(doc, branding);

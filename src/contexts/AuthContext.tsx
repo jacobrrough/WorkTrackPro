@@ -2,11 +2,65 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/core/types';
 import { authService } from '@/services/api/auth';
+import { mfaService } from '@/services/api/mfa';
+import { adminSettingsService } from '@/services/api/adminSettings';
 import { withTimeout } from '@/lib/withTimeout';
 import { supabase } from '@/services/api/supabaseClient';
 import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
 import { cryptoKeyCache } from '@/lib/crypto/keyCache';
 import { encryptionKeyService } from '@/services/api/encryptionKeys';
+
+/**
+ * MFA gate state for a logged-in session. App.tsx (next stage) renders the gate;
+ * AuthContext only computes and exposes it — it never blocks the render itself,
+ * and signOut/logout always stay reachable so a user can never be wedged here.
+ *
+ *  - 'ok'        — session may enter the app (aal2, or MFA not required & no factor).
+ *  - 'challenge' — a verified factor exists; user must enter a 6-digit code.
+ *  - 'enroll'    — MFA is required but the user has no factor yet (forced setup).
+ */
+export type MfaGate = 'ok' | 'challenge' | 'enroll';
+
+// localStorage key SettingsContext persists org settings under — read here as a
+// synchronous fast-path so the gate doesn't flash 'ok' before the async confirm.
+const SETTINGS_STORAGE_KEY = 'worktrack-admin-settings';
+
+/**
+ * Whether THIS user must satisfy MFA.
+ *
+ * Scope note: WorkTrackPro projects no accounting role to the client — the
+ * `accounting_admin` Postgres role is server-side only (RLS / SECURITY DEFINER
+ * RPCs) and never lands on the `User` shape. So "required" is scoped to admins.
+ * If/when an accounting-role flag graduates onto `User`, OR it into the second
+ * clause here (e.g. `user.isAdmin || user.isAccounting`).
+ *
+ * `requireMfa` is the org kill-switch; undefined is treated as true (fail safe
+ * toward enforcing), so only an explicit `false` disables it.
+ */
+function mfaRequired(user: User | null, requireMfa: boolean | undefined): boolean {
+  if (!user) return false;
+  return requireMfa !== false && user.isAdmin === true;
+}
+
+/**
+ * Best-effort read of the org `requireMfa` flag from WITHIN AuthContext.
+ *
+ * AuthProvider sits ABOVE SettingsProvider in the tree, so it cannot call
+ * useSettings(). We read the localStorage cache synchronously and let callers
+ * pass an authoritative override (App.tsx, which IS inside SettingsProvider,
+ * forwards the live value via refreshMfaGate). Default is true (enforce) on any
+ * parse failure or absent value.
+ */
+function readCachedRequireMfa(): boolean {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return true;
+    const parsed = JSON.parse(raw) as { requireMfa?: unknown };
+    return parsed.requireMfa === false ? false : true;
+  } catch {
+    return true;
+  }
+}
 
 export interface AuthContextType {
   currentUser: User | null;
@@ -20,6 +74,22 @@ export interface AuthContextType {
   ) => Promise<boolean | 'needs_email_confirmation'>;
   resetPasswordForEmail: (email: string) => Promise<void>;
   logout: () => void;
+  /**
+   * MFA gate for the current session. 'ok' until a session exists and the gate
+   * has been computed. App.tsx renders the challenge/enroll UI off this; the app
+   * render is NOT blocked here.
+   */
+  mfaGate: MfaGate;
+  /** Verified TOTP factor id to challenge against (the 'challenge' gate), else null. */
+  mfaFactorId: string | null;
+  /** True while the gate is being (re)computed — lets the gate UI avoid a flash. */
+  mfaChecking: boolean;
+  /**
+   * Recompute the gate. Call after login, after enroll/verify succeeds, or when
+   * org settings load/change. Pass the authoritative `requireMfa` when known
+   * (App.tsx forwards it from SettingsContext); omit to use the cached value.
+   */
+  refreshMfaGate: (requireMfaOverride?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,7 +98,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [mfaGate, setMfaGate] = useState<MfaGate>('ok');
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaChecking, setMfaChecking] = useState(false);
   const queryClient = useQueryClient();
+
+  // Holds the most recent authoritative requireMfa value App.tsx forwards from
+  // SettingsContext, so internally-triggered refreshes (TOKEN_REFRESHED, etc.)
+  // reuse it instead of falling back to the localStorage cache.
+  const requireMfaRef = React.useRef<boolean | undefined>(undefined);
+  // Guards against an out-of-order refresh stomping a newer result.
+  const mfaRefreshSeq = React.useRef(0);
 
   // --- Session expiry guards ---
   // True once Supabase confirms a valid session this page load.
@@ -133,6 +213,129 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authService.resetPasswordForEmail(email);
   }, []);
 
+  /**
+   * Compute the MFA gate for the current session and publish it.
+   *
+   * Decision tree (exactly the order the spec mandates):
+   *   1. No live session            -> 'ok'  (nothing to gate; login screen shows)
+   *   2. Session is aal2            -> 'ok'  (already stepped up)
+   *   3. Has a verified factor      -> 'challenge'
+   *      (verified TOTP exists OR nextLevel can reach 'aal2')
+   *   4. MFA required for this user -> 'enroll' (forced first-time setup)
+   *   5. Otherwise                  -> 'ok'  (not required, no factor)
+   *
+   * Fail-safe posture: if the org requires MFA and the factor lookup ERRORS, we
+   * do NOT fall through to 'ok'. We send the user to 'challenge' when we know a
+   * factor exists, else 'enroll' — i.e. we never silently grant entry to a
+   * required user just because a network call failed. Conversely, when MFA is
+   * not required, an error degrades to 'ok' so a transient failure can't lock a
+   * non-required user out of the app.
+   */
+  const refreshMfaGate = useCallback(
+    async (requireMfaOverride?: boolean): Promise<void> => {
+      if (requireMfaOverride !== undefined) requireMfaRef.current = requireMfaOverride;
+      const seq = ++mfaRefreshSeq.current;
+      const apply = (gate: MfaGate, factorId: string | null) => {
+        // Ignore a stale resolution superseded by a newer refresh.
+        if (seq !== mfaRefreshSeq.current) return;
+        setMfaGate(gate);
+        setMfaFactorId(factorId);
+      };
+
+      setMfaChecking(true);
+      try {
+        // No live session => nothing to gate (e.g. logged out). The login screen
+        // is what renders in this state, not the gate.
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession(), 5000);
+        if (!session?.user) {
+          apply('ok', null);
+          return;
+        }
+
+        // Resolve the user we're gating. currentUser may not be set yet on the
+        // very first pass (state update is async), so fall back to a fresh read.
+        let user = currentUser;
+        if (!user) {
+          try {
+            user = await authService.checkAuth();
+          } catch {
+            user = null;
+          }
+        }
+
+        // Authoritative requireMfa, in priority order:
+        //   1) explicit override (App.tsx, live from SettingsContext)
+        //   2) the last override we cached on the ref
+        //   3) localStorage cache SettingsContext persists
+        //   4) a direct org-settings read (AuthContext is above SettingsProvider,
+        //      so this is our only in-context way to consult the source of truth)
+        //   5) default true (enforce)
+        // Only steps 1-3 short-circuit; if none are known we await the service.
+        let requireMfa = requireMfaOverride ?? requireMfaRef.current;
+        if (requireMfa === undefined) {
+          const cached = localStorage.getItem(SETTINGS_STORAGE_KEY);
+          if (cached !== null) {
+            requireMfa = readCachedRequireMfa();
+          } else {
+            try {
+              const org = await adminSettingsService.getOrganizationSettings();
+              requireMfa = org?.requireMfa ?? true;
+            } catch {
+              requireMfa = true;
+            }
+          }
+          requireMfaRef.current = requireMfa;
+        }
+        const required = mfaRequired(user, requireMfa);
+
+        let state: Awaited<ReturnType<typeof mfaService.getState>> | null = null;
+        try {
+          state = await mfaService.getState();
+        } catch (e) {
+          console.warn('MFA state lookup failed:', e);
+          // Fail safe: a required user with an unknown factor state must still be
+          // challenged/enrolled, never waved through. A non-required user degrades
+          // to 'ok' so a transient error can't lock them out.
+          apply(required ? 'enroll' : 'ok', null);
+          return;
+        }
+
+        // 2) Already stepped up.
+        if (state.currentLevel === 'aal2') {
+          apply('ok', state.factorId);
+          return;
+        }
+
+        // 3) A verified factor exists -> challenge for the code.
+        const hasVerifiedFactor = state.hasVerifiedFactor || state.nextLevel === 'aal2';
+        if (hasVerifiedFactor) {
+          apply('challenge', state.factorId);
+          return;
+        }
+
+        // 4) Required but no factor -> forced enrollment.
+        if (required) {
+          apply('enroll', null);
+          return;
+        }
+
+        // 5) Not required, no factor -> allowed in.
+        apply('ok', null);
+      } catch (e) {
+        // getSession itself failed (timeout/network). Treat as not-yet-known and
+        // fall back to the cached requirement so we still fail safe for admins.
+        console.warn('refreshMfaGate failed:', e);
+        const requireMfa = requireMfaOverride ?? requireMfaRef.current ?? readCachedRequireMfa();
+        apply(mfaRequired(currentUser, requireMfa) ? 'enroll' : 'ok', null);
+      } finally {
+        if (seq === mfaRefreshSeq.current) setMfaChecking(false);
+      }
+    },
+    [currentUser]
+  );
+
   // Hard logout: used when the system forces a sign-out (idle timeout, token
   // refresh failure, or Supabase killing the session unexpectedly).
   // Wipes login tokens from browser storage, then navigates to /app so there
@@ -214,6 +417,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     initApp();
   }, []);
+
+  // Recompute the MFA gate whenever the logged-in user changes.
+  //  - User present (login / hydrate / token refresh / user switch): compute the
+  //    gate from the live session + factor state.
+  //  - No user (logged out): reset to 'ok' and drop the factor id so the gate UI
+  //    never lingers over the login screen.
+  // Keyed on the user id (not the object identity) so an unrelated profile-object
+  // refresh doesn't thrash the gate. The gate itself only ever GATES; it never
+  // blocks render here, and logout/signOut stay reachable regardless.
+  useEffect(() => {
+    if (!currentUser) {
+      mfaRefreshSeq.current++; // cancel any in-flight refresh from a prior user
+      setMfaGate('ok');
+      setMfaFactorId(null);
+      setMfaChecking(false);
+      return;
+    }
+    void refreshMfaGate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- id is the stable identity; refreshMfaGate is stable per-user
+  }, [currentUser?.id]);
 
   // Auth state listener: session expiry and token refresh
   useEffect(() => {
@@ -336,6 +559,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     resetPasswordForEmail,
     logout,
+    mfaGate,
+    mfaFactorId,
+    mfaChecking,
+    refreshMfaGate,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

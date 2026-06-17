@@ -7,6 +7,7 @@ import { accountingSettingsService } from '@/services/api/accounting';
 import type { DunningConfig } from '../types';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
+import DocumentTemplateSettings from '../documents/DocumentTemplateSettings';
 import {
   useAccounts,
   useClosedThroughDate,
@@ -547,6 +548,29 @@ function DunningSettingsPanel() {
 }
 
 /**
+ * Document template — branding/layout for the customer-facing sales documents
+ * (estimates & invoices). The editor is self-contained: it loads the saved branding
+ * template, lets an admin tune the header/colors/layout, and persists it. Nothing here
+ * moves money. Wrapped in the standard heading + description so it reads like the other
+ * settings sections; the editor itself owns its Card/form chrome.
+ */
+function DocumentTemplatePanel() {
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-base font-bold text-white">
+        <span className="material-symbols-outlined text-primary">description</span>
+        Document template
+      </h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Customize how your estimates and invoices look to customers — header, logo, colors, and
+        layout. Changes apply to newly generated documents.
+      </p>
+      <DocumentTemplateSettings />
+    </div>
+  );
+}
+
+/**
  * D1 — Books-closed (period lock) date. Accounting-admin control to "close the books"
  * through a date: once set, the DB rejects posting or voiding any journal entry dated on
  * or before it (migration 20260601000016). The whole accounting module is already behind
@@ -653,6 +677,10 @@ export default function AccountingSettingsView() {
 
         <div className="border-t border-white/10 pt-5">
           <DefaultAccountsPanel />
+        </div>
+
+        <div className="border-t border-white/10 pt-5">
+          <DocumentTemplatePanel />
         </div>
 
         <div className="border-t border-white/10 pt-5">

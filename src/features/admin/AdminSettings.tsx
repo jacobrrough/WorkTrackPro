@@ -12,6 +12,7 @@ import {
 } from '@/lib/workHours';
 import { getCurrentPosition } from '@/lib/geoUtils';
 import { userService } from '@/services/api/users';
+import { supabase } from '@/services/api/supabaseClient';
 
 interface AdminSettingsProps {
   onNavigate: (view: ViewState) => void;
@@ -59,8 +60,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     settings.siteRadiusMeters != null ? String(settings.siteRadiusMeters) : '200'
   );
   const [enforceOnSiteAtLogin, setEnforceOnSiteAtLogin] = useState(settings.enforceOnSiteAtLogin);
+  const [requireMfa, setRequireMfa] = useState(settings.requireMfa);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [resettingMfaUserId, setResettingMfaUserId] = useState<string | null>(null);
   const [clearingBin, setClearingBin] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,12 +102,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       settings.siteRadiusMeters != null ? String(settings.siteRadiusMeters) : '200'
     );
     setEnforceOnSiteAtLogin(settings.enforceOnSiteAtLogin);
+    setRequireMfa(settings.requireMfa);
   }, [
     settings.requireOnSite,
     settings.siteLat,
     settings.siteLng,
     settings.siteRadiusMeters,
     settings.enforceOnSiteAtLogin,
+    settings.requireMfa,
   ]);
 
   const handleUseMyLocation = async () => {
@@ -246,6 +251,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       siteRadiusMeters:
         radiusNum != null && Number.isFinite(radiusNum) && radiusNum >= 10 ? radiusNum : null,
       enforceOnSiteAtLogin: enforceOnSiteAtLogin,
+      requireMfa: requireMfa,
     });
     if (result.success) {
       showToast('Settings saved for organization', 'success');
@@ -351,6 +357,58 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     }
   };
 
+  // Admin recovery path for a user locked out of 2FA: remove all their enrolled MFA
+  // factors via the service-role Netlify function so they can re-enroll on next login.
+  const handleResetMfa = async (userId: string, label: string) => {
+    if (!isAdmin) {
+      showToast('Admin access required', 'error');
+      return;
+    }
+    const confirmed = window.confirm(
+      `Reset two-factor authentication for ${label}? They will be asked to set it up again on their next login.`
+    );
+    if (!confirmed) return;
+
+    setResettingMfaUserId(userId);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showToast('Not authenticated', 'error');
+        return;
+      }
+
+      const response = await fetch('/api/reset-user-mfa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.ok) {
+        showToast(result?.error || `Failed to reset 2FA (HTTP ${response.status})`, 'error');
+        return;
+      }
+
+      const removed = typeof result.removed === 'number' ? result.removed : 0;
+      showToast(
+        removed > 0
+          ? `2FA reset — removed ${removed} factor(s)`
+          : 'No 2FA factors to remove for this user',
+        'success'
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to reset 2FA';
+      showToast(msg, 'error');
+    } finally {
+      setResettingMfaUserId(null);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col bg-slate-950">
       <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur">
@@ -450,14 +508,25 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         </p>
                         <p className="truncate text-xs text-slate-400">{u.email}</p>
                       </div>
-                      <button
-                        type="button"
-                        disabled={busyUserId === u.id || currentUser?.id === u.id}
-                        onClick={() => handleToggleAdmin(u.id, !u.isAdmin)}
-                        className="min-h-[44px] touch-manipulation rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-60"
-                      >
-                        {u.isAdmin ? 'Remove admin' : 'Make admin'}
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={resettingMfaUserId === u.id}
+                          onClick={() => handleResetMfa(u.id, u.name || u.email || 'this user')}
+                          className="min-h-[44px] touch-manipulation rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 disabled:opacity-60"
+                          title="Remove this user's 2FA factors so they can re-enroll (locked-out recovery)"
+                        >
+                          {resettingMfaUserId === u.id ? 'Resetting…' : 'Reset 2FA'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyUserId === u.id || currentUser?.id === u.id}
+                          onClick={() => handleToggleAdmin(u.id, !u.isAdmin)}
+                          className="min-h-[44px] touch-manipulation rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                        >
+                          {u.isAdmin ? 'Remove admin' : 'Make admin'}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -895,6 +964,40 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
           </div>
+
+          {isAdmin && (
+            <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+              <h2 className="mb-4 text-sm font-semibold text-white">Security</h2>
+              <p className="mb-4 text-xs text-slate-400">
+                Two-factor authentication adds a one-time code at login. Use &quot;Reset 2FA&quot;
+                on a user above to recover an account that&apos;s locked out of its authenticator.
+              </p>
+              <div className="space-y-4">
+                <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={requireMfa}
+                    onChange={(e) => setRequireMfa(e.target.checked)}
+                    className="size-5 rounded border-white/20 bg-white/5"
+                  />
+                  <span className="text-sm text-white">
+                    Require two-factor authentication (administrators)
+                  </span>
+                </label>
+                <p className="text-[10px] text-slate-500">
+                  When on, affected users must enroll and pass 2FA at login. Turn this off as an
+                  emergency kill-switch (e.g. an authenticator outage) to unblock logins.
+                </p>
+              </div>
+              <button
+                onClick={handleSave}
+                disabled={isSyncing}
+                className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+              >
+                {isSyncing ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

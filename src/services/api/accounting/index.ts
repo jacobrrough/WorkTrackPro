@@ -64,6 +64,16 @@ export { bankTransactionsService } from './bankTransactions';
 export type { ImportResult, BankTransactionFilter } from './bankTransactions';
 export { bankRulesService } from './bankRules';
 export { reconciliationsService } from './reconciliations';
+// ── Plaid bank feeds (Phase 0) — client seam over the plaid-* Netlify functions ─
+export { plaidService } from './plaid';
+export type {
+  PlaidItemStatus,
+  PlaidItemStatus_State,
+  PlaidLinkedAccount,
+  ExchangePublicTokenResult,
+  PlaidSyncResult,
+  PlaidSyncError,
+} from './plaid';
 export {
   parseBankFile,
   parseCsv,

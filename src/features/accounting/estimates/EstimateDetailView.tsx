@@ -1,19 +1,30 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
+import { FormField } from '@/components/ui/FormField';
+import { adminSettingsService } from '@/services/api/adminSettings';
 import { AccountingShell } from '../components/AccountingShell';
-import { LedgerTable } from '../components/LedgerTable';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { useEstimate } from '../hooks/useAccountingQueries';
 import {
   useAcceptEstimate,
   useConvertEstimate,
   useDeclineEstimate,
+  useReissueEstimate,
   useSendEstimate,
+  useUpdateEstimateDraft,
 } from '../hooks/useAccountingMutations';
 import { formatMoney } from '../accountingViewModel';
-import { ACCOUNTING_BASE } from '../constants';
-import { ESTIMATE_STATUS_LABELS, type EstimateLine, type EstimateStatus } from '../types';
+import SalesDocument from '../documents/SalesDocument';
+import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { useSalesDocumentEditor } from '../documents/useSalesDocumentEditor';
+import { estimateToSalesDocumentData } from '../documents/salesDocumentMappers';
+import { resolveTemplateConfig } from '../documents/templateConfig';
+import { exportSalesDocumentPdf } from '../documents/exportSalesDocumentPdf';
+import { salesDocumentFilenameBase } from '../documents/salesDocumentTypes';
+import { ACCOUNTING_BASE, ESTIMATES_BASE } from '../constants';
+import { ESTIMATE_STATUS_LABELS, type Estimate, type EstimateStatus } from '../types';
 
 const STATUS_STYLES: Record<EstimateStatus, string> = {
   draft: 'bg-white/10 text-slate-300',
@@ -24,19 +35,161 @@ const STATUS_STYLES: Record<EstimateStatus, string> = {
   converted: 'bg-violet-500/15 text-violet-400',
 };
 
-function sortedLines(lines: EstimateLine[] | undefined): EstimateLine[] {
-  return [...(lines ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+const inputClass =
+  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+
+/**
+ * Draft inline editor for an estimate — mirrors the invoice detail view's edit mode. Holds an
+ * editable header (estimate date, expiry, terms, memo, notes) + the shared line grid via
+ * useSalesDocumentEditor, derives live totals, and persists through useUpdateEstimateDraft with
+ * editor.toUpdateInput(). Lives in its own component so the editor hook only mounts once we have
+ * a non-null estimate to seed from (the parent guards on a loaded estimate before rendering it).
+ */
+function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClose: () => void }) {
+  const editor = useSalesDocumentEditor('estimate', estimate);
+  const updateDraft = useUpdateEstimateDraft();
+  const [error, setError] = useState<string | null>(null);
+
+  const onSave = async () => {
+    setError(null);
+    const res = await updateDraft.mutateAsync({ id: estimate.id, input: editor.toUpdateInput() });
+    if (res.error || !res.estimate) {
+      setError(res.error ?? 'Could not save the estimate.');
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FormField label="Estimate date" htmlFor="edit-est-date">
+          <input
+            id="edit-est-date"
+            type="date"
+            className={inputClass}
+            value={editor.date}
+            onChange={(e) => editor.setDate(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Expires" htmlFor="edit-est-expiry">
+          <input
+            id="edit-est-expiry"
+            type="date"
+            className={inputClass}
+            value={editor.secondaryDate}
+            onChange={(e) => editor.setSecondaryDate(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Terms" htmlFor="edit-est-terms">
+          <input
+            id="edit-est-terms"
+            className={inputClass}
+            value={editor.terms}
+            onChange={(e) => editor.setTerms(e.target.value)}
+            placeholder="e.g. Valid 30 days"
+          />
+        </FormField>
+
+        <FormField label="Memo" htmlFor="edit-est-memo">
+          <input
+            id="edit-est-memo"
+            className={inputClass}
+            value={editor.memo}
+            onChange={(e) => editor.setMemo(e.target.value)}
+            placeholder="Optional note"
+          />
+        </FormField>
+
+        <FormField label="Notes" htmlFor="edit-est-notes" className="sm:col-span-2">
+          <textarea
+            id="edit-est-notes"
+            className={inputClass}
+            rows={2}
+            value={editor.notes}
+            onChange={(e) => editor.setNotes(e.target.value)}
+            placeholder="Optional notes shown on the estimate"
+          />
+        </FormField>
+      </div>
+
+      {/* Line items */}
+      <div>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+          Line items
+        </h2>
+        <SalesLineItemsEditor
+          lines={editor.lines}
+          onChange={editor.setLines}
+          lineAmountsCents={editor.totals.lines.map((l) => l.netCents)}
+          disabled={updateDraft.isPending}
+        />
+      </div>
+
+      {/* Totals */}
+      <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
+        <div className="flex justify-between text-slate-400">
+          <span>Subtotal</span>
+          <span className="font-mono tabular-nums text-slate-200">
+            {formatMoney(editor.totals.subtotalCents / 100)}
+          </span>
+        </div>
+        <div className="flex justify-between text-slate-400">
+          <span>Tax</span>
+          <span className="font-mono tabular-nums text-slate-200">
+            {formatMoney(editor.totals.taxCents / 100)}
+          </span>
+        </div>
+        <div className="flex justify-between border-t border-white/10 pt-1 font-bold text-white">
+          <span>Total</span>
+          <span className="font-mono tabular-nums">
+            {formatMoney(editor.totals.totalCents / 100)}
+          </span>
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-400" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onClose} disabled={updateDraft.isPending}>
+          Cancel
+        </Button>
+        <Button icon="save" onClick={onSave} disabled={updateDraft.isPending}>
+          {updateDraft.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export default function EstimateDetailView() {
   const { estimateId } = useParams<{ estimateId: string }>();
   const navigate = useNavigate();
   const { data: estimate, isPending, isError } = useEstimate(estimateId);
+  const { data: settings } = useQuery({
+    queryKey: ['organization-settings'],
+    queryFn: () => adminSettingsService.getOrganizationSettings(),
+  });
   const sendEstimate = useSendEstimate();
   const acceptEstimate = useAcceptEstimate();
   const declineEstimate = useDeclineEstimate();
   const convertEstimate = useConvertEstimate();
+  const reissueEstimate = useReissueEstimate();
+  const printRef = useRef<HTMLDivElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Fully-defaulted from branding (handles undefined before settings load), so the
+  // on-screen paper — and the ref-captured PDF — always reflect the org's template.
+  const template = resolveTemplateConfig(settings?.branding);
 
   const onSend = async () => {
     if (!estimate) return;
@@ -73,7 +226,36 @@ export default function EstimateDetailView() {
     navigate(`${ACCOUNTING_BASE}/invoices/${res.invoiceId}`);
   };
 
-  const lines = sortedLines(estimate?.lines);
+  const onReissue = async () => {
+    if (!estimate) return;
+    if (!window.confirm('Create a new editable draft copy of this estimate?')) return;
+    setActionError(null);
+    const res = await reissueEstimate.mutateAsync(estimate.id);
+    if (res.error || !res.estimateId) {
+      setActionError(res.error ?? 'Could not reissue the estimate.');
+      return;
+    }
+    // The reissued estimate is a fresh DRAFT — open it so the user can edit and send it.
+    navigate(`${ESTIMATES_BASE}/${res.estimateId}`);
+  };
+
+  const onDownloadPdf = async () => {
+    if (!estimate || !printRef.current) return;
+    setActionError(null);
+    setDownloading(true);
+    try {
+      await exportSalesDocumentPdf(
+        printRef.current,
+        salesDocumentFilenameBase({ kind: 'estimate', number: estimate.estimateNumber })
+      );
+    } catch {
+      setActionError('Could not generate the estimate PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const canEdit = estimate?.status === 'draft';
   const canSend = estimate?.status === 'draft';
   const canAccept =
     estimate != null && (estimate.status === 'sent' || estimate.status === 'expired');
@@ -81,21 +263,29 @@ export default function EstimateDetailView() {
     estimate != null && estimate.status !== 'declined' && estimate.status !== 'converted';
   const canConvert =
     estimate != null && estimate.status !== 'declined' && estimate.status !== 'converted';
+  // Reissue spins off a fresh draft copy — only offered once the estimate has left draft.
+  const canReissue = estimate != null && estimate.status !== 'draft';
   const taxShown = (estimate?.taxTotal ?? 0) > 0;
 
   const busy =
     sendEstimate.isPending ||
     acceptEstimate.isPending ||
     declineEstimate.isPending ||
-    convertEstimate.isPending;
+    convertEstimate.isPending ||
+    reissueEstimate.isPending;
 
   return (
     <AccountingShell
       active="estimates"
       title={estimate ? `Estimate ${estimate.estimateNumber ?? 'Draft'}` : 'Estimate'}
       actions={
-        estimate ? (
-          <div className="flex gap-2">
+        estimate && !editing ? (
+          <div className="flex flex-wrap gap-2">
+            {canEdit && (
+              <Button size="sm" variant="secondary" icon="edit" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            )}
             {canSend && (
               <Button size="sm" icon="send" onClick={onSend} disabled={busy}>
                 {sendEstimate.isPending ? 'Sending…' : 'Send'}
@@ -111,6 +301,26 @@ export default function EstimateDetailView() {
                 {convertEstimate.isPending ? 'Converting…' : 'Convert to invoice'}
               </Button>
             )}
+            {canReissue && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="content_copy"
+                onClick={onReissue}
+                disabled={busy}
+              >
+                {reissueEstimate.isPending ? 'Reissuing…' : 'Reissue as draft'}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              icon="download"
+              onClick={onDownloadPdf}
+              disabled={downloading}
+            >
+              {downloading ? 'Preparing…' : 'Download PDF'}
+            </Button>
             {canDecline && (
               <Button size="sm" variant="danger" onClick={onDecline} disabled={busy}>
                 {declineEstimate.isPending ? 'Declining…' : 'Decline'}
@@ -128,108 +338,66 @@ export default function EstimateDetailView() {
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
           {taxShown && <TaxDisclaimer />}
 
-          {/* Status + meta */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span
-              className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
-            >
-              {ESTIMATE_STATUS_LABELS[estimate.status]}
-            </span>
-            <span className="text-sm text-slate-400">
-              Customer{' '}
-              <span className="text-white">{estimate.customerName || estimate.customerId}</span>
-            </span>
-            <span className="text-sm text-slate-400">
-              Date <span className="text-white">{estimate.estimateDate}</span>
-            </span>
-            {estimate.expiryDate && (
-              <span className="text-sm text-slate-400">
-                Expires <span className="text-white">{estimate.expiryDate}</span>
-              </span>
-            )}
-            {estimate.terms && (
-              <span className="text-sm text-slate-400">
-                Terms <span className="text-white">{estimate.terms}</span>
-              </span>
-            )}
-          </div>
-
-          {estimate.memo && <p className="text-white">{estimate.memo}</p>}
-
-          {/* Line items */}
-          <LedgerTable
-            columns={[
-              { label: 'Description' },
-              { label: 'Qty', align: 'right' },
-              { label: 'Unit price', align: 'right' },
-              { label: 'Amount', align: 'right' },
-            ]}
-          >
-            {lines.map((l) => (
-              <tr key={l.id} className="border-t border-white/5">
-                <td className="px-3 py-2 text-white">{l.description || '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">{l.quantity}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">
-                  {formatMoney(l.unitPrice)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-200">
-                  {formatMoney(l.lineTotal)}
-                </td>
-              </tr>
-            ))}
-            {lines.length === 0 && (
-              <tr className="border-t border-white/5">
-                <td className="px-3 py-2 text-slate-500" colSpan={4}>
-                  No line items.
-                </td>
-              </tr>
-            )}
-          </LedgerTable>
-
-          {/* Totals */}
-          <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-            <div className="flex justify-between text-slate-400">
-              <span>Subtotal</span>
-              <span className="font-mono tabular-nums text-slate-200">
-                {formatMoney(estimate.subtotal)}
-              </span>
-            </div>
-            {estimate.discountTotal > 0 && (
-              <div className="flex justify-between text-slate-400">
-                <span>Discount</span>
-                <span className="font-mono tabular-nums text-slate-200">
-                  −{formatMoney(estimate.discountTotal)}
+          {editing ? (
+            <EstimateDraftEditor estimate={estimate} onClose={() => setEditing(false)} />
+          ) : (
+            <>
+              {/* Status + meta */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <span
+                  className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
+                >
+                  {ESTIMATE_STATUS_LABELS[estimate.status]}
                 </span>
+                <span className="text-sm text-slate-400">
+                  Customer{' '}
+                  <span className="text-white">{estimate.customerName || estimate.customerId}</span>
+                </span>
+                <span className="text-sm text-slate-400">
+                  Date <span className="text-white">{estimate.estimateDate}</span>
+                </span>
+                {estimate.expiryDate && (
+                  <span className="text-sm text-slate-400">
+                    Expires <span className="text-white">{estimate.expiryDate}</span>
+                  </span>
+                )}
+                {estimate.terms && (
+                  <span className="text-sm text-slate-400">
+                    Terms <span className="text-white">{estimate.terms}</span>
+                  </span>
+                )}
               </div>
-            )}
-            <div className="flex justify-between text-slate-400">
-              <span>Tax</span>
-              <span className="font-mono tabular-nums text-slate-200">
-                {formatMoney(estimate.taxTotal)}
-              </span>
-            </div>
-            <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
-              <span>Total</span>
-              <span className="font-mono tabular-nums">{formatMoney(estimate.total)}</span>
-            </div>
-          </div>
 
-          {/* Converted-invoice link */}
-          {estimate.convertedInvoiceId && (
-            <button
-              type="button"
-              onClick={() => navigate(`${ACCOUNTING_BASE}/invoices/${estimate.convertedInvoiceId}`)}
-              className="flex items-center gap-1 self-start text-sm font-semibold text-primary hover:text-primary-hover"
-            >
-              <span className="material-symbols-outlined text-lg">receipt_long</span>
-              View converted invoice
-            </button>
-          )}
+              {/* Branded "paper" document (header/bill-to/lines/totals/memo/notes/footer).
+                  The forwarded ref lands on the white root <div> so Download PDF captures
+                  the on-screen node. Estimates carry no payments/balance-due block. */}
+              <SalesDocument
+                ref={printRef}
+                data={estimateToSalesDocumentData(estimate)}
+                template={template}
+                mode="read"
+              />
 
-          {actionError && (
-            <p className="text-sm text-red-400" role="alert">
-              {actionError}
-            </p>
+              {/* Converted-invoice link */}
+              {estimate.convertedInvoiceId && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`${ACCOUNTING_BASE}/invoices/${estimate.convertedInvoiceId}`)
+                  }
+                  className="flex items-center gap-1 self-start text-sm font-semibold text-primary hover:text-primary-hover"
+                >
+                  <span className="material-symbols-outlined text-lg">receipt_long</span>
+                  View converted invoice
+                </button>
+              )}
+
+              {actionError && (
+                <p className="text-sm text-red-400" role="alert">
+                  {actionError}
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

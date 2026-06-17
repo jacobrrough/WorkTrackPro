@@ -3,6 +3,8 @@
  * Postgres schema; row<->domain mapping lives in src/services/api/accounting/mappers.ts.
  */
 
+import type { PerDocLayout } from './documents/salesDocumentTypes';
+
 // ── Chart of accounts ────────────────────────────────────────────────────────
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 export type NormalBalance = 'debit' | 'credit';
@@ -240,6 +242,8 @@ export interface InvoiceLine {
   id: string;
   invoiceId: string;
   itemId: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId: string | null;
   description: string | null;
   quantity: number;
   unitPrice: number;
@@ -275,6 +279,8 @@ export interface Invoice {
   journalEntryId: string | null;
   memo: string | null;
   notes: string | null;
+  /** Per-document section-layout override (jsonb); null = fall back to the org/template default. */
+  layout: PerDocLayout | null;
   createdAt: string;
   updatedAt: string;
   // Optional hydrated fields for display
@@ -285,6 +291,8 @@ export interface Invoice {
 /** A line as supplied by the UI/job-importer before it has a DB id. */
 export interface NewInvoiceLineInput {
   itemId?: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId?: string | null;
   description?: string | null;
   quantity: number;
   unitPrice: number;
@@ -325,6 +333,8 @@ export interface UpdateInvoiceInput {
   taxCodeId?: string | null;
   memo?: string | null;
   notes?: string | null;
+  /** Per-document section-layout override; omit to leave unchanged, null clears it. */
+  layout?: PerDocLayout | null;
   lines?: NewInvoiceLineInput[];
 }
 
@@ -889,6 +899,8 @@ export interface EstimateLine {
   id: string;
   estimateId: string;
   itemId: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId: string | null;
   description: string | null;
   quantity: number;
   unitPrice: number;
@@ -926,6 +938,8 @@ export interface Estimate {
   acceptedAt: string | null;
   memo: string | null;
   notes: string | null;
+  /** Per-document section-layout override (jsonb); null = fall back to the org/template default. */
+  layout: PerDocLayout | null;
   createdAt: string;
   updatedAt: string;
   lines?: EstimateLine[];
@@ -935,6 +949,8 @@ export interface Estimate {
 /** A line as supplied by the UI/job-importer before it has a DB id. */
 export interface NewEstimateLineInput {
   itemId?: string | null;
+  /** Link to the real public.parts row this line bills (null = free-text/service line). */
+  partId?: string | null;
   description?: string | null;
   quantity: number;
   unitPrice: number;
@@ -974,6 +990,8 @@ export interface UpdateEstimateInput {
   taxCodeId?: string | null;
   memo?: string | null;
   notes?: string | null;
+  /** Per-document section-layout override; omit to leave unchanged, null clears it. */
+  layout?: PerDocLayout | null;
   lines?: NewEstimateLineInput[];
 }
 
@@ -1597,6 +1615,15 @@ export interface BankAccount {
   /** Hydrated for display from the linked GL account. */
   glAccountName?: string;
   glAccountNumber?: string | null;
+  // ── Plaid bank-feed link (migration 20260617000200). A bank account wired to one Plaid
+  // account under an Item. `plaidItemId` references accounting.plaid_items.id (NOT the Plaid
+  // item_id string); `plaidAccountId` is Plaid's account_id. Null on a manual account.
+  plaidItemId: string | null;
+  plaidAccountId: string | null;
+  /** Masked number Plaid reports for the linked account (e.g. "1234"). */
+  plaidMask: string | null;
+  /** Plaid account subtype (e.g. "checking", "credit card"). */
+  plaidSubtype: string | null;
 }
 
 export interface NewBankAccountInput {
@@ -1608,6 +1635,12 @@ export interface NewBankAccountInput {
   mask?: string | null;
   /** Opening feed balance (display only); defaults to 0. */
   currentBalance?: number;
+  // ── Plaid link (set when creating a bank account straight from a Plaid-linked account).
+  // `plaidItemId` is accounting.plaid_items.id; `plaidAccountId` is Plaid's account_id.
+  plaidItemId?: string | null;
+  plaidAccountId?: string | null;
+  plaidMask?: string | null;
+  plaidSubtype?: string | null;
 }
 
 export interface UpdateBankAccountInput {
@@ -1618,6 +1651,12 @@ export interface UpdateBankAccountInput {
   mask?: string | null;
   currentBalance?: number;
   isActive?: boolean;
+  // ── Plaid link (set/clear the mapping). Pass null to unlink. `plaidItemId` is
+  // accounting.plaid_items.id; `plaidAccountId` is Plaid's account_id.
+  plaidItemId?: string | null;
+  plaidAccountId?: string | null;
+  plaidMask?: string | null;
+  plaidSubtype?: string | null;
 }
 
 /** A feed row's review state. */

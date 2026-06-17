@@ -6,6 +6,7 @@ import type {
   NewEstimateLineInput,
   UpdateEstimateInput,
 } from '../../../features/accounting/types';
+import type { PerDocLayout } from '../../../features/accounting/documents/salesDocumentTypes';
 import { computeInvoiceTotals, type InvoiceTotals } from '../../../features/accounting/posting';
 import { acct } from './accountingClient';
 import type { Row } from './mappers';
@@ -57,6 +58,7 @@ function mapEstimateLineRow(row: Row): EstimateLine {
     id: str(row.id),
     estimateId: str(row.estimate_id),
     itemId: nstr(row.item_id),
+    partId: nstr(row.part_id),
     description: nstr(row.description),
     quantity: num(row.quantity, 1),
     unitPrice: num(row.unit_price),
@@ -95,6 +97,7 @@ function mapEstimateRow(row: Row): Estimate {
     acceptedAt: nstr(row.accepted_at),
     memo: nstr(row.memo),
     notes: nstr(row.notes),
+    layout: (row.layout as PerDocLayout | null) ?? null,
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
     lines: rawLines
@@ -139,6 +142,7 @@ function lineRows(estimateId: string, lines: NewEstimateLineInput[]): Record<str
     return {
       estimate_id: estimateId,
       item_id: l.itemId ?? null,
+      part_id: l.partId ?? null,
       description: l.description ?? null,
       quantity: l.quantity ?? 1,
       unit_price: l.unitPrice ?? 0,
@@ -301,6 +305,7 @@ export const estimatesService = {
     if (input.taxCodeId !== undefined) patch.tax_code_id = input.taxCodeId;
     if (input.memo !== undefined) patch.memo = input.memo;
     if (input.notes !== undefined) patch.notes = input.notes;
+    if (input.layout !== undefined) patch.layout = input.layout;
 
     const { error: uErr } = await acct().from('estimates').update(patch).eq('id', id);
     if (uErr) return { estimate: null, error: uErr.message };
@@ -375,12 +380,50 @@ export const estimatesService = {
     if (!invoiceId) return { invoiceId: null, error: 'Conversion did not return an invoice.' };
     return { invoiceId };
   },
+
+  /**
+   * Reissue an estimate: clone its header + lines into a brand-new DRAFT (no JE — estimates
+   * never post, so no RPC is needed; this is a plain client-orchestrated duplicate). The new
+   * draft is dated today (estimateDate omitted so the DB default applies). If the original was
+   * still live (sent/expired), it's best-effort superseded (declined) so it stops circulating;
+   * that supersede never fails the reissue. Returns the new draft's id for navigation.
+   */
+  async reissue(id: string): Promise<{ estimateId: string | null; error?: string }> {
+    const original = await this.getById(id);
+    if (!original) return { estimateId: null, error: 'Estimate not found.' };
+
+    const res = await this.createDraft({
+      customerId: original.customerId,
+      jobId: original.jobId,
+      expiryDate: original.expiryDate,
+      terms: original.terms,
+      taxCodeId: original.taxCodeId,
+      memo: original.memo,
+      notes: original.notes,
+      lines: (original.lines ?? []).map(toLineInput),
+    });
+    if (!res.estimate) {
+      return { estimateId: null, error: res.error ?? 'Could not create the reissued draft.' };
+    }
+
+    // Supersede the original only when it's still live (best-effort, never fails the reissue).
+    if (original.status === 'sent' || original.status === 'expired') {
+      try {
+        await this.decline(id);
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    return { estimateId: res.estimate.id };
+  },
 };
 
 /** Adapt a persisted EstimateLine back to the create/update input shape. */
 function toLineInput(l: EstimateLine): NewEstimateLineInput {
   return {
     itemId: l.itemId,
+    partId: l.partId,
     description: l.description,
     quantity: l.quantity,
     unitPrice: l.unitPrice,

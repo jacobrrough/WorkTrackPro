@@ -25,6 +25,7 @@ import {
   taxJurisdictionsService,
   journalService,
   paymentsService,
+  plaidService,
   reconciliationsService,
   recurringTemplatesService,
   taxTableSyncService,
@@ -215,6 +216,25 @@ export function useVoidInvoice() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Voiding a job-linked invoice drops that job's revenue/margin.
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/**
+ * Void-and-reissue an invoice: voids the original (reversing its posted JE) and issues a
+ * replacement. Because the ledger/reports move, this invalidates the same subtree as
+ * useVoidInvoice — invoices + journal + reports + jobCosting.
+ */
+export function useVoidAndReissueInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => invoicesService.voidAndReissue(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+      // Reissuing a job-linked invoice moves that job's revenue/margin.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
     },
   });
@@ -530,6 +550,69 @@ export function useCompleteReconciliation() {
   return useMutation({
     mutationFn: (id: string) => reconciliationsService.complete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bank }),
+  });
+}
+
+// ── Plaid bank feeds (Phase 0) ────────────────────────────────────────────────
+// The connection list lives under its own ['plaid', 'items'] key (the secret-bearing Plaid
+// state is owned by the Netlify functions, not the accounting schema), so each mutation
+// invalidates that key directly. Exchanging/disconnecting changes which Plaid accounts a
+// bank account may be wired to, and disconnect clears the link columns server-side, so both
+// also invalidate the bankAccounts subtree. Sync lands rows in accounting.bank_transactions
+// (and refreshes feed balances) so it invalidates the whole `bank` subtree — which covers
+// both bank-transactions and bankAccounts — exactly like useImportBankTransactions. NONE of
+// these posts a journal entry here (accepting an imported transaction is the money path),
+// so none touches journal/reports. The Plaid token is never seen by the client.
+
+/** The ['plaid', 'items'] connection-list key (its own subtree, outside ['accounting', ...]). */
+const PLAID_ITEMS_KEY = ['plaid', 'items'] as const;
+
+/**
+ * Complete a Plaid Link flow (exchange the public_token server-side; the access_token is
+ * stored ENCRYPTED and never returned). Invalidates the Plaid connection list and the
+ * bankAccounts subtree (a newly linked Item exposes accounts to wire to bank accounts).
+ */
+export function useExchangePlaidToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (publicToken: string) => plaidService.exchangePublicToken(publicToken),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: PLAID_ITEMS_KEY });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bankAccounts });
+    },
+  });
+}
+
+/**
+ * Run "Sync now" (one Item by accounting.plaid_items.id, or all active when omitted). Lands
+ * posted transactions in accounting.bank_transactions and refreshes feed balances, so it
+ * invalidates the whole `bank` subtree (bank-transactions + bankAccounts) plus the Plaid
+ * connection list (last_sync_at / status moved). No JE posts here.
+ */
+export function useSyncPlaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId?: string) => plaidService.syncNow(itemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bank });
+      qc.invalidateQueries({ queryKey: PLAID_ITEMS_KEY });
+    },
+  });
+}
+
+/**
+ * Disconnect one Plaid Item (by its Plaid item_id). The function revokes the token, marks the
+ * row disconnected, and clears the Plaid link columns on any wired bank accounts. Invalidates
+ * the Plaid connection list and the bankAccounts subtree (the unlinked accounts changed).
+ */
+export function useDisconnectPlaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) => plaidService.disconnect(itemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: PLAID_ITEMS_KEY });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bankAccounts });
+    },
   });
 }
 
@@ -1095,6 +1178,18 @@ export function useConvertEstimate() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
     },
+  });
+}
+
+/**
+ * Reissue an estimate (supersede the original with a fresh revision). No JE posts — estimates
+ * move no money — so this stays within the estimates subtree, invalidating only that key set.
+ */
+export function useReissueEstimate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.reissue(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
   });
 }
 

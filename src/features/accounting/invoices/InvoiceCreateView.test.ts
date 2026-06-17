@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveEffectiveTaxCodeId } from './InvoiceCreateView';
+import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 
 /**
  * Precedence for the header tax code on the New Invoice screen:

@@ -9,9 +9,10 @@ import { inventoryService } from '@/services/api/inventory';
 import { adminSettingsService } from '@/services/api/adminSettings';
 import { buildInvoiceLinesFromJob, taxJurisdictionsService } from '@/services/api/accounting';
 import { AccountingShell } from '../components/AccountingShell';
-import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
+import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 import { useCustomFieldDefs, useCustomers, useTaxCodes } from '../hooks/useAccountingQueries';
 import { useCreateInvoiceDraft } from '../hooks/useAccountingMutations';
 import { computeInvoiceTotals } from '../posting';
@@ -33,28 +34,6 @@ const emptyLine = (): NewInvoiceLineInput => ({
   discount: 0,
   taxable: true,
 });
-
-/**
- * Resolve the header tax code to apply, with precedence: customer's preferred code, else the
- * address-based auto-suggestion (#13 — resolved from the customer's billing/shipping address),
- * else the org default code. Once the user has touched the Tax-code select we honor their raw
- * choice verbatim — including an explicit "No tax" (empty string) — so an intentional No-tax
- * selection is never re-seeded. `touched` distinguishes "the user has not chosen yet" (seed a
- * default) from "the user explicitly picked nothing". The address suggestion sits BELOW a
- * per-customer preferred code (an explicit customer setting wins) but ABOVE the org-wide
- * default, and is ADVISORY — the user can always override it.
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export function resolveEffectiveTaxCodeId(args: {
-  rawTaxCodeId: string;
-  touched: boolean;
-  customerDefaultTaxCodeId: string | null | undefined;
-  addressTaxCodeId?: string | null | undefined;
-  orgDefaultTaxCodeId: string | null | undefined;
-}): string {
-  if (args.touched) return args.rawTaxCodeId;
-  return args.customerDefaultTaxCodeId ?? args.addressTaxCodeId ?? args.orgDefaultTaxCodeId ?? '';
-}
 
 /**
  * Pull a job's parts/inventory/settings and price them with the same quote calculator
@@ -248,12 +227,6 @@ export default function InvoiceCreateView() {
     !selectedCustomer?.defaultTaxCodeId &&
     !!addressTaxCodeId &&
     effectiveTaxCodeId === addressTaxCodeId;
-
-  const updateLine = (i: number, patch: Partial<NewInvoiceLineInput>) =>
-    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  const addLine = () => setLines((prev) => [...prev, emptyLine()]);
-  const removeLine = (i: number) =>
-    setLines((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
 
   // Live totals — reuse the exact pure function the service uses so the on-screen
   // total equals the persisted invoice. A line dropping its explicit lineTotal (from
@@ -455,80 +428,11 @@ export default function InvoiceCreateView() {
             </Button>
           </div>
 
-          <div className="hidden grid-cols-[1fr_70px_100px_90px_70px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase text-slate-500 md:grid">
-            <span>Description</span>
-            <span className="text-right">Qty</span>
-            <span className="text-right">Unit price</span>
-            <span className="text-right">Amount</span>
-            <span className="text-center">Tax</span>
-            <span />
-          </div>
-
-          <div className="space-y-2">
-            {lines.map((line, i) => {
-              const amount = totals.lines[i]?.netCents ?? 0;
-              return (
-                <div
-                  key={i}
-                  className="grid grid-cols-[1fr_60px_84px_32px] items-center gap-2 md:grid-cols-[1fr_70px_100px_90px_70px_32px]"
-                >
-                  <input
-                    aria-label={`Line ${i + 1} description`}
-                    className={`${inputClass} col-span-4 md:col-span-1`}
-                    value={line.description ?? ''}
-                    onChange={(e) => updateLine(i, { description: e.target.value })}
-                    placeholder="Description"
-                  />
-                  <CurrencyInput
-                    aria-label={`Line ${i + 1} quantity`}
-                    value={line.quantity ?? 0}
-                    onValueChange={(v) =>
-                      // User-entered quantity supersedes any imported explicit lineTotal.
-                      updateLine(i, { quantity: v, lineTotal: undefined })
-                    }
-                  />
-                  <CurrencyInput
-                    aria-label={`Line ${i + 1} unit price`}
-                    value={line.unitPrice ?? 0}
-                    onValueChange={(v) =>
-                      // User-entered price supersedes any imported explicit lineTotal.
-                      updateLine(i, { unitPrice: v, lineTotal: undefined })
-                    }
-                  />
-                  <span className="hidden text-right font-mono text-sm tabular-nums text-slate-300 md:block">
-                    {formatMoney(amount / 100)}
-                  </span>
-                  <label className="flex items-center justify-center">
-                    <input
-                      type="checkbox"
-                      aria-label={`Line ${i + 1} taxable`}
-                      checked={line.taxable !== false}
-                      onChange={(e) => updateLine(i, { taxable: e.target.checked })}
-                      className="size-4 rounded-sm border-white/20 bg-background-dark"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => removeLine(i)}
-                    aria-label={`Remove line ${i + 1}`}
-                    disabled={lines.length <= 1}
-                    className="flex items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
-                  >
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={addLine}
-            className="mt-2 flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover"
-          >
-            <span className="material-symbols-outlined text-lg">add</span>
-            Add line
-          </button>
+          <SalesLineItemsEditor
+            lines={lines}
+            onChange={setLines}
+            lineAmountsCents={totals.lines.map((l) => l.netCents)}
+          />
         </div>
 
         {/* Totals */}
