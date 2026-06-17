@@ -110,13 +110,18 @@ export function deleteProjectMessage(name: string, entryCount: number): string {
   return `Permanently delete "${name}" and its ${entryCount} logged ${noun}? This cannot be undone. To keep the record, use Archive instead.`;
 }
 
-/** One CSV row per entry; pay column equals the on-screen per-entry pay. */
+/**
+ * One CSV row per entry (the breakdown), followed by a TOTAL row summarising hours and pay
+ * with the owed/paid split in the Note column. Returns [] for no entries so the caller can
+ * skip exporting an empty file.
+ */
 export function buildExportRows(
   projects: ProjectHours[],
   entries: ProjectHourEntry[]
 ): Record<string, unknown>[] {
+  if (entries.length === 0) return [];
   const projectName = new Map(projects.map((p) => [p.id, p.name]));
-  return entries.map((e) => ({
+  const rows: Record<string, unknown>[] = entries.map((e) => ({
     Project: projectName.get(e.projectId) ?? '(unknown)',
     Date: e.entryDate,
     Hours: e.hours,
@@ -126,4 +131,17 @@ export function buildExportRows(
     Paid: e.paidAt ? e.paidAt.slice(0, 10) : '',
     Note: e.note ?? '',
   }));
+
+  const totals = computeProjectTotals(entries);
+  rows.push({
+    Project: 'TOTAL',
+    Date: '',
+    Hours: totals.totalHours,
+    Rate: '',
+    Pay: totals.totalPay.toFixed(2),
+    Status: '',
+    Paid: '',
+    Note: `Owed ${formatUsd(totals.owedPay)} · Paid ${formatUsd(totals.paidPay)}`,
+  });
+  return rows;
 }

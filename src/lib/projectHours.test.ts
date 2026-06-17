@@ -231,19 +231,26 @@ describe('buildExportRows', () => {
     expect(rows[1]).toMatchObject({ Status: 'Paid', Paid: '2026-06-17' });
   });
 
-  it('produces one row per entry with reconciling pay', () => {
+  it('produces one row per entry plus a TOTAL row', () => {
     const rows = buildExportRows(projects, [
       entry({ id: 'a', projectId: 'p1', hours: 3.5, note: 'design' }),
-      entry({ id: 'b', projectId: 'p2', hours: 2 }),
+      entry({ id: 'b', projectId: 'p2', hours: 2, paidAt: '2026-06-17T00:00:00Z' }),
     ]);
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3); // 2 entries + TOTAL
     expect(rows[0]).toMatchObject({
       Project: 'Hours Tracker',
       Hours: 3.5,
       Pay: '66.50',
       Note: 'design',
     });
-    expect(rows[1]).toMatchObject({ Project: 'Inventory Fix', Hours: 2, Pay: '38.00', Note: '' });
+    expect(rows[1]).toMatchObject({ Project: 'Inventory Fix', Hours: 2, Pay: '38.00' });
+    // Final row totals hours + pay and breaks down owed vs paid.
+    expect(rows[2]).toMatchObject({
+      Project: 'TOTAL',
+      Hours: 5.5,
+      Pay: '104.50',
+      Note: 'Owed $66.50 · Paid $38.00',
+    });
   });
 
   it('labels entries for unknown projects', () => {
