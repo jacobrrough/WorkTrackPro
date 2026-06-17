@@ -45,9 +45,11 @@ The Company operates a continuous, documented risk process:
 - **Least privilege & RBAC:** Application access is governed by role (administrator and scoped
   accounting roles) and enforced in the database with Row-Level Security (RLS). Server-only
   privileges (service-role keys) are never exposed to the browser.
-- **Multi-factor authentication (MFA)** is required for all administrative consoles that can access
-  production systems or sensitive data — Supabase, Netlify, GitHub, and the Plaid and QuickBooks
-  dashboards.
+- **Multi-factor authentication (MFA)** is required for administrators signing in to the WorkTrackPro
+  application — TOTP (authenticator app), enforced at the login gate — and for all administrative
+  consoles that can access production systems or sensitive data: Supabase, Netlify, GitHub, and the
+  Plaid and QuickBooks dashboards. An administrator can reset a user's application MFA if a device is
+  lost.
 - **Provisioning / Deprovisioning:** Access is granted on a need-to-know basis and revoked promptly
   when a user leaves or changes roles.
 

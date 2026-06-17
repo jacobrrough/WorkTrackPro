@@ -33,10 +33,12 @@ QuickBooks Online provider dashboards — and to all employees, contractors, and
 - **Unique accounts** for all users via Supabase Auth; shared/generic logins are prohibited.
 - **Strong credentials:** users set strong, unique passwords; reuse of personal passwords is
   discouraged. Leaked-password protection is enabled where supported.
-- **Multi-factor authentication (MFA) is REQUIRED** for every administrative console that can reach
-  production systems or sensitive data: Supabase, Netlify, GitHub, the Plaid dashboard, and the
-  QuickBooks Online dashboard. MFA for end-user application logins is enabled where supported and
-  encouraged for all users.
+- **Multi-factor authentication (MFA) is REQUIRED** for administrators signing in to the WorkTrackPro
+  application — TOTP (authenticator app), enforced at the login gate (a server-side `require_mfa`
+  setting governs enforcement) — and for every administrative console that can reach production
+  systems or sensitive data: Supabase, Netlify, GitHub, the Plaid dashboard, and the QuickBooks Online
+  dashboard. Application MFA is available to all users; an administrator can reset a user's MFA if a
+  device is lost.
 
 ## 6. Authorization (least-privilege model)
 - **Application RBAC:** access within WorkTrackPro is governed by role — an administrator role and
