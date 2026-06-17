@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { InventoryItem, Job, User } from '@/core/types';
+import type { InventoryHistoryAction, InventoryItem, Job, User } from '@/core/types';
 import { inventoryService } from '@/services/api/inventory';
 import { inventoryHistoryService } from '@/services/api/inventoryHistory';
 import { jobService } from '@/services/api/jobs';
@@ -83,6 +83,9 @@ export function useInventoryMutations({
     [queryClient]
   );
 
+  // Absolute-set path: used ONLY by the InventoryDetail edit form for a manual stock-count
+  // override (the user declares the authoritative count). All adjust-by-amount flows
+  // (quick +/-, order, receive) go through applyStockDelta instead, which is lost-update-safe.
   const updateInventoryStock = useCallback(
     async (id: string, inStock: number, reason?: string): Promise<void> => {
       try {
@@ -122,6 +125,86 @@ export function useInventoryMutations({
       }
     },
     [inventory, currentUser, calculateAvailable, calculateAllocated, queryClient, refreshInventory]
+  );
+
+  // Shared pipeline for the three atomic delta-based stock writes (manual adjust, order
+  // placement, receive). Applies in_stock/on_order deltas via the lost-update-safe
+  // adjust_inventory_stock RPC, then records an inventory_history row derived ENTIRELY from
+  // the authoritative post-RPC values — so previousInStock/newInStock and their available
+  // counterparts always share one baseline and can't contradict each other under a
+  // concurrent write. Returns the post-RPC row, or null on failure (after toast + refetch).
+  const applyStockDelta = useCallback(
+    async (
+      id: string,
+      inStockDelta: number,
+      onOrderDelta: number,
+      history: { action: InventoryHistoryAction; reason: string },
+      opts: { optimistic?: boolean; failToast: string }
+    ): Promise<{ inStock: number; onOrder: number } | null> => {
+      // Snapshot so an optimistic cache write can be rolled back if the RPC fails, rather
+      // than leaving a phantom value on screen until refetch (and surviving a failed refetch).
+      const snapshot = opts.optimistic
+        ? queryClient.getQueryData<InventoryItem[]>(['inventory'])
+        : undefined;
+      try {
+        if (opts.optimistic && inStockDelta !== 0) {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev
+              ? prev.map((i) => (i.id === id ? { ...i, inStock: i.inStock + inStockDelta } : i))
+              : []
+          );
+        }
+
+        const result = await inventoryService.adjustStock(id, inStockDelta, onOrderDelta);
+        if (!result) {
+          if (snapshot) queryClient.setQueryData(['inventory'], snapshot);
+          showToast(opts.failToast, 'error');
+          await refreshInventory();
+          return null;
+        }
+
+        if (currentUser) {
+          const allocated = calculateAllocated(id);
+          const prevInStock = result.inStock - inStockDelta; // authoritative previous
+          await inventoryHistoryService.createHistory({
+            inventory: id,
+            user: currentUser.id,
+            action: history.action,
+            reason: history.reason,
+            previousInStock: prevInStock,
+            newInStock: result.inStock,
+            previousAvailable: Math.max(0, prevInStock - allocated),
+            newAvailable: Math.max(0, result.inStock - allocated),
+            changeAmount: inStockDelta,
+          });
+        }
+
+        await refreshInventory();
+        return result;
+      } catch (error) {
+        if (snapshot) queryClient.setQueryData(['inventory'], snapshot);
+        console.error(`${history.action} stock error:`, error);
+        await refreshInventory();
+        return null;
+      }
+    },
+    [currentUser, calculateAllocated, queryClient, refreshInventory, showToast]
+  );
+
+  const adjustInventoryStock = useCallback(
+    async (id: string, delta: number, reason?: string): Promise<void> => {
+      // Guard NaN/Infinity too — a non-finite delta would poison the optimistic cache and
+      // serialize to a null RPC arg that nulls the column.
+      if (!Number.isFinite(delta) || delta === 0) return;
+      await applyStockDelta(
+        id,
+        delta,
+        0,
+        { action: 'manual_adjust', reason: reason || 'Stock adjusted manually' },
+        { optimistic: true, failToast: 'Failed to update stock' }
+      );
+    },
+    [applyStockDelta]
   );
 
   const addJobInventory = useCallback(
@@ -254,91 +337,54 @@ export function useInventoryMutations({
 
   const markInventoryOrdered = useCallback(
     async (id: string, quantity: number): Promise<boolean> => {
-      try {
-        const item = inventory.find((i) => i.id === id);
-        if (!item) {
-          console.error('Inventory item not found');
-          return false;
-        }
-        // Atomic delta (on_order += quantity) so a concurrent order/receive isn't clobbered.
-        const result = await inventoryService.adjustStock(id, 0, quantity);
-        if (!result) {
-          showToast('Failed to update order', 'error');
-          await refreshInventory();
-          return false;
-        }
-        if (currentUser) {
-          // Order placement doesn't change in_stock; record the authoritative post-RPC value.
-          const available = Math.max(0, result.inStock - calculateAllocated(id));
-          await inventoryHistoryService.createHistory({
-            inventory: id,
-            user: currentUser.id,
-            action: 'order_placed',
-            reason: `Ordered ${quantity} ${item.unit}`,
-            previousInStock: result.inStock,
-            newInStock: result.inStock,
-            previousAvailable: available,
-            newAvailable: available,
-            changeAmount: 0,
-          });
-        }
-        await refreshInventory();
-        return true;
-      } catch (error) {
-        console.error('Mark inventory ordered error:', error);
-        await refreshInventory();
+      // Reject non-finite / non-positive quantities before they reach the RPC (NaN would
+      // serialize to a null delta arg and corrupt on_order).
+      if (!Number.isFinite(quantity) || quantity <= 0) return false;
+      const item = inventory.find((i) => i.id === id);
+      if (!item) {
+        console.error('Inventory item not found');
         return false;
       }
+      // Order placement bumps on_order only (in_stock delta 0).
+      const result = await applyStockDelta(
+        id,
+        0,
+        quantity,
+        { action: 'order_placed', reason: `Ordered ${quantity} ${item.unit}` },
+        { failToast: 'Failed to update order' }
+      );
+      return result !== null;
     },
-    [inventory, currentUser, refreshInventory, calculateAllocated, showToast]
+    [inventory, applyStockDelta]
   );
 
   const receiveInventoryOrder = useCallback(
     async (id: string, receivedQuantity: number): Promise<boolean> => {
-      try {
-        const item = inventory.find((i) => i.id === id);
-        if (!item) {
-          console.error('Inventory item not found');
-          return false;
-        }
-        // Atomic deltas (in_stock += received, on_order -= received) to avoid the
-        // read-modify-write lost update against a concurrent receive or job reconciliation.
-        const result = await inventoryService.adjustStock(id, receivedQuantity, -receivedQuantity);
-        if (!result) {
-          showToast('Failed to receive order', 'error');
-          await refreshInventory();
-          return false;
-        }
-        if (currentUser) {
-          const allocated = calculateAllocated(id);
-          const prevInStock = result.inStock - receivedQuantity; // authoritative previous
-          await inventoryHistoryService.createHistory({
-            inventory: id,
-            user: currentUser.id,
-            action: 'order_received',
-            reason: `Received ${receivedQuantity} ${item.unit}`,
-            previousInStock: prevInStock,
-            newInStock: result.inStock,
-            previousAvailable: Math.max(0, prevInStock - allocated),
-            newAvailable: Math.max(0, result.inStock - allocated),
-            changeAmount: receivedQuantity,
-          });
-        }
-        await refreshInventory();
-        return true;
-      } catch (error) {
-        console.error('Receive inventory order error:', error);
-        await refreshInventory();
+      // Reject non-finite / non-positive quantities before they reach the RPC.
+      if (!Number.isFinite(receivedQuantity) || receivedQuantity <= 0) return false;
+      const item = inventory.find((i) => i.id === id);
+      if (!item) {
+        console.error('Inventory item not found');
         return false;
       }
+      // Receiving bumps in_stock and draws down on_order.
+      const result = await applyStockDelta(
+        id,
+        receivedQuantity,
+        -receivedQuantity,
+        { action: 'order_received', reason: `Received ${receivedQuantity} ${item.unit}` },
+        { failToast: 'Failed to receive order' }
+      );
+      return result !== null;
     },
-    [inventory, currentUser, refreshInventory, calculateAllocated, showToast]
+    [inventory, applyStockDelta]
   );
 
   return {
     createInventory,
     updateInventoryItem,
     updateInventoryStock,
+    adjustInventoryStock,
     addJobInventory,
     allocateInventoryToJob,
     removeJobInventory,
