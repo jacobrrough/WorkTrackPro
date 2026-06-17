@@ -14,6 +14,11 @@ import { CommandPalette } from './components/CommandPalette';
 // portal view stay out of the main app bundle and only load for portal visitors.
 const CustomerPortal = lazy(() => import('./public/portal/CustomerPortal'));
 
+// Public (no-auth) legal pages — stable URLs to share with Plaid (/privacy, /terms).
+// Lazy-loaded so the long static legal copy stays out of the main bundle.
+const PrivacyPolicyPage = lazy(() => import('./public/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./public/TermsOfServicePage'));
+
 export default function App() {
   const {
     currentUser,
@@ -106,6 +111,21 @@ export default function App() {
     }
     if (pathname === '/shop' || pathname.startsWith('/shop/')) {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
+    }
+    // Public (no-auth) legal pages. Reachable by logged-out visitors and Plaid
+    // reviewers since this branch runs before any auth gate. Light-themed.
+    if (pathname === '/privacy' || pathname === '/terms') {
+      return (
+        <Suspense
+          fallback={
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
+              Loading…
+            </div>
+          }
+        >
+          {pathname === '/privacy' ? <PrivacyPolicyPage /> : <TermsOfServicePage />}
+        </Suspense>
+      );
     }
     return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
   }
