@@ -31,6 +31,7 @@
     "jsqr": "^1.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-plaid-link": "^4.1.1",
     "react-router-dom": "^7.17.0",
     "react-to-print": "^3.3.0",
     "read-excel-file": "^9.0.10"

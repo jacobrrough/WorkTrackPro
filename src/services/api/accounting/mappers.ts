@@ -590,6 +590,11 @@ export function mapBankAccountRow(row: Row): BankAccount {
     updatedAt: str(row.updated_at),
     glAccountName: account ? str(account.name) : undefined,
     glAccountNumber: account ? nstr(account.account_number) : undefined,
+    // Plaid link columns (migration 20260617000200); null on a manual account.
+    plaidItemId: nstr(row.plaid_item_id),
+    plaidAccountId: nstr(row.plaid_account_id),
+    plaidMask: nstr(row.plaid_mask),
+    plaidSubtype: nstr(row.plaid_subtype),
   };
 }
 

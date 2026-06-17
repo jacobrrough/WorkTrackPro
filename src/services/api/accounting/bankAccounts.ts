@@ -36,7 +36,7 @@ export const bankAccountsService = {
   },
 
   async create(input: NewBankAccountInput): Promise<BankAccount | null> {
-    const row = {
+    const row: Record<string, unknown> = {
       name: input.name,
       account_id: input.accountId,
       account_type: input.accountType ?? null,
@@ -44,6 +44,12 @@ export const bankAccountsService = {
       mask: input.mask ?? null,
       current_balance: input.currentBalance ?? 0,
     };
+    // Plaid link columns (migration 20260617000200) — only set when provided so a manual
+    // create leaves them NULL. plaid_item_id references accounting.plaid_items.id.
+    if (input.plaidItemId !== undefined) row.plaid_item_id = input.plaidItemId;
+    if (input.plaidAccountId !== undefined) row.plaid_account_id = input.plaidAccountId;
+    if (input.plaidMask !== undefined) row.plaid_mask = input.plaidMask;
+    if (input.plaidSubtype !== undefined) row.plaid_subtype = input.plaidSubtype;
     const { data, error } = await acct().from('bank_accounts').insert(row).select('*').single();
     if (error || !data) return null;
     // Re-read to hydrate the GL account name for the caller.
@@ -59,6 +65,11 @@ export const bankAccountsService = {
     if (input.mask !== undefined) row.mask = input.mask;
     if (input.currentBalance !== undefined) row.current_balance = input.currentBalance;
     if (input.isActive !== undefined) row.is_active = input.isActive;
+    // Plaid link columns (migration 20260617000200) — set/clear the mapping (null unlinks).
+    if (input.plaidItemId !== undefined) row.plaid_item_id = input.plaidItemId;
+    if (input.plaidAccountId !== undefined) row.plaid_account_id = input.plaidAccountId;
+    if (input.plaidMask !== undefined) row.plaid_mask = input.plaidMask;
+    if (input.plaidSubtype !== undefined) row.plaid_subtype = input.plaidSubtype;
     const { error } = await acct().from('bank_accounts').update(row).eq('id', id);
     if (error) return null;
     return this.getById(id);

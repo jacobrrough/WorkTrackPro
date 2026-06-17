@@ -117,6 +117,7 @@ const BankAccountDetailView = lazyWithRetry(
   'BankAccountDetailView'
 );
 const BankImportView = lazyWithRetry(() => import('./banking/BankImportView'), 'BankImportView');
+const BankFeedsView = lazyWithRetry(() => import('./banking/BankFeedsView'), 'BankFeedsView');
 const BankRulesView = lazyWithRetry(() => import('./banking/BankRulesView'), 'BankRulesView');
 const BankReconcileView = lazyWithRetry(
   () => import('./banking/BankReconcileView'),
@@ -263,6 +264,9 @@ export default function AccountingRouter() {
         {/* #12 1099-NEC worklist (advisory; no e-file). */}
         <Route path="reports/form-1099" element={<Form1099WorklistView />} />
         <Route path="banking" element={<BankAccountsView />} />
+        {/* Plaid bank feeds (auto-sync). Static segment ranks above :bankAccountId so it isn't
+            captured as an account id. */}
+        <Route path="banking/feeds" element={<BankFeedsView />} />
         <Route path="banking/:bankAccountId" element={<BankAccountDetailView />} />
         <Route path="banking/:bankAccountId/import" element={<BankImportView />} />
         <Route path="banking/:bankAccountId/rules" element={<BankRulesView />} />

@@ -25,6 +25,7 @@ import {
   journalService,
   managementReportsService,
   paymentsService,
+  plaidService,
   reconciliationsService,
   recurringTemplatesService,
   reportsService,
@@ -534,6 +535,22 @@ export function useReconciliationSummary(id: string | undefined) {
       : ['accounting', 'bank', 'reconciliations', 'none', 'summary'],
     queryFn: () => reconciliationsService.getSummary(id as string),
     enabled: !!id,
+  });
+}
+
+// ── Plaid bank feeds (Phase 0) ────────────────────────────────────────────────
+// The connected institutions (Plaid Items), read via the admin-only plaid-status
+// function — accounting.plaid_items is service-role-only, so this is the only way the UI
+// can list connections. getStatus() returns [] on any failure, so this query never throws.
+// Keyed under ['plaid', ...] (its own subtree, OUTSIDE the ['accounting', ...] tree) because
+// the secret-bearing connection state is owned by the functions, not the accounting schema;
+// the Plaid mutations invalidate this key plus the bankAccounts subtree they wire up.
+
+/** Connected Plaid Items (safe, non-secret status fields). */
+export function usePlaidItems() {
+  return useQuery({
+    queryKey: ['plaid', 'items'] as const,
+    queryFn: () => plaidService.getStatus(),
   });
 }
 

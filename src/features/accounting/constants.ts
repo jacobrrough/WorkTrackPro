@@ -3,6 +3,8 @@
 export const ACCOUNTING_BASE = '/app/accounting';
 export const REPORTS_BASE = `${ACCOUNTING_BASE}/reports`;
 export const BANKING_BASE = `${ACCOUNTING_BASE}/banking`;
+/** Plaid bank feeds (auto-sync) — a sibling of Banking under /app/accounting/banking/feeds. */
+export const BANK_FEEDS_BASE = `${BANKING_BASE}/feeds`;
 export const JOB_COSTING_BASE = `${ACCOUNTING_BASE}/job-costing`;
 export const DIMENSIONS_BASE = `${ACCOUNTING_BASE}/dimensions`;
 export const RECURRING_BASE = `${ACCOUNTING_BASE}/recurring`;
@@ -491,6 +493,13 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
     label: 'Banking',
     icon: 'account_balance_wallet',
     path: BANKING_BASE,
+    group: 'expenses',
+  },
+  {
+    key: 'bank-feeds',
+    label: 'Bank feeds',
+    icon: 'sync_lock',
+    path: BANK_FEEDS_BASE,
     group: 'expenses',
   },
   {

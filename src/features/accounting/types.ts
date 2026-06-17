@@ -1615,6 +1615,15 @@ export interface BankAccount {
   /** Hydrated for display from the linked GL account. */
   glAccountName?: string;
   glAccountNumber?: string | null;
+  // ── Plaid bank-feed link (migration 20260617000200). A bank account wired to one Plaid
+  // account under an Item. `plaidItemId` references accounting.plaid_items.id (NOT the Plaid
+  // item_id string); `plaidAccountId` is Plaid's account_id. Null on a manual account.
+  plaidItemId: string | null;
+  plaidAccountId: string | null;
+  /** Masked number Plaid reports for the linked account (e.g. "1234"). */
+  plaidMask: string | null;
+  /** Plaid account subtype (e.g. "checking", "credit card"). */
+  plaidSubtype: string | null;
 }
 
 export interface NewBankAccountInput {
@@ -1626,6 +1635,12 @@ export interface NewBankAccountInput {
   mask?: string | null;
   /** Opening feed balance (display only); defaults to 0. */
   currentBalance?: number;
+  // ── Plaid link (set when creating a bank account straight from a Plaid-linked account).
+  // `plaidItemId` is accounting.plaid_items.id; `plaidAccountId` is Plaid's account_id.
+  plaidItemId?: string | null;
+  plaidAccountId?: string | null;
+  plaidMask?: string | null;
+  plaidSubtype?: string | null;
 }
 
 export interface UpdateBankAccountInput {
@@ -1636,6 +1651,12 @@ export interface UpdateBankAccountInput {
   mask?: string | null;
   currentBalance?: number;
   isActive?: boolean;
+  // ── Plaid link (set/clear the mapping). Pass null to unlink. `plaidItemId` is
+  // accounting.plaid_items.id; `plaidAccountId` is Plaid's account_id.
+  plaidItemId?: string | null;
+  plaidAccountId?: string | null;
+  plaidMask?: string | null;
+  plaidSubtype?: string | null;
 }
 
 /** A feed row's review state. */
