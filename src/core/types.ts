@@ -423,6 +423,14 @@ export interface ShiftEdit {
 }
 
 // Inventory history (transaction log)
+// Closed set of audit actions written by inventoryHistoryService.createHistory. Narrowing the
+// write path catches typos (a misspelled action would render with no label in the history UI).
+export type InventoryHistoryAction =
+  | 'manual_adjust'
+  | 'order_placed'
+  | 'order_received'
+  | 'allocated_to_job';
+
 export interface InventoryHistoryEntry {
   id: string;
   inventoryId: string;
