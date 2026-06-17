@@ -525,6 +525,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       onClick: () => onNavigate('time-reports'),
     },
     {
+      key: 'project-hours',
+      title: 'Project Hours',
+      subtitle: 'Log dev hours',
+      icon: 'payments',
+      iconClassName: 'text-lime-400',
+      cardClassName: 'border-lime-500/30 bg-gradient-to-br from-lime-600/20 to-green-600/20',
+      ariaLabel: 'Open project hours',
+      onClick: () => onNavigate('project-hours'),
+      adminOnly: true,
+    },
+    {
       key: 'admin-settings',
       title: 'Settings',
       subtitle: 'Labor rate & upcharge',

@@ -89,6 +89,8 @@ export function useAppNavigate() {
         }
         case 'notification-settings':
           return navigate('/app/notifications/settings', opts);
+        case 'project-hours':
+          return navigate('/app/project-hours', opts);
       }
     },
     [navigate]

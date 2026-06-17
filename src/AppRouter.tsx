@@ -26,6 +26,7 @@ const AdminCreateJob = lazyWithRetry(() => import('./AdminCreateJob'), 'AdminCre
 const Quotes = lazyWithRetry(() => import('./Quotes'), 'Quotes');
 const Calendar = lazyWithRetry(() => import('./features/admin/Calendar'), 'Calendar');
 const TimeReports = lazyWithRetry(() => import('./TimeReports'), 'TimeReports');
+const ProjectHours = lazyWithRetry(() => import('./features/time/ProjectHours'), 'ProjectHours');
 const AdminSettings = lazyWithRetry(
   () => import('./features/admin/AdminSettings'),
   'AdminSettings'
@@ -502,6 +503,11 @@ function TimeReportsRoute() {
   );
 }
 
+function ProjectHoursRoute() {
+  const back = useInAppBack('/app');
+  return <ProjectHours onBack={back} />;
+}
+
 function CalendarRoute() {
   const appNavigate = useAppNavigate();
   const back = useInAppBack('/app');
@@ -715,6 +721,16 @@ export function AppRouter() {
           <RouteErrorBoundary>
             <TimeReportsRoute />
           </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/project-hours"
+        element={
+          <AdminGuard>
+            <RouteErrorBoundary>
+              <ProjectHoursRoute />
+            </RouteErrorBoundary>
+          </AdminGuard>
         }
       />
       <Route

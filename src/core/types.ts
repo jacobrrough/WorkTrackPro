@@ -85,7 +85,8 @@ export type ViewState =
   | 'board-card-detail'
   | 'chat'
   | 'chat-conversation'
-  | 'notification-settings';
+  | 'notification-settings'
+  | 'project-hours';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -542,6 +543,33 @@ export interface BoardMember {
   userName?: string;
   userEmail?: string;
   role: BoardMemberRole;
+}
+
+// ── Project Hours (hourly contractor pay logging) ───
+
+export type ProjectHourStatus = 'active' | 'finished';
+
+export interface ProjectHours {
+  id: string;
+  name: string;
+  description?: string;
+  status: ProjectHourStatus;
+  archivedAt?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProjectHourEntry {
+  id: string;
+  projectId: string;
+  entryDate: string; // YYYY-MM-DD
+  hours: number;
+  rate: number;
+  note?: string;
+  paidAt?: string; // set when settled; undefined = still owed
+  createdBy?: string;
+  createdAt?: string;
 }
 
 // ── E2E Encrypted Chat ──────────────────────────────
