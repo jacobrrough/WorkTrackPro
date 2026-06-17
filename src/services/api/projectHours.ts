@@ -34,8 +34,10 @@ export const projectHoursService = {
     if (!includeArchived) query = query.is('archived_at', null);
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) {
+      // Throw (not return []) so React Query enters isError and the view can show a
+      // retry instead of a misleading "No projects yet" empty state.
       console.error('projectHoursService.listProjects failed:', error.message);
-      return [];
+      throw new Error(error.message);
     }
     return (data ?? []).map((r) => mapProjectRow(r as Record<string, unknown>));
   },
@@ -105,8 +107,9 @@ export const projectHoursService = {
       .select('*')
       .order('entry_date', { ascending: false });
     if (error) {
+      // Throw so React Query surfaces isError (see listProjects rationale).
       console.error('projectHoursService.listEntries failed:', error.message);
-      return [];
+      throw new Error(error.message);
     }
     return (data ?? []).map((r) => mapEntryRow(r as Record<string, unknown>));
   },

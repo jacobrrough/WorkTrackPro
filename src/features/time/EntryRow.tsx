@@ -77,6 +77,8 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           onDate={setDate}
           onHours={setHoursStr}
           onNote={setNote}
+          onEnter={handleSave}
+          autoFocus
         />
         <div className="flex gap-2">
           <button

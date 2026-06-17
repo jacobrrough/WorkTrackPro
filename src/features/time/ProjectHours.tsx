@@ -47,9 +47,22 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
 
   const projectList = projects.data ?? [];
 
+  // Ids of the projects currently shown (archived ones are hidden unless toggled on).
+  const visibleProjectIds = useMemo(
+    () => new Set((projects.data ?? []).map((p) => p.id)),
+    [projects.data]
+  );
+
+  // Roll-up and per-project totals only count entries for VISIBLE projects, so the Summary
+  // never shows pay from an archived project whose row isn't rendered.
   const filteredEntries = useMemo(
-    () => filterByDateRange(entries.data ?? [], (e) => e.entryDate, range),
-    [entries.data, range]
+    () =>
+      filterByDateRange(
+        (entries.data ?? []).filter((e) => visibleProjectIds.has(e.projectId)),
+        (e) => e.entryDate,
+        range
+      ),
+    [entries.data, visibleProjectIds, range]
   );
 
   const entriesByProject = useMemo(() => {
@@ -105,6 +118,11 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
   };
 
   const isLoading = projects.isLoading || entries.isLoading;
+  const isError = projects.isError || entries.isError;
+  const retry = () => {
+    projects.refetch();
+    entries.refetch();
+  };
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background-dark">
@@ -135,6 +153,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
             <div className="flex gap-2 rounded-sm border border-white/10 bg-white/5 p-3">
               <input
                 autoFocus
+                aria-label="Project name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -203,7 +222,17 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
           </label>
 
           {/* Projects */}
-          {isLoading ? (
+          {isError ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <p className="text-slate-400">Couldn’t load project hours.</p>
+              <button
+                onClick={retry}
+                className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
+              >
+                Try again
+              </button>
+            </div>
+          ) : isLoading ? (
             <p className="py-10 text-center text-slate-400">Loading…</p>
           ) : projectList.length === 0 ? (
             <p className="py-10 text-center text-slate-400">
@@ -318,10 +347,13 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
     <div className="overflow-hidden rounded-sm border border-white/10 bg-white/5">
       <button
         onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={`${project.name}, ${expanded ? 'collapse' : 'expand'}`}
         className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-white/5"
       >
         <div className="flex min-w-0 items-center gap-2">
           <span
+            aria-hidden="true"
             className={`material-symbols-outlined text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
           >
             chevron_right
@@ -359,6 +391,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
             <div className="flex gap-2 rounded-sm bg-background-dark/60 p-3">
               <input
                 autoFocus
+                aria-label="Project name"
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -399,6 +432,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                 onDate={setDate}
                 onHours={setHours}
                 onNote={setNote}
+                onEnter={handleAdd}
               />
               <button
                 onClick={handleAdd}
