@@ -12,6 +12,7 @@ interface InventoryProps {
   jobs: Job[];
   onNavigate: (view: ViewState, id?: string) => void;
   onUpdateStock: (id: string, inStock: number, reason?: string) => Promise<void>;
+  onAdjustStock: (id: string, delta: number, reason?: string) => Promise<void>;
   onUpdateItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onCreateItem: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onMarkOrdered: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
@@ -40,6 +41,7 @@ const Inventory: React.FC<InventoryProps> = ({
   jobs,
   onNavigate,
   onUpdateStock,
+  onAdjustStock,
   onUpdateItem,
   onCreateItem,
   onMarkOrdered,
@@ -102,6 +104,7 @@ const Inventory: React.FC<InventoryProps> = ({
         onNavigate={onNavigate}
         onBack={onBackFromDetail ?? handleBack}
         onUpdateStock={onUpdateStock}
+        onAdjustStock={onAdjustStock}
         onUpdateItem={onUpdateItem}
         onAddAttachment={onAddAttachment}
         onDeleteAttachment={onDeleteAttachment}
@@ -143,9 +146,11 @@ const Inventory: React.FC<InventoryProps> = ({
       onMarkOrdered={onMarkOrdered}
       onReceiveOrder={onReceiveOrder}
       onQuickAdjust={async (item, delta) => {
-        await onUpdateStock(
+        // Atomic delta (in_stock += delta) instead of an absolute write computed from the
+        // possibly-stale list cache, so concurrent adjusts/receives don't clobber each other.
+        await onAdjustStock(
           item.id,
-          Math.max(0, item.inStock + delta),
+          delta,
           delta > 0 ? 'Quick add from inventory list' : 'Quick subtract from inventory list'
         );
       }}

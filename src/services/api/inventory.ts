@@ -141,10 +141,21 @@ export const inventoryService = {
     return (data ?? []).map((row) => mapRowToItem(row as unknown as Record<string, unknown>));
   },
 
+  /**
+   * Absolute-value write of in_stock. Use ONLY for a manual stock-count override where
+   * the user is declaring the authoritative count (e.g. a physical count / correction) and
+   * intentionally overwrites whatever is there. For receive/order/quick-adjust use
+   * {@link adjustStock} instead — an absolute write computed from a possibly-stale client
+   * cache is a lost-update race against concurrent writers.
+   *
+   * Floors at 0: a manual count is never negative, and the table-level non-negative CHECK
+   * was dropped (migration 20260615000000) to allow intentional negative-on-consume, so we
+   * must not silently persist a negative absolute override here.
+   */
   async updateStock(id: string, inStock: number): Promise<void> {
     const { error } = await supabase
       .from('inventory')
-      .update({ in_stock: inStock, updated_at: new Date().toISOString() })
+      .update({ in_stock: Math.max(0, Math.round(inStock)), updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) throw error;
   },

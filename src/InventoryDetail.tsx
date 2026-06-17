@@ -23,6 +23,7 @@ interface InventoryDetailProps {
   onNavigate: (view: ViewState, id?: string) => void;
   onBack?: () => void;
   onUpdateStock: (id: string, inStock: number, reason?: string) => Promise<void>;
+  onAdjustStock: (id: string, delta: number, reason?: string) => Promise<void>;
   onUpdateItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
@@ -63,6 +64,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   onNavigate,
   onBack,
   onUpdateStock,
+  onAdjustStock,
   onUpdateItem,
   onAddAttachment,
   onDeleteAttachment,
@@ -270,15 +272,20 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
 
   const handleQuickAdjust = useCallback(
     async (delta: number) => {
-      const next = Math.max(0, currentItem.inStock + delta);
-      await onUpdateStock(
+      // Atomic delta (in_stock += delta) instead of an absolute write from the cached item,
+      // so a concurrent adjust/receive isn't clobbered by a lost update. Floor the subtract
+      // against the cached value (best-effort, matching the list view) so a manual quick
+      // button doesn't drive stock below zero; consume-into-negative goes through job flows.
+      const safeDelta = Math.max(delta, -currentItem.inStock);
+      if (safeDelta === 0) return;
+      await onAdjustStock(
         currentItem.id,
-        next,
-        delta > 0 ? 'Quick add from detail' : 'Quick subtract from detail'
+        safeDelta,
+        safeDelta > 0 ? 'Quick add from detail' : 'Quick subtract from detail'
       );
       await loadItemWithAttachments();
     },
-    [currentItem.id, currentItem.inStock, onUpdateStock, loadItemWithAttachments]
+    [currentItem.id, currentItem.inStock, onAdjustStock, loadItemWithAttachments]
   );
 
   const adminAttachments = (currentItem.attachments || []).filter((a) => a.isAdminOnly);

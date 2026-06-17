@@ -1,11 +1,11 @@
-import type { InventoryHistoryEntry } from '../../core/types';
+import type { InventoryHistoryAction, InventoryHistoryEntry } from '../../core/types';
 import { supabase } from './supabaseClient';
 
 export const inventoryHistoryService = {
   async createHistory(data: {
     inventory: string;
     user: string;
-    action: string;
+    action: InventoryHistoryAction;
     reason: string;
     previousInStock: number;
     newInStock: number;
