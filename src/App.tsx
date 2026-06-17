@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
@@ -6,9 +6,12 @@ import { AppRouter } from './AppRouter';
 import { useAppNavigate } from './hooks/useAppNavigate';
 import ErrorBoundary from './ErrorBoundary';
 import Login from './Login';
+import MFAEnrollScreen from './MFAEnrollScreen';
+import MFAChallengeScreen from './MFAChallengeScreen';
 import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
 import { CommandPalette } from './components/CommandPalette';
+import { useAuth } from './contexts/AuthContext';
 
 // #7 — public customer portal (/portal/<token>). Lazy so the invoice PDF builder and the
 // portal view stay out of the main app bundle and only load for portal visitors.
@@ -33,7 +36,50 @@ export default function App() {
     users,
   } = useApp();
 
+  // MFA gate state lives on AuthContext (AppContext doesn't re-export it). Safe to
+  // read here: AuthProvider wraps AppProviderInner, both above <App/>. The gate is
+  // applied below — only AFTER a session and approval are confirmed.
+  const { mfaGate, mfaChecking } = useAuth();
+
   const location = useLocation();
+
+  // Anti-flash guard for the MFA gate. `mfaGate` defaults to 'ok', and the
+  // AuthContext effect that recomputes it for a freshly-set user runs AFTER this
+  // render — so there is a frame where an MFA-required user is authenticated but
+  // the gate still reads 'ok'. Rendering the app in that frame would briefly
+  // expose it. We hold the app behind a loading screen until the gate has been
+  // affirmatively computed once for the current session.
+  //   - reset to false whenever the logged-in user changes (new session to vet)
+  //   - set true after the first mfaChecking true->false edge (a computation
+  //     finished), or immediately once the gate is non-'ok' (we already know we
+  //     must gate, so no flash is possible).
+  const [mfaGateConfirmed, setMfaGateConfirmed] = useState(false);
+  const prevMfaCheckingRef = useRef(false);
+  useEffect(() => {
+    setMfaGateConfirmed(false);
+    prevMfaCheckingRef.current = false;
+  }, [currentUser?.id]);
+  useEffect(() => {
+    if (mfaGate !== 'ok') {
+      setMfaGateConfirmed(true);
+    } else if (prevMfaCheckingRef.current && !mfaChecking) {
+      // checking just finished and the verdict is 'ok' — safe to enter.
+      setMfaGateConfirmed(true);
+    }
+    prevMfaCheckingRef.current = mfaChecking;
+  }, [mfaGate, mfaChecking]);
+  // Fail-open safety net: never strand a legitimate user on the loading screen.
+  // If the gate is settled at 'ok' and not checking, confirm shortly even if we
+  // never observed a checking edge (e.g. a gate that resolves synchronously).
+  // This can only ever release an ALREADY-'ok' gate, so it cannot leak the app
+  // to a user the gate would block.
+  useEffect(() => {
+    if (mfaGateConfirmed) return;
+    if (mfaGate === 'ok' && !mfaChecking) {
+      const t = window.setTimeout(() => setMfaGateConfirmed(true), 1500);
+      return () => window.clearTimeout(t);
+    }
+  }, [mfaGateConfirmed, mfaGate, mfaChecking]);
 
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -197,6 +243,28 @@ export default function App() {
             Log out
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // MFA gate — only reached once a session exists (currentUser set) and the user
+  // is approved. Order per spec: no session -> Login (handled above); session +
+  // gate != 'ok' -> MFA screen; else -> app. Both screens keep "Sign out"
+  // reachable, so a user can never be wedged here.
+  if (currentUser && mfaGate === 'enroll') {
+    return <MFAEnrollScreen />;
+  }
+  if (currentUser && mfaGate === 'challenge') {
+    return <MFAChallengeScreen />;
+  }
+
+  // Gate reads 'ok' but hasn't been affirmatively computed for this session yet
+  // (fresh-login frame before AuthContext's recompute effect runs). Hold the app
+  // behind a loading screen so an MFA-required user is never flashed the app.
+  if (currentUser && !mfaGateConfirmed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background-dark">
+        <p className="text-slate-400">Loading...</p>
       </div>
     );
   }

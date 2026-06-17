@@ -19,6 +19,9 @@ import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync
 import { useScrollRestore } from './hooks/useScrollRestore';
 import { useNavigate } from 'react-router-dom';
 import { ACCOUNTING_BUILD_ENABLED } from './lib/featureFlags';
+import MFAEnrollScreen from './MFAEnrollScreen';
+import { mfaService } from '@/services/api/mfa';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AIAssistantPanel = lazyWithRetry(
   () => import('./components/AIAssistantPanel'),
@@ -65,6 +68,213 @@ interface DashboardQuickAction {
   adminOnly?: boolean;
 }
 
+/**
+ * SecuritySettingsModal — lightweight self-service 2FA manager any signed-in
+ * user can reach from the Dashboard header. Shows current status, lets the user
+ * set up TOTP (reusing MFAEnrollScreen in 'settings' mode), and — for optional
+ * (non-required) users — remove it.
+ *
+ * AUTH SAFETY: removing the only verified factor for a REQUIRED user (admin)
+ * just drops them to aal1, which the gate catches as forced re-enrollment on the
+ * next refresh — never a permanent lockout. We still warn before removing, and
+ * for required users we steer them to re-enroll rather than leave 2FA off.
+ */
+const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { currentUser, refreshMfaGate } = useAuth();
+  // requireMfa defaults to true and enforcement is admin-scoped (see AuthContext),
+  // so an admin is the "required" case here. Non-admins may freely turn 2FA off.
+  const isRequired = currentUser?.isAdmin === true;
+
+  const [view, setView] = useState<'status' | 'enroll'>('status');
+  const [loading, setLoading] = useState(true);
+  const [hasFactor, setHasFactor] = useState(false);
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const loadState = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const state = await mfaService.getState();
+      setHasFactor(state.hasVerifiedFactor);
+      setFactorId(state.factorId);
+    } catch {
+      setError('Could not load your two-factor status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadState();
+  }, [loadState]);
+
+  const handleRemove = useCallback(async () => {
+    if (!factorId) return;
+    setRemoving(true);
+    setError(null);
+    const result = await mfaService.unenroll(factorId);
+    if (!result.ok) {
+      setError(result.error ?? 'Could not remove two-factor authentication.');
+      setRemoving(false);
+      return;
+    }
+    // Re-evaluate the gate: for a required user this flips to 'enroll' (forced
+    // re-setup, not a lockout); for an optional user it stays 'ok'.
+    await refreshMfaGate();
+    setRemoving(false);
+    setConfirmRemove(false);
+    onClose();
+  }, [factorId, refreshMfaGate, onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border border-[#4d3465] bg-background-dark p-4 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white">Security</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Close"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">
+              close
+            </span>
+          </button>
+        </div>
+
+        {view === 'enroll' ? (
+          <MFAEnrollScreen
+            mode="settings"
+            onCancel={() => {
+              setView('status');
+              void loadState();
+            }}
+            onDone={() => {
+              setView('status');
+              void loadState();
+            }}
+          />
+        ) : (
+          <div>
+            <div className="mb-4 flex items-start gap-3 rounded-sm border border-[#4d3465] bg-[#261a32] p-3">
+              <span
+                aria-hidden="true"
+                className={`material-symbols-outlined text-2xl ${hasFactor ? 'text-green-400' : 'text-amber-400'}`}
+              >
+                {hasFactor ? 'verified_user' : 'gpp_maybe'}
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white">Two-factor authentication</p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {loading
+                    ? 'Checking status…'
+                    : hasFactor
+                      ? 'Enabled — your account asks for a code at sign-in.'
+                      : isRequired
+                        ? 'Required for your account, but not set up yet.'
+                        : 'Add a code from an authenticator app for extra security.'}
+                </p>
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-sm border border-red-500/30 bg-red-500/20 p-3">
+                <p className="text-center text-sm text-red-400">{error}</p>
+              </div>
+            )}
+
+            {!loading && !hasFactor && (
+              <button
+                type="button"
+                onClick={() => setView('enroll')}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-primary font-bold text-white transition-colors hover:bg-primary/90"
+              >
+                <span className="material-symbols-outlined text-xl" aria-hidden>
+                  add_moderator
+                </span>
+                Set up two-factor
+              </button>
+            )}
+
+            {!loading && hasFactor && !confirmRemove && (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setView('enroll')}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-white/10 font-medium text-white transition-colors hover:bg-white/20"
+                >
+                  <span className="material-symbols-outlined text-xl" aria-hidden>
+                    autorenew
+                  </span>
+                  Replace authenticator
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove(true)}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-sm border border-red-500/30 font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                >
+                  <span className="material-symbols-outlined text-xl" aria-hidden>
+                    remove_moderator
+                  </span>
+                  Remove two-factor
+                </button>
+              </div>
+            )}
+
+            {!loading && hasFactor && confirmRemove && (
+              <div className="rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+                <p className="text-sm font-semibold text-white">
+                  Remove two-factor authentication?
+                </p>
+                <p className="mt-1 text-xs text-slate-300">
+                  {isRequired
+                    ? 'Two-factor is required for your account. If you remove it you will be asked to set it up again the next time the app checks your access.'
+                    : "You'll no longer be asked for a code at sign-in. You can re-enable it any time."}
+                </p>
+                <div className="mt-3 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRemove(false)}
+                    disabled={removing}
+                    className="h-11 flex-1 rounded-sm bg-white/10 font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                  >
+                    Keep
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRemove()}
+                    disabled={removing}
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-sm bg-red-500/80 font-bold text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                  >
+                    {removing ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-sm border-2 border-white border-t-transparent" />
+                        <span>Removing…</span>
+                      </>
+                    ) : (
+                      <span>Remove</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex justify-center py-4">
+                <div className="h-6 w-6 animate-spin rounded-sm border-2 border-primary border-t-transparent" />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface DashboardProps {
   onNavigate: (view: ViewState, id?: string) => void;
 }
@@ -97,6 +307,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
   const [isEditingActions, setIsEditingActions] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [showSecurity, setShowSecurity] = useState(false);
   const { syncToServer } = useDashboardPreferencesSync(!!currentUser);
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
@@ -440,6 +651,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <NotificationBell onNavigate={onNavigate} />
           <button
             type="button"
+            onClick={() => setShowSecurity(true)}
+            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Security and two-factor authentication"
+            title="Security / Two-factor"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">
+              shield_person
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={logout}
             className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Log out"
@@ -450,6 +672,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </button>
         </div>
       </header>
+
+      {showSecurity && <SecuritySettingsModal onClose={() => setShowSecurity(false)} />}
 
       <OfflinePunchBanner />
 

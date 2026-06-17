@@ -38,6 +38,8 @@ export interface AdminSettings {
   siteRadiusMeters: number | null;
   /** When true and requireOnSite is true, block app access until user is on site */
   enforceOnSiteAtLogin: boolean;
+  /** Kill-switch for app-login MFA enforcement. Default true = enforce; flip to false to disable in an emergency. */
+  requireMfa: boolean;
   /** Company branding for packing slips: name, contact info, and uploaded logo. */
   branding: BrandingSettings;
 }
@@ -60,6 +62,7 @@ const defaults: AdminSettings = {
   siteLng: null,
   siteRadiusMeters: null,
   enforceOnSiteAtLogin: false,
+  requireMfa: true,
   branding: { ...EMPTY_BRANDING },
 };
 
@@ -135,6 +138,8 @@ function loadSettings(): AdminSettings {
             ? Number(parsed.siteRadiusMeters)
             : null,
         enforceOnSiteAtLogin: Boolean(parsed.enforceOnSiteAtLogin),
+        // Kill-switch: default true unless explicitly persisted as false (fail safe toward enforce).
+        requireMfa: parsed.requireMfa === false ? false : true,
         branding: sanitizeBranding(defaults.branding, parsed.branding),
       };
     }
@@ -216,6 +221,7 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
         : null;
   if (typeof next.enforceOnSiteAtLogin !== 'boolean')
     next.enforceOnSiteAtLogin = base.enforceOnSiteAtLogin;
+  if (typeof next.requireMfa !== 'boolean') next.requireMfa = base.requireMfa;
 
   next.branding =
     partial.branding !== undefined
@@ -265,6 +271,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             siteLng: shared.siteLng,
             siteRadiusMeters: shared.siteRadiusMeters,
             enforceOnSiteAtLogin: shared.enforceOnSiteAtLogin,
+            requireMfa: shared.requireMfa,
             branding: shared.branding,
           })
         );
@@ -298,6 +305,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       siteLng: optimistic.siteLng,
       siteRadiusMeters: optimistic.siteRadiusMeters,
       enforceOnSiteAtLogin: optimistic.enforceOnSiteAtLogin,
+      requireMfa: optimistic.requireMfa,
       branding: optimistic.branding,
     });
 
@@ -322,6 +330,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           siteLng: data.siteLng,
           siteRadiusMeters: data.siteRadiusMeters,
           enforceOnSiteAtLogin: data.enforceOnSiteAtLogin,
+          requireMfa: data.requireMfa,
           branding: data.branding,
         })
       );

@@ -63,6 +63,7 @@ export interface OrganizationSettingsRecord {
   siteLng: number | null;
   siteRadiusMeters: number | null;
   enforceOnSiteAtLogin: boolean;
+  requireMfa: boolean;
   branding: BrandingRecord;
 }
 
@@ -100,6 +101,7 @@ type OrganizationSettingsRow = {
   site_lng?: number | null;
   site_radius_meters?: number | null;
   enforce_on_site_at_login?: boolean;
+  require_mfa?: boolean;
   branding?: Record<string, unknown> | null;
 };
 
@@ -122,6 +124,9 @@ function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecor
         ? Number(row.site_radius_meters)
         : null,
     enforceOnSiteAtLogin: Boolean(row.enforce_on_site_at_login),
+    // Kill-switch: default TRUE (enforce) when the column is null/undefined so an
+    // un-migrated row or absent column fails safe toward MFA being required.
+    requireMfa: row.require_mfa ?? true,
     branding: mapBranding(row.branding),
   };
 }
@@ -161,6 +166,7 @@ export const adminSettingsService = {
       site_lng: settings.siteLng ?? null,
       site_radius_meters: settings.siteRadiusMeters ?? null,
       enforce_on_site_at_login: settings.enforceOnSiteAtLogin,
+      require_mfa: settings.requireMfa ?? true,
       branding: settings.branding ?? EMPTY_BRANDING,
       updated_by: authData.user?.id ?? null,
       updated_at: new Date().toISOString(),
