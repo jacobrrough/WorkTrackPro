@@ -13,6 +13,7 @@ export { subscriptions } from './subscriptions';
 export { adminSettingsService } from './adminSettings';
 export { boardService } from './boards';
 export { deliveryService } from './deliveries';
+export { projectHoursService } from './projectHours';
 export { jobStatusHistoryService } from './jobStatusHistory';
 export { chatService } from './chat';
 export { encryptionKeyService } from './encryptionKeys';
