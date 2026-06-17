@@ -28,6 +28,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
   const [signUpSuccessMessage, setSignUpSuccessMessage] = useState<string | null>(null);
   const [contactMessage, setContactMessage] = useState('');
   const [contactSent, setContactSent] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,12 +70,24 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-[#2b1a3d] px-6">
       <div className="mb-8 flex w-full max-w-[400px] flex-col items-center">
-        {/* Company logo — same brand mark as the main site (Landing) */}
-        <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-md bg-amber-500/20 text-amber-400 shadow-xl">
-          <span className="material-symbols-outlined text-6xl" aria-hidden>
-            precision_manufacturing
-          </span>
-        </div>
+        {/* Company logo — the same /logo.png brand mark used on the public site header.
+            Falls back to the generic icon only if the image fails to load. */}
+        {logoError ? (
+          <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-md bg-amber-500/20 text-amber-400 shadow-xl">
+            <span className="material-symbols-outlined text-6xl" aria-hidden>
+              precision_manufacturing
+            </span>
+          </div>
+        ) : (
+          <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-md bg-white/95 p-2 shadow-xl">
+            <img
+              src="/logo.png"
+              alt="Rough Cut Manufacturing logo"
+              className="h-full w-full object-contain"
+              onError={() => setLogoError(true)}
+            />
+          </div>
+        )}
         <h1 className="text-center text-[32px] font-bold leading-tight tracking-tight text-white">
           WorkTrack Pro
         </h1>
