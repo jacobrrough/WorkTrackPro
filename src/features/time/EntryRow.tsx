@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/Toast';
 import type { ProjectHourEntry } from '@/core/types';
-import { computeEntryPay, formatUsd, parseHoursInput, payFromHours } from '@/lib/projectHours';
+import {
+  computeEntryPay,
+  formatUsd,
+  isEntryPaid,
+  parseHoursInput,
+  payFromHours,
+} from '@/lib/projectHours';
 import { type DateRangePreset, filterByDateRange } from '@/lib/dateRange';
 import type { useProjectHoursMutations } from '@/hooks/useProjectHours';
 import HoursFields from './HoursFields';
@@ -99,6 +105,8 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
     );
   }
 
+  const paid = isEntryPaid(entry);
+
   return (
     <li className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-3 py-2 text-sm">
       <div className="min-w-0">
@@ -106,29 +114,46 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
         <span className="ml-2 text-slate-400">
           {entry.hours} hrs · {formatUsd(computeEntryPay(entry))}
         </span>
+        {paid && (
+          <span className="ml-2 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+            Paid
+          </span>
+        )}
         {entry.note && <p className="truncate text-xs text-slate-500">{entry.note}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <button
-          onClick={openEdit}
-          className="flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-white/10 hover:text-white"
-          aria-label="Edit entry"
-        >
-          <span className="material-symbols-outlined text-base">edit</span>
-        </button>
-        <button
-          onClick={() =>
-            requestConfirm({
-              title: 'Delete entry',
-              message: `Delete ${entry.hours} hrs logged on ${entry.entryDate}?`,
-              onConfirm: () => mutations.deleteEntry(entry.id),
-            })
-          }
-          className="flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-red-500/20 hover:text-red-400"
-          aria-label="Delete entry"
-        >
-          <span className="material-symbols-outlined text-base">delete</span>
-        </button>
+        {paid ? (
+          // A settled entry is locked (no edit/delete); it can only be reopened.
+          <button
+            onClick={() => mutations.unmarkEntryPaid(entry.id)}
+            className="rounded-sm border border-white/10 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10"
+          >
+            Unmark paid
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={openEdit}
+              className="flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-white/10 hover:text-white"
+              aria-label="Edit entry"
+            >
+              <span className="material-symbols-outlined text-base">edit</span>
+            </button>
+            <button
+              onClick={() =>
+                requestConfirm({
+                  title: 'Delete entry',
+                  message: `Delete ${entry.hours} hrs logged on ${entry.entryDate}?`,
+                  onConfirm: () => mutations.deleteEntry(entry.id),
+                })
+              }
+              className="flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-red-500/20 hover:text-red-400"
+              aria-label="Delete entry"
+            >
+              <span className="material-symbols-outlined text-base">delete</span>
+            </button>
+          </>
+        )}
       </div>
     </li>
   );

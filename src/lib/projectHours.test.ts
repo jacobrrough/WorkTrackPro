@@ -4,8 +4,9 @@ import {
   payFromHours,
   parseHoursInput,
   computeProjectTotals,
-  countEntriesByProject,
   deleteProjectMessage,
+  isEntryPaid,
+  owedEntryIds,
   buildExportRows,
 } from './projectHours';
 import type { ProjectHourEntry, ProjectHours } from '@/core/types';
@@ -18,6 +19,7 @@ function entry(partial: Partial<ProjectHourEntry>): ProjectHourEntry {
     hours: partial.hours ?? 1,
     rate: partial.rate ?? PROJECT_HOURS_RATE,
     note: partial.note,
+    paidAt: partial.paidAt,
     createdBy: partial.createdBy,
     createdAt: partial.createdAt,
   };
@@ -88,23 +90,6 @@ describe('parseHoursInput', () => {
   });
 });
 
-describe('countEntriesByProject', () => {
-  it('returns an empty map for no entries', () => {
-    expect(countEntriesByProject([]).size).toBe(0);
-  });
-
-  it('counts entries per project id', () => {
-    const counts = countEntriesByProject([
-      entry({ id: 'a', projectId: 'p1' }),
-      entry({ id: 'b', projectId: 'p1' }),
-      entry({ id: 'c', projectId: 'p2' }),
-    ]);
-    expect(counts.get('p1')).toBe(2);
-    expect(counts.get('p2')).toBe(1);
-    expect(counts.get('p3')).toBeUndefined();
-  });
-});
-
 describe('deleteProjectMessage', () => {
   it('omits the count when there are no entries', () => {
     expect(deleteProjectMessage('Hours Tracker', 0)).toBe(
@@ -125,11 +110,65 @@ describe('deleteProjectMessage', () => {
 
 describe('computeProjectTotals', () => {
   it('returns zeros for an empty set', () => {
-    expect(computeProjectTotals([])).toEqual({ totalHours: 0, totalPay: 0 });
+    expect(computeProjectTotals([])).toEqual({
+      totalHours: 0,
+      totalPay: 0,
+      owedHours: 0,
+      owedPay: 0,
+      paidHours: 0,
+      paidPay: 0,
+    });
   });
 
-  it('sums a single entry', () => {
-    expect(computeProjectTotals([entry({ hours: 2 })])).toEqual({ totalHours: 2, totalPay: 38 });
+  it('counts an unpaid entry as owed', () => {
+    expect(computeProjectTotals([entry({ hours: 2 })])).toEqual({
+      totalHours: 2,
+      totalPay: 38,
+      owedHours: 2,
+      owedPay: 38,
+      paidHours: 0,
+      paidPay: 0,
+    });
+  });
+
+  it('splits owed vs paid by paidAt', () => {
+    const totals = computeProjectTotals([
+      entry({ id: 'a', hours: 2 }), // owed
+      entry({ id: 'b', hours: 1, paidAt: '2026-06-17T00:00:00Z' }), // paid
+    ]);
+    expect(totals).toEqual({
+      totalHours: 3,
+      totalPay: 57,
+      owedHours: 2,
+      owedPay: 38,
+      paidHours: 1,
+      paidPay: 19,
+    });
+  });
+
+  it('counts a fully-settled set as paid with zero owed', () => {
+    const totals = computeProjectTotals([
+      entry({ id: 'a', hours: 2, paidAt: '2026-06-17T00:00:00Z' }),
+      entry({ id: 'b', hours: 1, paidAt: '2026-06-17T00:00:00Z' }),
+    ]);
+    expect(totals).toEqual({
+      totalHours: 3,
+      totalPay: 57,
+      owedHours: 0,
+      owedPay: 0,
+      paidHours: 3,
+      paidPay: 57,
+    });
+  });
+
+  it('owed + paid always reconciles to total (no rounding leak)', () => {
+    const totals = computeProjectTotals([
+      entry({ id: 'a', hours: 0.33 }),
+      entry({ id: 'b', hours: 0.33, paidAt: '2026-06-17T00:00:00Z' }),
+      entry({ id: 'c', hours: 0.1 }),
+    ]);
+    expect(totals.owedPay + totals.paidPay).toBe(totals.totalPay);
+    expect(totals.owedHours + totals.paidHours).toBe(totals.totalHours);
   });
 
   it('sums multiple entries without float drift', () => {
@@ -140,6 +179,7 @@ describe('computeProjectTotals', () => {
     ]);
     expect(totals.totalHours).toBe(0.6);
     expect(totals.totalPay).toBe(11.4);
+    expect(totals.owedPay).toBe(11.4);
   });
 
   it('skips invalid entries', () => {
@@ -147,7 +187,32 @@ describe('computeProjectTotals', () => {
       entry({ id: 'a', hours: 1 }),
       entry({ id: 'b', hours: 0 }),
     ]);
-    expect(totals).toEqual({ totalHours: 1, totalPay: 19 });
+    expect(totals.totalHours).toBe(1);
+    expect(totals.owedPay).toBe(19);
+  });
+});
+
+describe('isEntryPaid', () => {
+  it('treats null/undefined paidAt as unpaid and any timestamp as paid', () => {
+    expect(isEntryPaid(entry({ paidAt: undefined }))).toBe(false);
+    expect(isEntryPaid(entry({ paidAt: null as unknown as undefined }))).toBe(false);
+    expect(isEntryPaid(entry({ paidAt: '2026-06-17T00:00:00Z' }))).toBe(true);
+  });
+});
+
+describe('owedEntryIds', () => {
+  it('returns only unpaid, positive-hour entry ids', () => {
+    expect(
+      owedEntryIds([
+        entry({ id: 'a', hours: 2 }), // owed
+        entry({ id: 'b', hours: 1, paidAt: '2026-06-17T00:00:00Z' }), // paid
+        entry({ id: 'c', hours: 0 }), // invalid
+      ])
+    ).toEqual(['a']);
+  });
+
+  it('returns an empty array when nothing is owed', () => {
+    expect(owedEntryIds([entry({ id: 'a', paidAt: '2026-06-17T00:00:00Z' })])).toEqual([]);
   });
 });
 
@@ -156,6 +221,15 @@ describe('buildExportRows', () => {
     { id: 'p1', name: 'Hours Tracker', status: 'active' },
     { id: 'p2', name: 'Inventory Fix', status: 'finished' },
   ];
+
+  it('emits Status and Paid columns from paidAt (date only)', () => {
+    const rows = buildExportRows(projects, [
+      entry({ id: 'a', projectId: 'p1', hours: 1 }),
+      entry({ id: 'b', projectId: 'p1', hours: 1, paidAt: '2026-06-17T14:30:00Z' }),
+    ]);
+    expect(rows[0]).toMatchObject({ Status: 'Owed', Paid: '' });
+    expect(rows[1]).toMatchObject({ Status: 'Paid', Paid: '2026-06-17' });
+  });
 
   it('produces one row per entry with reconciling pay', () => {
     const rows = buildExportRows(projects, [

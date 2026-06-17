@@ -22,6 +22,7 @@ function mapEntryRow(row: Record<string, unknown>): ProjectHourEntry {
     hours: Number(row.hours),
     rate: Number(row.rate),
     note: (row.note as string) ?? undefined,
+    paidAt: (row.paid_at as string) ?? undefined,
     createdBy: (row.created_by as string) ?? undefined,
     createdAt: (row.created_at as string) ?? undefined,
   };
@@ -160,6 +161,42 @@ export const projectHoursService = {
       .single();
     if (error || !row) {
       console.error('projectHoursService.updateEntry failed:', error?.message);
+      return null;
+    }
+    return mapEntryRow(row as Record<string, unknown>);
+  },
+
+  /**
+   * Settle the given owed entries by stamping paid_at = now(). Settling an explicit id set
+   * (rather than a table-wide UPDATE) guarantees the rows acted on exactly match the set the
+   * UI summed/confirmed — no archived or off-screen entry gets settled silently. The
+   * `paid_at IS NULL` guard keeps already-paid rows untouched. Returns the count, or null on
+   * error (distinct from 0 = nothing to settle).
+   */
+  async markPaid(ids: string[]): Promise<number | null> {
+    if (ids.length === 0) return 0;
+    const { data, error } = await supabase
+      .from('project_hour_entries')
+      .update({ paid_at: new Date().toISOString() })
+      .in('id', ids)
+      .is('paid_at', null)
+      .select('id');
+    if (error) {
+      console.error('projectHoursService.markPaid failed:', error.message);
+      return null;
+    }
+    return data?.length ?? 0;
+  },
+
+  async unmarkEntryPaid(id: string): Promise<ProjectHourEntry | null> {
+    const { data: row, error } = await supabase
+      .from('project_hour_entries')
+      .update({ paid_at: null })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error || !row) {
+      console.error('projectHoursService.unmarkEntryPaid failed:', error?.message);
       return null;
     }
     return mapEntryRow(row as Record<string, unknown>);

@@ -559,6 +559,7 @@ export interface ProjectHourEntry {
   hours: number;
   rate: number;
   note?: string;
+  paidAt?: string; // set when settled; undefined = still owed
   createdBy?: string;
   createdAt?: string;
 }

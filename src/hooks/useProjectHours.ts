@@ -148,6 +148,38 @@ export function useProjectHoursMutations({ showToast }: UseProjectHoursMutations
     [invalidate, showToast]
   );
 
+  const markPaid = useCallback(
+    async (ids: string[]) => {
+      const count = await projectHoursService.markPaid(ids);
+      if (count === null) {
+        showToast('Failed to mark paid', 'error');
+        return 0;
+      }
+      if (count > 0) {
+        invalidate();
+        showToast(`Marked ${count} ${count === 1 ? 'entry' : 'entries'} paid`, 'success');
+      } else {
+        showToast('Nothing owed to mark paid', 'info');
+      }
+      return count;
+    },
+    [invalidate, showToast]
+  );
+
+  const unmarkEntryPaid = useCallback(
+    async (id: string) => {
+      const entry = await projectHoursService.unmarkEntryPaid(id);
+      if (entry) {
+        invalidate();
+        showToast('Entry marked unpaid', 'success');
+      } else {
+        showToast('Failed to unmark entry', 'error');
+      }
+      return entry;
+    },
+    [invalidate, showToast]
+  );
+
   const deleteEntry = useCallback(
     async (id: string) => {
       const ok = await projectHoursService.deleteEntry(id);
@@ -172,5 +204,7 @@ export function useProjectHoursMutations({ showToast }: UseProjectHoursMutations
     addEntry,
     updateEntry,
     deleteEntry,
+    markPaid,
+    unmarkEntryPaid,
   };
 }

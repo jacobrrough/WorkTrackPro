@@ -3,20 +3,16 @@ import { useToast } from '@/Toast';
 import ConfirmDialog from '@/ConfirmDialog';
 import { exportToCsv } from '@/lib/exportCsv';
 import {
-  PROJECT_HOURS_RATE,
   buildExportRows,
   computeProjectTotals,
-  countEntriesByProject,
-  deleteProjectMessage,
   formatUsd,
-  parseHoursInput,
-  payFromHours,
+  isEntryPaid,
+  owedEntryIds,
 } from '@/lib/projectHours';
 import { type DateRangePreset, filterByDateRange, todayKey } from '@/lib/dateRange';
-import type { ProjectHourEntry, ProjectHours as Project } from '@/core/types';
+import type { ProjectHourEntry } from '@/core/types';
 import { useProjectHoursData, useProjectHoursMutations } from '@/hooks/useProjectHours';
-import HoursFields from './HoursFields';
-import EntryRow from './EntryRow';
+import ProjectRow from './ProjectRow';
 
 interface ProjectHoursProps {
   onBack: () => void;
@@ -28,6 +24,16 @@ const RANGES: { key: DateRangePreset; label: string }[] = [
   { key: 'month', label: 'Month' },
   { key: 'all', label: 'All' },
 ];
+
+function groupByProject(entries: ProjectHourEntry[]): Map<string, ProjectHourEntry[]> {
+  const map = new Map<string, ProjectHourEntry[]>();
+  for (const e of entries) {
+    const list = map.get(e.projectId) ?? [];
+    list.push(e);
+    map.set(e.projectId, list);
+  }
+  return map;
+}
 
 const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
   const { showToast } = useToast();
@@ -45,6 +51,8 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
     onConfirm: () => void;
   } | null>(null);
 
+  const [showPaid, setShowPaid] = useState(false);
+
   const projectList = projects.data ?? [];
 
   // Ids of the projects currently shown (archived ones are hidden unless toggled on).
@@ -53,51 +61,46 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
     [projects.data]
   );
 
-  // Roll-up and per-project totals only count entries for VISIBLE projects, so the Summary
-  // never shows pay from an archived project whose row isn't rendered.
-  const filteredEntries = useMemo(
-    () =>
-      filterByDateRange(
-        (entries.data ?? []).filter((e) => visibleProjectIds.has(e.projectId)),
-        (e) => e.entryDate,
-        range
-      ),
-    [entries.data, visibleProjectIds, range]
+  // All entries belonging to a VISIBLE project (all-time, no date/paid filter). Drives the
+  // money picture (Total/Paid/Owed) and each project's owed/total + mark-paid availability.
+  const allEntries = useMemo(
+    () => (entries.data ?? []).filter((e) => visibleProjectIds.has(e.projectId)),
+    [entries.data, visibleProjectIds]
   );
 
-  const entriesByProject = useMemo(() => {
-    const map = new Map<string, ProjectHourEntry[]>();
-    for (const e of filteredEntries) {
-      const list = map.get(e.projectId) ?? [];
-      list.push(e);
-      map.set(e.projectId, list);
-    }
-    return map;
-  }, [filteredEntries]);
+  const allByProject = useMemo(() => groupByProject(allEntries), [allEntries]);
 
-  // Total (unfiltered) entry count per project — used for an accurate delete warning,
-  // since deleting a project cascades ALL its entries regardless of the date filter.
-  const totalCountByProject = useMemo(
-    () => countEntriesByProject(entries.data ?? []),
-    [entries.data]
-  );
+  // Entries shown in the expanded lists & export: date-range filtered, and paid hidden
+  // unless "Show paid" is on.
+  const filteredEntries = useMemo(() => {
+    const inRange = filterByDateRange(allEntries, (e) => e.entryDate, range);
+    return showPaid ? inRange : inRange.filter((e) => !isEntryPaid(e));
+  }, [allEntries, range, showPaid]);
 
-  const rollup = useMemo(() => computeProjectTotals(filteredEntries), [filteredEntries]);
+  const filteredByProject = useMemo(() => groupByProject(filteredEntries), [filteredEntries]);
 
-  // Only assert a single "@ $X/hr" rate when every entry in view actually uses it; entries
-  // snapshot their own rate, so a mixed set would make a single-rate label a lie.
-  const uniformRate = useMemo(
-    () => filteredEntries.length > 0 && filteredEntries.every((e) => e.rate === PROJECT_HOURS_RATE),
-    [filteredEntries]
-  );
+  // All-time money picture (NOT range-filtered) — owed is the balance still due.
+  const summary = useMemo(() => computeProjectTotals(allEntries), [allEntries]);
 
   const handleExport = () => {
     const rows = buildExportRows(projectList, filteredEntries);
     if (!rows.length) {
-      showToast('Nothing to export for this range', 'info');
+      showToast('Nothing to export for this view', 'info');
       return;
     }
     exportToCsv(`project-hours-${range}-${todayKey()}`, rows);
+  };
+
+  const handleSettleAll = () => {
+    // Settle exactly the visible owed entries that make up summary.owedPay — never a
+    // table-wide update that could also touch archived/off-screen owed hours.
+    const ids = owedEntryIds(allEntries);
+    if (ids.length === 0) return;
+    setConfirm({
+      title: 'Mark all owed as paid',
+      message: `Mark ${formatUsd(summary.owedPay)} (${summary.owedHours} hrs) across all projects as paid? Paid entries become locked.`,
+      onConfirm: () => mutations.markPaid(ids),
+    });
   };
 
   const [creating, setCreating] = useState(false);
@@ -170,56 +173,75 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
             </div>
           )}
 
-          {/* Roll-up summary */}
+          {/* Money summary — all-time. Owed is the balance still due. */}
           <div className="rounded-sm border border-primary/30 bg-primary/10 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Summary
-              </span>
-              <div className="flex gap-1">
-                {RANGES.map((r) => (
-                  <button
-                    key={r.key}
-                    onClick={() => setRange(r.key)}
-                    className={`rounded-sm px-2.5 py-1 text-xs font-medium ${
-                      range === r.key
-                        ? 'border border-primary bg-primary/20 text-primary'
-                        : 'bg-white/10 text-slate-400'
-                    }`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-end justify-between">
+            <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-3xl font-bold text-white">{formatUsd(rollup.totalPay)}</p>
-                <p className="text-sm text-slate-400">
-                  {rollup.totalHours} hrs{uniformRate ? ` @ $${PROJECT_HOURS_RATE}/hr` : ''}
-                </p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Owed</p>
+                <p className="text-3xl font-bold text-white">{formatUsd(summary.owedPay)}</p>
+                <p className="text-sm text-slate-400">{summary.owedHours} hrs unpaid</p>
               </div>
               <button
-                onClick={handleExport}
-                disabled={filteredEntries.length === 0}
-                className="flex items-center gap-2 rounded-sm border border-primary/50 bg-primary/20 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/30 disabled:opacity-40"
+                onClick={handleSettleAll}
+                disabled={summary.owedPay <= 0}
+                className="flex items-center gap-2 rounded-sm border border-emerald-500/50 bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40"
               >
-                <span className="material-symbols-outlined text-base">download</span>
-                Export CSV
+                <span className="material-symbols-outlined text-base">paid</span>
+                Mark all paid
               </button>
+            </div>
+            <div className="mt-3 flex gap-4 border-t border-white/10 pt-2 text-xs text-slate-400">
+              <span>Paid to date: {formatUsd(summary.paidPay)}</span>
+              <span>Total: {formatUsd(summary.totalPay)}</span>
             </div>
           </div>
 
-          {/* Show archived toggle */}
-          <label className="flex items-center justify-end gap-2 text-xs text-slate-400">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              className="accent-primary"
-            />
-            Show archived
-          </label>
+          {/* Toolbar: range + visibility filters + export (scope the activity below) */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex gap-1">
+              {RANGES.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => setRange(r.key)}
+                  className={`rounded-sm px-2.5 py-1 text-xs font-medium ${
+                    range === r.key
+                      ? 'border border-primary bg-primary/20 text-primary'
+                      : 'bg-white/10 text-slate-400'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleExport}
+              disabled={filteredEntries.length === 0}
+              className="flex items-center gap-2 rounded-sm border border-primary/50 bg-primary/20 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/30 disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-base">download</span>
+              Export CSV
+            </button>
+          </div>
+          <div className="flex items-center justify-end gap-4 text-xs text-slate-400">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showPaid}
+                onChange={(e) => setShowPaid(e.target.checked)}
+                className="accent-primary"
+              />
+              Show paid
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="accent-primary"
+              />
+              Show archived
+            </label>
+          </div>
 
           {/* Projects */}
           {isError ? (
@@ -243,8 +265,8 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
               <ProjectRow
                 key={project.id}
                 project={project}
-                entries={entriesByProject.get(project.id) ?? []}
-                totalEntryCount={totalCountByProject.get(project.id) ?? 0}
+                allEntries={allByProject.get(project.id) ?? []}
+                filteredEntries={filteredByProject.get(project.id) ?? []}
                 range={range}
                 expanded={expandedId === project.id}
                 onToggle={() => setExpandedId((id) => (id === project.id ? null : project.id))}
@@ -268,262 +290,6 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
         }}
         onCancel={() => setConfirm(null)}
       />
-    </div>
-  );
-};
-
-interface ProjectRowProps {
-  project: Project;
-  entries: ProjectHourEntry[];
-  totalEntryCount: number;
-  range: DateRangePreset;
-  expanded: boolean;
-  onToggle: () => void;
-  mutations: ReturnType<typeof useProjectHoursMutations>;
-  requestConfirm: (c: { title: string; message: string; onConfirm: () => void }) => void;
-}
-
-const ProjectRow: React.FC<ProjectRowProps> = ({
-  project,
-  entries,
-  totalEntryCount,
-  range,
-  expanded,
-  onToggle,
-  mutations,
-  requestConfirm,
-}) => {
-  const totals = useMemo(() => computeProjectTotals(entries), [entries]);
-  const [date, setDate] = useState(todayKey());
-  const [hours, setHours] = useState('');
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // Rename
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState(project.name);
-  const [renaming, setRenaming] = useState(false);
-
-  const handleRename = async () => {
-    const next = nameDraft.trim();
-    if (!next || next === project.name) {
-      setEditingName(false);
-      return;
-    }
-    if (renaming) return;
-    setRenaming(true);
-    try {
-      const ok = await mutations.renameProject(project.id, next);
-      if (ok) setEditingName(false);
-    } finally {
-      setRenaming(false);
-    }
-  };
-
-  const parsed = parseHoursInput(hours);
-
-  const handleAdd = async () => {
-    if (!parsed.valid || saving) return;
-    setSaving(true);
-    try {
-      const added = await mutations.addEntry({
-        projectId: project.id,
-        entryDate: date,
-        hours: parsed.hours,
-        note: note.trim() || undefined,
-      });
-      if (added) {
-        setHours('');
-        setNote('');
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const archived = !!project.archivedAt;
-
-  return (
-    <div className="overflow-hidden rounded-sm border border-white/10 bg-white/5">
-      <button
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-label={`${project.name}, ${expanded ? 'collapse' : 'expand'}`}
-        className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-white/5"
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`material-symbols-outlined text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
-          >
-            chevron_right
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-medium text-white">{project.name}</p>
-            <div className="mt-0.5 flex items-center gap-2">
-              <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                  project.status === 'finished'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-blue-500/20 text-blue-400'
-                }`}
-              >
-                {project.status === 'finished' ? 'Finished' : 'Active'}
-              </span>
-              {archived && (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
-                  Archived
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="font-bold text-white">{formatUsd(totals.totalPay)}</p>
-          <p className="text-xs text-slate-400">{totals.totalHours} hrs</p>
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="space-y-3 border-t border-white/10 p-3">
-          {/* Rename */}
-          {editingName && (
-            <div className="flex gap-2 rounded-sm bg-background-dark/60 p-3">
-              <input
-                autoFocus
-                aria-label="Project name"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleRename();
-                  if (e.key === 'Escape') {
-                    setNameDraft(project.name);
-                    setEditingName(false);
-                  }
-                }}
-                className="flex-1 rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white"
-              />
-              <button
-                onClick={handleRename}
-                disabled={!nameDraft.trim() || renaming}
-                className="rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => {
-                  setNameDraft(project.name);
-                  setEditingName(false);
-                }}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {/* Add-hours form */}
-          {!archived && (
-            <div className="space-y-2 rounded-sm bg-background-dark/60 p-3">
-              <HoursFields
-                date={date}
-                hours={hours}
-                note={note}
-                onDate={setDate}
-                onHours={setHours}
-                onNote={setNote}
-                onEnter={handleAdd}
-              />
-              <button
-                onClick={handleAdd}
-                disabled={!parsed.valid || saving}
-                className="w-full rounded-sm bg-primary py-2 text-sm font-bold text-white disabled:opacity-50"
-              >
-                Log hours
-                {parsed.valid ? ` (${formatUsd(payFromHours(parsed.hours))})` : ''}
-              </button>
-            </div>
-          )}
-
-          {/* Entries */}
-          {entries.length === 0 ? (
-            <p className="py-2 text-center text-xs text-slate-500">No hours in this range.</p>
-          ) : (
-            <ul className="space-y-1">
-              {entries.map((e) => (
-                <EntryRow
-                  key={e.id}
-                  entry={e}
-                  range={range}
-                  mutations={mutations}
-                  requestConfirm={requestConfirm}
-                />
-              ))}
-            </ul>
-          )}
-
-          {/* Project actions */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button
-              onClick={() => {
-                setNameDraft(project.name);
-                setEditingName((v) => !v);
-              }}
-              className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
-            >
-              Rename
-            </button>
-            {project.status === 'finished' ? (
-              <button
-                onClick={() => mutations.setProjectStatus(project.id, 'active')}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
-              >
-                Reopen
-              </button>
-            ) : (
-              <button
-                onClick={() => mutations.setProjectStatus(project.id, 'finished')}
-                className="rounded-sm border border-green-500/40 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/20"
-              >
-                Mark finished
-              </button>
-            )}
-            {archived ? (
-              <button
-                onClick={() => mutations.unarchiveProject(project.id)}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
-              >
-                Restore
-              </button>
-            ) : (
-              <button
-                onClick={() =>
-                  requestConfirm({
-                    title: 'Archive project',
-                    message: `Archive "${project.name}"? Its logged hours are kept and it can be restored later.`,
-                    onConfirm: () => mutations.archiveProject(project.id),
-                  })
-                }
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
-              >
-                Archive
-              </button>
-            )}
-            <button
-              onClick={() =>
-                requestConfirm({
-                  title: 'Delete project',
-                  message: deleteProjectMessage(project.name, totalEntryCount),
-                  onConfirm: () => mutations.deleteProject(project.id),
-                })
-              }
-              className="rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -49,34 +49,56 @@ export function formatUsd(n: number): string {
 export interface ProjectHourTotals {
   totalHours: number;
   totalPay: number;
+  /** Unpaid (paidAt not set). */
+  owedHours: number;
+  owedPay: number;
+  /** Settled (paidAt set). */
+  paidHours: number;
+  paidPay: number;
+}
+
+/** True when an entry has been settled. */
+export function isEntryPaid(entry: ProjectHourEntry): boolean {
+  return entry.paidAt != null;
+}
+
+/** Ids of the owed (unpaid, positive-hour) entries — the exact set a "Settle" acts on. */
+export function owedEntryIds(entries: ProjectHourEntry[]): string[] {
+  return entries
+    .filter((e) => !isEntryPaid(e) && Number.isFinite(e.hours) && e.hours > 0)
+    .map((e) => e.id);
 }
 
 /**
- * Aggregate a set of entries. Pay is summed per-entry (each rounded to cents) so that
- * per-entry, per-project, and roll-up totals always reconcile to the penny. Hours are
- * rounded to 2dp to match the numeric(6,2) column and avoid float drift in the display.
+ * Aggregate a set of entries, split into owed vs paid. Pay is summed per-entry (each
+ * rounded to cents) so per-entry, per-project, and roll-up totals always reconcile to the
+ * penny. Hours are rounded to 2dp to match the numeric(6,2) column and avoid float drift.
  */
 export function computeProjectTotals(entries: ProjectHourEntry[]): ProjectHourTotals {
-  let totalHours = 0;
-  let totalPay = 0;
+  let owedHours = 0;
+  let owedPay = 0;
+  let paidHours = 0;
+  let paidPay = 0;
   for (const e of entries) {
     if (!Number.isFinite(e.hours) || e.hours <= 0) continue;
-    totalHours += e.hours;
-    totalPay += computeEntryPay(e);
+    const pay = computeEntryPay(e);
+    if (isEntryPaid(e)) {
+      paidHours += e.hours;
+      paidPay += pay;
+    } else {
+      owedHours += e.hours;
+      owedPay += pay;
+    }
   }
+  const round = (n: number) => Math.round(n * 100) / 100;
   return {
-    totalHours: Math.round(totalHours * 100) / 100,
-    totalPay: Math.round(totalPay * 100) / 100,
+    totalHours: round(owedHours + paidHours),
+    totalPay: round(owedPay + paidPay),
+    owedHours: round(owedHours),
+    owedPay: round(owedPay),
+    paidHours: round(paidHours),
+    paidPay: round(paidPay),
   };
-}
-
-/** Count entries per project id (unfiltered) — drives the delete-cascade warning. */
-export function countEntriesByProject(entries: ProjectHourEntry[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const e of entries) {
-    counts.set(e.projectId, (counts.get(e.projectId) ?? 0) + 1);
-  }
-  return counts;
 }
 
 /** Confirmation copy for permanently deleting a project and its cascaded entries. */
@@ -100,6 +122,8 @@ export function buildExportRows(
     Hours: e.hours,
     Rate: e.rate,
     Pay: computeEntryPay(e).toFixed(2),
+    Status: isEntryPaid(e) ? 'Paid' : 'Owed',
+    Paid: e.paidAt ? e.paidAt.slice(0, 10) : '',
     Note: e.note ?? '',
   }));
 }
