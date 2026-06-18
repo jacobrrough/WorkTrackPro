@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
 import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
@@ -85,6 +85,11 @@ export default function InventoryMainView({
   const [orderModalMode, setOrderModalMode] = useState<'add' | 'receive' | null>(null);
   const [orderModalQty, setOrderModalQty] = useState(0);
   const [rowMenuItemId, setRowMenuItemId] = useState<string | null>(null);
+  // Staged stock adjustments keyed by item id. Tapping +/- changes the pending delta only;
+  // nothing is written until the row's Confirm is pressed, so an accidental tap is harmless.
+  const [pendingDeltas, setPendingDeltas] = useState<Record<string, number>>({});
+  // Item ids with a commit currently in flight — used to disable Confirm and block double-submit.
+  const [committingIds, setCommittingIds] = useState<Set<string>>(new Set());
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
   const baseFiltered = useMemo(
     () =>
@@ -124,10 +129,60 @@ export default function InventoryMainView({
     return { total: baseFiltered.length, needsReorder, lowStock };
   }, [baseFiltered, calculateAllocated, calculateAvailable]);
 
-  const handleQuickAdjust = async (item: InventoryItem, delta: number) => {
-    const next = Math.max(0, item.inStock + delta);
-    await onQuickAdjust(item, next - item.inStock);
+  // Add `step` (+1 / -1) to the row's staged delta, clamped so projected stock never goes below 0.
+  const stageAdjust = (item: InventoryItem, step: number) => {
+    setPendingDeltas((prev) => {
+      const nextDelta = (prev[item.id] ?? 0) + step;
+      return { ...prev, [item.id]: Math.max(-item.inStock, nextDelta) };
+    });
   };
+
+  const cancelAdjust = (itemId: string) => {
+    setPendingDeltas((prev) => {
+      if (!(itemId in prev)) return prev;
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  };
+
+  const commitAdjust = async (item: InventoryItem) => {
+    const delta = pendingDeltas[item.id] ?? 0;
+    if (delta === 0) {
+      cancelAdjust(item.id);
+      return;
+    }
+    if (committingIds.has(item.id)) return; // a write is already in flight for this row
+    setCommittingIds((prev) => new Set(prev).add(item.id));
+    try {
+      await onQuickAdjust(item, delta);
+      // Only clear the staged change once the write has actually succeeded, so a failed
+      // request doesn't silently discard the user's pending input.
+      cancelAdjust(item.id);
+    } catch {
+      showToast('Failed to update stock — your change was kept so you can retry', 'error');
+    } finally {
+      setCommittingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
+  // Drop staged deltas for items that no longer exist (e.g. deleted) so they don't linger.
+  useEffect(() => {
+    setPendingDeltas((prev) => {
+      const ids = new Set(inventory.map((i) => i.id));
+      let changed = false;
+      const next: Record<string, number> = {};
+      for (const [id, d] of Object.entries(prev)) {
+        if (ids.has(id)) next[id] = d;
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [inventory]);
 
   const exportCsv = () => {
     const rows = tabFiltered.map((item) => {
@@ -165,6 +220,10 @@ export default function InventoryMainView({
     const availColor =
       stock.available <= 0 ? 'text-red-400' : stock.lowStock ? 'text-yellow-400' : 'text-green-400';
     const menuOpen = rowMenuItemId === item.id;
+    const isStaging = item.id in pendingDeltas;
+    const isCommitting = committingIds.has(item.id);
+    const pendingDelta = pendingDeltas[item.id] ?? 0;
+    const projectedStock = item.inStock + pendingDelta;
     return (
       <div key={item.id} className="rounded-sm border border-white/10 bg-card-dark p-3">
         <button
@@ -186,7 +245,13 @@ export default function InventoryMainView({
           <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
             <div>
               <p className="text-xs text-slate-500">In Stock</p>
-              <p className="font-bold text-white">{item.inStock}</p>
+              {isStaging ? (
+                <p className="font-bold text-primary">
+                  {item.inStock} → {projectedStock}
+                </p>
+              ) : (
+                <p className="font-bold text-white">{item.inStock}</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-slate-500">Allocated</p>
@@ -267,7 +332,7 @@ export default function InventoryMainView({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              handleQuickAdjust(item, -1);
+              stageAdjust(item, -1);
             }}
             className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
             aria-label={`Decrease stock for ${item.name}`}
@@ -278,7 +343,7 @@ export default function InventoryMainView({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              handleQuickAdjust(item, 1);
+              stageAdjust(item, 1);
             }}
             className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
             aria-label={`Increase stock for ${item.name}`}
@@ -286,6 +351,44 @@ export default function InventoryMainView({
             <span className="material-symbols-outlined">add</span>
           </button>
         </div>
+        {isStaging && (
+          <div
+            className="mt-3 flex items-center justify-between gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-2"
+            aria-live="polite"
+          >
+            <span className="text-sm font-medium text-primary">
+              {item.inStock} → {projectedStock}{' '}
+              <span className="text-xs text-slate-400">
+                ({pendingDelta > 0 ? '+' : ''}
+                {pendingDelta})
+              </span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isCommitting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelAdjust(item.id);
+                }}
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-slate-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isCommitting}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void commitAdjust(item);
+                }}
+                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {isCommitting ? 'Saving…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -467,6 +570,10 @@ export default function InventoryMainView({
                 <tbody>
                   {tabFiltered.map((item) => {
                     const stock = computeStock(item, calculateAvailable, calculateAllocated);
+                    const isStaging = item.id in pendingDeltas;
+                    const isCommitting = committingIds.has(item.id);
+                    const pendingDelta = pendingDeltas[item.id] ?? 0;
+                    const projectedStock = item.inStock + pendingDelta;
                     return (
                       <tr key={item.id} className="border-t border-white/10">
                         <td className="px-3 py-2">
@@ -480,7 +587,15 @@ export default function InventoryMainView({
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-white">{item.inStock}</td>
+                        <td className="px-3 py-2">
+                          {isStaging ? (
+                            <span className="font-bold text-primary">
+                              {item.inStock} → {projectedStock}
+                            </span>
+                          ) : (
+                            <span className="text-white">{item.inStock}</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-yellow-300">{stock.allocated}</td>
                         <td
                           className={`px-3 py-2 ${stock.available <= 0 ? 'text-red-400' : stock.lowStock ? 'text-yellow-400' : 'text-green-400'}`}
@@ -569,7 +684,7 @@ export default function InventoryMainView({
                             </div>
                             <button
                               type="button"
-                              onClick={() => handleQuickAdjust(item, -1)}
+                              onClick={() => stageAdjust(item, -1)}
                               className="flex size-9 items-center justify-center rounded-sm border border-white/10 text-white"
                               aria-label={`Decrease stock for ${item.name}`}
                             >
@@ -577,12 +692,32 @@ export default function InventoryMainView({
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleQuickAdjust(item, 1)}
+                              onClick={() => stageAdjust(item, 1)}
                               className="flex size-9 items-center justify-center rounded-sm border border-white/10 text-white"
                               aria-label={`Increase stock for ${item.name}`}
                             >
                               <span className="material-symbols-outlined text-base">add</span>
                             </button>
+                            {isStaging && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={isCommitting}
+                                  onClick={() => cancelAdjust(item.id)}
+                                  className="min-h-[36px] rounded-sm border border-white/20 px-2 text-xs font-bold text-slate-300 disabled:opacity-50"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isCommitting}
+                                  onClick={() => void commitAdjust(item)}
+                                  className="min-h-[36px] rounded-sm bg-primary px-3 text-xs font-bold text-white disabled:opacity-50"
+                                >
+                                  {isCommitting ? 'Saving…' : 'Confirm'}
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
