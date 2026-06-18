@@ -1,0 +1,17 @@
+-- Security hardening (advisor 0025 public_bucket_allows_listing): stop anonymous LISTING of
+-- the public `customer-proposals` storage bucket.
+--
+-- The bucket is public, so object downloads work via getPublicUrl() WITHOUT any anon SELECT
+-- RLS policy (Supabase serves /storage/v1/object/public/<bucket>/<path> without RLS for public
+-- buckets). The broad "Anon read customer proposal files" SELECT policy therefore added nothing
+-- for legitimate downloads — it only let anon ENUMERATE/list every customer's uploaded
+-- paperwork. Drop it.
+--
+-- UNCHANGED: "Anon upload customer proposal files" (INSERT) keeps the public intake form working
+-- (src/public/PublicHome.tsx uploadFiles), and "Admin manage customer proposal files" (ALL, admin)
+-- keeps admin read/manage. Server-side reads use the service-role key and bypass RLS regardless.
+--
+-- IDEMPOTENT: drop ... if exists. ROLLBACK (re-create the anon read policy):
+--   create policy "Anon read customer proposal files" on storage.objects
+--     for select to anon using (bucket_id = 'customer-proposals');
+drop policy if exists "Anon read customer proposal files" on storage.objects;
