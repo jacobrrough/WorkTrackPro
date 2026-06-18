@@ -11,6 +11,7 @@ import {
   useAcceptEstimate,
   useConvertEstimate,
   useDeclineEstimate,
+  useDeleteEstimateDraft,
   useReissueEstimate,
   useSendEstimate,
   useUpdateEstimateDraft,
@@ -182,6 +183,7 @@ export default function EstimateDetailView() {
   const declineEstimate = useDeclineEstimate();
   const convertEstimate = useConvertEstimate();
   const reissueEstimate = useReissueEstimate();
+  const deleteEstimate = useDeleteEstimateDraft();
   const printRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -239,6 +241,24 @@ export default function EstimateDetailView() {
     navigate(`${ESTIMATES_BASE}/${res.estimateId}`);
   };
 
+  // Permanently delete a DRAFT estimate (posts nothing); non-draft estimates use Decline/Reissue.
+  const onDelete = async () => {
+    if (!estimate) return;
+    if (
+      !window.confirm(
+        `Delete draft estimate ${estimate.estimateNumber ?? 'Draft'}? This permanently removes it.`
+      )
+    )
+      return;
+    setActionError(null);
+    const res = await deleteEstimate.mutateAsync(estimate.id);
+    if (!res.ok) {
+      setActionError(res.error ?? 'Could not delete the estimate.');
+      return;
+    }
+    navigate(ESTIMATES_BASE);
+  };
+
   const onDownloadPdf = async () => {
     if (!estimate || !printRef.current) return;
     setActionError(null);
@@ -260,7 +280,10 @@ export default function EstimateDetailView() {
   const canAccept =
     estimate != null && (estimate.status === 'sent' || estimate.status === 'expired');
   const canDecline =
-    estimate != null && estimate.status !== 'declined' && estimate.status !== 'converted';
+    estimate != null &&
+    estimate.status !== 'draft' &&
+    estimate.status !== 'declined' &&
+    estimate.status !== 'converted';
   const canConvert =
     estimate != null && estimate.status !== 'declined' && estimate.status !== 'converted';
   // Reissue spins off a fresh draft copy — only offered once the estimate has left draft.
@@ -272,7 +295,8 @@ export default function EstimateDetailView() {
     acceptEstimate.isPending ||
     declineEstimate.isPending ||
     convertEstimate.isPending ||
-    reissueEstimate.isPending;
+    reissueEstimate.isPending ||
+    deleteEstimate.isPending;
 
   return (
     <AccountingShell
@@ -284,6 +308,11 @@ export default function EstimateDetailView() {
             {canEdit && (
               <Button size="sm" variant="secondary" icon="edit" onClick={() => setEditing(true)}>
                 Edit
+              </Button>
+            )}
+            {canEdit && (
+              <Button size="sm" variant="danger" icon="delete" onClick={onDelete} disabled={busy}>
+                {deleteEstimate.isPending ? 'Deleting…' : 'Delete'}
               </Button>
             )}
             {canSend && (
@@ -335,7 +364,7 @@ export default function EstimateDetailView() {
       {!isPending && !isError && !estimate && <p className="text-slate-400">Estimate not found.</p>}
 
       {estimate && (
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4">
           {taxShown && <TaxDisclaimer />}
 
           {editing ? (

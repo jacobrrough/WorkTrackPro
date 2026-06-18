@@ -417,6 +417,26 @@ export const estimatesService = {
 
     return { estimateId: res.estimate.id };
   },
+
+  /**
+   * Permanently delete a DRAFT estimate (and its lines). Estimates post no JE, so this is a
+   * plain hard delete; only drafts are removable (sent/accepted/converted are locked — reissue
+   * supersedes those instead).
+   */
+  async deleteDraft(id: string): Promise<{ ok: boolean; error?: string }> {
+    const existing = await this.getById(id);
+    if (!existing) return { ok: false, error: 'Estimate not found.' };
+    if (existing.status !== 'draft') {
+      return {
+        ok: false,
+        error: `Only draft estimates can be deleted (this one is ${existing.status}).`,
+      };
+    }
+    await acct().from('estimate_lines').delete().eq('estimate_id', id);
+    const { error } = await acct().from('estimates').delete().eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  },
 };
 
 /** Adapt a persisted EstimateLine back to the create/update input shape. */

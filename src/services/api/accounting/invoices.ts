@@ -353,6 +353,26 @@ export const invoicesService = {
     if (!invoiceId) return { invoiceId: null, error: 'Reissue did not return a draft invoice.' };
     return { invoiceId };
   },
+
+  /**
+   * Permanently delete a DRAFT invoice (and its lines). A draft has posted nothing to the
+   * ledger, so a hard delete leaves no dangling journal entry. Sent/posted invoices carry a
+   * posted JE + number/audit and must be VOIDED instead — rejected here.
+   */
+  async deleteDraft(id: string): Promise<{ ok: boolean; error?: string }> {
+    const existing = await this.getById(id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+    if (existing.status !== 'draft') {
+      return {
+        ok: false,
+        error: `Only draft invoices can be deleted (this one is ${existing.status}). Void it instead.`,
+      };
+    }
+    await acct().from('invoice_lines').delete().eq('invoice_id', id);
+    const { error } = await acct().from('invoices').delete().eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  },
 };
 
 /** Adapt a persisted InvoiceLine back to the create/update input shape. */

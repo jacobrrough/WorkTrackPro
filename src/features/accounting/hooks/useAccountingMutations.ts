@@ -240,6 +240,21 @@ export function useVoidAndReissueInvoice() {
   });
 }
 
+/**
+ * Permanently delete a DRAFT invoice. A draft posted no JE, so this stays within the
+ * invoices + jobCosting subtree (a job-linked draft counts toward that job's revenue).
+ */
+export function useDeleteInvoiceDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => invoicesService.deleteDraft(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
 // ── Customer payments ────────────────────────────────────────────────────────
 /**
  * Record a customer payment: posts the balanced receipt JE (Dr Cash/Undeposited /
@@ -1190,6 +1205,21 @@ export function useReissueEstimate() {
   return useMutation({
     mutationFn: (id: string) => estimatesService.reissue(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+/**
+ * Permanently delete a DRAFT estimate. Estimates post no JE; a job-linked draft counts toward
+ * that job's quoted revenue, so this invalidates estimates + jobCosting.
+ */
+export function useDeleteEstimateDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.deleteDraft(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
   });
 }
 

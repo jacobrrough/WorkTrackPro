@@ -314,7 +314,7 @@ export default function EstimateCreateView() {
 
   return (
     <AccountingShell active="estimates" title="New Estimate">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4">
         {taxShown && <TaxDisclaimer />}
 
         {/* Header */}

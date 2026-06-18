@@ -17,6 +17,7 @@ import {
 } from '../hooks/useAccountingQueries';
 import {
   useCreatePortalLink,
+  useDeleteInvoiceDraft,
   useRecordPayment,
   useSendInvoice,
   useSendInvoiceEmail,
@@ -410,6 +411,7 @@ export default function InvoiceDetailView() {
   const sendInvoice = useSendInvoice();
   const voidInvoice = useVoidInvoice();
   const voidAndReissue = useVoidAndReissueInvoice();
+  const deleteDraft = useDeleteInvoiceDraft();
   const createPortalLink = useCreatePortalLink();
   const { settings } = useSettings();
   const printRef = useRef<HTMLDivElement>(null);
@@ -494,12 +496,33 @@ export default function InvoiceDetailView() {
     navigate(`${ACCOUNTING_BASE}/invoices/${res.invoiceId}`);
   };
 
+  // Permanently delete a DRAFT (nothing posted yet); posted invoices use Void instead.
+  const onDelete = async () => {
+    if (!invoice) return;
+    const ok = window.confirm(
+      `Delete draft invoice ${invoice.invoiceNumber ?? 'Draft'}? This permanently removes it. Drafts post nothing to the ledger.`
+    );
+    if (!ok) return;
+    setActionError(null);
+    const res = await deleteDraft.mutateAsync(invoice.id);
+    if (!res.ok) {
+      setActionError(res.error ?? 'Could not delete the invoice.');
+      return;
+    }
+    navigate(`${ACCOUNTING_BASE}/invoices`);
+  };
+
   const canSend = invoice?.status === 'draft';
   const canPay =
     invoice != null &&
     (invoice.status === 'sent' || invoice.status === 'partially_paid') &&
     invoice.balanceDue > 0;
-  const canVoid = invoice != null && invoice.status !== 'void' && invoice.amountPaid === 0;
+  // Void is for POSTED invoices (drafts are removed with Delete instead).
+  const canVoid =
+    invoice != null &&
+    invoice.status !== 'void' &&
+    invoice.status !== 'draft' &&
+    invoice.amountPaid === 0;
   // Void & reissue: a posted (non-draft) invoice with nothing paid yet can be reversed and
   // re-opened as a draft for correction.
   const canReissue =
@@ -522,6 +545,17 @@ export default function InvoiceDetailView() {
             {invoice.status === 'draft' && !editing && (
               <Button size="sm" variant="secondary" icon="edit" onClick={() => setEditing(true)}>
                 Edit
+              </Button>
+            )}
+            {invoice.status === 'draft' && !editing && (
+              <Button
+                size="sm"
+                variant="danger"
+                icon="delete"
+                onClick={onDelete}
+                disabled={deleteDraft.isPending}
+              >
+                {deleteDraft.isPending ? 'Deleting…' : 'Delete'}
               </Button>
             )}
             {canSend && (
@@ -584,7 +618,7 @@ export default function InvoiceDetailView() {
       {!isPending && !isError && !invoice && <p className="text-slate-400">Invoice not found.</p>}
 
       {invoice && (
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4">
           {taxShown && <TaxDisclaimer />}
 
           {editing ? (
