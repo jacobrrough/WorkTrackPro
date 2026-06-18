@@ -547,6 +547,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       adminOnly: true,
     },
     {
+      key: 'notification-settings',
+      title: 'Notifications',
+      subtitle: 'Choose what alerts you',
+      icon: 'notifications',
+      iconClassName: 'text-amber-400',
+      cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-yellow-600/20',
+      ariaLabel: 'Open notification settings',
+      onClick: () => onNavigate('notification-settings'),
+    },
+    {
       key: 'trello-import',
       title: 'Import Trello',
       subtitle: 'From JSON',
