@@ -1,6 +1,6 @@
 # Proposal: enforce MFA (AAL2) at the data layer for accounting writes
 
-**Status:** DRAFT — for review. **Not applied to prod.** (Audit finding #4, 2026-06-18.)
+**Status:** ✅ APPLIED to prod 2026-06-18 as migration `20260618173617_accounting_require_aal2_for_writes` (Phase 1 = writes). (Audit finding #4.)
 
 ## Problem
 

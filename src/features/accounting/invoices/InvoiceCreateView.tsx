@@ -318,7 +318,7 @@ export default function InvoiceCreateView() {
 
   return (
     <AccountingShell active="invoices" title="New Invoice">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4">
         {taxShown && <TaxDisclaimer />}
 
         {/* Header */}

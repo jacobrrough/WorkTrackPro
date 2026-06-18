@@ -50,6 +50,18 @@ export const paymentsService = {
     return rows.map(mapPaymentRow);
   },
 
+  /** Payments received from a given customer (the Customers hub). Newest first. */
+  async listByCustomer(customerId: string, limit = 200): Promise<Payment[]> {
+    const { data, error } = await acct()
+      .from('payments')
+      .select('*')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapPaymentRow);
+  },
+
   /**
    * Record a customer payment fully applied to one or more invoices. Posts the
    * receipt JE, then writes the payment + applications. On any failure after the JE

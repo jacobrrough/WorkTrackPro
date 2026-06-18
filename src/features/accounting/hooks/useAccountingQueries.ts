@@ -12,6 +12,7 @@ import {
   customersService,
   dimensionsService,
   estimatesService,
+  documentSnapshotsService,
   progressBillingService,
   projectsService,
   purchaseOrdersService,
@@ -111,6 +112,53 @@ export function useInvoice(id: string | undefined) {
     queryKey: id ? ACCOUNTING_QUERY_KEYS.invoice(id) : ['accounting', 'invoices', 'none'],
     queryFn: () => invoicesService.getById(id as string),
     enabled: !!id,
+  });
+}
+
+/** One customer's invoices (the Customers hub). */
+export function useInvoicesByCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: customerId
+      ? ACCOUNTING_QUERY_KEYS.customerInvoices(customerId)
+      : ['accounting', 'customers', 'none', 'invoices'],
+    queryFn: () => invoicesService.listByCustomer(customerId as string),
+    enabled: !!customerId,
+  });
+}
+
+/** One customer's estimates (the Customers hub). */
+export function useEstimatesByCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: customerId
+      ? ACCOUNTING_QUERY_KEYS.customerEstimates(customerId)
+      : ['accounting', 'customers', 'none', 'estimates'],
+    queryFn: () => estimatesService.listByCustomer(customerId as string),
+    enabled: !!customerId,
+  });
+}
+
+/** One customer's payments (the Customers hub). */
+export function usePaymentsByCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: customerId
+      ? ACCOUNTING_QUERY_KEYS.customerPayments(customerId)
+      : ['accounting', 'customers', 'none', 'payments'],
+    queryFn: () => paymentsService.listByCustomer(customerId as string),
+    enabled: !!customerId,
+  });
+}
+
+/** Version history (restore points) for one invoice or estimate. */
+export function useDocumentSnapshots(
+  documentType: 'invoice' | 'estimate',
+  documentId: string | undefined
+) {
+  return useQuery({
+    queryKey: documentId
+      ? ACCOUNTING_QUERY_KEYS.documentSnapshots(documentType, documentId)
+      : ['accounting', 'snapshots', 'none'],
+    queryFn: () => documentSnapshotsService.listForDocument(documentType, documentId as string),
+    enabled: !!documentId,
   });
 }
 

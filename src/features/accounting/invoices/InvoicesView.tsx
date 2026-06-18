@@ -7,6 +7,13 @@ import { useInvoices } from '../hooks/useAccountingQueries';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
 import { INVOICE_STATUS_LABELS, type Invoice, type InvoiceStatus } from '../types';
+import {
+  DocumentFilterBar,
+  applyDocFilters,
+  initialDocFilters,
+  type DocFilters,
+  type DocStatusOption,
+} from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   draft: 'bg-white/10 text-slate-300',
@@ -68,18 +75,31 @@ function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void 
   );
 }
 
-type JobFilter = 'all' | 'with-job' | 'without-job';
+const STATUS_OPTIONS: DocStatusOption[] = [
+  { value: 'active', label: 'Active (hide voided)' },
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: INVOICE_STATUS_LABELS.draft },
+  { value: 'sent', label: INVOICE_STATUS_LABELS.sent },
+  { value: 'partially_paid', label: INVOICE_STATUS_LABELS.partially_paid },
+  { value: 'paid', label: INVOICE_STATUS_LABELS.paid },
+  { value: 'void', label: INVOICE_STATUS_LABELS.void },
+];
 
 export default function InvoicesView() {
   const navigate = useNavigate();
   const { data: invoices = [], isPending, isError } = useInvoices();
-  const [jobFilter, setJobFilter] = useState<JobFilter>('all');
+  const [filters, setFilters] = useState<DocFilters>(() => initialDocFilters('active'));
 
-  const filtered = useMemo(() => {
-    if (jobFilter === 'with-job') return invoices.filter((i) => i.jobId);
-    if (jobFilter === 'without-job') return invoices.filter((i) => !i.jobId);
-    return invoices;
-  }, [invoices, jobFilter]);
+  const filtered = useMemo(
+    () =>
+      applyDocFilters(invoices, filters, {
+        number: (i) => i.invoiceNumber,
+        party: (i) => i.customerName ?? i.customerId,
+        date: (i) => i.invoiceDate,
+        status: (i) => i.status,
+      }),
+    [invoices, filters]
+  );
 
   return (
     <AccountingShell
@@ -115,18 +135,14 @@ export default function InvoicesView() {
 
       {invoices.length > 0 && (
         <>
-          <div className="mb-2 flex justify-end">
-            <select
-              aria-label="Filter by job link"
-              className="rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-slate-300"
-              value={jobFilter}
-              onChange={(e) => setJobFilter(e.target.value as JobFilter)}
-            >
-              <option value="all">All invoices</option>
-              <option value="with-job">Linked to a job</option>
-              <option value="without-job">No job link</option>
-            </select>
-          </div>
+          <DocumentFilterBar
+            filters={filters}
+            onChange={setFilters}
+            statusOptions={STATUS_OPTIONS}
+            searchPlaceholder="Search number or customer…"
+            resultCount={filtered.length}
+            totalCount={invoices.length}
+          />
           <div className={LIST_HEADER}>
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Date</span>

@@ -220,6 +220,18 @@ export const estimatesService = {
     return ((data ?? []) as Row[]).map(mapEstimateRow);
   },
 
+  /** Estimates for a given customer (the Customers hub). Header rows only, newest first. */
+  async listByCustomer(customerId: string, limit = 200): Promise<Estimate[]> {
+    const { data, error } = await acct()
+      .from('estimates')
+      .select('*, customer:customers(display_name)')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapEstimateRow);
+  },
+
   /** Insert a draft estimate + its lines, with money fields computed from the lines. */
   async createDraft(
     input: NewEstimateInput,
@@ -285,6 +297,16 @@ export const estimatesService = {
         estimate: null,
         error: `Only draft estimates can be edited (this one is ${existing.status}).`,
       };
+    }
+    // Snapshot the pre-edit state so this change can be reverted (best-effort; never block the save).
+    try {
+      await acct().rpc('capture_document_snapshot', {
+        p_type: 'estimate',
+        p_id: id,
+        p_note: 'before edit',
+      });
+    } catch {
+      /* version snapshot is best-effort */
     }
     const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
     const headerTaxCode = input.taxCodeId !== undefined ? input.taxCodeId : existing.taxCodeId;
@@ -416,6 +438,26 @@ export const estimatesService = {
     }
 
     return { estimateId: res.estimate.id };
+  },
+
+  /**
+   * Permanently delete a DRAFT estimate (and its lines). Estimates post no JE, so this is a
+   * plain hard delete; only drafts are removable (sent/accepted/converted are locked — reissue
+   * supersedes those instead).
+   */
+  async deleteDraft(id: string): Promise<{ ok: boolean; error?: string }> {
+    const existing = await this.getById(id);
+    if (!existing) return { ok: false, error: 'Estimate not found.' };
+    if (existing.status !== 'draft') {
+      return {
+        ok: false,
+        error: `Only draft estimates can be deleted (this one is ${existing.status}).`,
+      };
+    }
+    await acct().from('estimate_lines').delete().eq('estimate_id', id);
+    const { error } = await acct().from('estimates').delete().eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   },
 };
 

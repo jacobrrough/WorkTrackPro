@@ -16,6 +16,7 @@ import {
   invoicesService,
   invoiceEmailsService,
   estimatesService,
+  documentSnapshotsService,
   portalTokensService,
   type CreatePortalLinkParams,
   projectsService,
@@ -235,6 +236,21 @@ export function useVoidAndReissueInvoice() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Reissuing a job-linked invoice moves that job's revenue/margin.
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/**
+ * Permanently delete a DRAFT invoice. A draft posted no JE, so this stays within the
+ * invoices + jobCosting subtree (a job-linked draft counts toward that job's revenue).
+ */
+export function useDeleteInvoiceDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => invoicesService.deleteDraft(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
     },
   });
@@ -1190,6 +1206,48 @@ export function useReissueEstimate() {
   return useMutation({
     mutationFn: (id: string) => estimatesService.reissue(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+  });
+}
+
+/**
+ * Permanently delete a DRAFT estimate. Estimates post no JE; a job-linked draft counts toward
+ * that job's quoted revenue, so this invalidates estimates + jobCosting.
+ */
+export function useDeleteEstimateDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => estimatesService.deleteDraft(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/**
+ * Restore a draft invoice/estimate to a chosen snapshot (the RPC captures a pre-restore snapshot
+ * and rejects non-drafts). Invalidates the document + its list + its version history.
+ */
+export function useRestoreDocumentSnapshot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: {
+      snapshotId: string;
+      documentType: 'invoice' | 'estimate';
+      documentId: string;
+    }) => documentSnapshotsService.restore(p.snapshotId),
+    onSuccess: (_res, p) => {
+      if (p.documentType === 'invoice') {
+        qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+        qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoice(p.documentId) });
+      } else {
+        qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+        qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimate(p.documentId) });
+      }
+      qc.invalidateQueries({
+        queryKey: ACCOUNTING_QUERY_KEYS.documentSnapshots(p.documentType, p.documentId),
+      });
+    },
   });
 }
 

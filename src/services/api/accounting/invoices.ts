@@ -142,6 +142,18 @@ export const invoicesService = {
     return ((data ?? []) as Row[]).map(mapInvoiceRow);
   },
 
+  /** Invoices for a given customer (the Customers hub AR list). Header rows only, newest first. */
+  async listByCustomer(customerId: string, limit = 200): Promise<Invoice[]> {
+    const { data, error } = await acct()
+      .from('invoices')
+      .select('*, customer:customers(display_name)')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapInvoiceRow);
+  },
+
   /** Insert a draft invoice + its lines, with money fields computed from the lines. */
   async createDraft(
     input: NewInvoiceInput,
@@ -207,6 +219,16 @@ export const invoicesService = {
         invoice: null,
         error: `Only draft invoices can be edited (this one is ${existing.status}).`,
       };
+    }
+    // Snapshot the pre-edit state so this change can be reverted (best-effort; never block the save).
+    try {
+      await acct().rpc('capture_document_snapshot', {
+        p_type: 'invoice',
+        p_id: id,
+        p_note: 'before edit',
+      });
+    } catch {
+      /* version snapshot is best-effort */
     }
     const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
     const headerTaxCode = input.taxCodeId !== undefined ? input.taxCodeId : existing.taxCodeId;
@@ -352,6 +374,26 @@ export const invoicesService = {
     const invoiceId = typeof data === 'string' ? data : data == null ? null : String(data);
     if (!invoiceId) return { invoiceId: null, error: 'Reissue did not return a draft invoice.' };
     return { invoiceId };
+  },
+
+  /**
+   * Permanently delete a DRAFT invoice (and its lines). A draft has posted nothing to the
+   * ledger, so a hard delete leaves no dangling journal entry. Sent/posted invoices carry a
+   * posted JE + number/audit and must be VOIDED instead — rejected here.
+   */
+  async deleteDraft(id: string): Promise<{ ok: boolean; error?: string }> {
+    const existing = await this.getById(id);
+    if (!existing) return { ok: false, error: 'Invoice not found.' };
+    if (existing.status !== 'draft') {
+      return {
+        ok: false,
+        error: `Only draft invoices can be deleted (this one is ${existing.status}). Void it instead.`,
+      };
+    }
+    await acct().from('invoice_lines').delete().eq('invoice_id', id);
+    const { error } = await acct().from('invoices').delete().eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   },
 };
 

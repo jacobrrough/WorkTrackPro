@@ -6,6 +6,13 @@ import { useEstimates } from '../hooks/useAccountingQueries';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
 import { ESTIMATE_STATUS_LABELS, type Estimate, type EstimateStatus } from '../types';
+import {
+  DocumentFilterBar,
+  applyDocFilters,
+  initialDocFilters,
+  type DocFilters,
+  type DocStatusOption,
+} from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<EstimateStatus, string> = {
   draft: 'bg-white/10 text-slate-300',
@@ -72,18 +79,31 @@ function EstimateRow({ estimate, onOpen }: { estimate: Estimate; onOpen: () => v
   );
 }
 
-type JobFilter = 'all' | 'with-job' | 'without-job';
+const STATUS_OPTIONS: DocStatusOption[] = [
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: ESTIMATE_STATUS_LABELS.draft },
+  { value: 'sent', label: ESTIMATE_STATUS_LABELS.sent },
+  { value: 'accepted', label: ESTIMATE_STATUS_LABELS.accepted },
+  { value: 'declined', label: ESTIMATE_STATUS_LABELS.declined },
+  { value: 'expired', label: ESTIMATE_STATUS_LABELS.expired },
+  { value: 'converted', label: ESTIMATE_STATUS_LABELS.converted },
+];
 
 export default function EstimatesView() {
   const navigate = useNavigate();
   const { data: estimates = [], isPending, isError } = useEstimates();
-  const [jobFilter, setJobFilter] = useState<JobFilter>('all');
+  const [filters, setFilters] = useState<DocFilters>(() => initialDocFilters('all'));
 
-  const filtered = useMemo(() => {
-    if (jobFilter === 'with-job') return estimates.filter((e) => e.jobId);
-    if (jobFilter === 'without-job') return estimates.filter((e) => !e.jobId);
-    return estimates;
-  }, [estimates, jobFilter]);
+  const filtered = useMemo(
+    () =>
+      applyDocFilters(estimates, filters, {
+        number: (e) => e.estimateNumber,
+        party: (e) => e.customerName ?? e.customerId,
+        date: (e) => e.estimateDate,
+        status: (e) => e.status,
+      }),
+    [estimates, filters]
+  );
 
   return (
     <AccountingShell
@@ -119,18 +139,14 @@ export default function EstimatesView() {
 
       {estimates.length > 0 && (
         <>
-          <div className="mb-2 flex justify-end">
-            <select
-              aria-label="Filter by job link"
-              className="rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-slate-300"
-              value={jobFilter}
-              onChange={(e) => setJobFilter(e.target.value as JobFilter)}
-            >
-              <option value="all">All estimates</option>
-              <option value="with-job">Linked to a job</option>
-              <option value="without-job">No job link</option>
-            </select>
-          </div>
+          <DocumentFilterBar
+            filters={filters}
+            onChange={setFilters}
+            statusOptions={STATUS_OPTIONS}
+            searchPlaceholder="Search number or customer…"
+            resultCount={filtered.length}
+            totalCount={estimates.length}
+          />
           <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-slate-500 sm:flex">
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Date</span>
