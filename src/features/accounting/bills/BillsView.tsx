@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { AccountingShell } from '../components/AccountingShell';
@@ -6,6 +7,13 @@ import { useBills } from '../hooks/useAccountingQueries';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
 import { BILL_STATUS_LABELS, type Bill, type BillStatus } from '../types';
+import {
+  DocumentFilterBar,
+  applyDocFilters,
+  initialDocFilters,
+  type DocFilters,
+  type DocStatusOption,
+} from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<BillStatus, string> = {
   draft: 'bg-white/10 text-slate-300',
@@ -44,9 +52,31 @@ function BillRow({ bill, onOpen }: { bill: Bill; onOpen: () => void }) {
   );
 }
 
+const STATUS_OPTIONS: DocStatusOption[] = [
+  { value: 'active', label: 'Active (hide voided)' },
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: BILL_STATUS_LABELS.draft },
+  { value: 'open', label: BILL_STATUS_LABELS.open },
+  { value: 'partially_paid', label: BILL_STATUS_LABELS.partially_paid },
+  { value: 'paid', label: BILL_STATUS_LABELS.paid },
+  { value: 'void', label: BILL_STATUS_LABELS.void },
+];
+
 export default function BillsView() {
   const navigate = useNavigate();
   const { data: bills = [], isPending, isError } = useBills();
+  const [filters, setFilters] = useState<DocFilters>(() => initialDocFilters('active'));
+
+  const filtered = useMemo(
+    () =>
+      applyDocFilters(bills, filters, {
+        number: (b) => b.billNumber,
+        party: (b) => b.vendorName ?? b.vendorId,
+        date: (b) => b.billDate,
+        status: (b) => b.status,
+      }),
+    [bills, filters]
+  );
 
   return (
     <AccountingShell
@@ -82,6 +112,14 @@ export default function BillsView() {
 
       {bills.length > 0 && (
         <>
+          <DocumentFilterBar
+            filters={filters}
+            onChange={setFilters}
+            statusOptions={STATUS_OPTIONS}
+            searchPlaceholder="Search number or vendor…"
+            resultCount={filtered.length}
+            totalCount={bills.length}
+          />
           <div className={LIST_HEADER}>
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Date</span>
@@ -91,13 +129,18 @@ export default function BillsView() {
             <span className="w-[58px] shrink-0" />
           </div>
           <div className={LIST_CONTAINER}>
-            {bills.map((bill) => (
+            {filtered.map((bill) => (
               <BillRow
                 key={bill.id}
                 bill={bill}
                 onOpen={() => navigate(`${ACCOUNTING_BASE}/bills/${bill.id}`)}
               />
             ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-6 text-center text-sm text-slate-500">
+                No bills match this filter.
+              </p>
+            )}
           </div>
         </>
       )}
