@@ -12,6 +12,7 @@ import {
   customersService,
   dimensionsService,
   estimatesService,
+  documentSnapshotsService,
   progressBillingService,
   projectsService,
   purchaseOrdersService,
@@ -144,6 +145,20 @@ export function usePaymentsByCustomer(customerId: string | undefined) {
       : ['accounting', 'customers', 'none', 'payments'],
     queryFn: () => paymentsService.listByCustomer(customerId as string),
     enabled: !!customerId,
+  });
+}
+
+/** Version history (restore points) for one invoice or estimate. */
+export function useDocumentSnapshots(
+  documentType: 'invoice' | 'estimate',
+  documentId: string | undefined
+) {
+  return useQuery({
+    queryKey: documentId
+      ? ACCOUNTING_QUERY_KEYS.documentSnapshots(documentType, documentId)
+      : ['accounting', 'snapshots', 'none'],
+    queryFn: () => documentSnapshotsService.listForDocument(documentType, documentId as string),
+    enabled: !!documentId,
   });
 }
 

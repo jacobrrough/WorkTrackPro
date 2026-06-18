@@ -220,6 +220,16 @@ export const invoicesService = {
         error: `Only draft invoices can be edited (this one is ${existing.status}).`,
       };
     }
+    // Snapshot the pre-edit state so this change can be reverted (best-effort; never block the save).
+    try {
+      await acct().rpc('capture_document_snapshot', {
+        p_type: 'invoice',
+        p_id: id,
+        p_note: 'before edit',
+      });
+    } catch {
+      /* version snapshot is best-effort */
+    }
     const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
     const headerTaxCode = input.taxCodeId !== undefined ? input.taxCodeId : existing.taxCodeId;
     const totals = await computeTotalsFor(lines, headerTaxCode, opts?.customerTaxExempt ?? false);

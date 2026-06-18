@@ -324,6 +324,9 @@ export const ACCOUNTING_QUERY_KEYS = {
   // ── #8 Estimates. `estimates` is the subtree root; the per-estimate detail hangs under it.
   estimates: ['accounting', 'estimates'] as const,
   estimate: (id: string) => ['accounting', 'estimates', id] as const,
+  // Document version history (invoices & estimates) — restore points.
+  documentSnapshots: (docType: string, docId: string) =>
+    ['accounting', 'snapshots', docType, docId] as const,
   // ── #10 Progress billing. `projects` is the subtree root; per-project SOV/change-order/
   // application lists hang under it. Posting an application or releasing retainage posts a
   // balanced JE + invoice, so those mutations also invalidate journal+reports+jobCosting+invoices.

@@ -41,6 +41,8 @@ export { invoiceEmailsService } from './invoiceEmails';
 export { portalTokensService, portalLinkFor } from './portalTokens';
 export type { CreatePortalLinkParams } from './portalTokens';
 export { estimatesService } from './estimates';
+export { documentSnapshotsService } from './documentSnapshots';
+export type { DocumentSnapshot, SnapshotDocType } from './documentSnapshots';
 // ── #10 Progress billing / #11 Purchase orders ───────────────────────────────
 export { projectsService, progressBillingService } from './progressBilling';
 export {

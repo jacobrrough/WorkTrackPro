@@ -6,6 +6,7 @@ import { FormField } from '@/components/ui/FormField';
 import { adminSettingsService } from '@/services/api/adminSettings';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
+import { DocumentHistorySection } from '../components/DocumentHistorySection';
 import { useEstimate } from '../hooks/useAccountingQueries';
 import {
   useAcceptEstimate,
@@ -426,6 +427,12 @@ export default function EstimateDetailView() {
                   {actionError}
                 </p>
               )}
+
+              <DocumentHistorySection
+                documentType="estimate"
+                documentId={estimate.id}
+                status={estimate.status}
+              />
             </>
           )}
         </div>

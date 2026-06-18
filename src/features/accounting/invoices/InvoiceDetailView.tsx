@@ -8,6 +8,7 @@ import { AccountingDrawer } from '../components/AccountingDrawer';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { AttachmentsSection } from '../components/AttachmentsSection';
+import { DocumentHistorySection } from '../components/DocumentHistorySection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import {
   useCustomer,
@@ -746,6 +747,12 @@ export default function InvoiceDetailView() {
           {/* Additive document attachments. Owns its own data; attaching a file moves no
               money and posts no journal entry, and never touches this invoice's record. */}
           <AttachmentsSection entityType="invoice" entityId={invoice.id} />
+
+          <DocumentHistorySection
+            documentType="invoice"
+            documentId={invoice.id}
+            status={invoice.status}
+          />
         </div>
       )}
 
