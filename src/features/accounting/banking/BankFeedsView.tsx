@@ -48,6 +48,70 @@ import type { BankAccount } from '../types';
 const inputClass =
   'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none disabled:opacity-50';
 
+/**
+ * Plaid OAuth redirect support (ADDITIVE — only engages when an OAuth bank redirects back).
+ *
+ * OAuth-required institutions (e.g. Chase) take over the browser tab and, once the user
+ * authenticates, redirect to our registered PLAID_REDIRECT_URI (this Bank Feeds page) with an
+ * `?oauth_state_id=...` query param. react-plaid-link must then be RE-initialized with the SAME
+ * link_token plus `receivedRedirectUri` to finish. Since the page reloaded, the link token can't
+ * survive in memory — we stash it in localStorage right before opening Link and read it back on
+ * the OAuth return. Non-OAuth banks never leave the page, so none of this runs for them.
+ */
+const PLAID_LINK_TOKEN_STORAGE_KEY = 'plaid:linkToken';
+
+/** True when the current URL is a Plaid OAuth return (carries `oauth_state_id`). SSR-safe. */
+function isOAuthReturn(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).has('oauth_state_id');
+}
+
+/** Read the link token persisted before an OAuth redirect, or null. SSR-safe / storage-safe. */
+function readSavedLinkToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(PLAID_LINK_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the link token so it survives the OAuth redirect back to this page. SSR/storage-safe. */
+function saveLinkToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(PLAID_LINK_TOKEN_STORAGE_KEY, token);
+  } catch {
+    /* localStorage may be unavailable (private mode/quota) — the in-memory open still works for
+       non-OAuth banks; only the OAuth resume degrades, which we can't help without storage. */
+  }
+}
+
+/** Drop the persisted link token once the OAuth flow ends. SSR/storage-safe. */
+function clearSavedLinkToken(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(PLAID_LINK_TOKEN_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Strip Plaid's OAuth query params from the address bar (without reloading) so a manual refresh
+ * can't re-trigger a stale resume. We only remove the Plaid-owned keys, preserving any others.
+ */
+function stripOAuthParamsFromUrl(): void {
+  if (typeof window === 'undefined' || !window.history?.replaceState) return;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('oauth_state_id');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  } catch {
+    /* ignore — leaving the params is harmless beyond a possible stale-resume on manual refresh */
+  }
+}
+
 /** Format an ISO timestamp as a short, human date-time; tolerates null/garbage. */
 function formatDateTime(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -109,15 +173,22 @@ function StatusBadge({ status }: { status: PlaidItemStatus_State }) {
  *
  * `onSuccess` forwards Plaid's public_token up; `onDone` fires on exit/finish so the parent can
  * clear the token and stop rendering this. The launcher renders nothing itself.
+ *
+ * OAuth resume: `receivedRedirectUri` is the standard react-plaid-link mechanism for FINISHING an
+ * OAuth Link after the bank redirected the browser back to us (?oauth_state_id=...). When present,
+ * the SAME link_token is re-used with the current URL so Link picks up where it left off. It is
+ * left undefined on a normal connect/reconnect — passing it then would break the initial flow.
  */
 function PlaidLinkLauncher({
   token,
   onSuccess,
   onDone,
+  receivedRedirectUri,
 }: {
   token: string;
   onSuccess: (publicToken: string) => void;
   onDone: () => void;
+  receivedRedirectUri?: string;
 }) {
   const handleSuccess = useMemo<PlaidLinkOnSuccess>(
     () => (publicToken) => {
@@ -136,6 +207,8 @@ function PlaidLinkLauncher({
     token,
     onSuccess: handleSuccess,
     onExit: handleExit,
+    // Only set on an OAuth return; undefined for a normal open (Plaid requires it absent then).
+    receivedRedirectUri,
   });
 
   // Open as soon as Link is ready for this token. The parent only renders the launcher once it
@@ -622,6 +695,14 @@ export default function BankFeedsView() {
   // Which item is being reconnected (drives that row's spinner). null = initial connect.
   const [reconnectingItemId, setReconnectingItemId] = useState<string | null>(null);
 
+  // OAuth RESUME: when the page loads as a Plaid OAuth return (?oauth_state_id) AND we still have
+  // the link token we stashed before redirecting, we re-mount Link in resume mode (same token +
+  // receivedRedirectUri) WITHOUT a second "Connect" click. Computed once from the initial URL so a
+  // later replaceState (our cleanup) can't flip it mid-flow. `oauthResumeToken` non-null = resume.
+  const [oauthResumeToken, setOauthResumeToken] = useState<string | null>(() =>
+    isOAuthReturn() ? readSavedLinkToken() : null
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [mapping, setMapping] = useState<ExchangePublicTokenResult | null>(null);
   const [syncResult, setSyncResult] = useState<PlaidSyncResult | null>(null);
@@ -638,6 +719,9 @@ export default function BankFeedsView() {
     setReconnectingItemId(plaidItemId ?? null);
     try {
       const { linkToken: token } = await plaidService.getLinkToken(plaidItemId);
+      // Persist BEFORE opening so an OAuth bank that redirects the browser away can find the same
+      // token to resume with on return. Harmless (and cleared on done) for non-OAuth banks.
+      saveLinkToken(token);
       setLinkToken(token);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start the bank connection.');
@@ -648,10 +732,15 @@ export default function BankFeedsView() {
   };
 
   /** Plaid Link finished (success or exit) — tear down the launcher either way. Stable so the
-   *  launcher's usePlaidLink instance isn't re-created on every parent render. */
+   *  launcher's usePlaidLink instance isn't re-created on every parent render. Also clears the
+   *  OAuth resume state + persisted token and strips ?oauth_state_id so a refresh can't re-trigger
+   *  a stale resume (no-op for the non-OAuth path beyond removing the just-saved token). */
   const endLink = useCallback(() => {
     setLinkToken(null);
     setReconnectingItemId(null);
+    setOauthResumeToken(null);
+    clearSavedLinkToken();
+    stripOAuthParamsFromUrl();
   }, []);
 
   const handleLinkSuccess = useCallback(
@@ -659,6 +748,11 @@ export default function BankFeedsView() {
       // Stop rendering Link immediately; the exchange owns the next step.
       setLinkToken(null);
       setReconnectingItemId(null);
+      // OAuth cleanup: drop the resume state + persisted token and strip ?oauth_state_id so a
+      // refresh can't replay a completed OAuth flow. Identical effect on the non-OAuth path.
+      setOauthResumeToken(null);
+      clearSavedLinkToken();
+      stripOAuthParamsFromUrl();
       setError(null);
       try {
         const result = await exchange.mutateAsync(publicToken);
@@ -794,9 +888,24 @@ export default function BankFeedsView() {
       </div>
 
       {/* Plaid Link is mounted only while a token is live; it auto-opens, then clears. The
-          callbacks are useCallback-stable so the launcher doesn't re-create Link each render. */}
-      {linkToken && (
-        <PlaidLinkLauncher token={linkToken} onSuccess={handleLinkSuccess} onDone={endLink} />
+          callbacks are useCallback-stable so the launcher doesn't re-create Link each render.
+          OAuth RESUME takes precedence: when we returned from an OAuth bank with a saved token, we
+          re-mount Link with that SAME token + receivedRedirectUri (the current URL, carrying
+          ?oauth_state_id) to finish — no second "Connect" click. On a NORMAL connect/reconnect we
+          render the in-memory launcher WITHOUT receivedRedirectUri (Plaid requires it absent then).
+          The two are mutually exclusive: the OAuth return is a fresh page load, so the in-memory
+          linkToken is null while oauthResumeToken is set. */}
+      {oauthResumeToken ? (
+        <PlaidLinkLauncher
+          token={oauthResumeToken}
+          onSuccess={handleLinkSuccess}
+          onDone={endLink}
+          receivedRedirectUri={typeof window !== 'undefined' ? window.location.href : undefined}
+        />
+      ) : (
+        linkToken && (
+          <PlaidLinkLauncher token={linkToken} onSuccess={handleLinkSuccess} onDone={endLink} />
+        )
       )}
     </AccountingShell>
   );
