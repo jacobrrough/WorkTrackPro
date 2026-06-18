@@ -80,6 +80,12 @@ export function createLinkToken({ clientUserId, accessToken } = {}) {
     country_codes: ['US'],
     language: 'en',
   };
+  // OAuth support: when PLAID_REDIRECT_URI is configured, set it on the SHARED body (applies to
+  // BOTH initial and update mode) so OAuth-required institutions (e.g. Chase) can redirect the
+  // browser back to the app to finish Link. Unset = omitted entirely, keeping sandbox / non-OAuth
+  // banks working exactly as before. The redirect URI must be registered in the Plaid dashboard.
+  const redirectUri = (process.env.PLAID_REDIRECT_URI || '').trim();
+  if (redirectUri) body.redirect_uri = redirectUri;
   if (accessToken) {
     // UPDATE mode — re-authenticate an existing Item; products must be omitted.
     body.access_token = accessToken;
