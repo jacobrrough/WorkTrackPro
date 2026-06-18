@@ -135,16 +135,28 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                           <button
                             type="button"
                             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
-                            onClick={() => handleClearJobBin(j.id)}
-                            disabled={isClearing}
+                            onClick={() => {
+                              if (!isClearing) onNavigate('job-detail', j.id);
+                            }}
                           >
                             <span className="min-w-0 flex-1 truncate text-white">
                               #{formatJobCode(j.jobCode)} – {getJobDisplayName(j)}
                             </span>
                             <span
-                              className="material-symbols-outlined shrink-0 text-slate-500"
+                              className="material-symbols-outlined shrink-0 text-primary"
                               aria-hidden
                             >
+                              chevron_right
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="flex size-11 shrink-0 items-center justify-center rounded text-slate-500 hover:text-white"
+                            onClick={() => handleClearJobBin(j.id)}
+                            disabled={isClearing}
+                            aria-label={`Remove #${formatJobCode(j.jobCode)} ${getJobDisplayName(j)} from bin`}
+                          >
+                            <span className="material-symbols-outlined" aria-hidden>
                               {isClearing ? 'hourglass_empty' : 'remove_circle'}
                             </span>
                           </button>
@@ -152,7 +164,9 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       );
                     })}
                   </ul>
-                  <p className="mt-1 text-[10px] text-slate-500">Tap to remove from bin.</p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Tap to open. Use the icon to remove from bin.
+                  </p>
                 </section>
               )}
               {inventoryAtBin.length > 0 && (
