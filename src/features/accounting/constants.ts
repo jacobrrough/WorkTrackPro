@@ -14,6 +14,7 @@ export const FIXED_ASSETS_BASE = `${ACCOUNTING_BASE}/fixed-assets`;
 export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
 export const SETTINGS_BASE = `${ACCOUNTING_BASE}/settings`;
 export const ESTIMATES_BASE = `${ACCOUNTING_BASE}/estimates`;
+export const CUSTOMERS_BASE = `${ACCOUNTING_BASE}/customers`;
 export const PROGRESS_BASE = `${ACCOUNTING_BASE}/progress`;
 export const PURCHASE_ORDERS_BASE = `${ACCOUNTING_BASE}/purchase-orders`;
 /**
@@ -169,6 +170,10 @@ export const ACCOUNTING_QUERY_KEYS = {
   journalEntry: (id: string) => ['accounting', 'journal', id] as const,
   customers: ['accounting', 'customers'] as const,
   customer: (id: string) => ['accounting', 'customers', id] as const,
+  // Customers hub — a selected customer's own AR documents, scoped under their id.
+  customerInvoices: (id: string) => ['accounting', 'customers', id, 'invoices'] as const,
+  customerEstimates: (id: string) => ['accounting', 'customers', id, 'estimates'] as const,
+  customerPayments: (id: string) => ['accounting', 'customers', id, 'payments'] as const,
   taxCodes: ['accounting', 'tax-codes'] as const,
   // #13 — address → tax-code jurisdiction map (reference data; moves no money).
   taxJurisdictions: ['accounting', 'tax-jurisdictions'] as const,
@@ -452,6 +457,13 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
     icon: 'menu_book',
     path: `${ACCOUNTING_BASE}/journal`,
     group: 'accounting',
+  },
+  {
+    key: 'customers',
+    label: 'Customers',
+    icon: 'group',
+    path: CUSTOMERS_BASE,
+    group: 'sales',
   },
   {
     key: 'invoices',

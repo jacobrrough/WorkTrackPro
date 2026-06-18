@@ -114,6 +114,39 @@ export function useInvoice(id: string | undefined) {
   });
 }
 
+/** One customer's invoices (the Customers hub). */
+export function useInvoicesByCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: customerId
+      ? ACCOUNTING_QUERY_KEYS.customerInvoices(customerId)
+      : ['accounting', 'customers', 'none', 'invoices'],
+    queryFn: () => invoicesService.listByCustomer(customerId as string),
+    enabled: !!customerId,
+  });
+}
+
+/** One customer's estimates (the Customers hub). */
+export function useEstimatesByCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: customerId
+      ? ACCOUNTING_QUERY_KEYS.customerEstimates(customerId)
+      : ['accounting', 'customers', 'none', 'estimates'],
+    queryFn: () => estimatesService.listByCustomer(customerId as string),
+    enabled: !!customerId,
+  });
+}
+
+/** One customer's payments (the Customers hub). */
+export function usePaymentsByCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: customerId
+      ? ACCOUNTING_QUERY_KEYS.customerPayments(customerId)
+      : ['accounting', 'customers', 'none', 'payments'],
+    queryFn: () => paymentsService.listByCustomer(customerId as string),
+    enabled: !!customerId,
+  });
+}
+
 /** Resolve an estimate by its number — powers the job card's est# deep link. */
 export function useEstimateByNumber(estimateNumber: string | null | undefined) {
   const num = estimateNumber?.trim() || undefined;

@@ -220,6 +220,18 @@ export const estimatesService = {
     return ((data ?? []) as Row[]).map(mapEstimateRow);
   },
 
+  /** Estimates for a given customer (the Customers hub). Header rows only, newest first. */
+  async listByCustomer(customerId: string, limit = 200): Promise<Estimate[]> {
+    const { data, error } = await acct()
+      .from('estimates')
+      .select('*, customer:customers(display_name)')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapEstimateRow);
+  },
+
   /** Insert a draft estimate + its lines, with money fields computed from the lines. */
   async createDraft(
     input: NewEstimateInput,

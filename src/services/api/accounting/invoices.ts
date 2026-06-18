@@ -142,6 +142,18 @@ export const invoicesService = {
     return ((data ?? []) as Row[]).map(mapInvoiceRow);
   },
 
+  /** Invoices for a given customer (the Customers hub AR list). Header rows only, newest first. */
+  async listByCustomer(customerId: string, limit = 200): Promise<Invoice[]> {
+    const { data, error } = await acct()
+      .from('invoices')
+      .select('*, customer:customers(display_name)')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return ((data ?? []) as Row[]).map(mapInvoiceRow);
+  },
+
   /** Insert a draft invoice + its lines, with money fields computed from the lines. */
   async createDraft(
     input: NewInvoiceInput,
