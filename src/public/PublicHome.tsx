@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/services/api/supabaseClient';
 import PublicHeader from './PublicHeader';
+import PublicFooter from './PublicFooter';
 
 declare global {
   interface Window {
@@ -431,6 +432,8 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
           </form>
         </section>
       </main>
+
+      <PublicFooter />
     </div>
   );
 };

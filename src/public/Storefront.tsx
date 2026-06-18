@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import PublicHeader from './PublicHeader';
+import PublicFooter from './PublicFooter';
 import RequestQuoteModal from './RequestQuoteModal';
 import AddToCartModal from './AddToCartModal';
 import CartDrawer from './CartDrawer';
@@ -410,6 +411,8 @@ const Storefront: React.FC<StorefrontProps> = ({ onEmployeeLogin }) => {
           </>
         )}
       </main>
+
+      <PublicFooter />
     </div>
   );
 };
