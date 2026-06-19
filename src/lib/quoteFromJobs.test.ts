@@ -94,7 +94,7 @@ describe('buildQuoteFromJobs', () => {
     expect(result.cncHours).toBe(0);
     expect(result.materials).toEqual([]);
     expect(result.matchedCount).toBe(2);
-    expect(result.contributedCount).toBe(0);
+    expect(result.contributorCount).toBe(0);
     expect(result.referenceJobIds).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe('buildQuoteFromJobs', () => {
     expect(result.laborHours).toBe(10);
     expect(result.laborContributorCount).toBe(1);
     expect(result.matchedCount).toBe(3);
-    expect(result.contributedCount).toBe(1);
+    expect(result.contributorCount).toBe(1);
     expect(result.referenceJobIds).toEqual(['a']);
   });
 
@@ -131,7 +131,7 @@ describe('buildQuoteFromJobs', () => {
     expect(result.cncHours).toBe(6); // 6 / 1, not 6 / 2
     expect(result.cncContributorCount).toBe(1);
     expect(result.laborHours).toBe(0);
-    expect(result.contributedCount).toBe(1);
+    expect(result.contributorCount).toBe(1);
     expect(result.referenceJobIds).toEqual(['a']);
   });
 
@@ -147,7 +147,7 @@ describe('buildQuoteFromJobs', () => {
     expect(result.cncHours).toBe(5); // only the cnc job
     expect(result.laborContributorCount).toBe(1);
     expect(result.cncContributorCount).toBe(1);
-    expect(result.contributedCount).toBe(2);
+    expect(result.contributorCount).toBe(2);
     expect(result.referenceJobIds.sort()).toEqual(['cnc', 'labor']);
   });
 
@@ -191,7 +191,7 @@ describe('buildQuoteFromJobs', () => {
 
     expect(result.materials).toEqual([]);
     expect(result.materialContributorCount).toBe(0);
-    expect(result.contributedCount).toBe(0);
+    expect(result.contributorCount).toBe(0);
   });
 
   it('handles a single fully-costed job across all three components', () => {
@@ -207,7 +207,7 @@ describe('buildQuoteFromJobs', () => {
     expect(result.laborHours).toBe(12);
     expect(result.cncHours).toBe(3);
     expect(result.materials[0].quantity).toBe(4);
-    expect(result.contributedCount).toBe(1);
+    expect(result.contributorCount).toBe(1);
     expect(result.matchedCount).toBe(1);
   });
 
@@ -223,7 +223,7 @@ describe('buildQuoteFromJobs', () => {
     expect(al.quantity).toBe(30); // divided by 1, not 2
     expect(result.materials.find((m) => m.inventoryId === 'inv-B')).toBeUndefined();
     expect(result.materialContributorCount).toBe(1);
-    expect(result.contributedCount).toBe(1);
+    expect(result.contributorCount).toBe(1);
     expect(result.referenceJobIds).toEqual(['a']);
   });
 
@@ -283,5 +283,25 @@ describe('buildQuoteFromJobs', () => {
 
     expect(result.materials[0].quantity).toBe(7);
     expect(result.materialContributorCount).toBe(1);
+  });
+
+  it('excludes a job whose only shift has a malformed timestamp (NaN labor)', () => {
+    // A completed-but-corrupt shift yields NaN hours; the finiteness guard must drop it
+    // rather than poison the average. Job b is the good one.
+    const badShift: Shift = {
+      id: 'bad',
+      user: 'u1',
+      job: 'a',
+      clockInTime: new Date('2026-01-01T08:00:00Z').toISOString(),
+      clockOutTime: 'not-a-real-date',
+      lunchMinutesUsed: 0,
+    };
+    const jobs = [mockJob({ id: 'a' }), mockJob({ id: 'b' })];
+    const result = buildQuoteFromJobs(jobs, [badShift, completedShift('b', 8)], inventory);
+
+    expect(result.laborHours).toBe(8); // only job b, not NaN
+    expect(Number.isFinite(result.laborHours)).toBe(true);
+    expect(result.laborContributorCount).toBe(1);
+    expect(result.referenceJobIds).toEqual(['b']);
   });
 });

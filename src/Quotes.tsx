@@ -4,6 +4,7 @@ import { quoteService } from './services/api/quotes';
 import { useScrollRestore } from './hooks/useScrollRestore';
 import { useToast } from './Toast';
 import { getJobDisplayName } from './lib/formatJob';
+import { getMachineTotalsFromJob } from './lib/machineHours';
 import { calculateJobHoursFromShifts } from './lib/laborSuggestion';
 import { buildQuoteFromJobs } from './lib/quoteFromJobs';
 
@@ -53,7 +54,7 @@ const Quotes: React.FC<QuotesProps> = ({
     lineItems: QuoteLineItem[];
     referenceJobIds: string[];
     /** UI-only: how many matched jobs contributed real data to the averages. */
-    contributedCount: number;
+    contributorCount: number;
     /** UI-only: how many jobs matched the search. */
     matchedCount: number;
   } | null>(null);
@@ -127,7 +128,7 @@ const Quotes: React.FC<QuotesProps> = ({
           total: 0,
           lineItems: [],
           referenceJobIds: [],
-          contributedCount: 0,
+          contributorCount: 0,
           matchedCount: 0,
         });
         setIsCalculating(false);
@@ -176,11 +177,11 @@ const Quotes: React.FC<QuotesProps> = ({
         total,
         lineItems,
         referenceJobIds: basis.referenceJobIds,
-        contributedCount: basis.contributedCount,
+        contributorCount: basis.contributorCount,
         matchedCount: basis.matchedCount,
       });
 
-      if (basis.contributedCount === 0) {
+      if (basis.contributorCount === 0) {
         // Jobs matched by name but none have logged history yet — don't show a misleading
         // low number; prompt manual entry instead.
         showToast(
@@ -189,7 +190,7 @@ const Quotes: React.FC<QuotesProps> = ({
         );
       } else {
         showToast(
-          `Quote averaged from ${basis.contributedCount} of ${basis.matchedCount} matched job(s)`,
+          `Quote averaged from ${basis.contributorCount} of ${basis.matchedCount} matched job(s)`,
           'success'
         );
       }
@@ -423,33 +424,42 @@ const Quotes: React.FC<QuotesProps> = ({
                 <div className="mb-3">
                   <h3 className="font-bold text-white">Reference Jobs</h3>
                   <p className="mt-0.5 text-xs text-white/50">
-                    Averaged from {quoteData.contributedCount} of {quoteData.matchedCount} matched
+                    Averaged from {quoteData.contributorCount} of {quoteData.matchedCount} matched
                     job(s)
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {referenceJobs.map((job) => (
-                    <div
-                      key={job.id}
-                      className="flex items-center justify-between rounded bg-background-dark p-2"
-                    >
-                      <div>
-                        <p className="text-sm font-bold text-white">
-                          #{job.jobCode} - {getJobDisplayName(job)}
-                        </p>
-                        <p className="text-xs text-white/60">
-                          {calculateJobHours(job.id).toFixed(1)}h •{' '}
-                          {job.inventoryItems?.length || 0} materials
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => onNavigate('job-detail', job.id)}
-                        className="text-xs font-bold text-primary"
+                  {referenceJobs.map((job) => {
+                    // Show what each job actually contributed. Reference jobs can be in for
+                    // labor, CNC, or material, so a CNC-only job legitimately shows 0h labor —
+                    // label each component so it doesn't read as missing data.
+                    const laborHrs = calculateJobHours(job.id);
+                    const cncHrs = getMachineTotalsFromJob(job).cncHours;
+                    const matCount = job.inventoryItems?.length || 0;
+                    const parts: string[] = [];
+                    if (laborHrs > 0) parts.push(`${laborHrs.toFixed(1)}h labor`);
+                    if (cncHrs > 0) parts.push(`${cncHrs.toFixed(1)}h CNC`);
+                    if (matCount > 0) parts.push(`${matCount} materials`);
+                    return (
+                      <div
+                        key={job.id}
+                        className="flex items-center justify-between rounded bg-background-dark p-2"
                       >
-                        View
-                      </button>
-                    </div>
-                  ))}
+                        <div>
+                          <p className="text-sm font-bold text-white">
+                            #{job.jobCode} - {getJobDisplayName(job)}
+                          </p>
+                          <p className="text-xs text-white/60">{parts.join(' • ') || '—'}</p>
+                        </div>
+                        <button
+                          onClick={() => onNavigate('job-detail', job.id)}
+                          className="text-xs font-bold text-primary"
+                        >
+                          View
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

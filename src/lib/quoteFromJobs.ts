@@ -31,7 +31,7 @@ export interface QuoteFromJobsResult {
   /** How many matched jobs consumed at least one resolvable inventory line. */
   materialContributorCount: number;
   /** How many matched jobs contributed to any component (labor, CNC, or material). */
-  contributedCount: number;
+  contributorCount: number;
   /** Ids of the jobs that contributed real data — the basis the quote is built on. */
   referenceJobIds: string[];
 }
@@ -141,7 +141,7 @@ export function buildQuoteFromJobs(
     laborContributorCount,
     cncContributorCount,
     materialContributorCount,
-    contributedCount: contributorIds.size,
+    contributorCount: contributorIds.size,
     referenceJobIds: Array.from(contributorIds),
   };
 }
