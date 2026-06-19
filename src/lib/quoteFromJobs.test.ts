@@ -64,7 +64,7 @@ const inventory: InventoryItem[] = [
   {
     id: 'inv-A',
     name: 'Aluminum',
-    category: 'rawMaterial',
+    category: 'material',
     inStock: 0,
     available: 0,
     disposed: 0,
