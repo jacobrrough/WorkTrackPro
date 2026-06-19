@@ -3,9 +3,9 @@ import { Job, InventoryItem, User, ViewState, Quote, QuoteLineItem, Shift } from
 import { quoteService } from './services/api/quotes';
 import { useScrollRestore } from './hooks/useScrollRestore';
 import { useToast } from './Toast';
-import { getWorkedShiftMs } from './lib/lunchUtils';
 import { getJobDisplayName } from './lib/formatJob';
-import { getMachineTotalsFromJob } from './lib/machineHours';
+import { calculateJobHoursFromShifts } from './lib/laborSuggestion';
+import { buildQuoteFromJobs } from './lib/quoteFromJobs';
 
 interface QuotesProps {
   jobs: Job[];
@@ -52,6 +52,10 @@ const Quotes: React.FC<QuotesProps> = ({
     total: number;
     lineItems: QuoteLineItem[];
     referenceJobIds: string[];
+    /** UI-only: how many matched jobs contributed real data to the averages. */
+    contributedCount: number;
+    /** UI-only: how many jobs matched the search. */
+    matchedCount: number;
   } | null>(null);
 
   // Load saved quotes
@@ -90,14 +94,9 @@ const Quotes: React.FC<QuotesProps> = ({
     [jobs]
   );
 
-  // Calculate total hours for a job
+  // Actual logged labor hours for a job (completed shifts only). Used by the reference-jobs UI.
   const calculateJobHours = useCallback(
-    (jobId: string): number => {
-      const jobShifts = shifts.filter((s) => s.job === jobId && s.clockOutTime);
-      return jobShifts.reduce((total, shift) => {
-        return total + getWorkedShiftMs(shift) / 3600000;
-      }, 0);
-    },
+    (jobId: string): number => calculateJobHoursFromShifts(jobId, shifts),
     [shifts]
   );
 
@@ -128,71 +127,20 @@ const Quotes: React.FC<QuotesProps> = ({
           total: 0,
           lineItems: [],
           referenceJobIds: [],
+          contributedCount: 0,
+          matchedCount: 0,
         });
         setIsCalculating(false);
         return;
       }
 
-      // Aggregate materials from similar jobs
-      const materialMap = new Map<
-        string,
-        { name: string; quantity: number; unit: string; price: number }
-      >();
-      let totalHours = 0;
-      let totalCncHours = 0;
-      const referenceJobIds: string[] = [];
-
-      for (const job of similarJobs) {
-        referenceJobIds.push(job.id);
-
-        // Calculate hours for this job
-        const jobHours = calculateJobHours(job.id);
-        totalHours += jobHours;
-        totalCncHours += getMachineTotalsFromJob(job).cncHours;
-
-        // Aggregate materials
-        const jobInventory = job.expand?.job_inventory_via_job || job.expand?.job_inventory || [];
-        for (const ji of jobInventory) {
-          const invId =
-            typeof ji.inventory === 'string'
-              ? ji.inventory
-              : (ji.inventory as unknown as { id?: string })?.id;
-          if (!invId) continue;
-
-          const invItem = inventory.find((i) => i.id === invId);
-          if (!invItem) continue;
-
-          const key = invId;
-          const existing = materialMap.get(key);
-          const quantity = ji.quantity || 0;
-          const unitPrice = invItem.price || 0;
-
-          if (existing) {
-            existing.quantity += quantity;
-          } else {
-            materialMap.set(key, {
-              name: invItem.name,
-              quantity,
-              unit: ji.unit || invItem.unit || 'units',
-              price: unitPrice,
-            });
-          }
-        }
-      }
-
-      // Average material quantities per job to match averaged labor/CNC hours
-      if (similarJobs.length > 0) {
-        for (const m of materialMap.values()) {
-          m.quantity = m.quantity / similarJobs.length;
-        }
-      }
-
-      // Calculate average hours per job
-      const avgHours = similarJobs.length > 0 ? totalHours / similarJobs.length : 0;
+      // Average labor, CNC, and materials over only the matched jobs that actually have
+      // that kind of history. Jobs with no logged data no longer dilute the estimate.
+      const basis = buildQuoteFromJobs(similarJobs, shifts, inventory);
 
       // Create line items with material markup (cost × 2.25 per V7 spec)
-      const lineItems: QuoteLineItem[] = Array.from(materialMap.values()).map((item) => {
-        const unitPrice = item.price * MATERIAL_MARKUP_MULTIPLIER; // Our cost × 2.25
+      const lineItems: QuoteLineItem[] = basis.materials.map((item) => {
+        const unitPrice = item.unitCost * MATERIAL_MARKUP_MULTIPLIER; // Our cost × 2.25
         return {
           name: item.name,
           inventoryName: item.name,
@@ -206,10 +154,9 @@ const Quotes: React.FC<QuotesProps> = ({
 
       const materialCost = lineItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
       const laborRate = DEFAULT_LABOR_RATE;
-      const laborCost = avgHours * laborRate;
-      const avgCncHours = similarJobs.length > 0 ? totalCncHours / similarJobs.length : 0;
+      const laborCost = basis.laborHours * laborRate;
       const cncRate = DEFAULT_LABOR_RATE;
-      const cncCost = avgCncHours * cncRate;
+      const cncCost = basis.cncHours * cncRate;
       const subtotal = materialCost + laborCost + cncCost;
       const markupPercent = DEFAULT_MARKUP_PERCENT;
       const markupAmount = subtotal * (markupPercent / 100);
@@ -217,10 +164,10 @@ const Quotes: React.FC<QuotesProps> = ({
 
       setQuoteData({
         materialCost,
-        laborHours: avgHours,
+        laborHours: basis.laborHours,
         laborRate,
         laborCost,
-        cncHours: avgCncHours,
+        cncHours: basis.cncHours,
         cncRate,
         cncCost,
         markupPercent,
@@ -228,17 +175,31 @@ const Quotes: React.FC<QuotesProps> = ({
         markupAmount,
         total,
         lineItems,
-        referenceJobIds,
+        referenceJobIds: basis.referenceJobIds,
+        contributedCount: basis.contributedCount,
+        matchedCount: basis.matchedCount,
       });
 
-      showToast(`Quote calculated from ${similarJobs.length} similar job(s)`, 'success');
+      if (basis.contributedCount === 0) {
+        // Jobs matched by name but none have logged history yet — don't show a misleading
+        // low number; prompt manual entry instead.
+        showToast(
+          `Matched ${basis.matchedCount} job(s), but none have logged history yet. Enter values manually.`,
+          'info'
+        );
+      } else {
+        showToast(
+          `Quote averaged from ${basis.contributedCount} of ${basis.matchedCount} matched job(s)`,
+          'success'
+        );
+      }
     } catch (error) {
       console.error('Calculate quote error:', error);
       showToast('Failed to calculate quote', 'error');
     } finally {
       setIsCalculating(false);
     }
-  }, [productName, findSimilarJobs, calculateJobHours, inventory, showToast]);
+  }, [productName, findSimilarJobs, shifts, inventory, showToast]);
 
   // Update quote calculations when values change
   const updateQuoteCalculations = useCallback(
@@ -459,7 +420,13 @@ const Quotes: React.FC<QuotesProps> = ({
             {/* Reference Jobs */}
             {referenceJobs.length > 0 && (
               <div className="rounded-sm border border-white/5 bg-surface-dark p-4">
-                <h3 className="mb-3 font-bold text-white">Reference Jobs</h3>
+                <div className="mb-3">
+                  <h3 className="font-bold text-white">Reference Jobs</h3>
+                  <p className="mt-0.5 text-xs text-white/50">
+                    Averaged from {quoteData.contributedCount} of {quoteData.matchedCount} matched
+                    job(s)
+                  </p>
+                </div>
                 <div className="space-y-2">
                   {referenceJobs.map((job) => (
                     <div
