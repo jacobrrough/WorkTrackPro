@@ -5,7 +5,10 @@ import { useScrollRestore } from './hooks/useScrollRestore';
 import { useToast } from './Toast';
 import { getJobDisplayName } from './lib/formatJob';
 import { getMachineTotalsFromJob } from './lib/machineHours';
-import { calculateJobHoursFromShifts } from './lib/laborSuggestion';
+import {
+  calculateJobHoursFromShifts,
+  findSimilarJobs as findSimilarJobsForJobs,
+} from './lib/laborSuggestion';
 import { buildQuoteFromJobs } from './lib/quoteFromJobs';
 
 interface QuotesProps {
@@ -75,25 +78,9 @@ const Quotes: React.FC<QuotesProps> = ({
     }
   }, [showToast]);
 
-  // Find similar jobs based on product name
+  // Find similar jobs based on product name (canonical matcher shared with labor suggestion)
   const findSimilarJobs = useCallback(
-    (searchTerm: string): Job[] => {
-      if (!searchTerm.trim()) return [];
-
-      const term = searchTerm.toLowerCase().trim();
-      const words = term.split(/\s+/);
-
-      return jobs
-        .filter((job) => {
-          const jobName = (getJobDisplayName(job) || job.name || '').toLowerCase();
-          const jobDesc = (job.description || '').toLowerCase();
-          const searchText = `${jobName} ${jobDesc}`;
-
-          // Check if any word matches
-          return words.some((word) => searchText.includes(word));
-        })
-        .slice(0, 10); // Limit to 10 most similar
-    },
+    (searchTerm: string): Job[] => findSimilarJobsForJobs(searchTerm, jobs),
     [jobs]
   );
 

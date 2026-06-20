@@ -5,6 +5,7 @@
 
 import { Job } from '@/core/types';
 import { getWorkedShiftMs } from './lunchUtils';
+import { getJobDisplayName } from './formatJob';
 
 /**
  * Planned labor hours for a job: job.laborHours if set, else sum of laborBreakdownByVariant totalHours.
@@ -21,10 +22,16 @@ export function getPlannedLaborHours(job: Job): number {
 }
 
 /**
- * Find similar jobs by part number (base) or name/description word match.
- * @param searchTerm Product name or part number to search for
+ * Find similar jobs by part number / display name, raw name, description, or job code.
+ *
+ * Matches against the convention-derived display name (getJobDisplayName surfaces part
+ * number, REV, EST# and PO#) as well as the raw name, description, and jobCode, so a search
+ * by any of those identifiers finds the job. Canonical single implementation — both the
+ * quote engine and labor suggestion call this so their reference-job sets stay in sync.
+ *
+ * @param searchTerm Product name, part number, or job code to search for
  * @param jobs All jobs to search
- * @returns Array of similar jobs
+ * @returns Up to 10 matching jobs
  */
 export function findSimilarJobs(searchTerm: string, jobs: Job[]): Job[] {
   if (!searchTerm.trim()) return [];
@@ -34,10 +41,11 @@ export function findSimilarJobs(searchTerm: string, jobs: Job[]): Job[] {
 
   return jobs
     .filter((job) => {
+      const displayName = (getJobDisplayName(job) || '').toLowerCase();
       const jobName = (job.name || '').toLowerCase();
       const jobDesc = (job.description || '').toLowerCase();
       const jobCode = String(job.jobCode || '').toLowerCase();
-      const searchText = `${jobName} ${jobDesc} ${jobCode}`;
+      const searchText = `${displayName} ${jobName} ${jobDesc} ${jobCode}`;
 
       // Check if any word matches
       return words.some((word) => searchText.includes(word));
