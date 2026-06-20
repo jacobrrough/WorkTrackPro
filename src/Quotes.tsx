@@ -53,10 +53,12 @@ const Quotes: React.FC<QuotesProps> = ({
     total: number;
     lineItems: QuoteLineItem[];
     referenceJobIds: string[];
-    /** UI-only: how many matched jobs contributed real data to the averages. */
+    /** UI-only: how many completed jobs contributed real data to the averages. */
     contributorCount: number;
     /** UI-only: how many jobs matched the search. */
     matchedCount: number;
+    /** UI-only: how many matched jobs are completed builds eligible to quote from. */
+    eligibleCount: number;
   } | null>(null);
 
   // Load saved quotes
@@ -130,13 +132,15 @@ const Quotes: React.FC<QuotesProps> = ({
           referenceJobIds: [],
           contributorCount: 0,
           matchedCount: 0,
+          eligibleCount: 0,
         });
         setIsCalculating(false);
         return;
       }
 
-      // Average labor, CNC, and materials over only the matched jobs that actually have
-      // that kind of history. Jobs with no logged data no longer dilute the estimate.
+      // Average labor, CNC, and materials over completed builds only, and within those over
+      // the jobs that actually logged each component. Half-built or no-history jobs no longer
+      // dilute the estimate.
       const basis = buildQuoteFromJobs(similarJobs, shifts, inventory);
 
       // Create line items with material markup (cost × 2.25 per V7 spec)
@@ -179,18 +183,23 @@ const Quotes: React.FC<QuotesProps> = ({
         referenceJobIds: basis.referenceJobIds,
         contributorCount: basis.contributorCount,
         matchedCount: basis.matchedCount,
+        eligibleCount: basis.eligibleCount,
       });
 
       if (basis.contributorCount === 0) {
-        // Jobs matched by name but none have logged history yet — don't show a misleading
-        // low number; prompt manual entry instead.
+        // Jobs matched by name but none are completed builds with usable history — don't
+        // show a misleading low number; prompt manual entry instead.
+        const reason =
+          basis.eligibleCount === 0
+            ? 'none are completed builds yet'
+            : 'none have logged history yet';
         showToast(
-          `Matched ${basis.matchedCount} job(s), but none have logged history yet. Enter values manually.`,
+          `Matched ${basis.matchedCount} job(s), but ${reason}. Enter values manually.`,
           'info'
         );
       } else {
         showToast(
-          `Quote averaged from ${basis.contributorCount} of ${basis.matchedCount} matched job(s)`,
+          `Quote averaged from ${basis.contributorCount} completed job(s) of ${basis.matchedCount} matched`,
           'success'
         );
       }
@@ -424,8 +433,8 @@ const Quotes: React.FC<QuotesProps> = ({
                 <div className="mb-3">
                   <h3 className="font-bold text-white">Reference Jobs</h3>
                   <p className="mt-0.5 text-xs text-white/50">
-                    Averaged from {quoteData.contributorCount} of {quoteData.matchedCount} matched
-                    job(s)
+                    Averaged from {quoteData.contributorCount} completed job(s) of{' '}
+                    {quoteData.matchedCount} matched
                   </p>
                 </div>
                 <div className="space-y-2">

@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import type { Job, Shift, InventoryItem } from '@/core/types';
-import { buildQuoteFromJobs } from './quoteFromJobs';
+import type { Job, JobStatus, Shift, InventoryItem } from '@/core/types';
+import { buildQuoteFromJobs, QUOTE_REFERENCE_STATUSES } from './quoteFromJobs';
 
+// Default to a completed build so the math-focused tests exercise eligible jobs.
+// Status-filter behavior is covered by its own block below.
 const mockJob = (overrides: Partial<Job> = {}): Job => ({
   id: 'job-1',
   jobCode: 1000,
   name: 'Widget',
   active: true,
-  status: 'toBeQuoted',
+  status: 'finished',
   boardType: 'shopFloor',
   attachments: [],
   attachmentCount: 0,
@@ -151,8 +153,9 @@ describe('buildQuoteFromJobs', () => {
     expect(result.referenceJobIds.sort()).toEqual(['cnc', 'labor']);
   });
 
-  it('averages a material over jobs that consumed inventory, treating non-users as true zeros', () => {
-    // Bolt used in 1 of 2 inventory-consuming jobs at qty 100 → expected per-job ≈ 50.
+  it('averages each material only over the jobs that used that item', () => {
+    // Aluminum used in both jobs; Bolt used in only one. Each item is divided by its own
+    // consumer count, so a one-job item reflects that job's quantity, not half of it.
     const jobs = [
       mockJob({
         id: 'a',
@@ -167,8 +170,8 @@ describe('buildQuoteFromJobs', () => {
 
     const al = result.materials.find((m) => m.inventoryId === 'inv-A')!;
     const bolt = result.materials.find((m) => m.inventoryId === 'inv-B')!;
-    expect(al.quantity).toBe(15); // (10 + 20) / 2
-    expect(bolt.quantity).toBe(50); // 100 / 2 (non-user counted as zero, not dropped)
+    expect(al.quantity).toBe(15); // (10 + 20) / 2 jobs that used aluminum
+    expect(bolt.quantity).toBe(100); // 100 / 1 job that used bolts, not / 2
     expect(al.unitCost).toBe(5);
     expect(result.materialContributorCount).toBe(2);
   });
@@ -303,5 +306,105 @@ describe('buildQuoteFromJobs', () => {
     expect(Number.isFinite(result.laborHours)).toBe(true);
     expect(result.laborContributorCount).toBe(1);
     expect(result.referenceJobIds).toEqual(['b']);
+  });
+
+  it('excludes in-progress jobs so their partial actuals do not dilute the average', () => {
+    // Same logged labor on both, but only the finished build is eligible to quote from.
+    const jobs = [
+      mockJob({ id: 'done', status: 'finished' }),
+      mockJob({ id: 'wip', status: 'inProgress' }),
+    ];
+    const shifts = [completedShift('done', 12), completedShift('wip', 2)];
+    const result = buildQuoteFromJobs(jobs, shifts, inventory);
+
+    expect(result.laborHours).toBe(12); // wip's half-built 2h is excluded, not averaged in
+    expect(result.matchedCount).toBe(2);
+    expect(result.eligibleCount).toBe(1);
+    expect(result.laborContributorCount).toBe(1);
+    expect(result.referenceJobIds).toEqual(['done']);
+  });
+
+  it('treats every completed-build status as eligible', () => {
+    const jobs = [
+      mockJob({ id: 'finished', status: 'finished' }),
+      mockJob({ id: 'delivered', status: 'delivered' }),
+      mockJob({ id: 'waiting', status: 'waitingForPayment' }),
+      mockJob({ id: 'projectCompleted', status: 'projectCompleted' }),
+      mockJob({ id: 'paid', status: 'paid' }),
+    ];
+    const result = buildQuoteFromJobs(jobs, [], inventory);
+
+    expect(result.eligibleCount).toBe(5);
+  });
+
+  it('excludes quote-stage and on-hold jobs from the basis', () => {
+    const jobs = [
+      mockJob({ id: 'quoted', status: 'quoted' }),
+      mockJob({ id: 'toBeQuoted', status: 'toBeQuoted' }),
+      mockJob({ id: 'rfq', status: 'rfqReceived' }),
+      mockJob({ id: 'hold', status: 'onHold' }),
+      mockJob({ id: 'qc', status: 'qualityControl' }),
+    ];
+    const result = buildQuoteFromJobs(jobs, [completedShift('quoted', 9)], inventory);
+
+    expect(result.matchedCount).toBe(5);
+    expect(result.eligibleCount).toBe(0);
+    expect(result.laborHours).toBe(0);
+    expect(result.contributorCount).toBe(0);
+    expect(result.referenceJobIds).toEqual([]);
+  });
+
+  // Exhaustiveness guard: forces a conscious decision when a JobStatus is added/renamed,
+  // so QUOTE_REFERENCE_STATUSES can't silently drift out of sync with the enum.
+  it('classifies every JobStatus as either eligible or excluded', () => {
+    const allStatuses: JobStatus[] = [
+      'pending',
+      'rush',
+      'inProgress',
+      'qualityControl',
+      'finished',
+      'delivered',
+      'onHold',
+      'toBeQuoted',
+      'quoted',
+      'rfqReceived',
+      'rfqSent',
+      'pod',
+      'waitingForPayment',
+      'projectCompleted',
+      'paid',
+    ];
+    const eligible = allStatuses.filter((s) => QUOTE_REFERENCE_STATUSES.has(s));
+    expect(eligible.sort()).toEqual(
+      ['delivered', 'finished', 'paid', 'projectCompleted', 'waitingForPayment'].sort()
+    );
+  });
+});
+
+describe('buildQuoteFromJobs input hardening', () => {
+  it('keeps a non-numeric inventory price out of the cost basis instead of returning NaN', () => {
+    const badInventory: InventoryItem[] = [
+      { ...inventory[0], id: 'inv-bad', price: 'oops' as unknown as number },
+    ];
+    const jobs = [mockJob({ id: 'a', expand: invLines([{ inv: 'inv-bad', qty: 4 }]) })];
+    const result = buildQuoteFromJobs(jobs, [], badInventory);
+
+    expect(result.materials).toHaveLength(1);
+    expect(result.materials[0].unitCost).toBe(0); // coerced to 0, not NaN
+    expect(Number.isFinite(result.materials[0].quantity)).toBe(true);
+  });
+
+  it('drops jobs with a missing id so they cannot collapse into one consumer', () => {
+    // Two distinct id-less rows that both consume the same item must not be treated as one
+    // job (which would halve the denominator and double the averaged quantity).
+    const jobs = [
+      mockJob({ id: '' as unknown as string, expand: invLines([{ inv: 'inv-A', qty: 10 }]) }),
+      mockJob({ id: '' as unknown as string, expand: invLines([{ inv: 'inv-A', qty: 10 }]) }),
+    ];
+    const result = buildQuoteFromJobs(jobs, [], inventory);
+
+    expect(result.matchedCount).toBe(0);
+    expect(result.materials).toEqual([]);
+    expect(result.referenceJobIds).toEqual([]);
   });
 });
