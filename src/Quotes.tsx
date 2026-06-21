@@ -5,8 +5,11 @@ import { useScrollRestore } from './hooks/useScrollRestore';
 import { useToast } from './Toast';
 import { getJobDisplayName } from './lib/formatJob';
 import { getMachineTotalsFromJob } from './lib/machineHours';
-import { calculateJobHoursFromShifts } from './lib/laborSuggestion';
-import { buildQuoteFromJobs } from './lib/quoteFromJobs';
+import {
+  calculateJobHoursFromShifts,
+  findSimilarJobs as findSimilarJobsForJobs,
+} from './lib/laborSuggestion';
+import { buildQuoteFromJobs, priceQuoteFromBasis } from './lib/quoteFromJobs';
 
 interface QuotesProps {
   jobs: Job[];
@@ -53,10 +56,12 @@ const Quotes: React.FC<QuotesProps> = ({
     total: number;
     lineItems: QuoteLineItem[];
     referenceJobIds: string[];
-    /** UI-only: how many matched jobs contributed real data to the averages. */
+    /** UI-only: how many completed jobs contributed real data to the averages. */
     contributorCount: number;
     /** UI-only: how many jobs matched the search. */
     matchedCount: number;
+    /** UI-only: how many matched jobs are completed builds eligible to quote from. */
+    eligibleCount: number;
   } | null>(null);
 
   // Load saved quotes
@@ -73,25 +78,9 @@ const Quotes: React.FC<QuotesProps> = ({
     }
   }, [showToast]);
 
-  // Find similar jobs based on product name
+  // Find similar jobs based on product name (canonical matcher shared with labor suggestion)
   const findSimilarJobs = useCallback(
-    (searchTerm: string): Job[] => {
-      if (!searchTerm.trim()) return [];
-
-      const term = searchTerm.toLowerCase().trim();
-      const words = term.split(/\s+/);
-
-      return jobs
-        .filter((job) => {
-          const jobName = (getJobDisplayName(job) || job.name || '').toLowerCase();
-          const jobDesc = (job.description || '').toLowerCase();
-          const searchText = `${jobName} ${jobDesc}`;
-
-          // Check if any word matches
-          return words.some((word) => searchText.includes(word));
-        })
-        .slice(0, 10); // Limit to 10 most similar
-    },
+    (searchTerm: string): Job[] => findSimilarJobsForJobs(searchTerm, jobs),
     [jobs]
   );
 
@@ -130,67 +119,58 @@ const Quotes: React.FC<QuotesProps> = ({
           referenceJobIds: [],
           contributorCount: 0,
           matchedCount: 0,
+          eligibleCount: 0,
         });
         setIsCalculating(false);
         return;
       }
 
-      // Average labor, CNC, and materials over only the matched jobs that actually have
-      // that kind of history. Jobs with no logged data no longer dilute the estimate.
+      // Average labor, CNC, and materials over completed builds only, and within those over
+      // the jobs that actually logged each component. Half-built or no-history jobs no longer
+      // dilute the estimate.
       const basis = buildQuoteFromJobs(similarJobs, shifts, inventory);
 
-      // Create line items with material markup (cost × 2.25 per V7 spec)
-      const lineItems: QuoteLineItem[] = basis.materials.map((item) => {
-        const unitPrice = item.unitCost * MATERIAL_MARKUP_MULTIPLIER; // Our cost × 2.25
-        return {
-          name: item.name,
-          inventoryName: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice,
-          totalPrice: item.quantity * unitPrice,
-          isManual: false,
-        };
+      // Price the raw basis (material markup ×2.25, labor/CNC rate, 20% markup — V7 spec).
+      const priced = priceQuoteFromBasis(basis, {
+        laborRate: DEFAULT_LABOR_RATE,
+        cncRate: DEFAULT_LABOR_RATE,
+        materialMarkupMultiplier: MATERIAL_MARKUP_MULTIPLIER,
+        markupPercent: DEFAULT_MARKUP_PERCENT,
       });
 
-      const materialCost = lineItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
-      const laborRate = DEFAULT_LABOR_RATE;
-      const laborCost = basis.laborHours * laborRate;
-      const cncRate = DEFAULT_LABOR_RATE;
-      const cncCost = basis.cncHours * cncRate;
-      const subtotal = materialCost + laborCost + cncCost;
-      const markupPercent = DEFAULT_MARKUP_PERCENT;
-      const markupAmount = subtotal * (markupPercent / 100);
-      const total = subtotal + markupAmount;
-
       setQuoteData({
-        materialCost,
+        materialCost: priced.materialCost,
         laborHours: basis.laborHours,
-        laborRate,
-        laborCost,
+        laborRate: DEFAULT_LABOR_RATE,
+        laborCost: priced.laborCost,
         cncHours: basis.cncHours,
-        cncRate,
-        cncCost,
-        markupPercent,
-        subtotal,
-        markupAmount,
-        total,
-        lineItems,
+        cncRate: DEFAULT_LABOR_RATE,
+        cncCost: priced.cncCost,
+        markupPercent: DEFAULT_MARKUP_PERCENT,
+        subtotal: priced.subtotal,
+        markupAmount: priced.markupAmount,
+        total: priced.total,
+        lineItems: priced.lineItems,
         referenceJobIds: basis.referenceJobIds,
         contributorCount: basis.contributorCount,
         matchedCount: basis.matchedCount,
+        eligibleCount: basis.eligibleCount,
       });
 
       if (basis.contributorCount === 0) {
-        // Jobs matched by name but none have logged history yet — don't show a misleading
-        // low number; prompt manual entry instead.
+        // Jobs matched by name but none are completed builds with usable history — don't
+        // show a misleading low number; prompt manual entry instead.
+        const reason =
+          basis.eligibleCount === 0
+            ? 'none are completed builds yet'
+            : 'none have logged history yet';
         showToast(
-          `Matched ${basis.matchedCount} job(s), but none have logged history yet. Enter values manually.`,
+          `Matched ${basis.matchedCount} job(s), but ${reason}. Enter values manually.`,
           'info'
         );
       } else {
         showToast(
-          `Quote averaged from ${basis.contributorCount} of ${basis.matchedCount} matched job(s)`,
+          `Quote averaged from ${basis.contributorCount} completed job(s) of ${basis.matchedCount} matched`,
           'success'
         );
       }
@@ -424,8 +404,8 @@ const Quotes: React.FC<QuotesProps> = ({
                 <div className="mb-3">
                   <h3 className="font-bold text-white">Reference Jobs</h3>
                   <p className="mt-0.5 text-xs text-white/50">
-                    Averaged from {quoteData.contributorCount} of {quoteData.matchedCount} matched
-                    job(s)
+                    Averaged from {quoteData.contributorCount} completed job(s) of{' '}
+                    {quoteData.matchedCount} matched
                   </p>
                 </div>
                 <div className="space-y-2">

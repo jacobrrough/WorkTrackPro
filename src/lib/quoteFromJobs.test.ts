@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import type { Job, Shift, InventoryItem } from '@/core/types';
-import { buildQuoteFromJobs } from './quoteFromJobs';
+import type { Job, JobStatus, Shift, InventoryItem } from '@/core/types';
+import { buildQuoteFromJobs, priceQuoteFromBasis, QUOTE_REFERENCE_STATUSES } from './quoteFromJobs';
 
+// Default to a completed build so the math-focused tests exercise eligible jobs.
+// Status-filter behavior is covered by its own block below.
 const mockJob = (overrides: Partial<Job> = {}): Job => ({
   id: 'job-1',
   jobCode: 1000,
   name: 'Widget',
   active: true,
-  status: 'toBeQuoted',
+  status: 'finished',
   boardType: 'shopFloor',
   attachments: [],
   attachmentCount: 0,
@@ -151,8 +153,9 @@ describe('buildQuoteFromJobs', () => {
     expect(result.referenceJobIds.sort()).toEqual(['cnc', 'labor']);
   });
 
-  it('averages a material over jobs that consumed inventory, treating non-users as true zeros', () => {
-    // Bolt used in 1 of 2 inventory-consuming jobs at qty 100 → expected per-job ≈ 50.
+  it('averages each material only over the jobs that used that item', () => {
+    // Aluminum used in both jobs; Bolt used in only one. Each item is divided by its own
+    // consumer count, so a one-job item reflects that job's quantity, not half of it.
     const jobs = [
       mockJob({
         id: 'a',
@@ -167,8 +170,8 @@ describe('buildQuoteFromJobs', () => {
 
     const al = result.materials.find((m) => m.inventoryId === 'inv-A')!;
     const bolt = result.materials.find((m) => m.inventoryId === 'inv-B')!;
-    expect(al.quantity).toBe(15); // (10 + 20) / 2
-    expect(bolt.quantity).toBe(50); // 100 / 2 (non-user counted as zero, not dropped)
+    expect(al.quantity).toBe(15); // (10 + 20) / 2 jobs that used aluminum
+    expect(bolt.quantity).toBe(100); // 100 / 1 job that used bolts, not / 2
     expect(al.unitCost).toBe(5);
     expect(result.materialContributorCount).toBe(2);
   });
@@ -303,5 +306,186 @@ describe('buildQuoteFromJobs', () => {
     expect(Number.isFinite(result.laborHours)).toBe(true);
     expect(result.laborContributorCount).toBe(1);
     expect(result.referenceJobIds).toEqual(['b']);
+  });
+
+  it('keeps a job whose other shifts are valid when one shift has a corrupt timestamp', () => {
+    // The corrupt shift must be skipped, not erase the job's whole labor history. Job a logs
+    // a good 8h shift plus one bad-timestamp shift → it still contributes 8h, not NaN/zero.
+    const badShift: Shift = {
+      id: 'bad',
+      user: 'u1',
+      job: 'a',
+      clockInTime: new Date('2026-01-01T08:00:00Z').toISOString(),
+      clockOutTime: 'not-a-real-date',
+      lunchMinutesUsed: 0,
+    };
+    const jobs = [mockJob({ id: 'a' })];
+    const result = buildQuoteFromJobs(jobs, [completedShift('a', 8), badShift], inventory);
+
+    expect(result.laborHours).toBe(8); // good shift preserved, bad one skipped
+    expect(result.laborContributorCount).toBe(1);
+    expect(result.referenceJobIds).toEqual(['a']);
+  });
+
+  it('excludes in-progress jobs so their partial actuals do not dilute the average', () => {
+    // Same logged labor on both, but only the finished build is eligible to quote from.
+    const jobs = [
+      mockJob({ id: 'done', status: 'finished' }),
+      mockJob({ id: 'wip', status: 'inProgress' }),
+    ];
+    const shifts = [completedShift('done', 12), completedShift('wip', 2)];
+    const result = buildQuoteFromJobs(jobs, shifts, inventory);
+
+    expect(result.laborHours).toBe(12); // wip's half-built 2h is excluded, not averaged in
+    expect(result.matchedCount).toBe(2);
+    expect(result.eligibleCount).toBe(1);
+    expect(result.laborContributorCount).toBe(1);
+    expect(result.referenceJobIds).toEqual(['done']);
+  });
+
+  it('treats every completed-build status as eligible', () => {
+    const jobs = [
+      mockJob({ id: 'finished', status: 'finished' }),
+      mockJob({ id: 'delivered', status: 'delivered' }),
+      mockJob({ id: 'waiting', status: 'waitingForPayment' }),
+      mockJob({ id: 'projectCompleted', status: 'projectCompleted' }),
+      mockJob({ id: 'paid', status: 'paid' }),
+    ];
+    const result = buildQuoteFromJobs(jobs, [], inventory);
+
+    expect(result.eligibleCount).toBe(5);
+  });
+
+  it('excludes quote-stage and on-hold jobs from the basis', () => {
+    const jobs = [
+      mockJob({ id: 'quoted', status: 'quoted' }),
+      mockJob({ id: 'toBeQuoted', status: 'toBeQuoted' }),
+      mockJob({ id: 'rfq', status: 'rfqReceived' }),
+      mockJob({ id: 'hold', status: 'onHold' }),
+      mockJob({ id: 'qc', status: 'qualityControl' }),
+    ];
+    const result = buildQuoteFromJobs(jobs, [completedShift('quoted', 9)], inventory);
+
+    expect(result.matchedCount).toBe(5);
+    expect(result.eligibleCount).toBe(0);
+    expect(result.laborHours).toBe(0);
+    expect(result.contributorCount).toBe(0);
+    expect(result.referenceJobIds).toEqual([]);
+  });
+
+  // Exhaustiveness guard: this Record is keyed by JobStatus, so adding a status to the enum
+  // is a COMPILE error here until it's classified — real enforcement, not a hand-copied list
+  // that silently stays green when the enum grows.
+  it('classifies every JobStatus as either eligible or excluded', () => {
+    const classification: Record<JobStatus, 'eligible' | 'excluded'> = {
+      finished: 'eligible',
+      delivered: 'eligible',
+      waitingForPayment: 'eligible',
+      projectCompleted: 'eligible',
+      paid: 'eligible',
+      pending: 'excluded',
+      rush: 'excluded',
+      inProgress: 'excluded',
+      qualityControl: 'excluded',
+      onHold: 'excluded',
+      toBeQuoted: 'excluded',
+      quoted: 'excluded',
+      rfqReceived: 'excluded',
+      rfqSent: 'excluded',
+      pod: 'excluded',
+    };
+    for (const [status, kind] of Object.entries(classification) as [
+      JobStatus,
+      'eligible' | 'excluded',
+    ][]) {
+      expect(QUOTE_REFERENCE_STATUSES.has(status)).toBe(kind === 'eligible');
+    }
+  });
+});
+
+describe('buildQuoteFromJobs input hardening', () => {
+  it('keeps a non-numeric inventory price out of the cost basis instead of returning NaN', () => {
+    const badInventory: InventoryItem[] = [
+      { ...inventory[0], id: 'inv-bad', price: 'oops' as unknown as number },
+    ];
+    const jobs = [mockJob({ id: 'a', expand: invLines([{ inv: 'inv-bad', qty: 4 }]) })];
+    const result = buildQuoteFromJobs(jobs, [], badInventory);
+
+    expect(result.materials).toHaveLength(1);
+    expect(result.materials[0].unitCost).toBe(0); // coerced to 0, not NaN
+    expect(Number.isFinite(result.materials[0].quantity)).toBe(true);
+  });
+
+  it('drops jobs with a missing id so they cannot collapse into one consumer', () => {
+    // Two distinct id-less rows that both consume the same item must not be treated as one
+    // job (which would halve the denominator and double the averaged quantity).
+    const jobs = [
+      mockJob({ id: '' as unknown as string, expand: invLines([{ inv: 'inv-A', qty: 10 }]) }),
+      mockJob({ id: '' as unknown as string, expand: invLines([{ inv: 'inv-A', qty: 10 }]) }),
+    ];
+    const result = buildQuoteFromJobs(jobs, [], inventory);
+
+    expect(result.matchedCount).toBe(0);
+    expect(result.materials).toEqual([]);
+    expect(result.referenceJobIds).toEqual([]);
+  });
+});
+
+describe('priceQuoteFromBasis', () => {
+  const config = {
+    laborRate: 175,
+    cncRate: 175,
+    materialMarkupMultiplier: 2.25,
+    markupPercent: 20,
+  };
+
+  it('applies the material markup to each line and sums material cost', () => {
+    const priced = priceQuoteFromBasis(
+      {
+        materials: [
+          { inventoryId: 'inv-A', name: 'Aluminum', unit: 'sheet', unitCost: 5, quantity: 4 },
+        ],
+        laborHours: 0,
+        cncHours: 0,
+      },
+      config
+    );
+
+    expect(priced.lineItems[0].unitPrice).toBe(11.25); // 5 × 2.25
+    expect(priced.lineItems[0].totalPrice).toBe(45); // 11.25 × 4
+    expect(priced.materialCost).toBe(45);
+  });
+
+  it('prices labor and CNC hours at their rates', () => {
+    const priced = priceQuoteFromBasis({ materials: [], laborHours: 10, cncHours: 2 }, config);
+
+    expect(priced.laborCost).toBe(1750); // 10 × 175
+    expect(priced.cncCost).toBe(350); // 2 × 175
+  });
+
+  it('composes the subtotal and applies the whole-quote markup', () => {
+    const priced = priceQuoteFromBasis(
+      {
+        materials: [
+          { inventoryId: 'inv-A', name: 'Aluminum', unit: 'sheet', unitCost: 5, quantity: 4 },
+        ],
+        laborHours: 10,
+        cncHours: 2,
+      },
+      config
+    );
+
+    // material 45 + labor 1750 + cnc 350 = 2145 subtotal; +20% = 2574 total
+    expect(priced.subtotal).toBe(2145);
+    expect(priced.markupAmount).toBeCloseTo(429, 5);
+    expect(priced.total).toBeCloseTo(2574, 5);
+  });
+
+  it('returns an all-zero, empty quote for an empty basis', () => {
+    const priced = priceQuoteFromBasis({ materials: [], laborHours: 0, cncHours: 0 }, config);
+
+    expect(priced.lineItems).toEqual([]);
+    expect(priced.subtotal).toBe(0);
+    expect(priced.total).toBe(0);
   });
 });
