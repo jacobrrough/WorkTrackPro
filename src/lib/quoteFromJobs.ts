@@ -1,4 +1,4 @@
-import type { Job, JobStatus, Shift, InventoryItem } from '@/core/types';
+import type { Job, JobStatus, Shift, InventoryItem, QuoteLineItem } from '@/core/types';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 
@@ -8,7 +8,9 @@ import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
  * inventory are final rather than mid-flight. In-progress / pending / on-hold / quote- and
  * RFQ-stage jobs are excluded: their partial actuals would drag the estimate down — the
  * same under-quoting the no-history exclusion was meant to fix, through a different door.
- * qualityControl is intentionally excluded because failing QC adds rework labor.
+ * qualityControl is excluded because failing QC adds rework labor; pod (PO'd) and rush are
+ * excluded because a placed order or rushed job is in-flight, not a finished build with
+ * final actuals.
  */
 export const QUOTE_REFERENCE_STATUSES: ReadonlySet<JobStatus> = new Set<JobStatus>([
   'finished',
@@ -47,6 +49,9 @@ export interface QuoteFromJobsResult {
   matchedCount: number;
   /** How many matched jobs are completed builds eligible to quote from. */
   eligibleCount: number;
+  // The three per-component contributor counts below are reserved for the accounting
+  // estimates pipeline UI (a "averaged from N labor / M CNC / K material jobs" breakdown).
+  // They are not yet read by a production caller; keep them in sync with the loop above.
   /** How many eligible jobs had at least one completed shift. */
   laborContributorCount: number;
   /** How many eligible jobs had CNC time. */
@@ -196,4 +201,58 @@ export function buildQuoteFromJobs(
     contributorCount: contributorIds.size,
     referenceJobIds: Array.from(contributorIds),
   };
+}
+
+/** Rates and markups applied to a raw cost basis. Callers own these (V7 spec lives in the UI). */
+export interface QuotePricingConfig {
+  /** Dollars per labor hour. */
+  laborRate: number;
+  /** Dollars per CNC hour. */
+  cncRate: number;
+  /** Material sell price = raw unit cost × this multiplier. */
+  materialMarkupMultiplier: number;
+  /** Whole-quote markup applied to the subtotal, as a percent (e.g. 20 = +20%). */
+  markupPercent: number;
+}
+
+export interface PricedQuote {
+  lineItems: QuoteLineItem[];
+  materialCost: number;
+  laborCost: number;
+  cncCost: number;
+  subtotal: number;
+  markupAmount: number;
+  total: number;
+}
+
+/**
+ * Turn a raw cost basis into priced, marked-up quote figures. Pure and config-driven so the
+ * customer-facing dollar math (material markup, labor/CNC rates, whole-quote markup) is unit
+ * testable on its own rather than buried in the React calculate handler.
+ */
+export function priceQuoteFromBasis(
+  basis: Pick<QuoteFromJobsResult, 'materials' | 'laborHours' | 'cncHours'>,
+  config: QuotePricingConfig
+): PricedQuote {
+  const lineItems: QuoteLineItem[] = basis.materials.map((item) => {
+    const unitPrice = item.unitCost * config.materialMarkupMultiplier;
+    return {
+      name: item.name,
+      inventoryName: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice,
+      totalPrice: item.quantity * unitPrice,
+      isManual: false,
+    };
+  });
+
+  const materialCost = lineItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
+  const laborCost = basis.laborHours * config.laborRate;
+  const cncCost = basis.cncHours * config.cncRate;
+  const subtotal = materialCost + laborCost + cncCost;
+  const markupAmount = subtotal * (config.markupPercent / 100);
+  const total = subtotal + markupAmount;
+
+  return { lineItems, materialCost, laborCost, cncCost, subtotal, markupAmount, total };
 }

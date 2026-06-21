@@ -9,7 +9,7 @@ import {
   calculateJobHoursFromShifts,
   findSimilarJobs as findSimilarJobsForJobs,
 } from './lib/laborSuggestion';
-import { buildQuoteFromJobs } from './lib/quoteFromJobs';
+import { buildQuoteFromJobs, priceQuoteFromBasis } from './lib/quoteFromJobs';
 
 interface QuotesProps {
   jobs: Job[];
@@ -130,43 +130,27 @@ const Quotes: React.FC<QuotesProps> = ({
       // dilute the estimate.
       const basis = buildQuoteFromJobs(similarJobs, shifts, inventory);
 
-      // Create line items with material markup (cost × 2.25 per V7 spec)
-      const lineItems: QuoteLineItem[] = basis.materials.map((item) => {
-        const unitPrice = item.unitCost * MATERIAL_MARKUP_MULTIPLIER; // Our cost × 2.25
-        return {
-          name: item.name,
-          inventoryName: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice,
-          totalPrice: item.quantity * unitPrice,
-          isManual: false,
-        };
+      // Price the raw basis (material markup ×2.25, labor/CNC rate, 20% markup — V7 spec).
+      const priced = priceQuoteFromBasis(basis, {
+        laborRate: DEFAULT_LABOR_RATE,
+        cncRate: DEFAULT_LABOR_RATE,
+        materialMarkupMultiplier: MATERIAL_MARKUP_MULTIPLIER,
+        markupPercent: DEFAULT_MARKUP_PERCENT,
       });
 
-      const materialCost = lineItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0);
-      const laborRate = DEFAULT_LABOR_RATE;
-      const laborCost = basis.laborHours * laborRate;
-      const cncRate = DEFAULT_LABOR_RATE;
-      const cncCost = basis.cncHours * cncRate;
-      const subtotal = materialCost + laborCost + cncCost;
-      const markupPercent = DEFAULT_MARKUP_PERCENT;
-      const markupAmount = subtotal * (markupPercent / 100);
-      const total = subtotal + markupAmount;
-
       setQuoteData({
-        materialCost,
+        materialCost: priced.materialCost,
         laborHours: basis.laborHours,
-        laborRate,
-        laborCost,
+        laborRate: DEFAULT_LABOR_RATE,
+        laborCost: priced.laborCost,
         cncHours: basis.cncHours,
-        cncRate,
-        cncCost,
-        markupPercent,
-        subtotal,
-        markupAmount,
-        total,
-        lineItems,
+        cncRate: DEFAULT_LABOR_RATE,
+        cncCost: priced.cncCost,
+        markupPercent: DEFAULT_MARKUP_PERCENT,
+        subtotal: priced.subtotal,
+        markupAmount: priced.markupAmount,
+        total: priced.total,
+        lineItems: priced.lineItems,
         referenceJobIds: basis.referenceJobIds,
         contributorCount: basis.contributorCount,
         matchedCount: basis.matchedCount,

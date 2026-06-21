@@ -72,7 +72,11 @@ export function calculateJobHoursFromShifts(
 ): number {
   const jobShifts = shifts.filter((s) => s.job === jobId && s.clockOutTime);
   return jobShifts.reduce((total, shift) => {
-    return total + getWorkedShiftMs(shift) / 3600000;
+    // Skip a single corrupt shift (e.g. an unparseable clockOutTime → NaN ms) instead of
+    // letting it poison the whole job's total. Otherwise one bad timestamp would erase all
+    // of an otherwise-valid job's logged hours from any average built on this figure.
+    const ms = getWorkedShiftMs(shift);
+    return Number.isFinite(ms) ? total + ms / 3600000 : total;
   }, 0);
 }
 

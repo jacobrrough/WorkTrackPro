@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Job, JobStatus, Shift, InventoryItem } from '@/core/types';
-import { buildQuoteFromJobs, QUOTE_REFERENCE_STATUSES } from './quoteFromJobs';
+import { buildQuoteFromJobs, priceQuoteFromBasis, QUOTE_REFERENCE_STATUSES } from './quoteFromJobs';
 
 // Default to a completed build so the math-focused tests exercise eligible jobs.
 // Status-filter behavior is covered by its own block below.
@@ -308,6 +308,25 @@ describe('buildQuoteFromJobs', () => {
     expect(result.referenceJobIds).toEqual(['b']);
   });
 
+  it('keeps a job whose other shifts are valid when one shift has a corrupt timestamp', () => {
+    // The corrupt shift must be skipped, not erase the job's whole labor history. Job a logs
+    // a good 8h shift plus one bad-timestamp shift → it still contributes 8h, not NaN/zero.
+    const badShift: Shift = {
+      id: 'bad',
+      user: 'u1',
+      job: 'a',
+      clockInTime: new Date('2026-01-01T08:00:00Z').toISOString(),
+      clockOutTime: 'not-a-real-date',
+      lunchMinutesUsed: 0,
+    };
+    const jobs = [mockJob({ id: 'a' })];
+    const result = buildQuoteFromJobs(jobs, [completedShift('a', 8), badShift], inventory);
+
+    expect(result.laborHours).toBe(8); // good shift preserved, bad one skipped
+    expect(result.laborContributorCount).toBe(1);
+    expect(result.referenceJobIds).toEqual(['a']);
+  });
+
   it('excludes in-progress jobs so their partial actuals do not dilute the average', () => {
     // Same logged labor on both, but only the finished build is eligible to quote from.
     const jobs = [
@@ -354,30 +373,33 @@ describe('buildQuoteFromJobs', () => {
     expect(result.referenceJobIds).toEqual([]);
   });
 
-  // Exhaustiveness guard: forces a conscious decision when a JobStatus is added/renamed,
-  // so QUOTE_REFERENCE_STATUSES can't silently drift out of sync with the enum.
+  // Exhaustiveness guard: this Record is keyed by JobStatus, so adding a status to the enum
+  // is a COMPILE error here until it's classified — real enforcement, not a hand-copied list
+  // that silently stays green when the enum grows.
   it('classifies every JobStatus as either eligible or excluded', () => {
-    const allStatuses: JobStatus[] = [
-      'pending',
-      'rush',
-      'inProgress',
-      'qualityControl',
-      'finished',
-      'delivered',
-      'onHold',
-      'toBeQuoted',
-      'quoted',
-      'rfqReceived',
-      'rfqSent',
-      'pod',
-      'waitingForPayment',
-      'projectCompleted',
-      'paid',
-    ];
-    const eligible = allStatuses.filter((s) => QUOTE_REFERENCE_STATUSES.has(s));
-    expect(eligible.sort()).toEqual(
-      ['delivered', 'finished', 'paid', 'projectCompleted', 'waitingForPayment'].sort()
-    );
+    const classification: Record<JobStatus, 'eligible' | 'excluded'> = {
+      finished: 'eligible',
+      delivered: 'eligible',
+      waitingForPayment: 'eligible',
+      projectCompleted: 'eligible',
+      paid: 'eligible',
+      pending: 'excluded',
+      rush: 'excluded',
+      inProgress: 'excluded',
+      qualityControl: 'excluded',
+      onHold: 'excluded',
+      toBeQuoted: 'excluded',
+      quoted: 'excluded',
+      rfqReceived: 'excluded',
+      rfqSent: 'excluded',
+      pod: 'excluded',
+    };
+    for (const [status, kind] of Object.entries(classification) as [
+      JobStatus,
+      'eligible' | 'excluded',
+    ][]) {
+      expect(QUOTE_REFERENCE_STATUSES.has(status)).toBe(kind === 'eligible');
+    }
   });
 });
 
@@ -406,5 +428,64 @@ describe('buildQuoteFromJobs input hardening', () => {
     expect(result.matchedCount).toBe(0);
     expect(result.materials).toEqual([]);
     expect(result.referenceJobIds).toEqual([]);
+  });
+});
+
+describe('priceQuoteFromBasis', () => {
+  const config = {
+    laborRate: 175,
+    cncRate: 175,
+    materialMarkupMultiplier: 2.25,
+    markupPercent: 20,
+  };
+
+  it('applies the material markup to each line and sums material cost', () => {
+    const priced = priceQuoteFromBasis(
+      {
+        materials: [
+          { inventoryId: 'inv-A', name: 'Aluminum', unit: 'sheet', unitCost: 5, quantity: 4 },
+        ],
+        laborHours: 0,
+        cncHours: 0,
+      },
+      config
+    );
+
+    expect(priced.lineItems[0].unitPrice).toBe(11.25); // 5 × 2.25
+    expect(priced.lineItems[0].totalPrice).toBe(45); // 11.25 × 4
+    expect(priced.materialCost).toBe(45);
+  });
+
+  it('prices labor and CNC hours at their rates', () => {
+    const priced = priceQuoteFromBasis({ materials: [], laborHours: 10, cncHours: 2 }, config);
+
+    expect(priced.laborCost).toBe(1750); // 10 × 175
+    expect(priced.cncCost).toBe(350); // 2 × 175
+  });
+
+  it('composes the subtotal and applies the whole-quote markup', () => {
+    const priced = priceQuoteFromBasis(
+      {
+        materials: [
+          { inventoryId: 'inv-A', name: 'Aluminum', unit: 'sheet', unitCost: 5, quantity: 4 },
+        ],
+        laborHours: 10,
+        cncHours: 2,
+      },
+      config
+    );
+
+    // material 45 + labor 1750 + cnc 350 = 2145 subtotal; +20% = 2574 total
+    expect(priced.subtotal).toBe(2145);
+    expect(priced.markupAmount).toBeCloseTo(429, 5);
+    expect(priced.total).toBeCloseTo(2574, 5);
+  });
+
+  it('returns an all-zero, empty quote for an empty basis', () => {
+    const priced = priceQuoteFromBasis({ materials: [], laborHours: 0, cncHours: 0 }, config);
+
+    expect(priced.lineItems).toEqual([]);
+    expect(priced.subtotal).toBe(0);
+    expect(priced.total).toBe(0);
   });
 });
