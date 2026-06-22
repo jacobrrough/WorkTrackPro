@@ -460,6 +460,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cardClassName: 'border-cyan-500/30 bg-gradient-to-br from-cyan-600/20 to-blue-600/20',
       ariaLabel: 'Open calendar',
       onClick: () => onNavigate('calendar'),
+      adminOnly: true,
     },
     {
       key: 'parts',
