@@ -155,8 +155,7 @@ export function computeJobCompletionProgress(
     // Uses cncPercent (not the raw cncUnitsPercent) so it collapses to 100 once cnc_completed_at is
     // stamped — otherwise a job whose CNC-able variants are a subset of all units would read below
     // 100 on the CNC axis even when CNC is fully done (cncUnitsPercent divides by ALL units).
-    const hasCncMilestone =
-      sumCounts(job.cncDoneByVariant) > 0 || job.cncCompletedAt != null;
+    const hasCncMilestone = sumCounts(job.cncDoneByVariant) > 0 || job.cncCompletedAt != null;
     const unitMilestonePercent = hasCncMilestone
       ? (cncPercent + unitsDonePercent) / 2
       : unitsDonePercent;
