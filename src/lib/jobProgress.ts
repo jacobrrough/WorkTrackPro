@@ -1,6 +1,7 @@
 import type { Job, JobStatus } from '@/core/types';
 import { getPlannedLaborHours } from '@/lib/laborSuggestion';
 import { getMachineTotalsFromJob } from '@/lib/machineHours';
+import { totalUnits, sumCounts } from '@/lib/cncDeduction';
 
 // Immutable — do not mutate. Add new statuses here and they propagate to all logic below.
 // Named LABOR_COMPLETE to distinguish from TERMINAL_STATUSES in jobWorkflow.ts (which is
@@ -30,6 +31,10 @@ const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
 export interface JobCompletionProgress {
   laborPercent: number;
   cncPercent: number;
+  /** Fraction of units whose CNC milestone is logged done (0–100). */
+  cncUnitsPercent: number;
+  /** Fraction of units logged fully done (0–100). */
+  unitsDonePercent: number;
   /** 0–100. For terminal jobs, only 100 when 3D printing was actually planned (plannedPrinter3DHours > 0). */
   printer3DPercent: number;
   /** Production-only progress (labor + CNC + 3D), 0–100. */
@@ -77,7 +82,18 @@ export function computeJobCompletionProgress(
   const isLaborComplete = isLaborDone || isQualityControl;
 
   const laborPercent = plannedLaborHours > 0 ? clampPercent((logged / plannedLaborHours) * 100) : 0;
-  const cncPercent = job.cncCompletedAt != null ? 100 : 0;
+
+  // Per-unit milestone progress. cncUnitsPercent uses all units as the denominator (the precise
+  // CNC-able subset lives in the BOM, surfaced exactly in the CNC accordion); here it's a display
+  // approximation that still moves the bar as units are logged.
+  const unitTotal = totalUnits(job);
+  const cncUnitsPercent =
+    unitTotal > 0 ? clampPercent((sumCounts(job.cncDoneByVariant) / unitTotal) * 100) : 0;
+  const unitsDonePercent =
+    unitTotal > 0 ? clampPercent((sumCounts(job.unitsDoneByVariant) / unitTotal) * 100) : 0;
+  // CNC is fractional now (no longer a terminal all-or-nothing flag). Keep honoring a legacy
+  // cnc_completed_at stamp as 100 for jobs finished before per-unit tracking existed.
+  const cncPercent = job.cncCompletedAt != null ? 100 : cncUnitsPercent;
   // Mark 3D done when explicitly completed, or when the job is fully paid (truly
   // terminal — any outstanding steps are assumed resolved). Scoped to 'paid' only
   // rather than all LABOR_COMPLETE_STATUSES: a job can reach 'finished'/'delivered'/
@@ -121,12 +137,15 @@ export function computeJobCompletionProgress(
   } else if (isQualityControl) {
     weightedPercent = QUALITY_CONTROL_WEIGHTED_PERCENT;
   } else {
-    weightedPercent =
+    const base =
       validatedEstimate != null
         ? validatedEstimate
         : plannedFromJob > 0
           ? clampPercent(productionPercent * 0.8)
           : 0;
+    // Per-unit completion lifts the bar too (production phase capped at 80%): marking units done
+    // always moves progress forward even on jobs with no hour estimate. `max` never regresses.
+    weightedPercent = Math.max(base, clampPercent(unitsDonePercent * 0.8));
   }
 
   // Remaining labor hours for adaptive scheduling.
@@ -196,6 +215,8 @@ export function computeJobCompletionProgress(
   return {
     laborPercent,
     cncPercent,
+    cncUnitsPercent,
+    unitsDonePercent,
     printer3DPercent,
     productionPercent,
     weightedPercent,

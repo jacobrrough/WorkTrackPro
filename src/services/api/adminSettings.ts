@@ -64,6 +64,7 @@ export interface OrganizationSettingsRecord {
   siteRadiusMeters: number | null;
   enforceOnSiteAtLogin: boolean;
   requireMfa: boolean;
+  cncAbleCategories: string[];
   branding: BrandingRecord;
 }
 
@@ -102,8 +103,14 @@ type OrganizationSettingsRow = {
   site_radius_meters?: number | null;
   enforce_on_site_at_login?: boolean;
   require_mfa?: boolean;
+  cnc_able_categories?: unknown;
   branding?: Record<string, unknown> | null;
 };
+
+function mapCncAbleCategories(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((c): c is string => typeof c === 'string');
+  return ['foam'];
+}
 
 function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecord {
   return {
@@ -127,6 +134,7 @@ function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecor
     // Kill-switch: default TRUE (enforce) when the column is null/undefined so an
     // un-migrated row or absent column fails safe toward MFA being required.
     requireMfa: row.require_mfa ?? true,
+    cncAbleCategories: mapCncAbleCategories(row.cnc_able_categories),
     branding: mapBranding(row.branding),
   };
 }
@@ -167,6 +175,7 @@ export const adminSettingsService = {
       site_radius_meters: settings.siteRadiusMeters ?? null,
       enforce_on_site_at_login: settings.enforceOnSiteAtLogin,
       require_mfa: settings.requireMfa ?? true,
+      cnc_able_categories: settings.cncAbleCategories ?? ['foam'],
       branding: settings.branding ?? EMPTY_BRANDING,
       updated_by: authData.user?.id ?? null,
       updated_at: new Date().toISOString(),

@@ -2,6 +2,8 @@ import { type ReactNode, Suspense } from 'react';
 import { NavigationProvider } from '../contexts/NavigationContext';
 import { SettingsProvider } from '../contexts/SettingsContext';
 import { ClockInProvider } from '../contexts/ClockInContext';
+import { useApp } from '../AppContext';
+import { ClockOutCompletionGate } from '../features/jobs/components/ClockOutCompletionGate';
 
 function AppViewFallback() {
   return (
@@ -11,12 +13,23 @@ function AppViewFallback() {
   );
 }
 
+/**
+ * Hosts the clock-out completion popup inside SettingsProvider so it reads the org's real
+ * cncAbleCategories. The pending job + resolver live on AppContext (above SettingsProvider).
+ */
+function ClockOutPromptHost() {
+  const { clockOutPromptJob, completeClockOutPrompt } = useApp();
+  if (!clockOutPromptJob) return null;
+  return <ClockOutCompletionGate job={clockOutPromptJob} onComplete={completeClockOutPrompt} />;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <NavigationProvider>
       <SettingsProvider>
         <ClockInProvider>
           <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
+          <ClockOutPromptHost />
         </ClockInProvider>
       </SettingsProvider>
     </NavigationProvider>

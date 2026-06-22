@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ViewState } from '@/core/types';
+import { ViewState, getCategoryDisplayName, getAllInventoryCategories } from '@/core/types';
 import { useApp } from '@/AppContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useToast } from '@/Toast';
@@ -614,6 +614,40 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
+          </div>
+
+          <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+            <h2 className="mb-1 text-sm font-semibold text-white">CNC-able material categories</h2>
+            <p className="mb-3 text-[11px] text-slate-500">
+              Materials in these categories are deducted when units are marked CNC-done. Everything
+              else deducts when a unit is marked fully done.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {getAllInventoryCategories().map((cat) => {
+                const selected = (settings.cncAbleCategories ?? ['foam']).includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    disabled={isSyncing}
+                    onClick={() => {
+                      const set = new Set(settings.cncAbleCategories ?? ['foam']);
+                      if (set.has(cat)) set.delete(cat);
+                      else set.add(cat);
+                      void updateSettings({ cncAbleCategories: Array.from(set) });
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
+                      selected
+                        ? 'border-primary/50 bg-primary/20 text-primary'
+                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                    } disabled:opacity-50`}
+                  >
+                    {getCategoryDisplayName(cat)}
+                    {selected ? ' ✓' : ''}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="rounded-sm border border-white/10 bg-white/5 p-4">

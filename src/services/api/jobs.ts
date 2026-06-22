@@ -17,6 +17,7 @@ type JobInventoryRow = {
   inventory_id: string;
   quantity: number;
   unit: string;
+  consumed_quantity?: number;
 };
 
 type CommentRow = {
@@ -112,6 +113,9 @@ function mapJobRow(
     cncCompletedBy: (row.cnc_completed_by as string | null | undefined) ?? null,
     printer3DCompletedAt: (row.printer3d_completed_at as string | null | undefined) ?? null,
     printer3DCompletedBy: (row.printer3d_completed_by as string | null | undefined) ?? null,
+    cncDoneByVariant: (row.cnc_done_by_variant as Record<string, number> | undefined) ?? undefined,
+    unitsDoneByVariant:
+      (row.units_done_by_variant as Record<string, number> | undefined) ?? undefined,
     allocationSource: row.allocation_source as 'variant' | 'total' | undefined,
     allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,
@@ -174,6 +178,7 @@ function mapJobRow(
         inventory: ji.inventory_id,
         quantity: ji.quantity,
         unit: ji.unit,
+        consumedQuantity: ji.consumed_quantity ?? 0,
       })),
     };
     job.inventoryItems = expand.job_inventory.map((ji) => ({
@@ -182,6 +187,7 @@ function mapJobRow(
       inventoryId: ji.inventory_id,
       quantity: ji.quantity,
       unit: ji.unit,
+      consumedQuantity: ji.consumed_quantity ?? 0,
     }));
   }
   return job;
@@ -396,7 +402,7 @@ async function fetchJobExpand(jobId: string): Promise<{
   const [jiRes, comRes, attRes, jobParts] = await Promise.all([
     supabase
       .from('job_inventory')
-      .select('id, job_id, inventory_id, quantity, unit')
+      .select('id, job_id, inventory_id, quantity, unit, consumed_quantity')
       .eq('job_id', jobId),
     supabase
       .from('comments')
@@ -488,7 +494,7 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
   const [jiRes, comRes, attRes, jobPartsMap] = await Promise.all([
     supabase
       .from('job_inventory')
-      .select('id, job_id, inventory_id, quantity, unit')
+      .select('id, job_id, inventory_id, quantity, unit, consumed_quantity')
       .in('job_id', jobIds),
     supabase
       .from('comments')

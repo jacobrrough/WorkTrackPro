@@ -62,6 +62,11 @@ export function getCategoryDisplayName(category: InventoryCategory): string {
   return CATEGORY_LABELS[category] ?? category;
 }
 
+/** Canonical ordered list of all inventory categories (single source of truth for pickers). */
+export function getAllInventoryCategories(): InventoryCategory[] {
+  return Object.keys(CATEGORY_LABELS) as InventoryCategory[];
+}
+
 // View state (app navigation)
 export type ViewState =
   | 'dashboard'
@@ -156,6 +161,8 @@ export interface JobInventoryItem {
   inventoryName?: string;
   quantity: number;
   unit: string;
+  /** Quantity of this BOM line already physically deducted via per-unit progress / Finished. */
+  consumedQuantity?: number;
 }
 
 /** One part linked to a job with its variant quantities. Used when job has multiple parts (job_parts). */
@@ -224,6 +231,10 @@ export interface Job {
   cncCompletedBy?: string | null;
   printer3DCompletedAt?: string | null;
   printer3DCompletedBy?: string | null;
+  /** Per-variant count of units whose CNC milestone is done (deducts CNC-able material). */
+  cncDoneByVariant?: Record<string, number>;
+  /** Per-variant count of units fully done (deducts the rest of the distributed BOM). */
+  unitsDoneByVariant?: Record<string, number>;
   allocationSource?: 'variant' | 'total';
   allocationSourceUpdatedAt?: string;
   revision?: string;
