@@ -178,10 +178,21 @@ export function AccountingShell({ active, title, actions, children }: Accounting
           <button
             type="button"
             onClick={back}
-            aria-label="Back to app"
+            aria-label="Back"
             className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          {/* One-tap escape to the app dashboard. `back` only steps a single history entry,
+              so after deep accounting navigation it can take many taps to leave — this jumps
+              straight out regardless of how deep the history stack is. */}
+          <button
+            type="button"
+            onClick={() => navigate('/app')}
+            aria-label="Go to app home"
+            className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+          >
+            <span className="material-symbols-outlined">home</span>
           </button>
           <h1 className="flex-1 truncate text-lg font-bold text-white">{title ?? 'Accounting'}</h1>
           {actions}
