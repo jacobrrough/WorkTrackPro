@@ -7,6 +7,7 @@ import { adminSettingsService } from '@/services/api/adminSettings';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { DocumentHistorySection } from '../components/DocumentHistorySection';
+import JobLinkControl from '../jobs/JobLinkControl';
 import { useEstimate } from '../hooks/useAccountingQueries';
 import {
   useAcceptEstimate,
@@ -406,6 +407,15 @@ export default function EstimateDetailView() {
                 data={estimateToSalesDocumentData(estimate)}
                 template={template}
                 mode="read"
+              />
+
+              {/* Link this estimate to a job — a pure organizational tag (estimates post no
+                  JE), available at any status. */}
+              <JobLinkControl
+                documentType="estimate"
+                documentId={estimate.id}
+                currentJobId={estimate.jobId}
+                customerId={estimate.customerId}
               />
 
               {/* Converted-invoice link */}

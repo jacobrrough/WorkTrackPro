@@ -256,6 +256,25 @@ export function useDeleteInvoiceDraft() {
   });
 }
 
+/**
+ * Link/unlink an invoice to a job (sets invoices.job_id only — no JE, allowed at any status).
+ * Invalidates the invoices subtree (this invoice's detail + the list's Job cell) and the
+ * jobCosting subtree (the job billing panel's invoice list, and v_job_costing revenue which
+ * rolls up by job_id). Both the old and new job's panels refresh because jobCosting is the
+ * shared subtree root for every per-job drill-down.
+ */
+export function useSetInvoiceJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, jobId }: { id: string; jobId: string | null }) =>
+      invoicesService.setJob(id, jobId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
 // ── Customer payments ────────────────────────────────────────────────────────
 /**
  * Record a customer payment: posts the balanced receipt JE (Dr Cash/Undeposited /
@@ -1217,6 +1236,23 @@ export function useDeleteEstimateDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => estimatesService.deleteDraft(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/**
+ * Link/unlink an estimate to a job (sets estimates.job_id only — no JE, allowed at any status).
+ * Invalidates the estimates subtree (this estimate's detail + the list's Job cell) and the
+ * jobCosting subtree (the job billing panel's estimate list refreshes for both old and new job).
+ */
+export function useSetEstimateJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, jobId }: { id: string; jobId: string | null }) =>
+      estimatesService.setJob(id, jobId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });

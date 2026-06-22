@@ -10,6 +10,7 @@ import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { AttachmentsSection } from '../components/AttachmentsSection';
 import { DocumentHistorySection } from '../components/DocumentHistorySection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
+import JobLinkControl from '../jobs/JobLinkControl';
 import {
   useCustomer,
   useInvoice,
@@ -642,6 +643,16 @@ export default function InvoiceDetailView() {
               />
             </div>
           )}
+
+          {/* Link this invoice to a job — a pure organizational tag (no JE, any status), so
+              an already-sent or paid invoice can still be filed against the right job. */}
+          <JobLinkControl
+            documentType="invoice"
+            documentId={invoice.id}
+            currentJobId={invoice.jobId}
+            customerId={invoice.customerId}
+            canEdit={invoice.status !== 'void'}
+          />
 
           {/* Posted journal entry link */}
           {invoice.journalEntryId && (

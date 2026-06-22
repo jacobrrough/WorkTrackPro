@@ -13,6 +13,7 @@ import {
   type EstimateStatus,
   type InvoiceStatus,
 } from '../types';
+import LinkExistingDocsDrawer from './LinkExistingDocsDrawer';
 
 /**
  * The job's BILLING panel — the unification surface on JobDetail. Shows the job's
@@ -61,6 +62,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
   const { data: invoices = [], isPending: invoicesPending } = useJobInvoices(job.id);
   const [bridgeBusy, setBridgeBusy] = useState(false);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [showLink, setShowLink] = useState(false);
 
   const customer = job.customerId ? customers.find((c) => c.id === job.customerId) : undefined;
 
@@ -142,6 +144,14 @@ export default function JobBillingPanel({ job }: { job: Job }) {
             <span className="material-symbols-outlined text-sm">add</span>
             New invoice
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowLink(true)}
+            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10"
+          >
+            <span className="material-symbols-outlined text-sm">add_link</span>
+            Link existing
+          </button>
         </div>
       </div>
 
@@ -256,6 +266,8 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           Imported references: {legacyRefs.join(' · ')}
         </p>
       )}
+
+      {showLink && <LinkExistingDocsDrawer job={job} onClose={() => setShowLink(false)} />}
     </section>
   );
 }
