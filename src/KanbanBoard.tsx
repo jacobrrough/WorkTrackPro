@@ -8,6 +8,7 @@ import { checklistService } from './pocketbase';
 import { partsService } from './services/api/parts';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { useThrottle } from '@/useThrottle';
 import QRScanner from './components/QRScanner';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
@@ -148,6 +149,8 @@ interface KanbanJobCardProps {
   jobHours: number;
   atRiskFromProgress: boolean;
   partsByNumber: Record<string, { name: string; setComposition?: Record<string, number> }>;
+  /** Inventory ids in a CNC-able category (foam) — used to detect CNC jobs by BOM, not just machine-hours. */
+  cncAbleInventoryIds: Set<string>;
   columns: { id: JobStatus; title: string; color: string }[];
   // Callbacks — stable (useState setters or parent-prop callbacks).
   onCardClick: (jobId: string) => void;
@@ -184,6 +187,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
     jobHours,
     atRiskFromProgress,
     partsByNumber,
+    cncAbleInventoryIds,
     columns,
     onCardClick,
     onBulkToggle,
@@ -244,9 +248,15 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
         ? 'Variant qty'
         : 'Sets';
     const overdue = isJobOverdue(job);
+    // A job "has CNC" if it has scheduled CNC machine-hours OR its BOM includes CNC-able material
+    // (foam). Per-unit CNC tracking (PR #159) keys off the BOM, so a foam job with no machine-hours
+    // entered still gets the marker — matching the CNC accordion shown on the job detail.
     const hasCnc =
-      job.machineBreakdownByVariant &&
-      Object.values(job.machineBreakdownByVariant).some((v) => (v?.cncHoursTotal ?? 0) > 0);
+      (job.machineBreakdownByVariant &&
+        Object.values(job.machineBreakdownByVariant).some((v) => (v?.cncHoursTotal ?? 0) > 0)) ||
+      (job.inventoryItems ?? []).some(
+        (li) => !!li.inventoryId && cncAbleInventoryIds.has(li.inventoryId)
+      );
     const cncDone = !!job.cncCompletedAt;
     const has3DPrint =
       job.machineBreakdownByVariant &&
@@ -616,10 +626,17 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onDeleteAttachment,
   isAdmin,
   currentUser: _currentUser,
-  inventory: _inventory = [],
+  inventory = [],
   isLoading = false,
 }) => {
   const jobs = useMemo(() => excludePaid(allJobs), [allJobs]);
+  const { settings } = useSettings();
+  // Inventory ids whose category is CNC-able (foam by default). Lets each card detect a CNC job
+  // from its BOM — the per-unit CNC source of truth — not only scheduled CNC machine-hours.
+  const cncAbleInventoryIds = useMemo(() => {
+    const categories = new Set(settings.cncAbleCategories ?? ['foam']);
+    return new Set(inventory.filter((i) => categories.has(i.category)).map((i) => i.id));
+  }, [inventory, settings.cncAbleCategories]);
   const { state: navState, updateState } = useNavigation();
   const activeSearchTerm = navState.searchTerm.trim();
   const normalizedSearchTerm = activeSearchTerm.toLowerCase();
@@ -1312,6 +1329,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           jobHours={calculateJobHoursFromShifts(job.id, shiftsProp)}
                           atRiskFromProgress={progress?.atRiskFromProgressEstimate ?? false}
                           partsByNumber={partsByNumber}
+                          cncAbleInventoryIds={cncAbleInventoryIds}
                           columns={columns}
                           onCardClick={handleCardClick}
                           onBulkToggle={handleBulkToggle}
