@@ -41,7 +41,10 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
   const { projects, entries } = useProjectHoursData(showArchived);
   const mutations = useProjectHoursMutations({ showToast });
 
-  const [range, setRange] = useState<DateRangePreset>('week');
+  // Default to "All": the money summary and per-project totals are already all-time, so a
+  // narrower default (e.g. "Week") would hide backdated entries that still count toward the
+  // owed total — making logged hours look like they "didn't save" even though they did.
+  const [range, setRange] = useState<DateRangePreset>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newName, setNewName] = useState('');
