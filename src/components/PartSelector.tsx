@@ -6,8 +6,15 @@ import { formatDashSummary, formatSetComposition } from '@/lib/formatJob';
 import { deriveSetCountFromDashQuantities } from '@/lib/jobPriceFromPart';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 
+/** How a part's quantity was entered, surfaced so the parent form can mirror it. */
+export interface PartAllocationMeta {
+  mode: 'sets' | 'variants';
+  /** Number of sets when mode === 'sets' (0 otherwise / when not derivable). */
+  setCount: number;
+}
+
 interface PartSelectorProps {
-  onSelect: (part: Part, dashQuantities: Record<string, number>) => void;
+  onSelect: (part: Part, dashQuantities: Record<string, number>, meta?: PartAllocationMeta) => void;
   onPartNumberResolved?: (partNumber: string, matchedPart: Part | null) => void;
   initialPartNumber?: string;
   /** Pre-fill dash quantities when editing an existing job */
@@ -114,15 +121,16 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           });
           setDashQuantities(initial);
           const effectiveSetComposition = getEffectiveSetComposition(fullPart);
+          let initialMode: 'sets' | 'variants' = 'variants';
+          let initialSetCount = 0;
           if (effectiveSetComposition) {
             const derivedSets = deriveSetCountFromDashQuantities(effectiveSetComposition, initial);
-            setQuantityMode('sets');
-            setSetCount(derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0);
-          } else {
-            setQuantityMode('variants');
-            setSetCount(0);
+            initialMode = 'sets';
+            initialSetCount = derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0;
           }
-          onSelect(fullPart, initial);
+          setQuantityMode(initialMode);
+          setSetCount(initialSetCount);
+          onSelect(fullPart, initial, { mode: initialMode, setCount: initialSetCount });
           onPartNumberResolved?.(fullPart.partNumber, fullPart);
           showToast(`Found part: ${fullPart.name}`, 'success');
         } else {
@@ -200,14 +208,16 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       delete newQuantities[key];
     }
     setDashQuantities(newQuantities);
-    // Auto-update parent when quantities change (live update)
+    // Auto-update parent when quantities change (live update). Editing per-variant numbers
+    // is always 'variants' mode — report it so the parent form mirrors the right control.
     if (part) {
       const derivedSets = deriveSetCountFromDashQuantities(
         getEffectiveSetComposition(part),
         newQuantities
       );
-      setSetCount(derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0);
-      onSelect(part, newQuantities);
+      const nextSetCount = derivedSets != null && derivedSets > 0 ? Math.floor(derivedSets) : 0;
+      setSetCount(nextSetCount);
+      onSelect(part, newQuantities, { mode: 'variants', setCount: nextSetCount });
     }
   };
 
@@ -217,7 +227,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     setSetCount(normalizedCount);
     const newQuantities = buildDashQuantitiesFromSetCount(part, normalizedCount);
     setDashQuantities(newQuantities);
-    onSelect(part, newQuantities);
+    onSelect(part, newQuantities, { mode: 'sets', setCount: normalizedCount });
   };
 
   const handleQuantityModeChange = (nextMode: 'sets' | 'variants') => {
@@ -234,12 +244,15 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       handleSetCountChange(nextSetCount);
       return;
     }
+    // Switching to per-variant: keep the current quantities but tell the parent the mode
+    // changed, so the field under the selector flips from "sets" to the variant breakdown.
     setQuantityMode('variants');
+    onSelect(part, dashQuantities, { mode: 'variants', setCount: 0 });
   };
 
   const handleAutoAssign = () => {
     if (!part) return;
-    onSelect(part, dashQuantities);
+    onSelect(part, dashQuantities, { mode: quantityMode, setCount });
     showToast('Part and dash quantities selected', 'success');
   };
 
@@ -249,7 +262,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
     setQuantityMode('sets');
     setSetCount(1);
     setDashQuantities(newQuantities);
-    onSelect(part, newQuantities);
+    onSelect(part, newQuantities, { mode: 'sets', setCount: 1 });
     showToast('Filled with one full set', 'success');
   };
 
