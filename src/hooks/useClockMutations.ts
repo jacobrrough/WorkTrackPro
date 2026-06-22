@@ -5,6 +5,7 @@ import type { Shift } from '@/core/types';
 import { getRemainingBreakMs, getTotalBreakMs, toBreakMinutes } from '@/lib/lunchUtils';
 import { isAuthError } from '@/lib/authErrors';
 import { enqueueClockPunch } from '@/lib/offlineQueue';
+import { OFFLINE_WRITE_TIMEOUT_MS } from '@/lib/networkStatus';
 import { withTimeout } from '@/lib/withTimeout';
 import { shiftService } from '@/services/api/shifts';
 import { jobService } from '@/services/api/jobs';
@@ -38,7 +39,8 @@ const failure = (queued: boolean): ClockPunchResult => ({ ok: false, queued });
 // second punch. That stays safe because shiftService.clockIn no-ops when an open shift
 // already exists (partial unique index on open shifts) and syncOfflineClockQueue clears
 // such a punch as already-synced. Kept generous to avoid re-queueing merely-slow writes.
-const CLOCK_IN_TIMEOUT_MS = 8000;
+// Shares the single lie-fi budget used by every queued-surface write (networkStatus.ts).
+const CLOCK_IN_TIMEOUT_MS = OFFLINE_WRITE_TIMEOUT_MS;
 
 export function useClockMutations({
   currentUser,

@@ -22,8 +22,17 @@ import { useAttachmentMutations } from '@/hooks/useAttachmentMutations';
 import { useInventoryAllocation } from '@/hooks/useInventoryAllocation';
 import { withComputedInventory } from '@/lib/inventoryState';
 import { stripInventoryFinancials } from '@/lib/priceVisibility';
-import { getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
+import { CLOCK_QUEUE_KEY, getQueue, hasQueuedPunchAtMaxAttempts } from '@/lib/offlineQueue';
 import { syncOfflineClockQueue } from '@/lib/syncOfflineClockQueue';
+import {
+  ACTION_QUEUE_EVENT,
+  ACTION_QUEUE_KEY,
+  getActionQueue,
+  getPendingActionCount,
+  getPendingEntityIds,
+  hasActionAtMaxAttempts,
+} from '@/lib/offlineActionQueue';
+import { syncOfflineActionQueue } from '@/lib/syncOfflineActionQueue';
 import { subscriptions } from '@/services/api/subscriptions';
 import { createRealtimeDebouncer } from '@/lib/realtimeDebounce';
 import { useToast } from '@/Toast';
@@ -105,6 +114,14 @@ export interface AppContextType {
    * reconnect/focus/timer sync). Resolves with how many punches were applied.
    */
   syncOfflinePunchesNow: () => Promise<number>;
+  /** Number of queued non-clock writes (jobs/inventory/board/delivery/comments). */
+  pendingActionCount: number;
+  /** True when some queued actions exceeded sync retries (needs attention). */
+  staleOfflineAction: boolean;
+  /** Ids of entities with a pending queued write — drives the per-row "pending" badge. */
+  pendingEntityIds: Set<string>;
+  /** Manually drain the offline action queue. Resolves with how many were applied. */
+  syncOfflineActionsNow: () => Promise<number>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -121,26 +138,84 @@ function AppProviderInner({ children }: { children: ReactNode }) {
   const { calculateAvailable, calculateAllocated } = useInventoryAllocation(queries.jobs);
 
   const [offlineQueueVersion, setOfflineQueueVersion] = useState(0);
+  // Single-flight guard so overlapping punch-drain triggers don't run concurrently.
+  const punchSyncInFlightRef = useRef(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingOfflinePunchCount = useMemo(() => getQueue().length, [offlineQueueVersion]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const staleOfflinePunch = useMemo(() => hasQueuedPunchAtMaxAttempts(), [offlineQueueVersion]);
+
+  // Generalized offline action queue (jobs/inventory/board/delivery/comments). Mirrors
+  // the punch-queue bookkeeping above; version state forces the memos to re-read the
+  // localStorage-backed queue whenever an action is enqueued, cleared, or retried.
+  const [offlineActionVersion, setOfflineActionVersion] = useState(0);
+  // Single-flight guard so overlapping drain triggers don't run concurrently.
+  const actionSyncInFlightRef = useRef(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pendingActionCount = useMemo(() => getPendingActionCount(), [offlineActionVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const staleOfflineAction = useMemo(() => hasActionAtMaxAttempts(), [offlineActionVersion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pendingEntityIds = useMemo(() => getPendingEntityIds(), [offlineActionVersion]);
 
   // Shared queue-drain path used by both the automatic sync (reconnect / tab
   // focus / ~90s timer) below and the manual "Sync now" banner button.
   const syncOfflinePunchesNow = useCallback(async (): Promise<number> => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return 0;
     if (getQueue().length === 0) return 0;
-    const synced = await syncOfflineClockQueue({
-      refreshShifts: queries.refreshShifts,
-      refreshJobs: queries.refreshJobs,
-    });
+    // Single-flight: the same four triggers (online/visibility/timer/mount) can fire at
+    // once; skip if a drain is already running.
+    if (punchSyncInFlightRef.current) return 0;
+    punchSyncInFlightRef.current = true;
+    let synced: number;
+    try {
+      synced = await syncOfflineClockQueue({
+        refreshShifts: queries.refreshShifts,
+        refreshJobs: queries.refreshJobs,
+      });
+    } finally {
+      punchSyncInFlightRef.current = false;
+    }
     if (synced > 0) {
       setOfflineQueueVersion((v) => v + 1);
       showToast(`Synced ${synced} clock punch${synced === 1 ? '' : 'es'}`, 'success');
     }
     return synced;
   }, [queries.refreshShifts, queries.refreshJobs, showToast]);
+
+  // Drain the generalized action queue. Used by the same triggers as the punch sync
+  // (reconnect / focus / timer / mount) and the manual "Sync now" path. Refreshes the
+  // affected caches once after the drain rather than per-action.
+  const syncOfflineActionsNow = useCallback(async (): Promise<number> => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return 0;
+    if (getActionQueue().length === 0) return 0;
+    // Single-flight guard: four triggers (online/visibility/timer/mount) can fire at once.
+    // Replays are idempotent, but overlapping drains waste round-trips and re-attempt the
+    // same items — skip if one is already running.
+    if (actionSyncInFlightRef.current) return 0;
+    actionSyncInFlightRef.current = true;
+    let synced: number;
+    try {
+      synced = await syncOfflineActionQueue();
+    } finally {
+      actionSyncInFlightRef.current = false;
+    }
+    // Always refresh the indicator/badge state — attempt counts may have advanced toward
+    // the stale threshold even when nothing was fully applied.
+    setOfflineActionVersion((v) => v + 1);
+    if (synced > 0) {
+      await queries.refreshJobs();
+      await queries.refreshInventory();
+      queryClient.invalidateQueries({ queryKey: ['boards'] });
+      queryClient.invalidateQueries({ queryKey: ['board'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      showToast(`Synced ${synced} change${synced === 1 ? '' : 's'}`, 'success');
+    }
+    return synced;
+    // refreshJobs/refreshInventory are stable useCallbacks from useAppQueries; the rule
+    // wants the whole `queries` object, which would re-create this callback every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queries.refreshJobs, queries.refreshInventory, queryClient, showToast]);
 
   const jobMutations = useJobMutations({
     jobs: queries.jobs,
@@ -178,31 +253,54 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     refreshInventory: queries.refreshInventory,
   });
 
-  // Offline clock queue: sync on reconnect, tab focus, and periodic while pending
+  // Offline queues: drain both the clock-punch queue and the generalized action queue
+  // on reconnect, tab focus, periodically while pending, and on mount.
   useEffect(() => {
-    const onOnline = () => {
+    const syncAll = () => {
       void syncOfflinePunchesNow();
+      void syncOfflineActionsNow();
     };
+    const onOnline = () => syncAll();
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void syncOfflinePunchesNow();
+      if (document.visibilityState === 'visible') syncAll();
+    };
+    // Same-tab: an action was enqueued/cleared/retried — re-read the queue (indicator,
+    // badges) and try to drain it.
+    const onActionChanged = () => {
+      setOfflineActionVersion((v) => v + 1);
+      void syncOfflineActionsNow();
+    };
+    // Cross-tab: another tab mutated a queue in localStorage. Reflect it here and drain.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ACTION_QUEUE_KEY) {
+        setOfflineActionVersion((v) => v + 1);
+        void syncOfflineActionsNow();
+      } else if (e.key === CLOCK_QUEUE_KEY) {
+        setOfflineQueueVersion((v) => v + 1);
+        void syncOfflinePunchesNow();
+      }
     };
 
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener(ACTION_QUEUE_EVENT, onActionChanged);
+    window.addEventListener('storage', onStorage);
     const intervalId = window.setInterval(() => {
-      if (typeof navigator !== 'undefined' && navigator.onLine && getQueue().length > 0) {
-        void syncOfflinePunchesNow();
-      }
+      if (typeof navigator === 'undefined' || !navigator.onLine) return;
+      if (getQueue().length > 0) void syncOfflinePunchesNow();
+      if (getActionQueue().length > 0) void syncOfflineActionsNow();
     }, 90_000);
 
-    void syncOfflinePunchesNow();
+    syncAll();
 
     return () => {
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(ACTION_QUEUE_EVENT, onActionChanged);
+      window.removeEventListener('storage', onStorage);
       window.clearInterval(intervalId);
     };
-  }, [syncOfflinePunchesNow, offlineQueueVersion]);
+  }, [syncOfflinePunchesNow, syncOfflineActionsNow, offlineQueueVersion, offlineActionVersion]);
 
   // Realtime subscriptions — single consolidated channel for all core tables.
   const debouncerRef = useRef(createRealtimeDebouncer(300));
@@ -398,6 +496,10 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       pendingOfflinePunchCount,
       staleOfflinePunch,
       syncOfflinePunchesNow,
+      pendingActionCount,
+      staleOfflineAction,
+      pendingEntityIds,
+      syncOfflineActionsNow,
     }),
     [
       auth.currentUser,
@@ -428,6 +530,10 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       pendingOfflinePunchCount,
       staleOfflinePunch,
       syncOfflinePunchesNow,
+      pendingActionCount,
+      staleOfflineAction,
+      pendingEntityIds,
+      syncOfflineActionsNow,
     ]
   );
 

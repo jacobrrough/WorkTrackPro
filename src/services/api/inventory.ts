@@ -79,7 +79,11 @@ export const inventoryService = {
   },
 
   async createInventory(data: Partial<InventoryItem>): Promise<InventoryItem | null> {
-    const row = {
+    const row: Record<string, unknown> = {
+      // Honor a client-supplied PK (offline queue uses it to make create-replay idempotent
+      // and to keep the optimistic cache entry's id stable). Omitted otherwise so the DB
+      // default assigns one.
+      ...(data.id ? { id: data.id } : {}),
       name: data.name ?? '',
       description: data.description ?? null,
       category: data.category ?? 'miscSupplies',
@@ -185,6 +189,36 @@ export const inventoryService = {
       | undefined;
     if (!row) return null;
     return { inStock: row.in_stock, onOrder: row.on_order };
+  },
+
+  /**
+   * Idempotent delta adjustment used by every quick-adjust / order / receive write so
+   * the SAME call is safe whether it runs online first-try or as an offline-queue replay.
+   * `clientActionId` is recorded in a dedup ledger inside the RPC; a replay of an
+   * already-applied action returns `applied: false` and does NOT re-apply the delta
+   * (guards the lost-ACK double-deduct). Returns null on error so callers can retry.
+   */
+  async adjustStockIdempotent(
+    id: string,
+    inStockDelta: number,
+    onOrderDelta: number,
+    clientActionId: string
+  ): Promise<{ inStock: number; onOrder: number; applied: boolean } | null> {
+    const { data, error } = await supabase.rpc('adjust_inventory_stock_idem', {
+      p_id: id,
+      p_in_stock_delta: Math.round(inStockDelta),
+      p_on_order_delta: Math.round(onOrderDelta),
+      p_client_action_id: clientActionId,
+    });
+    if (error) {
+      console.error('adjustStockIdempotent failed:', error.message);
+      return null;
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { in_stock: number; on_order: number; applied: boolean }
+      | undefined;
+    if (!row) return null;
+    return { inStock: row.in_stock, onOrder: row.on_order, applied: row.applied };
   },
 
   /** Get inventory item with attachments */

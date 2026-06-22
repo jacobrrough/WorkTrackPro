@@ -6,6 +6,10 @@ import { inventoryHistoryService } from '@/services/api/inventoryHistory';
 import { jobService } from '@/services/api/jobs';
 import { partsService } from '@/services/api/parts';
 import { isConsumedStatus } from '@/lib/inventoryCalculations';
+import { isAuthError } from '@/lib/authErrors';
+import { enqueueAction } from '@/lib/offlineActionQueue';
+import { isOffline, OFFLINE_WRITE_TIMEOUT_MS } from '@/lib/networkStatus';
+import { withTimeout } from '@/lib/withTimeout';
 
 export interface UseInventoryMutationsParams {
   inventory: InventoryItem[];
@@ -146,6 +150,36 @@ export function useInventoryMutations({
       const snapshot = opts.optimistic
         ? queryClient.getQueryData<InventoryItem[]>(['inventory'])
         : undefined;
+
+      // Stable id for the idempotent RPC. Reused by an offline-queue replay so a lost ACK
+      // (write landed server-side but never answered) is deduped instead of double-applied.
+      const clientActionId = crypto.randomUUID();
+
+      // Queue the delta for replay and KEEP the optimistic value (rendered as pending)
+      // rather than rolling back. Returns the projected post-state so callers treat the
+      // action as accepted. Only possible with an attributable user.
+      const queueOffline = (): { inStock: number; onOrder: number } | null => {
+        if (!currentUser) {
+          if (snapshot) queryClient.setQueryData(['inventory'], snapshot);
+          showToast(opts.failToast, 'error');
+          return null;
+        }
+        enqueueAction({
+          type: 'inventory_delta',
+          entityId: id,
+          userId: currentUser.id,
+          createdAt: new Date().toISOString(),
+          inStockDelta,
+          onOrderDelta,
+          clientActionId,
+          history: { action: history.action, reason: history.reason },
+        });
+        const current = (queryClient.getQueryData<InventoryItem[]>(['inventory']) ?? []).find(
+          (i) => i.id === id
+        );
+        return { inStock: current?.inStock ?? inStockDelta, onOrder: current?.onOrder ?? 0 };
+      };
+
       try {
         if (opts.optimistic && inStockDelta !== 0) {
           queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
@@ -155,15 +189,22 @@ export function useInventoryMutations({
           );
         }
 
-        const result = await inventoryService.adjustStock(id, inStockDelta, onOrderDelta);
+        const result = await withTimeout(
+          inventoryService.adjustStockIdempotent(id, inStockDelta, onOrderDelta, clientActionId),
+          OFFLINE_WRITE_TIMEOUT_MS
+        );
         if (!result) {
+          // Genuine offline → queue + keep optimistic. Online business failure → revert.
+          if (isOffline()) return queueOffline();
           if (snapshot) queryClient.setQueryData(['inventory'], snapshot);
           showToast(opts.failToast, 'error');
           await refreshInventory();
           return null;
         }
 
-        if (currentUser) {
+        // applied === false means the delta was already recorded (a deduped replay or
+        // re-fire); skip the audit row so we don't log the same change twice.
+        if (currentUser && result.applied) {
           const allocated = calculateAllocated(id);
           const prevInStock = result.inStock - inStockDelta; // authoritative previous
           await inventoryHistoryService.createHistory({
@@ -180,12 +221,18 @@ export function useInventoryMutations({
         }
 
         await refreshInventory();
-        return result;
+        return { inStock: result.inStock, onOrder: result.onOrder };
       } catch (error) {
-        if (snapshot) queryClient.setQueryData(['inventory'], snapshot);
+        // Auth expiry is not a connectivity problem — revert and surface it.
+        if (isAuthError(error)) {
+          if (snapshot) queryClient.setQueryData(['inventory'], snapshot);
+          showToast(opts.failToast, 'error');
+          await refreshInventory();
+          return null;
+        }
+        // Lie-fi timeout / network throw → queue + keep optimistic.
         console.error(`${history.action} stock error:`, error);
-        await refreshInventory();
-        return null;
+        return queueOffline();
       }
     },
     [currentUser, calculateAllocated, queryClient, refreshInventory, showToast]

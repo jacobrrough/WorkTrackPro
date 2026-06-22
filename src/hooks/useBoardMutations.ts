@@ -1,7 +1,9 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Board, BoardMemberRole, BoardVisibility, User } from '@/core/types';
+import type { Board, BoardCard, BoardMemberRole, BoardVisibility, User } from '@/core/types';
 import { boardService } from '@/services/api/boards';
+import { enqueueAction } from '@/lib/offlineActionQueue';
+import { isOffline } from '@/lib/networkStatus';
 
 export interface UseBoardMutationsParams {
   currentUser: User | null;
@@ -146,10 +148,23 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       const card = await boardService.updateCard(cardId, data);
       if (card) {
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        return card;
+      }
+      if (isOffline() && currentUser) {
+        enqueueAction({
+          type: 'card_update',
+          entityId: cardId,
+          userId: currentUser.id,
+          createdAt: new Date().toISOString(),
+          boardId,
+          data,
+        });
+        // Don't invalidate — that would refetch and revert the optimistic edit.
+        return { id: cardId, ...data } as unknown as BoardCard;
       }
       return card;
     },
-    [queryClient]
+    [queryClient, currentUser]
   );
 
   const moveCard = useCallback(
@@ -157,10 +172,24 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
       const card = await boardService.moveCard(cardId, data);
       if (card) {
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        return card;
+      }
+      if (isOffline() && currentUser) {
+        enqueueAction({
+          type: 'card_move',
+          entityId: cardId,
+          userId: currentUser.id,
+          createdAt: new Date().toISOString(),
+          boardId,
+          columnId: data.columnId,
+          sortOrder: data.sortOrder,
+        });
+        // Skip invalidate so the optimistic drop position sticks (rendered as pending).
+        return { id: cardId, columnId: data.columnId, sortOrder: data.sortOrder } as BoardCard;
       }
       return card;
     },
-    [queryClient]
+    [queryClient, currentUser]
   );
 
   const reorderCards = useCallback(
@@ -176,10 +205,23 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
           // Write succeeded; a transient refetch error is not a save failure. The next
           // background sync or render-driven refetch will reconcile.
         }
+        return true;
+      }
+      if (isOffline() && currentUser) {
+        enqueueAction({
+          type: 'card_reorder',
+          entityId: boardId,
+          userId: currentUser.id,
+          createdAt: new Date().toISOString(),
+          boardId,
+          columnId,
+          cardIds,
+        });
+        return true; // optimistic order held by BoardView until sync
       }
       return ok;
     },
-    [queryClient]
+    [queryClient, currentUser]
   );
 
   const deleteCard = useCallback(

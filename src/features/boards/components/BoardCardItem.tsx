@@ -2,6 +2,7 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { BoardCard, User } from '@/core/types';
+import { PendingSyncBadge } from '@/components/PendingSyncBadge';
 
 interface BoardCardItemProps {
   card: BoardCard;
@@ -38,6 +39,7 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
       className="cursor-pointer rounded border border-white/10 bg-white/5 p-3 transition-colors hover:border-white/20 hover:bg-white/10"
     >
       {card.color && <div className={`mb-2 h-1 w-8 rounded-full ${card.color}`} />}
+      <PendingSyncBadge entityId={card.id} className="mb-1" />
       <p className="text-sm font-medium text-white">{card.title}</p>
       {card.description && (
         <p className="mt-1 line-clamp-2 text-xs text-slate-400">{card.description}</p>
