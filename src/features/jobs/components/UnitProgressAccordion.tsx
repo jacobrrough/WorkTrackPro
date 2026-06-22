@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NO_VARIANT_KEY } from '@/lib/cncDeduction';
 
 export interface UnitProgressAccordionProps {
@@ -24,6 +24,98 @@ const labelFor = (key: string): string => (key === NO_VARIANT_KEY ? 'Units' : `-
 
 const sum = (m: Record<string, number>, keys: string[]): number =>
   keys.reduce((a, k) => a + (Number(m[k]) || 0), 0);
+
+/**
+ * One variant row: −/+ steppers plus an editable number box for setting the completed count
+ * directly (so finishing e.g. 8 at once doesn't need 8 taps). The box commits a single delta
+ * (target − current) through the same onAdjust path as the steppers, so the parent's
+ * per-unit deduction/concurrency logic is unchanged.
+ */
+function VariantRow({
+  label,
+  total,
+  done,
+  disabled,
+  busy,
+  onAdjust,
+}: {
+  label: string;
+  total: number;
+  done: number;
+  disabled?: boolean;
+  busy: boolean;
+  onAdjust: (delta: number) => void | Promise<void>;
+}) {
+  const [draft, setDraft] = useState(String(done));
+
+  // Re-seed the box whenever the persisted count changes (a save here, or elsewhere).
+  useEffect(() => setDraft(String(done)), [done]);
+
+  const commit = () => {
+    // A blank/whitespace box is "no change", NOT zero — Number('') is 0, which would commit
+    // a delta of -done and silently wipe the completed count. Revert to the persisted value.
+    if (draft.trim() === '') {
+      setDraft(String(done));
+      return;
+    }
+    const parsed = Math.round(Number(draft));
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(done));
+      return;
+    }
+    const clamped = Math.max(0, Math.min(total, parsed));
+    if (clamped === done) {
+      setDraft(String(done)); // normalize out-of-range typing (e.g. "99" capped to total)
+      return;
+    }
+    onAdjust(clamped - done);
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-2.5 py-1.5">
+      <span className="font-mono text-sm font-bold text-white">{label}</span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`Decrease ${label}`}
+          disabled={disabled || busy || done <= 0}
+          onClick={() => onAdjust(-1)}
+          className="flex size-9 items-center justify-center rounded-sm border border-white/15 text-white disabled:opacity-30"
+        >
+          <span className="material-symbols-outlined text-lg">remove</span>
+        </button>
+        <div className="flex items-center gap-1 text-sm font-bold tabular-nums text-white">
+          <input
+            type="number"
+            inputMode="numeric"
+            aria-label={`Completed count for ${label}`}
+            min={0}
+            max={total}
+            value={draft}
+            disabled={disabled || busy}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
+            className="w-12 rounded-sm border border-white/15 bg-background-dark px-1 py-1 text-center text-white [appearance:textfield] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <span className="text-slate-400">/ {total}</span>
+        </div>
+        <button
+          type="button"
+          aria-label={`Increase ${label}`}
+          disabled={disabled || busy || done >= total}
+          onClick={() => onAdjust(1)}
+          className="flex size-9 items-center justify-center rounded-sm border border-primary/40 bg-primary/15 text-primary disabled:opacity-30"
+        >
+          <span className="material-symbols-outlined text-lg">add</span>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function UnitProgressAccordion({
   title,
@@ -83,39 +175,20 @@ export function UnitProgressAccordion({
       {open && (
         <div className="space-y-1.5 border-t border-white/10 p-2.5">
           {variantKeys.map((key) => {
-            const total = unitCounts[key] ?? 0;
-            const done = Math.min(doneCounts[key] ?? 0, total);
-            const busy = busyKey === key;
+            // Coerce defensively (mirrors the steppers' sum()) so corrupt counts can't yield
+            // a negative/NaN total that produces a garbage delta from the number box.
+            const total = Math.max(0, Number(unitCounts[key]) || 0);
+            const done = Math.min(Math.max(0, Number(doneCounts[key]) || 0), total);
             return (
-              <div
+              <VariantRow
                 key={key}
-                className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-2.5 py-1.5"
-              >
-                <span className="font-mono text-sm font-bold text-white">{labelFor(key)}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label={`Decrease ${labelFor(key)}`}
-                    disabled={disabled || busy || done <= 0}
-                    onClick={() => adjust(key, -1)}
-                    className="flex size-9 items-center justify-center rounded-sm border border-white/15 text-white disabled:opacity-30"
-                  >
-                    <span className="material-symbols-outlined text-lg">remove</span>
-                  </button>
-                  <span className="min-w-[3.5rem] text-center text-sm font-bold tabular-nums text-white">
-                    {done} / {total}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={`Increase ${labelFor(key)}`}
-                    disabled={disabled || busy || done >= total}
-                    onClick={() => adjust(key, 1)}
-                    className="flex size-9 items-center justify-center rounded-sm border border-primary/40 bg-primary/15 text-primary disabled:opacity-30"
-                  >
-                    <span className="material-symbols-outlined text-lg">add</span>
-                  </button>
-                </div>
-              </div>
+                label={labelFor(key)}
+                total={total}
+                done={done}
+                disabled={disabled}
+                busy={busyKey === key}
+                onAdjust={(delta) => adjust(key, delta)}
+              />
             );
           })}
         </div>

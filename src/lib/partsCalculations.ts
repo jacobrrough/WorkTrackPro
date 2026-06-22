@@ -80,6 +80,10 @@ export async function syncJobInventoryFromPart(
 export type PartWithDashQuantities = {
   part: Part & { variants?: PartVariant[]; setComposition?: Record<string, number> | null };
   dashQuantities: Record<string, number>;
+  /** How the quantity was entered (display only — math always uses dashQuantities). */
+  allocationMode?: 'sets' | 'variants';
+  /** Set count when allocationMode === 'sets'. */
+  setCount?: number;
 };
 
 /**

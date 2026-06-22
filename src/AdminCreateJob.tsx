@@ -35,6 +35,8 @@ import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/va
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
+import PartQuantityEditor from '@/features/jobs/components/PartQuantityEditor';
+import type { PartAllocationMeta } from '@/lib/partAllocation';
 import {
   syncJobInventoryFromPart,
   syncJobInventoryFromParts,
@@ -139,7 +141,12 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const [selectedPart, setSelectedPart] = useState<Part | null>(null);
   const [partNameEdit, setPartNameEdit] = useState('');
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>({});
-  /** Additional parts (multi-part jobs). Each has part + dashQuantities. */
+  /** How the primary part's quantity was entered — mirrors the selector's sets/variants mode. */
+  const [primaryAllocation, setPrimaryAllocation] = useState<PartAllocationMeta>({
+    mode: 'variants',
+    setCount: 0,
+  });
+  /** Additional parts (multi-part jobs). Each has part + dashQuantities + how it was entered. */
   const [additionalParts, setAdditionalParts] = useState<PartWithDashQuantities[]>([]);
   /** When true, show PartSelector to add another part. */
   const [addingPart, setAddingPart] = useState(false);
@@ -227,11 +234,16 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     return typeof part.laborHours === 'number' && part.laborHours > 0 ? part.laborHours : undefined;
   };
 
-  const handlePartSelect = (part: Part, quantities: Record<string, number>) => {
+  const handlePartSelect = (
+    part: Part,
+    quantities: Record<string, number>,
+    meta?: PartAllocationMeta
+  ) => {
     setSelectedPartNumber(part.partNumber.trim());
     setSelectedPart(part);
     setPartNameEdit(part.name ?? '');
     setDashQuantities(quantities);
+    setPrimaryAllocation(meta ?? { mode: 'variants', setCount: 0 });
     const derivedLaborHours = deriveLaborHoursFromPart(part, quantities);
     setFormData((prev) => ({
       ...prev,
@@ -247,17 +259,44 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       setSelectedPart(null);
       setPartNameEdit('');
       setDashQuantities({});
+      setPrimaryAllocation({ mode: 'variants', setCount: 0 });
     }
   };
 
-  const handleAddPartSelect = (part: Part, quantities: Record<string, number>) => {
-    setAdditionalParts((prev) => [...prev, { part, dashQuantities: quantities }]);
+  const handleAddPartSelect = (
+    part: Part,
+    quantities: Record<string, number>,
+    meta?: PartAllocationMeta
+  ) => {
+    setAdditionalParts((prev) => [
+      ...prev,
+      {
+        part,
+        dashQuantities: quantities,
+        allocationMode: meta?.mode,
+        setCount: meta?.setCount,
+      },
+    ]);
     setAddingPart(false);
     showToast(`Added part ${part.partNumber}`, 'success');
   };
 
   const removeAdditionalPart = (index: number) => {
     setAdditionalParts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateAdditionalPartQuantities = (
+    index: number,
+    quantities: Record<string, number>,
+    meta: PartAllocationMeta
+  ) => {
+    setAdditionalParts((prev) =>
+      prev.map((p, i) =>
+        i === index
+          ? { ...p, dashQuantities: quantities, allocationMode: meta.mode, setCount: meta.setCount }
+          : p
+      )
+    );
   };
 
   // Auto name for display and labor suggestion (Part → Part REV → EST # n → PO# n → fallback Job #code)
@@ -736,28 +775,50 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   </div>
                 )}
               </div>
-              <div className="flex flex-col">
-                <label className="pb-1 text-xs font-medium text-slate-300">
-                  {totalFromDashQuantities(dashQuantities) > 0 ? 'Variant qty' : 'Sets'}
-                </label>
-                {totalFromDashQuantities(dashQuantities) > 0 ? (
-                  <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-300">
-                    {formatDashSummary(dashQuantities)} → Total:{' '}
-                    {totalFromDashQuantities(dashQuantities)}
+              {(() => {
+                const total = totalFromDashQuantities(dashQuantities);
+                const hasVariantQty = total > 0;
+                // Mirror the selector's chosen mode: show set count in sets mode, the dash
+                // breakdown in variant mode. This is the field that wasn't updating to match.
+                const inSetsMode =
+                  hasVariantQty &&
+                  primaryAllocation.mode === 'sets' &&
+                  primaryAllocation.setCount > 0;
+                return (
+                  <div className="flex flex-col">
+                    <label className="pb-1 text-xs font-medium text-slate-300">
+                      {!hasVariantQty ? 'Sets' : inSetsMode ? 'Sets' : 'Variant qty'}
+                    </label>
+                    {hasVariantQty ? (
+                      <div className="flex h-10 w-full items-center rounded-sm border border-[#4d3465] bg-[#261a32]/50 px-3 py-2 text-sm text-slate-300">
+                        {inSetsMode ? (
+                          <>
+                            {primaryAllocation.setCount} sets
+                            <span className="ml-2 text-xs text-slate-500">
+                              {formatDashSummary(dashQuantities)} → {total} total
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            {formatDashSummary(dashQuantities)} → Total: {total}
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
+                        placeholder="e.g. 50 sets"
+                        value={formData.qty}
+                        onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
+                        disabled={isSubmitting}
+                      />
+                    )}
+                    {validationErrors.qty && (
+                      <p className="mt-1 text-xs text-red-400">{validationErrors.qty}</p>
+                    )}
                   </div>
-                ) : (
-                  <input
-                    className="h-10 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-3 py-2 text-sm text-white placeholder:text-slate-600"
-                    placeholder="e.g. 50 sets"
-                    value={formData.qty}
-                    onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                )}
-                {validationErrors.qty && (
-                  <p className="mt-1 text-xs text-red-400">{validationErrors.qty}</p>
-                )}
-              </div>
+                );
+              })()}
               {selectedPart && (
                 <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
                   <p className="text-xs font-bold uppercase tracking-widest text-primary">
@@ -792,33 +853,49 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               )}
             </div>
             {additionalParts.length > 0 && (
-              <div className="mt-4 space-y-2 rounded-sm border border-[#4d3465] bg-[#261a32]/30 p-3">
+              <div className="mt-4 space-y-3 rounded-sm border border-[#4d3465] bg-[#261a32]/30 p-3">
                 <p className="text-xs font-medium text-slate-400">Additional parts</p>
-                <ul className="space-y-2">
-                  {additionalParts.map(({ part, dashQuantities: dq }, idx) => (
-                    <li
+                {additionalParts.map(
+                  ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
+                    <div
                       key={`${part.id}-${idx}`}
-                      className="flex items-center justify-between gap-2 rounded border border-white/10 bg-white/5 px-3 py-2"
+                      className="space-y-2 rounded border border-white/10 bg-white/5 px-3 py-2.5"
                     >
-                      <span className="font-mono text-sm text-white">
-                        {part.partNumber}
-                        {Object.keys(dq).length > 0 && (
-                          <span className="ml-2 text-slate-400">
-                            {formatDashSummary(dq)} → {totalFromDashQuantities(dq)} total
-                          </span>
-                        )}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeAdditionalPart(idx)}
-                        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400"
-                        title="Remove part"
-                      >
-                        <span className="material-symbols-outlined text-lg">close</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-sm text-white">
+                          {part.partNumber}
+                          {Object.keys(dq).length > 0 && (
+                            <span className="ml-2 text-slate-400">
+                              {allocationMode === 'sets' && (setCount ?? 0) > 0
+                                ? `${setCount} sets → ${totalFromDashQuantities(dq)} total`
+                                : `${formatDashSummary(dq)} → ${totalFromDashQuantities(dq)} total`}
+                            </span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAdditionalPart(idx)}
+                          className="rounded p-1.5 text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                          title="Remove part"
+                        >
+                          <span className="material-symbols-outlined text-lg">close</span>
+                        </button>
+                      </div>
+                      {/* Each additional part gets its own independent sets/variants editor so a job
+                        can mix e.g. 10 sets of one part with individual pieces of another. */}
+                      <PartQuantityEditor
+                        part={part}
+                        dashQuantities={dq}
+                        mode={allocationMode ?? 'variants'}
+                        setCount={setCount ?? 0}
+                        disabled={isSubmitting}
+                        onChange={(quantities, meta) =>
+                          updateAdditionalPartQuantities(idx, quantities, meta)
+                        }
+                      />
+                    </div>
+                  )
+                )}
               </div>
             )}
             {addingPart && (
@@ -1034,21 +1111,25 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   )}
                 </div>
               )}
-              {additionalParts.map(({ part, dashQuantities: dq }, _idx) => (
-                <div
-                  key={part.id}
-                  className="rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 p-3"
-                >
-                  <p className="text-xs font-medium text-slate-400">{part.partNumber}</p>
-                  {totalFromDashQuantities(dq ?? {}) > 0 ? (
-                    <p className="mt-1 text-sm text-slate-300">
-                      {formatDashSummary(dq ?? {})} → Total: {totalFromDashQuantities(dq ?? {})}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-slate-500">No quantities set</p>
-                  )}
-                </div>
-              ))}
+              {additionalParts.map(
+                ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
+                  <div
+                    key={`${part.id}-${idx}`}
+                    className="rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 p-3"
+                  >
+                    <p className="text-xs font-medium text-slate-400">{part.partNumber}</p>
+                    {totalFromDashQuantities(dq ?? {}) > 0 ? (
+                      <p className="mt-1 text-sm text-slate-300">
+                        {allocationMode === 'sets' && (setCount ?? 0) > 0
+                          ? `${setCount} sets → Total: ${totalFromDashQuantities(dq ?? {})}`
+                          : `${formatDashSummary(dq ?? {})} → Total: ${totalFromDashQuantities(dq ?? {})}`}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-500">No quantities set</p>
+                    )}
+                  </div>
+                )
+              )}
               {!selectedPart && additionalParts.length === 0 && (
                 <p className="text-xs text-slate-500">
                   Select a part above to set variant/set quantities.
