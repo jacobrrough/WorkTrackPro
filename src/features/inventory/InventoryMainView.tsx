@@ -7,6 +7,7 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingSpinner } from '@/Loading';
 import AllocateToJobModal from './AllocateToJobModal';
+import { StockTargetInput } from './StockTargetInput';
 
 import {
   InventoryFilters,
@@ -29,7 +30,7 @@ interface InventoryMainViewProps {
   onFiltersChange: (patch: Partial<InventoryFilters>) => void;
   onAddItem: () => void;
   onOpenDetail: (itemId: string) => void;
-  onQuickAdjust: (item: InventoryItem, delta: number) => Promise<void>;
+  onSetStock: (item: InventoryItem, target: number) => Promise<void>;
   onMarkOrdered?: (itemId: string, quantity: number) => Promise<boolean>;
   onReceiveOrder?: (itemId: string, quantity: number) => Promise<boolean>;
   onAllocateToJob: (
@@ -62,7 +63,7 @@ export default function InventoryMainView({
   onFiltersChange,
   onAddItem,
   onOpenDetail,
-  onQuickAdjust,
+  onSetStock,
   onMarkOrdered,
   onReceiveOrder,
   onAllocateToJob,
@@ -85,9 +86,11 @@ export default function InventoryMainView({
   const [orderModalMode, setOrderModalMode] = useState<'add' | 'receive' | null>(null);
   const [orderModalQty, setOrderModalQty] = useState(0);
   const [rowMenuItemId, setRowMenuItemId] = useState<string | null>(null);
-  // Staged stock adjustments keyed by item id. Tapping +/- changes the pending delta only;
-  // nothing is written until the row's Confirm is pressed, so an accidental tap is harmless.
-  const [pendingDeltas, setPendingDeltas] = useState<Record<string, number>>({});
+  // Staged absolute stock counts keyed by item id — the value the user is setting the row to.
+  // Tapping +/- or typing in the box changes this pending target only; nothing is written until
+  // the row's Confirm is pressed, so an accidental tap is harmless. Stored as the absolute target
+  // (not a delta) so a background refresh of the underlying stock can't drift what gets committed.
+  const [pendingTargets, setPendingTargets] = useState<Record<string, number>>({});
   // Item ids with a commit currently in flight — used to disable Confirm and block double-submit.
   const [committingIds, setCommittingIds] = useState<Set<string>>(new Set());
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
@@ -129,16 +132,42 @@ export default function InventoryMainView({
     return { total: baseFiltered.length, needsReorder, lowStock };
   }, [baseFiltered, calculateAllocated, calculateAvailable]);
 
-  // Add `step` (+1 / -1) to the row's staged delta, clamped so projected stock never goes below 0.
+  // Set the row's staged target to an absolute value (clamped at 0 so a recount can't drive
+  // stock negative). A target equal to current stock clears the staged change so a no-op edit
+  // doesn't leave a Confirm bar lingering.
+  const setAdjustTarget = (item: InventoryItem, target: number) => {
+    setPendingTargets((prev) => {
+      // Empty/invalid input (NaN) reverts to the current count rather than coercing to 0 —
+      // otherwise clearing the box and confirming would zero the item. A target equal to the
+      // current stock also clears the staged change so a no-op edit leaves no Confirm bar.
+      const clamped = Math.max(0, target);
+      if (!Number.isFinite(target) || clamped === item.inStock) {
+        if (!(item.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      }
+      return { ...prev, [item.id]: clamped };
+    });
+  };
+
+  // Nudge the row's staged target by `step` (+1 / -1) off whatever it currently is (the staged
+  // value if editing, otherwise current stock).
   const stageAdjust = (item: InventoryItem, step: number) => {
-    setPendingDeltas((prev) => {
-      const nextDelta = (prev[item.id] ?? 0) + step;
-      return { ...prev, [item.id]: Math.max(-item.inStock, nextDelta) };
+    setPendingTargets((prev) => {
+      const clamped = Math.max(0, (prev[item.id] ?? item.inStock) + step);
+      if (clamped === item.inStock) {
+        if (!(item.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      }
+      return { ...prev, [item.id]: clamped };
     });
   };
 
   const cancelAdjust = (itemId: string) => {
-    setPendingDeltas((prev) => {
+    setPendingTargets((prev) => {
       if (!(itemId in prev)) return prev;
       const next = { ...prev };
       delete next[itemId];
@@ -147,15 +176,16 @@ export default function InventoryMainView({
   };
 
   const commitAdjust = async (item: InventoryItem) => {
-    const delta = pendingDeltas[item.id] ?? 0;
-    if (delta === 0) {
+    const target = pendingTargets[item.id];
+    if (target === undefined || target === item.inStock) {
       cancelAdjust(item.id);
       return;
     }
     if (committingIds.has(item.id)) return; // a write is already in flight for this row
     setCommittingIds((prev) => new Set(prev).add(item.id));
     try {
-      await onQuickAdjust(item, delta);
+      // Absolute set — the staged number IS the new stock count.
+      await onSetStock(item, target);
       // Only clear the staged change once the write has actually succeeded, so a failed
       // request doesn't silently discard the user's pending input.
       cancelAdjust(item.id);
@@ -170,9 +200,9 @@ export default function InventoryMainView({
     }
   };
 
-  // Drop staged deltas for items that no longer exist (e.g. deleted) so they don't linger.
+  // Drop staged targets for items that no longer exist (e.g. deleted) so they don't linger.
   useEffect(() => {
-    setPendingDeltas((prev) => {
+    setPendingTargets((prev) => {
       const ids = new Set(inventory.map((i) => i.id));
       let changed = false;
       const next: Record<string, number> = {};
@@ -220,10 +250,10 @@ export default function InventoryMainView({
     const availColor =
       stock.available <= 0 ? 'text-red-400' : stock.lowStock ? 'text-yellow-400' : 'text-green-400';
     const menuOpen = rowMenuItemId === item.id;
-    const isStaging = item.id in pendingDeltas;
+    const isStaging = item.id in pendingTargets;
     const isCommitting = committingIds.has(item.id);
-    const pendingDelta = pendingDeltas[item.id] ?? 0;
-    const projectedStock = item.inStock + pendingDelta;
+    const projectedStock = pendingTargets[item.id] ?? item.inStock;
+    const pendingDelta = projectedStock - item.inStock;
     return (
       <div key={item.id} className="rounded-sm border border-white/10 bg-card-dark p-3">
         <button
@@ -339,6 +369,13 @@ export default function InventoryMainView({
           >
             <span className="material-symbols-outlined">remove</span>
           </button>
+          <StockTargetInput
+            value={projectedStock}
+            onChangeNumber={(n) => setAdjustTarget(item, n)}
+            onClick={(e) => e.stopPropagation()}
+            className="w-16 rounded-sm border border-white/10 bg-white/5 px-2 py-2 text-center text-white"
+            ariaLabel={`Set stock for ${item.name}`}
+          />
           <button
             type="button"
             onClick={(e) => {
@@ -570,10 +607,9 @@ export default function InventoryMainView({
                 <tbody>
                   {tabFiltered.map((item) => {
                     const stock = computeStock(item, calculateAvailable, calculateAllocated);
-                    const isStaging = item.id in pendingDeltas;
+                    const isStaging = item.id in pendingTargets;
                     const isCommitting = committingIds.has(item.id);
-                    const pendingDelta = pendingDeltas[item.id] ?? 0;
-                    const projectedStock = item.inStock + pendingDelta;
+                    const projectedStock = pendingTargets[item.id] ?? item.inStock;
                     return (
                       <tr key={item.id} className="border-t border-white/10">
                         <td className="px-3 py-2">
@@ -690,6 +726,12 @@ export default function InventoryMainView({
                             >
                               <span className="material-symbols-outlined text-base">remove</span>
                             </button>
+                            <StockTargetInput
+                              value={projectedStock}
+                              onChangeNumber={(n) => setAdjustTarget(item, n)}
+                              className="h-9 w-14 rounded-sm border border-white/10 bg-white/5 px-1 text-center text-white"
+                              ariaLabel={`Set stock for ${item.name}`}
+                            />
                             <button
                               type="button"
                               onClick={() => stageAdjust(item, 1)}

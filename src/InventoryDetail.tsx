@@ -23,7 +23,6 @@ interface InventoryDetailProps {
   onNavigate: (view: ViewState, id?: string) => void;
   onBack?: () => void;
   onUpdateStock: (id: string, inStock: number, reason?: string) => Promise<void>;
-  onAdjustStock: (id: string, delta: number, reason?: string) => Promise<void>;
   onUpdateItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
@@ -64,7 +63,6 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   onNavigate,
   onBack,
   onUpdateStock,
-  onAdjustStock,
   onUpdateItem,
   onAddAttachment,
   onDeleteAttachment,
@@ -270,22 +268,17 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
     onReloadItem,
   ]);
 
-  const handleQuickAdjust = useCallback(
-    async (delta: number) => {
-      // Atomic delta (in_stock += delta) instead of an absolute write from the cached item,
-      // so a concurrent adjust/receive isn't clobbered by a lost update. Floor the subtract
-      // against the cached value (best-effort, matching the list view) so a manual quick
-      // button doesn't drive stock below zero; consume-into-negative goes through job flows.
-      const safeDelta = Math.max(delta, -currentItem.inStock);
-      if (safeDelta === 0) return;
-      await onAdjustStock(
-        currentItem.id,
-        safeDelta,
-        safeDelta > 0 ? 'Quick add from detail' : 'Quick subtract from detail'
-      );
+  const handleSetStock = useCallback(
+    async (target: number) => {
+      // Absolute "recount to N" write, mirroring the Edit-form stock path, so the saved value
+      // equals exactly what the user typed/dialed in rather than a delta against a possibly
+      // stale cached count. Floor at 0 (consume-into-negative goes through job flows).
+      const safeTarget = Math.max(0, target);
+      if (safeTarget === currentItem.inStock) return;
+      await onUpdateStock(currentItem.id, safeTarget, 'Manual recount from detail');
       await loadItemWithAttachments();
     },
-    [currentItem.id, currentItem.inStock, onAdjustStock, loadItemWithAttachments]
+    [currentItem.id, currentItem.inStock, onUpdateStock, loadItemWithAttachments]
   );
 
   const adminAttachments = (currentItem.attachments || []).filter((a) => a.isAdminOnly);
@@ -396,7 +389,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               jobs={jobs}
               onNavigate={onNavigate}
               onOpenAllocate={() => setAllocatingItem(currentItem)}
-              onQuickAdjust={handleQuickAdjust}
+              onSetStock={handleSetStock}
               onMarkOrdered={onMarkOrdered}
               onReceiveOrder={onReceiveOrder}
               showAddToOrder={showAddToOrder}

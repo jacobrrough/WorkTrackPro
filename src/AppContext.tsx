@@ -66,7 +66,6 @@ export interface AppContextType {
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   updateInventoryItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   updateInventoryStock: (id: string, inStock: number, reason?: string) => Promise<void>;
-  adjustInventoryStock: (id: string, delta: number, reason?: string) => Promise<void>;
   addJobInventory: (
     jobId: string,
     inventoryId: string,
@@ -379,7 +378,6 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       createInventory: inventoryMutations.createInventory,
       updateInventoryItem: inventoryMutations.updateInventoryItem,
       updateInventoryStock: inventoryMutations.updateInventoryStock,
-      adjustInventoryStock: inventoryMutations.adjustInventoryStock,
       addJobInventory: inventoryMutations.addJobInventory,
       allocateInventoryToJob: inventoryMutations.allocateInventoryToJob,
       removeJobInventory: inventoryMutations.removeJobInventory,
