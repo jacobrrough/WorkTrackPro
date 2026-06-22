@@ -556,6 +556,18 @@ async function fetchJobsExpandBatch(jobIds: string[]): Promise<
   return expandByJobId;
 }
 
+/**
+ * Minimal job shape for pickers (the link-to-job controls). Just enough to search and label a
+ * job without paying for getAllJobs' per-job expand (inventory/comments/attachments/parts).
+ */
+export interface JobPickerOption {
+  id: string;
+  jobCode: number;
+  name: string;
+  customerId: string | null;
+  status: string;
+}
+
 export const jobService = {
   async getAllJobs(): Promise<Job[]> {
     const { data: rows, error } = await supabase
@@ -598,6 +610,26 @@ export const jobService = {
       }
     }
     return mapped;
+  },
+
+  /**
+   * Lightweight job list for the link-to-job pickers: id, code, name, customer and status only
+   * (skips the heavy per-job expand getAllJobs does). Newest job_code first. Throws on
+   * DB/network error so React Query can surface it.
+   */
+  async listForPicker(): Promise<JobPickerOption[]> {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('id, job_code, name, customer_id, status')
+      .order('job_code', { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: String(r.id),
+      jobCode: typeof r.job_code === 'number' ? r.job_code : Number(r.job_code) || 0,
+      name: typeof r.name === 'string' ? r.name : '',
+      customerId: r.customer_id ? String(r.customer_id) : null,
+      status: typeof r.status === 'string' ? r.status : '',
+    }));
   },
 
   /**

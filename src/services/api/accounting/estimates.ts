@@ -340,6 +340,18 @@ export const estimatesService = {
     return { estimate: await this.getById(id) };
   },
 
+  /**
+   * Link (or unlink) this estimate to a job by setting ONLY estimates.job_id — a pure
+   * organizational tag (estimates post no JE at all). Allowed at ANY status (unlike
+   * updateDraft, which is draft-only and rewrites lines/totals), so an already-sent or
+   * accepted estimate can be filed against the right job after the fact. Pass null to unlink.
+   */
+  async setJob(id: string, jobId: string | null): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await acct().from('estimates').update({ job_id: jobId }).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  },
+
   /** Mark a draft estimate `sent`. No money moves (an estimate never posts a JE). */
   async send(id: string): Promise<{ estimate: Estimate | null; error?: string }> {
     const estimate = await this.getById(id);

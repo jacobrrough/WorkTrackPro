@@ -264,6 +264,24 @@ export const invoicesService = {
   },
 
   /**
+   * Link (or unlink) this invoice to a job by setting ONLY invoices.job_id. The job link is a
+   * pure organizational/reporting tag — it posts NOTHING and moves no money — so, unlike
+   * updateDraft (draft-only; it rewrites lines + recomputes totals), this is allowed at ANY
+   * status. That lets an already-sent or paid invoice be filed against the right job after the
+   * fact. accounting.v_job_costing rolls revenue up by invoices.job_id, so the job's
+   * costing/billing reflects the change immediately. Pass null to unlink.
+   *
+   * NOTE: the per-line job_id and the dimension stamped on an ALREADY-POSTED revenue JE are
+   * left untouched (re-stamping a posted entry is out of scope for a link action); the job's
+   * revenue rollup keys off the header job_id, which this sets.
+   */
+  async setJob(id: string, jobId: string | null): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await acct().from('invoices').update({ job_id: jobId }).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  },
+
+  /**
    * Post the revenue JE for a draft invoice and mark it `sent`. The JE is built from
    * the (re-fetched) lines so it always reflects what is stored. If posting fails
    * (unbalanced, RLS, missing accounts) the invoice stays `draft` and the DB message
