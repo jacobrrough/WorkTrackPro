@@ -61,6 +61,10 @@ export interface AppContextType {
   getJobByCode: (code: number) => Promise<Job | null>;
   clockIn: (jobId: string) => Promise<ClockPunchResult>;
   clockOut: () => Promise<ClockPunchResult>;
+  /** Job whose clock-out completion popup is pending (null when none). Hosted in AppShell. */
+  clockOutPromptJob: Job | null;
+  /** Resolve the pending clock-out prompt so the deferred punch can proceed. */
+  completeClockOutPrompt: () => void;
   startLunch: () => Promise<boolean>;
   endLunch: () => Promise<boolean>;
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
@@ -161,6 +165,61 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     onOfflinePunchEnqueued: () => setOfflineQueueVersion((v) => v + 1),
     showToast,
   });
+
+  // Clock-out completion prompt: when leaving a production job that has units to log, ask
+  // "how many did you finish?" before the punch completes (deducts material, bumps progress).
+  // Skipped offline — offline-queue support for the progress log is a separate workstream
+  // (see docs/cnc-unit-progress-deduction.md hand-off).
+  const [clockOutPrompt, setClockOutPrompt] = useState<{ job: Job; resolve: () => void } | null>(
+    null
+  );
+  // Mirror of the pending resolver so we can release a hung promise on unmount and detect
+  // re-entrancy without racing React state.
+  const clockOutResolverRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    // On unmount (e.g. logout tears down the tree) resolve any pending prompt so a deferred
+    // clockOut()/clockIn() promise can't hang forever.
+    return () => {
+      clockOutResolverRef.current?.();
+      clockOutResolverRef.current = null;
+    };
+  }, []);
+
+  const jobNeedsCompletionPrompt = useCallback((job: Job | undefined): job is Job => {
+    if (!job) return false;
+    if (job.status !== 'inProgress' && job.status !== 'rush') return false;
+    const hasVariants = Object.keys(job.dashQuantities ?? {}).length > 0;
+    const hasBom = (job.inventoryItems?.length ?? 0) > 0;
+    return hasVariants || hasBom;
+  }, []);
+
+  const promptForJob = useCallback(async (job: Job) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    // Re-entrancy guard: if a prompt is already open, don't overwrite its resolver (which would
+    // strand the first caller's promise). The second caller proceeds straight to its punch.
+    if (clockOutResolverRef.current) return;
+    await new Promise<void>((resolve) => {
+      clockOutResolverRef.current = resolve;
+      setClockOutPrompt({ job, resolve });
+    });
+  }, []);
+
+  const clockOut = useCallback(async () => {
+    const job = queries.jobs.find((j) => j.id === activeShift?.job);
+    if (jobNeedsCompletionPrompt(job)) await promptForJob(job);
+    return clockMutations.clockOut();
+  }, [clockMutations, queries.jobs, activeShift, jobNeedsCompletionPrompt, promptForJob]);
+
+  const clockIn = useCallback(
+    async (jobId: string) => {
+      const leaving = queries.jobs.find((j) => j.id === activeShift?.job);
+      if (activeShift && activeShift.job !== jobId && jobNeedsCompletionPrompt(leaving)) {
+        await promptForJob(leaving);
+      }
+      return clockMutations.clockIn(jobId);
+    },
+    [clockMutations, queries.jobs, activeShift, jobNeedsCompletionPrompt, promptForJob]
+  );
 
   const inventoryMutations = useInventoryMutations({
     inventory: queries.inventory,
@@ -371,8 +430,14 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       advanceJobToNextStatus: jobMutations.advanceJobToNextStatus,
       addJobComment: jobMutations.addJobComment,
       getJobByCode: jobMutations.getJobByCode,
-      clockIn: clockMutations.clockIn,
-      clockOut: clockMutations.clockOut,
+      clockIn,
+      clockOut,
+      clockOutPromptJob: clockOutPrompt?.job ?? null,
+      completeClockOutPrompt: () => {
+        clockOutPrompt?.resolve();
+        clockOutResolverRef.current = null;
+        setClockOutPrompt(null);
+      },
       startLunch: clockMutations.startLunch,
       endLunch: clockMutations.endLunch,
       createInventory: inventoryMutations.createInventory,
@@ -416,6 +481,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       logout,
       jobMutations,
       clockMutations,
+      clockIn,
+      clockOut,
+      clockOutPrompt,
       inventoryMutations,
       attachmentMutations,
       queries.refreshJobs,

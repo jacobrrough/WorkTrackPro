@@ -40,6 +40,8 @@ export interface AdminSettings {
   enforceOnSiteAtLogin: boolean;
   /** Kill-switch for app-login MFA enforcement. Default true = enforce; flip to false to disable in an emergency. */
   requireMfa: boolean;
+  /** Inventory categories whose materials are CNC-able (deduct on the CNC milestone). Default ['foam']. */
+  cncAbleCategories: string[];
   /** Company branding for packing slips: name, contact info, and uploaded logo. */
   branding: BrandingSettings;
 }
@@ -63,8 +65,20 @@ const defaults: AdminSettings = {
   siteRadiusMeters: null,
   enforceOnSiteAtLogin: false,
   requireMfa: true,
+  cncAbleCategories: ['foam'],
   branding: { ...EMPTY_BRANDING },
 };
+
+/** Coerce arbitrary stored/incoming data into a clean string[] of category keys. */
+function sanitizeCncAbleCategories(raw: unknown, fallback: string[]): string[] {
+  if (Array.isArray(raw)) {
+    const cleaned = Array.from(
+      new Set(raw.filter((c): c is string => typeof c === 'string' && c.length > 0))
+    );
+    return cleaned;
+  }
+  return [...fallback];
+}
 
 function sanitizeBranding(
   base: BrandingSettings,
@@ -140,6 +154,10 @@ function loadSettings(): AdminSettings {
         enforceOnSiteAtLogin: Boolean(parsed.enforceOnSiteAtLogin),
         // Kill-switch: default true unless explicitly persisted as false (fail safe toward enforce).
         requireMfa: parsed.requireMfa === false ? false : true,
+        cncAbleCategories: sanitizeCncAbleCategories(
+          parsed.cncAbleCategories,
+          defaults.cncAbleCategories
+        ),
         branding: sanitizeBranding(defaults.branding, parsed.branding),
       };
     }
@@ -223,6 +241,11 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
     next.enforceOnSiteAtLogin = base.enforceOnSiteAtLogin;
   if (typeof next.requireMfa !== 'boolean') next.requireMfa = base.requireMfa;
 
+  next.cncAbleCategories =
+    partial.cncAbleCategories !== undefined
+      ? sanitizeCncAbleCategories(partial.cncAbleCategories, base.cncAbleCategories)
+      : sanitizeCncAbleCategories(next.cncAbleCategories, base.cncAbleCategories);
+
   next.branding =
     partial.branding !== undefined
       ? sanitizeBranding(base.branding, partial.branding)
@@ -272,6 +295,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             siteRadiusMeters: shared.siteRadiusMeters,
             enforceOnSiteAtLogin: shared.enforceOnSiteAtLogin,
             requireMfa: shared.requireMfa,
+            cncAbleCategories: shared.cncAbleCategories,
             branding: shared.branding,
           })
         );
@@ -306,6 +330,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       siteRadiusMeters: optimistic.siteRadiusMeters,
       enforceOnSiteAtLogin: optimistic.enforceOnSiteAtLogin,
       requireMfa: optimistic.requireMfa,
+      cncAbleCategories: optimistic.cncAbleCategories,
       branding: optimistic.branding,
     });
 
@@ -331,6 +356,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           siteRadiusMeters: data.siteRadiusMeters,
           enforceOnSiteAtLogin: data.enforceOnSiteAtLogin,
           requireMfa: data.requireMfa,
+          cncAbleCategories: data.cncAbleCategories,
           branding: data.branding,
         })
       );

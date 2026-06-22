@@ -61,6 +61,8 @@ function mapJobScalars(row: Record<string, unknown>): JobScalars & { id: string 
     cncCompletedBy: row.cnc_completed_by as string | null | undefined,
     printer3DCompletedAt: row.printer_3d_completed_at as string | null | undefined,
     printer3DCompletedBy: row.printer_3d_completed_by as string | null | undefined,
+    cncDoneByVariant: row.cnc_done_by_variant as Record<string, number> | undefined,
+    unitsDoneByVariant: row.units_done_by_variant as Record<string, number> | undefined,
     allocationSource: row.allocation_source as 'variant' | 'total' | undefined,
     allocationSourceUpdatedAt: row.allocation_source_updated_at as string | undefined,
     revision: row.revision as string | undefined,

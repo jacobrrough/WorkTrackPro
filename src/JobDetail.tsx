@@ -93,6 +93,9 @@ import {
   getNextWorkflowStatus,
 } from '@/lib/jobWorkflow';
 import { useApp } from '@/AppContext';
+import { UnitProgressAccordion } from '@/features/jobs/components/UnitProgressAccordion';
+import { buildDistributedBom, unitCountsByVariant, cncableVariantKeys } from '@/lib/cncDeduction';
+import { logUnitProgress } from '@/services/api/unitProgress';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
 import { calculateJobPriceFromPart, calculateJobPriceFromParts } from '@/lib/jobPriceFromPart';
@@ -372,8 +375,72 @@ const JobDetail: React.FC<JobDetailProps> = ({
     () => computeJobCompletionProgress(job, loggedLaborHours),
     [job, loggedLaborHours]
   );
-  const isCncRequired = completionProgress.plannedCncHours > 0;
   const is3DPrintRequired = completionProgress.plannedPrinter3DHours > 0;
+
+  // Per-unit progress tracking (CNC + units-done accordions). Distribute the padded BOM across the
+  // variants that use each material to know what to deduct per unit.
+  const cncAbleCategories = useMemo(
+    () => new Set(settings.cncAbleCategories ?? ['foam']),
+    [settings.cncAbleCategories]
+  );
+  const distributedBom = useMemo(
+    () =>
+      buildDistributedBom({
+        job,
+        part: linkedPart,
+        inventoryById: new Map(inventory.map((i) => [i.id, i])),
+        cncAbleCategories,
+      }),
+    [job, linkedPart, inventory, cncAbleCategories]
+  );
+  const unitCounts = useMemo(() => unitCountsByVariant(job), [job]);
+  const cncAbleKeys = useMemo(() => cncableVariantKeys(distributedBom), [distributedBom]);
+  const allVariantKeys = useMemo(() => Object.keys(unitCounts), [unitCounts]);
+  const hasUnitsToTrack = allVariantKeys.some((k) => (unitCounts[k] ?? 0) > 0);
+  /** When set, a unit-done increment is waiting on the "is CNC also done?" confirm. */
+  const [pendingUnitConfirm, setPendingUnitConfirm] = useState<{
+    variantKey: string;
+    delta: number;
+  } | null>(null);
+
+  const applyProgress = useCallback(
+    async (cncDelta: number, variantKey: string, unitDelta: number) => {
+      const ok = await logUnitProgress({
+        job,
+        part: linkedPart,
+        inventory,
+        cncAbleCategories,
+        edits: [{ variantKey, cncDelta, unitDelta }],
+      });
+      if (ok) {
+        await onReloadJob?.();
+      } else {
+        showToast('Could not update progress — please try again.', 'error');
+      }
+    },
+    [job, linkedPart, inventory, cncAbleCategories, onReloadJob, showToast]
+  );
+
+  const handleCncAdjust = useCallback(
+    (variantKey: string, delta: number) => applyProgress(delta, variantKey, 0),
+    [applyProgress]
+  );
+
+  const handleUnitAdjust = useCallback(
+    async (variantKey: string, delta: number) => {
+      if (delta > 0) {
+        const projCnc = Number(job.cncDoneByVariant?.[variantKey]) || 0;
+        const projUnit = (Number(job.unitsDoneByVariant?.[variantKey]) || 0) + delta;
+        // Unit outran CNC for a CNC-able variant — ask whether CNC is also done.
+        if (projUnit > projCnc && cncAbleKeys.includes(variantKey)) {
+          setPendingUnitConfirm({ variantKey, delta });
+          return;
+        }
+      }
+      await applyProgress(0, variantKey, delta);
+    },
+    [applyProgress, job.cncDoneByVariant, job.unitsDoneByVariant, cncAbleKeys]
+  );
 
   /** In edit mode, local copy of job.parts (or [primary]) for editing part list and per-part dash quantities. */
   const [editingParts, setEditingParts] = useState<JobPartLink[]>(() =>
@@ -1361,8 +1428,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const po = editForm.po?.trim() || undefined;
     const normalizedBinLocation = editForm.binLocation?.trim() || undefined;
     const normalizedDashQuantities = normalizeDashQuantities(dashQuantities);
-    const shouldAutoMarkCncDone =
-      Boolean(normalizedBinLocation) && isCncRequired && !job.cncCompletedAt;
+    // CNC is no longer auto-completed on save (it's tracked per unit); 3D print unchanged.
     const shouldAutoMark3DPrintDone =
       Boolean(normalizedBinLocation) && is3DPrintRequired && !job.printer3DCompletedAt;
     const partsToSave =
@@ -1407,8 +1473,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
           ? Math.max(0, Math.min(100, parseFloat(editForm.progressEstimatePercent) || 0))
           : undefined,
       binLocation: normalizedBinLocation,
-      cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
-      cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
       printer3DCompletedAt: shouldAutoMark3DPrintDone ? new Date().toISOString() : undefined,
       printer3DCompletedBy: shouldAutoMark3DPrintDone ? currentUser.id : undefined,
       variantSuffix: selectedVariant
@@ -2009,14 +2073,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const handleBinLocationUpdate = async (location: string) => {
     try {
       const normalizedLocation = location?.trim() || undefined;
-      const shouldAutoMarkCncDone =
-        Boolean(normalizedLocation) && isCncRequired && !job.cncCompletedAt;
+      // CNC is no longer auto-completed from a bin scan — it's tracked per unit. 3D print keeps
+      // its existing auto-mark behavior for now.
       const shouldAutoMark3DPrintDone =
         Boolean(normalizedLocation) && is3DPrintRequired && !job.printer3DCompletedAt;
       const updated = await onUpdateJob(job.id, {
         binLocation: normalizedLocation,
-        cncCompletedAt: shouldAutoMarkCncDone ? new Date().toISOString() : undefined,
-        cncCompletedBy: shouldAutoMarkCncDone ? currentUser.id : undefined,
         printer3DCompletedAt: shouldAutoMark3DPrintDone ? new Date().toISOString() : undefined,
         printer3DCompletedBy: shouldAutoMark3DPrintDone ? currentUser.id : undefined,
       });
@@ -2025,36 +2087,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
         await onReloadJob();
       }
       if (updated) {
-        if (shouldAutoMarkCncDone) {
-          showToast('CNC marked done from bin scan', 'success');
-        } else {
-          showToast('Bin location saved', 'success');
-        }
+        showToast('Bin location saved', 'success');
       }
     } catch (error) {
       console.error('Error updating bin location:', error);
       showToast('Failed to update bin location', 'error');
-    }
-  };
-
-  const handleToggleCncDone = async () => {
-    if (!currentUser.isAdmin || !isCncRequired) return;
-    try {
-      const markDone = !job.cncCompletedAt;
-      const updated = await onUpdateJob(job.id, {
-        cncCompletedAt: markDone ? new Date().toISOString() : null,
-        cncCompletedBy: markDone ? currentUser.id : null,
-      });
-      if (updated) {
-        showToast(markDone ? 'CNC marked done' : 'CNC marked pending', 'success');
-        // Do not refetch after CNC toggle: we already merged CNC state into cache in updateJob.
-        // Refetch would overwrite cache with API response that may omit cnc_completed_at.
-      } else {
-        showToast('Failed to update CNC status', 'error');
-      }
-    } catch (error) {
-      console.error('Error updating CNC status:', error);
-      showToast('Failed to update CNC status', 'error');
     }
   };
 
@@ -3193,12 +3230,27 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 })()}
               </div>
 
-              {currentUser.isAdmin && isCncRequired && (
-                <MachineCompletionSection
-                  type="cnc"
-                  completedAt={job.cncCompletedAt}
-                  onToggle={handleToggleCncDone}
-                  canToggle={currentUser.isAdmin && isCncRequired}
+              {cncAbleKeys.length > 0 && (
+                <UnitProgressAccordion
+                  title="CNC"
+                  subtitle="Mark units CNC-done — deducts foam"
+                  accent="amber"
+                  variantKeys={cncAbleKeys}
+                  unitCounts={unitCounts}
+                  doneCounts={job.cncDoneByVariant ?? {}}
+                  onAdjust={handleCncAdjust}
+                />
+              )}
+
+              {hasUnitsToTrack && (
+                <UnitProgressAccordion
+                  title="Units Done"
+                  subtitle="Mark units fully finished — deducts the rest"
+                  accent="green"
+                  variantKeys={allVariantKeys}
+                  unitCounts={unitCounts}
+                  doneCounts={job.unitsDoneByVariant ?? {}}
+                  onAdjust={handleUnitAdjust}
                 />
               )}
 
@@ -3252,10 +3304,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
               const viewParts: JobPartLink[] =
                 job.parts && job.parts.length > 0
                   ? job.parts
-                  : job.partId
+                  : // A no-variant job may be linked by part number only (no part id). Still
+                    // render the part card from whatever identity exists so the part
+                    // number/name/rev and quantity don't silently disappear.
+                    job.partId || job.partNumber
                     ? [
                         {
-                          partId: job.partId,
+                          partId: job.partId ?? '',
                           partNumber: job.partNumber ?? '',
                           dashQuantities: job.dashQuantities ?? {},
                           rev: job.partRev,
@@ -3265,7 +3320,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               return (
                 <>
                   {viewParts.map((link, idx) => (
-                    <div key={link.partId} className="p-4 pt-0">
+                    <div key={link.partId || link.partNumber || idx} className="p-4 pt-0">
                       <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
                         <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                           Part {viewParts.length > 1 ? idx + 1 : ''}
@@ -3298,7 +3353,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             </p>
                           </div>
                         </div>
-                        {Object.keys(link.dashQuantities ?? {}).length > 0 && (
+                        {Object.keys(link.dashQuantities ?? {}).length > 0 ? (
                           <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-2">
                             <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
                               Variants & quantities
@@ -3308,6 +3363,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               {totalFromDashQuantities(link.dashQuantities!)} total
                             </p>
                           </div>
+                        ) : (
+                          // No variants: still surface the job's total quantity so a no-variant
+                          // part isn't left without a quantity readout.
+                          idx === 0 &&
+                          job.qty && (
+                            <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-2">
+                              <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
+                                Quantity
+                              </p>
+                              <p className="text-sm font-medium text-white">{job.qty}</p>
+                            </div>
+                          )
                         )}
                         {perPartBreakdowns && perPartBreakdowns[idx] && (
                           <div className="flex flex-wrap gap-3 text-[11px] text-slate-300">
@@ -3746,6 +3813,24 @@ const JobDetail: React.FC<JobDetailProps> = ({
           onClose={() => setShowBinLocationScanner(false)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingUnitConfirm}
+        title="Is CNC also done?"
+        message="You're marking units fully done whose CNC wasn't logged yet. Is the CNC also finished for those units? Yes pulls the foam too; No leaves CNC pending."
+        confirmText="Yes, CNC done"
+        cancelText="No"
+        onConfirm={() => {
+          const p = pendingUnitConfirm;
+          setPendingUnitConfirm(null);
+          if (p) void applyProgress(p.delta, p.variantKey, p.delta);
+        }}
+        onCancel={() => {
+          const p = pendingUnitConfirm;
+          setPendingUnitConfirm(null);
+          if (p) void applyProgress(0, p.variantKey, p.delta);
+        }}
+      />
 
       <ConfirmDialog
         isOpen={showDeleteJobConfirm}
