@@ -66,6 +66,8 @@ interface DashboardQuickAction {
   ariaLabel: string;
   onClick: () => void;
   adminOnly?: boolean;
+  /** Hidden for admins by default (e.g. Shop Floor, since admins use the Admin Board). */
+  hideForAdmin?: boolean;
 }
 
 /**
@@ -415,6 +417,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cardClassName: 'border-blue-500/30 bg-gradient-to-br from-blue-600/20 to-cyan-600/20',
       ariaLabel: 'Open shop floor board',
       onClick: () => onNavigate('board-shop'),
+      hideForAdmin: true,
     },
     ...(resumeJobId
       ? [
@@ -599,7 +602,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       : []),
   ];
 
-  const roleFilteredActions = quickActions.filter((action) => isAdmin || !action.adminOnly);
+  const roleFilteredActions = quickActions.filter((action) =>
+    isAdmin ? !action.hideForAdmin : !action.adminOnly
+  );
 
   const orderedActions = useMemo(() => {
     const order = navState.quickActionOrder;
