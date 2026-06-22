@@ -36,6 +36,7 @@ import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
 import PartQuantityEditor from '@/features/jobs/components/PartQuantityEditor';
+import type { PartAllocationMeta } from '@/lib/partAllocation';
 import {
   syncJobInventoryFromPart,
   syncJobInventoryFromParts,
@@ -141,10 +142,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const [partNameEdit, setPartNameEdit] = useState('');
   const [dashQuantities, setDashQuantities] = useState<Record<string, number>>({});
   /** How the primary part's quantity was entered — mirrors the selector's sets/variants mode. */
-  const [primaryAllocation, setPrimaryAllocation] = useState<{
-    mode: 'sets' | 'variants';
-    setCount: number;
-  }>({ mode: 'variants', setCount: 0 });
+  const [primaryAllocation, setPrimaryAllocation] = useState<PartAllocationMeta>({
+    mode: 'variants',
+    setCount: 0,
+  });
   /** Additional parts (multi-part jobs). Each has part + dashQuantities + how it was entered. */
   const [additionalParts, setAdditionalParts] = useState<PartWithDashQuantities[]>([]);
   /** When true, show PartSelector to add another part. */
@@ -236,7 +237,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const handlePartSelect = (
     part: Part,
     quantities: Record<string, number>,
-    meta?: { mode: 'sets' | 'variants'; setCount: number }
+    meta?: PartAllocationMeta
   ) => {
     setSelectedPartNumber(part.partNumber.trim());
     setSelectedPart(part);
@@ -265,7 +266,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const handleAddPartSelect = (
     part: Part,
     quantities: Record<string, number>,
-    meta?: { mode: 'sets' | 'variants'; setCount: number }
+    meta?: PartAllocationMeta
   ) => {
     setAdditionalParts((prev) => [
       ...prev,
@@ -287,7 +288,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
   const updateAdditionalPartQuantities = (
     index: number,
     quantities: Record<string, number>,
-    meta: { mode: 'sets' | 'variants'; setCount: number }
+    meta: PartAllocationMeta
   ) => {
     setAdditionalParts((prev) =>
       prev.map((p, i) =>
@@ -1111,9 +1112,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 </div>
               )}
               {additionalParts.map(
-                ({ part, dashQuantities: dq, allocationMode, setCount }, _idx) => (
+                ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
                   <div
-                    key={part.id}
+                    key={`${part.id}-${idx}`}
                     className="rounded-sm border border-[#4d3465]/50 bg-[#261a32]/30 p-3"
                   >
                     <p className="text-xs font-medium text-slate-400">{part.partNumber}</p>

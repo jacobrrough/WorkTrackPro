@@ -52,6 +52,12 @@ function VariantRow({
   useEffect(() => setDraft(String(done)), [done]);
 
   const commit = () => {
+    // A blank/whitespace box is "no change", NOT zero — Number('') is 0, which would commit
+    // a delta of -done and silently wipe the completed count. Revert to the persisted value.
+    if (draft.trim() === '') {
+      setDraft(String(done));
+      return;
+    }
     const parsed = Math.round(Number(draft));
     if (!Number.isFinite(parsed)) {
       setDraft(String(done));
@@ -169,8 +175,10 @@ export function UnitProgressAccordion({
       {open && (
         <div className="space-y-1.5 border-t border-white/10 p-2.5">
           {variantKeys.map((key) => {
-            const total = unitCounts[key] ?? 0;
-            const done = Math.min(doneCounts[key] ?? 0, total);
+            // Coerce defensively (mirrors the steppers' sum()) so corrupt counts can't yield
+            // a negative/NaN total that produces a garbage delta from the number box.
+            const total = Math.max(0, Number(unitCounts[key]) || 0);
+            const done = Math.min(Math.max(0, Number(doneCounts[key]) || 0), total);
             return (
               <VariantRow
                 key={key}
