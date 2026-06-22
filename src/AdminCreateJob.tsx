@@ -35,6 +35,7 @@ import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/va
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
+import PartQuantityEditor from '@/features/jobs/components/PartQuantityEditor';
 import {
   syncJobInventoryFromPart,
   syncJobInventoryFromParts,
@@ -281,6 +282,20 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
 
   const removeAdditionalPart = (index: number) => {
     setAdditionalParts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateAdditionalPartQuantities = (
+    index: number,
+    quantities: Record<string, number>,
+    meta: { mode: 'sets' | 'variants'; setCount: number }
+  ) => {
+    setAdditionalParts((prev) =>
+      prev.map((p, i) =>
+        i === index
+          ? { ...p, dashQuantities: quantities, allocationMode: meta.mode, setCount: meta.setCount }
+          : p
+      )
+    );
   };
 
   // Auto name for display and labor suggestion (Part → Part REV → EST # n → PO# n → fallback Job #code)
@@ -837,15 +852,15 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               )}
             </div>
             {additionalParts.length > 0 && (
-              <div className="mt-4 space-y-2 rounded-sm border border-[#4d3465] bg-[#261a32]/30 p-3">
+              <div className="mt-4 space-y-3 rounded-sm border border-[#4d3465] bg-[#261a32]/30 p-3">
                 <p className="text-xs font-medium text-slate-400">Additional parts</p>
-                <ul className="space-y-2">
-                  {additionalParts.map(
-                    ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
-                      <li
-                        key={`${part.id}-${idx}`}
-                        className="flex items-center justify-between gap-2 rounded border border-white/10 bg-white/5 px-3 py-2"
-                      >
+                {additionalParts.map(
+                  ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
+                    <div
+                      key={`${part.id}-${idx}`}
+                      className="space-y-2 rounded border border-white/10 bg-white/5 px-3 py-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-sm text-white">
                           {part.partNumber}
                           {Object.keys(dq).length > 0 && (
@@ -864,10 +879,22 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                         >
                           <span className="material-symbols-outlined text-lg">close</span>
                         </button>
-                      </li>
-                    )
-                  )}
-                </ul>
+                      </div>
+                      {/* Each additional part gets its own independent sets/variants editor so a job
+                        can mix e.g. 10 sets of one part with individual pieces of another. */}
+                      <PartQuantityEditor
+                        part={part}
+                        dashQuantities={dq}
+                        mode={allocationMode ?? 'variants'}
+                        setCount={setCount ?? 0}
+                        disabled={isSubmitting}
+                        onChange={(quantities, meta) =>
+                          updateAdditionalPartQuantities(idx, quantities, meta)
+                        }
+                      />
+                    </div>
+                  )
+                )}
               </div>
             )}
             {addingPart && (
