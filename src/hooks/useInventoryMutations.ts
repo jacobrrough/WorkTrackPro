@@ -191,22 +191,6 @@ export function useInventoryMutations({
     [currentUser, calculateAllocated, queryClient, refreshInventory, showToast]
   );
 
-  const adjustInventoryStock = useCallback(
-    async (id: string, delta: number, reason?: string): Promise<void> => {
-      // Guard NaN/Infinity too — a non-finite delta would poison the optimistic cache and
-      // serialize to a null RPC arg that nulls the column.
-      if (!Number.isFinite(delta) || delta === 0) return;
-      await applyStockDelta(
-        id,
-        delta,
-        0,
-        { action: 'manual_adjust', reason: reason || 'Stock adjusted manually' },
-        { optimistic: true, failToast: 'Failed to update stock' }
-      );
-    },
-    [applyStockDelta]
-  );
-
   const addJobInventory = useCallback(
     async (jobId: string, inventoryId: string, quantity: number, unit: string): Promise<void> => {
       try {
@@ -384,7 +368,6 @@ export function useInventoryMutations({
     createInventory,
     updateInventoryItem,
     updateInventoryStock,
-    adjustInventoryStock,
     addJobInventory,
     allocateInventoryToJob,
     removeJobInventory,

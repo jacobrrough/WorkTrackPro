@@ -3,6 +3,7 @@ import type { InventoryItem, Job, ViewState } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
 import { isAllocationActiveStatus, isConsumedStatus } from '@/lib/inventoryCalculations';
+import { StockTargetInput } from '@/features/inventory/StockTargetInput';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function formatStockDisplay(value: number): string {
@@ -19,7 +20,7 @@ interface InventoryDetailOverviewProps {
   jobs: Job[];
   onNavigate: (view: ViewState, id?: string) => void;
   onOpenAllocate: () => void;
-  onQuickAdjust: (delta: number) => Promise<void>;
+  onSetStock: (target: number) => Promise<void>;
   onMarkOrdered?: (itemId: string, quantity: number) => Promise<boolean>;
   onReceiveOrder?: (itemId: string, quantity: number) => Promise<boolean>;
   showAddToOrder: boolean;
@@ -44,7 +45,7 @@ export function InventoryDetailOverview({
   jobs,
   onNavigate,
   onOpenAllocate,
-  onQuickAdjust,
+  onSetStock,
   onMarkOrdered,
   onReceiveOrder,
   showAddToOrder,
@@ -59,6 +60,50 @@ export function InventoryDetailOverview({
   onConfirmReceiveOrder,
   onScanBarcode,
 }: InventoryDetailOverviewProps) {
+  // Staged stock count: null = not editing, otherwise the target absolute in-stock value the
+  // user is dialing in via the text box or the +/- nudges. Nothing is written until Confirm.
+  const [stockTarget, setStockTarget] = React.useState<number | null>(null);
+  const [isSavingStock, setIsSavingStock] = React.useState(false);
+  const displayTarget = stockTarget ?? item.inStock;
+  const stockDelta = displayTarget - item.inStock;
+  const isStagingStock = stockTarget !== null && stockDelta !== 0;
+
+  // Floor at 0 so a manual recount can't drive stock negative; consuming into negative goes
+  // through the job flows. Collapse back to null when the target lands on the current count so
+  // a no-op edit doesn't leave the Confirm bar (or a stale number) lingering.
+  const applyTarget = (value: number) => {
+    // Empty/invalid input reverts to the current count rather than coercing to 0, so clearing
+    // the box and confirming can't silently zero the item.
+    if (!Number.isFinite(value)) {
+      setStockTarget(null);
+      return;
+    }
+    const clamped = Math.max(0, value);
+    setStockTarget(clamped === item.inStock ? null : clamped);
+  };
+  // Functional updater so rapid +/- taps accumulate off the latest staged value rather than a
+  // stale closure read.
+  const nudgeTarget = (step: number) =>
+    setStockTarget((prev) => {
+      const clamped = Math.max(0, (prev ?? item.inStock) + step);
+      return clamped === item.inStock ? null : clamped;
+    });
+
+  const confirmStock = async () => {
+    if (isSavingStock) return; // a write is already in flight — avoid a double-apply
+    if (stockTarget === null) return;
+    setIsSavingStock(true);
+    try {
+      // Authoritative absolute set: persist exactly the value the user dialed in, so a stale
+      // displayed count can't silently turn "set to N" into the wrong total.
+      await onSetStock(displayTarget);
+      setStockTarget(null);
+    } finally {
+      // On failure keep the staged target so the user can retry rather than losing the count.
+      setIsSavingStock(false);
+    }
+  };
+
   const minStock = item.reorderPoint ?? 0;
   const minStockPercent = minStock > 0 ? Math.min(200, (available / minStock) * 100) : 100;
   const sku = (item.barcode || item.id.slice(0, 8)).toUpperCase();
@@ -115,18 +160,24 @@ export function InventoryDetailOverview({
             </span>
           )}
         </div>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => onQuickAdjust(-1)}
+            onClick={() => nudgeTarget(-1)}
             className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
             aria-label="Decrease stock"
           >
             <span className="material-symbols-outlined">remove</span>
           </button>
+          <StockTargetInput
+            value={displayTarget}
+            onChangeNumber={applyTarget}
+            className="w-20 rounded-sm border border-white/10 bg-white/5 px-2 py-2 text-center text-white"
+            ariaLabel="Set stock count"
+          />
           <button
             type="button"
-            onClick={() => onQuickAdjust(1)}
+            onClick={() => nudgeTarget(1)}
             className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
             aria-label="Increase stock"
           >
@@ -140,6 +191,38 @@ export function InventoryDetailOverview({
             Allocate to job
           </button>
         </div>
+        {isStagingStock && (
+          <div
+            className="mt-3 flex items-center justify-between gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-2"
+            aria-live="polite"
+          >
+            <span className="text-sm font-medium text-primary">
+              {formatStockDisplay(item.inStock)} → {formatStockDisplay(displayTarget)}{' '}
+              <span className="text-xs text-slate-400">
+                ({stockDelta > 0 ? '+' : ''}
+                {formatStockDisplay(stockDelta)})
+              </span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isSavingStock}
+                onClick={() => setStockTarget(null)}
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-slate-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingStock}
+                onClick={() => void confirmStock()}
+                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {isSavingStock ? 'Saving…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {item.description && (
