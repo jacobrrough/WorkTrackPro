@@ -214,7 +214,13 @@ export const partsService = {
       const joined = variantIds.join(',');
       const filterParts = [`part_id.eq.${id}`];
       if (variantIds.length > 0) {
+        // Fetch variant-level rows under BOTH the canonical (part_variant_id) and the
+        // legacy (variant_id) link columns. Rows created before the part_variant_id
+        // column existed store the link in variant_id with a NULL part_id, so neither
+        // `part_id.eq` nor `part_variant_id.in` matches them. Without the variant_id
+        // term those rows are silently dropped and the variant BOM comes back empty.
         filterParts.push(`part_variant_id.in.(${joined})`);
+        filterParts.push(`variant_id.in.(${joined})`);
       }
 
       let { data, error } = await supabase
@@ -222,7 +228,8 @@ export const partsService = {
         .select('*')
         .or(filterParts.join(','));
 
-      // Retry with legacy column name if part_variant_id doesn't exist
+      // Retry with only the legacy column if part_variant_id doesn't exist in this
+      // environment (PostgREST errors on an unknown column in the .or filter).
       if (error && variantIds.length > 0) {
         const legacyFilter = [`part_id.eq.${id}`, `variant_id.in.(${joined})`];
         const retry = await supabase.from('part_materials').select('*').or(legacyFilter.join(','));
