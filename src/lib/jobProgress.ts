@@ -145,7 +145,21 @@ export function computeJobCompletionProgress(
           : 0;
     // Per-unit completion lifts the bar too (production phase capped at 80%): marking units done
     // always moves progress forward even on jobs with no hour estimate. `max` never regresses.
-    weightedPercent = Math.max(base, clampPercent(unitsDonePercent * 0.8));
+    //
+    // CNC and units-done are EQUAL contributors to this milestone bar so that checking CNC alone
+    // moves the bar — independent of whether the job has scheduled CNC machine-hours
+    // (machineBreakdownByVariant), which the productionPercent path above relies on. Gated on the
+    // job actually having logged CNC (or a legacy completion stamp) so jobs with no CNC milestone
+    // use units-done alone and the absent CNC track can't halve their progress. The average is
+    // monotonic in both counts, so completing more units or more CNC never moves the bar backward.
+    // Uses cncPercent (not the raw cncUnitsPercent) so it collapses to 100 once cnc_completed_at is
+    // stamped — otherwise a job whose CNC-able variants are a subset of all units would read below
+    // 100 on the CNC axis even when CNC is fully done (cncUnitsPercent divides by ALL units).
+    const hasCncMilestone = sumCounts(job.cncDoneByVariant) > 0 || job.cncCompletedAt != null;
+    const unitMilestonePercent = hasCncMilestone
+      ? (cncPercent + unitsDonePercent) / 2
+      : unitsDonePercent;
+    weightedPercent = Math.max(base, clampPercent(unitMilestonePercent * 0.8));
   }
 
   // Remaining labor hours for adaptive scheduling.
