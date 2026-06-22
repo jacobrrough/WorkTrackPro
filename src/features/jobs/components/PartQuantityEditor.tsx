@@ -55,7 +55,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
           disabled={disabled}
           onChange={(e) => {
             const n = Math.max(0, parseInt(e.target.value) || 0);
-            const next = n > 0 ? { [NO_VARIANT_DASH_KEY]: n } : {};
+            const next: Record<string, number> = n > 0 ? { [NO_VARIANT_DASH_KEY]: n } : {};
             onChange(next, { mode: 'variants', setCount: 0 });
           }}
           className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
