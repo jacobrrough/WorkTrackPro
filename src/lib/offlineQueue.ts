@@ -1,4 +1,6 @@
-const QUEUE_KEY = 'wtp_offline_clock_queue';
+/** localStorage key for the clock-punch queue. Exported for the cross-tab `storage` listener. */
+export const CLOCK_QUEUE_KEY = 'wtp_offline_clock_queue';
+const QUEUE_KEY = CLOCK_QUEUE_KEY;
 
 /** Stop retrying sync after this many failed attempts per punch (leaves item in queue for visibility). */
 export const MAX_SYNC_ATTEMPTS_PER_PUNCH = 25;
@@ -17,7 +19,12 @@ export interface QueuedPunch {
 }
 
 function persistQueue(queue: QueuedPunch[]): void {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  } catch (err) {
+    // Quota exceeded / storage disabled — don't crash the punch that triggered this.
+    console.error('Failed to persist offline clock queue:', err);
+  }
 }
 
 export function enqueueClockPunch(punch: Omit<QueuedPunch, 'id'>): void {

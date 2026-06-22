@@ -2,10 +2,13 @@ import { useApp } from '../AppContext';
 import { useState, useEffect } from 'react';
 
 /**
- * Small badge for the header/navbar: shows when offline or when there are pending clock punches to sync.
+ * Small badge for the header/navbar: shows when offline or when there are pending
+ * writes to sync — clock punches OR generalized queued actions (jobs, inventory,
+ * board moves, deliveries, comments).
  */
 export function OfflineIndicator() {
-  const { pendingOfflinePunchCount, staleOfflinePunch } = useApp();
+  const { pendingOfflinePunchCount, staleOfflinePunch, pendingActionCount, staleOfflineAction } =
+    useApp();
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
@@ -22,34 +25,36 @@ export function OfflineIndicator() {
   }, []);
 
   const isOffline = !isOnline;
-  const hasPending = pendingOfflinePunchCount > 0;
+  const pendingTotal = pendingOfflinePunchCount + pendingActionCount;
+  const hasPending = pendingTotal > 0;
+  const isStale = staleOfflinePunch || staleOfflineAction;
 
   if (!isOffline && !hasPending) return null;
 
-  const title = staleOfflinePunch
-    ? 'Some clock punches could not sync. Ask an admin to check Time Reports or your connection.'
+  const title = isStale
+    ? 'Some changes could not sync after repeated tries. Check your connection or ask an admin.'
     : isOffline
-      ? 'You are offline. Clock punches will sync when connected.'
-      : `${pendingOfflinePunchCount} punch(es) waiting to sync`;
+      ? 'You are offline. Changes will sync when connected.'
+      : `${pendingTotal} change(s) waiting to sync`;
 
   return (
     <div
       className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
-        staleOfflinePunch
+        isStale
           ? 'border-red-500/50 bg-red-500/20 text-red-400'
           : 'border-amber-500/50 bg-amber-500/20 text-amber-400'
       }`}
       title={title}
     >
       <span className="material-symbols-outlined text-sm">
-        {isOffline ? 'cloud_off' : staleOfflinePunch ? 'error' : 'sync'}
+        {isOffline ? 'cloud_off' : isStale ? 'error' : 'sync'}
       </span>
       {isOffline ? (
         <span>Offline</span>
-      ) : staleOfflinePunch ? (
+      ) : isStale ? (
         <span>Sync issue</span>
       ) : (
-        <span>{pendingOfflinePunchCount} pending</span>
+        <span>{pendingTotal} pending</span>
       )}
     </div>
   );

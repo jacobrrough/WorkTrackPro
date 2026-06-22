@@ -9,6 +9,10 @@ import { checklistService } from '@/services/api/checklists';
 import { jobStatusHistoryService } from '@/services/api/jobStatusHistory';
 import { systemNotificationService } from '@/services/api/systemNotifications';
 import { supabase } from '@/services/api/supabaseClient';
+import { isAuthError } from '@/lib/authErrors';
+import { enqueueAction } from '@/lib/offlineActionQueue';
+import { isOffline, OFFLINE_WRITE_TIMEOUT_MS } from '@/lib/networkStatus';
+import { withTimeout } from '@/lib/withTimeout';
 
 // ─── Module-level helpers ─────────────────────────────────────────────────────
 // Defined outside the hook so they are stable references and never need to
@@ -190,12 +194,10 @@ export function useJobMutations({
 
   const createJob = useCallback(
     async (data: Partial<Job>): Promise<Job | null> => {
-      try {
-        const job = await jobService.createJob(data);
-        if (!job) {
-          console.error('Job creation returned null');
-          return null;
-        }
+      // Stable client PK so an offline-queued create replays idempotently and the
+      // optimistic cache entry shares the id the server will eventually persist.
+      const id = data.id ?? crypto.randomUUID();
+      const seedCache = (job: Job) =>
         // Intentionally seeds the cache with [job] on cold-cache (prev undefined).
         // Create is the only mutation where seeding on cold-cache is correct — the
         // new job must appear immediately. Update/delete use prev ?? prev instead
@@ -203,13 +205,38 @@ export function useJobMutations({
         queryClient.setQueryData<Job[]>(['jobs'], (prev) =>
           prev ? dedupeJobsById([job, ...prev]) : [job]
         );
+      const queueCreate = (): Job | null => {
+        if (!currentUser) return null; // can't attribute the queued action
+        enqueueAction({
+          type: 'job_create',
+          entityId: id,
+          userId: currentUser.id,
+          createdAt: new Date().toISOString(),
+          data: { ...data, id },
+        });
+        const optimistic = { ...data, id } as Job;
+        seedCache(optimistic);
+        return optimistic;
+      };
+      try {
+        const job = await withTimeout(
+          jobService.createJob({ ...data, id }),
+          OFFLINE_WRITE_TIMEOUT_MS
+        );
+        if (!job) {
+          if (isOffline()) return queueCreate();
+          console.error('Job creation returned null');
+          return null;
+        }
+        seedCache(job);
         return job;
       } catch (error) {
+        if (!isAuthError(error) && isOffline()) return queueCreate();
         console.error('Create job error:', error);
         return null;
       }
     },
-    [queryClient]
+    [queryClient, currentUser]
   );
 
   const updateJob = useCallback(
@@ -243,7 +270,29 @@ export function useJobMutations({
         // Use findJobLive so the history snapshot reads the freshest cache state
         // rather than a potentially stale jobs prop from a previous render cycle.
         const previousJob = findJobLive(queryClient, jobs, jobId);
-        const updatedJob = await jobService.updateJob(jobId, payload);
+        const updatedJob = await withTimeout(
+          jobService.updateJob(jobId, payload),
+          OFFLINE_WRITE_TIMEOUT_MS
+        ).catch((err) => {
+          if (!isAuthError(err) && isOffline()) return null; // route into the offline branch
+          throw err;
+        });
+        if (!updatedJob && isOffline() && currentUser) {
+          // Queue the field write and keep an optimistic patch (rendered as pending)
+          // instead of dropping the edit.
+          enqueueAction({
+            type: 'job_update',
+            entityId: jobId,
+            userId: currentUser.id,
+            createdAt: new Date().toISOString(),
+            data: payload,
+          });
+          patchJobInCache(queryClient, jobId, payload);
+          queryClient.setQueryData(['job', jobId], (prev: Job | undefined) =>
+            prev ? { ...prev, ...payload } : prev
+          );
+          return (previousJob ? { ...previousJob, ...payload } : { id: jobId, ...payload }) as Job;
+        }
         if (updatedJob) {
           if (currentUser && data.status && previousJob && previousJob.status !== data.status) {
             recordStatusChange(queryClient, jobId, currentUser.id, previousJob.status, data.status);
@@ -326,25 +375,42 @@ export function useJobMutations({
 
   const deleteJob = useCallback(
     async (jobId: string): Promise<boolean> => {
-      try {
-        const deleted = await jobService.deleteJob(jobId);
-        if (!deleted) return false;
+      const optimisticRemove = () =>
         queryClient.setQueryData<Job[]>(
           ['jobs'],
           (prev) =>
             // Match patchJobInCache: return prev unchanged on cold cache.
             prev?.filter((j) => j.id !== jobId) ?? prev
         );
+      const queueDelete = (): boolean => {
+        if (!currentUser) return false;
+        enqueueAction({
+          type: 'job_delete',
+          entityId: jobId,
+          userId: currentUser.id,
+          createdAt: new Date().toISOString(),
+        });
+        optimisticRemove();
+        return true;
+      };
+      try {
+        const deleted = await withTimeout(jobService.deleteJob(jobId), OFFLINE_WRITE_TIMEOUT_MS);
+        if (!deleted) {
+          if (isOffline()) return queueDelete();
+          return false;
+        }
+        optimisticRemove();
         await refreshJobs();
         await refreshInventory();
         await refreshShifts();
         return true;
       } catch (error) {
+        if (!isAuthError(error) && isOffline()) return queueDelete();
         console.error('Delete job error:', error);
         return false;
       }
     },
-    [queryClient, refreshInventory, refreshJobs, refreshShifts]
+    [queryClient, currentUser, refreshInventory, refreshJobs, refreshShifts]
   );
 
   const updateJobStatus = useCallback(
@@ -424,7 +490,10 @@ export function useJobMutations({
               ...(status === 'delivered' ? { binLocation: undefined } : {}),
             });
           }
-          const ok = await jobService.updateJobStatus(jobId, status);
+          const ok = await withTimeout(
+            jobService.updateJobStatus(jobId, status),
+            OFFLINE_WRITE_TIMEOUT_MS
+          );
           if (!ok) {
             // Revert the optimistic write — !ok is a normal falsy return, not a thrown
             // error, so the catch block never fires for this path.
@@ -483,6 +552,28 @@ export function useJobMutations({
         await refreshAll();
         return true;
       } catch (error) {
+        // Offline / lie-fi: keep the optimistic status and queue the change for replay
+        // instead of reverting. 'paid' is never queued (pessimistic finalize path). We
+        // require a known previous status to use as the replay CAS token, and a user to
+        // attribute the action to. Auth failures are not connectivity issues.
+        if (
+          status !== 'paid' &&
+          job &&
+          currentUser &&
+          previousStatusSnapshot &&
+          !isAuthError(error) &&
+          isOffline()
+        ) {
+          enqueueAction({
+            type: 'job_status',
+            entityId: jobId,
+            userId: currentUser.id,
+            createdAt: new Date().toISOString(),
+            status,
+            fromStatus: previousStatusSnapshot,
+          });
+          return true; // optimistically applied; replay reconciles against live status
+        }
         // Revert the optimistic status write so the UI doesn't flash the wrong
         // status while refreshJobs is in flight (~500ms–2s).
         // Only revert when job was known pre-call (optimistic write only happens
@@ -563,11 +654,35 @@ export function useJobMutations({
   const addJobComment = useCallback(
     async (jobId: string, text: string): Promise<Comment | null> => {
       if (!currentUser) return null;
+      // Stable client PK so an offline-queued comment replays idempotently.
+      const commentId = crypto.randomUUID();
       try {
-        const comment = await jobService.addComment(jobId, text, currentUser.id);
+        const comment = await withTimeout(
+          jobService.addComment(jobId, text, currentUser.id, commentId),
+          OFFLINE_WRITE_TIMEOUT_MS
+        );
         await refreshJobs();
         return comment;
       } catch (error) {
+        if (!isAuthError(error) && isOffline()) {
+          enqueueAction({
+            type: 'comment_add',
+            entityId: commentId,
+            userId: currentUser.id,
+            createdAt: new Date().toISOString(),
+            jobId,
+            text,
+          });
+          // Optimistic comment (rendered as pending) so it isn't silently dropped.
+          return {
+            id: commentId,
+            jobId,
+            user: currentUser.id,
+            userName: currentUser.name,
+            text,
+            createdAt: new Date().toISOString(),
+          };
+        }
         console.error('Add comment error:', error);
         showToast?.('Failed to post comment. Please try again.', 'error');
         return null;

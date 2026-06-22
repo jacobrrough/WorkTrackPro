@@ -658,6 +658,9 @@ export const jobService = {
         : null;
 
     const row = {
+      // Honor a client-supplied PK (offline queue uses it for idempotent create-replay
+      // and to keep the optimistic cache id stable). DB default assigns one otherwise.
+      ...(data.id ? { id: data.id } : {}),
       job_code: nextCode,
       po: data.po ?? null,
       name: data.name ?? '',
@@ -1171,10 +1174,16 @@ export const jobService = {
     }
   },
 
-  async addComment(jobId: string, text: string, userId: string): Promise<Comment | null> {
+  async addComment(
+    jobId: string,
+    text: string,
+    userId: string,
+    // Optional client-supplied PK so an offline-queued comment replays idempotently.
+    id?: string
+  ): Promise<Comment | null> {
     const { data: row, error } = await supabase
       .from('comments')
-      .insert({ job_id: jobId, user_id: userId, text })
+      .insert({ ...(id ? { id } : {}), job_id: jobId, user_id: userId, text })
       .select('id, job_id, user_id, text, created_at')
       .single();
     if (error) {

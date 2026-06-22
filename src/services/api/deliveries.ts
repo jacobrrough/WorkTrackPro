@@ -33,6 +33,8 @@ export const deliveryService = {
   },
 
   async create(data: {
+    // Optional client-supplied PK so an offline-queued delivery replays idempotently.
+    id?: string;
     jobId: string;
     deliveredAt: string;
     carrier?: string;
@@ -60,6 +62,7 @@ export const deliveryService = {
       const { data: row, error } = await supabase
         .from('deliveries')
         .insert({
+          ...(data.id ? { id: data.id } : {}),
           job_id: data.jobId,
           delivery_number: nextNumber,
           delivered_at: data.deliveredAt,

@@ -6,6 +6,7 @@ import { formatDurationHMS } from '@/lib/timeUtils';
 import { getWorkedShiftMs } from '@/lib/lunchUtils';
 import ChecklistDisplay from '@/ChecklistDisplay';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { PendingSyncBadge } from '@/components/PendingSyncBadge';
 import { useApp } from '@/AppContext';
 
 interface SimpleJobSummaryProps {
@@ -98,7 +99,10 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
               {formatJobCode(job.jobCode)}
               {displayPartNumber ? ` – ${displayPartNumber}` : ''}
             </h1>
-            <p className="text-xs text-slate-400">Job summary</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-400">Job summary</p>
+              <PendingSyncBadge entityId={job.id} />
+            </div>
           </div>
         </div>
       </header>

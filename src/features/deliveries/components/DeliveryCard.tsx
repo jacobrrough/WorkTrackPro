@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Delivery } from '@/core/types';
+import { PendingSyncBadge } from '@/components/PendingSyncBadge';
 
 interface DeliveryCardProps {
   delivery: Delivery;
@@ -33,6 +34,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
               #{delivery.deliveryNumber}
             </span>
             <span className="text-base font-semibold text-white">{formattedDate}</span>
+            <PendingSyncBadge entityId={delivery.id} />
           </div>
           <p className="mt-1 text-sm text-slate-400">
             <span className="font-semibold text-slate-300">{totalQty}</span> items
