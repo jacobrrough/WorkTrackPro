@@ -155,6 +155,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
 }) => {
   const { currentUser } = useApp();
   const { settings, isSyncing: settingsSyncing } = useSettings();
+  // Categories whose materials can be CNC'd out (foam by default) — gates the per-material slider.
+  const cncAbleCategories = useMemo(
+    () => new Set(settings.cncAbleCategories ?? ['foam']),
+    [settings.cncAbleCategories]
+  );
   const [part, setPart] = useState<Part | null>(null);
   const [loading, setLoading] = useState(true);
   const [isVirtualPart, setIsVirtualPart] = useState(false);
@@ -1899,18 +1904,20 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     )}
                     {part.materials && part.materials.length > 0 ? (
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                        {part.materials.map((material) => (
-                          <PartMaterialLink
-                            key={material.id}
-                            material={material}
-                            inventoryItem={inventoryItems.find(
-                              (i) => i.id === material.inventoryId
-                            )}
-                            onUpdate={() => loadPart(true)}
-                            onNavigate={onNavigate}
-                            showFinancials={canViewFinancials}
-                          />
-                        ))}
+                        {part.materials.map((material) => {
+                          const inv = inventoryItems.find((i) => i.id === material.inventoryId);
+                          return (
+                            <PartMaterialLink
+                              key={material.id}
+                              material={material}
+                              inventoryItem={inv}
+                              cncAble={!!inv && cncAbleCategories.has(inv.category)}
+                              onUpdate={() => loadPart(true)}
+                              onNavigate={onNavigate}
+                              showFinancials={canViewFinancials}
+                            />
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-slate-500">No materials defined for this part.</p>
@@ -2162,6 +2169,12 @@ const VariantCard: React.FC<VariantCardProps> = ({
   canDelete = true,
 }) => {
   const { showToast } = useToast();
+  const { settings } = useSettings();
+  // Categories whose materials can be CNC'd out (foam by default) — only these show the slider.
+  const cncAbleCategories = useMemo(
+    () => new Set(settings.cncAbleCategories ?? ['foam']),
+    [settings.cncAbleCategories]
+  );
   const [name, setName] = useState(variant.name || '');
   const [price, setPrice] = useState(variant.pricePerVariant?.toString() || '');
   const [laborHours, setLaborHours] = useState(variant.laborHours?.toString() || '');
@@ -2571,6 +2584,48 @@ const VariantCard: React.FC<VariantCardProps> = ({
                         </>
                       )}
                     </div>
+                    {inv && cncAbleCategories.has(inv.category) && (
+                      <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={material.requiresCnc === true}
+                          title="Whether this foam needs to be CNC'd out — when on, it's pulled on the CNC step and the variant shows in the CNC checklist."
+                          onClick={() => {
+                            const next = !material.requiresCnc;
+                            (async () => {
+                              try {
+                                const updated = await partsService.updatePartMaterial(material.id, {
+                                  requiresCnc: next,
+                                });
+                                if (updated) {
+                                  await onVariantMaterialChanged(material.inventoryId);
+                                  onMaterialAdded();
+                                  showToast(
+                                    next ? 'Marked: needs CNC' : 'Marked: no CNC',
+                                    'success'
+                                  );
+                                } else {
+                                  showToast('Failed to update material', 'error');
+                                }
+                              } catch {
+                                showToast('Failed to update material', 'error');
+                              }
+                            })();
+                          }}
+                          className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
+                            material.requiresCnc
+                              ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'
+                              : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[13px]">
+                            {material.requiresCnc ? 'toggle_on' : 'toggle_off'}
+                          </span>
+                          Needs CNC
+                        </button>
+                      </div>
+                    )}
                     {showFinancials && (
                       <div className="mt-1" onClick={(e) => e.stopPropagation()}>
                         <MaterialCostDisplay ourCost={ourCost} />

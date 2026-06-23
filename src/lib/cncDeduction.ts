@@ -127,6 +127,40 @@ function specQtyPerUnit(part: Part | null, variantKey: string, inventoryId: stri
 }
 
 /**
+ * Whether the part spec flags a material as requiring CNC for a given variant (the per-material
+ * "needs CNC'd out" slider). Only an EXPLICIT boolean on a matching spec material counts; an absent
+ * flag means "no opinion". Returns:
+ *   - `true`  — at least one matching spec material is explicitly requiresCnc=true.
+ *   - `false` — matching material(s) carry an explicit flag and none is true (explicitly off).
+ *   - `undefined` — no matching spec material carries an explicit flag (or the part has no such
+ *     material), so the caller falls back to the per-variant CNC-hours gate. This preserves
+ *     pre-slider behavior for parts/materials that predate the flag and for jobs with no linked part.
+ */
+function specMaterialRequiresCnc(
+  part: Part | null,
+  variantKey: string,
+  inventoryId: string
+): boolean | undefined {
+  if (!part) return undefined;
+  let sawFlag = false; // a matching material carried an explicit requiresCnc boolean
+  let requires = false; // OR of the explicit trues (any instance needing CNC wins)
+  const scan = (mats: PartMaterial[] | undefined): void => {
+    for (const m of mats ?? []) {
+      if (m.inventoryId !== inventoryId) continue;
+      if (typeof m.requiresCnc === 'boolean') {
+        sawFlag = true;
+        if (m.requiresCnc) requires = true;
+      }
+    }
+  };
+  // Part-level (per_set) materials apply to every variant; variant-level only to their own variant.
+  scan((part.materials ?? []).filter((m) => m.usageType !== 'per_variant'));
+  const variant = (part.variants ?? []).find((v) => normSuffix(v.variantSuffix) === variantKey);
+  if (variant) scan(variant.materials);
+  return sawFlag ? requires : undefined;
+}
+
+/**
  * Build the distributed BOM: for each job material, distribute its padded total across the variants
  * that use it (proportional to specQtyPerUnit × units), giving a per-unit share per variant.
  * Falls back to an even split across all units when the part has no usable per-variant spec.
@@ -150,11 +184,17 @@ export function buildDistributedBom(inputs: DeductionInputs): DistributedBom {
     const invId = line.inventoryId;
     const total = Number(line.quantity) || 0;
     if (!invId || total <= 0) continue;
-    // Foam (or any CNC category) deducts on the CNC milestone — but only for variants that actually
-    // run CNC. For variants with no CNC hours, that material falls to the unit-done milestone.
+    // Foam (or any CNC category) deducts on the CNC milestone — but only when that foam actually
+    // needs CNC'ing. The per-material requiresCnc slider decides this; when the part spec doesn't
+    // carry the flag (parts predating the slider, or a job with no linked part) we fall back to
+    // "the variant runs CNC" (has CNC hours). Non-CNC categories always fall to the unit-done step.
     const isCncCat = isCncCategory(invId, inventoryById, cncAbleCategories);
-    const bucketFor = (k: string): 'cncable' | 'nonCncable' =>
-      isCncCat && cncVariant[k] ? 'cncable' : 'nonCncable';
+    const bucketFor = (k: string): 'cncable' | 'nonCncable' => {
+      if (!isCncCat) return 'nonCncable';
+      const flagged = specMaterialRequiresCnc(part, k, invId);
+      const needsCnc = flagged !== undefined ? flagged : cncVariant[k];
+      return needsCnc ? 'cncable' : 'nonCncable';
+    };
 
     // Natural usage weight per variant from the spec (qtyPerUnit × units).
     let weightSum = 0;
@@ -176,14 +216,21 @@ export function buildDistributedBom(inputs: DeductionInputs): DistributedBom {
   return bom;
 }
 
-/** True when any variant has a CNC milestone (CNC hours) — i.e. the CNC step is relevant. */
+/** True when any variant has a CNC milestone — i.e. the CNC step is relevant for this job. */
 export function jobHasCncableMaterial(bom: DistributedBom): boolean {
-  return Object.values(bom).some((s) => s.hasCncHours);
+  return cncableVariantKeys(bom).length > 0;
 }
 
-/** Variant keys with a CNC milestone (CNC hours) — the ones shown in the CNC accordion / prompt. */
+/**
+ * Variant keys with a CNC milestone — shown in the CNC accordion / clock-out prompt. A variant
+ * qualifies if it has scheduled CNC hours OR has at least one material flagged to deduct on the CNC
+ * step (the requiresCnc slider). The union keeps two cases working: a CNC-hour variant with no
+ * flagged foam still shows (deducts nothing), and flagged foam on a no-hours variant also shows.
+ */
 export function cncableVariantKeys(bom: DistributedBom): string[] {
-  return Object.keys(bom).filter((k) => bom[k].hasCncHours);
+  return Object.keys(bom).filter(
+    (k) => bom[k].hasCncHours || Object.keys(bom[k].cncable).length > 0
+  );
 }
 
 export interface InventoryDelta {
