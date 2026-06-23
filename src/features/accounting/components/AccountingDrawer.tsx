@@ -30,6 +30,15 @@ export function AccountingDrawer({
   children,
 }: AccountingDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  // Keep the latest onClose in a ref so the focus-trap effect below can depend on [open] ALONE.
+  // If the effect depended on onClose, a parent that re-renders frequently (e.g. the Job detail
+  // page's 1-second clock while clocked in) would re-run it on every render — re-focusing the
+  // panel and stealing focus from inputs inside the drawer, so a search field "flashes" and
+  // cannot be typed into.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -45,7 +54,7 @@ export function AccountingDrawer({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panelRef.current) return;
@@ -76,7 +85,9 @@ export function AccountingDrawer({
       document.body.style.overflow = prevOverflow;
       trigger?.focus?.();
     };
-  }, [open, onClose]);
+    // Depends on `open` only — onClose is read via onCloseRef, so a changing onClose identity
+    // never re-runs this trap (which would steal focus from inputs inside the drawer).
+  }, [open]);
 
   if (!open) return null;
 
