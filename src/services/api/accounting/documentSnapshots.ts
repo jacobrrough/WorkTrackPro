@@ -8,6 +8,8 @@ export interface DocumentSnapshot {
   documentType: SnapshotDocType;
   documentId: string;
   note: string | null;
+  /** 'autosave' (before-edit, prunable) | 'sent' (pinned sent copy) | 'before_restore' (pinned). */
+  kind: string;
   createdAt: string;
 }
 
@@ -17,6 +19,7 @@ function mapRow(r: Row): DocumentSnapshot {
     documentType: String(r.document_type) as SnapshotDocType,
     documentId: String(r.document_id),
     note: r.note == null ? null : String(r.note),
+    kind: r.kind == null ? 'autosave' : String(r.kind),
     createdAt: String(r.created_at),
   };
 }
@@ -34,7 +37,7 @@ export const documentSnapshotsService = {
   ): Promise<DocumentSnapshot[]> {
     const { data, error } = await acct()
       .from('document_snapshots')
-      .select('id, document_type, document_id, note, created_at')
+      .select('id, document_type, document_id, note, kind, created_at')
       .eq('document_type', documentType)
       .eq('document_id', documentId)
       .order('created_at', { ascending: false });

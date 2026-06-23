@@ -1167,3 +1167,45 @@ export function assertBalanced(lines: NewJournalLineInput[]): void {
     throw new Error('Journal entry has no amounts.');
   }
 }
+
+/** The ledger-effecting fields of a journal line, for equality comparison. */
+export interface ComparableJournalLine {
+  accountId: string;
+  debit: number;
+  credit: number;
+  classId?: string | null;
+  locationId?: string | null;
+  departmentId?: string | null;
+  customerId?: string | null;
+  vendorId?: string | null;
+}
+
+/**
+ * Whether two sets of journal lines post the SAME ledger effect — identical accounts,
+ * debit/credit (to the cent) and reporting dimensions — regardless of order or line memos.
+ *
+ * Used by the in-place edit path: when an edit to a posted invoice/bill rebuilds a journal that
+ * is equivalent to the one already posted (e.g. only the memo/terms/notes changed), there is no
+ * reason to reverse + re-post, so the GL is left untouched and only the document header/lines are
+ * rewritten. Comparing in integer cents avoids float-equality false negatives.
+ */
+export function journalLinesEquivalent(
+  a: ComparableJournalLine[],
+  b: ComparableJournalLine[]
+): boolean {
+  if (a.length !== b.length) return false;
+  const key = (l: ComparableJournalLine): string =>
+    [
+      l.accountId,
+      toCents(l.debit),
+      toCents(l.credit),
+      l.classId ?? '',
+      l.locationId ?? '',
+      l.departmentId ?? '',
+      l.customerId ?? '',
+      l.vendorId ?? '',
+    ].join('|');
+  const ka = a.map(key).sort();
+  const kb = b.map(key).sort();
+  return ka.every((k, i) => k === kb[i]);
+}

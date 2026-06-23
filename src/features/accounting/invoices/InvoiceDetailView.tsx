@@ -8,7 +8,8 @@ import { AccountingDrawer } from '../components/AccountingDrawer';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { AttachmentsSection } from '../components/AttachmentsSection';
-import { DocumentHistorySection } from '../components/DocumentHistorySection';
+import { DocumentActivityPanel } from '../components/DocumentActivityPanel';
+import { DocumentSentBadge } from '../components/DocumentSentBadge';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import JobLinkControl from '../jobs/JobLinkControl';
 import {
@@ -20,10 +21,10 @@ import {
 import {
   useCreatePortalLink,
   useDeleteInvoiceDraft,
+  useEditPostedInvoice,
   useRecordPayment,
   useSendInvoice,
   useSendInvoiceEmail,
-  useUpdateInvoiceDraft,
   useVoidAndReissueInvoice,
   useVoidInvoice,
 } from '../hooks/useAccountingMutations';
@@ -293,19 +294,31 @@ function EmailInvoiceModal({
 }
 
 /**
- * In-place DRAFT editor for an invoice. Mounted only while editing (and keyed by invoice
- * id) so each open re-seeds the header + lines from the current invoice — Cancel is just an
- * unmount. Persists via useUpdateInvoiceDraft (the same mutation the create flow leans on);
- * a server rejection (e.g. the invoice left draft) stays inline.
+ * In-place editor for an invoice — works at ANY editable status (the editor is the default landing
+ * view). Mounted keyed by invoice id so each open re-seeds the header + lines; Cancel just unmounts.
+ * Saves through useEditPostedInvoice, which routes a draft to updateDraft and a POSTED invoice
+ * through editPosted (reverse + re-post on a financial change, header-only when ledger-neutral). A
+ * server rejection (payments applied, closed period, etc.) stays inline.
  */
-function InvoiceDraftEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+function InvoiceEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const editor = useSalesDocumentEditor('invoice', invoice);
-  const updateDraft = useUpdateInvoiceDraft();
+  const saveEdits = useEditPostedInvoice();
   const [error, setError] = useState<string | null>(null);
+  const isPosted = invoice.status !== 'draft';
+  const hasPayments = invoice.amountPaid > 0;
 
   const save = async () => {
     setError(null);
-    const res = await updateDraft.mutateAsync({
+    // Editing a posted invoice re-posts its ledger entry when amounts change — confirm first.
+    if (
+      isPosted &&
+      !window.confirm(
+        'Save changes to this sent invoice? If any amounts changed, its journal entry is reversed and re-posted automatically.'
+      )
+    ) {
+      return;
+    }
+    const res = await saveEdits.mutateAsync({
       id: invoice.id,
       // kind='invoice' guarantees the invoice branch of the editor's return union.
       input: editor.toUpdateInput() as UpdateInvoiceInput,
@@ -319,6 +332,12 @@ function InvoiceDraftEditPanel({ invoice, onClose }: { invoice: Invoice; onClose
 
   return (
     <div className="flex flex-col gap-4 rounded-sm border border-white/10 bg-background-dark/40 p-4">
+      {hasPayments && (
+        <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          This invoice has payments applied — you can edit text and dates, but changing the amounts
+          requires unapplying the payments first (or use void &amp; reissue).
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <FormField label="Invoice date" htmlFor="edit-invoice-date">
           <input
@@ -392,11 +411,11 @@ function InvoiceDraftEditPanel({ invoice, onClose }: { invoice: Invoice; onClose
             {error}
           </p>
         )}
-        <Button variant="ghost" onClick={onClose} disabled={updateDraft.isPending}>
+        <Button variant="ghost" onClick={onClose} disabled={saveEdits.isPending}>
           Cancel
         </Button>
-        <Button onClick={save} disabled={updateDraft.isPending}>
-          {updateDraft.isPending ? 'Saving…' : 'Save'}
+        <Button onClick={save} disabled={saveEdits.isPending}>
+          {saveEdits.isPending ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </div>
@@ -417,7 +436,9 @@ export default function InvoiceDetailView() {
   const createPortalLink = useCreatePortalLink();
   const { settings } = useSettings();
   const printRef = useRef<HTMLDivElement>(null);
-  const [editing, setEditing] = useState(false);
+  // Land directly in the live editor (QuickBooks-style); Preview toggles to the read-only paper.
+  // A void invoice is never editable, so it always shows the read-only document.
+  const [editing, setEditing] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [portalLink, setPortalLink] = useState<string | null>(null);
@@ -428,10 +449,16 @@ export default function InvoiceDetailView() {
   const template = resolveTemplateConfig(settings.branding);
 
   const onDownloadPdf = async () => {
-    if (!invoice || !printRef.current) return;
+    if (!invoice) return;
     setActionError(null);
+    // The PDF rasterizes the read-only paper (printRef), so make sure we're in Preview (not the
+    // editor) before capturing — otherwise printRef isn't mounted.
+    setEditing(false);
     setDownloading(true);
     try {
+      // Wait two frames for the preview to mount + lay out before capture (avoids a blank PDF).
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      if (!printRef.current) throw new Error('preview not ready');
       await exportSalesDocumentPdf(
         printRef.current,
         salesDocumentFilenameBase({ kind: 'invoice', number: invoice.invoiceNumber })
@@ -535,6 +562,8 @@ export default function InvoiceDetailView() {
   // Email + portal link are available once the invoice has been sent (it has an invoice
   // number + a posted JE), and never for a voided invoice.
   const canEmail = invoice != null && invoice.status !== 'draft' && invoice.status !== 'void';
+  // Every non-void invoice is editable in place (a void one is read-only — reissue instead).
+  const isEditable = invoice != null && invoice.status !== 'void';
   const taxShown = (invoice?.taxTotal ?? 0) > 0;
 
   return (
@@ -544,12 +573,17 @@ export default function InvoiceDetailView() {
       actions={
         invoice ? (
           <div className="flex flex-wrap gap-2">
-            {invoice.status === 'draft' && !editing && (
-              <Button size="sm" variant="secondary" icon="edit" onClick={() => setEditing(true)}>
-                Edit
+            {isEditable && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={editing ? 'visibility' : 'edit'}
+                onClick={() => setEditing((e) => !e)}
+              >
+                {editing ? 'Preview' : 'Edit'}
               </Button>
             )}
-            {invoice.status === 'draft' && !editing && (
+            {invoice.status === 'draft' && (
               <Button
                 size="sm"
                 variant="danger"
@@ -623,17 +657,25 @@ export default function InvoiceDetailView() {
         <div className="mx-auto flex max-w-5xl flex-col gap-4">
           {taxShown && <TaxDisclaimer />}
 
-          {editing ? (
-            // Draft edit replaces the read-only paper in place; remounting per invoice id
-            // re-seeds the editor, so Cancel simply unmounts and discards local edits.
-            <InvoiceDraftEditPanel
+          {/* Sent-version indicator: does the customer hold the current copy? Re-send opens email. */}
+          <DocumentSentBadge
+            documentType="invoice"
+            documentId={invoice.id}
+            status={invoice.status}
+            onResend={canEmail ? () => setShowEmail(true) : undefined}
+          />
+
+          {editing && isEditable ? (
+            // The live editor is the default landing view; remounting per invoice id re-seeds it,
+            // so Cancel/Preview simply unmounts and discards local edits.
+            <InvoiceEditPanel
               key={invoice.id}
               invoice={invoice}
               onClose={() => setEditing(false)}
             />
           ) : (
-            /* The printed document itself — shared branded "paper" (header/meta, bill-to, line
-               items, totals, memo, footer). printRef is what Download PDF rasterizes. */
+            /* The branded read-only "paper" (Preview / what the customer sees). printRef is what
+               Download PDF rasterizes, so it must be mounted to export. */
             <div className="overflow-hidden rounded-sm shadow-lg">
               <SalesDocument
                 ref={printRef}
@@ -759,7 +801,7 @@ export default function InvoiceDetailView() {
               money and posts no journal entry, and never touches this invoice's record. */}
           <AttachmentsSection entityType="invoice" entityId={invoice.id} />
 
-          <DocumentHistorySection
+          <DocumentActivityPanel
             documentType="invoice"
             documentId={invoice.id}
             status={invoice.status}

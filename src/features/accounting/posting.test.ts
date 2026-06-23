@@ -12,6 +12,7 @@ import {
   computeBillTotals,
   computeInvoiceTotals,
   computeReconciliationSummary,
+  journalLinesEquivalent,
   lineNetCents,
 } from './posting';
 import { toCents } from './accountingViewModel';
@@ -1010,5 +1011,43 @@ describe('dimension threading on bill expense lines (B2)', () => {
     expect(lo2.debit).toBe(40);
     expect(result.total).toBe(150);
     expect(sumDebit(result.lines)).toBe(sumCredit(result.lines));
+  });
+});
+
+describe('journalLinesEquivalent (ledger-neutral in-place-edit detection)', () => {
+  const ar = { accountId: 'acc-ar', debit: 100, credit: 0, customerId: 'c1' };
+  const rev = { accountId: 'acc-sales', debit: 0, credit: 100, customerId: 'c1' };
+
+  it('is order-independent', () => {
+    expect(journalLinesEquivalent([ar, rev], [rev, ar])).toBe(true);
+  });
+
+  it('ignores line memos and other non-ledger fields', () => {
+    const arMemo = { ...ar, lineMemo: 'Accounts receivable' };
+    expect(journalLinesEquivalent([arMemo, rev], [ar, rev])).toBe(true);
+  });
+
+  it('treats float-vs-rounded amounts equal to the cent as equivalent', () => {
+    expect(journalLinesEquivalent([{ ...ar, debit: 100.0 }, rev], [ar, rev])).toBe(true);
+  });
+
+  it('detects a one-cent amount change (must reverse + re-post)', () => {
+    expect(journalLinesEquivalent([{ ...ar, debit: 100.01 }, rev], [ar, rev])).toBe(false);
+  });
+
+  it('detects an account change', () => {
+    expect(journalLinesEquivalent([{ ...ar, accountId: 'acc-other' }, rev], [ar, rev])).toBe(false);
+  });
+
+  it('detects a reporting-dimension change (e.g. the customer moved)', () => {
+    const moved = [
+      { ...ar, customerId: 'c2' },
+      { ...rev, customerId: 'c2' },
+    ];
+    expect(journalLinesEquivalent([ar, rev], moved)).toBe(false);
+  });
+
+  it('detects a differing line count', () => {
+    expect(journalLinesEquivalent([ar, rev], [ar])).toBe(false);
   });
 });

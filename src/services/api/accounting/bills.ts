@@ -8,6 +8,7 @@ import type {
 import {
   buildBillExpenseJournalLines,
   computeBillTotals,
+  journalLinesEquivalent,
   type BillTotals,
 } from '../../../features/accounting/posting';
 import { acct } from './accountingClient';
@@ -308,6 +309,125 @@ export const billsService = {
       await acct().from('bill_lines').delete().eq('bill_id', id);
       const { error: lErr } = await acct().from('bill_lines').insert(lineRows(id, input.lines));
       if (lErr) return { bill: null, error: lErr.message };
+    }
+    return { bill: await this.getById(id) };
+  },
+
+  /**
+   * Edit a POSTED bill in place. Draft bills route to updateDraft; a void bill is rejected. Bills
+   * that capitalized received inventory (any line with source_inventory_id) are rejected here —
+   * those must be corrected via void & reissue so FIFO cost layers (GL 1300 ↔ v_inventory_valuation)
+   * stay intact. When the rebuilt expense JE equals the posted one and the bill date is unchanged,
+   * the edit is ledger-neutral and only the header/lines are rewritten; otherwise we REVERSE +
+   * RE-POST (post a fresh expense JE, then accounting.apply_posted_bill_edit swaps header/lines +
+   * relinks + voids the old entry). A failed swap voids the just-posted replacement so the books
+   * never drift. Financial edits require an unpaid bill (and an open period — the RPCs enforce it).
+   */
+  async editPosted(
+    id: string,
+    input: UpdateBillInput
+  ): Promise<{ bill: Bill | null; error?: string }> {
+    const existing = await this.getById(id);
+    if (!existing) return { bill: null, error: 'Bill not found.' };
+    if (existing.status === 'void') {
+      return { bill: null, error: 'A void bill cannot be edited — reissue a new one instead.' };
+    }
+    if (existing.status === 'draft') {
+      return this.updateDraft(id, input);
+    }
+
+    const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
+    if (!lines.length) return { bill: null, error: 'A bill needs at least one line.' };
+
+    // Inventory safety: never reverse+repost a bill tied to received stock (FIFO layers would desync).
+    const touchesInventory =
+      (existing.lines ?? []).some((l) => l.sourceInventoryId != null) ||
+      lines.some((l) => l.sourceInventoryId != null);
+    if (touchesInventory) {
+      return {
+        bill: null,
+        error: 'This bill is linked to received inventory — correct it with void & reissue.',
+      };
+    }
+
+    const vendorId = input.vendorId !== undefined ? input.vendorId : existing.vendorId;
+    const billDate = input.billDate !== undefined ? input.billDate : existing.billDate;
+    const taxTotal = input.taxTotal !== undefined ? input.taxTotal : existing.taxTotal;
+    const jobId = input.jobId !== undefined ? input.jobId : existing.jobId;
+
+    const totals = await computeTotalsFor(lines, vendorId, taxTotal);
+    const defaults = await accountingSettingsService.getDefaultAccounts();
+    let je;
+    try {
+      je = buildBillExpenseJournalLines(totals, defaults, { vendorId, jobId });
+    } catch (e) {
+      return {
+        bill: null,
+        error: e instanceof Error ? e.message : 'Unable to build the expense entry.',
+      };
+    }
+
+    const header: Record<string, unknown> = {
+      vendor_id: vendorId,
+      bill_number: input.billNumber !== undefined ? input.billNumber : existing.billNumber,
+      bill_date: billDate,
+      due_date: input.dueDate !== undefined ? input.dueDate : existing.dueDate,
+      terms: input.terms !== undefined ? input.terms : existing.terms,
+      job_id: jobId,
+      memo: input.memo !== undefined ? input.memo : existing.memo,
+      subtotal: je.subtotal,
+      tax_total: je.taxTotal,
+      total: je.total,
+    };
+    const linePayload = lineRows(id, lines);
+
+    const existingJe = existing.journalEntryId
+      ? await journalService.getById(existing.journalEntryId)
+      : null;
+    const ledgerUnchanged =
+      existingJe != null &&
+      existingJe.status === 'posted' &&
+      billDate === existing.billDate &&
+      journalLinesEquivalent(existingJe.lines ?? [], je.lines);
+
+    if (ledgerUnchanged) {
+      const patch = {
+        ...header,
+        balance_due: Math.round((je.total - existing.amountPaid) * 100) / 100,
+      };
+      const { error: uErr } = await acct().from('bills').update(patch).eq('id', id);
+      if (uErr) return { bill: null, error: uErr.message };
+      await acct().from('bill_lines').delete().eq('bill_id', id);
+      const { error: lErr } = await acct().from('bill_lines').insert(linePayload);
+      if (lErr) return { bill: null, error: lErr.message };
+      return { bill: await this.getById(id) };
+    }
+
+    if (existing.amountPaid > 0) {
+      return {
+        bill: null,
+        error: 'Unapply vendor payments before changing the amounts on this bill.',
+      };
+    }
+    const posted = await journalService.createAndPost({
+      entryDate: billDate || new Date().toISOString().slice(0, 10),
+      memo: `Bill ${existing.billNumber ?? id}`,
+      sourceType: 'bill',
+      sourceId: id,
+      lines: je.lines,
+    });
+    if (!posted.entryId) {
+      return { bill: null, error: posted.error ?? 'Failed to post the revised expense entry.' };
+    }
+    const { error: rpcErr } = await acct().rpc('apply_posted_bill_edit', {
+      p_bill_id: id,
+      p_new_entry_id: posted.entryId,
+      p_header: header,
+      p_lines: linePayload,
+    });
+    if (rpcErr) {
+      await journalService.voidEntry(posted.entryId, 'Bill edit failed after posting replacement');
+      return { bill: null, error: rpcErr.message };
     }
     return { bill: await this.getById(id) };
   },

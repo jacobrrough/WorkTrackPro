@@ -9,6 +9,7 @@ import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { AttachmentsSection } from '../components/AttachmentsSection';
 import { VendorTaxInfoSection } from '../components/VendorTaxInfoSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
+import { DocumentActivityPanel } from '../components/DocumentActivityPanel';
 import { useBill, useBillPayments } from '../hooks/useAccountingQueries';
 import { usePostBill, useRecordVendorPayment, useVoidBill } from '../hooks/useAccountingMutations';
 import { formatMoney } from '../accountingViewModel';
@@ -381,6 +382,9 @@ export default function BillDetailView() {
               bill or the vendor's own record. Surfaced here because there is no standalone
               vendor detail screen; the bill is the natural place to record a vendor's W-9. */}
           <VendorTaxInfoSection vendorId={bill.vendorId} />
+
+          {/* QuickBooks-style audit history (created / posted / edited / paid / voided). */}
+          <DocumentActivityPanel documentType="bill" documentId={bill.id} status={bill.status} />
         </div>
       )}
 

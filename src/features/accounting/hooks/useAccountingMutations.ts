@@ -147,6 +147,17 @@ export function useUpdateCustomer() {
   });
 }
 
+/**
+ * Refresh the per-document audit timeline + sent-version badge + version history after any change
+ * to an invoice/estimate/bill. These are keyed by (docType, docId); invalidating the subtree roots
+ * refetches whichever document detail is currently open. Cheap — they only run on an open detail.
+ */
+function invalidateDocumentActivity(qc: ReturnType<typeof useQueryClient>): void {
+  qc.invalidateQueries({ queryKey: ['accounting', 'timeline'] });
+  qc.invalidateQueries({ queryKey: ['accounting', 'sent-state'] });
+  qc.invalidateQueries({ queryKey: ['accounting', 'snapshots'] });
+}
+
 // ── Invoices ─────────────────────────────────────────────────────────────────
 // NOTE: accounting.v_job_costing.revenue sums lines of every NON-VOID invoice
 // (drafts included), so draft create/update/void on a job-linked invoice all move
@@ -184,6 +195,36 @@ export function useUpdateInvoiceDraft() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
+    },
+  });
+}
+
+/**
+ * Edit an invoice in place (QuickBooks-style). Routes a draft to updateDraft and a POSTED invoice
+ * through editPosted (reverse + re-post when the amounts change, header-only when ledger-neutral),
+ * so the editor uses ONE save path regardless of status. Reposting moves the ledger/AR, so this
+ * invalidates the same subtree as send/void — invoices + journal + reports + jobCosting — plus the
+ * audit timeline / sent-state / version history.
+ */
+export function useEditPostedInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+      customerTaxExempt,
+    }: {
+      id: string;
+      input: UpdateInvoiceInput;
+      customerTaxExempt?: boolean;
+    }) => invoicesService.editPosted(id, input, { customerTaxExempt }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -203,6 +244,7 @@ export function useSendInvoice() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Sending a job-linked invoice raises that job's revenue/margin.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -218,6 +260,7 @@ export function useVoidInvoice() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Voiding a job-linked invoice drops that job's revenue/margin.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -237,6 +280,7 @@ export function useVoidAndReissueInvoice() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Reissuing a job-linked invoice moves that job's revenue/margin.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -293,6 +337,7 @@ export function useRecordPayment() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Job-costing detail lists invoice status/balance; refresh its drill-down.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -344,6 +389,28 @@ export function useUpdateBillDraft() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bills });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
+    },
+  });
+}
+
+/**
+ * Edit a bill in place. Routes a draft to updateDraft and a POSTED bill through editPosted (reverse
+ * + re-post when amounts change; header-only when ledger-neutral; an inventory-linked bill is
+ * rejected → use void & reissue). Reposting moves the ledger/AP, so this invalidates bills +
+ * journal + reports + jobCosting plus the audit timeline.
+ */
+export function useEditPostedBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateBillInput }) =>
+      billsService.editPosted(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.bills });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -363,6 +430,7 @@ export function usePostBill() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // The job-costing detail lists this job's bills; refresh its drill-down.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -377,6 +445,7 @@ export function useVoidBill() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.journal });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -399,6 +468,7 @@ export function useRecordVendorPayment() {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.reports });
       // Job-costing detail lists bill status/balance; refresh its drill-down.
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+      invalidateDocumentActivity(qc);
     },
   });
 }
@@ -1171,7 +1241,10 @@ export function useUpdateEstimateDraft() {
       input: UpdateEstimateInput;
       customerTaxExempt?: boolean;
     }) => estimatesService.updateDraft(id, input, { customerTaxExempt }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      invalidateDocumentActivity(qc);
+    },
   });
 }
 
@@ -1179,7 +1252,10 @@ export function useSendEstimate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => estimatesService.send(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      invalidateDocumentActivity(qc);
+    },
   });
 }
 
@@ -1187,7 +1263,10 @@ export function useAcceptEstimate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => estimatesService.accept(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      invalidateDocumentActivity(qc);
+    },
   });
 }
 
@@ -1195,7 +1274,10 @@ export function useDeclineEstimate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => estimatesService.decline(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      invalidateDocumentActivity(qc);
+    },
   });
 }
 

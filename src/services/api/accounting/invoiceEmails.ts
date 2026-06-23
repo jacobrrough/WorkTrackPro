@@ -97,6 +97,14 @@ export const invoiceEmailsService = {
         error: (String(body.error ?? `HTTP ${response.status}`) || 'Send failed') + detail,
       };
     }
+    // The customer just received the current content — pin a 'sent' snapshot and stamp the
+    // sent-version hash (as the signed-in user, so accounting.can_write is satisfied) so the badge
+    // flips to "customer has the current version", even after a prior in-place edit. Best-effort.
+    try {
+      await acct().rpc('record_document_sent', { p_type: 'invoice', p_id: invoiceId });
+    } catch {
+      /* sent-version tracking is best-effort */
+    }
     return {
       ok: true,
       toEmail: typeof body.toEmail === 'string' ? body.toEmail : undefined,

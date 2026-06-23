@@ -6,7 +6,8 @@ import { FormField } from '@/components/ui/FormField';
 import { adminSettingsService } from '@/services/api/adminSettings';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
-import { DocumentHistorySection } from '../components/DocumentHistorySection';
+import { DocumentActivityPanel } from '../components/DocumentActivityPanel';
+import { DocumentSentBadge } from '../components/DocumentSentBadge';
 import JobLinkControl from '../jobs/JobLinkControl';
 import { useEstimate } from '../hooks/useAccountingQueries';
 import {
@@ -187,7 +188,8 @@ export default function EstimateDetailView() {
   const reissueEstimate = useReissueEstimate();
   const deleteEstimate = useDeleteEstimateDraft();
   const printRef = useRef<HTMLDivElement>(null);
-  const [editing, setEditing] = useState(false);
+  // Land directly in the live editor (QuickBooks-style); Preview toggles to the read-only paper.
+  const [editing, setEditing] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -262,10 +264,14 @@ export default function EstimateDetailView() {
   };
 
   const onDownloadPdf = async () => {
-    if (!estimate || !printRef.current) return;
+    if (!estimate) return;
     setActionError(null);
+    // The PDF rasterizes the read-only paper (printRef); switch to Preview first so it's mounted.
+    setEditing(false);
     setDownloading(true);
     try {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      if (!printRef.current) throw new Error('preview not ready');
       await exportSalesDocumentPdf(
         printRef.current,
         salesDocumentFilenameBase({ kind: 'estimate', number: estimate.estimateNumber })
@@ -278,6 +284,9 @@ export default function EstimateDetailView() {
   };
 
   const canEdit = estimate?.status === 'draft';
+  // Estimates post no ledger, so any live status is editable in place except converted/accepted.
+  const isEditable =
+    estimate != null && estimate.status !== 'converted' && estimate.status !== 'accepted';
   const canSend = estimate?.status === 'draft';
   const canAccept =
     estimate != null && (estimate.status === 'sent' || estimate.status === 'expired');
@@ -305,11 +314,16 @@ export default function EstimateDetailView() {
       active="estimates"
       title={estimate ? `Estimate ${estimate.estimateNumber ?? 'Draft'}` : 'Estimate'}
       actions={
-        estimate && !editing ? (
+        estimate ? (
           <div className="flex flex-wrap gap-2">
-            {canEdit && (
-              <Button size="sm" variant="secondary" icon="edit" onClick={() => setEditing(true)}>
-                Edit
+            {isEditable && (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={editing ? 'visibility' : 'edit'}
+                onClick={() => setEditing((e) => !e)}
+              >
+                {editing ? 'Preview' : 'Edit'}
               </Button>
             )}
             {canEdit && (
@@ -369,82 +383,88 @@ export default function EstimateDetailView() {
         <div className="mx-auto flex max-w-5xl flex-col gap-4">
           {taxShown && <TaxDisclaimer />}
 
-          {editing ? (
-            <EstimateDraftEditor estimate={estimate} onClose={() => setEditing(false)} />
+          {/* Sent-version indicator: does the customer hold the current copy of this estimate? */}
+          <DocumentSentBadge
+            documentType="estimate"
+            documentId={estimate.id}
+            status={estimate.status}
+          />
+
+          {/* Status + meta — shown in both edit and preview. */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <span
+              className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
+            >
+              {ESTIMATE_STATUS_LABELS[estimate.status]}
+            </span>
+            <span className="text-sm text-slate-400">
+              Customer{' '}
+              <span className="text-white">{estimate.customerName || estimate.customerId}</span>
+            </span>
+            <span className="text-sm text-slate-400">
+              Date <span className="text-white">{estimate.estimateDate}</span>
+            </span>
+            {estimate.expiryDate && (
+              <span className="text-sm text-slate-400">
+                Expires <span className="text-white">{estimate.expiryDate}</span>
+              </span>
+            )}
+            {estimate.terms && (
+              <span className="text-sm text-slate-400">
+                Terms <span className="text-white">{estimate.terms}</span>
+              </span>
+            )}
+          </div>
+
+          {editing && isEditable ? (
+            // The live editor is the default landing view; remounting per estimate id re-seeds it.
+            <EstimateDraftEditor
+              key={estimate.id}
+              estimate={estimate}
+              onClose={() => setEditing(false)}
+            />
           ) : (
-            <>
-              {/* Status + meta */}
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                <span
-                  className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
-                >
-                  {ESTIMATE_STATUS_LABELS[estimate.status]}
-                </span>
-                <span className="text-sm text-slate-400">
-                  Customer{' '}
-                  <span className="text-white">{estimate.customerName || estimate.customerId}</span>
-                </span>
-                <span className="text-sm text-slate-400">
-                  Date <span className="text-white">{estimate.estimateDate}</span>
-                </span>
-                {estimate.expiryDate && (
-                  <span className="text-sm text-slate-400">
-                    Expires <span className="text-white">{estimate.expiryDate}</span>
-                  </span>
-                )}
-                {estimate.terms && (
-                  <span className="text-sm text-slate-400">
-                    Terms <span className="text-white">{estimate.terms}</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Branded "paper" document (header/bill-to/lines/totals/memo/notes/footer).
-                  The forwarded ref lands on the white root <div> so Download PDF captures
-                  the on-screen node. Estimates carry no payments/balance-due block. */}
-              <SalesDocument
-                ref={printRef}
-                data={estimateToSalesDocumentData(estimate)}
-                template={template}
-                mode="read"
-              />
-
-              {/* Link this estimate to a job — a pure organizational tag (estimates post no
-                  JE), available at any status. */}
-              <JobLinkControl
-                documentType="estimate"
-                documentId={estimate.id}
-                currentJobId={estimate.jobId}
-                customerId={estimate.customerId}
-              />
-
-              {/* Converted-invoice link */}
-              {estimate.convertedInvoiceId && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(`${ACCOUNTING_BASE}/invoices/${estimate.convertedInvoiceId}`)
-                  }
-                  className="flex items-center gap-1 self-start text-sm font-semibold text-primary hover:text-primary-hover"
-                >
-                  <span className="material-symbols-outlined text-lg">receipt_long</span>
-                  View converted invoice
-                </button>
-              )}
-
-              {actionError && (
-                <p className="text-sm text-red-400" role="alert">
-                  {actionError}
-                </p>
-              )}
-
-              <DocumentHistorySection
-                documentType="estimate"
-                documentId={estimate.id}
-                status={estimate.status}
-              />
-            </>
+            /* Branded read-only "paper" (Preview). The forwarded ref lands on the white root so
+               Download PDF captures the on-screen node. Estimates carry no payments/balance block. */
+            <SalesDocument
+              ref={printRef}
+              data={estimateToSalesDocumentData(estimate)}
+              template={template}
+              mode="read"
+            />
           )}
+
+          {/* Link this estimate to a job — a pure organizational tag (estimates post no JE). */}
+          <JobLinkControl
+            documentType="estimate"
+            documentId={estimate.id}
+            currentJobId={estimate.jobId}
+            customerId={estimate.customerId}
+          />
+
+          {/* Converted-invoice link */}
+          {estimate.convertedInvoiceId && (
+            <button
+              type="button"
+              onClick={() => navigate(`${ACCOUNTING_BASE}/invoices/${estimate.convertedInvoiceId}`)}
+              className="flex items-center gap-1 self-start text-sm font-semibold text-primary hover:text-primary-hover"
+            >
+              <span className="material-symbols-outlined text-lg">receipt_long</span>
+              View converted invoice
+            </button>
+          )}
+
+          {actionError && (
+            <p className="text-sm text-red-400" role="alert">
+              {actionError}
+            </p>
+          )}
+
+          <DocumentActivityPanel
+            documentType="estimate"
+            documentId={estimate.id}
+            status={estimate.status}
+          />
         </div>
       )}
     </AccountingShell>

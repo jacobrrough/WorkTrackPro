@@ -13,6 +13,7 @@ import {
   dimensionsService,
   estimatesService,
   documentSnapshotsService,
+  documentActivityService,
   progressBillingService,
   projectsService,
   purchaseOrdersService,
@@ -158,6 +159,34 @@ export function useDocumentSnapshots(
       ? ACCOUNTING_QUERY_KEYS.documentSnapshots(documentType, documentId)
       : ['accounting', 'snapshots', 'none'],
     queryFn: () => documentSnapshotsService.listForDocument(documentType, documentId as string),
+    enabled: !!documentId,
+  });
+}
+
+/** QuickBooks-style audit timeline (created/edited/sent/paid/voided…) for one document. */
+export function useDocumentTimeline(
+  documentType: 'invoice' | 'estimate' | 'bill',
+  documentId: string | undefined
+) {
+  return useQuery({
+    queryKey: documentId
+      ? ACCOUNTING_QUERY_KEYS.documentTimeline(documentType, documentId)
+      : ['accounting', 'timeline', 'none'],
+    queryFn: () => documentActivityService.timeline(documentType, documentId as string),
+    enabled: !!documentId,
+  });
+}
+
+/** Sent-version state ("does the customer hold the current version?") for an invoice/estimate. */
+export function useDocumentSentState(
+  documentType: 'invoice' | 'estimate',
+  documentId: string | undefined
+) {
+  return useQuery({
+    queryKey: documentId
+      ? ACCOUNTING_QUERY_KEYS.documentSentState(documentType, documentId)
+      : ['accounting', 'sent-state', 'none'],
+    queryFn: () => documentActivityService.sentState(documentType, documentId as string),
     enabled: !!documentId,
   });
 }
