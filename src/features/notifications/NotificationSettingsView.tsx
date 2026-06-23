@@ -235,6 +235,50 @@ const NOTIFICATION_GROUPS: NotificationGroup[] = [
     ],
   },
   {
+    key: 'accounting',
+    label: 'Accounting',
+    icon: 'receipt_long',
+    adminOnly: true,
+    types: [
+      {
+        type: 'invoice_sent',
+        label: 'Invoice sent',
+        description: 'When an invoice is sent to a customer',
+      },
+      {
+        type: 'invoice_payment_received',
+        label: 'Payment received',
+        description: 'When a partial payment is applied to an invoice',
+      },
+      {
+        type: 'invoice_paid',
+        label: 'Invoice paid',
+        description: 'When an invoice is paid in full',
+      },
+      {
+        type: 'invoice_voided',
+        label: 'Invoice voided',
+        description: 'When an invoice is voided',
+      },
+      {
+        type: 'bill_received',
+        label: 'Bill recorded',
+        description: 'When a new vendor bill is recorded',
+      },
+      { type: 'bill_paid', label: 'Bill paid', description: 'When a vendor bill is paid' },
+      {
+        type: 'invoice_overdue',
+        label: 'Invoice overdue',
+        description: 'When a sent invoice passes its due date (internal alert)',
+      },
+      {
+        type: 'bill_due_soon',
+        label: 'Bill due soon',
+        description: 'When a vendor bill is due within 3 days or already overdue',
+      },
+    ],
+  },
+  {
     key: 'system',
     label: 'Dashboard & System',
     icon: 'settings',

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminGuard } from '@/components/AdminGuard';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
+import { useAccountingRealtime } from './hooks/useAccountingRealtime';
 
 const AccountingHome = lazyWithRetry(() => import('./AccountingHome'), 'AccountingHome');
 const ChartOfAccountsView = lazyWithRetry(
@@ -217,6 +218,8 @@ const CustomFieldsView = lazyWithRetry(
  * when accounting roles graduate. Child paths are relative to /app/accounting.
  */
 export default function AccountingRouter() {
+  // Live-update any open accounting screen from accounting.* table changes (Broadcast).
+  useAccountingRealtime();
   return (
     <AdminGuard>
       <Routes>

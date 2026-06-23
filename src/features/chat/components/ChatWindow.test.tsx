@@ -45,6 +45,22 @@ vi.mock('@/hooks/useChatMutations', () => ({
   }),
 }));
 
+// ChatWindow now mounts useChatTyping/useChatPresence, which reach the realtime layer
+// (Supabase Broadcast/Presence). Stub it so the component renders without a live client.
+vi.mock('@/services/api/realtimeBroadcast', () => ({
+  broadcastTopics: {
+    accounting: () => 'accounting',
+    user: (id: string) => `user:${id}`,
+    chat: (id: string) => `chat:${id}`,
+    typing: (id: string) => `typing:${id}`,
+    presence: (id: string) => `presence:${id}`,
+  },
+  ensureRealtimeAuth: vi.fn(async () => false),
+  subscribeToPrivateBroadcast: vi.fn(() => () => {}),
+  openBroadcastSender: vi.fn(() => ({ send: vi.fn(), close: vi.fn() })),
+  subscribeToPresence: vi.fn(() => () => {}),
+}));
+
 // ── Crypto + service mocks ──────────────────────────────────────────────────
 // ChatWindow imports decryptConversationKey and MessageList imports
 // decryptMessage, both from '@/lib/crypto' — one mock covers both.

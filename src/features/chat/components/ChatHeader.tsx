@@ -4,6 +4,7 @@ interface ChatHeaderProps {
   conversation: Conversation;
   members: ConversationMember[];
   currentUserId: string;
+  onlineUserIds?: Set<string>;
   onBack: () => void;
   onSettings?: () => void;
 }
@@ -12,6 +13,7 @@ export function ChatHeader({
   conversation,
   members,
   currentUserId,
+  onlineUserIds,
   onBack,
   onSettings,
 }: ChatHeaderProps) {
@@ -20,6 +22,7 @@ export function ChatHeader({
   const displayName =
     conversation.name ?? otherMembers.map((m) => m.userName ?? 'Unknown').join(', ') ?? 'Chat';
   const memberCount = members.length;
+  const onlineOthers = otherMembers.filter((m) => onlineUserIds?.has(m.userId)).length;
 
   return (
     <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
@@ -32,18 +35,28 @@ export function ChatHeader({
       </button>
 
       <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+        className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
           isGroup ? 'bg-primary/20 text-primary' : 'bg-white/10 text-slate-300'
         }`}
       >
         <span className="material-symbols-outlined text-lg">{isGroup ? 'group' : 'person'}</span>
+        {onlineOthers > 0 && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-dark bg-green-500"
+            title="Online"
+          />
+        )}
       </div>
 
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-sm font-bold text-white">{displayName}</h3>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">
-            {isGroup ? `${memberCount} members` : (otherMembers[0]?.userName ?? '')}
+            {isGroup
+              ? `${memberCount} members${onlineOthers > 0 ? ` · ${onlineOthers} online` : ''}`
+              : onlineOthers > 0
+                ? 'Online'
+                : (otherMembers[0]?.userName ?? '')}
           </span>
           <span
             className="material-symbols-outlined text-[12px] text-green-500"

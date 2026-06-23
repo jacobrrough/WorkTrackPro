@@ -27,6 +27,26 @@
 #   accounting.invoice_emails / accounting.portal_tokens (no journal entries, no money).
 #   Set ACCOUNTING_FROM_EMAIL (or rely on settings.dunning.fromEmail) for the sender.
 #
+# Notification emails (system-notification digests) scheduled function:
+#   netlify/functions/notification-emails.mjs runs every 10 min via an in-code V2 schedule
+#   (export const config = { schedule: "*/10 * * * *" }) — no toml schedule block needed. It
+#   is ALSO reachable on-demand for an admin "run now" at /api/notification-emails (Bearer
+#   admin) via the /api/* redirect below. HARD-GATED on NOTIFICATION_EMAILS_ENABLED
+#   (default OFF): when off it sends no email and performs no DB write. Email is ALSO opt-in
+#   per user per notification type (the seed defaults every email pref to false). It uses
+#   RESEND_API_KEY + SUPABASE_SERVICE_ROLE_KEY and writes only system_notifications.emailed_at
+#   (no money, no journal entries). Set NOTIFICATION_FROM_EMAIL (falls back to
+#   ACCOUNTING_FROM_EMAIL / PROPOSAL_FROM_EMAIL) for the sender; APP_PUBLIC_URL is used for
+#   the email's "Open WorkTrack Pro" link.
+#
+# Time-based notifications (overdue invoices / bills due soon) scheduled function:
+#   netlify/functions/time-based-notifications.mjs runs DAILY at 13:00 UTC via an in-code V2
+#   schedule (export const config = { schedule: "0 13 * * *" }). Also reachable on-demand for
+#   an admin "run now" at /api/time-based-notifications (Bearer admin). HARD-GATED on
+#   NOTIFICATION_TIME_BASED_ENABLED (default OFF): when off it performs no query and no write.
+#   Creates IN-APP notifications only (no email, no money); recipients are accounting readers
+#   (deduped weekly per entity). Uses SUPABASE_SERVICE_ROLE_KEY.
+#
 # WorkTrackAccounting customer portal:
 #   netlify/functions/send-invoice-email.mjs (admin "Email invoice") and
 #   netlify/functions/portal-invoice.mjs (the PUBLIC token-gated invoice read) are plain
