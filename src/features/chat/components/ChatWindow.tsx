@@ -7,6 +7,14 @@ import { cryptoKeyCache } from '@/lib/crypto/keyCache';
 import { ChatHeader } from './ChatHeader';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
+import { useChatTyping } from '../hooks/useChatTyping';
+import { useChatPresence } from '../hooks/useChatPresence';
+
+function formatTyping(names: string[]): string {
+  if (names.length === 1) return `${names[0]} is typing…`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`;
+  return 'Several people are typing…';
+}
 
 interface ChatWindowProps {
   conversationId: string;
@@ -23,6 +31,15 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
     fetchNextPage,
   } = useChatMessages(conversationId);
   const { sendTextMessage, sendFileMessage, markRead } = useChatMutations();
+
+  const currentUserName =
+    convData?.members.find((m) => m.userId === currentUserId)?.userName ?? 'Someone';
+  const { typingNames, notifyTyping } = useChatTyping(
+    conversationId,
+    currentUserId,
+    currentUserName
+  );
+  const onlineUserIds = useChatPresence(conversationId, currentUserId);
 
   const ensureConversationKey = useCallback(async (): Promise<string> => {
     // To decrypt our copy of the conversation key we need the conversation
@@ -135,6 +152,7 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
         conversation={convData.conversation}
         members={convData.members}
         currentUserId={currentUserId}
+        onlineUserIds={onlineUserIds}
         onBack={onBack}
       />
       <MessageList
@@ -147,7 +165,14 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
         onFetchMore={() => fetchNextPage()}
         onMessagesVisible={handleMessagesVisible}
       />
-      <MessageInput onSendText={handleSendText} onSendFile={handleSendFile} />
+      {typingNames.length > 0 && (
+        <div className="px-4 py-1 text-xs italic text-slate-400">{formatTyping(typingNames)}</div>
+      )}
+      <MessageInput
+        onSendText={handleSendText}
+        onSendFile={handleSendFile}
+        onTyping={notifyTyping}
+      />
     </div>
   );
 }

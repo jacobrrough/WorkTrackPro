@@ -57,6 +57,15 @@ const EXPECTED_IN_APP: Record<SystemNotificationType, boolean | 'admin'> = {
   delivery_scheduled: true,
   delivery_completed: true,
   delivery_delayed: true,
+  // Accounting (AR/AP) — admin / accounting-role only
+  invoice_sent: 'admin',
+  invoice_payment_received: 'admin',
+  invoice_paid: 'admin',
+  invoice_voided: 'admin',
+  bill_received: 'admin',
+  bill_paid: 'admin',
+  invoice_overdue: 'admin',
+  bill_due_soon: 'admin',
   // Dashboard & System
   daily_summary: false,
   system_alert: true,

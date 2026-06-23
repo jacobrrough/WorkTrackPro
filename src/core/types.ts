@@ -706,6 +706,15 @@ export type SystemNotificationType =
   | 'delivery_scheduled'
   | 'delivery_completed'
   | 'delivery_delayed'
+  // Accounting (AR/AP) — admin / accounting-role only
+  | 'invoice_sent'
+  | 'invoice_payment_received'
+  | 'invoice_paid'
+  | 'invoice_voided'
+  | 'bill_received'
+  | 'bill_paid'
+  | 'invoice_overdue'
+  | 'bill_due_soon'
   // Dashboard & System
   | 'daily_summary'
   | 'system_alert'

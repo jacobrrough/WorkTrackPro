@@ -37,6 +37,15 @@ const ALL_NOTIFICATION_TYPES: SystemNotificationType[] = [
   'delivery_scheduled',
   'delivery_completed',
   'delivery_delayed',
+  // Accounting (AR/AP)
+  'invoice_sent',
+  'invoice_payment_received',
+  'invoice_paid',
+  'invoice_voided',
+  'bill_received',
+  'bill_paid',
+  'invoice_overdue',
+  'bill_due_soon',
   'daily_summary',
   'system_alert',
   'maintenance_notice',
@@ -55,6 +64,15 @@ const ADMIN_ONLY_TYPES: SystemNotificationType[] = [
   'critical_stock',
   'allocation_complete',
   'allocation_reversal',
+  // Accounting types reach accounting users only; default-on for admins.
+  'invoice_sent',
+  'invoice_payment_received',
+  'invoice_paid',
+  'invoice_voided',
+  'bill_received',
+  'bill_paid',
+  'invoice_overdue',
+  'bill_due_soon',
 ];
 
 const DISABLED_BY_DEFAULT: SystemNotificationType[] = ['daily_summary', 'maintenance_notice'];

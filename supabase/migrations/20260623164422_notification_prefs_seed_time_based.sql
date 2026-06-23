@@ -1,0 +1,103 @@
+-- Add the time-based accounting notification types (invoice_overdue, bill_due_soon) to the
+-- preferences seed so it stays in lockstep with getDefaultPreferences()/ALL_NOTIFICATION_TYPES
+-- (parity pinned by src/services/api/notificationPreferences.test.ts). Admin-gated in-app,
+-- off for email by default. CREATE OR REPLACE keeps the profiles insert-trigger wiring intact.
+-- Idempotent.
+
+create or replace function public.build_default_notification_preferences(p_is_admin boolean default false)
+returns jsonb
+language sql
+immutable
+set search_path to 'public', 'pg_catalog'
+as $function$
+  select jsonb_build_object(
+    'in_app', jsonb_build_object(
+      'status_change', true,
+      'assignment', true,
+      'unassignment', true,
+      'rush', true,
+      'overdue', true,
+      'comment_mention', true,
+      'checklist_complete', true,
+      'delivery_update', true,
+      'variant_update', true,
+      'low_stock', true,
+      'critical_stock', p_is_admin,
+      'allocation_complete', p_is_admin,
+      'allocation_reversal', p_is_admin,
+      'reorder_point_hit', true,
+      'shift_edit_approved', true,
+      'shift_edit_requested', true,
+      'clock_anomaly', true,
+      'lunch_break_reminder', true,
+      'chat_mention', true,
+      'new_direct_message', true,
+      'thread_reply', true,
+      'new_user_pending_approval', p_is_admin,
+      'user_approved', true,
+      'user_rejected', true,
+      'proposal_submitted', p_is_admin,
+      'new_customer_proposal', true,
+      'quote_assigned', true,
+      'quote_updated', true,
+      'delivery_scheduled', true,
+      'delivery_completed', true,
+      'delivery_delayed', true,
+      'invoice_sent', p_is_admin,
+      'invoice_payment_received', p_is_admin,
+      'invoice_paid', p_is_admin,
+      'invoice_voided', p_is_admin,
+      'bill_received', p_is_admin,
+      'bill_paid', p_is_admin,
+      'invoice_overdue', p_is_admin,
+      'bill_due_soon', p_is_admin,
+      'daily_summary', false,
+      'system_alert', true,
+      'maintenance_notice', false
+    ),
+    'email', jsonb_build_object(
+      'status_change', false,
+      'assignment', false,
+      'unassignment', false,
+      'rush', false,
+      'overdue', false,
+      'comment_mention', false,
+      'checklist_complete', false,
+      'delivery_update', false,
+      'variant_update', false,
+      'low_stock', false,
+      'critical_stock', false,
+      'allocation_complete', false,
+      'allocation_reversal', false,
+      'reorder_point_hit', false,
+      'shift_edit_approved', false,
+      'shift_edit_requested', false,
+      'clock_anomaly', false,
+      'lunch_break_reminder', false,
+      'chat_mention', false,
+      'new_direct_message', false,
+      'thread_reply', false,
+      'new_user_pending_approval', false,
+      'user_approved', false,
+      'user_rejected', false,
+      'proposal_submitted', false,
+      'new_customer_proposal', false,
+      'quote_assigned', false,
+      'quote_updated', false,
+      'delivery_scheduled', false,
+      'delivery_completed', false,
+      'delivery_delayed', false,
+      'invoice_sent', false,
+      'invoice_payment_received', false,
+      'invoice_paid', false,
+      'invoice_voided', false,
+      'bill_received', false,
+      'bill_paid', false,
+      'invoice_overdue', false,
+      'bill_due_soon', false,
+      'daily_summary', false,
+      'system_alert', false,
+      'maintenance_notice', false
+    )
+  );
+$function$;

@@ -3,10 +3,11 @@ import React, { useCallback, useRef, useState } from 'react';
 interface MessageInputProps {
   onSendText: (text: string) => Promise<void>;
   onSendFile: (file: File) => Promise<void>;
+  onTyping?: () => void;
   disabled?: boolean;
 }
 
-export function MessageInput({ onSendText, onSendFile, disabled }: MessageInputProps) {
+export function MessageInput({ onSendText, onSendFile, onTyping, disabled }: MessageInputProps) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +74,10 @@ export function MessageInput({ onSendText, onSendFile, disabled }: MessageInputP
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            onTyping?.();
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           disabled={disabled || sending}
