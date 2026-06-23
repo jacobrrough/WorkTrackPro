@@ -2,6 +2,14 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Board, BoardCard, BoardMemberRole, BoardVisibility, User } from '@/core/types';
 import { boardService } from '@/services/api/boards';
+import {
+  applyCardReorder,
+  removeBoardCard,
+  removeBoardColumn,
+  reorderBoardColumns,
+  upsertBoardCard,
+  upsertBoardColumn,
+} from '@/lib/boardCache';
 import { enqueueAction } from '@/lib/offlineActionQueue';
 import { isOffline } from '@/lib/networkStatus';
 
@@ -71,7 +79,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     async (boardId: string, data: { name: string; color?: string; sortOrder: number }) => {
       const col = await boardService.addColumn(boardId, data);
       if (col) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        upsertBoardColumn(queryClient, boardId, col);
       }
       return col;
     },
@@ -82,7 +90,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     async (boardId: string, columnId: string, data: { name?: string; color?: string }) => {
       const col = await boardService.updateColumn(columnId, data);
       if (col) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        upsertBoardColumn(queryClient, boardId, col);
       }
       return col;
     },
@@ -90,10 +98,10 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   );
 
   const deleteColumn = useCallback(
-    async (boardId: string, columnId: string) => {
+    async (_boardId: string, columnId: string) => {
       const ok = await boardService.deleteColumn(columnId);
       if (ok) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        removeBoardColumn(queryClient, columnId);
       }
       return ok;
     },
@@ -104,7 +112,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     async (boardId: string, columnIds: string[]) => {
       const ok = await boardService.reorderColumns(boardId, columnIds);
       if (ok) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        reorderBoardColumns(queryClient, boardId, columnIds);
       }
       return ok;
     },
@@ -126,7 +134,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     }) => {
       const card = await boardService.addCard(data);
       if (card) {
-        queryClient.invalidateQueries({ queryKey: ['board', data.boardId] });
+        upsertBoardCard(queryClient, data.boardId, card);
       }
       return card;
     },
@@ -147,7 +155,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     ) => {
       const card = await boardService.updateCard(cardId, data);
       if (card) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        upsertBoardCard(queryClient, boardId, card);
         return card;
       }
       if (isOffline() && currentUser) {
@@ -171,7 +179,7 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     async (boardId: string, cardId: string, data: { columnId: string; sortOrder: number }) => {
       const card = await boardService.moveCard(cardId, data);
       if (card) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        upsertBoardCard(queryClient, boardId, card);
         return card;
       }
       if (isOffline() && currentUser) {
@@ -196,15 +204,10 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
     async (boardId: string, columnId: string, cardIds: string[]) => {
       const ok = await boardService.reorderCards(boardId, columnId, cardIds);
       if (ok) {
-        // Await the refetch so callers (BoardView) can clear optimistic state without
-        // flashing stale data. Unique to reorderCards because it owns optimistic state;
-        // other mutations in this file can fire-and-forget.
-        try {
-          await queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-        } catch {
-          // Write succeeded; a transient refetch error is not a save failure. The next
-          // background sync or render-driven refetch will reconcile.
-        }
+        // Patch the cache to the dropped order so BoardView can clear its optimistic drag
+        // state without a refetch (no flash, no round-trip). The realtime echo of these
+        // board_cards updates re-applies the same values idempotently.
+        applyCardReorder(queryClient, boardId, columnId, cardIds);
         return true;
       }
       if (isOffline() && currentUser) {
@@ -225,10 +228,10 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
   );
 
   const deleteCard = useCallback(
-    async (boardId: string, cardId: string) => {
+    async (_boardId: string, cardId: string) => {
       const ok = await boardService.deleteCard(cardId);
       if (ok) {
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        removeBoardCard(queryClient, cardId);
       }
       return ok;
     },
