@@ -22,17 +22,23 @@ export interface VariantMaterialShare {
   cncable: Record<string, number>;
   /** inventoryId -> per-unit quantity (everything else, deducted on the unit-done milestone). */
   nonCncable: Record<string, number>;
+  /**
+   * Whether this variant has a CNC milestone — i.e. the variant has CNC hours. This (not the
+   * presence of foam material) gates whether the variant shows in the CNC checklist. A variant with
+   * CNC hours but no foam still appears (it just deducts nothing on the CNC step).
+   */
+  hasCncHours: boolean;
 }
 
 /** Distributed BOM: normalized variant key -> per-unit material shares. */
 export type DistributedBom = Record<string, VariantMaterialShare>;
 
 export interface DeductionInputs {
-  job: Pick<Job, 'inventoryItems' | 'dashQuantities' | 'qty'>;
+  job: Pick<Job, 'inventoryItems' | 'dashQuantities' | 'qty' | 'machineBreakdownByVariant'>;
   /** Linked part (with variants + materials). Null when the job has no part / no spec. */
   part: Part | null;
   inventoryById: Map<string, InventoryItem>;
-  /** Inventory categories considered CNC-able (e.g. {'foam'}). */
+  /** Inventory categories whose materials deduct on the CNC milestone (e.g. {'foam'}). */
   cncAbleCategories: ReadonlySet<string>;
 }
 
@@ -62,7 +68,38 @@ export function totalUnits(job: Pick<Job, 'dashQuantities' | 'qty'>): number {
   return Object.values(unitCountsByVariant(job)).reduce((a, b) => a + b, 0);
 }
 
-function isCncAble(
+/** CNC hours for one machine-breakdown entry (total, falling back to per-unit). */
+function entryCncHours(entry: { cncHoursTotal?: number; cncHoursPerUnit?: number }): number {
+  const total = Number(entry?.cncHoursTotal) || 0;
+  if (total > 0) return total;
+  return Number(entry?.cncHoursPerUnit) || 0;
+}
+
+/** Normalized-key (no leading dash) map of variant -> CNC hours from the job's machine breakdown. */
+export function cncHoursByVariant(
+  job: Pick<Job, 'machineBreakdownByVariant'>
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [suffix, entry] of Object.entries(job.machineBreakdownByVariant ?? {})) {
+    out[normSuffix(suffix)] = entryCncHours(entry);
+  }
+  return out;
+}
+
+/**
+ * Whether a variant has a CNC milestone (CNC hours > 0). For the no-variant group (single unit
+ * group), any CNC hours in the breakdown belong to it, so we treat the whole job's CNC hours as
+ * that group's — this side-steps key-mapping differences for no-variant jobs.
+ */
+function variantHasCncHours(hoursByVariant: Record<string, number>, variantKey: string): boolean {
+  if (variantKey === NO_VARIANT_KEY) {
+    return Object.values(hoursByVariant).some((h) => h > 0);
+  }
+  return (hoursByVariant[variantKey] ?? 0) > 0;
+}
+
+/** Whether a material's inventory category deducts on the CNC milestone (e.g. foam). */
+function isCncCategory(
   inventoryId: string,
   inventoryById: Map<string, InventoryItem>,
   cncAbleCategories: ReadonlySet<string>
@@ -100,49 +137,53 @@ export function buildDistributedBom(inputs: DeductionInputs): DistributedBom {
   const variantKeys = Object.keys(counts);
   const grandTotalUnits = variantKeys.reduce((a, k) => a + counts[k], 0);
 
+  // A variant has a CNC milestone iff it has CNC hours — that (not foam presence) gates the checklist.
+  const hoursByVariant = cncHoursByVariant(job);
+  const cncVariant: Record<string, boolean> = {};
+  for (const k of variantKeys) cncVariant[k] = variantHasCncHours(hoursByVariant, k);
+
   const bom: DistributedBom = {};
-  for (const k of variantKeys) bom[k] = { cncable: {}, nonCncable: {} };
+  for (const k of variantKeys) bom[k] = { cncable: {}, nonCncable: {}, hasCncHours: cncVariant[k] };
   if (grandTotalUnits <= 0) return bom;
 
   for (const line of job.inventoryItems ?? []) {
     const invId = line.inventoryId;
     const total = Number(line.quantity) || 0;
     if (!invId || total <= 0) continue;
-    const bucket = isCncAble(invId, inventoryById, cncAbleCategories) ? 'cncable' : 'nonCncable';
+    // Foam (or any CNC category) deducts on the CNC milestone — but only for variants that actually
+    // run CNC. For variants with no CNC hours, that material falls to the unit-done milestone.
+    const isCncCat = isCncCategory(invId, inventoryById, cncAbleCategories);
+    const bucketFor = (k: string): 'cncable' | 'nonCncable' =>
+      isCncCat && cncVariant[k] ? 'cncable' : 'nonCncable';
 
     // Natural usage weight per variant from the spec (qtyPerUnit × units).
-    const weights: Record<string, number> = {};
     let weightSum = 0;
-    for (const k of variantKeys) {
-      const w = specQtyPerUnit(part, k, invId) * counts[k];
-      weights[k] = w;
-      weightSum += w;
-    }
+    for (const k of variantKeys) weightSum += specQtyPerUnit(part, k, invId) * counts[k];
 
     if (weightSum > 0) {
       // Scale the spec so per-unit shares sum back to the padded job total exactly.
       const scale = total / weightSum;
       for (const k of variantKeys) {
         const perUnit = specQtyPerUnit(part, k, invId) * scale;
-        if (perUnit > 0) bom[k][bucket][invId] = perUnit;
+        if (perUnit > 0) bom[k][bucketFor(k)][invId] = perUnit;
       }
     } else {
       // No spec for this material — even split across every unit.
       const perUnit = total / grandTotalUnits;
-      for (const k of variantKeys) bom[k][bucket][invId] = perUnit;
+      for (const k of variantKeys) bom[k][bucketFor(k)][invId] = perUnit;
     }
   }
   return bom;
 }
 
-/** True when any variant has CNC-able material (i.e. the CNC milestone is relevant for this job). */
+/** True when any variant has a CNC milestone (CNC hours) — i.e. the CNC step is relevant. */
 export function jobHasCncableMaterial(bom: DistributedBom): boolean {
-  return Object.values(bom).some((s) => Object.keys(s.cncable).length > 0);
+  return Object.values(bom).some((s) => s.hasCncHours);
 }
 
-/** Variant keys that have CNC-able material (the ones shown in the CNC accordion / CNC prompt). */
+/** Variant keys with a CNC milestone (CNC hours) — the ones shown in the CNC accordion / prompt. */
 export function cncableVariantKeys(bom: DistributedBom): string[] {
-  return Object.keys(bom).filter((k) => Object.keys(bom[k].cncable).length > 0);
+  return Object.keys(bom).filter((k) => bom[k].hasCncHours);
 }
 
 export interface InventoryDelta {

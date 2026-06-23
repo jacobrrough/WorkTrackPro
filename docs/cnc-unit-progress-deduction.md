@@ -4,6 +4,7 @@ Status: **implemented (online path) — offline queue pending in a separate sess
 Owner ask captured: 2026-06-22
 
 ## Implementation status (2026-06-22)
+
 - [x] DB migration `20260622000001_cnc_unit_progress.sql` — columns, `log_unit_progress` RPC,
       Finished-trigger true-up, allocate-guard nets `consumed_quantity`, `cnc_able_categories` on
       organization_settings.
@@ -40,9 +41,11 @@ is treated as a **single pseudo-variant with no suffix**, quantity = job total q
 
 Each unit has **two independent milestones**, tracked per variant as completed counts:
 
-1. **CNC done** — only meaningful for variants that use CNC-able material. Deducts **only the
-   CNC-able** portion of that unit's distributed BOM (the foam). Does **not** mark the unit fully
-   done.
+1. **CNC done** — only meaningful for variants that **have CNC hours**
+   (`job.machineBreakdownByVariant[suffix].cncHoursTotal > 0`). Deducts **only the CNC-able**
+   portion of that unit's distributed BOM (the foam under that variant). Does **not** mark the unit
+   fully done. A CNC-hour variant with no foam still appears in the checklist — it just deducts
+   nothing on this step.
 2. **Unit done (TOTAL)** — deducts the **full** distributed BOM for that unit (all materials).
    Because a fully-done unit's CNC is necessarily done, marking total-done also completes CNC for
    that unit (deducting the CNC-able share too if not already pulled — never double-deducts).
@@ -66,27 +69,50 @@ material's job-BOM total across the units, rather than using canonical per-unit 
 - Fallback when a part has no per-variant material spec: even split of the BOM line across all
   units by `dashQuantities` weight.
 
-Which materials are CNC-able vs not is decided **by category** (below): CNC-able materials deduct
-on the CNC milestone, the rest on the total-done milestone.
+Two conditions decide whether a material deducts on the CNC milestone:
 
-## CNC-able = per category (not per item)
+1. **The variant runs CNC** — `machineBreakdownByVariant[variant].cncHoursTotal > 0`. This gates
+   whether the variant is in the CNC checklist at all (see below).
+2. **The material is in a CNC category** — by category (foam), below.
+
+A material deducts on the CNC milestone iff **both** hold for that variant. Foam under a variant
+with no CNC hours falls back to the total-done milestone (it still leaves stock, just later).
+
+## CNC checklist = per variant, gated by CNC hours
+
+A variant is **CNC-able** (shown in the CNC checklist) iff it has CNC hours — `cncableVariantKeys`
+in `src/lib/cncDeduction.ts` reads `machineBreakdownByVariant`, not foam presence. (Earlier this was
+"any variant that uses foam"; now foam without CNC hours is not a CNC milestone.) For a no-variant
+job, any CNC hours in the breakdown belong to the single unit group.
+
+**Known limitation (accepted):** the foam → CNC-vs-unit-done bucket is computed client-side from the
+job's _current_ CNC hours at log time. If an admin removes a variant's CNC hours **after** some of
+its units were CNC-marked, that already-consumed foam stays in `job_inventory.consumed_quantity` and
+can't be un-marked via the CNC accordion (the variant drops out of the checklist). Totals still
+reconcile — the foam was physically consumed, and the Finished true-up (`quantity − consumed`)
+deducts the remainder. This mirrors the existing behavior for editing `dashQuantities` / BOM lines
+mid-job. A server-side delta recompute (or an edit guard once units are logged) would close it.
+
+## CNC-able material category (not per item)
 
 Categories are a fixed enum in `src/core/types.ts` (`material, foam, trimCord, printing3d,
-chemicals, hardware, miscSupplies`). Add an admin setting:
+chemicals, hardware, miscSupplies`). The admin setting:
 
 - `AdminSettings.cncAbleCategories: InventoryCategory[]` (default `['foam']`).
-- A material is CNC-able iff `cncAbleCategories.includes(item.category)`.
-- Admin UI: toggle which categories are CNC-able (Settings). Inventory item detail can show a
-  read-only "CNC-able (via Foam category)" indicator.
+- A material deducts on CNC (for a CNC-hour variant) iff `cncAbleCategories.includes(item.category)`.
+- Admin UI: toggle which categories deduct on CNC (Settings).
 
 No per-item `is_cnc_able` column.
 
 ## UI surfaces
 
 ### 1. Job Details — replace the single CNC card with two accordions
+
 Location: `src/JobDetail.tsx` ~3196 (currently `MachineCompletionSection type="cnc"`).
-- **CNC accordion** — lists only variants/units that have CNC-able material. Per-variant `+/-`
-  stepper showing `cncDone / totalUnits`. Increment deducts foam; decrement restores it.
+
+- **CNC accordion** — lists only variants/units that **have CNC hours**. Per-variant `+/-`
+  stepper showing `cncDone / totalUnits`. Increment deducts that variant's foam; decrement restores
+  it (deducts nothing if the variant has CNC hours but no foam).
 - **Units Done accordion** — lists all variants. Per-variant `+/-` stepper showing
   `unitDone / totalUnits`. Increment deducts the rest of the BOM (and completes CNC for those
   units, with the override prompt below); decrement restores.
@@ -94,6 +120,7 @@ Location: `src/JobDetail.tsx` ~3196 (currently `MachineCompletionSection type="c
 - `+/-` steppers only — **no text boxes** (quantities are small).
 
 ### 2. Clock-out popup — two sequential prompts
+
 Fires when a worker **clocks out of** OR **clocks into another job from** a job that is in a
 **production status (`inProgress` / `rush`)** and has units to log. Both exit points are in
 `src/hooks/useClockMutations.ts` (`clockOut` ~253; the switch-job clock-out inside `clockIn` ~67
@@ -101,18 +128,22 @@ and the retry path ~209). Intercept at the `AppContext` / `ClockInContext` level
 shows before the punch completes, then proceed.
 
 Sequence:
-1. **"Any CNC done?"** — per-variant `+/-` steppers (CNC-able variants only). Submit → deduct foam.
+
+1. **"Any CNC done?"** — per-variant `+/-` steppers (CNC-hour variants only). Submit → deduct foam.
 2. **"Any units done?"** — per-variant `+/-` steppers (all variants). Submit → deduct the rest.
    - If a unit-done is logged whose CNC isn't done yet, show a confirm:
      **"Is CNC also done for <part/variant>? Yes / No"**
      - **Yes** → also complete CNC for those units (pull foam) + non-CNC-able.
      - **No** → pull only non-CNC-able; leave CNC pending for those units.
+
 - Worker can submit **0 / "nothing finished"** for either prompt.
-- Always shows for production jobs **with variants/units**, CNC-able material or not (no-CNC jobs
-  still pop for progress; nothing deducts if no CNC-able material involved).
+- Always shows for production jobs **with variants/units**, CNC hours or not (jobs with no CNC-hour
+  variants still pop for progress; the CNC step is skipped and only unit-done deducts).
 
 ### 3. Progress bar
+
 `src/lib/jobProgress.ts`:
+
 - `cncPercent` becomes fractional: `sum(cncDoneCount) / sum(cncableUnitTotals)` (was binary on
   `cnc_completed_at`).
 - Production progress incorporates `unitDoneCount / totalUnits`.

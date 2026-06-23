@@ -26,6 +26,21 @@ const inv = (id: string, category: InventoryItem['category']): InventoryItem =>
 
 const cncCats = new Set(['foam']);
 
+/** Build a machineBreakdownByVariant giving each listed suffix some CNC hours. */
+const cncHours = (...suffixes: string[]): Job['machineBreakdownByVariant'] =>
+  Object.fromEntries(
+    suffixes.map((s) => [
+      s,
+      {
+        qty: 1,
+        cncHoursPerUnit: 1,
+        cncHoursTotal: 1,
+        printer3DHoursPerUnit: 0,
+        printer3DHoursTotal: 0,
+      },
+    ])
+  );
+
 describe('unitCountsByVariant', () => {
   it('reads dash variants', () => {
     const job = { dashQuantities: { '-01': 4, '-04': 2 }, qty: '99' } as Pick<
@@ -47,6 +62,7 @@ describe('buildDistributedBom — even split fallback (no part spec)', () => {
     const job = {
       dashQuantities: { '-01': 2, '-02': 2 },
       qty: '4',
+      machineBreakdownByVariant: cncHours('-01', '-02'),
       inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 8, unit: 'units' }],
     } as unknown as Job;
     const bom = buildDistributedBom({
@@ -55,10 +71,71 @@ describe('buildDistributedBom — even split fallback (no part spec)', () => {
       inventoryById: new Map([['foam1', inv('foam1', 'foam')]]),
       cncAbleCategories: cncCats,
     });
-    // 8 total / 4 units = 2 per unit, classed cncable (foam)
+    // 8 total / 4 units = 2 per unit, classed cncable (foam + variant has CNC hours)
     expect(bom['01'].cncable.foam1).toBe(2);
     expect(bom['02'].cncable.foam1).toBe(2);
     expect(jobHasCncableMaterial(bom)).toBe(true);
+  });
+});
+
+describe('CNC milestone is gated by CNC hours, not foam presence', () => {
+  it('a variant with foam but NO CNC hours deducts foam on unit-done, not CNC', () => {
+    const job = {
+      dashQuantities: { '-01': 2 },
+      qty: '2',
+      machineBreakdownByVariant: {}, // no CNC hours anywhere
+      inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 4, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({
+      job,
+      part: null,
+      inventoryById: new Map([['foam1', inv('foam1', 'foam')]]),
+      cncAbleCategories: cncCats,
+    });
+    expect(bom['01'].hasCncHours).toBe(false);
+    expect(bom['01'].cncable).toEqual({});
+    expect(bom['01'].nonCncable).toEqual({ foam1: 2 });
+    expect(cncableVariantKeys(bom)).toEqual([]);
+    expect(jobHasCncableMaterial(bom)).toBe(false);
+  });
+
+  it('a variant with CNC hours but NO foam still appears in the CNC checklist (deducts nothing)', () => {
+    const job = {
+      dashQuantities: { '-01': 2 },
+      qty: '2',
+      machineBreakdownByVariant: cncHours('-01'),
+      inventoryItems: [{ id: 'l1', inventoryId: 'bolt1', quantity: 4, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({
+      job,
+      part: null,
+      inventoryById: new Map([['bolt1', inv('bolt1', 'hardware')]]),
+      cncAbleCategories: cncCats,
+    });
+    expect(cncableVariantKeys(bom)).toEqual(['01']);
+    expect(bom['01'].cncable).toEqual({}); // no foam to pull
+    expect(cncDeltas(bom, '01', 2)).toEqual({}); // CNC milestone deducts nothing
+    expect(bom['01'].nonCncable).toEqual({ bolt1: 2 });
+  });
+
+  it('only the CNC-hour variants pull foam on the CNC milestone', () => {
+    // -01 has CNC hours, -02 does not. Both use foam.
+    const job = {
+      dashQuantities: { '-01': 2, '-02': 2 },
+      qty: '4',
+      machineBreakdownByVariant: cncHours('-01'),
+      inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 8, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({
+      job,
+      part: null,
+      inventoryById: new Map([['foam1', inv('foam1', 'foam')]]),
+      cncAbleCategories: cncCats,
+    });
+    expect(cncableVariantKeys(bom)).toEqual(['01']);
+    expect(bom['01'].cncable.foam1).toBe(2); // CNC variant -> foam on CNC milestone
+    expect(bom['02'].cncable).toEqual({}); // no CNC hours -> foam falls to unit-done
+    expect(bom['02'].nonCncable.foam1).toBe(2);
   });
 });
 
@@ -103,6 +180,8 @@ describe('buildDistributedBom — distribute only across variants that use a mat
     const job = {
       dashQuantities: { '-01': 1, '-02': 1, '-03': 1 },
       qty: '3',
+      // -01 and -03 run CNC; -02 does not.
+      machineBreakdownByVariant: cncHours('-01', '-03'),
       inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 10, unit: 'units' }],
     } as unknown as Job;
     const bom = buildDistributedBom({
@@ -120,10 +199,11 @@ describe('buildDistributedBom — distribute only across variants that use a mat
 });
 
 describe('cncable vs non-cncable classification', () => {
-  it('splits materials into buckets by category', () => {
+  it('splits materials into buckets by category (foam on a CNC variant)', () => {
     const job = {
       dashQuantities: { '-01': 2 },
       qty: '2',
+      machineBreakdownByVariant: cncHours('-01'),
       inventoryItems: [
         { id: 'l1', inventoryId: 'foam1', quantity: 4, unit: 'units' },
         { id: 'l2', inventoryId: 'bolt1', quantity: 8, unit: 'units' },
@@ -147,6 +227,7 @@ describe('cncDeltas / unitDeltas', () => {
   const job = {
     dashQuantities: { '-01': 4 },
     qty: '4',
+    machineBreakdownByVariant: cncHours('-01'),
     inventoryItems: [
       { id: 'l1', inventoryId: 'foam1', quantity: 8, unit: 'units' },
       { id: 'l2', inventoryId: 'bolt1', quantity: 4, unit: 'units' },
@@ -179,14 +260,33 @@ describe('cncDeltas / unitDeltas', () => {
   });
 });
 
-describe('isCncFullyComplete', () => {
-  const job = { dashQuantities: { '-01': 2, '-02': 2 }, qty: '4' } as unknown as Job;
-  const bom = buildDistributedBom({
-    job,
-    part: null,
-    inventoryById: new Map([['foam1', inv('foam1', 'foam')]]),
-    cncAbleCategories: cncCats,
+describe('no-variant job', () => {
+  it('attributes CNC hours to the single unit group', () => {
+    const job = {
+      dashQuantities: {},
+      qty: '3',
+      // No-variant jobs may key their breakdown by a synthetic suffix; any CNC hours belong to the
+      // single group.
+      machineBreakdownByVariant: cncHours('-01'),
+      inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 6, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({
+      job,
+      part: null,
+      inventoryById: new Map([['foam1', inv('foam1', 'foam')]]),
+      cncAbleCategories: cncCats,
+    });
+    expect(cncableVariantKeys(bom)).toEqual([NO_VARIANT_KEY]);
+    expect(bom[NO_VARIANT_KEY].cncable.foam1).toBe(2); // 6 / 3 units
   });
+});
+
+describe('isCncFullyComplete', () => {
+  const job = {
+    dashQuantities: { '-01': 2, '-02': 2 },
+    qty: '4',
+    machineBreakdownByVariant: cncHours('-01', '-02'),
+  } as unknown as Job;
   // give every variant foam via an even-split BOM
   const jobWithBom = {
     ...job,
@@ -204,7 +304,14 @@ describe('isCncFullyComplete', () => {
     expect(isCncFullyComplete(fullBom, { '01': 2, '02': 2 }, jobWithBom)).toBe(true);
   });
 
-  it('false when there is no cnc-able material', () => {
-    expect(isCncFullyComplete(bom, {}, job)).toBe(false); // bom has no inventoryItems -> no cncable
+  it('false when no variant has CNC hours', () => {
+    const noCncJob = { dashQuantities: { '-01': 2 }, qty: '2' } as unknown as Job;
+    const noCncBom = buildDistributedBom({
+      job: noCncJob,
+      part: null,
+      inventoryById: new Map([['foam1', inv('foam1', 'foam')]]),
+      cncAbleCategories: cncCats,
+    });
+    expect(isCncFullyComplete(noCncBom, {}, noCncJob)).toBe(false);
   });
 });

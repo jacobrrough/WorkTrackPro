@@ -107,16 +107,18 @@ export function ClockOutCompletionModal({
   const [saving, setSaving] = useState(false);
 
   // Variants where unit-done would outrun CNC-done -> need the "is CNC also done?" question.
+  // Only CNC-hour variants have a CNC milestone, so non-CNC variants never prompt (mirrors
+  // JobDetail.handleUnitAdjust, which gates the same confirm on cncAbleKeys).
   const catchUp = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const k of allKeys) {
+    for (const k of cncKeys) {
       const projCnc = (Number(job.cncDoneByVariant?.[k]) || 0) + (cncDelta[k] ?? 0);
       const projUnit = (Number(job.unitsDoneByVariant?.[k]) || 0) + (unitDelta[k] ?? 0);
       const gap = projUnit - projCnc;
       if (gap > 0) out[k] = gap;
     }
     return out;
-  }, [allKeys, cncDelta, unitDelta, job.cncDoneByVariant, job.unitsDoneByVariant]);
+  }, [cncKeys, cncDelta, unitDelta, job.cncDoneByVariant, job.unitsDoneByVariant]);
 
   const submit = async (alsoCnc: boolean) => {
     setSaving(true);
