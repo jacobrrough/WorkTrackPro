@@ -24,35 +24,35 @@ export function useChatTyping(
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const senderRef = useRef<ReturnType<typeof openBroadcastSender> | null>(null);
   const lastSentRef = useRef(0);
-  const typersRef = useRef<Map<string, { name: string; at: number }>>(new Map());
 
   useEffect(() => {
     if (!conversationId) return;
     const topic = broadcastTopics.typing(conversationId);
     const sender = openBroadcastSender(topic);
     senderRef.current = sender;
-    typersRef.current.clear();
     setTypingNames([]);
 
+    // Local to this subscription; recreated whenever the conversation changes, so there is
+    // no shared ref to read back in the cleanup function.
+    const typers = new Map<string, { name: string; at: number }>();
     const recompute = () => {
-      const names = [...new Set([...typersRef.current.values()].map((t) => t.name))];
-      setTypingNames(names);
+      setTypingNames([...new Set([...typers.values()].map((t) => t.name))]);
     };
 
     const unsub = subscribeToPrivateBroadcast(topic, ['typing'], (_event, payload) => {
       const uid = typeof payload.userId === 'string' ? payload.userId : '';
       if (!uid || uid === currentUserId) return; // ignore our own echo
       const name = typeof payload.name === 'string' && payload.name ? payload.name : 'Someone';
-      typersRef.current.set(uid, { name, at: Date.now() });
+      typers.set(uid, { name, at: Date.now() });
       recompute();
     });
 
     const sweep = setInterval(() => {
       const now = Date.now();
       let changed = false;
-      for (const [uid, t] of typersRef.current) {
+      for (const [uid, t] of typers) {
         if (now - t.at > TYPING_EXPIRE_MS) {
-          typersRef.current.delete(uid);
+          typers.delete(uid);
           changed = true;
         }
       }
@@ -64,7 +64,6 @@ export function useChatTyping(
       sender.close();
       senderRef.current = null;
       clearInterval(sweep);
-      typersRef.current.clear();
     };
   }, [conversationId, currentUserId]);
 
