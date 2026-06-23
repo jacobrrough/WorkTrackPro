@@ -267,7 +267,7 @@ const customersPhase: SyncPhase = {
           ...mapped.input,
           isActive: mapped.active,
         });
-        if (updated) {
+        if (updated.customer) {
           ctx.customers.byQboId.set(mapped.qboId, adoptId);
           counts.updated += 1;
           if (!existingByQbo) {

@@ -6,6 +6,7 @@ import type {
 } from '../../../features/accounting/types';
 import { acct } from './accountingClient';
 import { mapTaxJurisdictionRow, type Row } from './mappers';
+import { parseCustomerAddress } from './customerAddress';
 
 /**
  * #13 — sales-tax RATE AUTOMATION (address-based tax-code selection). ADVISORY-ONLY.
@@ -32,35 +33,9 @@ import { mapTaxJurisdictionRow, type Row } from './mappers';
 
 const str = (v: unknown): string => (v == null ? '' : String(v));
 
-/**
- * Normalize an arbitrary `billing_address`/`shipping_address` jsonb blob (there is no
- * canonical shape stored in the app yet) into the flat {country,line1,city,state,county,zip}
- * the resolver needs. Tolerates the common key variants seen across imports/QBO/manual entry
- * (`state`/`region`/`province`, `zip`/`postalCode`/`postal_code`, `city`/`town`, etc.) and
- * trims blanks to null so they read as "unconstrained" rather than "" when resolving.
- */
-export function parseCustomerAddress(raw: unknown): CustomerAddress | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const o = raw as Record<string, unknown>;
-  const pick = (...keys: string[]): string | null => {
-    for (const k of keys) {
-      const v = o[k];
-      if (v != null && String(v).trim() !== '') return String(v).trim();
-    }
-    return null;
-  };
-  const addr: CustomerAddress = {
-    country: pick('country', 'countryCode', 'country_code') ?? 'US',
-    line1: pick('line1', 'street', 'address1', 'address', 'addr1', 'line_1'),
-    city: pick('city', 'town', 'locality'),
-    state: pick('state', 'region', 'province', 'stateCode', 'state_code'),
-    county: pick('county', 'district', 'subAdministrativeArea'),
-    zip: pick('zip', 'postalCode', 'postal_code', 'zipCode', 'zip_code', 'postcode'),
-  };
-  // An address with no geographic component at all can never resolve — treat it as absent.
-  if (!addr.state && !addr.county && !addr.city && !addr.zip) return null;
-  return addr;
-}
+// parseCustomerAddress (tax-resolution view of the billing/shipping jsonb) lives in
+// ./customerAddress alongside the display reader + serializer; re-exported for back-compat.
+export { parseCustomerAddress };
 
 /** The DB row shape the upsert writes (camel → snake). Only defined fields are sent. */
 function toRow(input: NewTaxJurisdictionInput): Record<string, unknown> {

@@ -53,6 +53,7 @@ export {
 // ── #12 1099 vendor tracking / #13 sales-tax jurisdictions ────────────────────
 export { vendor1099Service } from './vendor1099';
 export { taxJurisdictionsService, parseCustomerAddress } from './taxJurisdictions';
+export { formatCustomerAddress, serializeCustomerAddress } from './customerAddress';
 export {
   buildRecurringInvoiceInput,
   buildRecurringBillInput,

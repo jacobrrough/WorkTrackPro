@@ -152,6 +152,9 @@ export interface Customer {
   isActive: boolean;
   notes: string | null;
   sourceProposalId: string | null;
+  /** Normalized from the billing/shipping address jsonb (null when blank). See CustomerAddress. */
+  billingAddress: CustomerAddress | null;
+  shippingAddress: CustomerAddress | null;
   createdAt: string;
   updatedAt: string;
 }

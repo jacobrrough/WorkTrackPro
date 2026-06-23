@@ -81,6 +81,7 @@ import type {
 } from '../../../features/accounting/types';
 import type { PerDocLayout } from '../../../features/accounting/documents/salesDocumentTypes';
 import { parseDiff } from '../../../features/accounting/taxTableDiff';
+import { readCustomerAddress } from './customerAddress';
 
 /**
  * Row <-> domain mappers for the accounting schema. Rows come back loosely typed
@@ -175,6 +176,8 @@ export function mapCustomerRow(row: Row): Customer {
     isActive: row.is_active !== false,
     notes: nstr(row.notes),
     sourceProposalId: nstr(row.source_proposal_id),
+    billingAddress: readCustomerAddress(row.billing_address),
+    shippingAddress: readCustomerAddress(row.shipping_address),
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
   };

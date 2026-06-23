@@ -47,7 +47,7 @@ export const customersService = {
   async update(
     id: string,
     input: Partial<NewCustomerInput> & { isActive?: boolean }
-  ): Promise<Customer | null> {
+  ): Promise<{ customer: Customer | null; error?: string }> {
     const row: Record<string, unknown> = {};
     if (input.displayName != null) row.display_name = input.displayName;
     if (input.companyName !== undefined) row.company_name = input.companyName;
@@ -69,8 +69,8 @@ export const customersService = {
       .eq('id', id)
       .select('*')
       .single();
-    if (error || !data) return null;
-    return mapCustomerRow(data as Row);
+    if (error || !data) return { customer: null, error: error?.message ?? 'Update failed.' };
+    return { customer: mapCustomerRow(data as Row) };
   },
 
   /**

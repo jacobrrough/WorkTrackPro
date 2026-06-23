@@ -6,14 +6,15 @@ import { useCustomers } from '../hooks/useAccountingQueries';
 import { CUSTOMERS_BASE } from '../constants';
 
 /**
- * Customers hub — list every customer with a quick search, click through to one customer's
- * full AR picture (CustomerDetailView). Includes inactive customers (badged) so they stay
- * findable. Read/scope only; customers are created by the proposal→customer bridge or the
- * invoice/estimate flows.
+ * Customers hub — list customers with a quick search, click through to one customer's full AR
+ * picture (CustomerDetailView). Inactive customers are hidden by default (QuickBooks-style) and
+ * revealed with the "Show inactive" toggle, where they stay badged. Customers are created by the
+ * proposal→customer bridge or the invoice/estimate flows; mark one inactive from its detail view.
  */
 export default function CustomersView() {
   const navigate = useNavigate();
-  const { data: customers = [], isPending, isError } = useCustomers(true);
+  const [showInactive, setShowInactive] = useState(false);
+  const { data: customers = [], isPending, isError } = useCustomers(showInactive);
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -49,7 +50,7 @@ export default function CustomersView() {
 
       {customers.length > 0 && (
         <>
-          <div className="mb-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <input
               type="search"
               aria-label="Search customers"
@@ -58,6 +59,15 @@ export default function CustomersView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-400">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded-sm border-white/20 bg-background-dark text-primary focus:ring-primary"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              Show inactive
+            </label>
           </div>
           <div className={LIST_HEADER}>
             <span className="flex-1">Customer</span>
