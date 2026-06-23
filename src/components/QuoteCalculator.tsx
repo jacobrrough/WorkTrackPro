@@ -189,11 +189,10 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             min={1}
             step={1}
             value={quantityInput}
-            onChange={(e) => {
-              const v = e.target.value;
-              const n = parseInt(v, 10);
-              if (v === '' || (!Number.isNaN(n) && n >= 0))
-                setQuantityInput(v === '' ? '1' : String(Math.max(1, n)));
+            onChange={(e) => setQuantityInput(e.target.value)}
+            onBlur={(e) => {
+              const n = parseInt(e.target.value, 10);
+              setQuantityInput(!Number.isNaN(n) && n >= 1 ? String(n) : '1');
             }}
             className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
           />
@@ -293,50 +292,42 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             </>
           ) : result ? (
             <>
-              {result.materialLineItems.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Materials</p>
-                  {result.materialLineItems.map((line) => (
-                    <div
-                      key={line.inventoryId}
-                      className="flex justify-between text-slate-300"
-                      title={`${line.quantity} ${line.unit} × $${line.price.toFixed(2)}`}
-                    >
-                      <span className="min-w-0 truncate pr-2">
-                        {line.name} ({line.quantity} {line.unit})
-                      </span>
-                      <span className="shrink-0 text-white">
-                        ${line.lineTotalCustomer.toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex justify-between text-slate-300">
-                <span>
-                  Labor ({result.laborHours.toFixed(1)} h × ${laborRate}/h)
-                </span>
-                <span className="text-white">${result.laborCost.toFixed(2)}</span>
-              </div>
-              {result.cncHours > 0 && (
-                <div className="flex justify-between text-slate-300">
+              <div className="space-y-1 rounded border border-white/10 bg-black/20 p-2">
+                <p className="text-[10px] font-bold uppercase text-slate-400">
+                  {part.partNumber || 'Part'}
+                </p>
+                {result.materialLineItems.length > 0 && (
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>Materials</span>
+                    <span className="text-white">${result.materialCostCustomer.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs text-slate-300">
                   <span>
-                    CNC ({result.cncHours.toFixed(1)} h × ${cncRate}/h)
+                    Labor ({result.laborHours.toFixed(1)} h × ${laborRate}/h)
                   </span>
-                  <span className="text-white">${result.cncCost.toFixed(2)}</span>
+                  <span className="text-white">${result.laborCost.toFixed(2)}</span>
                 </div>
-              )}
-              {result.printer3DHours > 0 && (
-                <div className="flex justify-between text-slate-300">
-                  <span>
-                    3D Print ({result.printer3DHours.toFixed(1)} h × ${printer3DRate}/h)
-                  </span>
-                  <span className="text-white">${result.printer3DCost.toFixed(2)}</span>
+                {result.cncHours > 0 && (
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>
+                      CNC ({result.cncHours.toFixed(1)} h × ${cncRate}/h)
+                    </span>
+                    <span className="text-white">${result.cncCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {result.printer3DHours > 0 && (
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>
+                      3D Print ({result.printer3DHours.toFixed(1)} h × ${printer3DRate}/h)
+                    </span>
+                    <span className="text-white">${result.printer3DCost.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-slate-300">
+                  <span>Subtotal</span>
+                  <span className="text-white">${result.subtotal.toFixed(2)}</span>
                 </div>
-              )}
-              <div className="flex justify-between border-t border-white/10 pt-2 text-slate-300">
-                <span>Subtotal</span>
-                <span className="text-white">${result.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-t border-primary/30 pt-2 text-base font-semibold text-white">
                 <span>
