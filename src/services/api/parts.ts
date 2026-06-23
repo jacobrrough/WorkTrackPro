@@ -123,6 +123,11 @@ function mapRowToPartMaterial(row: Record<string, unknown>): PartMaterial {
     quantityPerUnit: quantityPerUnit ?? 1,
     unit: (row.unit as string) ?? 'units',
     usageType,
+    // Per-material "needs CNC'd out" flag (foam). The column is NOT NULL, so a persisted row is
+    // always true/false; only a missing column (pre-migration / older schema) reads null/undefined,
+    // which we preserve as undefined so cncDeduction falls back to the CNC-hours gate instead of
+    // treating it as an explicit "no CNC".
+    requiresCnc: row.requires_cnc == null ? undefined : row.requires_cnc === true,
     createdAt: row.created_at as string | undefined,
     updatedAt: row.updated_at as string | undefined,
   };
@@ -867,10 +872,12 @@ export const partsService = {
   },
 
   async updatePartMaterial(id: string, data: Partial<PartMaterial>): Promise<PartMaterial | null> {
-    // Try newer schema first (quantity_per_unit)
+    // Try newer schema first (quantity_per_unit, requires_cnc)
     let row: Record<string, unknown> = {};
     if (data.quantityPerUnit != null) row.quantity_per_unit = data.quantityPerUnit;
     if (data.unit != null) row.unit = data.unit;
+    // requires_cnc is a newer column; the legacy-schema retry below strips it if absent.
+    if (data.requiresCnc != null) row.requires_cnc = data.requiresCnc;
 
     let { data: updated, error } = await supabase
       .from('part_materials')

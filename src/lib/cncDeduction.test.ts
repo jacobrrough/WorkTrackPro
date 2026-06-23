@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Job, Part, InventoryItem } from '@/core/types';
+import type { Job, Part, InventoryItem, PartMaterial } from '@/core/types';
 import {
   unitCountsByVariant,
   totalUnits,
@@ -195,6 +195,124 @@ describe('buildDistributedBom — distribute only across variants that use a mat
     expect(bom['03'].cncable.foam1).toBe(5);
     // Sum over all units = 5 + 5 = 10 = padded total.
     expect(cncableVariantKeys(bom).sort()).toEqual(['01', '03']);
+  });
+});
+
+describe('per-material requiresCnc slider overrides the CNC-hours fallback', () => {
+  const foamMat = (id: string, requiresCnc?: boolean): PartMaterial => ({
+    id,
+    inventoryId: 'foam1',
+    quantityPerUnit: 1,
+    unit: 'units',
+    usageType: 'per_variant',
+    ...(requiresCnc !== undefined && { requiresCnc }),
+  });
+
+  const inventoryById = new Map([['foam1', inv('foam1', 'foam')]]);
+
+  it('flagged foam on a variant with NO CNC hours still deducts on the CNC step + shows in checklist', () => {
+    const part = {
+      id: 'p',
+      variants: [{ id: 'v1', partId: 'p', variantSuffix: '-01', materials: [foamMat('m1', true)] }],
+    } as unknown as Part;
+    const job = {
+      dashQuantities: { '-01': 2 },
+      qty: '2',
+      machineBreakdownByVariant: {}, // no CNC hours anywhere
+      inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 4, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({ job, part, inventoryById, cncAbleCategories: cncCats });
+    expect(bom['01'].hasCncHours).toBe(false);
+    expect(bom['01'].cncable).toEqual({ foam1: 2 }); // flagged -> CNC milestone despite no hours
+    expect(bom['01'].nonCncable).toEqual({});
+    expect(cncableVariantKeys(bom)).toEqual(['01']); // shown via flagged material
+    expect(jobHasCncableMaterial(bom)).toBe(true);
+    expect(cncDeltas(bom, '01', 2)).toEqual({ foam1: 4 });
+  });
+
+  it('explicitly-unflagged foam on a CNC-hour variant falls to unit-done (slider overrides hours)', () => {
+    const part = {
+      id: 'p',
+      variants: [
+        { id: 'v1', partId: 'p', variantSuffix: '-01', materials: [foamMat('m1', false)] },
+      ],
+    } as unknown as Part;
+    const job = {
+      dashQuantities: { '-01': 2 },
+      qty: '2',
+      machineBreakdownByVariant: cncHours('-01'), // variant runs CNC...
+      inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 4, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({ job, part, inventoryById, cncAbleCategories: cncCats });
+    expect(bom['01'].cncable).toEqual({}); // ...but this foam isn't the CNC'd material
+    expect(bom['01'].nonCncable).toEqual({ foam1: 2 });
+    expect(cncableVariantKeys(bom)).toEqual(['01']); // variant still shown (it has CNC hours)
+    expect(cncDeltas(bom, '01', 2)).toEqual({}); // CNC step pulls nothing for this material
+  });
+
+  it('a part-level (per_set) flagged foam applies to every variant', () => {
+    const part = {
+      id: 'p',
+      materials: [
+        {
+          id: 'pm1',
+          partId: 'p',
+          inventoryId: 'foam1',
+          quantityPerUnit: 1,
+          unit: 'units',
+          usageType: 'per_set',
+          requiresCnc: true,
+        },
+      ],
+      variants: [
+        { id: 'v1', partId: 'p', variantSuffix: '-01', materials: [] },
+        { id: 'v2', partId: 'p', variantSuffix: '-02', materials: [] },
+      ],
+    } as unknown as Part;
+    const job = {
+      dashQuantities: { '-01': 1, '-02': 1 },
+      qty: '2',
+      machineBreakdownByVariant: {}, // no hours; the flag alone drives CNC
+      inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 2, unit: 'units' }],
+    } as unknown as Job;
+    const bom = buildDistributedBom({ job, part, inventoryById, cncAbleCategories: cncCats });
+    expect(bom['01'].cncable.foam1).toBe(1);
+    expect(bom['02'].cncable.foam1).toBe(1);
+    expect(cncableVariantKeys(bom).sort()).toEqual(['01', '02']);
+  });
+
+  it('falls back to the CNC-hours gate when the part has no spec entry for the material', () => {
+    // Part exists but doesn't spec foam1 -> requiresCnc is undefined -> use the hours gate.
+    const part = {
+      id: 'p',
+      variants: [{ id: 'v1', partId: 'p', variantSuffix: '-01', materials: [] }],
+    } as unknown as Part;
+    const withHours = buildDistributedBom({
+      job: {
+        dashQuantities: { '-01': 2 },
+        qty: '2',
+        machineBreakdownByVariant: cncHours('-01'),
+        inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 4, unit: 'units' }],
+      } as unknown as Job,
+      part,
+      inventoryById,
+      cncAbleCategories: cncCats,
+    });
+    expect(withHours['01'].cncable.foam1).toBe(2); // hours -> CNC
+    const noHours = buildDistributedBom({
+      job: {
+        dashQuantities: { '-01': 2 },
+        qty: '2',
+        machineBreakdownByVariant: {},
+        inventoryItems: [{ id: 'l1', inventoryId: 'foam1', quantity: 4, unit: 'units' }],
+      } as unknown as Job,
+      part,
+      inventoryById,
+      cncAbleCategories: cncCats,
+    });
+    expect(noHours['01'].cncable).toEqual({}); // no hours, no flag -> not CNC
+    expect(noHours['01'].nonCncable).toEqual({ foam1: 2 });
+    expect(cncableVariantKeys(noHours)).toEqual([]);
   });
 });
 

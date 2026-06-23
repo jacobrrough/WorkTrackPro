@@ -69,40 +69,72 @@ material's job-BOM total across the units, rather than using canonical per-unit 
 - Fallback when a part has no per-variant material spec: even split of the BOM line across all
   units by `dashQuantities` weight.
 
-Two conditions decide whether a material deducts on the CNC milestone:
+Two conditions decide whether a material deducts on the CNC milestone (for a given variant):
 
-1. **The variant runs CNC** — `machineBreakdownByVariant[variant].cncHoursTotal > 0`. This gates
-   whether the variant is in the CNC checklist at all (see below).
-2. **The material is in a CNC category** — by category (foam), below.
+1. **The material is in a CNC category** — by category (foam), below.
+2. **That foam actually needs CNC'ing** — the per-material `requiresCnc` slider (see below). When the
+   linked part carries no explicit flag for that material (older parts, or a job with no linked part)
+   this falls back to **"the variant runs CNC"** — `machineBreakdownByVariant[variant].cncHoursTotal
+   > 0`.
 
-A material deducts on the CNC milestone iff **both** hold for that variant. Foam under a variant
-with no CNC hours falls back to the total-done milestone (it still leaves stock, just later).
+A material deducts on the CNC milestone iff **both** hold. Foam that isn't flagged (and isn't on a
+CNC-hour variant via the fallback) deducts on the total-done milestone instead — it still leaves
+stock, just later. The logic lives in `buildDistributedBom` / `specMaterialRequiresCnc` in
+`src/lib/cncDeduction.ts`.
 
-## CNC checklist = per variant, gated by CNC hours
+## Per-material `requiresCnc` slider (the source of truth)
 
-A variant is **CNC-able** (shown in the CNC checklist) iff it has CNC hours — `cncableVariantKeys`
-in `src/lib/cncDeduction.ts` reads `machineBreakdownByVariant`, not foam presence. (Earlier this was
-"any variant that uses foam"; now foam without CNC hours is not a CNC milestone.) For a no-variant
-job, any CNC hours in the breakdown belong to the single unit group.
+`part_materials.requires_cnc` (boolean, migration `20260623170000_part_material_requires_cnc.sql`) is
+the "does this foam need CNC'd out" flag, surfaced as a **Needs CNC** toggle on each foam material in
+the part/variant editor (`VariantCard` + `PartMaterialLink`). It only renders for materials whose
+category is CNC-able (foam).
 
-**Known limitation (accepted):** the foam → CNC-vs-unit-done bucket is computed client-side from the
-job's _current_ CNC hours at log time. If an admin removes a variant's CNC hours **after** some of
-its units were CNC-marked, that already-consumed foam stays in `job_inventory.consumed_quantity` and
-can't be un-marked via the CNC accordion (the variant drops out of the checklist). Totals still
-reconcile — the foam was physically consumed, and the Finished true-up (`quantity − consumed`)
-deducts the remainder. This mirrors the existing behavior for editing `dashQuantities` / BOM lines
-mid-job. A server-side delta recompute (or an edit guard once units are logged) would close it.
+`specMaterialRequiresCnc(part, variantKey, inventoryId)` reads it with three outcomes: an explicit
+`true`/`false` is authoritative (the slider overrides the hours gate — e.g. a CNC-hour variant whose
+foam is flagged off deducts that foam on unit-done); an **absent** flag returns `undefined` and the
+caller falls back to the CNC-hours gate (preserving pre-slider behavior). The read mapper in
+`parts.ts` preserves `undefined` when the column is missing so the fallback holds during the
+deploy/migration window.
 
-## CNC-able material category (not per item)
+**Backfill (seed-from-CNC-hours):** the migration seeded `requires_cnc = true` for foam on
+parts/variants that already had CNC hours (`requires_cnc`/`cnc_time_hours`, with a part-level
+fallback), and left all other foam `false` (opt-in for new foam). This is why the old "all foam ⇒
+CNC" over-marking is gone without stranding existing CNC work.
+
+## CNC checklist = per variant (CNC hours OR flagged foam)
+
+A variant is **CNC-able** (shown in the CNC checklist) iff it has CNC hours **or** at least one
+material flagged to deduct on CNC — `cncableVariantKeys` in `src/lib/cncDeduction.ts` unions
+`hasCncHours` with `cncable` presence, not foam presence. (Earlier this was "any variant that uses
+foam"; then "has CNC hours"; now it's the union, so flagged foam on a no-hours variant still shows
+and a CNC-hour variant with no flagged foam still shows.) For a no-variant job, any CNC hours in the
+breakdown belong to the single unit group.
+
+**Kanban badge:** `KanbanBoard.tsx` shows the "CNC Pending/Done" chip iff the job has CNC hours or
+CNC has actually been tracked (`cncCompletedAt` / a `cncDoneByVariant` count) — it no longer keys off
+foam in the BOM. (It can't cheaply rebuild the distributed BOM per card to see flagged-foam-only
+variants; once such a job logs any CNC the badge appears. Acceptable, given the seed aligns flagged
+foam with CNC hours for existing parts.)
+
+**Known limitation (accepted):** the foam → CNC-vs-unit-done bucket is computed client-side at log
+time. If an admin removes a variant's CNC hours / un-flags its foam **after** some of its units were
+CNC-marked, that already-consumed foam stays in `job_inventory.consumed_quantity` and can't be
+un-marked via the CNC accordion (the variant may drop out of the checklist). Totals still reconcile —
+the foam was physically consumed, and the Finished true-up (`quantity − consumed`) deducts the
+remainder. This mirrors editing `dashQuantities` / BOM lines mid-job.
+
+## CNC-able material category (gates which categories the slider applies to)
 
 Categories are a fixed enum in `src/core/types.ts` (`material, foam, trimCord, printing3d,
 chemicals, hardware, miscSupplies`). The admin setting:
 
 - `AdminSettings.cncAbleCategories: InventoryCategory[]` (default `['foam']`).
-- A material deducts on CNC (for a CNC-hour variant) iff `cncAbleCategories.includes(item.category)`.
-- Admin UI: toggle which categories deduct on CNC (Settings).
+- A material can deduct on CNC (and shows the `requiresCnc` slider) only if
+  `cncAbleCategories.includes(item.category)`.
+- Admin UI: toggle which categories are CNC-able (Settings).
 
-No per-item `is_cnc_able` column.
+The per-material flag is `part_materials.requires_cnc` (there is still no per-_inventory-item_
+`is_cnc_able` column — CNC-ability is category + per-material-on-a-part).
 
 ## UI surfaces
 
