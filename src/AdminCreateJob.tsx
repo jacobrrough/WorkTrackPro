@@ -65,6 +65,7 @@ interface AdminCreateJobProps {
     estNumber?: string;
     invNumber?: string;
     rfqNumber?: string;
+    owrNumber?: string;
     customerId?: string | null;
     partNumber?: string;
     revision?: string;
@@ -162,11 +163,11 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     description: '',
     status: 'toBeQuoted' as JobStatus,
     binLocation: '',
-    // EST#/INV#/RFQ# free-text entry is retired (real estimates/invoices link by id);
-    // the fields remain in state so name composition + legacy plumbing stay inert.
+    // Free-text reference numbers for cross-referencing QuickBooks; also feed name composition.
     estNumber: '',
     invNumber: '',
     rfqNumber: '',
+    owrNumber: '',
     customerId: '',
     revision: '',
   });
@@ -541,6 +542,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
         estNumber: formData.estNumber.trim() || undefined,
         invNumber: formData.invNumber.trim() || undefined,
         rfqNumber: formData.rfqNumber.trim() || undefined,
+        owrNumber: formData.owrNumber?.trim() || undefined,
         customerId: formData.customerId || null,
         partNumber: partNumberForCreate || undefined,
         revision: formData.revision.trim() || undefined,
@@ -962,8 +964,9 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   <p className="mt-1 text-xs text-subtle">Auto-generated · Click to regenerate</p>
                 )}
               </div>
-              {/* EST#/RFQ#/INV# free-text entry retired — the customer link (and real
-                  estimates/invoices created from the job) replace them. */}
+              {/* Free-text reference numbers (EST#/RFQ#/INV#/PO#/OWR#) for cross-referencing
+                  QuickBooks while it runs alongside; these also feed the auto job name. Real
+                  estimates/invoices ALSO link through the billing panel. */}
               {JobCustomerSelect && (
                 <div className="flex flex-col">
                   <label className="pb-1 text-xs font-medium text-muted">Customer</label>
@@ -991,6 +994,48 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   onChange={(e) => setFormData({ ...formData, po: e.target.value })}
                   disabled={isSubmitting}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-muted">EST #</label>
+                  <input
+                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    placeholder="EST #"
+                    value={formData.estNumber}
+                    onChange={(e) => setFormData({ ...formData, estNumber: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-muted">RFQ #</label>
+                  <input
+                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    placeholder="RFQ #"
+                    value={formData.rfqNumber}
+                    onChange={(e) => setFormData({ ...formData, rfqNumber: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-muted">INV #</label>
+                  <input
+                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    placeholder="INV #"
+                    value={formData.invNumber}
+                    onChange={(e) => setFormData({ ...formData, invNumber: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="pb-1 text-xs font-medium text-muted">OWR #</label>
+                  <input
+                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    placeholder="OWR #"
+                    value={formData.owrNumber ?? ''}
+                    onChange={(e) => setFormData({ ...formData, owrNumber: e.target.value })}
+                    disabled={isSubmitting}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col">
