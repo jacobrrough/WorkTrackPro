@@ -411,6 +411,42 @@ export function useInventoryMutations({
     [inventory, applyStockDelta]
   );
 
+  const setInventoryImage = useCallback(
+    async (id: string, file: File): Promise<InventoryItem | null> => {
+      try {
+        const updatedItem = await inventoryService.setImage(id, file);
+        if (updatedItem) {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? prev.map((i) => (i.id === id ? updatedItem : i)) : []
+          );
+        }
+        return updatedItem;
+      } catch (error) {
+        console.error('Set inventory image error:', error);
+        return null;
+      }
+    },
+    [queryClient]
+  );
+
+  const clearInventoryImage = useCallback(
+    async (id: string): Promise<InventoryItem | null> => {
+      try {
+        const updatedItem = await inventoryService.clearImage(id);
+        if (updatedItem) {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? prev.map((i) => (i.id === id ? updatedItem : i)) : []
+          );
+        }
+        return updatedItem;
+      } catch (error) {
+        console.error('Clear inventory image error:', error);
+        return null;
+      }
+    },
+    [queryClient]
+  );
+
   return {
     createInventory,
     updateInventoryItem,
@@ -420,5 +456,7 @@ export function useInventoryMutations({
     removeJobInventory,
     markInventoryOrdered,
     receiveInventoryOrder,
+    setInventoryImage,
+    clearInventoryImage,
   };
 }

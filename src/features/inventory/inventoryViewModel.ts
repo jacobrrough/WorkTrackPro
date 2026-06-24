@@ -154,6 +154,25 @@ export function pickFallbackItems(
     .slice(0, limit);
 }
 
+export interface StockStatePill {
+  label: string;
+  className: string;
+}
+
+/**
+ * Stock-state pill (label + Tailwind classes) shared by the hub and the All Parts list so a row
+ * reads the same in both: Out (red) / Low (yellow) / In stock (green).
+ */
+export function stockStatePill(stock: StockComputed): StockStatePill {
+  if (stock.available <= 0) {
+    return { label: 'Out', className: 'border-red-500/40 bg-red-500/15 text-red-300' };
+  }
+  if (stock.lowStock) {
+    return { label: 'Low', className: 'border-yellow-500/40 bg-yellow-500/15 text-yellow-300' };
+  }
+  return { label: 'In stock', className: 'border-green-500/40 bg-green-500/15 text-green-300' };
+}
+
 /** Material Symbols icon name for an inventory category (thumbnail fallback when no image). */
 export function categoryIcon(category: InventoryCategory): string {
   switch (category) {

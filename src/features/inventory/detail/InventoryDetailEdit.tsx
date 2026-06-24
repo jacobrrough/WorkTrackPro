@@ -1,5 +1,6 @@
 import type { InventoryItem, InventoryCategory } from '@/core/types';
 import { getCategoryDisplayName } from '@/core/types';
+import { categoryIcon } from '@/features/inventory/inventoryViewModel';
 
 const CATEGORIES: InventoryCategory[] = [
   'material',
@@ -37,6 +38,9 @@ interface InventoryDetailEditProps {
   onCancel: () => void;
   onScanBarcode: () => void;
   onScanBin: () => void;
+  onUploadImage: (file: File) => void | Promise<void>;
+  onRemoveImage: () => void | Promise<void>;
+  imageBusy: boolean;
 }
 
 export function InventoryDetailEdit({
@@ -50,6 +54,9 @@ export function InventoryDetailEdit({
   onCancel,
   onScanBarcode,
   onScanBin,
+  onUploadImage,
+  onRemoveImage,
+  imageBusy,
 }: InventoryDetailEditProps) {
   return (
     <div className="flex h-full flex-col bg-background-dark">
@@ -73,6 +80,59 @@ export function InventoryDetailEdit({
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        <div className="space-y-3 rounded-sm bg-card-dark p-3">
+          <h2 className="text-lg font-bold text-white">Photo</h2>
+          <div className="flex items-center gap-3">
+            {currentItem.hasImage && currentItem.imageUrl ? (
+              <img
+                src={currentItem.imageUrl}
+                alt={currentItem.name}
+                className="size-20 shrink-0 rounded-sm object-cover"
+              />
+            ) : (
+              <span className="flex size-20 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+                <span className="material-symbols-outlined text-3xl">
+                  {categoryIcon(currentItem.category)}
+                </span>
+              </span>
+            )}
+            <div className="flex flex-col gap-2">
+              <label
+                className={`inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded-sm border border-primary bg-primary/20 px-4 text-sm font-bold text-primary ${
+                  imageBusy ? 'pointer-events-none opacity-50' : ''
+                }`}
+              >
+                <span className="material-symbols-outlined">photo_camera</span>
+                {currentItem.hasImage ? 'Replace photo' : 'Add photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={imageBusy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) void onUploadImage(file);
+                  }}
+                />
+              </label>
+              {currentItem.hasImage && (
+                <button
+                  type="button"
+                  onClick={() => void onRemoveImage()}
+                  disabled={imageBusy}
+                  className="min-h-[40px] rounded-sm border border-white/20 px-4 text-sm font-bold text-muted disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              )}
+              <p className="text-xs text-subtle">
+                {imageBusy ? 'Working…' : 'Replaces the category placeholder shown in lists.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-3 rounded-sm bg-card-dark p-3">
           <h2 className="text-lg font-bold text-white">Basic Information</h2>
           <div>

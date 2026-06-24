@@ -5,6 +5,8 @@ import {
   getAttachmentPublicUrl,
   uploadAttachment,
   deleteAttachmentRecord,
+  uploadInventoryImage,
+  removeInventoryImage,
 } from './storage';
 
 function mapRowToItem(row: Record<string, unknown>): InventoryItem {
@@ -269,6 +271,55 @@ export const inventoryService = {
       .update({ attachment_count: count ?? 0 })
       .eq('id', inventoryId);
     return true;
+  },
+
+  /**
+   * Upload (or replace) an inventory item's photo: push the file to the inventory-images bucket,
+   * point image_path/has_image at it, and clean up the previous file. Returns the updated item.
+   */
+  async setImage(id: string, file: File): Promise<InventoryItem | null> {
+    const { data: existing } = await supabase
+      .from('inventory')
+      .select('image_path')
+      .eq('id', id)
+      .single();
+    const oldPath = (existing?.image_path as string | null) ?? null;
+
+    const newPath = await uploadInventoryImage(id, file);
+    if (!newPath) return null;
+
+    const { data: updated, error } = await supabase
+      .from('inventory')
+      .update({ has_image: true, image_path: newPath, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !updated) {
+      await removeInventoryImage(newPath); // roll back the orphaned upload
+      return null;
+    }
+    if (oldPath && oldPath !== newPath) await removeInventoryImage(oldPath);
+    return mapRowToItem(updated as unknown as Record<string, unknown>);
+  },
+
+  /** Clear an inventory item's photo (revert to the category placeholder) and delete the file. */
+  async clearImage(id: string): Promise<InventoryItem | null> {
+    const { data: existing } = await supabase
+      .from('inventory')
+      .select('image_path')
+      .eq('id', id)
+      .single();
+    const oldPath = (existing?.image_path as string | null) ?? null;
+
+    const { data: updated, error } = await supabase
+      .from('inventory')
+      .update({ has_image: false, image_path: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error || !updated) return null;
+    if (oldPath) await removeInventoryImage(oldPath);
+    return mapRowToItem(updated as unknown as Record<string, unknown>);
   },
 
   /** Delete attachment from inventory item */
