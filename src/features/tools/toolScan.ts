@@ -1,27 +1,19 @@
-import type { Tool } from '@/core/types';
-
-/** Strip an optional `TOOL:` prefix and surrounding whitespace from a scanned payload. */
-export function normalizeToolScan(payload: string): string {
-  return (payload ?? '').replace(/^TOOL:/i, '').trim();
-}
-
-/** True when the payload carries the `TOOL:` prefix (lets the global scanner route tool scans). */
-export function isToolScanPayload(payload: string): boolean {
-  return /^TOOL:/i.test((payload ?? '').trim());
-}
+import type { InventoryItem } from '@/core/types';
 
 /**
- * Resolve a scanned QR payload to a tool. The QR should encode the tool's number (optionally
- * `TOOL:`-prefixed); a bare tool id (uuid) also resolves as a fallback. Number matching is
- * case-insensitive. Returns null when nothing matches.
+ * Resolve a scanned code to a tool. Tools are inventory items in the 'tool' category, so the
+ * scanned value is the item's **barcode** (matched case-insensitively); a bare item id also
+ * resolves as a fallback. Returns null when nothing matches. Pass an already tool-filtered list.
  */
-export function resolveToolByScan(payload: string, tools: Tool[]): Tool | null {
+export function resolveToolByScan(payload: string, tools: InventoryItem[]): InventoryItem | null {
   const raw = (payload ?? '').trim();
   if (!raw) return null;
-  const token = normalizeToolScan(raw).toLowerCase();
-  if (!token) return null;
+  const token = raw.toLowerCase();
   return (
-    tools.find((t) => t.toolNumber.trim().toLowerCase() === token) ??
+    tools.find((t) => {
+      const bc = (t.barcode ?? '').trim();
+      return bc !== '' && bc.toLowerCase() === token;
+    }) ??
     tools.find((t) => t.id.toLowerCase() === token) ??
     null
   );

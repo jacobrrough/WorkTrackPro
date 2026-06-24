@@ -11,12 +11,11 @@ import { holderName } from './toolFormat';
 
 interface ToolsScreenProps {
   onNavigate: (view: ViewState) => void;
-  isAdmin: boolean;
   /** When set (e.g. arriving from a scan), opens this tool's detail sheet on mount. */
   initialToolId?: string;
 }
 
-export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: ToolsScreenProps) {
+export default function ToolsScreen({ onNavigate, initialToolId }: ToolsScreenProps) {
   const { tools, users } = useApp();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
@@ -34,21 +33,24 @@ export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: Tool
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = tools.filter((t) => t.status !== 'retired');
     const filtered = !q
-      ? list
-      : list.filter((t) => {
-          const holder = holderName(users, t.currentHolderId).toLowerCase();
+      ? tools
+      : tools.filter((t) => {
+          const holder = t.currentHolderId
+            ? holderName(users, t.currentHolderId).toLowerCase()
+            : '';
           return (
             t.name.toLowerCase().includes(q) ||
-            t.toolNumber.toLowerCase().includes(q) ||
-            t.homeBin.toLowerCase().includes(q) ||
-            (t.status === 'out' && holder.includes(q))
+            (t.barcode ?? '').toLowerCase().includes(q) ||
+            (t.binLocation ?? '').toLowerCase().includes(q) ||
+            holder.includes(q)
           );
         });
-    // Out tools first (likely what people look for), then by name.
-    return filtered.sort((a, b) => {
-      if (a.status !== b.status) return a.status === 'out' ? -1 : 1;
+    // Checked-out tools first (likely what people look for), then by name.
+    return [...filtered].sort((a, b) => {
+      const aOut = a.currentHolderId ? 0 : 1;
+      const bOut = b.currentHolderId ? 0 : 1;
+      if (aOut !== bOut) return aOut - bOut;
       return a.name.localeCompare(b.name);
     });
   }, [tools, users, search]);
@@ -68,7 +70,7 @@ export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: Tool
       <QRScanner
         scanType="any"
         title="Scan a tool"
-        description="Scan the QR code on the tool"
+        description="Scan the barcode on the tool"
         onScanComplete={handleScan}
         onClose={() => setScanning(false)}
       />
@@ -78,29 +80,18 @@ export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: Tool
   return (
     <div className="flex h-full flex-col bg-app">
       <header className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => onNavigate('dashboard')}
-              className="flex size-10 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
-              aria-label="Back to dashboard"
-            >
-              <span className="material-symbols-outlined text-lg">arrow_back</span>
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-white">Tools</h1>
-              <p className="text-xs text-muted">Scan to take or put away</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigate('dashboard')}
+            className="flex size-10 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+            aria-label="Back to dashboard"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-white">Tools</h1>
+            <p className="text-xs text-muted">Scan to take or put away</p>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => onNavigate('tools-admin')}
-              className="flex min-h-[40px] items-center gap-1.5 rounded-sm border border-white/10 bg-white/5 px-3 text-sm font-semibold text-white hover:bg-white/10"
-            >
-              <span className="material-symbols-outlined text-base">settings</span>
-              Manage
-            </button>
-          )}
         </div>
       </header>
 
@@ -119,16 +110,18 @@ export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: Tool
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, number, bin, or who has it"
+            placeholder="Search name, barcode, bin, or who has it"
             className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
           />
 
           {visible.length === 0 ? (
             <EmptyState
-              icon="build"
+              icon="handyman"
               title="No tools"
               hint={
-                tools.length === 0 ? 'No tools have been added yet.' : 'No tools match your search.'
+                tools.length === 0
+                  ? 'Add a tool in Inventory: Add Part → category “Tools”, with a barcode and bin.'
+                  : 'No tools match your search.'
               }
             />
           ) : (
@@ -143,11 +136,12 @@ export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: Tool
                     <div className="min-w-0">
                       <p className="truncate font-bold text-white">{tool.name}</p>
                       <p className="truncate text-xs text-muted">
-                        #{tool.toolNumber} • Home {tool.homeBin}
+                        {tool.barcode ? `${tool.barcode} • ` : ''}
+                        {tool.binLocation ? `Home ${tool.binLocation}` : 'No bin set'}
                       </p>
                     </div>
                     <ToolStatusPill
-                      tool={tool}
+                      item={tool}
                       holderLabel={holderName(users, tool.currentHolderId)}
                     />
                   </button>
@@ -159,7 +153,7 @@ export default function ToolsScreen({ onNavigate, isAdmin, initialToolId }: Tool
       </div>
 
       {selectedTool && (
-        <ToolDetailSheet tool={selectedTool} onClose={() => setSelectedToolId(null)} />
+        <ToolDetailSheet item={selectedTool} onClose={() => setSelectedToolId(null)} />
       )}
     </div>
   );

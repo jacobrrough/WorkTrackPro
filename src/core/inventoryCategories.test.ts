@@ -59,26 +59,29 @@ describe('isBuiltInInventoryCategory', () => {
 });
 
 describe('BUILTIN_INVENTORY_CATEGORIES', () => {
-  it('exposes the 7 built-ins in order with labels', () => {
-    expect(BUILTIN_INVENTORY_CATEGORIES).toHaveLength(7);
+  it('exposes the built-ins in order with labels (incl. the tool category)', () => {
+    expect(BUILTIN_INVENTORY_CATEGORIES).toHaveLength(8);
     expect(BUILTIN_INVENTORY_CATEGORIES[0]).toEqual({ key: 'material', label: 'Material' });
+    expect(BUILTIN_INVENTORY_CATEGORIES.some((c) => c.key === 'tool')).toBe(true);
   });
 });
 
 describe('mergeInventoryCategories', () => {
+  const N = BUILTIN_INVENTORY_CATEGORIES.length;
+
   it('returns just the built-ins when there are no custom categories', () => {
-    expect(mergeInventoryCategories([])).toHaveLength(7);
+    expect(mergeInventoryCategories([])).toHaveLength(N);
   });
 
   it('appends custom categories after the built-ins', () => {
     const merged = mergeInventoryCategories([{ key: 'rawSteel', label: 'Raw Steel' }]);
-    expect(merged).toHaveLength(8);
-    expect(merged[7]).toEqual({ key: 'rawSteel', label: 'Raw Steel' });
+    expect(merged).toHaveLength(N + 1);
+    expect(merged[N]).toEqual({ key: 'rawSteel', label: 'Raw Steel' });
   });
 
   it('never lets a custom entry shadow a built-in key', () => {
     const merged = mergeInventoryCategories([{ key: 'foam', label: 'Hijacked' }]);
-    expect(merged).toHaveLength(7);
+    expect(merged).toHaveLength(N);
     expect(merged.find((c) => c.key === 'foam')?.label).toBe('Foam');
   });
 
@@ -98,7 +101,7 @@ describe('mergeInventoryCategories', () => {
       null as unknown as InventoryCategoryOption,
       { key: 'good', label: 'Good' },
     ]);
-    expect(merged).toHaveLength(8);
-    expect(merged[7]).toEqual({ key: 'good', label: 'Good' });
+    expect(merged).toHaveLength(N + 1);
+    expect(merged[N]).toEqual({ key: 'good', label: 'Good' });
   });
 });

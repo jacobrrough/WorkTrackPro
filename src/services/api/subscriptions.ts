@@ -2,7 +2,6 @@ import type {
   Job,
   Shift,
   InventoryItem,
-  Tool,
   User,
   Message,
   MessageReceipt,
@@ -115,17 +114,6 @@ function mapInventoryRow(row: Record<string, unknown>): InventoryItem {
     barcode: row.barcode as string | undefined,
     binLocation: row.bin_location as string | undefined,
     vendor: row.vendor as string | undefined,
-  };
-}
-
-function mapToolRow(row: Record<string, unknown>): Tool {
-  return {
-    id: row.id as string,
-    name: (row.name as string) ?? '',
-    toolNumber: (row.tool_number as string) ?? '',
-    homeBin: (row.home_bin as string) ?? '',
-    description: row.description as string | undefined,
-    status: (row.status as Tool['status']) ?? 'available',
     currentHolderId: (row.current_holder_id as string) ?? undefined,
   };
 }
@@ -157,7 +145,6 @@ function pickRow(payload: {
 type JobScalarCallback = (action: RealtimeAction, record: JobScalars & { id: string }) => void;
 type ShiftCallback = (action: string, record: Shift) => void;
 type InventoryCallback = (action: string, record: InventoryItem) => void;
-type ToolCallback = (action: string, record: Tool) => void;
 type UserCallback = (action: RealtimeAction, record: User) => void;
 type RelatedTableCallback = (
   table: string,
@@ -173,7 +160,6 @@ export interface CoreRealtimeCallbacks {
   onJob: JobScalarCallback;
   onShift: ShiftCallback;
   onInventory: InventoryCallback;
-  onTool: ToolCallback;
   onUser: UserCallback;
   onJobRelated: RelatedTableCallback;
   onBoardRelated: RelatedTableCallback;
@@ -207,10 +193,6 @@ function buildCoreChannel(callbacks: CoreRealtimeCallbacks) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, (payload) => {
       const record = pickRow(payload);
       if (record) callbacks.onInventory(eventAction(payload.eventType), mapInventoryRow(record));
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tools' }, (payload) => {
-      const record = pickRow(payload);
-      if (record) callbacks.onTool(eventAction(payload.eventType), mapToolRow(record));
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
       const record = pickRow(payload);

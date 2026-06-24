@@ -1,4 +1,4 @@
-import type { Tool, User } from '@/core/types';
+import type { InventoryItem, User } from '@/core/types';
 
 /** Display name for a holder id, falling back through name → email → "Unknown". */
 export function holderName(users: User[], holderId?: string): string {
@@ -7,9 +7,7 @@ export function holderName(users: User[], holderId?: string): string {
   return u?.name || u?.email || 'Unknown';
 }
 
-/** Human-readable custody status, e.g. "Available", "Out to Jane", "Retired". */
-export function toolStatusText(tool: Tool, users: User[]): string {
-  if (tool.status === 'retired') return 'Retired';
-  if (tool.status === 'out') return `Out to ${holderName(users, tool.currentHolderId)}`;
-  return 'Available';
+/** Human-readable custody status for a tool (inventory item): "Available" or "Out to {name}". */
+export function toolStatusText(item: InventoryItem, users: User[]): string {
+  return item.currentHolderId ? `Out to ${holderName(users, item.currentHolderId)}` : 'Available';
 }
