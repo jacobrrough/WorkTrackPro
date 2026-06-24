@@ -13,7 +13,7 @@ import { todayIsoLocal } from '../periodLockView';
 import type { JournalEntry, JournalStatus, NewJournalLineInput } from '../types';
 
 const STATUS_STYLES: Record<JournalStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   posted: 'bg-green-500/15 text-green-400',
   void: 'bg-red-500/15 text-red-400',
 };
@@ -76,7 +76,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -105,7 +105,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="space-y-2">
-            <div className="hidden grid-cols-[1fr_120px_120px_40px] gap-2 px-1 text-xs font-semibold uppercase text-slate-500 md:grid">
+            <div className="hidden grid-cols-[1fr_120px_120px_40px] gap-2 px-1 text-xs font-semibold uppercase text-subtle md:grid">
               <span>Account</span>
               <span className="text-right">Debit</span>
               <span className="text-right">Credit</span>
@@ -138,7 +138,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
                   onClick={() => removeLine(i)}
                   aria-label={`Remove line ${i + 1}`}
                   disabled={lines.length <= 2}
-                  className="flex items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                  className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
                 >
                   <span className="material-symbols-outlined text-lg">delete</span>
                 </button>
@@ -156,10 +156,10 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
           </button>
 
           <div className="mt-4 flex items-center justify-end gap-6 border-t border-white/10 pt-3 text-sm">
-            <span className="text-slate-400">
+            <span className="text-muted">
               Debits <span className="font-bold text-white">{formatMoney(balance.totalDebit)}</span>
             </span>
-            <span className="text-slate-400">
+            <span className="text-muted">
               Credits{' '}
               <span className="font-bold text-white">{formatMoney(balance.totalCredit)}</span>
             </span>
@@ -198,10 +198,10 @@ function EntryRow({ entry, onOpen }: { entry: JournalEntry; onOpen: () => void }
       onClick={onOpen}
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
     >
-      <span className="w-12 shrink-0 font-mono text-xs text-slate-500">#{entry.entryNumber}</span>
-      <span className="w-24 shrink-0 text-sm text-slate-400">{entry.entryDate}</span>
+      <span className="w-12 shrink-0 font-mono text-xs text-subtle">#{entry.entryNumber}</span>
+      <span className="w-24 shrink-0 text-sm text-muted">{entry.entryDate}</span>
       <span className="flex-1 truncate text-white">{entry.memo || '—'}</span>
-      <span className="shrink-0 font-mono text-sm tabular-nums text-slate-300">
+      <span className="shrink-0 font-mono text-sm tabular-nums text-muted">
         {formatMoney(total)}
       </span>
       <StatusPill status={entry.status} />
@@ -224,7 +224,7 @@ export default function JournalView() {
         </Button>
       }
     >
-      {isPending && <p className="text-slate-400">Loading journal…</p>}
+      {isPending && <p className="text-muted">Loading journal…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load journal entries. Confirm the accounting schema is exposed and you have an
@@ -233,7 +233,7 @@ export default function JournalView() {
       )}
 
       {!isPending && !isError && entries.length === 0 && (
-        <p className="text-slate-400">No journal entries yet. Post your first entry to begin.</p>
+        <p className="text-muted">No journal entries yet. Post your first entry to begin.</p>
       )}
 
       {entries.length > 0 && (

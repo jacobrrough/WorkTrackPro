@@ -358,7 +358,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
       <div className="flex items-center justify-between bg-gradient-to-b from-black to-transparent p-4">
         <div>
           <h2 className="text-lg font-bold text-white">{getTitle()}</h2>
-          <p className="text-xs text-slate-400">{scanAttempts} frames scanned</p>
+          <p className="text-xs text-muted">{scanAttempts} frames scanned</p>
         </div>
         <button
           onClick={() => {
@@ -412,8 +412,8 @@ const QRScanner: React.FC<QRScannerProps> = ({
               <span className="material-symbols-outlined text-2xl text-primary">qr_code</span>
               <div className="flex-1">
                 <p className="mb-1 font-bold text-white">Position code in frame</p>
-                <p className="text-sm text-slate-300">{getDescription()}</p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="text-sm text-muted">{getDescription()}</p>
+                <p className="mt-1 text-xs text-muted">
                   Hold steady. Scanner will detect automatically.
                 </p>
               </div>
@@ -422,11 +422,11 @@ const QRScanner: React.FC<QRScannerProps> = ({
 
           {/* Debug info toggle */}
           <details className="rounded-sm bg-white/5 backdrop-blur">
-            <summary className="cursor-pointer p-3 text-xs text-slate-400 hover:text-white">
+            <summary className="cursor-pointer p-3 text-xs text-muted hover:text-white">
               Debug Info ({scanAttempts} frames)
             </summary>
             <div className="border-t border-white/10 p-3">
-              <pre className="whitespace-pre-wrap break-words font-mono text-xs text-slate-300">
+              <pre className="whitespace-pre-wrap break-words font-mono text-xs text-muted">
                 {debugInfo || 'No debug info yet...'}
               </pre>
             </div>

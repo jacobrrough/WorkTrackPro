@@ -99,7 +99,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded text-slate-400 hover:text-white"
+            className="flex size-10 items-center justify-center rounded text-muted hover:text-white"
             aria-label="Close"
           >
             <span className="material-symbols-outlined">close</span>
@@ -108,11 +108,11 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {jobsAtBin.length === 0 && inventoryAtBin.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-slate-400">Nothing at this bin</p>
+              <p className="text-muted">Nothing at this bin</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-4 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
+                className="mt-4 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent"
               >
                 Done
               </button>
@@ -121,7 +121,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
             <div className="space-y-6">
               {jobsAtBin.length > 0 && (
                 <section>
-                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
                     Jobs
                   </h3>
                   <ul className="space-y-1">
@@ -151,7 +151,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                           </button>
                           <button
                             type="button"
-                            className="flex size-11 shrink-0 items-center justify-center rounded text-slate-500 hover:text-white"
+                            className="flex size-11 shrink-0 items-center justify-center rounded text-subtle hover:text-white"
                             onClick={() => handleClearJobBin(j.id)}
                             disabled={isClearing}
                             aria-label={`Remove #${formatJobCode(j.jobCode)} ${getJobDisplayName(j)} from bin`}
@@ -164,14 +164,14 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       );
                     })}
                   </ul>
-                  <p className="mt-1 text-[10px] text-slate-500">
+                  <p className="mt-1 text-[10px] text-subtle">
                     Tap to open. Use the icon to remove from bin.
                   </p>
                 </section>
               )}
               {inventoryAtBin.length > 0 && (
                 <section>
-                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
                     Inventory
                   </h3>
                   <ul className="space-y-1">
@@ -211,7 +211,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-1 text-[10px] text-slate-500">
+                  <p className="mt-1 text-[10px] text-subtle">
                     Uncheck to remove from bin. Tap row to open item.
                   </p>
                 </section>

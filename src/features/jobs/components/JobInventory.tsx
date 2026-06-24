@@ -110,11 +110,9 @@ export default function JobInventory({
         </div>
 
         {!job.inventoryItems || job.inventoryItems.length === 0 ? (
-          <div className="rounded-sm bg-[#261a32] p-3 text-center">
-            <span className="material-symbols-outlined mb-2 text-3xl text-slate-500">
-              inventory_2
-            </span>
-            <p className="text-sm text-slate-400">No materials assigned</p>
+          <div className="rounded-sm bg-surface-2 p-3 text-center">
+            <span className="material-symbols-outlined mb-2 text-3xl text-subtle">inventory_2</span>
+            <p className="text-sm text-muted">No materials assigned</p>
             {currentUserIsAdmin && canAllocate && (
               <button
                 onClick={() => setShowAddInventory(true)}
@@ -136,7 +134,7 @@ export default function JobInventory({
               return (
                 <div
                   key={item.id || item.inventoryId}
-                  className="overflow-hidden rounded-sm bg-[#261a32]"
+                  className="overflow-hidden rounded-sm bg-surface-2"
                 >
                   <div className="flex items-center justify-between p-3">
                     <div
@@ -164,7 +162,7 @@ export default function JobInventory({
                           className={`flex size-10 flex-shrink-0 items-center justify-center rounded-sm ${isLow ? 'bg-red-500/20' : 'bg-white/10'}`}
                         >
                           <span
-                            className={`material-symbols-outlined ${isLow ? 'text-red-400' : 'text-slate-400'}`}
+                            className={`material-symbols-outlined ${isLow ? 'text-red-400' : 'text-muted'}`}
                           >
                             {isLow ? 'warning' : 'inventory_2'}
                           </span>
@@ -175,7 +173,7 @@ export default function JobInventory({
                         <p className="truncate font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
                           {itemName || invItem?.name || 'Unknown Item'}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted">
                           Need:{' '}
                           {isEditingThis ? (
                             <input
@@ -265,14 +263,14 @@ export default function JobInventory({
               <h3 className="text-lg font-bold text-white">Add Material</h3>
               <button
                 onClick={() => setShowAddInventory(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <div className="relative mb-4">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">
                 search
               </span>
               <input
@@ -299,7 +297,7 @@ export default function JobInventory({
                   }`}
                 >
                   <p className="font-medium text-white">{item.name}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted">
                     Available: {calculateAvailable(item)} {item.unit}
                   </p>
                 </button>
@@ -307,7 +305,7 @@ export default function JobInventory({
             </div>
 
             <div className="mb-4">
-              <label className="mb-1 block text-sm text-slate-300">Quantity</label>
+              <label className="mb-1 block text-sm text-muted">Quantity</label>
               <input
                 type="number"
                 min="0.01"
@@ -323,9 +321,9 @@ export default function JobInventory({
               if (scopes.length <= 1) return null;
               return (
                 <div className="mb-4">
-                  <label className="mb-1 block text-sm text-slate-300">
+                  <label className="mb-1 block text-sm text-muted">
                     Part BOM scope
-                    <span className="ml-1 text-xs text-slate-500">
+                    <span className="ml-1 text-xs text-subtle">
                       (used in several places — choose which to keep in sync)
                     </span>
                   </label>
@@ -347,14 +345,14 @@ export default function JobInventory({
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAddInventory(false)}
-                className="h-12 flex-1 rounded-sm border border-white/20 text-slate-300"
+                className="h-12 flex-1 rounded-sm border border-white/20 text-muted"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddInventory}
                 disabled={!selectedInventory || !inventoryQty || isSubmitting}
-                className="h-12 flex-1 rounded-sm bg-primary font-bold text-white disabled:opacity-50"
+                className="h-12 flex-1 rounded-sm bg-primary font-bold text-on-accent disabled:opacity-50"
               >
                 Add Material
               </button>

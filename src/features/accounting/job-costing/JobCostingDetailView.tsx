@@ -37,7 +37,7 @@ import {
  */
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -45,7 +45,7 @@ const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
 };
 
 const BILL_STATUS_STYLES: Record<BillStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -53,7 +53,7 @@ const BILL_STATUS_STYLES: Record<BillStatus, string> = {
 };
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -83,7 +83,7 @@ function StatCard({
     tone === 'good' ? 'text-green-400' : tone === 'bad' ? 'text-red-400' : 'text-white';
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p className={`mt-1 font-mono text-lg font-bold tabular-nums ${valueColor}`}>{children}</p>
     </div>
   );
@@ -132,20 +132,18 @@ function InvoicesTable({
           onClick={() => onOpen(inv.id)}
           className="cursor-pointer border-t border-white/5 hover:bg-white/5"
         >
-          <td className="px-3 py-2 font-mono text-xs text-slate-400">
-            {inv.invoiceNumber || 'Draft'}
-          </td>
-          <td className="px-3 py-2 text-slate-400">{inv.invoiceDate}</td>
+          <td className="px-3 py-2 font-mono text-xs text-muted">{inv.invoiceNumber || 'Draft'}</td>
+          <td className="px-3 py-2 text-muted">{inv.invoiceDate}</td>
           <td className="px-3 py-2">
             <StatusPill
               label={INVOICE_STATUS_LABELS[inv.status]}
               className={INVOICE_STATUS_STYLES[inv.status]}
             />
           </td>
-          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+          <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
             {formatMoney(inv.total)}
           </td>
-          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+          <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
             {formatMoney(inv.balanceDue)}
           </td>
         </tr>
@@ -172,21 +170,19 @@ function BillsTable({ bills, onOpen }: { bills: Bill[]; onOpen: (id: string) => 
           onClick={() => onOpen(bill.id)}
           className="cursor-pointer border-t border-white/5 hover:bg-white/5"
         >
-          <td className="px-3 py-2 font-mono text-xs text-slate-400">
-            {bill.billNumber || 'Draft'}
-          </td>
+          <td className="px-3 py-2 font-mono text-xs text-muted">{bill.billNumber || 'Draft'}</td>
           <td className="px-3 py-2 text-white">{bill.vendorName || bill.vendorId}</td>
-          <td className="px-3 py-2 text-slate-400">{bill.billDate}</td>
+          <td className="px-3 py-2 text-muted">{bill.billDate}</td>
           <td className="px-3 py-2">
             <StatusPill
               label={BILL_STATUS_LABELS[bill.status]}
               className={BILL_STATUS_STYLES[bill.status]}
             />
           </td>
-          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+          <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
             {formatMoney(bill.total)}
           </td>
-          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+          <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
             {formatMoney(bill.balanceDue)}
           </td>
         </tr>
@@ -218,17 +214,17 @@ function EstimatesTable({
           onClick={() => onOpen(est.id)}
           className="cursor-pointer border-t border-white/5 hover:bg-white/5"
         >
-          <td className="px-3 py-2 font-mono text-xs text-slate-400">
+          <td className="px-3 py-2 font-mono text-xs text-muted">
             {est.estimateNumber || 'Draft'}
           </td>
-          <td className="px-3 py-2 text-slate-400">{est.estimateDate}</td>
+          <td className="px-3 py-2 text-muted">{est.estimateDate}</td>
           <td className="px-3 py-2">
             <StatusPill
               label={ESTIMATE_STATUS_LABELS[est.status]}
               className={ESTIMATE_STATUS_STYLES[est.status]}
             />
           </td>
-          <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+          <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
             {formatMoney(est.total)}
           </td>
         </tr>
@@ -263,11 +259,11 @@ export default function JobCostingDetailView() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading job costing…</p>}
+      {isPending && <p className="text-muted">Loading job costing…</p>}
       {isError && <p className="text-red-400">Could not load this job&apos;s costing.</p>}
       {!isPending && !isError && !row && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <p className="text-slate-400">
+          <p className="text-muted">
             No costing found for this job. It may have no logged labor, materials, or invoices yet.
           </p>
           <Button
@@ -285,9 +281,9 @@ export default function JobCostingDetailView() {
         <div className="mx-auto flex max-w-3xl flex-col gap-5">
           {/* Header: job identity + status */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {row.jobCode && <span className="font-mono text-sm text-slate-500">{row.jobCode}</span>}
+            {row.jobCode && <span className="font-mono text-sm text-subtle">{row.jobCode}</span>}
             {row.status && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Status <span className="text-white">{row.status}</span>
               </span>
             )}
@@ -295,19 +291,17 @@ export default function JobCostingDetailView() {
 
           <SummaryCards row={row} />
 
-          <p className="text-xs leading-relaxed text-slate-500">
+          <p className="text-xs leading-relaxed text-subtle">
             Labor cost is an estimate (worked minutes ÷ 60 × the org labor rate). Revenue counts
             every non-void invoice, including unsent drafts.
           </p>
 
           {/* Estimates drill-down */}
           <section>
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-              Estimates
-            </h2>
-            {estimatesPending && <p className="text-sm text-slate-500">Loading estimates…</p>}
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Estimates</h2>
+            {estimatesPending && <p className="text-sm text-subtle">Loading estimates…</p>}
             {!estimatesPending && estimates.length === 0 && (
-              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
+              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-subtle">
                 No estimates quoted to this job.
               </p>
             )}
@@ -321,12 +315,10 @@ export default function JobCostingDetailView() {
 
           {/* Invoices drill-down */}
           <section>
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-              Invoices
-            </h2>
-            {invoicesPending && <p className="text-sm text-slate-500">Loading invoices…</p>}
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Invoices</h2>
+            {invoicesPending && <p className="text-sm text-subtle">Loading invoices…</p>}
             {!invoicesPending && invoices.length === 0 && (
-              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
+              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-subtle">
                 No invoices billed to this job.
               </p>
             )}
@@ -340,10 +332,10 @@ export default function JobCostingDetailView() {
 
           {/* Bills drill-down */}
           <section>
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">Bills</h2>
-            {billsPending && <p className="text-sm text-slate-500">Loading bills…</p>}
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Bills</h2>
+            {billsPending && <p className="text-sm text-subtle">Loading bills…</p>}
             {!billsPending && bills.length === 0 && (
-              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
+              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-subtle">
                 No bills charged to this job.
               </p>
             )}
@@ -354,7 +346,7 @@ export default function JobCostingDetailView() {
               />
             )}
             {bills.length > 0 && (
-              <p className="mt-1.5 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-subtle">
                 Bills are shown for context. The material cost above is derived from consumed
                 inventory, not from these bills.
               </p>

@@ -26,7 +26,7 @@ const inputClass =
   'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const CO_STATUS_STYLES: Record<ChangeOrder['status'], string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   approved: 'bg-green-500/15 text-green-400',
   rejected: 'bg-red-500/15 text-red-400',
 };
@@ -77,7 +77,7 @@ function SovSection({ projectId, sovLines }: { projectId: string; sovLines: SovL
 
   return (
     <section>
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
         Schedule of values
       </h2>
       <LedgerTable
@@ -91,20 +91,18 @@ function SovSection({ projectId, sovLines }: { projectId: string; sovLines: SovL
         {sovLines.map((l) => (
           <tr key={l.id} className="border-t border-white/5">
             <td className="px-3 py-2 text-white">{l.description || '—'}</td>
-            <td className="px-3 py-2 text-slate-400">
-              {l.incomeAccountId ? '—' : 'Default income'}
-            </td>
-            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+            <td className="px-3 py-2 text-muted">{l.incomeAccountId ? '—' : 'Default income'}</td>
+            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
               {formatMoney(l.scheduledValue)}
             </td>
-            <td className="px-3 py-2 text-xs text-slate-500">
+            <td className="px-3 py-2 text-xs text-subtle">
               {l.changeOrderId ? 'Change order' : 'Original'}
             </td>
           </tr>
         ))}
         {sovLines.length === 0 && (
           <tr className="border-t border-white/5">
-            <td className="px-3 py-2 text-slate-500" colSpan={4}>
+            <td className="px-3 py-2 text-subtle" colSpan={4}>
               No schedule-of-values lines yet. Add the first below.
             </td>
           </tr>
@@ -148,7 +146,7 @@ function SovSection({ projectId, sovLines }: { projectId: string; sovLines: SovL
         </tr>
       </LedgerTable>
       <div className="mt-1 flex justify-end gap-2 pr-3 text-sm">
-        <span className="text-slate-400">Total scheduled</span>
+        <span className="text-muted">Total scheduled</span>
         <span className="font-mono font-bold tabular-nums text-white">
           {formatMoney(totalScheduled)}
         </span>
@@ -198,9 +196,7 @@ function ChangeOrdersSection({
 
   return (
     <section>
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-        Change orders
-      </h2>
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Change orders</h2>
       <LedgerTable
         columns={[
           { label: 'CO #' },
@@ -212,9 +208,9 @@ function ChangeOrdersSection({
       >
         {changeOrders.map((co) => (
           <tr key={co.id} className="border-t border-white/5">
-            <td className="px-3 py-2 font-mono text-xs text-slate-400">{co.coNumber || '—'}</td>
+            <td className="px-3 py-2 font-mono text-xs text-muted">{co.coNumber || '—'}</td>
             <td className="px-3 py-2 text-white">{co.description || '—'}</td>
-            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
               {formatMoney(co.amount)}
             </td>
             <td className="px-3 py-2">
@@ -254,7 +250,7 @@ function ChangeOrdersSection({
         ))}
         {changeOrders.length === 0 && (
           <tr className="border-t border-white/5">
-            <td className="px-3 py-2 text-slate-500" colSpan={5}>
+            <td className="px-3 py-2 text-subtle" colSpan={5}>
               No change orders. A deduct change order uses a negative amount.
             </td>
           </tr>
@@ -300,7 +296,7 @@ function ChangeOrdersSection({
           </td>
         </tr>
       </LedgerTable>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-subtle">
         Approving a change order does not post anything. Add its scope as schedule-of-values line(s)
         tied to the change order to bill it.
       </p>
@@ -323,9 +319,7 @@ function ApplicationsSection({
 }) {
   return (
     <section>
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-        Applications
-      </h2>
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Applications</h2>
       <LedgerTable
         columns={[
           { label: '#' },
@@ -338,15 +332,15 @@ function ApplicationsSection({
       >
         {applications.map((app) => (
           <tr key={app.id} className="border-t border-white/5">
-            <td className="px-3 py-2 font-mono text-xs text-slate-400">#{app.sequence}</td>
-            <td className="px-3 py-2 text-slate-400">{app.periodEnd}</td>
-            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+            <td className="px-3 py-2 font-mono text-xs text-muted">#{app.sequence}</td>
+            <td className="px-3 py-2 text-muted">{app.periodEnd}</td>
+            <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
               {formatMoney(app.workCompletedToDate)}
             </td>
-            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+            <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
               {formatMoney(app.retainageToDate)}
             </td>
-            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+            <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
               {formatMoney(app.currentDue)}
             </td>
             <td className="px-3 py-2 text-right">
@@ -364,7 +358,7 @@ function ApplicationsSection({
         ))}
         {applications.length === 0 && (
           <tr className="border-t border-white/5">
-            <td className="px-3 py-2 text-slate-500" colSpan={6}>
+            <td className="px-3 py-2 text-subtle" colSpan={6}>
               No applications billed yet.
             </td>
           </tr>
@@ -411,12 +405,12 @@ function ReleaseRetainageModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           Withheld to date{' '}
           <span className="font-mono font-bold text-white">{formatMoney(withheld)}</span>. Posts a
           balanced entry (Dr Accounts Receivable / Cr Retainage Receivable) and bills the customer.
@@ -490,31 +484,31 @@ export default function ProjectDetailView() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading project…</p>}
+      {isPending && <p className="text-muted">Loading project…</p>}
       {isError && <p className="text-red-400">Could not load this project.</p>}
-      {!isPending && !isError && !project && <p className="text-slate-400">Project not found.</p>}
+      {!isPending && !isError && !project && <p className="text-muted">Project not found.</p>}
 
       {project && (
         <div className="mx-auto flex max-w-4xl flex-col gap-5">
           {/* Header meta */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Customer{' '}
               <span className="text-white">{project.customerName || project.customerId}</span>
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Contract{' '}
               <span className="font-mono text-white">{formatMoney(project.contractSum)}</span>
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Retainage{' '}
               <span className="text-white">{(project.retainagePercent * 100).toFixed(1)}%</span>
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Status <span className="text-white">{project.status}</span>
             </span>
             {withheld > 0 && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Withheld <span className="font-mono text-amber-400">{formatMoney(withheld)}</span>
               </span>
             )}

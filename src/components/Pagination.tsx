@@ -53,7 +53,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <nav className={`flex items-center justify-between gap-4 ${className}`} aria-label="Pagination">
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-muted">
         {startItem && endItem && totalItems && (
           <span>
             Showing {startItem}-{endItem} of {totalItems}
@@ -75,7 +75,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           {getPageNumbers().map((page, idx) => {
             if (page === 'ellipsis') {
               return (
-                <span key={`ellipsis-${idx}`} className="px-2 text-slate-400">
+                <span key={`ellipsis-${idx}`} className="px-2 text-muted">
                   ...
                 </span>
               );
@@ -87,7 +87,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
                 className={`rounded-sm px-3 py-2 text-sm font-bold transition-colors ${
-                  isActive ? 'bg-primary text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  isActive ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted hover:bg-white/10'
                 }`}
                 aria-label={`Go to page ${pageNum}`}
                 aria-current={isActive ? 'page' : undefined}

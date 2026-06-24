@@ -61,7 +61,7 @@ function AccountFormModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -172,7 +172,7 @@ export default function ChartOfAccountsView() {
         </Button>
       }
     >
-      {isPending && <p className="text-slate-400">Loading accounts…</p>}
+      {isPending && <p className="text-muted">Loading accounts…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load accounts. Confirm the accounting schema is exposed and you have an
@@ -181,7 +181,7 @@ export default function ChartOfAccountsView() {
       )}
 
       {!isPending && !isError && accounts.length === 0 && (
-        <p className="text-slate-400">No accounts yet. Add your first account to get started.</p>
+        <p className="text-muted">No accounts yet. Add your first account to get started.</p>
       )}
 
       <div className="flex flex-col gap-5">
@@ -190,7 +190,7 @@ export default function ChartOfAccountsView() {
           if (!rows || rows.length === 0) return null;
           return (
             <section key={type}>
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 {ACCOUNT_TYPE_LABELS[type]}
               </h2>
               <div className="overflow-hidden rounded-sm border border-white/10">
@@ -201,13 +201,13 @@ export default function ChartOfAccountsView() {
                       i > 0 ? 'border-t border-white/5' : ''
                     } ${a.isActive ? '' : 'opacity-50'}`}
                   >
-                    <span className="w-14 shrink-0 font-mono text-xs text-slate-500">
+                    <span className="w-14 shrink-0 font-mono text-xs text-subtle">
                       {a.accountNumber ?? '—'}
                     </span>
                     <span className="flex-1 text-white">{a.name}</span>
-                    <span className="text-xs uppercase text-slate-500">{a.normalBalance}</span>
+                    <span className="text-xs uppercase text-subtle">{a.normalBalance}</span>
                     {a.isSystem && (
-                      <span className="rounded-sm bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
+                      <span className="rounded-sm bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
                         system
                       </span>
                     )}

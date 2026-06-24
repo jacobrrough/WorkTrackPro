@@ -104,11 +104,11 @@ export function statusBadgeClass(status: FixedAssetStatus): string {
     case 'active':
       return 'bg-emerald-500/15 text-emerald-300';
     case 'fully_depreciated':
-      return 'bg-slate-500/15 text-slate-400';
+      return 'bg-slate-500/15 text-muted';
     case 'disposed':
       return 'bg-amber-500/15 text-amber-300';
     default:
-      return 'bg-slate-500/15 text-slate-400';
+      return 'bg-slate-500/15 text-muted';
   }
 }
 

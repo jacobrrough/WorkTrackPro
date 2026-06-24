@@ -9,6 +9,31 @@
     />
     <meta name="robots" content="index,follow" />
     <meta name="theme-color" content="#9333ea" />
+    <script>
+      // Apply the saved theme before first paint to avoid a color flash.
+      // Keep THEME_BG in sync with index.css [data-theme] blocks and src/theme/themes.ts.
+      (function () {
+        try {
+          var THEME_BG = {
+            'midnight-purple': '#0f0218',
+            'deep-ocean': '#07121f',
+            forest: '#07140e',
+            ember: '#15100a',
+            crimson: '#150407',
+            graphite: '#0c0d10',
+            daylight: '#f4f6f9',
+          };
+          var t = localStorage.getItem('worktrack-theme');
+          if (!t || !THEME_BG[t]) t = 'midnight-purple';
+          var light = t === 'daylight';
+          var d = document.documentElement;
+          d.setAttribute('data-theme', t);
+          d.style.background = THEME_BG[t];
+          d.style.color = light ? '#14181f' : '#e2e8f0';
+          d.style.colorScheme = light ? 'light' : 'dark';
+        } catch (e) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>WorkTrack Pro</title>

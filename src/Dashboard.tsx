@@ -133,13 +133,13 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border border-[#4d3465] bg-background-dark p-4 shadow-2xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border border-line bg-background-dark p-4 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Security</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
@@ -162,7 +162,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
           />
         ) : (
           <div>
-            <div className="mb-4 flex items-start gap-3 rounded-sm border border-[#4d3465] bg-[#261a32] p-3">
+            <div className="mb-4 flex items-start gap-3 rounded-sm border border-line bg-surface-2 p-3">
               <span
                 aria-hidden="true"
                 className={`material-symbols-outlined text-2xl ${hasFactor ? 'text-green-400' : 'text-amber-400'}`}
@@ -171,7 +171,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
               </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-white">Two-factor authentication</p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="mt-0.5 text-xs text-muted">
                   {loading
                     ? 'Checking status…'
                     : hasFactor
@@ -193,7 +193,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
               <button
                 type="button"
                 onClick={() => setView('enroll')}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-primary font-bold text-white transition-colors hover:bg-primary/90"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-xl" aria-hidden>
                   add_moderator
@@ -232,7 +232,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <p className="text-sm font-semibold text-white">
                   Remove two-factor authentication?
                 </p>
-                <p className="mt-1 text-xs text-slate-300">
+                <p className="mt-1 text-xs text-muted">
                   {isRequired
                     ? 'Two-factor is required for your account. If you remove it you will be asked to set it up again the next time the app checks your access.'
                     : "You'll no longer be asked for a code at sign-in. You can re-enable it any time."}
@@ -544,7 +544,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Settings',
       subtitle: 'Labor rate & upcharge',
       icon: 'settings',
-      iconClassName: 'text-slate-400',
+      iconClassName: 'text-muted',
       cardClassName: 'border-slate-500/30 bg-gradient-to-br from-slate-600/20 to-slate-700/20',
       ariaLabel: 'Open admin settings',
       onClick: () => onNavigate('admin-settings'),
@@ -559,6 +559,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-yellow-600/20',
       ariaLabel: 'Open notification settings',
       onClick: () => onNavigate('notification-settings'),
+    },
+    {
+      key: 'appearance',
+      title: 'Appearance',
+      subtitle: 'Theme & colors',
+      icon: 'palette',
+      iconClassName: 'text-fuchsia-400',
+      cardClassName: 'border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-600/20 to-purple-600/20',
+      ariaLabel: 'Open appearance settings',
+      onClick: () => onNavigate('appearance'),
     },
     {
       key: 'trello-import',
@@ -679,7 +689,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={() => setShowSecurity(true)}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Security and two-factor authentication"
             title="Security / Two-factor"
           >
@@ -690,7 +700,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={logout}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Log out"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
@@ -740,7 +750,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <button
                   type="button"
                   onClick={resetCustomization}
-                  className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-white/10 hover:text-white"
                 >
                   <span aria-hidden="true" className="material-symbols-outlined text-sm">
                     restart_alt
@@ -751,7 +761,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => setIsEditingActions(!isEditingActions)}
-                className={`flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium transition-colors hover:bg-white/10 ${isEditingActions ? 'text-primary' : 'text-slate-400 hover:text-white'}`}
+                className={`flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium transition-colors hover:bg-white/10 ${isEditingActions ? 'text-primary' : 'text-muted hover:text-white'}`}
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">
                   {isEditingActions ? 'check' : 'edit'}
@@ -775,19 +785,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   >
                     <span
                       aria-hidden="true"
-                      className={`material-symbols-outlined text-xl ${isHidden ? 'text-slate-500' : action.iconClassName}`}
+                      className={`material-symbols-outlined text-xl ${isHidden ? 'text-subtle' : action.iconClassName}`}
                     >
                       {action.icon}
                     </span>
                     <span
-                      className={`flex-1 text-sm font-bold ${isHidden ? 'text-slate-500 line-through' : 'text-white'}`}
+                      className={`flex-1 text-sm font-bold ${isHidden ? 'text-subtle line-through' : 'text-white'}`}
                     >
                       {action.title}
                     </span>
                     <button
                       type="button"
                       onClick={() => toggleHidden(action.key)}
-                      className="flex size-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                      className="flex size-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                       aria-label={isHidden ? `Show ${action.title}` : `Hide ${action.title}`}
                     >
                       <span aria-hidden="true" className="material-symbols-outlined text-lg">
@@ -798,7 +808,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       type="button"
                       onClick={() => moveAction(action.key, -1)}
                       disabled={idx === 0}
-                      className="flex size-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
+                      className="flex size-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
                       aria-label={`Move ${action.title} up`}
                     >
                       <span aria-hidden="true" className="material-symbols-outlined text-lg">
@@ -809,7 +819,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       type="button"
                       onClick={() => moveAction(action.key, 1)}
                       disabled={idx === visibleQuickActions.length - 1}
-                      className="flex size-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
+                      className="flex size-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
                       aria-label={`Move ${action.title} down`}
                     >
                       <span aria-hidden="true" className="material-symbols-outlined text-lg">
@@ -905,7 +915,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           onClick={() => setIsTrackerOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-sm border border-primary/30 bg-[#1b1324] p-4 shadow-2xl"
+            className="w-full max-w-md rounded-sm border border-primary/30 bg-surface-2 p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -920,7 +930,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => setIsTrackerOpen(false)}
-                className="flex size-10 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Close time tracker popup"
               >
                 <span aria-hidden="true" className="material-symbols-outlined">
@@ -930,11 +940,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
 
             <div className="rounded-sm border border-white/10 bg-black/20 p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
                 Shift Timer
               </p>
               {activeShift && <ShiftTimerDisplay activeShift={activeShift} />}
-              <p className="mt-2 text-xs text-slate-300">Tracking active job time.</p>
+              <p className="mt-2 text-xs text-muted">Tracking active job time.</p>
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
@@ -942,7 +952,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 type="button"
                 onClick={handleClockOutFromPopup}
                 disabled={isClockOutLoading}
-                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm bg-red-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm bg-red-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-muted"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-base">
                   logout
@@ -958,7 +968,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   onNavigate('job-detail', activeJob.id);
                   setIsTrackerOpen(false);
                 }}
-                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-sm border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition-colors hover:bg-white/10"
+                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-sm border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">
                   work
@@ -1005,7 +1015,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               aria-live="polite"
               className="fixed inset-0 z-50 flex items-center justify-center bg-black"
             >
-              <p className="text-sm text-slate-200">Opening scanner...</p>
+              <p className="text-sm text-white">Opening scanner...</p>
             </div>
           }
         >

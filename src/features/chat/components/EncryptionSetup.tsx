@@ -88,7 +88,7 @@ export function EncryptionSetup({
           </span>
           <div>
             <h2 className="text-lg font-bold text-white">{title}</h2>
-            <p className="text-sm text-slate-400">{subtitle}</p>
+            <p className="text-sm text-muted">{subtitle}</p>
           </div>
         </div>
 
@@ -96,7 +96,7 @@ export function EncryptionSetup({
           <button
             type="button"
             onClick={() => switchMode('normal')}
-            className="mb-3 flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+            className="mb-3 flex items-center gap-1 text-sm text-muted hover:text-white"
           >
             <span className="material-symbols-outlined text-sm">arrow_back</span>
             Back
@@ -106,7 +106,7 @@ export function EncryptionSetup({
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'recover' && (
             <div>
-              <label htmlFor="old-password" className="mb-1 block text-sm text-slate-300">
+              <label htmlFor="old-password" className="mb-1 block text-sm text-muted">
                 Previous Password
               </label>
               <input
@@ -114,7 +114,7 @@ export function EncryptionSetup({
                 type="password"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
                 placeholder="Password before the reset"
                 autoFocus
               />
@@ -122,7 +122,7 @@ export function EncryptionSetup({
           )}
 
           <div>
-            <label htmlFor="encryption-password" className="mb-1 block text-sm text-slate-300">
+            <label htmlFor="encryption-password" className="mb-1 block text-sm text-muted">
               {mode === 'recover' ? 'Current Password' : 'Password'}
             </label>
             <input
@@ -130,7 +130,7 @@ export function EncryptionSetup({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
               placeholder={
                 mode === 'recover' ? 'Your new account password' : 'Your account password'
               }
@@ -139,7 +139,7 @@ export function EncryptionSetup({
           </div>
 
           {mode === 'regenerate' && (
-            <label className="flex items-start gap-2 text-sm text-slate-300">
+            <label className="flex items-start gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={confirmRegenerate}
@@ -163,7 +163,7 @@ export function EncryptionSetup({
               (mode === 'recover' && !oldPassword.trim()) ||
               (mode === 'regenerate' && !confirmRegenerate)
             }
-            className="w-full rounded-sm bg-primary px-4 py-2 font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="w-full rounded-sm bg-primary px-4 py-2 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading
               ? 'Processing...'
@@ -204,7 +204,7 @@ export function EncryptionSetup({
 
         <div className="mt-4 flex items-start gap-2 rounded-sm border border-primary/20 bg-primary/5 p-3">
           <span className="material-symbols-outlined text-sm text-primary">shield</span>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             Messages are encrypted end-to-end. Only you and the recipients can read them.
           </p>
         </div>

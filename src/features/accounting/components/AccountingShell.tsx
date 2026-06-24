@@ -46,7 +46,7 @@ function NavRow({
       aria-label={collapsed ? item.label : undefined}
       className={`flex min-h-[44px] w-full items-center gap-3 rounded-sm px-3 py-2 text-sm font-semibold transition-colors ${
         collapsed ? 'justify-center' : ''
-      } ${isActive ? 'bg-primary text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`}
+      } ${isActive ? 'bg-primary text-on-accent' : 'text-muted hover:bg-white/10 hover:text-on-accent'}`}
     >
       <span className="material-symbols-outlined text-lg">{item.icon}</span>
       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -77,7 +77,7 @@ function NavList({
           {collapsed ? (
             <div className="mx-2 my-1.5 border-t border-white/10" aria-hidden />
           ) : (
-            <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-subtle">
               {section.label}
             </p>
           )}
@@ -155,7 +155,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex items-center justify-center gap-2 border-t border-white/10 px-3 py-2 text-slate-400 hover:bg-white/10 hover:text-white"
+          className="flex items-center justify-center gap-2 border-t border-white/10 px-3 py-2 text-muted hover:bg-white/10 hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">
             {collapsed ? 'chevron_right' : 'chevron_left'}
@@ -171,7 +171,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
             type="button"
             onClick={() => setMobileOpen(true)}
             aria-label="Open accounting menu"
-            className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white md:hidden"
+            className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white md:hidden"
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
@@ -179,7 +179,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
             type="button"
             onClick={back}
             aria-label="Back"
-            className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -190,7 +190,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
             type="button"
             onClick={() => navigate('/app')}
             aria-label="Go to app home"
-            className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">home</span>
           </button>
@@ -224,7 +224,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
                 type="button"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Close menu"
-                className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+                className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>

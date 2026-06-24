@@ -344,21 +344,19 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               <button
                 type="button"
                 onClick={() => onBack?.()}
-                className="flex size-10 items-center justify-center text-slate-400 hover:text-white"
+                className="flex size-10 items-center justify-center text-muted hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
               <div className="flex-1">
                 <h1 className="text-xl font-bold text-white">{currentItem.name}</h1>
-                <p className="text-sm text-slate-400">
-                  {getCategoryDisplayName(currentItem.category)}
-                </p>
+                <p className="text-sm text-muted">{getCategoryDisplayName(currentItem.category)}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleStartEdit}
-              className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
+              className="rounded-sm bg-primary px-4 py-2 font-bold text-on-accent"
             >
               Edit
             </button>
@@ -370,7 +368,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 type="button"
                 onClick={() => setActiveSection(section)}
                 className={`min-h-[40px] rounded-sm px-3 text-sm font-bold capitalize ${
-                  activeSection === section ? 'bg-primary text-white' : 'bg-white/5 text-slate-300'
+                  activeSection === section ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'
                 }`}
               >
                 {section}

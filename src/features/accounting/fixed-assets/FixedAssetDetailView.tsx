@@ -42,7 +42,7 @@ function StatCard({
 }) {
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
           tone === 'accent' ? 'text-primary' : 'text-white'
@@ -50,7 +50,7 @@ function StatCard({
       >
         {children}
       </p>
-      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-subtle">{hint}</p>}
     </div>
   );
 }
@@ -69,7 +69,7 @@ function StatusSwitcher({ asset }: { asset: FixedAssetRegisterRow }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="text-slate-500">Status:</span>
+        <span className="text-subtle">Status:</span>
         {FIXED_ASSET_STATUSES.map((s) => {
           const active = asset.status === s;
           return (
@@ -81,8 +81,8 @@ function StatusSwitcher({ asset }: { asset: FixedAssetRegisterRow }) {
               aria-pressed={active}
               className={`rounded-sm px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
                 active
-                  ? 'bg-primary text-white'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-50'
+                  ? 'bg-primary text-on-accent'
+                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white disabled:opacity-50'
               }`}
             >
               {FIXED_ASSET_STATUS_LABELS[s]}
@@ -123,9 +123,9 @@ function ScheduleRow({
   return (
     <>
       <tr className="border-t border-white/5">
-        <td className="px-3 py-2 text-slate-400">{index + 1}</td>
-        <td className="px-3 py-2 text-slate-200">{formatAssetDate(row.periodDate)}</td>
-        <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+        <td className="px-3 py-2 text-muted">{index + 1}</td>
+        <td className="px-3 py-2 text-white">{formatAssetDate(row.periodDate)}</td>
+        <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
           {formatMoney(row.amount)}
         </td>
         <td className="px-3 py-2">
@@ -139,7 +139,7 @@ function ScheduleRow({
               Due
             </span>
           ) : (
-            <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[11px] font-semibold text-slate-400">
+            <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[11px] font-semibold text-muted">
               Planned
             </span>
           )}
@@ -155,7 +155,7 @@ function ScheduleRow({
                 View entry
               </button>
             ) : (
-              <span className="text-xs text-slate-500">—</span>
+              <span className="text-xs text-subtle">—</span>
             )
           ) : (
             <Button
@@ -242,7 +242,7 @@ export default function FixedAssetDetailView() {
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <TaxDisclaimer />
 
-        {assetLoading && <p className="text-slate-400">Loading asset…</p>}
+        {assetLoading && <p className="text-muted">Loading asset…</p>}
         {assetError && (
           <p className="text-red-400" role="alert">
             Could not load this asset. It may have been deleted, or the accounting schema is not
@@ -252,10 +252,10 @@ export default function FixedAssetDetailView() {
 
         {!assetLoading && !assetError && !asset && (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">
+            <span className="material-symbols-outlined text-4xl text-subtle">
               precision_manufacturing
             </span>
-            <p className="text-slate-400">No fixed asset found for this id.</p>
+            <p className="text-muted">No fixed asset found for this id.</p>
             <Button
               size="sm"
               variant="ghost"
@@ -280,7 +280,7 @@ export default function FixedAssetDetailView() {
                     {statusLabel(asset.status)}
                   </span>
                 </div>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                   {methodLabel(asset.method)} · {asset.usefulLifeMonths} months · in service{' '}
                   {formatAssetDate(asset.inServiceDate)}
                 </p>
@@ -306,7 +306,7 @@ export default function FixedAssetDetailView() {
 
             {/* Progress bar — fraction of the depreciable base recognized */}
             <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center justify-between text-xs text-subtle">
                 <span>
                   {asset.periodsPosted} of {asset.periodsPosted + asset.periodsRemaining} periods
                   posted
@@ -320,7 +320,7 @@ export default function FixedAssetDetailView() {
                 />
               </div>
               {asset.remainingPlanned > 0 && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-subtle">
                   {formatMoney(asset.remainingPlanned)} of depreciation remains across{' '}
                   {asset.periodsRemaining} unposted{' '}
                   {asset.periodsRemaining === 1 ? 'period' : 'periods'}
@@ -331,11 +331,11 @@ export default function FixedAssetDetailView() {
 
             {/* Depreciation schedule */}
             <section className="flex flex-col gap-2">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-400">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-muted">
                 Depreciation schedule
               </h3>
 
-              {scheduleLoading && <p className="text-slate-400">Loading schedule…</p>}
+              {scheduleLoading && <p className="text-muted">Loading schedule…</p>}
               {scheduleError && (
                 <p className="text-red-400" role="alert">
                   Could not load the depreciation schedule.
@@ -343,7 +343,7 @@ export default function FixedAssetDetailView() {
               )}
 
               {!scheduleLoading && !scheduleError && schedule.length === 0 && (
-                <div className="rounded-sm border border-dashed border-white/15 px-4 py-8 text-center text-sm text-slate-400">
+                <div className="rounded-sm border border-dashed border-white/15 px-4 py-8 text-center text-sm text-muted">
                   No schedule rows. This asset has nothing to depreciate (salvage may equal cost),
                   or the schedule has not been generated.
                 </div>
@@ -353,7 +353,7 @@ export default function FixedAssetDetailView() {
                 <div className="overflow-x-auto rounded-sm border border-white/10">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="border-b border-white/10 bg-white/5 text-slate-400">
+                      <tr className="border-b border-white/10 bg-white/5 text-muted">
                         <th className="px-3 py-2 text-left font-semibold">#</th>
                         <th className="px-3 py-2 text-left font-semibold">Period end</th>
                         <th className="px-3 py-2 text-right font-semibold">Amount</th>
@@ -376,12 +376,11 @@ export default function FixedAssetDetailView() {
                 </div>
               )}
 
-              <p className="text-xs leading-relaxed text-slate-500">
+              <p className="text-xs leading-relaxed text-subtle">
                 Each period posts one balanced entry — Dr Depreciation Expense / Cr 1510 Accumulated
                 Depreciation — through the general ledger. Posting is idempotent and respects the
                 books-closed lock; to post several due periods at once, use{' '}
-                <span className="font-semibold text-slate-300">Run depreciation</span> on the
-                register.
+                <span className="font-semibold text-muted">Run depreciation</span> on the register.
               </p>
             </section>
           </>

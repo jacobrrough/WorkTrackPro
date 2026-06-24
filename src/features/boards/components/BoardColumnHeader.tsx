@@ -101,7 +101,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu((v) => !v)}
-            className="flex items-center justify-center rounded p-0.5 text-slate-500 hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded p-0.5 text-subtle hover:bg-white/10 hover:text-white"
             aria-label="Column options"
           >
             <span className="material-symbols-outlined text-base">more_vert</span>
@@ -114,7 +114,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                     setShowMenu(false);
                     onAddCard();
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-300 hover:bg-white/10"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-base">add</span>
                   Add card
@@ -125,14 +125,14 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                   setShowMenu(false);
                   setEditing(true);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-300 hover:bg-white/10"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-white/10"
               >
                 <span className="material-symbols-outlined text-base">edit</span>
                 Rename
               </button>
               <button
                 onClick={() => setShowColors((v) => !v)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-300 hover:bg-white/10"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-white/10"
               >
                 <span className="material-symbols-outlined text-base">palette</span>
                 Color
@@ -176,7 +176,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                     </button>
                     <button
                       onClick={() => setConfirmingDelete(false)}
-                      className="rounded px-3 py-1 text-xs text-slate-400 hover:text-white"
+                      className="rounded px-3 py-1 text-xs text-muted hover:text-white"
                     >
                       Cancel
                     </button>

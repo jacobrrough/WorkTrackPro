@@ -91,19 +91,19 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
         </header>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <label className="mb-1 block text-sm text-slate-400">Title</label>
+          <label className="mb-1 block text-sm text-muted">Title</label>
           <input
             autoFocus
-            className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+            className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Card title"
             maxLength={200}
           />
 
-          <label className="mb-1 block text-sm text-slate-400">Description</label>
+          <label className="mb-1 block text-sm text-muted">Description</label>
           <textarea
-            className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+            className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -114,10 +114,10 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
           {isEdit ? (
             <div className="mb-4">
               <div className="mb-2 flex items-center justify-between">
-                <label className="text-sm text-slate-400">
+                <label className="text-sm text-muted">
                   Attachments
                   {attachments.length > 0 && (
-                    <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-slate-300">
+                    <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-muted">
                       {attachments.length}
                     </span>
                   )}
@@ -136,14 +136,14 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               />
             </div>
           ) : (
-            <p className="mb-4 rounded border border-dashed border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-500">
+            <p className="mb-4 rounded border border-dashed border-white/10 bg-white/5 px-3 py-2 text-xs text-subtle">
               Save the card to upload files.
             </p>
           )}
 
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm text-slate-400">Assignee</label>
+              <label className="mb-1 block text-sm text-muted">Assignee</label>
               <select
                 className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
                 value={assigneeId}
@@ -158,7 +158,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">Due date</label>
+              <label className="mb-1 block text-sm text-muted">Due date</label>
               <input
                 type="date"
                 className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
@@ -168,7 +168,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
             </div>
           </div>
 
-          <label className="mb-1 block text-sm text-slate-400">Label color</label>
+          <label className="mb-1 block text-sm text-muted">Label color</label>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -177,7 +177,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
                 !color ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-dark' : ''
               }`}
             >
-              <span className="material-symbols-outlined text-xs text-slate-400">close</span>
+              <span className="material-symbols-outlined text-xs text-muted">close</span>
             </button>
             {CARD_COLORS.map((c) => (
               <button
@@ -208,14 +208,14 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded px-4 py-2 text-sm text-slate-400 hover:text-white"
+              className="rounded px-4 py-2 text-sm text-muted hover:text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!title.trim() || saving}
-              className="rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded bg-primary px-4 py-2 text-sm font-medium text-on-accent disabled:opacity-50"
             >
               {saving ? 'Saving...' : isEdit ? 'Save' : 'Add Card'}
             </button>

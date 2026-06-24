@@ -3,7 +3,7 @@ import { formatAccounting } from './reportFormat';
 
 /** Loading placeholder shared by the report screens. */
 export function ReportLoading({ label = 'Loading report…' }: { label?: string }) {
-  return <p className="text-slate-400">{label}</p>;
+  return <p className="text-muted">{label}</p>;
 }
 
 /** Error placeholder shared by the report screens. */
@@ -23,9 +23,9 @@ export function ReportError({
 export function ReportEmpty({ icon, note }: { icon: string; note: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-      <span className="material-symbols-outlined text-4xl text-slate-500">{icon}</span>
+      <span className="material-symbols-outlined text-4xl text-subtle">{icon}</span>
       <p className="text-lg font-bold text-white">No data for this period</p>
-      <p className="max-w-sm text-sm text-slate-400">{note}</p>
+      <p className="max-w-sm text-sm text-muted">{note}</p>
     </div>
   );
 }
@@ -36,7 +36,7 @@ export function MoneyCell({ amount, strong = false }: { amount: number; strong?:
   return (
     <td
       className={`px-3 py-2 text-right font-mono tabular-nums ${
-        strong ? 'font-bold text-white' : negative ? 'text-red-400' : 'text-slate-200'
+        strong ? 'font-bold text-white' : negative ? 'text-red-400' : 'text-white'
       }`}
     >
       {formatAccounting(amount)}
@@ -85,7 +85,7 @@ export function SectionHeaderRow({ title, span }: { title: string; span: number 
   return (
     <tr className="bg-white/[0.03]">
       <td
-        className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-400"
+        className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-muted"
         colSpan={span}
       >
         {title}

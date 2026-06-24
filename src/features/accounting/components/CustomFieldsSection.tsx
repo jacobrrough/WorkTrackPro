@@ -58,7 +58,7 @@ function CustomFieldInput({
   switch (def.dataType) {
     case 'boolean':
       return (
-        <label className="flex items-center gap-2 text-sm text-slate-300">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <input
             id={id}
             type="checkbox"
@@ -161,11 +161,11 @@ function CustomFieldRow({
 
   return (
     <div className="flex flex-col">
-      <label htmlFor={id} className="mb-1 block text-sm font-bold text-slate-400">
+      <label htmlFor={id} className="mb-1 block text-sm font-bold text-muted">
         {def.label}
       </label>
       {readOnly ? (
-        <p className="rounded-sm border border-white/5 bg-background-dark/60 px-2 py-1.5 text-sm text-slate-200">
+        <p className="rounded-sm border border-white/5 bg-background-dark/60 px-2 py-1.5 text-sm text-white">
           {formatCustomFieldValue(def, rawValue, '—')}
         </p>
       ) : (
@@ -176,7 +176,7 @@ function CustomFieldRow({
           {error}
         </p>
       ) : (
-        def.helpText && <p className="mt-1 text-xs text-slate-500">{def.helpText}</p>
+        def.helpText && <p className="mt-1 text-xs text-subtle">{def.helpText}</p>
       )}
     </div>
   );
@@ -295,7 +295,7 @@ export function CustomFieldsSection({
     return (
       <section className="flex flex-col gap-3">
         <SectionHeading title={title} />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           These custom fields can be filled in after the draft is saved.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -320,7 +320,7 @@ export function CustomFieldsSection({
     return (
       <section className="flex flex-col gap-2">
         <SectionHeading title={title} />
-        <p className="text-sm text-slate-500">Loading custom fields…</p>
+        <p className="text-sm text-subtle">Loading custom fields…</p>
       </section>
     );
   }
@@ -386,7 +386,7 @@ export function CustomFieldsSection({
 /** Shared section heading matching the line-items / payments section style. */
 function SectionHeading({ title }: { title: string }) {
   return (
-    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
       <span className="material-symbols-outlined text-lg text-primary">tune</span>
       {title}
     </h2>

@@ -40,7 +40,7 @@ export function ConversationList({
             <button
               type="button"
               onClick={onBack}
-              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white md:flex"
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white md:flex"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
@@ -59,7 +59,7 @@ export function ConversationList({
 
       <div className="px-4 py-2">
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-lg text-slate-500">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-lg text-subtle">
             search
           </span>
           <input
@@ -67,7 +67,7 @@ export function ConversationList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full rounded-sm border border-white/10 bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+            className="w-full rounded-sm border border-white/10 bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
           />
         </div>
       </div>
@@ -90,12 +90,12 @@ export function ConversationList({
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-medium text-white">Notifications</span>
               {(unreadCount ?? 0) > 0 && (
-                <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+                <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-on-accent">
                   {(unreadCount ?? 0) > 99 ? '99+' : unreadCount}
                 </span>
               )}
             </div>
-            <span className="truncate text-xs text-slate-400">System alerts &amp; mentions</span>
+            <span className="truncate text-xs text-muted">System alerts &amp; mentions</span>
           </div>
         </button>
 
@@ -103,21 +103,21 @@ export function ConversationList({
 
         {isLoading && (
           <div className="flex items-center justify-center py-8">
-            <p className="text-sm text-slate-400">Loading conversations...</p>
+            <p className="text-sm text-muted">Loading conversations...</p>
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-600">chat_bubble</span>
-            <p className="text-sm text-slate-400">
+            <span className="material-symbols-outlined text-4xl text-subtle">chat_bubble</span>
+            <p className="text-sm text-muted">
               {search ? 'No conversations found' : 'No conversations yet'}
             </p>
             {!search && (
               <button
                 type="button"
                 onClick={onNewConversation}
-                className="mt-2 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
+                className="mt-2 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
               >
                 Start a conversation
               </button>

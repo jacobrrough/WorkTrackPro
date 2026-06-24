@@ -29,14 +29,14 @@ export function ChatHeader({
       <button
         type="button"
         onClick={onBack}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
       >
         <span className="material-symbols-outlined">arrow_back</span>
       </button>
 
       <div
         className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          isGroup ? 'bg-primary/20 text-primary' : 'bg-white/10 text-slate-300'
+          isGroup ? 'bg-primary/20 text-primary' : 'bg-white/10 text-muted'
         }`}
       >
         <span className="material-symbols-outlined text-lg">{isGroup ? 'group' : 'person'}</span>
@@ -51,7 +51,7 @@ export function ChatHeader({
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-sm font-bold text-white">{displayName}</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted">
             {isGroup
               ? `${memberCount} members${onlineOthers > 0 ? ` · ${onlineOthers} online` : ''}`
               : onlineOthers > 0
@@ -71,7 +71,7 @@ export function ChatHeader({
         <button
           type="button"
           onClick={onSettings}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
           title="Group settings"
         >
           <span className="material-symbols-outlined text-xl">settings</span>

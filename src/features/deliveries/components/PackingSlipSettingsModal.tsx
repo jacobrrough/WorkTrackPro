@@ -85,14 +85,12 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
         <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-white">Packing Slip Branding</h2>
-            <p className="text-xs text-slate-400">
-              Shown on every packing slip you print or export.
-            </p>
+            <p className="text-xs text-muted">Shown on every packing slip you print or export.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white"
+            className="text-muted hover:text-white"
             aria-label="Close"
           >
             <span className="material-symbols-outlined">close</span>
@@ -102,7 +100,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
           {/* Logo */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-400">Logo</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted">Logo</label>
             <div className="flex items-center gap-4">
               <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded border border-white/10 bg-white">
                 {hasLogo ? (
@@ -112,7 +110,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                     className="max-h-full max-w-full object-contain"
                   />
                 ) : (
-                  <span className="px-2 text-center text-[10px] text-slate-400">No logo yet</span>
+                  <span className="px-2 text-center text-[10px] text-muted">No logo yet</span>
                 )}
               </div>
               <div className="flex flex-col gap-2">
@@ -120,7 +118,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={busy}
-                  className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-accent disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-base">upload</span>
                   {processingLogo ? 'Processing…' : hasLogo ? 'Replace logo' : 'Upload logo'}
@@ -130,7 +128,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                     type="button"
                     onClick={() => set({ logoDataUrl: '' })}
                     disabled={busy}
-                    className="flex items-center gap-1.5 rounded border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:bg-white/10 disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded border border-white/10 px-3 py-1.5 text-sm text-muted hover:bg-white/10 disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-base">delete</span>
                     Remove
@@ -145,7 +143,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                 />
               </div>
             </div>
-            <p className="mt-1.5 text-[10px] text-slate-500">
+            <p className="mt-1.5 text-[10px] text-subtle">
               PNG with a transparent background works best. Large images are resized automatically.
               {hasLogo ? ` (${logoKb} KB)` : ''}
             </p>
@@ -153,7 +151,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
 
           {/* Company name */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-400">Company name</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted">Company name</label>
             <input
               type="text"
               value={form.companyName}
@@ -165,7 +163,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
 
           {/* Address */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-400">Address</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted">Address</label>
             <input
               type="text"
               value={form.companyAddress}
@@ -178,7 +176,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
           {/* Phone + Email */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-400">Phone</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">Phone</label>
               <input
                 type="tel"
                 value={form.companyPhone}
@@ -188,7 +186,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-400">Email</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted">Email</label>
               <input
                 type="email"
                 value={form.companyEmail}
@@ -199,7 +197,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
             </div>
           </div>
 
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-subtle">
             Leave the company name blank to show only your logo.
           </p>
         </div>
@@ -209,7 +207,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded px-4 py-2 text-sm text-slate-400 hover:text-white disabled:opacity-50"
+            className="rounded px-4 py-2 text-sm text-muted hover:text-white disabled:opacity-50"
           >
             Cancel
           </button>
@@ -217,7 +215,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
             type="button"
             onClick={handleSave}
             disabled={busy}
-            className="rounded bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            className="rounded bg-primary px-4 py-2 text-sm font-bold text-on-accent disabled:opacity-50"
           >
             {saving || isSyncing ? 'Saving…' : 'Save branding'}
           </button>

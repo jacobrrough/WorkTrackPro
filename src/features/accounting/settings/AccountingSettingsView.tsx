@@ -88,15 +88,15 @@ function ConfirmLockDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-slate-300">{message}</p>
+        <p className="mb-4 text-sm text-muted">{message}</p>
 
-        <p className="mb-4 text-xs text-slate-500">
+        <p className="mb-4 text-xs text-subtle">
           This action is restricted to the <span className="font-semibold">accounting_admin</span>{' '}
           role and is recorded in the accounting audit log.
         </p>
@@ -151,13 +151,13 @@ function DefaultAccountRow({ row }: { row: ResolvedDefaultAccount }) {
     <div className="flex items-start gap-3 px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <p className="font-medium text-white">{row.label}</p>
-        <p className="mt-0.5 text-xs text-slate-500">{row.description}</p>
+        <p className="mt-0.5 text-xs text-subtle">{row.description}</p>
       </div>
       <div className="shrink-0 text-right">
         {row.configured && row.account ? (
           <>
-            <p className="font-mono text-sm text-slate-200">
-              <span className="text-slate-500">{row.account.accountNumber ?? '—'}</span>{' '}
+            <p className="font-mono text-sm text-white">
+              <span className="text-subtle">{row.account.accountNumber ?? '—'}</span>{' '}
               {row.account.name}
             </p>
             {/* Flag a seed that resolved to an UNEXPECTED account number (configured, but not
@@ -191,10 +191,10 @@ function DefaultAccountGroupSection({
   return (
     <section>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">{title}</h3>
-        <span className="text-[11px] text-slate-500">{summary.label}</span>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-muted">{title}</h3>
+        <span className="text-[11px] text-subtle">{summary.label}</span>
       </div>
-      <p className="mb-2 text-xs text-slate-500">{caption}</p>
+      <p className="mb-2 text-xs text-subtle">{caption}</p>
       <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
         {rows.map((row) => (
           <DefaultAccountRow key={row.key} row={row} />
@@ -238,13 +238,13 @@ function DefaultAccountsPanel() {
         <span className="material-symbols-outlined text-primary">account_tree</span>
         Default GL accounts
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         The chart-of-accounts account each posting role maps to. Configured in the database seed;
         shown here so you can confirm the wiring (especially the structural accounts the import and
         bank-feed modules depend on).
       </p>
 
-      {isPending && <p className="mt-3 text-sm text-slate-400">Loading default accounts…</p>}
+      {isPending && <p className="mt-3 text-sm text-muted">Loading default accounts…</p>}
 
       {!isPending && isError && (
         <div className="mt-3 flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
@@ -302,7 +302,7 @@ function TaxTableUpdatesPanel() {
         <span className="material-symbols-outlined text-primary">policy</span>
         Tax table updates
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         Advisory checks of official sales-tax (CDTFA) and payroll (CA EDD) rate tables against your
         stored rates. Differences are flagged for your review — they are never applied
         automatically.
@@ -315,18 +315,18 @@ function TaxTableUpdatesPanel() {
         <span className="material-symbols-outlined text-amber-300">notifications</span>
         <div className="min-w-0 flex-1">
           <p className="font-medium text-white">Open the tax table updates screen</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-subtle">
             {badge
               ? `${openCount} open alert${openCount === 1 ? '' : 's'} need your review`
               : 'No open alerts. You can also run a check now.'}
           </p>
         </div>
         {badge && (
-          <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">
+          <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-on-accent">
             {badge}
           </span>
         )}
-        <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+        <span className="material-symbols-outlined text-subtle">chevron_right</span>
       </Card>
     </div>
   );
@@ -345,7 +345,7 @@ function TaxJurisdictionsPanel() {
         <span className="material-symbols-outlined text-primary">map</span>
         Sales-tax jurisdictions
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         Map a customer&apos;s address (state / county / city / ZIP) to the sales-tax code to apply.
         New invoices and estimates use the most specific match to suggest a tax code — you can
         always override it. A mapping never defines a rate.
@@ -358,11 +358,11 @@ function TaxJurisdictionsPanel() {
         <span className="material-symbols-outlined text-primary">location_on</span>
         <div className="min-w-0 flex-1">
           <p className="font-medium text-white">Open the sales-tax jurisdictions screen</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-subtle">
             View and edit the address-to-tax-code map (ZIP-level; verify with a CPA/EA).
           </p>
         </div>
-        <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+        <span className="material-symbols-outlined text-subtle">chevron_right</span>
       </Card>
     </div>
   );
@@ -438,7 +438,7 @@ function DunningSettingsPanel() {
         <span className="material-symbols-outlined text-primary">forward_to_inbox</span>
         Invoice reminders (dunning)
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         Automatically email customers about unpaid invoices on a schedule relative to each invoice’s
         due date. Reminders only send when this is enabled here AND the feature is switched on for
         the server.
@@ -561,7 +561,7 @@ function DocumentTemplatePanel() {
         <span className="material-symbols-outlined text-primary">description</span>
         Document template
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         Customize how your estimates and invoices look to customers — header, logo, colors, and
         layout. Changes apply to newly generated documents.
       </p>
@@ -602,14 +602,14 @@ export default function AccountingSettingsView() {
             <span className="material-symbols-outlined text-primary">event_busy</span>
             Books-closed (period lock) date
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Closing the books through a date freezes that period: no journal entry dated on or
             before it can be posted or voided — including invoices, bills, payments, and bank
             matches that would post into it. Use this after a period is reconciled and filed.
           </p>
         </div>
 
-        {isPending && <p className="text-slate-400">Loading the period lock…</p>}
+        {isPending && <p className="text-muted">Loading the period lock…</p>}
 
         {isError && (
           <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
@@ -666,7 +666,7 @@ export default function AccountingSettingsView() {
             </div>
 
             {!willChange && validation.date != null && (
-              <p className="text-right text-xs text-slate-500">
+              <p className="text-right text-xs text-subtle">
                 {closedThrough
                   ? 'This matches the current lock date — pick a different date to change it.'
                   : 'Pick a date, then close the books.'}

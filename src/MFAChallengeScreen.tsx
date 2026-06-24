@@ -57,7 +57,7 @@ const MFAChallengeScreen: React.FC = () => {
   );
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-[#2b1a3d] px-6 py-10">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-app-2 px-6 py-10">
       <div className="mb-8 flex w-full max-w-[400px] flex-col items-center">
         <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-md bg-amber-500/20 text-amber-400 shadow-xl">
           <span className="material-symbols-outlined text-5xl" aria-hidden>
@@ -67,14 +67,14 @@ const MFAChallengeScreen: React.FC = () => {
         <h1 className="text-center text-2xl font-bold leading-tight tracking-tight text-white">
           Two-factor verification
         </h1>
-        <p className="mt-2 text-center text-sm font-normal leading-normal text-[#ad93c8]">
+        <p className="mt-2 text-center text-sm font-normal leading-normal text-muted">
           Enter the 6-digit code from your authenticator app to continue.
         </p>
       </div>
 
       <form
         onSubmit={handleVerify}
-        className="w-full max-w-[400px] rounded-md border border-[#4d3465] bg-background-dark/50 p-4 shadow-xl backdrop-blur-sm"
+        className="w-full max-w-[400px] rounded-md border border-line bg-background-dark/50 p-4 shadow-xl backdrop-blur-sm"
         autoComplete="off"
         aria-label="Two-factor verification form"
       >
@@ -99,7 +99,7 @@ const MFAChallengeScreen: React.FC = () => {
             autoComplete="one-time-code"
             pattern="\d*"
             maxLength={CODE_LENGTH}
-            className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-4 text-center font-mono text-2xl tracking-[0.5em] text-white placeholder:tracking-normal placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+            className="h-14 w-full rounded-sm border border-line bg-surface-2 px-4 text-center font-mono text-2xl tracking-[0.5em] text-white placeholder:tracking-normal placeholder:text-muted focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
             placeholder="000000"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH))}
@@ -111,7 +111,7 @@ const MFAChallengeScreen: React.FC = () => {
 
         <button
           type="submit"
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-on-accent shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={verifying || code.length !== CODE_LENGTH}
         >
           {verifying ? (
@@ -129,8 +129,8 @@ const MFAChallengeScreen: React.FC = () => {
           )}
         </button>
 
-        <div className="mt-6 rounded-sm border border-[#4d3465] bg-[#261a32]/60 p-3">
-          <p className="text-center text-xs leading-relaxed text-[#ad93c8]">
+        <div className="mt-6 rounded-sm border border-line bg-surface-2/60 p-3">
+          <p className="text-center text-xs leading-relaxed text-muted">
             Lost your device? Contact an administrator to reset your two-factor authentication.
           </p>
         </div>
@@ -140,7 +140,7 @@ const MFAChallengeScreen: React.FC = () => {
         <button
           type="button"
           onClick={logout}
-          className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-[#ad93c8] transition-colors hover:text-white"
+          className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-muted transition-colors hover:text-white"
         >
           Sign out
         </button>

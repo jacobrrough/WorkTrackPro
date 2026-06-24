@@ -48,10 +48,10 @@ function SummaryTile({
         emphasize ? 'border-primary/30 bg-primary/5' : 'border-white/10 bg-card-dark'
       }`}
     >
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
       <span
         className={`font-mono text-lg tabular-nums ${
-          emphasize ? 'font-bold text-white' : 'text-slate-200'
+          emphasize ? 'font-bold text-white' : 'text-white'
         }`}
       >
         {formatMoney(amount)}
@@ -159,7 +159,7 @@ export default function SalesTaxLiabilityView() {
                 </tr>
               </LedgerTable>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-subtle">
                 Per-agency taxable and non-taxable figures are the sales subject to each agency on a
                 taxed invoice; an invoice taxed by several agencies counts its base toward each, so
                 these columns are <span className="font-semibold">not</span> additive across rows.
@@ -194,7 +194,7 @@ function AgencyRow({ agency }: { agency: SalesTaxAgencyLine }) {
   return (
     <tr className="border-t border-white/5">
       <td className="px-3 py-2 text-white">{agency.agencyName}</td>
-      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
         {rateLabel(agency.rate)}
       </td>
       <MoneyCell amount={agency.taxableSales} />

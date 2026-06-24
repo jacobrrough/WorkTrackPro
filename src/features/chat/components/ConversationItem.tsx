@@ -41,7 +41,7 @@ export function ConversationItem({
     >
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-          isGroup ? 'bg-primary/20 text-primary' : 'bg-white/10 text-slate-300'
+          isGroup ? 'bg-primary/20 text-primary' : 'bg-white/10 text-muted'
         }`}
       >
         <span className="material-symbols-outlined text-xl">{isGroup ? 'group' : 'person'}</span>
@@ -50,10 +50,10 @@ export function ConversationItem({
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="truncate text-sm font-medium text-white">{displayName}</span>
-          <span className="shrink-0 text-xs text-slate-500">{timeAgo(conversation.updatedAt)}</span>
+          <span className="shrink-0 text-xs text-subtle">{timeAgo(conversation.updatedAt)}</span>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-xs text-slate-400">
+          <span className="truncate text-xs text-muted">
             {conversation.lastMessage?.decryptedContent ?? (
               <span className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[10px]">lock</span>
@@ -62,7 +62,7 @@ export function ConversationItem({
             )}
           </span>
           {unread > 0 && (
-            <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+            <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-on-accent">
               {unread > 99 ? '99+' : unread}
             </span>
           )}

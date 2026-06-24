@@ -174,13 +174,13 @@ export default function BudgetEditorView() {
         <button
           type="button"
           onClick={() => navigate(BUDGETS_BASE)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           All budgets
         </button>
 
-        {isPending && <p className="text-slate-400">Loading budget…</p>}
+        {isPending && <p className="text-muted">Loading budget…</p>}
         {isError && (
           <p className="text-red-400" role="alert">
             Could not load this budget. It may have been deleted, or the accounting schema is not
@@ -193,7 +193,7 @@ export default function BudgetEditorView() {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold text-white">{grid.budget.name}</h2>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                   FY {grid.budget.fiscalYear} · {BUDGET_STATUS_LABELS[grid.budget.status]} · planned
                   amounts by account and month
                 </p>
@@ -235,11 +235,9 @@ export default function BudgetEditorView() {
 
             {grid.rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-                <span className="material-symbols-outlined text-4xl text-slate-500">
-                  account_tree
-                </span>
+                <span className="material-symbols-outlined text-4xl text-subtle">account_tree</span>
                 <p className="text-lg font-bold text-white">No accounts to budget</p>
-                <p className="max-w-sm text-sm text-slate-400">
+                <p className="max-w-sm text-sm text-muted">
                   There are no active accounts in the chart of accounts. Add accounts first, then
                   return here to enter planned amounts.
                 </p>
@@ -248,8 +246,8 @@ export default function BudgetEditorView() {
               <div className="overflow-x-auto rounded-sm border border-white/10">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 bg-white/5 text-slate-400">
-                      <th className="sticky left-0 z-10 bg-[#10151f] px-3 py-2 text-left font-semibold">
+                    <tr className="border-b border-white/10 bg-white/5 text-muted">
+                      <th className="sticky left-0 z-10 bg-app-2 px-3 py-2 text-left font-semibold">
                         Account
                       </th>
                       {BUDGET_MONTHS.map((m) => (
@@ -272,13 +270,13 @@ export default function BudgetEditorView() {
                     ))}
                     {/* Grand totals row */}
                     <tr className="border-t border-white/10 bg-white/5">
-                      <td className="sticky left-0 z-10 bg-[#171c26] px-3 py-2 font-bold text-white">
+                      <td className="sticky left-0 z-10 bg-surface px-3 py-2 font-bold text-white">
                         All accounts
                       </td>
                       {monthlyTotals.map((t, i) => (
                         <td
                           key={i}
-                          className="px-2 py-2 text-right font-mono text-xs font-bold tabular-nums text-slate-200"
+                          className="px-2 py-2 text-right font-mono text-xs font-bold tabular-nums text-white"
                         >
                           {formatMoney(t)}
                         </td>
@@ -292,10 +290,10 @@ export default function BudgetEditorView() {
               </div>
             )}
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-subtle">
               Cleared (zero) cells are not stored — only the non-zero plan is saved. Totals update
-              as you type; click <span className="font-semibold text-slate-300">Save budget</span>{' '}
-              to persist.
+              as you type; click <span className="font-semibold text-muted">Save budget</span> to
+              persist.
             </p>
           </>
         )}
@@ -333,7 +331,7 @@ function BudgetTypeGroup({
     <>
       <tr className="bg-white/[0.03]">
         <td
-          className="sticky left-0 z-10 bg-[#11161f] px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-400"
+          className="sticky left-0 z-10 bg-app-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-muted"
           colSpan={14}
         >
           {ACCOUNT_TYPE_LABELS[type]}
@@ -346,7 +344,7 @@ function BudgetTypeGroup({
           <tr key={row.accountId} className="border-t border-white/5">
             <td className="sticky left-0 z-10 bg-background-dark px-3 py-1.5 text-white">
               {row.accountNumber ? (
-                <span className="mr-2 font-mono text-xs text-slate-500">{row.accountNumber}</span>
+                <span className="mr-2 font-mono text-xs text-subtle">{row.accountNumber}</span>
               ) : null}
               {row.accountName}
             </td>
@@ -360,7 +358,7 @@ function BudgetTypeGroup({
                 />
               </td>
             ))}
-            <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-slate-300">
+            <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-muted">
               {formatMoney(rowTotal)}
             </td>
           </tr>
@@ -368,18 +366,18 @@ function BudgetTypeGroup({
       })}
       {/* Group subtotal */}
       <tr className="border-t border-white/5 bg-white/[0.02]">
-        <td className="sticky left-0 z-10 bg-[#0f141d] px-3 py-1.5 text-right text-xs font-semibold text-slate-400">
+        <td className="sticky left-0 z-10 bg-app-2 px-3 py-1.5 text-right text-xs font-semibold text-muted">
           {ACCOUNT_TYPE_LABELS[type]} subtotal
         </td>
         {subtotalMonthly.map((t, i) => (
           <td
             key={i}
-            className="px-2 py-1.5 text-right font-mono text-[11px] tabular-nums text-slate-400"
+            className="px-2 py-1.5 text-right font-mono text-[11px] tabular-nums text-muted"
           >
             {formatMoney(t)}
           </td>
         ))}
-        <td className="px-3 py-1.5 text-right font-mono text-xs font-semibold tabular-nums text-slate-300">
+        <td className="px-3 py-1.5 text-right font-mono text-xs font-semibold tabular-nums text-muted">
           {formatMoney(groupTotal)}
         </td>
       </tr>

@@ -44,6 +44,10 @@ const NotificationSettingsView = lazyWithRetry(
   () => import('./features/notifications/NotificationSettingsView'),
   'NotificationSettingsView'
 );
+const AppearanceSettingsView = lazyWithRetry(
+  () => import('./features/settings/AppearanceSettingsView'),
+  'AppearanceSettingsView'
+);
 
 // WorkTrackAccounting — single lazy entry, gated by the build-time flag. When the
 // flag is off this is null and the import() sits in a dead ternary branch, so Rollup
@@ -65,12 +69,12 @@ function NotFound({
 }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4 text-center">
-      <p className="text-slate-400">{message}</p>
-      {description && <p className="max-w-sm text-xs text-slate-500">{description}</p>}
+      <p className="text-muted">{message}</p>
+      {description && <p className="max-w-sm text-xs text-subtle">{description}</p>}
       <button
         type="button"
         onClick={onBack}
-        className="rounded-sm bg-primary px-4 py-2 font-bold text-white"
+        className="rounded-sm bg-primary px-4 py-2 font-bold text-on-accent"
       >
         Back to Home
       </button>
@@ -209,7 +213,7 @@ function JobDetailRoute() {
     // Better UX for direct deep links: show lightweight loading instead of blank screen
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-background-dark">
-        <div className="text-slate-400">Loading job…</div>
+        <div className="text-muted">Loading job…</div>
       </div>
     );
   }
@@ -325,7 +329,7 @@ function InventoryDetailRoute() {
   if (isPending && !item) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-background-dark">
-        <div className="text-slate-400">Loading item…</div>
+        <div className="text-muted">Loading item…</div>
       </div>
     );
   }
@@ -539,7 +543,7 @@ function TrelloImportRoute() {
         <button
           type="button"
           onClick={() => appNavigate('dashboard')}
-          className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+          className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
@@ -576,6 +580,11 @@ function NotificationSettingsRoute() {
   const appNavigate = useAppNavigate();
   const back = useInAppBack('/app');
   return <NotificationSettingsView onNavigate={appNavigate} onBack={back} />;
+}
+
+function AppearanceSettingsRoute() {
+  const back = useInAppBack('/app');
+  return <AppearanceSettingsView onBack={back} />;
 }
 
 // ─── Router root ─────────────────────────────────────────────────────────────
@@ -782,6 +791,14 @@ export function AppRouter() {
         element={
           <RouteErrorBoundary>
             <NotificationSettingsRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/appearance"
+        element={
+          <RouteErrorBoundary>
+            <AppearanceSettingsRoute />
           </RouteErrorBoundary>
         }
       />

@@ -92,9 +92,9 @@ function OptionsEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-bold text-slate-400">Choices</span>
+      <span className="text-sm font-bold text-muted">Choices</span>
       {options.length === 0 && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           Add at least one choice. The value is stored; the label is shown.
         </p>
       )}
@@ -118,7 +118,7 @@ function OptionsEditor({
             type="button"
             onClick={() => remove(i)}
             aria-label={`Remove choice ${i + 1}`}
-            className="flex size-9 shrink-0 items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400"
+            className="flex size-9 shrink-0 items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400"
           >
             <span className="material-symbols-outlined text-lg">delete</span>
           </button>
@@ -250,7 +250,7 @@ function DefEditorModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -290,9 +290,8 @@ function DefEditorModal({
           </FormField>
 
           {!isEdit && draft.key.trim() !== '' && normalizedKey !== draft.key && (
-            <p className="-mt-1 text-xs text-slate-500">
-              Stored as{' '}
-              <span className="font-mono text-slate-300">{normalizedKey || '(empty)'}</span>
+            <p className="-mt-1 text-xs text-subtle">
+              Stored as <span className="font-mono text-muted">{normalizedKey || '(empty)'}</span>
             </p>
           )}
 
@@ -340,7 +339,7 @@ function DefEditorModal({
             />
           </FormField>
 
-          <label className="flex items-center gap-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={draft.active}
@@ -377,10 +376,10 @@ function DefRow({ def, onEdit }: { def: CustomFieldDef; onEdit: () => void }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5">
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-sm ${def.active ? 'text-white' : 'text-slate-500'}`}>
+        <span className={`block truncate text-sm ${def.active ? 'text-white' : 'text-subtle'}`}>
           {def.label}
         </span>
-        <span className="block text-xs text-slate-500">
+        <span className="block text-xs text-subtle">
           <span className="font-mono">{def.key}</span>
           {' · '}
           {CUSTOM_FIELD_DATA_TYPE_LABELS[def.dataType]}
@@ -394,7 +393,7 @@ function DefRow({ def, onEdit }: { def: CustomFieldDef; onEdit: () => void }) {
         disabled={busy}
         aria-label={def.active ? 'Deactivate' : 'Reactivate'}
         title={def.active ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {def.active ? 'toggle_on' : 'toggle_off'}
@@ -405,7 +404,7 @@ function DefRow({ def, onEdit }: { def: CustomFieldDef; onEdit: () => void }) {
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -428,12 +427,12 @@ function EntitySection({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
           <span className="material-symbols-outlined text-lg text-primary">
             {ENTITY_ICON[entityType]}
           </span>
           {label}
-          <span className="font-mono text-xs font-normal text-slate-500">({defs.length})</span>
+          <span className="font-mono text-xs font-normal text-subtle">({defs.length})</span>
         </h2>
         <Button size="sm" variant="secondary" icon="add" onClick={onAdd}>
           Add
@@ -441,7 +440,7 @@ function EntitySection({
       </div>
 
       {defs.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-white/15 px-3 py-4 text-center text-sm text-slate-500">
+        <p className="rounded-sm border border-dashed border-white/15 px-3 py-4 text-center text-sm text-subtle">
           No custom fields yet. {ENTITY_HINT[entityType]}
         </p>
       ) : (
@@ -484,12 +483,12 @@ export default function CustomFieldsView() {
     <AccountingShell active="custom-fields" title="Custom fields">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-xl text-sm text-slate-400">
+          <p className="max-w-xl text-sm text-muted">
             Define extra fields per accounting entity. Active fields appear on the matching create
             and detail screens, where they can be filled in and saved alongside the record. They are
             metadata only — they never move money or post a journal entry.
           </p>
-          <label className="flex shrink-0 items-center gap-2 text-sm text-slate-300">
+          <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={showInactive}
@@ -500,7 +499,7 @@ export default function CustomFieldsView() {
           </label>
         </div>
 
-        {isPending && <p className="text-slate-400">Loading custom fields…</p>}
+        {isPending && <p className="text-muted">Loading custom fields…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load custom fields. Confirm the accounting schema is exposed and you have an

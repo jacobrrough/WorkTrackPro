@@ -33,7 +33,7 @@ export default function JobDetailHeaderBar({
         <button
           onClick={onBackOrClose}
           disabled={pendingAttachmentToggleCount > 0}
-          className="flex size-12 touch-manipulation items-center justify-center rounded-sm text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-50"
+          className="flex size-12 touch-manipulation items-center justify-center rounded-sm text-muted hover:bg-white/5 hover:text-white disabled:opacity-50"
           aria-label={isEditing ? 'Cancel editing and close' : 'Close job detail'}
         >
           <span className="material-symbols-outlined">close</span>
@@ -44,14 +44,14 @@ export default function JobDetailHeaderBar({
             {isEditing ? 'Edit Job' : formatJobCode(jobCode)}
           </h1>
           {!isEditing && <StatusBadge status={status} size="sm" />}
-          {isEditing && <p className="text-[11px] text-slate-400">Edit below</p>}
+          {isEditing && <p className="text-[11px] text-muted">Edit below</p>}
         </div>
 
         <div className="flex items-center gap-2">
           {isAdmin && !isEditing && (
             <button
               onClick={onToggleMinimalView}
-              className="flex size-12 touch-manipulation items-center justify-center rounded-sm text-slate-400 hover:bg-white/5 hover:text-white"
+              className="flex size-12 touch-manipulation items-center justify-center rounded-sm text-muted hover:bg-white/5 hover:text-white"
               title="Toggle minimal view"
               aria-label="Toggle minimal view"
             >
@@ -77,7 +77,7 @@ export default function JobDetailHeaderBar({
           )}
 
           {!isAdmin && (
-            <div className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <div className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
               View Only
             </div>
           )}

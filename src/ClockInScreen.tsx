@@ -115,13 +115,13 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
         <div className="flex items-center gap-3">
           <button
             onClick={onBack || (() => onNavigate('dashboard'))}
-            className="flex size-10 items-center justify-center text-slate-400 hover:text-white"
+            className="flex size-10 items-center justify-center text-muted hover:text-white"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
             <h1 className="text-lg font-bold text-white">Clock In by Code</h1>
-            <p className="text-xs text-slate-400">Enter your job code</p>
+            <p className="text-xs text-muted">Enter your job code</p>
           </div>
         </div>
       </header>
@@ -154,7 +154,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
         {/* Code Display */}
         <div className="mb-4 w-full max-w-sm">
           <div className="rounded-sm border-2 border-primary/30 bg-card-dark p-4 text-center">
-            <p className="mb-2 text-sm text-slate-400">Job Code</p>
+            <p className="mb-2 text-sm text-muted">Job Code</p>
             <div className="flex h-16 items-center justify-center text-5xl font-bold tracking-widest text-white">
               {jobCode || '----'}
             </div>
@@ -225,7 +225,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
           <button
             onClick={handleSubmit}
             disabled={!jobCode || isLoading}
-            className="mt-6 flex h-24 min-h-24 w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 text-lg font-bold text-white transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 md:h-14 md:min-h-0"
+            className="mt-6 flex h-24 min-h-24 w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 text-lg font-bold text-on-accent transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-subtle md:h-14 md:min-h-0"
           >
             {isLoading ? (
               <>

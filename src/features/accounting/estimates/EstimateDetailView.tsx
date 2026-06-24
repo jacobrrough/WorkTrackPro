@@ -31,7 +31,7 @@ import { ACCOUNTING_BASE, ESTIMATES_BASE } from '../constants';
 import { ESTIMATE_STATUS_LABELS, type Estimate, type EstimateStatus } from '../types';
 
 const STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -122,9 +122,7 @@ function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClos
 
       {/* Line items */}
       <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-          Line items
-        </h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
         <SalesLineItemsEditor
           lines={editor.lines}
           onChange={editor.setLines}
@@ -135,15 +133,15 @@ function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClos
 
       {/* Totals */}
       <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-        <div className="flex justify-between text-slate-400">
+        <div className="flex justify-between text-muted">
           <span>Subtotal</span>
-          <span className="font-mono tabular-nums text-slate-200">
+          <span className="font-mono tabular-nums text-white">
             {formatMoney(editor.totals.subtotalCents / 100)}
           </span>
         </div>
-        <div className="flex justify-between text-slate-400">
+        <div className="flex justify-between text-muted">
           <span>Tax</span>
-          <span className="font-mono tabular-nums text-slate-200">
+          <span className="font-mono tabular-nums text-white">
             {formatMoney(editor.totals.taxCents / 100)}
           </span>
         </div>
@@ -375,9 +373,9 @@ export default function EstimateDetailView() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading estimate…</p>}
+      {isPending && <p className="text-muted">Loading estimate…</p>}
       {isError && <p className="text-red-400">Could not load this estimate.</p>}
-      {!isPending && !isError && !estimate && <p className="text-slate-400">Estimate not found.</p>}
+      {!isPending && !isError && !estimate && <p className="text-muted">Estimate not found.</p>}
 
       {estimate && (
         <div className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -397,20 +395,20 @@ export default function EstimateDetailView() {
             >
               {ESTIMATE_STATUS_LABELS[estimate.status]}
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Customer{' '}
               <span className="text-white">{estimate.customerName || estimate.customerId}</span>
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Date <span className="text-white">{estimate.estimateDate}</span>
             </span>
             {estimate.expiryDate && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Expires <span className="text-white">{estimate.expiryDate}</span>
               </span>
             )}
             {estimate.terms && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Terms <span className="text-white">{estimate.terms}</span>
               </span>
             )}

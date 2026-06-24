@@ -97,7 +97,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
           <h3 className="truncate text-sm font-bold text-white sm:text-base">
             {attachment.filename}
           </h3>
-          <p className="text-xs text-slate-400 sm:text-sm">
+          <p className="text-xs text-muted sm:text-sm">
             {attachment.created ? new Date(attachment.created).toLocaleDateString() : ''}
           </p>
         </div>
@@ -201,12 +201,12 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
             <p className="mb-2 break-words px-4 text-base text-white sm:text-lg">
               {attachment.filename}
             </p>
-            <p className="mb-4 text-sm text-slate-400 sm:text-base">
+            <p className="mb-4 text-sm text-muted sm:text-base">
               {ext.toUpperCase()} file • Preview not available
             </p>
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-3 text-sm text-white transition-all hover:bg-primary/90 active:scale-95 sm:text-base"
+              className="inline-flex items-center gap-2 rounded-sm bg-primary px-6 py-3 text-sm text-on-accent transition-all hover:bg-primary/90 active:scale-95 sm:text-base"
             >
               <span className="material-symbols-outlined">download</span>
               <span>Download File</span>
@@ -220,7 +220,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-sm rounded-sm bg-card-dark p-3 sm:p-4">
             <h3 className="mb-2 text-base font-bold text-white sm:text-lg">Delete File?</h3>
-            <p className="mb-4 text-sm text-slate-400 sm:mb-6 sm:text-base">
+            <p className="mb-4 text-sm text-muted sm:mb-6 sm:text-base">
               Are you sure you want to delete "{attachment.filename}"? This cannot be undone.
             </p>
             <div className="flex gap-2 sm:gap-3">

@@ -93,7 +93,7 @@ export function MessageList({
     <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-3">
       {isFetchingMore && (
         <div className="mb-4 text-center">
-          <span className="text-xs text-slate-500">Loading older messages...</span>
+          <span className="text-xs text-subtle">Loading older messages...</span>
         </div>
       )}
 
@@ -111,9 +111,9 @@ export function MessageList({
 
       {allMessages.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <span className="material-symbols-outlined mb-2 text-4xl text-slate-600">lock</span>
-          <p className="text-sm text-slate-400">Messages are end-to-end encrypted.</p>
-          <p className="mt-1 text-xs text-slate-500">Send a message to start the conversation.</p>
+          <span className="material-symbols-outlined mb-2 text-4xl text-subtle">lock</span>
+          <p className="text-sm text-muted">Messages are end-to-end encrypted.</p>
+          <p className="mt-1 text-xs text-subtle">Send a message to start the conversation.</p>
         </div>
       )}
 

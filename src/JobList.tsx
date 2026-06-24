@@ -105,7 +105,7 @@ const JobList: React.FC<JobListProps> = ({
         <div className="flex items-center justify-between px-3 py-2.5">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex size-10 items-center justify-center text-slate-400"
+            className="flex size-10 items-center justify-center text-muted"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -122,11 +122,11 @@ const JobList: React.FC<JobListProps> = ({
       >
         <div className="space-y-3 px-3 py-3">
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-subtle">
               search
             </span>
             <input
-              className="block w-full rounded-sm border-none bg-[#261a32] py-2.5 pl-10 pr-3 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary"
+              className="block w-full rounded-sm border-none bg-surface-2 py-2.5 pl-10 pr-3 text-white placeholder:text-subtle focus:ring-2 focus:ring-primary"
               placeholder="Search PO, Job Code, Name..."
               type="text"
               value={search}
@@ -145,8 +145,8 @@ const JobList: React.FC<JobListProps> = ({
                       ? 'bg-orange-500 text-white'
                       : f === 'inProgress'
                         ? 'bg-blue-500 text-white'
-                        : 'bg-primary text-white'
-                    : 'border border-white/5 bg-[#261a32] text-slate-300'
+                        : 'bg-primary text-on-accent'
+                    : 'border border-white/5 bg-surface-2 text-muted'
                 }`}
               >
                 {f === 'all' ? 'All Jobs' : f === 'inProgress' ? 'In Progress' : 'Pending'}
@@ -156,18 +156,18 @@ const JobList: React.FC<JobListProps> = ({
         </div>
 
         <div className="flex gap-2 px-3 pb-3">
-          <div className="flex-1 rounded-sm border border-white/5 bg-[#261a32] p-2.5">
-            <p className="text-xs font-bold uppercase text-slate-400">Total</p>
+          <div className="flex-1 rounded-sm border border-white/5 bg-surface-2 p-2.5">
+            <p className="text-xs font-bold uppercase text-muted">Total</p>
             <p className="text-xl font-bold text-white">{jobs.length}</p>
           </div>
-          <div className="flex-1 rounded-sm border border-white/5 bg-[#261a32] p-2.5">
-            <p className="text-xs font-bold uppercase text-slate-400">Active</p>
+          <div className="flex-1 rounded-sm border border-white/5 bg-surface-2 p-2.5">
+            <p className="text-xs font-bold uppercase text-muted">Active</p>
             <p className="text-xl font-bold text-blue-400">
               {jobs.filter((j) => j.status === 'inProgress').length}
             </p>
           </div>
-          <div className="flex-1 rounded-sm border border-white/5 bg-[#261a32] p-2.5">
-            <p className="text-xs font-bold uppercase text-slate-400">Rush</p>
+          <div className="flex-1 rounded-sm border border-white/5 bg-surface-2 p-2.5">
+            <p className="text-xs font-bold uppercase text-muted">Rush</p>
             <p className="text-xl font-bold text-red-400">
               {jobs.filter((j) => j.isRush || j.status === 'rush').length}
             </p>
@@ -177,10 +177,10 @@ const JobList: React.FC<JobListProps> = ({
         <div className="space-y-2 px-3">
           {filteredJobs.length === 0 ? (
             <div className="py-12 text-center">
-              <span className="material-symbols-outlined mb-3 block text-5xl text-slate-600">
+              <span className="material-symbols-outlined mb-3 block text-5xl text-subtle">
                 search_off
               </span>
-              <p className="text-slate-400">No jobs found</p>
+              <p className="text-muted">No jobs found</p>
             </div>
           ) : (
             filteredJobs.map((job) => {
@@ -191,7 +191,7 @@ const JobList: React.FC<JobListProps> = ({
               return (
                 <div
                   key={job.id}
-                  className={`relative overflow-hidden rounded-sm border-l-4 bg-[#261a32] p-3 shadow-sm ${getStatusColor(job.status, job.isRush)}`}
+                  className={`relative overflow-hidden rounded-sm border-l-4 bg-surface-2 p-3 shadow-sm ${getStatusColor(job.status, job.isRush)}`}
                 >
                   <div
                     className="mb-2 flex cursor-pointer items-start justify-between"
@@ -204,7 +204,7 @@ const JobList: React.FC<JobListProps> = ({
                             RUSH
                           </span>
                         )}
-                        <span className="text-xs font-medium text-slate-400">
+                        <span className="text-xs font-medium text-muted">
                           {formatJobCode(job.jobCode)}
                         </span>
                       </div>
@@ -220,16 +220,16 @@ const JobList: React.FC<JobListProps> = ({
                                 ? 'bg-orange-500/20 text-orange-400'
                                 : job.status === 'finished'
                                   ? 'bg-emerald-500/20 text-emerald-400'
-                                  : 'bg-slate-500/20 text-slate-400'
+                                  : 'bg-slate-500/20 text-muted'
                           }`}
                         >
                           {getStatusDisplayName(job.status)}
                         </span>
                         {jobHours > 0 && (
-                          <span className="text-xs text-slate-400">{jobHours.toFixed(1)}h</span>
+                          <span className="text-xs text-muted">{jobHours.toFixed(1)}h</span>
                         )}
                         {job.parts != null && job.parts.length > 1 ? (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-subtle">
                             {job.parts.length} parts,{' '}
                             {job.parts.reduce(
                               (s, p) => s + totalFromDashQuantities(p.dashQuantities),
@@ -238,11 +238,11 @@ const JobList: React.FC<JobListProps> = ({
                             total
                           </span>
                         ) : job.dashQuantities && Object.keys(job.dashQuantities).length > 0 ? (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-subtle">
                             Variant: {formatDashSummary(job.dashQuantities)}
                           </span>
                         ) : (
-                          job.qty && <span className="text-xs text-slate-500">Sets: {job.qty}</span>
+                          job.qty && <span className="text-xs text-subtle">Sets: {job.qty}</span>
                         )}
                       </div>
                     </div>
@@ -252,7 +252,7 @@ const JobList: React.FC<JobListProps> = ({
                         {activeWorkers.slice(0, 3).map((initials, idx) => (
                           <div
                             key={idx}
-                            className="flex h-8 w-8 items-center justify-center rounded-sm border-2 border-[#261a32] bg-primary text-[10px] font-bold uppercase text-white shadow-sm"
+                            className="flex h-8 w-8 items-center justify-center rounded-sm border-2 border-surface-2 bg-primary text-[10px] font-bold uppercase text-on-accent shadow-sm"
                           >
                             {initials}
                           </div>
@@ -269,7 +269,7 @@ const JobList: React.FC<JobListProps> = ({
                             e.stopPropagation();
                             onNavigate('time-reports', job.id);
                           }}
-                          className="flex items-center gap-1 rounded border border-white/20 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 transition-colors hover:bg-white/10"
+                          className="flex items-center gap-1 rounded border border-white/20 bg-white/5 px-2 py-1 text-[10px] font-bold text-muted transition-colors hover:bg-white/10"
                         >
                           <span className="material-symbols-outlined text-sm">schedule</span>
                           Time
@@ -277,10 +277,10 @@ const JobList: React.FC<JobListProps> = ({
                       )}
                       {job.dueDate && (
                         <div className="flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm text-slate-400">
+                          <span className="material-symbols-outlined text-sm text-muted">
                             schedule
                           </span>
-                          <span className="text-xs font-medium text-slate-400">
+                          <span className="text-xs font-medium text-muted">
                             Due {formatDateOnly(job.dueDate)}
                           </span>
                         </div>
@@ -302,7 +302,7 @@ const JobList: React.FC<JobListProps> = ({
                           e.stopPropagation();
                           handleClockIn(job.id);
                         }}
-                        className="rounded-sm bg-primary px-4 py-1.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
+                        className="rounded-sm bg-primary px-4 py-1.5 text-sm font-bold text-on-accent shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
                       >
                         Clock In
                       </button>
@@ -315,11 +315,11 @@ const JobList: React.FC<JobListProps> = ({
         </div>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-[#1a1122]/80 pb-8 pt-2 backdrop-blur-lg">
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-app-2/80 pb-8 pt-2 backdrop-blur-lg">
         <div className="mx-auto flex max-w-md items-center justify-around px-3">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex flex-col items-center gap-1 text-slate-400"
+            className="flex flex-col items-center gap-1 text-muted"
           >
             <span className="material-symbols-outlined">grid_view</span>
             <span className="text-[10px] font-bold uppercase">Home</span>
@@ -330,14 +330,14 @@ const JobList: React.FC<JobListProps> = ({
           </button>
           <button
             onClick={() => onNavigate('clock-in')}
-            className="flex flex-col items-center gap-1 text-slate-400"
+            className="flex flex-col items-center gap-1 text-muted"
           >
             <span className="material-symbols-outlined">schedule</span>
             <span className="text-[10px] font-bold uppercase">Clock In</span>
           </button>
           <button
             onClick={() => onNavigate('inventory')}
-            className="flex flex-col items-center gap-1 text-slate-400"
+            className="flex flex-col items-center gap-1 text-muted"
           >
             <span className="material-symbols-outlined">inventory_2</span>
             <span className="text-[10px] font-bold uppercase">Stock</span>

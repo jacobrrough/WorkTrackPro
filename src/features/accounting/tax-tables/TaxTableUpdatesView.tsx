@@ -67,7 +67,7 @@ function CheckNowBar() {
             <span className="material-symbols-outlined text-primary">sync</span>
             Check for tax-table updates
           </h2>
-          <p className="mt-1 max-w-xl text-sm text-slate-400">
+          <p className="mt-1 max-w-xl text-sm text-muted">
             Tax tables are checked automatically every quarter. You can also run a check now. A
             check only compares the official published rates against your stored rates and records
             any differences below — it never changes a stored rate on its own.
@@ -109,7 +109,7 @@ function OpenDriftRow({ drift, onOpen }: { drift: TaxTableDrift; onOpen: () => v
             {drift.sourceName ?? 'Unknown source'}
           </span>
           {drift.sourceKind && (
-            <Pill className="bg-slate-500/15 text-slate-300">
+            <Pill className="bg-slate-500/15 text-muted">
               {TAX_TABLE_KIND_LABELS[drift.sourceKind]}
             </Pill>
           )}
@@ -117,11 +117,11 @@ function OpenDriftRow({ drift, onOpen }: { drift: TaxTableDrift; onOpen: () => v
             {TAX_TABLE_DRIFT_SEVERITY_LABELS[drift.severity]}
           </Pill>
         </div>
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-subtle">
           {driftChangeSummary(drift.diff)} · detected {formatTimestamp(drift.detectedAt)}
         </p>
       </div>
-      <span className="material-symbols-outlined shrink-0 text-slate-500">chevron_right</span>
+      <span className="material-symbols-outlined shrink-0 text-subtle">chevron_right</span>
     </button>
   );
 }
@@ -130,21 +130,19 @@ function OpenDriftRow({ drift, onOpen }: { drift: TaxTableDrift; onOpen: () => v
 function SourceRow({ source }: { source: TaxTableSource }) {
   return (
     <div className="flex items-start gap-3 px-3 py-3">
-      <span className="material-symbols-outlined text-slate-400">
+      <span className="material-symbols-outlined text-muted">
         {source.kind === 'payroll' ? 'badge' : 'receipt_long'}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate font-semibold text-white">{source.name}</span>
-          <Pill className="bg-slate-500/15 text-slate-300">
-            {TAX_TABLE_KIND_LABELS[source.kind]}
-          </Pill>
+          <Pill className="bg-slate-500/15 text-muted">{TAX_TABLE_KIND_LABELS[source.kind]}</Pill>
           {source.jurisdiction && (
-            <Pill className="bg-slate-500/15 text-slate-400">{source.jurisdiction}</Pill>
+            <Pill className="bg-slate-500/15 text-muted">{source.jurisdiction}</Pill>
           )}
-          {!source.active && <Pill className="bg-slate-500/15 text-slate-500">Inactive</Pill>}
+          {!source.active && <Pill className="bg-slate-500/15 text-subtle">Inactive</Pill>}
         </div>
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-subtle">
           {lastCheckedLabel(source.lastCheckedAt)} · every {source.checkFrequencyDays} days
         </p>
         {(source.officialFileUrl || source.url) && (
@@ -212,11 +210,11 @@ export default function TaxTableUpdatesView() {
             <span className="material-symbols-outlined text-primary">policy</span>
             Tax table updates
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Advisory only. We check official sales-tax (CDTFA) and payroll (CA EDD) tables on a
             quarterly schedule and flag when the published rates differ from your stored rates.
             Changes are{' '}
-            <span className="font-semibold text-slate-300">never applied automatically</span> — you
+            <span className="font-semibold text-muted">never applied automatically</span> — you
             review and confirm each one.
           </p>
         </div>
@@ -229,13 +227,13 @@ export default function TaxTableUpdatesView() {
             <span className="material-symbols-outlined text-primary">notifications_active</span>
             Open alerts
             {badge && (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">
+              <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-on-accent">
                 {badge}
               </span>
             )}
           </h2>
 
-          {openDrift.isPending && <p className="text-sm text-slate-400">Loading alerts…</p>}
+          {openDrift.isPending && <p className="text-sm text-muted">Loading alerts…</p>}
 
           {!openDrift.isPending && openDrift.isError && (
             <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
@@ -263,7 +261,7 @@ export default function TaxTableUpdatesView() {
                   task_alt
                 </span>
                 <p className="font-bold text-white">No open alerts</p>
-                <p className="max-w-md text-sm text-slate-400">
+                <p className="max-w-md text-sm text-muted">
                   Your stored tax rates match the latest checked tables. If a quarterly check (or a
                   manual one) finds a difference, it will appear here for you to review.
                 </p>
@@ -289,11 +287,11 @@ export default function TaxTableUpdatesView() {
             <span className="material-symbols-outlined text-primary">database</span>
             Sources
           </h2>
-          <p className="mb-2 text-sm text-slate-400">
+          <p className="mb-2 text-sm text-muted">
             The official tables we check, and when each was last pulled.
           </p>
 
-          {sources.isPending && <p className="text-sm text-slate-400">Loading sources…</p>}
+          {sources.isPending && <p className="text-sm text-muted">Loading sources…</p>}
 
           {!sources.isPending && sources.isError && (
             <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
@@ -310,7 +308,7 @@ export default function TaxTableUpdatesView() {
           )}
 
           {!sources.isPending && !sources.isError && (sources.data ?? []).length === 0 && (
-            <div className="rounded-sm border border-dashed border-white/15 px-6 py-10 text-center text-sm text-slate-400">
+            <div className="rounded-sm border border-dashed border-white/15 px-6 py-10 text-center text-sm text-muted">
               No tax-table sources are configured.
             </div>
           )}
@@ -324,12 +322,12 @@ export default function TaxTableUpdatesView() {
           )}
         </section>
 
-        <p className="text-xs leading-relaxed text-slate-500">
-          <span className="font-semibold text-slate-400">How this works:</span> a scheduled job
-          pulls each source&apos;s official data file, records a snapshot, and compares it to your
-          active tax rates. A difference becomes an alert here — it does not change anything.
-          Applying an alert updates the stored rate only (no journal entry, no money moved); future
-          invoices then use the new rate.
+        <p className="text-xs leading-relaxed text-subtle">
+          <span className="font-semibold text-muted">How this works:</span> a scheduled job pulls
+          each source&apos;s official data file, records a snapshot, and compares it to your active
+          tax rates. A difference becomes an alert here — it does not change anything. Applying an
+          alert updates the stored rate only (no journal entry, no money moved); future invoices
+          then use the new rate.
         </p>
       </div>
     </AccountingShell>

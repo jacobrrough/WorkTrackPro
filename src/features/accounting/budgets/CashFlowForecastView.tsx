@@ -39,7 +39,7 @@ function SummaryCard({
           : 'text-white';
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-2 text-center">
-      <p className="text-[10px] font-semibold uppercase text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase text-subtle">{label}</p>
       <p className={`font-mono text-sm font-bold tabular-nums ${valueCls}`}>
         {formatMoney(amount)}
       </p>
@@ -73,7 +73,7 @@ export default function CashFlowForecastView() {
     <div className="flex flex-col gap-3 rounded-sm border border-white/10 bg-card-dark p-3">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-slate-400">Horizon</span>
+          <span className="text-xs font-semibold text-muted">Horizon</span>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Forecast horizon">
             {HORIZONS.map((h) => {
               const active = h === months;
@@ -85,8 +85,8 @@ export default function CashFlowForecastView() {
                   aria-pressed={active}
                   className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors ${
                     active
-                      ? 'bg-primary text-white'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-primary text-on-accent'
+                      : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {h} mo
@@ -97,7 +97,7 @@ export default function CashFlowForecastView() {
         </div>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-slate-400">Opening cash balance</span>
+          <span className="text-xs font-semibold text-muted">Opening cash balance</span>
           <CurrencyInput
             aria-label="Opening cash balance"
             value={openingBalance}
@@ -106,7 +106,7 @@ export default function CashFlowForecastView() {
           />
         </label>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-subtle">
         Enter your current cash / bank balance as the starting position — find it on the Balance
         Sheet or in Banking. Inflows are open customer invoices; outflows are open vendor bills,
         each bucketed by its due date.
@@ -126,7 +126,7 @@ export default function CashFlowForecastView() {
       <button
         type="button"
         onClick={() => navigate(BUDGETS_BASE)}
-        className="self-start text-sm font-semibold text-slate-400 hover:text-white"
+        className="self-start text-sm font-semibold text-muted hover:text-white"
       >
         All budgets
       </button>

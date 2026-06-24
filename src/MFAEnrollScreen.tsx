@@ -132,7 +132,7 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
         <h1 className="text-center text-2xl font-bold leading-tight tracking-tight text-white">
           Set up two-factor authentication
         </h1>
-        <p className="mt-2 text-center text-sm font-normal leading-normal text-[#ad93c8]">
+        <p className="mt-2 text-center text-sm font-normal leading-normal text-muted">
           Scan the QR code with an authenticator app (Google Authenticator, Authy, 1Password), then
           enter the 6-digit code it shows.
         </p>
@@ -147,7 +147,7 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
       {starting ? (
         <div className="flex flex-col items-center py-10">
           <div className="h-8 w-8 animate-spin rounded-sm border-2 border-primary border-t-transparent" />
-          <p className="mt-3 text-sm text-[#ad93c8]">Preparing your setup…</p>
+          <p className="mt-3 text-sm text-muted">Preparing your setup…</p>
         </div>
       ) : (
         <>
@@ -159,8 +159,8 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
               </div>
             </div>
           ) : (
-            <div className="mb-4 rounded-sm border border-[#4d3465] bg-[#261a32] p-3">
-              <p className="text-center text-sm text-[#ad93c8]">
+            <div className="mb-4 rounded-sm border border-line bg-surface-2 p-3">
+              <p className="text-center text-sm text-muted">
                 Couldn&apos;t render the QR image. Use the setup key below instead.
               </p>
             </div>
@@ -179,14 +179,14 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
                 {showSecret ? 'Hide setup key' : "Can't scan? Enter a key manually"}
               </button>
               {showSecret && (
-                <div className="mt-2 flex items-center gap-2 rounded-sm border border-[#4d3465] bg-[#261a32] p-3">
+                <div className="mt-2 flex items-center gap-2 rounded-sm border border-line bg-surface-2 p-3">
                   <code className="flex-1 break-all font-mono text-sm tracking-wider text-white">
                     {secret}
                   </code>
                   <button
                     type="button"
                     onClick={handleCopySecret}
-                    className="flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                    className="flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                     aria-label="Copy setup key"
                   >
                     <span className="material-symbols-outlined text-lg" aria-hidden>
@@ -214,7 +214,7 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
                 autoComplete="one-time-code"
                 pattern="\d*"
                 maxLength={CODE_LENGTH}
-                className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-4 text-center font-mono text-2xl tracking-[0.5em] text-white placeholder:tracking-normal placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+                className="h-14 w-full rounded-sm border border-line bg-surface-2 px-4 text-center font-mono text-2xl tracking-[0.5em] text-white placeholder:tracking-normal placeholder:text-muted focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
                 placeholder="000000"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH))}
@@ -226,7 +226,7 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
 
             <button
               type="submit"
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-on-accent shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               disabled={verifying || code.length !== CODE_LENGTH}
             >
               {verifying ? (
@@ -268,7 +268,7 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
             <button
               type="button"
               onClick={() => void handleCancel()}
-              className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm text-[#ad93c8] hover:text-white"
+              className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm text-muted hover:text-white"
             >
               Cancel
             </button>
@@ -280,8 +280,8 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
 
   // Forced full-screen gate variant.
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-[#2b1a3d] px-6 py-10">
-      <div className="w-full max-w-[400px] rounded-md border border-[#4d3465] bg-background-dark/50 p-6 shadow-xl backdrop-blur-sm">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-app-2 px-6 py-10">
+      <div className="w-full max-w-[400px] rounded-md border border-line bg-background-dark/50 p-6 shadow-xl backdrop-blur-sm">
         {body}
       </div>
 
@@ -295,13 +295,13 @@ const MFAEnrollScreen: React.FC<MFAEnrollScreenProps> = ({ mode = 'gate', onCanc
             Try again
           </button>
         )}
-        <p className="text-xs text-[#ad93c8]">
+        <p className="text-xs text-muted">
           Two-factor authentication is required for your account.
         </p>
         <button
           type="button"
           onClick={logout}
-          className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-[#ad93c8] transition-colors hover:text-white"
+          className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-sm font-medium text-muted transition-colors hover:text-white"
         >
           Sign out
         </button>

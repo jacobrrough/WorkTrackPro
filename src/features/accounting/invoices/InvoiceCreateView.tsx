@@ -110,12 +110,12 @@ function FromJobDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           Pulls the job&apos;s parts and inventory and prices them with the same quote calculator
           used on the job screen, so the invoice equals the on-screen quote.
         </p>
@@ -422,7 +422,7 @@ export default function InvoiceCreateView() {
         {/* Line items */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Line items</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
             <Button size="sm" variant="secondary" icon="work" onClick={() => setShowFromJob(true)}>
               From job
             </Button>
@@ -437,15 +437,15 @@ export default function InvoiceCreateView() {
 
         {/* Totals */}
         <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-          <div className="flex justify-between text-slate-400">
+          <div className="flex justify-between text-muted">
             <span>Subtotal</span>
-            <span className="font-mono tabular-nums text-slate-200">
+            <span className="font-mono tabular-nums text-white">
               {formatMoney(totals.subtotalCents / 100)}
             </span>
           </div>
-          <div className="flex justify-between text-slate-400">
+          <div className="flex justify-between text-muted">
             <span>Tax</span>
-            <span className="font-mono tabular-nums text-slate-200">
+            <span className="font-mono tabular-nums text-white">
               {formatMoney(totals.taxCents / 100)}
             </span>
           </div>

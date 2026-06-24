@@ -94,7 +94,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-slate-400">Loading suggestions...</div>
+        <div className="text-muted">Loading suggestions...</div>
       </div>
     );
   }
@@ -104,7 +104,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
       {/* Search */}
       <div className="border-b border-white/10 px-4 py-3 sm:px-6 lg:px-8">
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">
             search
           </span>
           <input
@@ -112,7 +112,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
             placeholder="Search by part number, name, or job name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-sm border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full rounded-sm border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
       </div>
@@ -121,13 +121,13 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
         {filteredSuggestions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <span className="material-symbols-outlined mb-4 text-6xl text-slate-600">
+            <span className="material-symbols-outlined mb-4 text-6xl text-subtle">
               check_circle
             </span>
             <p className="mb-2 text-lg font-medium text-white">
               {searchQuery ? 'No suggestions found' : 'All completed jobs have parts!'}
             </p>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted">
               {searchQuery
                 ? 'Try a different search term'
                 : 'Completed jobs are properly linked to parts in the repository.'}
@@ -146,13 +146,13 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                       <span className="font-mono text-lg font-semibold text-primary">
                         {suggestion.suggestedPartNumber}
                       </span>
-                      <span className="text-sm text-slate-400">
+                      <span className="text-sm text-muted">
                         ({suggestion.jobs.length} job{suggestion.jobs.length !== 1 ? 's' : ''})
                       </span>
                     </div>
                     <p className="text-sm text-white">{suggestion.suggestedName}</p>
                     {suggestion.jobs[0]?.description && (
-                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">
+                      <p className="mt-1 line-clamp-2 text-xs text-muted">
                         {suggestion.jobs[0].description}
                       </p>
                     )}
@@ -160,7 +160,7 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                   <button
                     onClick={() => handleCreatePart(suggestion)}
                     disabled={creatingPartNumber === suggestion.suggestedPartNumber}
-                    className="flex shrink-0 items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                    className="flex shrink-0 items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
                   >
                     {creatingPartNumber === suggestion.suggestedPartNumber ? (
                       <>
@@ -191,21 +191,19 @@ const PartSuggestions: React.FC<PartSuggestionsProps> = ({ onNavigate, onCreateP
                           <span className="font-mono text-sm font-semibold text-white">
                             {formatJobCode(job.jobCode)}
                           </span>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-muted">
                             {getStatusDisplayName(job.status as JobStatus)}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-300">{job.name}</p>
+                        <p className="text-sm text-muted">{job.name}</p>
                         {job.partNumber && (
-                          <p className="mt-0.5 text-xs text-slate-500">
+                          <p className="mt-0.5 text-xs text-subtle">
                             Part: {job.partNumber}
                             {job.variantSuffix && `-${job.variantSuffix}`}
                           </p>
                         )}
                       </div>
-                      <span className="material-symbols-outlined text-slate-400">
-                        chevron_right
-                      </span>
+                      <span className="material-symbols-outlined text-muted">chevron_right</span>
                     </button>
                   ))}
                 </div>

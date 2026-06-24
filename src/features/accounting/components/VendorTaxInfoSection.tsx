@@ -106,23 +106,20 @@ export function VendorTaxInfoSection({ vendorId }: { vendorId: string | undefine
     <section className="flex flex-col gap-3">
       <SectionHeading />
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-subtle">
         W-9 details used by the 1099-NEC worklist. This is master data — saving it moves no money
         and posts no journal entry. The Tax ID is sensitive (treat as PII).
       </p>
 
       {isPending ? (
-        <p className="text-sm text-slate-500">Loading tax info…</p>
+        <p className="text-sm text-subtle">Loading tax info…</p>
       ) : isError ? (
         <p className="text-sm text-red-400">Could not load the vendor&rsquo;s tax info.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col">
-              <label
-                htmlFor="vti-legal-name"
-                className="mb-1 block text-sm font-bold text-slate-400"
-              >
+              <label htmlFor="vti-legal-name" className="mb-1 block text-sm font-bold text-muted">
                 Legal name (per W-9)
               </label>
               <input
@@ -135,7 +132,7 @@ export function VendorTaxInfoSection({ vendorId }: { vendorId: string | undefine
             </div>
 
             <div className="flex flex-col">
-              <label htmlFor="vti-tax-id" className="mb-1 block text-sm font-bold text-slate-400">
+              <label htmlFor="vti-tax-id" className="mb-1 block text-sm font-bold text-muted">
                 Tax ID (SSN / EIN)
               </label>
               <input
@@ -149,7 +146,7 @@ export function VendorTaxInfoSection({ vendorId }: { vendorId: string | undefine
             </div>
 
             <div className="flex flex-col sm:col-span-2">
-              <label htmlFor="vti-address" className="mb-1 block text-sm font-bold text-slate-400">
+              <label htmlFor="vti-address" className="mb-1 block text-sm font-bold text-muted">
                 Address
               </label>
               <input
@@ -162,10 +159,7 @@ export function VendorTaxInfoSection({ vendorId }: { vendorId: string | undefine
             </div>
 
             <div className="flex flex-col">
-              <label
-                htmlFor="vti-entity-type"
-                className="mb-1 block text-sm font-bold text-slate-400"
-              >
+              <label htmlFor="vti-entity-type" className="mb-1 block text-sm font-bold text-muted">
                 Federal tax classification
               </label>
               <select
@@ -186,7 +180,7 @@ export function VendorTaxInfoSection({ vendorId }: { vendorId: string | undefine
             </div>
 
             <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="flex items-center gap-2 text-sm text-muted">
                 <input
                   type="checkbox"
                   checked={form.exempt}
@@ -225,7 +219,7 @@ export function VendorTaxInfoSection({ vendorId }: { vendorId: string | undefine
 /** Section heading matching the custom-fields / attachments section style. */
 function SectionHeading() {
   return (
-    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
       <span className="material-symbols-outlined text-lg text-primary">badge</span>
       W-9 / 1099 tax info
     </h2>

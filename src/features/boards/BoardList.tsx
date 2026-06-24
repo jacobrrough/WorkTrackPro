@@ -12,7 +12,7 @@ interface BoardListProps {
 }
 
 const VISIBILITY_BADGE: Record<string, { label: string; className: string }> = {
-  private: { label: 'Private', className: 'bg-slate-600/40 text-slate-300' },
+  private: { label: 'Private', className: 'bg-slate-600/40 text-muted' },
   members: { label: 'Members', className: 'bg-blue-600/40 text-blue-300' },
   everyone: { label: 'Everyone', className: 'bg-green-600/40 text-green-300' },
 };
@@ -39,7 +39,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex items-center justify-center rounded-full p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-white"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -48,7 +48,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-accent"
         >
           <span className="material-symbols-outlined text-base">add</span>
           New Board
@@ -58,20 +58,18 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
       <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 pb-20">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <p className="text-slate-400">Loading boards...</p>
+            <p className="text-muted">Loading boards...</p>
           </div>
         ) : !boards?.length ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <span className="material-symbols-outlined mb-3 text-5xl text-slate-600">
+            <span className="material-symbols-outlined mb-3 text-5xl text-subtle">
               dashboard_customize
             </span>
-            <p className="mb-1 text-slate-400">No boards yet</p>
-            <p className="mb-4 text-sm text-slate-500">
-              Create a board to organize tasks in columns
-            </p>
+            <p className="mb-1 text-muted">No boards yet</p>
+            <p className="mb-4 text-sm text-subtle">Create a board to organize tasks in columns</p>
             <button
               onClick={() => setShowCreate(true)}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-accent"
             >
               Create your first board
             </button>
@@ -95,9 +93,9 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
                     </span>
                   </div>
                   {board.description && (
-                    <p className="mb-3 line-clamp-2 text-sm text-slate-400">{board.description}</p>
+                    <p className="mb-3 line-clamp-2 text-sm text-muted">{board.description}</p>
                   )}
-                  <div className="mt-auto flex items-center gap-3 text-xs text-slate-500">
+                  <div className="mt-auto flex items-center gap-3 text-xs text-subtle">
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm">view_column</span>
                       {board.columns.length} columns

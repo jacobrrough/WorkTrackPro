@@ -68,7 +68,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-[#2b1a3d] px-6">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-app-2 px-6">
       <div className="mb-8 flex w-full max-w-[400px] flex-col items-center">
         {/* Company logo — the same /logo.png brand mark used on the public site header.
             Falls back to the generic icon only if the image fails to load. */}
@@ -91,7 +91,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
         <h1 className="text-center text-[32px] font-bold leading-tight tracking-tight text-white">
           WorkTrack Pro
         </h1>
-        <p className="mt-2 text-center text-base font-normal leading-normal text-[#ad93c8]">
+        <p className="mt-2 text-center text-base font-normal leading-normal text-muted">
           Log in to manage your jobs and inventory
         </p>
       </div>
@@ -100,7 +100,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
         onSubmit={handleSubmit}
         method="post"
         action="#"
-        className="w-full max-w-[400px] rounded-md border border-[#4d3465] bg-background-dark/50 p-4 shadow-xl backdrop-blur-sm"
+        className="w-full max-w-[400px] rounded-md border border-line bg-background-dark/50 p-4 shadow-xl backdrop-blur-sm"
         autoComplete="on"
         aria-label={mode === 'login' ? 'Login form' : 'Sign up form'}
       >
@@ -114,7 +114,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
           >
             <p
               className={`text-center text-sm ${
-                signUpSuccessMessage ? 'text-slate-200' : 'text-red-400'
+                signUpSuccessMessage ? 'text-white' : 'text-red-400'
               }`}
             >
               {signUpSuccessMessage ?? error}
@@ -132,7 +132,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
             </label>
             <div className="relative">
               <span
-                className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-[#ad93c8]"
+                className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-muted"
                 aria-hidden
               >
                 person
@@ -141,7 +141,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                 id="signup-name"
                 name="name"
                 type="text"
-                className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] pl-12 pr-4 text-base font-normal text-white placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+                className="h-14 w-full rounded-sm border border-line bg-surface-2 pl-12 pr-4 text-base font-normal text-white placeholder:text-muted focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
                 placeholder="Jane Smith"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -162,7 +162,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
           </label>
           <div className="relative">
             <span
-              className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-[#ad93c8]"
+              className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-muted"
               aria-hidden
             >
               mail
@@ -172,7 +172,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
               name="email"
               type="email"
               inputMode="email"
-              className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] pl-12 pr-4 text-base font-normal text-white placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+              className="h-14 w-full rounded-sm border border-line bg-surface-2 pl-12 pr-4 text-base font-normal text-white placeholder:text-muted focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
               placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -196,7 +196,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
           </label>
           <div className="relative">
             <span
-              className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-[#ad93c8]"
+              className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-muted"
               aria-hidden
             >
               lock
@@ -205,7 +205,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
               id="login-password"
               name="password"
               type="password"
-              className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] pl-12 pr-4 text-base font-normal text-white placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+              className="h-14 w-full rounded-sm border border-line bg-surface-2 pl-12 pr-4 text-base font-normal text-white placeholder:text-muted focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -228,7 +228,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
             </label>
             <div className="relative">
               <span
-                className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-[#ad93c8]"
+                className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-xl text-muted"
                 aria-hidden
               >
                 lock
@@ -237,7 +237,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                 id="signup-confirm-password"
                 name="confirmPassword"
                 type="password"
-                className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] pl-12 pr-4 text-base font-normal text-white placeholder:text-[#ad93c8] focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
+                className="h-14 w-full rounded-sm border border-line bg-surface-2 pl-12 pr-4 text-base font-normal text-white placeholder:text-muted focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/50"
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -270,7 +270,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
 
         <button
           type="submit"
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-primary text-lg font-bold text-on-accent shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={
             isLoading ||
             (mode === 'signup' && (password !== confirmPassword || password.length < 6))
@@ -289,12 +289,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
           )}
         </button>
 
-        <p className="mt-6 text-center text-xs text-[#ad93c8]/60">Connected to Supabase</p>
+        <p className="mt-6 text-center text-xs text-muted/60">Connected to Supabase</p>
       </form>
 
       <div className="mt-8 flex flex-col items-center gap-2">
         <div className="flex items-center gap-1">
-          <p className="text-sm text-[#ad93c8]">
+          <p className="text-sm text-muted">
             {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
           </p>
           <button
@@ -312,7 +312,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
           <button
             type="button"
             onClick={() => setShowContactAdmin(true)}
-            className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-xs text-[#ad93c8] hover:text-primary"
+            className="inline-flex min-h-[44px] touch-manipulation items-center rounded-sm px-2 text-xs text-muted hover:text-primary"
           >
             Contact Admin
           </button>
@@ -322,7 +322,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
       {/* Forgot Password Modal */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-md border border-[#4d3465] bg-background-dark p-4 shadow-2xl">
+          <div className="w-full max-w-md rounded-md border border-line bg-background-dark p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-white">Reset Password</h3>
               <button
@@ -333,7 +333,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                   setResetError(null);
                   setResetEmail('');
                 }}
-                className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -345,7 +345,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                   <span className="material-symbols-outlined text-3xl text-primary">mail</span>
                 </div>
                 <h4 className="mb-2 text-lg font-bold text-white">Check your email</h4>
-                <p className="mb-4 text-sm text-slate-400">
+                <p className="mb-4 text-sm text-muted">
                   {onResetPassword
                     ? "If an account exists for that email, we've sent a link to reset your password."
                     : 'Password reset is managed by your administrator. Please contact your admin or use "Contact Admin" on the login screen.'}
@@ -369,7 +369,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                     <p className="text-center text-sm text-red-400">{resetError}</p>
                   </div>
                 )}
-                <p className="mb-4 text-sm text-slate-400">
+                <p className="mb-4 text-sm text-muted">
                   Enter your email address and we'll send you a link to reset your password.
                 </p>
                 <div className="mb-4 flex flex-col">
@@ -382,7 +382,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                     type="email"
                     inputMode="email"
                     autoComplete="email"
-                    className="h-14 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-4 text-white placeholder:text-slate-600"
+                    className="h-14 w-full rounded-sm border border-line bg-surface-2 px-4 text-white placeholder:text-subtle"
                     placeholder="name@company.com"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
@@ -402,7 +402,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                   </button>
                   <button
                     type="submit"
-                    className="h-12 flex-1 rounded-sm bg-primary font-bold text-white transition-colors hover:bg-primary/90"
+                    className="h-12 flex-1 rounded-sm bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
                   >
                     Send Reset Link
                   </button>
@@ -416,7 +416,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
       {/* Contact Admin Modal */}
       {showContactAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-md border border-[#4d3465] bg-background-dark p-4 shadow-2xl">
+          <div className="w-full max-w-md rounded-md border border-line bg-background-dark p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-white">Contact Administrator</h3>
               <button
@@ -426,7 +426,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                   setContactSent(false);
                   setContactMessage('');
                 }}
-                className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -440,10 +440,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                   </span>
                 </div>
                 <h4 className="mb-2 text-lg font-bold text-white">Contact Your Administrator</h4>
-                <p className="mb-4 text-sm text-slate-400">
+                <p className="mb-4 text-sm text-muted">
                   New accounts must be created by a system administrator.
                 </p>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                   Please speak with your supervisor or IT department to request access to WorkTrack
                   Pro.
                 </p>
@@ -460,7 +460,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
               </div>
             ) : (
               <form onSubmit={handleContactAdmin} method="post" action="#" autoComplete="on">
-                <p className="mb-4 text-sm text-slate-400">
+                <p className="mb-4 text-sm text-muted">
                   Need an account? Send a message to the administrator to request access.
                 </p>
 
@@ -474,7 +474,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                     type="email"
                     inputMode="email"
                     autoComplete="email"
-                    className="h-12 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-4 text-white placeholder:text-slate-600"
+                    className="h-12 w-full rounded-sm border border-line bg-surface-2 px-4 text-white placeholder:text-subtle"
                     placeholder="your.email@company.com"
                     required
                   />
@@ -489,7 +489,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                     name="name"
                     type="text"
                     autoComplete="name"
-                    className="h-12 w-full rounded-sm border border-[#4d3465] bg-[#261a32] px-4 text-white placeholder:text-slate-600"
+                    className="h-12 w-full rounded-sm border border-line bg-surface-2 px-4 text-white placeholder:text-subtle"
                     placeholder="John Doe"
                     required
                   />
@@ -503,7 +503,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                     id="contact-message"
                     name="message"
                     autoComplete="off"
-                    className="h-24 w-full resize-none rounded-sm border border-[#4d3465] bg-[#261a32] p-4 text-white placeholder:text-slate-600"
+                    className="h-24 w-full resize-none rounded-sm border border-line bg-surface-2 p-4 text-white placeholder:text-subtle"
                     placeholder="I need access to WorkTrack Pro for..."
                     value={contactMessage}
                     onChange={(e) => setContactMessage(e.target.value)}
@@ -523,7 +523,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
                   </button>
                   <button
                     type="submit"
-                    className="h-12 flex-1 rounded-sm bg-primary font-bold text-white transition-colors hover:bg-primary/90"
+                    className="h-12 flex-1 rounded-sm bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
                   >
                     Send Request
                   </button>

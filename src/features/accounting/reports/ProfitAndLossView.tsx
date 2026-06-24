@@ -75,7 +75,7 @@ export default function ProfitAndLossView() {
             ))}
             {data.income.lines.length === 0 && (
               <tr className="border-t border-white/5">
-                <td className="px-3 py-2 text-slate-500" colSpan={2}>
+                <td className="px-3 py-2 text-subtle" colSpan={2}>
                   No income accounts with activity.
                 </td>
               </tr>
@@ -88,7 +88,7 @@ export default function ProfitAndLossView() {
             ))}
             {data.expense.lines.length === 0 && (
               <tr className="border-t border-white/5">
-                <td className="px-3 py-2 text-slate-500" colSpan={2}>
+                <td className="px-3 py-2 text-subtle" colSpan={2}>
                   No expense accounts with activity.
                 </td>
               </tr>

@@ -271,7 +271,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                 onClose();
               }
             }}
-            className="text-slate-400 hover:text-white"
+            className="text-muted hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -287,11 +287,11 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                   <span className="material-symbols-outlined text-xl text-primary">info</span>
                   <div className="flex-1">
                     <p className="mb-1 font-bold text-white">Bin Location Format</p>
-                    <p className="mb-2 text-sm text-slate-300">
+                    <p className="mb-2 text-sm text-muted">
                       Use format:{' '}
                       <span className="rounded bg-white/10 px-2 py-0.5 font-mono">A4c</span>
                     </p>
-                    <ul className="space-y-1 text-xs text-slate-400">
+                    <ul className="space-y-1 text-xs text-muted">
                       <li>• First letter (A-Z) = Rack</li>
                       <li>• Number (1-99) = Shelf</li>
                       <li>• Last letter (a-z) = Section</li>
@@ -302,7 +302,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
 
               {/* Manual Input */}
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
+                <label className="mb-2 block text-xs font-bold uppercase text-muted">
                   Bin Location
                 </label>
                 <input
@@ -375,10 +375,10 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                   <span className="material-symbols-outlined text-xl text-primary">qr_code</span>
                   <div className="flex-1">
                     <p className="mb-1 font-bold text-white">Scan Bin Location QR Code</p>
-                    <p className="mb-2 text-sm text-slate-300">
+                    <p className="mb-2 text-sm text-muted">
                       Point camera at the QR code on the physical bin location
                     </p>
-                    <p className="text-xs text-slate-400">{scanAttempts} frames scanned</p>
+                    <p className="text-xs text-muted">{scanAttempts} frames scanned</p>
                   </div>
                 </div>
               </div>
@@ -409,7 +409,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
             <button
               onClick={handleSave}
               disabled={!inputValue || !!validationError}
-              className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-sm bg-primary py-3 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save Location
             </button>

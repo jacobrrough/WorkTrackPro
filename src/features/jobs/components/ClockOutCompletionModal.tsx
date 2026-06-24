@@ -39,7 +39,7 @@ function DeltaRow({
     <div className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-3 py-2">
       <div className="min-w-0">
         <span className="font-mono text-sm font-bold text-white">{label}</span>
-        <span className="ml-2 text-[11px] text-slate-400">
+        <span className="ml-2 text-[11px] text-muted">
           {max} left{unit ? ` · ${unit}` : ''}
         </span>
       </div>
@@ -157,7 +157,7 @@ export function ClockOutCompletionModal({
         {step === 'cnc' && (
           <>
             <h2 className="text-lg font-bold text-white">Any CNC finished?</h2>
-            <p className="mb-3 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-muted">
               {partLabel} — how many of each variant did you finish CNC on?
             </p>
             <div className="max-h-[50vh] space-y-1.5 overflow-y-auto">
@@ -177,7 +177,7 @@ export function ClockOutCompletionModal({
               <button
                 type="button"
                 onClick={() => setStep('units')}
-                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-slate-200"
+                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white"
               >
                 {Object.values(cncDelta).some((v) => v > 0) ? 'Next' : 'None — next'}
               </button>
@@ -188,7 +188,7 @@ export function ClockOutCompletionModal({
         {step === 'units' && (
           <>
             <h2 className="text-lg font-bold text-white">Any units fully done?</h2>
-            <p className="mb-3 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-muted">
               {partLabel} — how many units are completely finished?
             </p>
             <div className="max-h-[50vh] space-y-1.5 overflow-y-auto">
@@ -209,7 +209,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={() => void submit(false)}
-                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-slate-200 disabled:opacity-50"
+                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 Nothing finished
               </button>
@@ -217,7 +217,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={onUnitsDone}
-                className="flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Done'}
               </button>
@@ -228,7 +228,7 @@ export function ClockOutCompletionModal({
         {step === 'confirmCnc' && (
           <>
             <h2 className="text-lg font-bold text-white">Is CNC also done?</h2>
-            <p className="mb-3 text-sm text-slate-300">
+            <p className="mb-3 text-sm text-muted">
               You marked units fully done on {partLabel} whose CNC wasn&apos;t logged yet. Is the
               CNC also finished for those units?
             </p>
@@ -237,7 +237,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={() => void submit(false)}
-                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-slate-200 disabled:opacity-50"
+                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 No
               </button>
@@ -245,7 +245,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={() => void submit(true)}
-                className="flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Yes'}
               </button>
