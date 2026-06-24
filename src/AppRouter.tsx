@@ -659,7 +659,7 @@ export function AppRouter() {
         }
       />
       <Route
-        path="/app/allparts"
+        path="/app/inventory/allparts"
         element={
           <RouteErrorBoundary>
             <AllPartsRoute />

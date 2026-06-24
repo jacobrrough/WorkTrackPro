@@ -34,7 +34,7 @@ interface InventoryProps {
   isLoading?: boolean;
   initialItemId?: string;
   onBackFromDetail?: () => void;
-  /** Which sub-view to open initially. The /app/allparts deep link passes 'main'. Defaults 'hub'. */
+  /** Which sub-view to open initially. The /app/inventory/allparts deep link passes 'main'. Default 'hub'. */
   initialView?: 'hub' | 'main';
 }
 

@@ -9,7 +9,7 @@ function BottomNavigation() {
   const isAdmin = currentUser?.isAdmin === true;
 
   const isJobs = pathname.startsWith('/app/board/');
-  const isStock = pathname.startsWith('/app/inventory') || pathname.startsWith('/app/allparts');
+  const isStock = pathname.startsWith('/app/inventory');
   const isScanner = pathname.startsWith('/app/scanner');
   // Home is active for any /app route not claimed by another tab
   const isHome = !isJobs && !isStock && !isScanner && pathname.startsWith('/app');
