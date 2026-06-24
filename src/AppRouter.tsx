@@ -129,6 +129,8 @@ function useInventoryRouteProps() {
     calculateAvailable,
     calculateAllocated,
     allocateInventoryToJob,
+    setInventoryImage,
+    clearInventoryImage,
   } = useApp();
   return {
     inventory,
@@ -146,6 +148,8 @@ function useInventoryRouteProps() {
     calculateAvailable,
     calculateAllocated,
     onAllocateToJob: allocateInventoryToJob,
+    onSetImage: setInventoryImage,
+    onRemoveImage: clearInventoryImage,
   };
 }
 
@@ -313,6 +317,18 @@ function InventoryRoute() {
   return (
     <>
       <Inventory {...props} onNavigate={appNavigate} />
+      <BottomNavigation />
+    </>
+  );
+}
+
+// Deep link straight to the All Parts list (initialView="main"), bypassing the inventory hub.
+function AllPartsRoute() {
+  const appNavigate = useAppNavigate();
+  const props = useInventoryRouteProps();
+  return (
+    <>
+      <Inventory {...props} onNavigate={appNavigate} initialView="main" />
       <BottomNavigation />
     </>
   );
@@ -666,6 +682,14 @@ export function AppRouter() {
         element={
           <RouteErrorBoundary>
             <InventoryRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/inventory/allparts"
+        element={
+          <RouteErrorBoundary>
+            <AllPartsRoute />
           </RouteErrorBoundary>
         }
       />

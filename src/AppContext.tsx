@@ -87,6 +87,8 @@ export interface AppContextType {
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   updateInventoryItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   updateInventoryStock: (id: string, inStock: number, reason?: string) => Promise<void>;
+  setInventoryImage: (id: string, file: File) => Promise<InventoryItem | null>;
+  clearInventoryImage: (id: string) => Promise<InventoryItem | null>;
   addJobInventory: (
     jobId: string,
     inventoryId: string,
@@ -590,6 +592,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       removeJobInventory: inventoryMutations.removeJobInventory,
       markInventoryOrdered: inventoryMutations.markInventoryOrdered,
       receiveInventoryOrder: inventoryMutations.receiveInventoryOrder,
+      setInventoryImage: inventoryMutations.setInventoryImage,
+      clearInventoryImage: inventoryMutations.clearInventoryImage,
       addAttachment: attachmentMutations.addAttachment,
       deleteAttachment: attachmentMutations.deleteAttachment,
       updateAttachmentAdminOnly: attachmentMutations.updateAttachmentAdminOnly,

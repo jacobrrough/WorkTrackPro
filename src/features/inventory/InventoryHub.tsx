@@ -10,6 +10,7 @@ import {
   getSku,
   pickFallbackItems,
   pickRecentItems,
+  stockStatePill,
   type InventoryTab,
 } from './inventoryViewModel';
 
@@ -129,12 +130,7 @@ export default function InventoryHub({
 
   const renderRecentRow = (item: InventoryItem) => {
     const stock = computeStock(item, calculateAvailable, calculateAllocated);
-    const pill =
-      stock.available <= 0
-        ? { label: 'Out', className: 'border-red-500/40 bg-red-500/15 text-red-300' }
-        : stock.lowStock
-          ? { label: 'Low', className: 'border-yellow-500/40 bg-yellow-500/15 text-yellow-300' }
-          : { label: 'In stock', className: 'border-green-500/40 bg-green-500/15 text-green-300' };
+    const pill = stockStatePill(stock);
     return (
       <li key={item.id}>
         <button

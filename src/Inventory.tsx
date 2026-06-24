@@ -19,6 +19,8 @@ interface InventoryProps {
   onReceiveOrder: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
   onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
+  onSetImage: (id: string, file: File) => Promise<InventoryItem | null>;
+  onRemoveImage: (id: string) => Promise<InventoryItem | null>;
   onReloadInventory?: () => Promise<void>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
@@ -32,6 +34,8 @@ interface InventoryProps {
   isLoading?: boolean;
   initialItemId?: string;
   onBackFromDetail?: () => void;
+  /** Which sub-view to open initially. The /app/inventory/allparts deep link passes 'main'. Default 'hub'. */
+  initialView?: 'hub' | 'main';
 }
 
 type InventoryView = 'hub' | 'main' | 'add';
@@ -47,6 +51,8 @@ const Inventory: React.FC<InventoryProps> = ({
   onReceiveOrder,
   onAddAttachment,
   onDeleteAttachment,
+  onSetImage,
+  onRemoveImage,
   onReloadInventory,
   isAdmin,
   calculateAvailable,
@@ -55,9 +61,10 @@ const Inventory: React.FC<InventoryProps> = ({
   isLoading = false,
   initialItemId,
   onBackFromDetail,
+  initialView = 'hub',
 }) => {
   const { state: navState, updateState } = useNavigation();
-  const [view, setView] = useState<InventoryView>('hub');
+  const [view, setView] = useState<InventoryView>(initialView);
   const [filters, setFilters] = useState<InventoryFilters>({
     search: navState.inventorySearchTerm ?? '',
     category: (navState.inventoryCategory as InventoryFilters['category']) ?? 'all',
@@ -113,6 +120,8 @@ const Inventory: React.FC<InventoryProps> = ({
         onUpdateItem={onUpdateItem}
         onAddAttachment={onAddAttachment}
         onDeleteAttachment={onDeleteAttachment}
+        onSetImage={onSetImage}
+        onRemoveImage={onRemoveImage}
         onReloadItem={onReloadInventory}
         onMarkOrdered={onMarkOrdered}
         onReceiveOrder={onReceiveOrder}
@@ -152,8 +161,6 @@ const Inventory: React.FC<InventoryProps> = ({
   return (
     <InventoryMainView
       inventory={inventory}
-      jobs={jobs}
-      isAdmin={isAdmin}
       isLoading={isLoading}
       onBack={() => setView('hub')}
       filters={filters}
@@ -172,14 +179,6 @@ const Inventory: React.FC<InventoryProps> = ({
       }}
       onAddItem={handleAddItem}
       onOpenDetail={(itemId) => onNavigate('inventory-detail', itemId)}
-      onMarkOrdered={onMarkOrdered}
-      onReceiveOrder={onReceiveOrder}
-      onSetStock={async (item, target) => {
-        // Absolute "recount to N": persist exactly the staged count, matching the detail view.
-        // Last-writer-wins is the intended semantics for a deliberate recount.
-        await onUpdateStock(item.id, target, 'Manual recount from inventory list');
-      }}
-      onAllocateToJob={onAllocateToJob}
       calculateAvailable={calculateAvailable}
       calculateAllocated={calculateAllocated}
     />
