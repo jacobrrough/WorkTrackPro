@@ -13,6 +13,33 @@ export function getInventoryImagePublicUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
+/**
+ * Upload an inventory item's photo to the public `inventory-images` bucket and return its storage
+ * path (to persist in inventory.image_path). Returns null on failure. One file per item is the
+ * convention; the caller deletes any previous path via {@link removeInventoryImage}.
+ */
+export async function uploadInventoryImage(
+  inventoryId: string,
+  file: File
+): Promise<string | null> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const path = `inventory/${inventoryId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from(BUCKET_INVENTORY)
+    .upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if (error) {
+    console.error('Upload inventory image failed:', error);
+    return null;
+  }
+  return path;
+}
+
+/** Best-effort delete of an inventory image object (e.g. the previous photo after a replace). */
+export async function removeInventoryImage(storagePath: string): Promise<void> {
+  if (!storagePath) return;
+  await supabase.storage.from(BUCKET_INVENTORY).remove([storagePath]);
+}
+
 export type UploadAttachmentResult = { id: string } | { id: null; error: string };
 
 export type PartAttachmentType = 'drawing' | 'product_image';

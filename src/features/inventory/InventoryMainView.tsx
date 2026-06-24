@@ -12,11 +12,13 @@ import { StockTargetInput } from './StockTargetInput';
 import {
   InventoryFilters,
   InventoryTab,
+  categoryIcon,
   computeStock,
   getSku,
   getSuppliers,
   groupByBin,
   matchesFilters,
+  stockStatePill,
 } from './inventoryViewModel';
 
 interface InventoryMainViewProps {
@@ -245,188 +247,50 @@ export default function InventoryMainView({
 
   const closeRowMenu = () => setRowMenuItemId(null);
 
+  // Clean, hub-style row: thumbnail (or category icon), name + SKU, stock + status pill, chevron.
+  // The whole row opens the detail page, where stock adjust / allocate / order / receive and the
+  // photo live; quick +/- for the field lives on the hub's Stock In/Out scan flow.
   const renderRow = (item: InventoryItem) => {
     const stock = computeStock(item, calculateAvailable, calculateAllocated);
-    const availColor =
-      stock.available <= 0 ? 'text-red-400' : stock.lowStock ? 'text-yellow-400' : 'text-green-400';
-    const menuOpen = rowMenuItemId === item.id;
-    const isStaging = item.id in pendingTargets;
-    const isCommitting = committingIds.has(item.id);
-    const projectedStock = pendingTargets[item.id] ?? item.inStock;
-    const pendingDelta = projectedStock - item.inStock;
+    const pill = stockStatePill(stock);
     return (
-      <div key={item.id} className="rounded-sm border border-white/10 bg-card-dark p-3">
-        <button
-          type="button"
-          onClick={() => onOpenDetail(item.id)}
-          className="w-full text-left focus:outline-none focus:ring-0"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-bold text-white">{item.name}</p>
-              <p className="text-xs text-muted">SKU: {getSku(item)}</p>
-            </div>
-            {stock.needsReorder && (
-              <span className="rounded-sm border border-red-500/40 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300">
-                Min Stock
-              </span>
-            )}
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-            <div>
-              <p className="text-xs text-subtle">In Stock</p>
-              {isStaging ? (
-                <p className="font-bold text-primary">
-                  {item.inStock} → {projectedStock}
-                </p>
-              ) : (
-                <p className="font-bold text-white">{item.inStock}</p>
-              )}
-            </div>
-            <div>
-              <p className="text-xs text-subtle">Allocated</p>
-              <p className="font-bold text-yellow-300">{stock.allocated}</p>
-            </div>
-            <div>
-              <p className="text-xs text-subtle">Available</p>
-              <p className={`font-bold ${availColor}`}>{stock.available}</p>
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-muted">
-            Bin: {item.binLocation || 'Unassigned'} • {getCategoryDisplayName(item.category)}
-          </div>
-        </button>
-        <div className="mt-3 flex items-center justify-end gap-2">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setRowMenuItemId(menuOpen ? null : item.id);
-              }}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm border border-white/10 text-white"
-              aria-label="More actions"
-            >
-              <span className="material-symbols-outlined">more_vert</span>
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" aria-hidden onClick={closeRowMenu} />
-                <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-sm border border-white/10 bg-card-dark py-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAllocatingItem(item);
-                      closeRowMenu();
-                    }}
-                    className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-primary"
-                  >
-                    <span className="material-symbols-outlined text-lg">assignment</span>
-                    Allocate to job
-                  </button>
-                  {onMarkOrdered && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOrderModalItem(item);
-                        setOrderModalMode('add');
-                        setOrderModalQty(0);
-                        closeRowMenu();
-                      }}
-                      className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-white"
-                    >
-                      <span className="material-symbols-outlined text-lg">pending_actions</span>
-                      On order
-                    </button>
-                  )}
-                  {onReceiveOrder && (item.onOrder ?? 0) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOrderModalItem(item);
-                        setOrderModalMode('receive');
-                        setOrderModalQty(item.onOrder ?? 0);
-                        closeRowMenu();
-                      }}
-                      className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-green-400"
-                    >
-                      <span className="material-symbols-outlined text-lg">local_shipping</span>
-                      Receive
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              stageAdjust(item, -1);
-            }}
-            className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
-            aria-label={`Decrease stock for ${item.name}`}
-          >
-            <span className="material-symbols-outlined">remove</span>
-          </button>
-          <StockTargetInput
-            value={projectedStock}
-            onChangeNumber={(n) => setAdjustTarget(item, n)}
-            onClick={(e) => e.stopPropagation()}
-            className="w-16 rounded-sm border border-white/10 bg-white/5 px-2 py-2 text-center text-white"
-            ariaLabel={`Set stock for ${item.name}`}
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onOpenDetail(item.id)}
+        className="flex w-full items-center gap-3 rounded-sm border border-white/10 bg-card-dark p-2.5 text-left hover:border-primary/40"
+      >
+        {item.hasImage && item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt=""
+            className="size-12 shrink-0 rounded-sm object-cover"
+            loading="lazy"
           />
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              stageAdjust(item, 1);
-            }}
-            className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
-            aria-label={`Increase stock for ${item.name}`}
-          >
-            <span className="material-symbols-outlined">add</span>
-          </button>
-        </div>
-        {isStaging && (
-          <div
-            className="mt-3 flex items-center justify-between gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-2"
-            aria-live="polite"
-          >
-            <span className="text-sm font-medium text-primary">
-              {item.inStock} → {projectedStock}{' '}
-              <span className="text-xs text-muted">
-                ({pendingDelta > 0 ? '+' : ''}
-                {pendingDelta})
-              </span>
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={isCommitting}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cancelAdjust(item.id);
-                }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-muted disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isCommitting}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void commitAdjust(item);
-                }}
-                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-on-accent disabled:opacity-50"
-              >
-                {isCommitting ? 'Saving…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
+        ) : (
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+            <span className="material-symbols-outlined">{categoryIcon(item.category)}</span>
+          </span>
         )}
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-bold text-white">{item.name}</p>
+          <p className="truncate text-xs text-muted">SKU: {getSku(item)}</p>
+          <p className="truncate text-xs text-subtle">
+            {item.binLocation || 'Unassigned'} • Avail {stock.available}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-bold text-white">
+            {item.inStock} <span className="text-xs font-normal text-muted">{item.unit}</span>
+          </p>
+          <span
+            className={`mt-0.5 inline-block rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ${pill.className}`}
+          >
+            {pill.label}
+          </span>
+        </div>
+        <span className="material-symbols-outlined shrink-0 text-subtle">chevron_right</span>
+      </button>
     );
   };
 
@@ -470,52 +334,43 @@ export default function InventoryMainView({
           </div>
         </div>
 
-        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <button
-            type="button"
-            onClick={() => setTab('allParts')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'allParts' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
-          >
-            All Parts
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('needsReordering')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'needsReordering' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
-          >
-            Needs Reordering
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('lowStock')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'lowStock' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
-          >
-            Low Stock
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('byBin')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'byBin' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
-          >
-            By Bin Location
-          </button>
+        <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto">
+          {(
+            [
+              { key: 'allParts', label: 'All Parts' },
+              { key: 'needsReordering', label: 'Needs Reorder' },
+              { key: 'lowStock', label: 'Low Stock' },
+              { key: 'byBin', label: 'By Bin' },
+            ] as Array<{ key: InventoryTab; label: string }>
+          ).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-sm px-4 text-xs font-bold ${
+                tab === t.key ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="space-y-2">
           <input
             type="search"
             value={filters.search}
             onChange={(event) => onFiltersChange({ search: event.target.value })}
             placeholder="Search name, SKU, bin, category"
-            className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-3 text-white sm:col-span-2"
+            className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select
               value={filters.category}
               onChange={(event) =>
                 onFiltersChange({ category: event.target.value as InventoryCategory | 'all' })
               }
-              className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-2 text-white"
+              className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
             >
               {CATEGORY_OPTIONS.map((cat) => (
                 <option key={cat} value={cat}>
@@ -526,7 +381,7 @@ export default function InventoryMainView({
             <select
               value={filters.supplier}
               onChange={(event) => onFiltersChange({ supplier: event.target.value })}
-              className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-2 text-white"
+              className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
             >
               <option value="all">All Suppliers</option>
               {suppliers.map((supplier) => (

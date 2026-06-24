@@ -19,6 +19,8 @@ interface InventoryProps {
   onReceiveOrder: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
   onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
+  onSetImage: (id: string, file: File) => Promise<InventoryItem | null>;
+  onRemoveImage: (id: string) => Promise<InventoryItem | null>;
   onReloadInventory?: () => Promise<void>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
@@ -47,6 +49,8 @@ const Inventory: React.FC<InventoryProps> = ({
   onReceiveOrder,
   onAddAttachment,
   onDeleteAttachment,
+  onSetImage,
+  onRemoveImage,
   onReloadInventory,
   isAdmin,
   calculateAvailable,
@@ -113,6 +117,8 @@ const Inventory: React.FC<InventoryProps> = ({
         onUpdateItem={onUpdateItem}
         onAddAttachment={onAddAttachment}
         onDeleteAttachment={onDeleteAttachment}
+        onSetImage={onSetImage}
+        onRemoveImage={onRemoveImage}
         onReloadItem={onReloadInventory}
         onMarkOrdered={onMarkOrdered}
         onReceiveOrder={onReceiveOrder}

@@ -124,6 +124,8 @@ function useInventoryRouteProps() {
     calculateAvailable,
     calculateAllocated,
     allocateInventoryToJob,
+    setInventoryImage,
+    clearInventoryImage,
   } = useApp();
   return {
     inventory,
@@ -141,6 +143,8 @@ function useInventoryRouteProps() {
     calculateAvailable,
     calculateAllocated,
     onAllocateToJob: allocateInventoryToJob,
+    onSetImage: setInventoryImage,
+    onRemoveImage: clearInventoryImage,
   };
 }
 

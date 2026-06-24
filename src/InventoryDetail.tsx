@@ -26,6 +26,8 @@ interface InventoryDetailProps {
   onUpdateItem: (id: string, data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onAddAttachment: (inventoryId: string, file: File, isAdminOnly?: boolean) => Promise<boolean>;
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
+  onSetImage: (id: string, file: File) => Promise<InventoryItem | null>;
+  onRemoveImage: (id: string) => Promise<InventoryItem | null>;
   onReloadItem?: () => Promise<void>;
   onMarkOrdered?: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
   onReceiveOrder?: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
@@ -66,6 +68,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   onUpdateItem,
   onAddAttachment,
   onDeleteAttachment,
+  onSetImage,
+  onRemoveImage,
   onReloadItem,
   onMarkOrdered,
   onReceiveOrder,
@@ -99,6 +103,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const [addToOrderQty, setAddToOrderQty] = useState(0);
   const [showReceiveOrder, setShowReceiveOrder] = useState(false);
   const [receiveOrderQty, setReceiveOrderQty] = useState(0);
+  const [imageBusy, setImageBusy] = useState(false);
 
   const allocated = calculateAllocated(currentItem.id);
   const available = calculateAvailable(currentItem);
@@ -111,6 +116,41 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const setEditForm = useCallback((patch: Partial<InventoryDetailEditFormState>) => {
     setEditFormState((prev) => ({ ...prev, ...patch }));
   }, []);
+
+  const handleUploadImage = useCallback(
+    async (file: File) => {
+      setImageBusy(true);
+      try {
+        const updated = await onSetImage(currentItem.id, file);
+        if (updated) {
+          setCurrentItem(updated);
+          showToast('Photo updated', 'success');
+        } else {
+          showToast('Failed to upload photo', 'error');
+        }
+        await onReloadItem?.();
+      } finally {
+        setImageBusy(false);
+      }
+    },
+    [onSetImage, currentItem.id, setCurrentItem, onReloadItem, showToast]
+  );
+
+  const handleRemoveImage = useCallback(async () => {
+    setImageBusy(true);
+    try {
+      const updated = await onRemoveImage(currentItem.id);
+      if (updated) {
+        setCurrentItem(updated);
+        showToast('Photo removed', 'success');
+      } else {
+        showToast('Failed to remove photo', 'error');
+      }
+      await onReloadItem?.();
+    } finally {
+      setImageBusy(false);
+    }
+  }, [onRemoveImage, currentItem.id, setCurrentItem, onReloadItem, showToast]);
 
   const handleStartEdit = useCallback(() => {
     setEditFormState(buildEditForm(currentItem));
@@ -298,6 +338,9 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           onCancel={handleCancelEdit}
           onScanBarcode={() => setShowBarcodeScanner(true)}
           onScanBin={() => setShowBinScanner(true)}
+          onUploadImage={handleUploadImage}
+          onRemoveImage={handleRemoveImage}
+          imageBusy={imageBusy}
         />
         <BarcodeScannerModal
           open={showBarcodeScanner}
