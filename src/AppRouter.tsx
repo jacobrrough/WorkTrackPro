@@ -316,6 +316,18 @@ function InventoryRoute() {
   );
 }
 
+// Deep link straight to the All Parts list (initialView="main"), bypassing the inventory hub.
+function AllPartsRoute() {
+  const appNavigate = useAppNavigate();
+  const props = useInventoryRouteProps();
+  return (
+    <>
+      <Inventory {...props} onNavigate={appNavigate} initialView="main" />
+      <BottomNavigation />
+    </>
+  );
+}
+
 function InventoryDetailRoute() {
   const { itemId } = useParams<{ itemId: string }>();
   const appNavigate = useAppNavigate();
@@ -643,6 +655,14 @@ export function AppRouter() {
         element={
           <RouteErrorBoundary>
             <InventoryRoute />
+          </RouteErrorBoundary>
+        }
+      />
+      <Route
+        path="/app/allparts"
+        element={
+          <RouteErrorBoundary>
+            <AllPartsRoute />
           </RouteErrorBoundary>
         }
       />
