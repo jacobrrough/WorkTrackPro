@@ -82,7 +82,10 @@ export async function logUnitProgress(args: LogUnitProgressArgs): Promise<boolea
     p_job_id: job.id,
     p_cnc_delta: cncDeltaByVariant,
     p_units_delta: unitsDeltaByVariant,
-    p_inventory_deltas: deltas,
+    // The RPC reads each element's `inventory_id` (snake_case); InventoryDelta is camelCase, so map
+    // it at the boundary. Without this, every delta's inventory_id parses to NULL and the RPC raises
+    // `inventory_not_in_job_bom: <NULL>` the moment a job actually has material to pull.
+    p_inventory_deltas: deltas.map((d) => ({ inventory_id: d.inventoryId, delta: d.delta })),
     p_cnc_complete: cncComplete,
   });
   if (error) {

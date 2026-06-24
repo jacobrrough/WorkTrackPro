@@ -346,6 +346,13 @@ export interface PartMaterial {
   quantityPerUnit: number;
   unit: string;
   usageType?: 'per_set' | 'per_variant';
+  /**
+   * Per-material "this foam needs CNC'd out" flag. Only meaningful for materials in a CNC-able
+   * category (foam). When set, the material deducts on the CNC milestone (and puts its variant in
+   * the CNC checklist) regardless of scheduled CNC hours. Undefined/absent on a material falls back
+   * to the per-variant CNC-hours gate in cncDeduction.ts. See docs/cnc-unit-progress-deduction.md.
+   */
+  requiresCnc?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

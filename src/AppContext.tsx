@@ -34,6 +34,13 @@ import {
 } from '@/lib/offlineActionQueue';
 import { syncOfflineActionQueue } from '@/lib/syncOfflineActionQueue';
 import { subscriptions } from '@/services/api/subscriptions';
+import {
+  removeBoardCard,
+  removeBoardColumn,
+  upsertBoardCard,
+  upsertBoardColumn,
+} from '@/lib/boardCache';
+import { mapCardRow, mapColumnRow } from '@/services/api/boards';
 import { createRealtimeDebouncer } from '@/lib/realtimeDebounce';
 import { useToast } from '@/Toast';
 
@@ -469,20 +476,32 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         }
       },
 
-      // ── Board-related tables ──────────────────────────────────────
-      onBoardRelated: (table, _action, record) => {
+      // ── Board-related tables — patch the board cache directly (no refetch). ──
+      // Refetching the whole board (getBoardById ≈ 5 round-trips) on every card move was
+      // the source of the boards "slow + flash"; patch the cached arrays instead.
+      onBoardRelated: (table, action, record) => {
         if (table === 'boards') {
+          // The board row itself (rename / visibility) changed — rare; refresh the lists.
           void queryClient.invalidateQueries({ queryKey: ['boards'] });
           const boardId = record.id as string | undefined;
           if (boardId) void queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+          return;
+        }
+        if (table === 'board_columns') {
+          if (action === 'delete') {
+            removeBoardColumn(queryClient, record.id as string);
+          } else {
+            upsertBoardColumn(queryClient, record.board_id as string, mapColumnRow(record));
+          }
+          return;
+        }
+        // board_cards. DELETE payloads carry only the PK under default replica identity,
+        // so remove by id across board caches; INSERT/UPDATE carry the full row.
+        if (action === 'delete') {
+          removeBoardCard(queryClient, record.id as string);
         } else {
           const boardId = record.board_id as string | undefined;
-          if (boardId) {
-            debounce(
-              `board-${boardId}`,
-              () => void queryClient.invalidateQueries({ queryKey: ['board', boardId] })
-            );
-          }
+          if (boardId) upsertBoardCard(queryClient, boardId, mapCardRow(record));
         }
       },
 

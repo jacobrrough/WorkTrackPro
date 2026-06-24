@@ -15,6 +15,8 @@ export interface PartMaterialLinkProps {
   onUpdate: () => void;
   onNavigate?: (view: ViewState, id?: string) => void;
   showFinancials?: boolean;
+  /** When true, this material's category can be CNC'd out (foam) — shows the "Needs CNC" slider. */
+  cncAble?: boolean;
   className?: string;
 }
 
@@ -26,6 +28,7 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
   onUpdate,
   onNavigate,
   showFinancials = true,
+  cncAble = false,
   className = '',
 }) => {
   const { showToast } = useToast();
@@ -79,6 +82,21 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
     setEditingQty(true);
     setQtyValue(currentQty.toString());
     setUnitValue(material.unit ?? 'units');
+  };
+
+  const handleToggleRequiresCnc = async () => {
+    const next = !material.requiresCnc;
+    try {
+      const updated = await partsService.updatePartMaterial(material.id, { requiresCnc: next });
+      if (updated) {
+        showToast(next ? 'Marked: needs CNC' : 'Marked: no CNC', 'success');
+        onUpdate();
+      } else {
+        showToast('Failed to update material', 'error');
+      }
+    } catch {
+      showToast('Failed to update material', 'error');
+    }
   };
 
   return (
@@ -147,6 +165,27 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
             </>
           )}
         </div>
+        {cncAble && (
+          <div className="mt-1.5" onClick={(e) => onNavigate && e.stopPropagation()}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={material.requiresCnc === true}
+              title="Whether this foam needs to be CNC'd out — when on, it's pulled on the CNC step and the variant shows in the CNC checklist."
+              onClick={() => void handleToggleRequiresCnc()}
+              className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
+                material.requiresCnc
+                  ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[13px]">
+                {material.requiresCnc ? 'toggle_on' : 'toggle_off'}
+              </span>
+              Needs CNC
+            </button>
+          </div>
+        )}
         {showFinancials && (
           <div className="mt-1" onClick={(e) => onNavigate && e.stopPropagation()}>
             <MaterialCostDisplay ourCost={ourCost} />

@@ -70,7 +70,7 @@ Sign-up is available from the login page. **Navigation:** Internal app uses view
 
 ### Architecture (refactored — completed)
 
-The AppContext refactor plan (see `docs/APPCONTEXT-REFACTOR-PLAN.md`) has been executed:
+The AppContext refactor plan (see `docs/archive/APPCONTEXT-REFACTOR-PLAN.md`) has been executed:
 
 - **Auth:** `AuthContext` (`useAuth()`) — currentUser, login, signUp, logout, password reset, session expiry guards, idle timeout, + E2E key unlock/generation for chat.
 - **Server state:** `useAppQueries(enabled)` — the 4 core TanStack queries (jobs, shifts, users, inventory) with smart refreshers (including part-data healing).
@@ -85,7 +85,7 @@ The AppContext refactor plan (see `docs/APPCONTEXT-REFACTOR-PLAN.md`) has been e
 
 **Deep reference docs (highly recommended):**
 - `docs/SYSTEM_MASTERY.md` — verified DB schema, relations, RLS, encryption, job workflow.
-- `docs/APPCONTEXT-REFACTOR-PLAN.md` — the executed refactor.
+- `docs/archive/APPCONTEXT-REFACTOR-PLAN.md` — the executed refactor.
 - `docs/JOB_AND_PART_DATA_FLOW.md`, `docs/PART_DETAIL_AUTO_CALCULATIONS.md`, etc.
 
 ### Notes

@@ -363,7 +363,6 @@ function KanbanBoardRoute({ boardType }: { boardType: 'shopFloor' | 'admin' }) {
     currentUser,
     updateJobStatus,
     updateJob,
-    inventory,
   } = useApp();
   const isAdmin = currentUser?.isAdmin ?? false;
   return (
@@ -382,7 +381,6 @@ function KanbanBoardRoute({ boardType }: { boardType: 'shopFloor' | 'admin' }) {
           currentUser={currentUser!}
           onUpdateJobStatus={updateJobStatus}
           onUpdateJob={updateJob}
-          inventory={inventory}
         />
       </div>
       <BottomNavigation />

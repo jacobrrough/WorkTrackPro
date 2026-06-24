@@ -24,7 +24,7 @@ function mapBoardRow(row: Record<string, unknown>, columns: BoardColumn[] = []):
   };
 }
 
-function mapColumnRow(row: Record<string, unknown>): BoardColumn {
+export function mapColumnRow(row: Record<string, unknown>): BoardColumn {
   return {
     id: row.id as string,
     boardId: row.board_id as string,
@@ -34,7 +34,7 @@ function mapColumnRow(row: Record<string, unknown>): BoardColumn {
   };
 }
 
-function mapCardRow(row: Record<string, unknown>): BoardCard {
+export function mapCardRow(row: Record<string, unknown>): BoardCard {
   return {
     id: row.id as string,
     boardId: row.board_id as string,
