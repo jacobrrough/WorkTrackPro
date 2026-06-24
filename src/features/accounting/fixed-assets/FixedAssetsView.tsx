@@ -38,7 +38,7 @@ function MoneyCell({
   return (
     <td
       className={`px-3 py-2 text-right font-mono tabular-nums ${
-        strong ? 'font-bold text-white' : muted ? 'text-slate-400' : 'text-slate-200'
+        strong ? 'font-bold text-white' : muted ? 'text-muted' : 'text-white'
       }`}
     >
       {formatMoney(amount)}
@@ -60,7 +60,7 @@ function SummaryStat({
 }) {
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
           tone === 'accent' ? 'text-primary' : 'text-white'
@@ -68,7 +68,7 @@ function SummaryStat({
       >
         {value}
       </p>
-      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-subtle">{hint}</p>}
     </div>
   );
 }
@@ -122,13 +122,13 @@ function RunDepreciationModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           Posts every scheduled depreciation period due on or before this date — one balanced
           journal entry per period (Dr Depreciation Expense / Cr 1510 Accumulated Depreciation).
           Periods already posted are skipped, so it is safe to re-run.
@@ -240,14 +240,14 @@ export default function FixedAssetsView() {
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
         <TaxDisclaimer />
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Capitalized assets and their depreciation. Net book value is acquisition cost minus
           accumulated depreciation (the sum of posted depreciation periods), floored at the
           asset&apos;s salvage value. Running depreciation posts one balanced journal entry per due
           period — Dr Depreciation Expense / Cr 1510 Accumulated Depreciation.
         </p>
 
-        {isPending && <p className="text-slate-400">Loading fixed assets…</p>}
+        {isPending && <p className="text-muted">Loading fixed assets…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load the asset register. Confirm the accounting schema is exposed and you have
@@ -257,11 +257,11 @@ export default function FixedAssetsView() {
 
         {!isPending && !isError && rows.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">
+            <span className="material-symbols-outlined text-4xl text-subtle">
               precision_manufacturing
             </span>
             <p className="text-lg font-bold text-white">No fixed assets yet</p>
-            <p className="max-w-md text-sm text-slate-400">
+            <p className="max-w-md text-sm text-muted">
               Add a capitalized asset — its cost, salvage value, useful life and the accounts its
               depreciation touches — and a straight-line depreciation schedule is generated for it.
               Run depreciation each period to post the expense.
@@ -298,7 +298,7 @@ export default function FixedAssetsView() {
             <div className="overflow-x-auto rounded-sm border border-white/10">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5 text-slate-400">
+                  <tr className="border-b border-white/10 bg-white/5 text-muted">
                     <th className="px-3 py-2 text-left font-semibold">Asset</th>
                     <th className="px-3 py-2 text-left font-semibold">In service</th>
                     <th className="px-3 py-2 text-right font-semibold">Cost</th>
@@ -319,16 +319,14 @@ export default function FixedAssetsView() {
                           <span className="block truncate font-medium text-white">{row.name}</span>
                           <StatusBadge status={row.status} />
                         </div>
-                        <span className="block text-xs text-slate-500">
+                        <span className="block text-xs text-subtle">
                           {methodLabel(row.method)} · {row.usefulLifeMonths} mo
                           {row.periodsRemaining > 0
                             ? ` · ${row.periodsRemaining} period${row.periodsRemaining === 1 ? '' : 's'} left`
                             : ' · fully scheduled'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-slate-300">
-                        {formatAssetDate(row.inServiceDate)}
-                      </td>
+                      <td className="px-3 py-2 text-muted">{formatAssetDate(row.inServiceDate)}</td>
                       <MoneyCell amount={row.cost} />
                       <MoneyCell amount={row.accumulatedDepreciation} muted />
                       <MoneyCell amount={row.netBookValue} strong />
@@ -349,11 +347,11 @@ export default function FixedAssetsView() {
               </table>
             </div>
 
-            <p className="text-xs leading-relaxed text-slate-500">
-              <span className="font-semibold text-slate-400">How these are figured:</span>{' '}
-              Accumulated depreciation is the sum of an asset&apos;s POSTED schedule periods; net
-              book value is cost minus that, clamped so it never drops below salvage. Remaining is
-              the still-unposted plan. Tap a row to see the asset&apos;s full schedule and post
+            <p className="text-xs leading-relaxed text-subtle">
+              <span className="font-semibold text-muted">How these are figured:</span> Accumulated
+              depreciation is the sum of an asset&apos;s POSTED schedule periods; net book value is
+              cost minus that, clamped so it never drops below salvage. Remaining is the
+              still-unposted plan. Tap a row to see the asset&apos;s full schedule and post
               individual periods.
             </p>
           </>

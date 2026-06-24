@@ -43,20 +43,20 @@ export default function JournalEntryDetail() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading entry…</p>}
+      {isPending && <p className="text-muted">Loading entry…</p>}
       {isError && <p className="text-red-400">Could not load this entry.</p>}
-      {!isPending && !isError && !entry && <p className="text-slate-400">Entry not found.</p>}
+      {!isPending && !isError && !entry && <p className="text-muted">Entry not found.</p>}
 
       {entry && (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-            <span className="text-slate-400">
+            <span className="text-muted">
               Date <span className="text-white">{entry.entryDate}</span>
             </span>
-            <span className="text-slate-400">
+            <span className="text-muted">
               Status <span className="uppercase text-white">{entry.status}</span>
             </span>
-            <span className="text-slate-400">
+            <span className="text-muted">
               Source <span className="text-white">{entry.sourceType}</span>
             </span>
           </div>
@@ -80,11 +80,11 @@ export default function JournalEntryDetail() {
                   {l.accountNumber ? `${l.accountNumber} · ` : ''}
                   {l.accountName ?? l.accountId}
                 </td>
-                <td className="px-3 py-2 text-slate-400">{l.lineMemo ?? ''}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-200">
+                <td className="px-3 py-2 text-muted">{l.lineMemo ?? ''}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-white">
                   {l.debit ? formatMoney(l.debit) : ''}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-200">
+                <td className="px-3 py-2 text-right tabular-nums text-white">
                   {l.credit ? formatMoney(l.credit) : ''}
                 </td>
               </tr>

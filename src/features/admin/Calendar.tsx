@@ -753,7 +753,7 @@ const Calendar: React.FC<CalendarProps> = ({
               {onBack && (
                 <button
                   onClick={onBack}
-                  className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                   aria-label="Back"
                 >
                   <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -761,7 +761,7 @@ const Calendar: React.FC<CalendarProps> = ({
               )}
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-bold text-white sm:text-xl">Calendar</h1>
-                <p className="truncate text-xs text-slate-400">Job timelines and scheduling</p>
+                <p className="truncate text-xs text-muted">Job timelines and scheduling</p>
               </div>
             </div>
           </div>
@@ -771,7 +771,7 @@ const Calendar: React.FC<CalendarProps> = ({
               className={`min-h-[44px] touch-manipulation rounded-sm px-2 py-2 text-xs font-semibold transition-colors sm:px-3 ${
                 includeOvertimeInSchedule
                   ? 'bg-amber-500/20 text-amber-300'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  : 'bg-white/5 text-muted hover:bg-white/10'
               }`}
             >
               <span className="hidden sm:inline">
@@ -782,7 +782,7 @@ const Calendar: React.FC<CalendarProps> = ({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => changeMonth(-1)}
-                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Previous month"
               >
                 <span className="material-symbols-outlined text-xl">chevron_left</span>
@@ -792,7 +792,7 @@ const Calendar: React.FC<CalendarProps> = ({
               </h2>
               <button
                 onClick={() => changeMonth(1)}
-                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Next month"
               >
                 <span className="material-symbols-outlined text-xl">chevron_right</span>
@@ -808,7 +808,7 @@ const Calendar: React.FC<CalendarProps> = ({
         onScroll={onScrollSave}
         className="flex-1 overflow-x-auto overflow-y-auto px-3 py-4 pb-[env(safe-area-inset-bottom)] sm:px-4"
       >
-        <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
+        <div className="mb-4 rounded-sm border border-primary/30 bg-primary/10 p-2.5 text-[11px] text-muted sm:p-3 sm:text-xs">
           <p>
             {settings.employeeCount} emp · {weeklyRegularHoursPerEmployee.toFixed(1)}h reg/wk
           </p>
@@ -827,7 +827,7 @@ const Calendar: React.FC<CalendarProps> = ({
               >
                 {applySchedulePending ? 'Applying…' : 'Apply schedule'}
               </button>
-              <span className="ml-2 text-[10px] text-slate-400">
+              <span className="ml-2 text-[10px] text-muted">
                 Saves planned completion dates (ECD never changed by calendar).
               </span>
             </div>
@@ -837,7 +837,7 @@ const Calendar: React.FC<CalendarProps> = ({
         <div className="mb-4 rounded-sm border border-white/10 bg-white/5 p-2.5 sm:p-3">
           <h3 className="mb-2 text-sm font-bold text-white sm:mb-3">New Job Planner</h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
-            <label className="col-span-2 text-xs text-slate-400 sm:col-span-1">
+            <label className="col-span-2 text-xs text-muted sm:col-span-1">
               Labor hrs
               <input
                 type="number"
@@ -848,7 +848,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-muted">
               CNC hrs
               <input
                 type="number"
@@ -859,7 +859,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-muted">
               3D hrs
               <input
                 type="number"
@@ -870,7 +870,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-muted">
               Due date
               <input
                 type="date"
@@ -879,7 +879,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
-            <label className="col-span-2 text-xs text-slate-400 sm:col-span-1">
+            <label className="col-span-2 text-xs text-muted sm:col-span-1">
               Use OT for soonest
               <button
                 type="button"
@@ -887,7 +887,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 className={`mt-1 flex min-h-[44px] w-full touch-manipulation items-center justify-center rounded border px-2 text-sm font-medium transition-colors ${
                   plannerUseOvertime
                     ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
-                    : 'border-white/10 bg-white/5 text-slate-300'
+                    : 'border-white/10 bg-white/5 text-muted'
                 }`}
               >
                 {plannerUseOvertime ? 'Yes' : 'No'}
@@ -896,7 +896,7 @@ const Calendar: React.FC<CalendarProps> = ({
           </div>
 
           {plannerAnyHours && (
-            <div className="mt-3 rounded border border-white/10 bg-black/20 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-2.5 text-[11px] text-muted sm:p-3 sm:text-xs">
               <p>
                 Soonest completion:{' '}
                 <span className="font-semibold text-white">
@@ -927,7 +927,7 @@ const Calendar: React.FC<CalendarProps> = ({
           )}
 
           {plannerAnyHours && plannerDueDate && (
-            <div className="mt-3 rounded border border-white/10 bg-black/20 p-2.5 text-[11px] text-slate-300 sm:p-3 sm:text-xs">
+            <div className="mt-3 rounded border border-white/10 bg-black/20 p-2.5 text-[11px] text-muted sm:p-3 sm:text-xs">
               <p className="mb-1">Due-date lane checks ({formatDateOnly(plannerDueDate)}):</p>
               {laborDuePlanWithoutOvertime && (
                 <p className="mt-1">
@@ -974,7 +974,7 @@ const Calendar: React.FC<CalendarProps> = ({
           {weekDaysShort.map((day, i) => (
             <div
               key={weekDaysLong[i]}
-              className="py-1.5 text-center text-[10px] font-bold text-slate-400 sm:py-2 sm:text-xs"
+              className="py-1.5 text-center text-[10px] font-bold text-muted sm:py-2 sm:text-xs"
             >
               {day}
             </div>
@@ -1011,19 +1011,19 @@ const Calendar: React.FC<CalendarProps> = ({
               >
                 <div
                   className={`text-[11px] font-medium sm:text-xs ${
-                    dayData.isCurrentMonth ? 'text-slate-300' : 'text-slate-600'
+                    dayData.isCurrentMonth ? 'text-muted' : 'text-subtle'
                   }`}
                 >
                   {dayData.date.getDate()}
                   {totalCapacity > 0 && (
-                    <span className="ml-0.5 text-[9px] text-slate-500 sm:ml-1 sm:text-[10px]">
+                    <span className="ml-0.5 text-[9px] text-subtle sm:ml-1 sm:text-[10px]">
                       ({totalCapacity.toFixed(1)}h)
                     </span>
                   )}
                 </div>
                 {totalCapacity > 0 && (
                   <div
-                    className={`mt-0.5 text-[9px] sm:text-[10px] ${overCapacity ? 'font-bold text-red-400' : 'text-slate-500'}`}
+                    className={`mt-0.5 text-[9px] sm:text-[10px] ${overCapacity ? 'font-bold text-red-400' : 'text-subtle'}`}
                   >
                     {scheduledHours.toFixed(1)}/{totalCapacity.toFixed(1)}h
                   </div>
@@ -1066,7 +1066,7 @@ const Calendar: React.FC<CalendarProps> = ({
                     );
                   })}
                   {jobsForDay.length > 3 && (
-                    <div className="text-[9px] text-slate-500 sm:text-[10px]">
+                    <div className="text-[9px] text-subtle sm:text-[10px]">
                       +{jobsForDay.length - 3} more
                     </div>
                   )}
@@ -1080,7 +1080,7 @@ const Calendar: React.FC<CalendarProps> = ({
         <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-2.5 sm:p-3">
           <h3 className="mb-2 text-base font-bold text-white sm:mb-3 sm:text-lg">Upcoming Jobs</h3>
           {jobTimelines.length === 0 ? (
-            <p className="text-sm text-slate-400">No jobs with due dates</p>
+            <p className="text-sm text-muted">No jobs with due dates</p>
           ) : (
             <div className="space-y-2">
               {jobTimelines.slice(0, 10).map((tl) => {
@@ -1096,7 +1096,7 @@ const Calendar: React.FC<CalendarProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5 gap-y-0.5">
                           <span className="font-bold text-white">#{tl.job.jobCode}</span>
-                          <span className="truncate text-sm text-slate-300">
+                          <span className="truncate text-sm text-muted">
                             {getJobDisplayName(tl.job)}
                           </span>
                           {tl.job.isRush && <span className="text-yellow-400">⚡</span>}
@@ -1139,7 +1139,7 @@ const Calendar: React.FC<CalendarProps> = ({
                             )
                           )}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400 sm:text-xs">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted sm:text-xs">
                           <span>Start: {formatDateOnly(tl.startDate)}</span>
                           {tl.job.dueDate && <span>Due: {formatDateOnly(tl.job.dueDate)}</span>}
                           {tl.job.ecd && <span>ECD: {formatDateOnly(tl.job.ecd)}</span>}
@@ -1157,7 +1157,7 @@ const Calendar: React.FC<CalendarProps> = ({
                             REMAINING_DISPLAY_THRESHOLD_HOURS ? (
                             <span>
                               {progress.remainingLaborHours.toFixed(1)}h rem
-                              <span className="ml-1 text-slate-500">
+                              <span className="ml-1 text-subtle">
                                 / {progress.plannedLaborHours.toFixed(1)}h plan
                               </span>
                             </span>
@@ -1177,7 +1177,7 @@ const Calendar: React.FC<CalendarProps> = ({
                         </div>
                         {currentUser.isAdmin && progress && (
                           <div className="mt-2">
-                            <div className="mb-1 flex items-center justify-between text-[10px] text-slate-400">
+                            <div className="mb-1 flex items-center justify-between text-[10px] text-muted">
                               <span>Completion</span>
                               <div className="flex items-center gap-1.5">
                                 {progress.laborOverEstimate && (
@@ -1207,14 +1207,14 @@ const Calendar: React.FC<CalendarProps> = ({
                                 e.preventDefault();
                                 onNavigate('time-reports', tl.job.id);
                               }}
-                              className="min-h-[44px] touch-manipulation rounded border border-white/20 bg-white/5 px-3 py-2 text-[10px] font-bold text-slate-300 transition-colors active:bg-white/10 sm:hover:bg-white/10"
+                              className="min-h-[44px] touch-manipulation rounded border border-white/20 bg-white/5 px-3 py-2 text-[10px] font-bold text-muted transition-colors active:bg-white/10 sm:hover:bg-white/10"
                             >
                               Time
                             </button>
                           </div>
                         )}
                       </div>
-                      <span className="material-symbols-outlined mt-0.5 shrink-0 text-slate-400">
+                      <span className="material-symbols-outlined mt-0.5 shrink-0 text-muted">
                         chevron_right
                       </span>
                     </div>
@@ -1233,11 +1233,11 @@ const Calendar: React.FC<CalendarProps> = ({
           aria-modal="true"
           aria-labelledby="past-ecd-title"
         >
-          <div className="max-w-md rounded-lg border border-white/20 bg-[#2a1f35] p-4 shadow-xl">
+          <div className="max-w-md rounded-lg border border-white/20 bg-surface-3 p-4 shadow-xl">
             <h2 id="past-ecd-title" className="text-base font-bold text-white">
               Planned date is after ECD (contract date)
             </h2>
-            <p className="mt-2 text-sm text-slate-300">
+            <p className="mt-2 text-sm text-muted">
               Job #{pastEcdApprovalModal.job.jobCode} — planned completion{' '}
               {formatDateOnly(pastEcdApprovalModal.plannedDate)} is after ECD{' '}
               {pastEcdApprovalModal.job.ecd && formatDateOnly(pastEcdApprovalModal.job.ecd)}.
@@ -1247,7 +1247,7 @@ const Calendar: React.FC<CalendarProps> = ({
               <button
                 type="button"
                 onClick={() => handlePastEcdApproval(false)}
-                className="min-h-[44px] touch-manipulation rounded border border-white/20 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/10"
+                className="min-h-[44px] touch-manipulation rounded border border-white/20 px-4 py-2 text-sm font-medium text-muted hover:bg-white/10"
               >
                 Skip
               </button>

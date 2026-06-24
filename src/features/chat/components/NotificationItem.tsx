@@ -45,9 +45,9 @@ const TYPE_CONFIG: Partial<Record<SystemNotificationType, { icon: string; color:
   delivery_completed: { icon: 'task_alt', color: 'text-green-400' },
   delivery_delayed: { icon: 'report', color: 'text-red-400' },
   // System
-  daily_summary: { icon: 'summarize', color: 'text-slate-300' },
+  daily_summary: { icon: 'summarize', color: 'text-muted' },
   system_alert: { icon: 'campaign', color: 'text-amber-400' },
-  maintenance_notice: { icon: 'engineering', color: 'text-slate-400' },
+  maintenance_notice: { icon: 'engineering', color: 'text-muted' },
   // Legacy
   mention: { icon: 'alternate_email', color: 'text-blue-400' },
   delivery: { icon: 'local_shipping', color: 'text-emerald-400' },
@@ -69,7 +69,7 @@ function timeAgo(dateStr: string): string {
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
   const config = TYPE_CONFIG[notification.type] ?? {
     icon: 'notifications',
-    color: 'text-slate-400',
+    color: 'text-muted',
   };
   const isUnread = !notification.readAt;
 
@@ -89,12 +89,12 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-sm font-medium ${isUnread ? 'text-white' : 'text-slate-300'}`}>
+          <span className={`text-sm font-medium ${isUnread ? 'text-white' : 'text-muted'}`}>
             {notification.title}
           </span>
-          <span className="shrink-0 text-xs text-slate-500">{timeAgo(notification.createdAt)}</span>
+          <span className="shrink-0 text-xs text-subtle">{timeAgo(notification.createdAt)}</span>
         </div>
-        <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">{notification.message}</p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-muted">{notification.message}</p>
       </div>
 
       {isUnread && <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />}

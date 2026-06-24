@@ -65,7 +65,7 @@ export function InventoryDetailEdit({
             type="button"
             onClick={onSave}
             disabled={isSaving}
-            className="rounded-sm bg-primary px-6 py-2 font-bold text-white disabled:opacity-50"
+            className="rounded-sm bg-primary px-6 py-2 font-bold text-on-accent disabled:opacity-50"
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>
@@ -76,7 +76,7 @@ export function InventoryDetailEdit({
         <div className="space-y-3 rounded-sm bg-card-dark p-3">
           <h2 className="text-lg font-bold text-white">Basic Information</h2>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Name *</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Name *</label>
             <input
               type="text"
               value={form.editName}
@@ -85,7 +85,7 @@ export function InventoryDetailEdit({
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Description</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Description</label>
             <textarea
               value={form.editDescription}
               onChange={(e) => setForm({ editDescription: e.target.value })}
@@ -95,7 +95,7 @@ export function InventoryDetailEdit({
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Category *</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Category *</label>
             <select
               value={form.editCategory}
               onChange={(e) => setForm({ editCategory: e.target.value as InventoryCategory })}
@@ -109,7 +109,7 @@ export function InventoryDetailEdit({
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Unit *</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Unit *</label>
             <input
               type="text"
               value={form.editUnit}
@@ -120,7 +120,7 @@ export function InventoryDetailEdit({
           </div>
           {isAdmin && (
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-400">Price Per Unit</label>
+              <label className="mb-2 block text-sm font-bold text-muted">Price Per Unit</label>
               <input
                 type="number"
                 step={0.01}
@@ -136,7 +136,7 @@ export function InventoryDetailEdit({
         <div className="space-y-3 rounded-sm bg-card-dark p-3">
           <h2 className="text-lg font-bold text-white">Stock Levels</h2>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">In Stock *</label>
+            <label className="mb-2 block text-sm font-bold text-muted">In Stock *</label>
             <input
               type="number"
               step={1}
@@ -154,9 +154,7 @@ export function InventoryDetailEdit({
           </div>
           {form.editInStock !== currentItem.inStock && (
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-400">
-                Reason for Change *
-              </label>
+              <label className="mb-2 block text-sm font-bold text-muted">Reason for Change *</label>
               <input
                 type="text"
                 value={form.editReason}
@@ -168,20 +166,20 @@ export function InventoryDetailEdit({
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-sm border border-white/10 bg-white/5 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Allocated</p>
+              <p className="mb-1 text-xs text-muted">Allocated</p>
               <p className="text-lg font-bold text-yellow-400">{allocated}</p>
-              <p className="text-xs text-slate-500">(auto-calculated)</p>
+              <p className="text-xs text-subtle">(auto-calculated)</p>
             </div>
             <div className="rounded-sm border border-white/10 bg-white/5 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Available</p>
+              <p className="mb-1 text-xs text-muted">Available</p>
               <p className="text-lg font-bold text-green-400">
                 {Math.max(0, form.editInStock - allocated)}
               </p>
-              <p className="text-xs text-slate-500">(auto-calculated)</p>
+              <p className="text-xs text-subtle">(auto-calculated)</p>
             </div>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Reorder Point</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Reorder Point</label>
             <input
               type="number"
               step={1}
@@ -194,12 +192,12 @@ export function InventoryDetailEdit({
               placeholder="Not set (enter number to enable)"
               className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-subtle">
               Alert when available stock falls below this level. Leave empty or set to 0 to disable.
             </p>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">On Order</label>
+            <label className="mb-2 block text-sm font-bold text-muted">On Order</label>
             <input
               type="number"
               step={1}
@@ -214,7 +212,7 @@ export function InventoryDetailEdit({
         <div className="space-y-3 rounded-sm bg-card-dark p-3">
           <h2 className="text-lg font-bold text-white">Location & Vendor</h2>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Barcode</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Barcode</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -233,7 +231,7 @@ export function InventoryDetailEdit({
             </div>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Bin Location</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Bin Location</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -253,7 +251,7 @@ export function InventoryDetailEdit({
             </div>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-400">Vendor</label>
+            <label className="mb-2 block text-sm font-bold text-muted">Vendor</label>
             <input
               type="text"
               value={form.editVendor}

@@ -36,13 +36,13 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
             <span className="text-base font-semibold text-white">{formattedDate}</span>
             <PendingSyncBadge entityId={delivery.id} />
           </div>
-          <p className="mt-1 text-sm text-slate-400">
-            <span className="font-semibold text-slate-300">{totalQty}</span> items
+          <p className="mt-1 text-sm text-muted">
+            <span className="font-semibold text-muted">{totalQty}</span> items
             {delivery.carrier && ` · ${delivery.carrier}`}
             {delivery.trackingNumber && ` · ${delivery.trackingNumber}`}
           </p>
           {delivery.recipientName && (
-            <p className="text-xs text-slate-500">Received by {delivery.recipientName}</p>
+            <p className="text-xs text-subtle">Received by {delivery.recipientName}</p>
           )}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
@@ -58,7 +58,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
             <>
               <button
                 onClick={onEdit}
-                className="flex items-center justify-center rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+                className="flex items-center justify-center rounded p-1 text-muted hover:bg-white/10 hover:text-white"
                 aria-label="Edit delivery"
                 title="Edit"
               >
@@ -66,7 +66,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
               </button>
               <button
                 onClick={onDelete}
-                className="flex items-center justify-center rounded p-1 text-slate-400 hover:bg-white/10 hover:text-red-400"
+                className="flex items-center justify-center rounded p-1 text-muted hover:bg-white/10 hover:text-red-400"
                 aria-label="Delete delivery"
                 title="Delete"
               >
@@ -76,7 +76,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
           )}
         </div>
       </div>
-      <div className="space-y-0.5 text-xs text-slate-300">
+      <div className="space-y-0.5 text-xs text-muted">
         {delivery.lineItems.slice(0, 4).map((item, i) => (
           <div key={i} className="flex justify-between">
             <span className="truncate">
@@ -90,11 +90,11 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
           </div>
         ))}
         {delivery.lineItems.length > 4 && (
-          <p className="text-[10px] text-slate-500">…and {delivery.lineItems.length - 4} more</p>
+          <p className="text-[10px] text-subtle">…and {delivery.lineItems.length - 4} more</p>
         )}
       </div>
       {delivery.notes && (
-        <p className="mt-2 line-clamp-2 border-t border-white/10 pt-2 text-xs italic text-slate-400">
+        <p className="mt-2 line-clamp-2 border-t border-white/10 pt-2 text-xs italic text-muted">
           {delivery.notes}
         </p>
       )}

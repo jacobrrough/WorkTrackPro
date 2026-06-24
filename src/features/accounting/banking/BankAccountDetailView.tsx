@@ -104,13 +104,13 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
     <div className="flex flex-col gap-2 px-3 py-3">
       {/* Top line: date, description, amount, status */}
       <div className="flex items-start gap-3">
-        <span className="w-20 shrink-0 pt-0.5 text-xs text-slate-500">{txn.txnDate}</span>
+        <span className="w-20 shrink-0 pt-0.5 text-xs text-subtle">{txn.txnDate}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-white">
             {txn.description || txn.merchant || 'Transaction'}
           </span>
           {txn.merchant && txn.description && (
-            <span className="block truncate text-xs text-slate-500">{txn.merchant}</span>
+            <span className="block truncate text-xs text-subtle">{txn.merchant}</span>
           )}
         </span>
         <SignedAmount amount={txn.amount} className="shrink-0 pt-0.5 text-sm" />
@@ -123,9 +123,8 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
       <div className="flex flex-wrap items-center gap-2 pl-20">
         {isMatched ? (
           <>
-            <span className="text-sm text-slate-400">
-              Posted to{' '}
-              <span className="text-slate-200">{txn.categoryAccountName ?? 'category'}</span>
+            <span className="text-sm text-muted">
+              Posted to <span className="text-white">{txn.categoryAccountName ?? 'category'}</span>
             </span>
             {txn.matchedJournalEntryId && (
               <button
@@ -141,7 +140,7 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
               type="button"
               onClick={onUnmatch}
               disabled={busy}
-              className="flex items-center gap-1 text-sm font-semibold text-slate-400 hover:text-amber-400 disabled:opacity-40"
+              className="flex items-center gap-1 text-sm font-semibold text-muted hover:text-amber-400 disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-base">undo</span>
               {unmatch.isPending ? 'Unmatching…' : 'Unmatch'}
@@ -149,12 +148,12 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
           </>
         ) : isExcluded ? (
           <>
-            <span className="text-sm text-slate-500">Excluded from the books.</span>
+            <span className="text-sm text-subtle">Excluded from the books.</span>
             <button
               type="button"
               onClick={() => onToggleExcluded(false)}
               disabled={busy}
-              className="flex items-center gap-1 text-sm font-semibold text-slate-400 hover:text-white disabled:opacity-40"
+              className="flex items-center gap-1 text-sm font-semibold text-muted hover:text-white disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-base">restore_from_trash</span>
               Restore
@@ -183,7 +182,7 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
                 onClick={onMakeRule}
                 disabled={busy}
                 title="Create a rule that auto-categorizes transactions like this"
-                className="flex items-center gap-1 text-sm font-semibold text-slate-400 hover:text-primary disabled:opacity-40"
+                className="flex items-center gap-1 text-sm font-semibold text-muted hover:text-primary disabled:opacity-40"
               >
                 <span className="material-symbols-outlined text-base">rule_folder</span>
                 Make a rule
@@ -194,7 +193,7 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
               onClick={() => onToggleExcluded(true)}
               disabled={busy}
               aria-label="Exclude transaction"
-              className="flex size-9 items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-amber-400 disabled:opacity-40"
+              className="flex size-9 items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-amber-400 disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-lg">block</span>
             </button>
@@ -296,17 +295,17 @@ export default function BankAccountDetailView() {
       }
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        {accountLoading && <p className="text-slate-400">Loading account…</p>}
+        {accountLoading && <p className="text-muted">Loading account…</p>}
         {accountError && <p className="text-red-400">Could not load this bank account.</p>}
         {!accountLoading && !accountError && !account && (
-          <p className="text-slate-400">Bank account not found.</p>
+          <p className="text-muted">Bank account not found.</p>
         )}
 
         {account && (
           <>
             {/* Account meta */}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-              <span className="text-slate-400">
+              <span className="text-muted">
                 GL account{' '}
                 {account.glAccountName ? (
                   <span className="text-white">
@@ -318,7 +317,7 @@ export default function BankAccountDetailView() {
                 )}
               </span>
               {account.accountType && (
-                <span className="text-slate-400">
+                <span className="text-muted">
                   Type{' '}
                   <span className="text-white">
                     {BANK_ACCOUNT_TYPE_LABELS[account.accountType]}
@@ -326,7 +325,7 @@ export default function BankAccountDetailView() {
                 </span>
               )}
               {account.lastReconciledAt && (
-                <span className="text-slate-400">
+                <span className="text-muted">
                   Last reconciled <span className="text-white">{account.lastReconciledAt}</span>
                 </span>
               )}
@@ -365,8 +364,8 @@ export default function BankAccountDetailView() {
                     aria-current={isActive ? 'true' : undefined}
                     className={`shrink-0 rounded-sm px-3 py-1.5 text-sm font-semibold transition-colors ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                        ? 'bg-primary text-on-accent'
+                        : 'text-muted hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     {t.label}
@@ -376,22 +375,20 @@ export default function BankAccountDetailView() {
             </nav>
 
             {/* Transactions */}
-            {txnsLoading && <p className="text-slate-400">Loading transactions…</p>}
+            {txnsLoading && <p className="text-muted">Loading transactions…</p>}
             {txnsError && (
               <p className="text-red-400">Could not load transactions for this account.</p>
             )}
 
             {!txnsLoading && !txnsError && transactions.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-                <span className="material-symbols-outlined text-4xl text-slate-500">
-                  receipt_long
-                </span>
+                <span className="material-symbols-outlined text-4xl text-subtle">receipt_long</span>
                 <p className="text-lg font-bold text-white">
                   {tab === 'all' ? 'No transactions yet' : `No ${tab} transactions`}
                 </p>
                 {tab === 'all' && (
                   <>
-                    <p className="max-w-sm text-sm text-slate-400">
+                    <p className="max-w-sm text-sm text-muted">
                       Import a CSV, OFX, or QFX statement to bring transactions in. Rules will
                       auto-categorize what they match; you review and accept the rest.
                     </p>

@@ -29,11 +29,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       role="status"
       className={`flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center ${className}`}
     >
-      <span aria-hidden="true" className="material-symbols-outlined text-4xl text-slate-500">
+      <span aria-hidden="true" className="material-symbols-outlined text-4xl text-subtle">
         {icon}
       </span>
       <p className="text-lg font-bold text-white">{title}</p>
-      {hint && <p className="max-w-sm text-sm text-slate-400">{hint}</p>}
+      {hint && <p className="max-w-sm text-sm text-muted">{hint}</p>}
       {action}
     </div>
   );

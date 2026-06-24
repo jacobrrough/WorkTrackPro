@@ -49,7 +49,7 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
     return (
       <section className="flex flex-col gap-2">
         <SectionHeading />
-        <p className="text-xs text-slate-500">Save first to add attachments.</p>
+        <p className="text-xs text-subtle">Save first to add attachments.</p>
       </section>
     );
   }
@@ -99,7 +99,7 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
       />
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-slate-500">PDF or image, up to 10 MB.</p>
+        <p className="text-xs text-subtle">PDF or image, up to 10 MB.</p>
         <Button
           size="sm"
           variant="secondary"
@@ -118,18 +118,18 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
       )}
 
       {isPending ? (
-        <p className="text-sm text-slate-500">Loading attachments…</p>
+        <p className="text-sm text-subtle">Loading attachments…</p>
       ) : isError ? (
         <p className="text-sm text-red-400">Could not load attachments.</p>
       ) : attachments.length === 0 ? (
-        <p className="text-sm text-slate-500">No attachments yet.</p>
+        <p className="text-sm text-subtle">No attachments yet.</p>
       ) : (
         <ul className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
           {attachments.map((att) => (
             <li key={att.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-              <span className="material-symbols-outlined text-lg text-slate-400">description</span>
+              <span className="material-symbols-outlined text-lg text-muted">description</span>
               <span className="flex-1 truncate text-white">{att.filename}</span>
-              <span className="shrink-0 text-xs text-slate-500">{formatBytes(att.byteSize)}</span>
+              <span className="shrink-0 text-xs text-subtle">{formatBytes(att.byteSize)}</span>
               <button
                 type="button"
                 onClick={() => void onView(att)}
@@ -142,7 +142,7 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
                 onClick={() => void onDelete(att)}
                 disabled={del.isPending}
                 aria-label={`Delete ${att.filename}`}
-                className="flex size-8 shrink-0 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-red-400 disabled:opacity-50"
+                className="flex size-8 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-red-400 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-lg">delete</span>
               </button>
@@ -157,7 +157,7 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
 /** Shared section heading matching the custom-fields / payments section style. */
 function SectionHeading() {
   return (
-    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
       <span className="material-symbols-outlined text-lg text-primary">attach_file</span>
       Attachments
     </h2>

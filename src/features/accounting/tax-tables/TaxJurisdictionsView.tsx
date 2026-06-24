@@ -168,15 +168,15 @@ function JurisdictionRow({
 }) {
   return (
     <div className="flex items-start gap-3 px-3 py-3">
-      <span className="material-symbols-outlined text-slate-400">location_on</span>
+      <span className="material-symbols-outlined text-muted">location_on</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
+          <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[11px] font-semibold text-muted">
             {specificityLabel(jurisdiction)}
           </span>
           <span className="truncate font-semibold text-white">{codeName}</span>
         </div>
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-subtle">
           {geo(jurisdiction.country)} · {geo(jurisdiction.state)} · {geo(jurisdiction.county)} ·{' '}
           {geo(jurisdiction.city)} · {geo(jurisdiction.zip)}
           {jurisdiction.priority !== 0 ? ` · priority ${jurisdiction.priority}` : ''}
@@ -336,11 +336,11 @@ export default function TaxJurisdictionsView() {
             <span className="material-symbols-outlined text-primary">map</span>
             Sales-tax jurisdictions
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Map a customer&apos;s address to the sales-tax code to apply. When you pick a customer
             on a new invoice or estimate and haven&apos;t chosen a tax code yet, the most specific
             matching mapping is suggested automatically (you can always change it). A mapping points
-            at an <span className="font-semibold text-slate-300">existing tax code</span> — it never
+            at an <span className="font-semibold text-muted">existing tax code</span> — it never
             creates a rate.
           </p>
           <p className="mt-2 rounded-sm border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
@@ -353,7 +353,7 @@ export default function TaxJurisdictionsView() {
 
         {/* Add / edit form */}
         <section>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
             {editingId ? 'Edit mapping' : 'Add a mapping'}
           </h2>
           <JurisdictionForm
@@ -377,12 +377,12 @@ export default function TaxJurisdictionsView() {
             <span className="material-symbols-outlined text-primary">format_list_bulleted</span>
             Mappings
           </h2>
-          <p className="mb-2 text-sm text-slate-400">
+          <p className="mb-2 text-sm text-muted">
             Shown most specific first — that is also the order they are matched (ZIP, then city,
             then county, then state).
           </p>
 
-          {loading && <p className="text-sm text-slate-400">Loading mappings…</p>}
+          {loading && <p className="text-sm text-muted">Loading mappings…</p>}
 
           {!loading && loadError && (
             <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
@@ -395,9 +395,9 @@ export default function TaxJurisdictionsView() {
 
           {!loading && !loadError && rows.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
-              <span className="material-symbols-outlined text-3xl text-slate-500">map</span>
+              <span className="material-symbols-outlined text-3xl text-subtle">map</span>
               <p className="font-bold text-white">No jurisdiction mappings yet</p>
-              <p className="max-w-md text-sm text-slate-400">
+              <p className="max-w-md text-sm text-muted">
                 Add a mapping above to enable address-based tax-code suggestions on invoices and
                 estimates.
               </p>

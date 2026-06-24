@@ -43,7 +43,7 @@ function MoneyCell({ amount, strong = false }: { amount: number; strong?: boolea
   return (
     <td
       className={`px-3 py-2 text-right font-mono tabular-nums ${
-        strong ? 'font-bold text-white' : negative ? 'text-red-400' : 'text-slate-200'
+        strong ? 'font-bold text-white' : negative ? 'text-red-400' : 'text-white'
       }`}
     >
       {formatMoney(amount)}
@@ -54,13 +54,13 @@ function MoneyCell({ amount, strong = false }: { amount: number; strong?: boolea
 /** Margin % cell: em-dash when undefined (zero revenue), red when negative. */
 function MarginPctCell({ value, strong = false }: { value: number | null; strong?: boolean }) {
   if (value === null) {
-    return <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-500">—</td>;
+    return <td className="px-3 py-2 text-right font-mono tabular-nums text-subtle">—</td>;
   }
   const negative = value < 0;
   return (
     <td
       className={`px-3 py-2 text-right font-mono tabular-nums ${
-        strong ? 'font-bold text-white' : negative ? 'text-red-400' : 'text-slate-200'
+        strong ? 'font-bold text-white' : negative ? 'text-red-400' : 'text-white'
       }`}
     >
       {value.toFixed(1)}%
@@ -93,7 +93,7 @@ export default function JobCostingView() {
 
   return (
     <AccountingShell active="job-costing" title="Job costing">
-      {isPending && <p className="text-slate-400">Loading job costing…</p>}
+      {isPending && <p className="text-muted">Loading job costing…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load job costing. Confirm the accounting schema is exposed and you have an
@@ -103,9 +103,9 @@ export default function JobCostingView() {
 
       {!isPending && !isError && rows.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-500">query_stats</span>
+          <span className="material-symbols-outlined text-4xl text-subtle">query_stats</span>
           <p className="text-lg font-bold text-white">No job costing yet</p>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm text-muted">
             Profitability appears here once a job has logged labor, consumed materials, or been
             invoiced. Each row compares a job&apos;s revenue against its material and labor cost.
           </p>
@@ -114,7 +114,7 @@ export default function JobCostingView() {
 
       {!isPending && !isError && rows.length > 0 && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted">
             Per-job profitability: revenue minus material and labor cost. Tap a column to sort, or a
             row to drill into a job&apos;s invoices and bills.
           </p>
@@ -122,7 +122,7 @@ export default function JobCostingView() {
           <div className="overflow-x-auto rounded-sm border border-white/10">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5 text-slate-400">
+                <tr className="border-b border-white/10 bg-white/5 text-muted">
                   {COLUMNS.map((c) => {
                     const isActive = c.key === sortKey;
                     return (
@@ -164,12 +164,10 @@ export default function JobCostingView() {
                     <td className="px-3 py-2">
                       <span className="block truncate font-medium text-white">{row.name}</span>
                       {row.jobCode && (
-                        <span className="block font-mono text-xs text-slate-500">
-                          {row.jobCode}
-                        </span>
+                        <span className="block font-mono text-xs text-subtle">{row.jobCode}</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-slate-300">{row.status ?? '—'}</td>
+                    <td className="px-3 py-2 text-muted">{row.status ?? '—'}</td>
                     <MoneyCell amount={row.revenue} />
                     <MoneyCell amount={row.materialCost} />
                     <MoneyCell amount={row.laborCost} />
@@ -192,11 +190,11 @@ export default function JobCostingView() {
             </table>
           </div>
 
-          <p className="text-xs leading-relaxed text-slate-500">
-            <span className="font-semibold text-slate-400">How these are figured:</span> Labor cost
-            is an estimate (worked minutes ÷ 60 × the org labor rate); authoritative costing lives
-            in each job&apos;s quote. Revenue counts every non-void invoice — including unsent
-            drafts — so it can exceed sent or paid revenue.
+          <p className="text-xs leading-relaxed text-subtle">
+            <span className="font-semibold text-muted">How these are figured:</span> Labor cost is
+            an estimate (worked minutes ÷ 60 × the org labor rate); authoritative costing lives in
+            each job&apos;s quote. Revenue counts every non-void invoice — including unsent drafts —
+            so it can exceed sent or paid revenue.
           </p>
         </div>
       )}

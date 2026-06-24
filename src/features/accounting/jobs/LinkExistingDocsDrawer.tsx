@@ -123,7 +123,7 @@ export default function LinkExistingDocsDrawer({
       }
     >
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Attach an existing estimate or invoice to job{' '}
           <span className="font-semibold text-white">#{job.jobCode}</span>.
           {job.customerId ? ' This job’s customer’s documents are listed first.' : ''}
@@ -145,9 +145,9 @@ export default function LinkExistingDocsDrawer({
         )}
 
         {loading ? (
-          <p className="text-sm text-slate-500">Loading documents…</p>
+          <p className="text-sm text-subtle">Loading documents…</p>
         ) : visible.length === 0 ? (
-          <p className="text-sm italic text-slate-500">No matching documents to link.</p>
+          <p className="text-sm italic text-subtle">No matching documents to link.</p>
         ) : (
           <ul className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
             {visible.map((d) => (
@@ -165,7 +165,7 @@ export default function LinkExistingDocsDrawer({
                     <span className="truncate text-sm font-semibold text-white">
                       {d.number ?? (d.kind === 'invoice' ? 'Invoice' : 'Estimate')}
                     </span>
-                    <span className="shrink-0 text-[11px] uppercase tracking-wide text-slate-500">
+                    <span className="shrink-0 text-[11px] uppercase tracking-wide text-subtle">
                       {d.statusLabel}
                     </span>
                     {d.jobId && (
@@ -174,11 +174,11 @@ export default function LinkExistingDocsDrawer({
                       </span>
                     )}
                   </div>
-                  <div className="truncate text-xs text-slate-400">
+                  <div className="truncate text-xs text-muted">
                     {d.customerName ?? '—'} · {d.date}
                   </div>
                 </div>
-                <span className="shrink-0 font-mono text-xs tabular-nums text-slate-300">
+                <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
                   {formatMoney(d.total)}
                 </span>
                 <button
@@ -195,7 +195,7 @@ export default function LinkExistingDocsDrawer({
         )}
 
         {truncated && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-subtle">
             Showing the first {MAX_VISIBLE}. Search by number or customer to narrow the list.
           </p>
         )}

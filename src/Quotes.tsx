@@ -345,7 +345,7 @@ const Quotes: React.FC<QuotesProps> = ({
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             placeholder="Enter product name..."
-            className="w-full rounded-sm border border-white/10 bg-surface-dark px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none"
+            className="w-full rounded-sm border border-white/10 bg-surface-dark px-4 py-3 text-white placeholder-subtle/40 focus:border-primary focus:outline-none"
           />
         </div>
 
@@ -380,7 +380,7 @@ const Quotes: React.FC<QuotesProps> = ({
         <button
           onClick={calculateQuote}
           disabled={isCalculating || !productName.trim()}
-          className="mb-6 flex h-14 w-full items-center justify-center gap-3 rounded-sm bg-primary px-6 text-white shadow-lg shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mb-6 flex h-14 w-full items-center justify-center gap-3 rounded-sm bg-primary px-6 text-on-accent shadow-lg shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isCalculating ? (
             <>
@@ -468,7 +468,7 @@ const Quotes: React.FC<QuotesProps> = ({
                         value={item.inventoryName}
                         onChange={(e) => updateLineItem(index, { inventoryName: e.target.value })}
                         placeholder="Item name"
-                        className="rounded border border-white/10 bg-surface-dark px-3 py-2 text-sm text-white placeholder-white/40"
+                        className="rounded border border-white/10 bg-surface-dark px-3 py-2 text-sm text-white placeholder-subtle/40"
                       />
                       <div className="flex gap-2">
                         <input
@@ -630,7 +630,7 @@ const Quotes: React.FC<QuotesProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add notes or description..."
                 rows={3}
-                className="w-full resize-none rounded-sm border border-white/10 bg-surface-dark px-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none"
+                className="w-full resize-none rounded-sm border border-white/10 bg-surface-dark px-4 py-3 text-white placeholder-subtle/40 focus:border-primary focus:outline-none"
               />
             </div>
 
@@ -651,7 +651,7 @@ const Quotes: React.FC<QuotesProps> = ({
             <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-t-md border-t border-white/10 bg-background-dark p-4">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Saved Quotes</h3>
-                <button onClick={() => setShowSavedQuotes(false)} className="text-slate-400">
+                <button onClick={() => setShowSavedQuotes(false)} className="text-muted">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>

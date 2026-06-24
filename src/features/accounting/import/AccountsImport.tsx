@@ -43,7 +43,7 @@ const ROLES: ColumnRoleDef[] = [
 
 const STATUS_BADGE: Record<RowStatus, { label: string; className: string }> = {
   ready: { label: 'Ready', className: 'bg-emerald-500/15 text-emerald-300' },
-  duplicate: { label: 'Already exists', className: 'bg-slate-500/15 text-slate-300' },
+  duplicate: { label: 'Already exists', className: 'bg-slate-500/15 text-muted' },
   'needs-type': { label: 'Pick a type', className: 'bg-amber-500/15 text-amber-300' },
   error: { label: 'Skip', className: 'bg-red-500/15 text-red-300' },
 };
@@ -181,12 +181,10 @@ export default function AccountsImport() {
         {csv.step === 'review' && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-2 text-sm text-slate-300">
-                <span className="material-symbols-outlined text-lg text-slate-400">
-                  description
-                </span>
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <span className="material-symbols-outlined text-lg text-muted">description</span>
                 <span className="font-semibold text-white">{csv.fileName}</span>
-                <span className="text-slate-500">· {rows.length} rows</span>
+                <span className="text-subtle">· {rows.length} rows</span>
               </p>
               <Button variant="ghost" size="sm" icon="restart_alt" onClick={startOver}>
                 Start over
@@ -213,9 +211,7 @@ export default function AccountsImport() {
                 </Chip>
               )}
               {counts.duplicate > 0 && (
-                <Chip className="bg-slate-500/15 text-slate-300">
-                  {counts.duplicate} already exist
-                </Chip>
+                <Chip className="bg-slate-500/15 text-muted">{counts.duplicate} already exist</Chip>
               )}
               {counts.error > 0 && (
                 <Chip className="bg-red-500/15 text-red-300">{counts.error} skipped</Chip>
@@ -224,7 +220,7 @@ export default function AccountsImport() {
 
             <div className="max-h-[48vh] overflow-auto rounded-md border border-white/10">
               <table className="w-full border-collapse text-sm">
-                <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-slate-400">
+                <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-muted">
                   <tr>
                     <th className="px-3 py-2 font-semibold">#</th>
                     <th className="px-3 py-2 font-semibold">Name</th>
@@ -236,18 +232,16 @@ export default function AccountsImport() {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.rowNumber} className="border-t border-white/5">
-                      <td className="px-3 py-1.5 text-slate-500">
-                        {r.accountNumber ?? r.rowNumber}
-                      </td>
+                      <td className="px-3 py-1.5 text-subtle">{r.accountNumber ?? r.rowNumber}</td>
                       <td className="px-3 py-1.5 text-white">
-                        {r.name || <em className="text-slate-500">—</em>}
+                        {r.name || <em className="text-subtle">—</em>}
                       </td>
-                      <td className="px-3 py-1.5 text-slate-400">{r.qboType || '—'}</td>
+                      <td className="px-3 py-1.5 text-muted">{r.qboType || '—'}</td>
                       <td className="px-3 py-1.5">
                         {r.classification ? (
-                          <span className="text-slate-300">
+                          <span className="text-muted">
                             {ACCOUNT_TYPE_LABELS[r.classification.accountType]}
-                            <span className="text-slate-500">
+                            <span className="text-subtle">
                               {' '}
                               · {r.classification.accountSubtype.replace(/_/g, ' ')}
                             </span>
@@ -268,7 +262,7 @@ export default function AccountsImport() {
                             ))}
                           </select>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-subtle">—</span>
                         )}
                       </td>
                       <td className="px-3 py-1.5">
@@ -299,7 +293,7 @@ export default function AccountsImport() {
                   ? `Importing ${progress.done}/${progress.total}…`
                   : `Import ${counts.ready} account${counts.ready === 1 ? '' : 's'}`}
               </Button>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-subtle">
                 Accounts that already exist (matched by number or name) are skipped — safe to
                 re-run.
               </p>
@@ -312,7 +306,7 @@ export default function AccountsImport() {
             <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
               <span className="material-symbols-outlined text-5xl text-emerald-400">task_alt</span>
               <h2 className="mt-2 text-xl font-bold text-white">Accounts imported</h2>
-              <p className="mt-1 text-sm text-slate-300">
+              <p className="mt-1 text-sm text-muted">
                 <strong className="text-emerald-300">{result.created}</strong> created ·{' '}
                 <strong>{result.skipped}</strong> already existed ·{' '}
                 <strong className={result.failed.length ? 'text-red-300' : ''}>
@@ -324,10 +318,10 @@ export default function AccountsImport() {
             {result.failed.length > 0 && (
               <div className="rounded-md border border-red-500/20 bg-card-dark p-4 text-sm">
                 <h3 className="mb-2 font-semibold text-red-300">Rows that failed</h3>
-                <ul className="space-y-1 text-slate-300">
+                <ul className="space-y-1 text-muted">
                   {result.failed.map((f) => (
                     <li key={f.rowNumber}>
-                      <span className="text-slate-500">Row {f.rowNumber}:</span> {f.name} —{' '}
+                      <span className="text-subtle">Row {f.rowNumber}:</span> {f.name} —{' '}
                       <span className="text-red-300">{f.error}</span>
                     </li>
                   ))}

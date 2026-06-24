@@ -91,6 +91,7 @@ export type ViewState =
   | 'chat'
   | 'chat-conversation'
   | 'notification-settings'
+  | 'appearance'
   | 'project-hours';
 
 export type BoardType = 'shopFloor' | 'admin';

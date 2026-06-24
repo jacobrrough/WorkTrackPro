@@ -36,32 +36,28 @@ export default function JobStatusHistory({ jobId, isAdmin }: JobStatusHistoryPro
       </h3>
 
       {isLoading ? (
-        <div className="rounded-sm bg-[#261a32] p-3 text-center text-sm text-slate-400">
-          Loading...
-        </div>
+        <div className="rounded-sm bg-surface-2 p-3 text-center text-sm text-muted">Loading...</div>
       ) : entries.length === 0 ? (
-        <div className="rounded-sm bg-[#261a32] p-3 text-center text-sm text-slate-400">
+        <div className="rounded-sm bg-surface-2 p-3 text-center text-sm text-muted">
           No status changes recorded yet
         </div>
       ) : (
         <div className="space-y-2">
           {entries.map((entry) => (
-            <div key={entry.id} className="rounded-sm bg-[#261a32] p-3">
+            <div key={entry.id} className="rounded-sm bg-surface-2 p-3">
               <div className="flex items-start gap-2">
-                <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-white">
+                <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-on-accent">
                   {entry.userInitials || '??'}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1 text-sm">
                     <span className="font-bold text-white">{entry.userName || 'Unknown'}</span>
-                    <span className="text-slate-400">moved from</span>
+                    <span className="text-muted">moved from</span>
                     <StatusBadge status={entry.previousStatus as JobStatus} size="sm" />
-                    <span className="text-slate-400">to</span>
+                    <span className="text-muted">to</span>
                     <StatusBadge status={entry.newStatus as JobStatus} size="sm" />
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {formatRelativeTime(entry.createdAt)}
-                  </p>
+                  <p className="mt-1 text-xs text-subtle">{formatRelativeTime(entry.createdAt)}</p>
                 </div>
               </div>
             </div>

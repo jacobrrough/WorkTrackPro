@@ -152,7 +152,7 @@ export default function StockAdjustFlow({
               </button>
               <div className="flex-1">
                 <h1 className="text-lg font-bold text-white">{MODE_LABEL[mode]}</h1>
-                <p className="text-xs text-slate-400">Search by name or SKU</p>
+                <p className="text-xs text-muted">Search by name or SKU</p>
               </div>
               <button
                 type="button"
@@ -174,11 +174,9 @@ export default function StockAdjustFlow({
           </header>
           <div className="content-above-nav flex-1 overflow-y-auto p-3">
             {!searchTerm.trim() ? (
-              <p className="py-12 text-center text-sm text-slate-500">
-                Start typing to find a part.
-              </p>
+              <p className="py-12 text-center text-sm text-subtle">Start typing to find a part.</p>
             ) : searchResults.length === 0 ? (
-              <p className="py-12 text-center text-sm text-slate-500">
+              <p className="py-12 text-center text-sm text-subtle">
                 No parts match “{searchTerm.trim()}”.
               </p>
             ) : (
@@ -192,11 +190,11 @@ export default function StockAdjustFlow({
                     >
                       <div className="min-w-0">
                         <p className="truncate font-bold text-white">{item.name}</p>
-                        <p className="truncate text-xs text-slate-400">SKU: {getSku(item)}</p>
+                        <p className="truncate text-xs text-muted">SKU: {getSku(item)}</p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="font-bold text-white">{item.inStock}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                        <p className="text-[10px] uppercase tracking-wider text-subtle">
                           {item.unit}
                         </p>
                       </div>
@@ -218,7 +216,7 @@ export default function StockAdjustFlow({
           onClick={onClose}
         >
           <div
-            className="w-full max-w-md rounded-sm border border-primary/30 bg-[#1b1324] p-4 shadow-2xl"
+            className="w-full max-w-md rounded-sm border border-primary/30 bg-surface-2 p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -231,14 +229,14 @@ export default function StockAdjustFlow({
                   {MODE_LABEL[mode]}
                 </p>
                 <p className="truncate text-base font-bold text-white">{selected.name}</p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted">
                   In stock: {selected.inStock} {selected.unit} · Available: {available}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -247,7 +245,7 @@ export default function StockAdjustFlow({
 
             <label
               htmlFor="stock-adjust-qty"
-              className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400"
+              className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted"
             >
               Quantity to {mode === 'in' ? 'add' : 'remove'}
             </label>
@@ -286,7 +284,7 @@ export default function StockAdjustFlow({
               </button>
             </div>
 
-            <div className="mt-3 rounded-sm border border-white/10 bg-black/20 p-3 text-sm text-slate-300">
+            <div className="mt-3 rounded-sm border border-white/10 bg-black/20 p-3 text-sm text-muted">
               New count:{' '}
               <span className="font-bold text-white">
                 {selected.inStock} → {preview.target} {selected.unit}
@@ -303,7 +301,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-[48px] flex-1 rounded-sm border border-white/20 px-4 font-bold text-slate-200"
+                className="min-h-[48px] flex-1 rounded-sm border border-white/20 px-4 font-bold text-muted"
               >
                 Cancel
               </button>

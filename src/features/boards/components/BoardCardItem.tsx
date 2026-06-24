@@ -42,13 +42,13 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
       <PendingSyncBadge entityId={card.id} className="mb-1" />
       <p className="text-sm font-medium text-white">{card.title}</p>
       {card.description && (
-        <p className="mt-1 line-clamp-2 text-xs text-slate-400">{card.description}</p>
+        <p className="mt-1 line-clamp-2 text-xs text-muted">{card.description}</p>
       )}
       <div className="mt-2 flex items-center gap-2">
         {card.dueDate && (
           <span
             className={`flex items-center gap-0.5 text-[10px] ${
-              overdue ? 'text-red-400' : 'text-slate-500'
+              overdue ? 'text-red-400' : 'text-subtle'
             }`}
           >
             <span className="material-symbols-outlined text-xs">schedule</span>
@@ -56,7 +56,7 @@ const BoardCardItem: React.FC<BoardCardItemProps> = ({ card, users, readOnly, on
           </span>
         )}
         {(card.attachmentCount ?? card.attachments?.length ?? 0) > 0 && (
-          <span className="flex items-center gap-0.5 text-[10px] text-slate-500">
+          <span className="flex items-center gap-0.5 text-[10px] text-subtle">
             <span className="material-symbols-outlined text-xs">attach_file</span>
             {card.attachmentCount ?? card.attachments?.length}
           </span>

@@ -144,19 +144,19 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
 
   return (
     <div className={`rounded-sm border border-primary/30 bg-primary/10 p-4 ${className}`}>
-      <p className="mb-3 text-xs font-bold uppercase text-slate-400">Quote calculator</p>
+      <p className="mb-3 text-xs font-bold uppercase text-muted">Quote calculator</p>
 
       {hasVariants && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-400">Quote by:</span>
+          <span className="text-sm text-muted">Quote by:</span>
           <div className="flex rounded border border-white/10 bg-black/20 p-0.5">
             <button
               type="button"
               onClick={() => setQuoteBy('sets')}
               className={`min-h-[36px] rounded px-3 text-sm font-medium transition-colors ${
                 quoteBy === 'sets'
-                  ? 'bg-primary text-white'
-                  : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'text-muted hover:bg-white/10 hover:text-white'
               }`}
             >
               Sets
@@ -169,8 +169,8 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               }}
               className={`min-h-[36px] rounded px-3 text-sm font-medium transition-colors ${
                 quoteBy === 'variants'
-                  ? 'bg-primary text-white'
-                  : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'text-muted hover:bg-white/10 hover:text-white'
               }`}
             >
               Variants
@@ -181,7 +181,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
 
       {quoteBy === 'sets' && (
         <div className="mb-3 flex flex-wrap items-center gap-3">
-          <label className="text-sm text-slate-300">
+          <label className="text-sm text-muted">
             {hasVariants ? 'Number of sets' : 'Quantity'}
           </label>
           <input
@@ -201,14 +201,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
 
       {quoteBy === 'variants' && hasVariants && variants && (
         <div className="mb-3 space-y-2">
-          <p className="text-[10px] font-bold uppercase text-slate-400">Quantity per variant</p>
+          <p className="text-[10px] font-bold uppercase text-muted">Quantity per variant</p>
           <div className="flex flex-wrap gap-3">
             {variants.map((variant) => {
               const key = normSuffix(variant.variantSuffix);
               const dashLabel = key ? `-${key.padStart(2, '0')}` : '';
               return (
                 <label key={variant.id} className="flex items-center gap-2">
-                  <span className="w-14 shrink-0 text-sm text-slate-300">{dashLabel}</span>
+                  <span className="w-14 shrink-0 text-sm text-muted">{dashLabel}</span>
                   <input
                     type="number"
                     min={0}
@@ -234,14 +234,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                   key={variant.id}
                   className="space-y-1 rounded border border-white/10 bg-black/20 p-2"
                 >
-                  <p className="text-[10px] font-bold uppercase text-slate-400">
+                  <p className="text-[10px] font-bold uppercase text-muted">
                     Variant -{normSuffix(variant.variantSuffix)} (×{qty})
                   </p>
                   {quote.materialLineItems.length > 0 &&
                     quote.materialLineItems.map((line) => (
                       <div
                         key={`${variant.id}-${line.inventoryId}`}
-                        className="flex justify-between text-xs text-slate-300"
+                        className="flex justify-between text-xs text-muted"
                         title={`${line.quantity} ${line.unit} × $${line.price.toFixed(2)}`}
                       >
                         <span className="min-w-0 truncate pr-2">
@@ -252,14 +252,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                         </span>
                       </div>
                     ))}
-                  <div className="flex justify-between text-xs text-slate-300">
+                  <div className="flex justify-between text-xs text-muted">
                     <span>
                       Labor ({quote.laborHours.toFixed(1)} h × ${laborRate}/h)
                     </span>
                     <span className="text-white">${quote.laborCost.toFixed(2)}</span>
                   </div>
                   {quote.cncHours > 0 && (
-                    <div className="flex justify-between text-xs text-slate-300">
+                    <div className="flex justify-between text-xs text-muted">
                       <span>
                         CNC ({quote.cncHours.toFixed(1)} h × ${cncRate}/h)
                       </span>
@@ -267,14 +267,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                     </div>
                   )}
                   {quote.printer3DHours > 0 && (
-                    <div className="flex justify-between text-xs text-slate-300">
+                    <div className="flex justify-between text-xs text-muted">
                       <span>
                         3D Print ({quote.printer3DHours.toFixed(1)} h × ${printer3DRate}/h)
                       </span>
                       <span className="text-white">${quote.printer3DCost.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-slate-300">
+                  <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-muted">
                     <span>Variant total</span>
                     <span className="text-white">${quote.total.toFixed(2)}</span>
                   </div>
@@ -293,23 +293,23 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           ) : result ? (
             <>
               <div className="space-y-1 rounded border border-white/10 bg-black/20 p-2">
-                <p className="text-[10px] font-bold uppercase text-slate-400">
+                <p className="text-[10px] font-bold uppercase text-muted">
                   {part.partNumber || 'Part'}
                 </p>
                 {result.materialLineItems.length > 0 && (
-                  <div className="flex justify-between text-xs text-slate-300">
+                  <div className="flex justify-between text-xs text-muted">
                     <span>Materials</span>
                     <span className="text-white">${result.materialCostCustomer.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs text-slate-300">
+                <div className="flex justify-between text-xs text-muted">
                   <span>
                     Labor ({result.laborHours.toFixed(1)} h × ${laborRate}/h)
                   </span>
                   <span className="text-white">${result.laborCost.toFixed(2)}</span>
                 </div>
                 {result.cncHours > 0 && (
-                  <div className="flex justify-between text-xs text-slate-300">
+                  <div className="flex justify-between text-xs text-muted">
                     <span>
                       CNC ({result.cncHours.toFixed(1)} h × ${cncRate}/h)
                     </span>
@@ -317,14 +317,14 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                   </div>
                 )}
                 {result.printer3DHours > 0 && (
-                  <div className="flex justify-between text-xs text-slate-300">
+                  <div className="flex justify-between text-xs text-muted">
                     <span>
                       3D Print ({result.printer3DHours.toFixed(1)} h × ${printer3DRate}/h)
                     </span>
                     <span className="text-white">${result.printer3DCost.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-slate-300">
+                <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-muted">
                   <span>Subtotal</span>
                   <span className="text-white">${result.subtotal.toFixed(2)}</span>
                 </div>
@@ -337,13 +337,13 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               </div>
             </>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-subtle">
               Enter quantity for at least one variant to see the quote.
             </p>
           )}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-subtle">
           Set labor hours and materials on the part or variants to see a quote.
         </p>
       )}

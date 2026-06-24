@@ -47,7 +47,7 @@ export default function PurchasesByVendorView() {
           {data.rows.map((r) => (
             <tr key={r.vendorId ?? '__uncategorized__'} className="border-t border-white/5">
               <td className="px-3 py-2 text-white">{r.vendorName}</td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                 {r.billCount}
               </td>
               <MoneyCell amount={r.amount} />

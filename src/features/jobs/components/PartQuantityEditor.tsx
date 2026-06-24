@@ -46,7 +46,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
     const units = getDashQuantity(dashQuantities, NO_VARIANT_DASH_KEY);
     return (
       <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-slate-300">Quantity (units)</label>
+        <label className="block text-xs font-medium text-muted">Quantity (units)</label>
         <input
           type="number"
           min="0"
@@ -98,7 +98,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
       {hasSetMode && (
         <div className="space-y-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-400">One set:</span>
+            <span className="text-xs text-muted">One set:</span>
             <span className="text-xs font-medium text-white">
               {formatSetComposition(effectiveSetComposition)}
             </span>
@@ -109,7 +109,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
               disabled={disabled}
               onClick={setSetsMode}
               className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
-                mode === 'sets' ? 'bg-primary text-white' : 'text-primary hover:bg-primary/20'
+                mode === 'sets' ? 'bg-primary text-on-accent' : 'text-primary hover:bg-primary/20'
               }`}
             >
               By sets
@@ -119,7 +119,9 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
               disabled={disabled}
               onClick={setVariantsMode}
               className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
-                mode === 'variants' ? 'bg-primary text-white' : 'text-primary hover:bg-primary/20'
+                mode === 'variants'
+                  ? 'bg-primary text-on-accent'
+                  : 'text-primary hover:bg-primary/20'
               }`}
             >
               By variant
@@ -130,7 +132,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
 
       {mode === 'sets' && hasSetMode ? (
         <div className="space-y-2 rounded-sm border border-white/10 bg-background-dark/40 p-2.5">
-          <label className="block text-xs font-medium text-slate-300">Number of sets</label>
+          <label className="block text-xs font-medium text-muted">Number of sets</label>
           <input
             type="number"
             min="0"
@@ -142,7 +144,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
             placeholder="0"
           />
           {total > 0 && (
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-muted">
               Dash quantities: {formatDashSummary(dashQuantities)} → {total} total
             </p>
           )}
@@ -150,15 +152,15 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
       ) : (
         <>
           <div className="mb-1 flex items-center justify-between">
-            <label className="text-xs font-medium text-slate-300">Dash Quantities</label>
-            {total > 0 && <span className="text-[10px] text-slate-400">Total: {total}</span>}
+            <label className="text-xs font-medium text-muted">Dash Quantities</label>
+            {total > 0 && <span className="text-[10px] text-muted">Total: {total}</span>}
           </div>
           <div className="space-y-1.5">
             {part.variants?.map((variant) => {
               const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
               return (
                 <div key={variant.id} className="flex items-center gap-2">
-                  <label className="w-24 text-xs text-slate-400">
+                  <label className="w-24 text-xs text-muted">
                     {part.partNumber}-{variant.variantSuffix}:
                   </label>
                   <input
@@ -172,7 +174,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
                     className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
                     placeholder="0"
                   />
-                  <span className="text-[10px] text-slate-500">units</span>
+                  <span className="text-[10px] text-subtle">units</span>
                 </div>
               );
             })}

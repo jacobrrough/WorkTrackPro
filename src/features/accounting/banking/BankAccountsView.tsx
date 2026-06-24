@@ -67,13 +67,13 @@ function NewBankAccountModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           A bank account wraps a general-ledger cash or credit-card account. Every imported
           transaction you accept posts against that GL account.
         </p>
@@ -189,7 +189,7 @@ function BankAccountRow({ account, onOpen }: { account: BankAccount; onOpen: () 
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold text-white">{account.name}</span>
-        <span className="block truncate text-xs text-slate-500">
+        <span className="block truncate text-xs text-subtle">
           {account.institution ? `${account.institution} · ` : ''}
           {account.accountType ? BANK_ACCOUNT_TYPE_LABELS[account.accountType] : 'Account'}
           {account.mask ? ` · ${account.mask}` : ''}
@@ -202,10 +202,10 @@ function BankAccountRow({ account, onOpen }: { account: BankAccount; onOpen: () 
           No GL
         </span>
       )}
-      <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-300 sm:block">
+      <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-muted sm:block">
         {formatMoney(account.currentBalance)}
       </span>
-      <span className="material-symbols-outlined text-slate-600">chevron_right</span>
+      <span className="material-symbols-outlined text-subtle">chevron_right</span>
     </button>
   );
 }
@@ -226,13 +226,13 @@ export default function BankAccountsView() {
       }
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Import bank and credit-card statements (CSV / OFX / QFX), auto-categorize with rules, post
           balanced entries, and reconcile to a statement balance.{' '}
-          <span className="text-slate-500">Plaid auto-sync is not enabled — import is manual.</span>
+          <span className="text-subtle">Plaid auto-sync is not enabled — import is manual.</span>
         </p>
 
-        {isPending && <p className="text-slate-400">Loading bank accounts…</p>}
+        {isPending && <p className="text-muted">Loading bank accounts…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load bank accounts. Confirm the accounting schema is exposed and you have an
@@ -242,11 +242,11 @@ export default function BankAccountsView() {
 
         {!isPending && !isError && accounts.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">
+            <span className="material-symbols-outlined text-4xl text-subtle">
               account_balance_wallet
             </span>
             <p className="text-lg font-bold text-white">No bank accounts yet</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <p className="max-w-sm text-sm text-muted">
               Add a bank or credit-card account and link it to a general-ledger cash account.
               Imported transactions you accept will post against it.
             </p>

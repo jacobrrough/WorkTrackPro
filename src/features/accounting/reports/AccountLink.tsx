@@ -22,7 +22,7 @@ interface AccountLinkProps {
  */
 export function AccountLink({ accountId, accountNumber, name, range, disabled }: AccountLinkProps) {
   const numberSpan = accountNumber ? (
-    <span className="mr-2 font-mono text-xs text-slate-500">{accountNumber}</span>
+    <span className="mr-2 font-mono text-xs text-subtle">{accountNumber}</span>
   ) : null;
 
   if (disabled || accountId === NET_INCOME_LINE_ID || !accountId) {

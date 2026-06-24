@@ -69,7 +69,7 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
         <button
           type="button"
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
         >
           <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>
@@ -78,7 +78,7 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
         </div>
         <div className="flex-1">
           <h2 className="text-sm font-bold text-white">Notifications</h2>
-          <p className="text-xs text-slate-500">System alerts and mentions</p>
+          <p className="text-xs text-subtle">System alerts and mentions</p>
         </div>
         {hasUnread && (
           <button
@@ -95,17 +95,17 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center justify-center py-12">
-            <p className="text-sm text-slate-400">Loading notifications...</p>
+            <p className="text-sm text-muted">Loading notifications...</p>
           </div>
         )}
 
         {!isLoading && allNotifications.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-600">
+            <span className="material-symbols-outlined text-5xl text-subtle">
               notifications_none
             </span>
-            <p className="text-sm text-slate-400">No notifications yet</p>
-            <p className="text-xs text-slate-500">
+            <p className="text-sm text-muted">No notifications yet</p>
+            <p className="text-xs text-subtle">
               You&apos;ll see alerts for job changes, mentions, and more here.
             </p>
           </div>
@@ -121,7 +121,7 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
 
         {isFetchingNextPage && (
           <div className="flex items-center justify-center py-4">
-            <p className="text-xs text-slate-500">Loading more...</p>
+            <p className="text-xs text-subtle">Loading more...</p>
           </div>
         )}
       </div>

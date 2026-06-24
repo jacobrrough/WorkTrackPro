@@ -71,7 +71,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold text-white">Verify against QuickBooks</h3>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="mt-0.5 text-xs text-muted">
             Compares QuickBooks&rsquo; own P&amp;L, balance sheet, and AR/AP aging against
             WorkTrack&rsquo;s reports, line by line. Every section must tie to the penny before
             cutover.
@@ -115,7 +115,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
           {result.sections.map((s) => (
             <div key={s.title} className="rounded-sm border border-white/10 p-2">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="font-semibold text-slate-200">{s.title}</span>
+                <span className="font-semibold text-white">{s.title}</span>
                 <span className={s.tied ? 'text-emerald-300' : 'text-amber-300'}>
                   {s.tied
                     ? `Tied at ${money(s.qboTotal)}`
@@ -125,7 +125,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
               {s.mismatches.length > 0 && (
                 <table className="mt-1 w-full text-xs">
                   <thead>
-                    <tr className="text-left text-slate-400">
+                    <tr className="text-left text-muted">
                       <th className="py-1 pr-2 font-semibold">Line</th>
                       <th className="px-2 py-1 text-right font-semibold">QuickBooks</th>
                       <th className="px-2 py-1 text-right font-semibold">WorkTrack</th>
@@ -136,7 +136,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
                     {s.mismatches.map((m) => (
                       <tr
                         key={`${s.title}-${m.label}`}
-                        className="border-t border-white/5 text-slate-300"
+                        className="border-t border-white/5 text-muted"
                       >
                         <td className="py-1 pr-2">{m.label}</td>
                         <td className="px-2 py-1 text-right tabular-nums">{money(m.qboAmount)}</td>
@@ -174,7 +174,7 @@ function PhaseTable({ run }: { run: QboImportRun }) {
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-slate-400">
+        <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-muted">
           <th className="py-1.5 pr-2 font-semibold">Step</th>
           <th className="px-2 py-1.5 text-right font-semibold">Created</th>
           <th className="px-2 py-1.5 text-right font-semibold">Updated</th>
@@ -195,7 +195,7 @@ function PhaseTable({ run }: { run: QboImportRun }) {
                 ? 'In progress'
                 : 'Pending';
           return (
-            <tr key={phase.key} className="border-b border-white/5 text-slate-200">
+            <tr key={phase.key} className="border-b border-white/5 text-white">
               <td className="py-1.5 pr-2">{phase.label}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{tally?.created ?? '—'}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{tally?.updated ?? '—'}</td>
@@ -207,7 +207,7 @@ function PhaseTable({ run }: { run: QboImportRun }) {
               >
                 {tally?.failed ?? '—'}
               </td>
-              <td className="py-1.5 pl-2 text-xs text-slate-400">{state}</td>
+              <td className="py-1.5 pl-2 text-xs text-muted">{state}</td>
             </tr>
           );
         })}
@@ -389,7 +389,7 @@ export default function QuickBooksSyncView() {
             <span className="material-symbols-outlined text-primary">cloud_sync</span>
             Sync from QuickBooks
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Pulls your QuickBooks Online company into WorkTrack — chart of accounts, products &
             services, customers, and vendors. Reading from QuickBooks never changes anything there;
             re-running is safe and updates rather than duplicates.
@@ -398,7 +398,7 @@ export default function QuickBooksSyncView() {
 
         {!statusQuery.isPending && !status.connected && (
           <Card padding="lg">
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-muted">
               QuickBooks is not connected yet. Set up the connection first on the{' '}
               <Link
                 className="font-semibold text-primary underline-offset-2 hover:underline"
@@ -414,13 +414,13 @@ export default function QuickBooksSyncView() {
         {status.connected && (
           <Card className="flex flex-col gap-4" padding="lg">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm text-slate-300">
+              <div className="text-sm text-muted">
                 Connected to{' '}
                 <span className="font-semibold text-white">
                   {status.companyName ?? 'QuickBooks'}
                 </span>
                 {status.lastCdcCursor ? (
-                  <span className="text-slate-400">
+                  <span className="text-muted">
                     {' '}
                     · last synced {formatWhen(status.lastCdcCursor)}
                   </span>
@@ -461,7 +461,7 @@ export default function QuickBooksSyncView() {
                     ? 'border-red-500/30 bg-red-500/10 text-red-300'
                     : loopState === 'done'
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      : 'border-white/10 bg-white/5 text-slate-300'
+                      : 'border-white/10 bg-white/5 text-muted'
                 }`}
                 role={loopState === 'failed' ? 'alert' : 'status'}
               >
@@ -527,15 +527,15 @@ export default function QuickBooksSyncView() {
 
             {skips.length > 0 && (
               <details className="rounded-sm border border-white/10 bg-white/5 p-2">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-300">
+                <summary className="cursor-pointer text-sm font-semibold text-muted">
                   {skips.length} record{skips.length === 1 ? '' : 's'} skipped — no effect on your
                   books
                 </summary>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted">
                   Voided or $0 transactions QuickBooks keeps for its audit trail. They post nothing,
                   so skipping them does not change the ledger.
                 </p>
-                <ul className="mt-1 max-h-48 overflow-y-auto text-xs text-slate-400">
+                <ul className="mt-1 max-h-48 overflow-y-auto text-xs text-muted">
                   {skips.map((e) => (
                     <li key={e.id} className="border-b border-white/5 py-1 last:border-0">
                       <span className="font-semibold">{e.entity}</span>
@@ -559,7 +559,7 @@ export default function QuickBooksSyncView() {
             <h3 className="text-sm font-bold text-white">Recent runs</h3>
             <table className="mt-2 w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-muted">
                   <th className="py-1.5 pr-2 font-semibold">Started</th>
                   <th className="px-2 py-1.5 font-semibold">Mode</th>
                   <th className="px-2 py-1.5 font-semibold">Status</th>
@@ -568,7 +568,7 @@ export default function QuickBooksSyncView() {
               </thead>
               <tbody>
                 {(runsQuery.data ?? []).map((r) => (
-                  <tr key={r.id} className="border-b border-white/5 text-slate-300">
+                  <tr key={r.id} className="border-b border-white/5 text-muted">
                     <td className="py-1.5 pr-2">{formatWhen(r.startedAt)}</td>
                     <td className="px-2 py-1.5 capitalize">{r.mode}</td>
                     <td
@@ -590,7 +590,7 @@ export default function QuickBooksSyncView() {
           </Card>
         )}
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           The sync reads from QuickBooks and writes only to WorkTrack. If a run is interrupted it
           can be resumed — every record carries its QuickBooks id, so nothing imports twice.
         </p>

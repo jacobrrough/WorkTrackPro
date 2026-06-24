@@ -101,7 +101,7 @@ function VariantRow({
             }}
             className="w-12 rounded-sm border border-white/15 bg-background-dark px-1 py-1 text-center text-white [appearance:textfield] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
-          <span className="text-slate-400">/ {total}</span>
+          <span className="text-muted">/ {total}</span>
         </div>
         <button
           type="button"
@@ -160,13 +160,13 @@ export function UnitProgressAccordion({
       >
         <div className="min-w-0">
           <p className="text-sm font-bold text-white">{title}</p>
-          {subtitle && <p className="text-[11px] text-slate-400">{subtitle}</p>}
+          {subtitle && <p className="text-[11px] text-muted">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${accentDone}`}>
             {totalDone}/{totalUnits} {allDone ? '✓' : ''}
           </span>
-          <span className="material-symbols-outlined text-base text-slate-300">
+          <span className="material-symbols-outlined text-base text-muted">
             {open ? 'expand_less' : 'expand_more'}
           </span>
         </div>

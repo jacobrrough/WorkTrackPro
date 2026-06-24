@@ -31,7 +31,7 @@ import LinkExistingDocsDrawer from './LinkExistingDocsDrawer';
  */
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-emerald-500/15 text-emerald-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -40,7 +40,7 @@ const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
 };
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-emerald-500/15 text-emerald-400',
@@ -110,9 +110,9 @@ export default function JobBillingPanel({ job }: { job: Job }) {
     0
   );
   const billingRollup: { label: string; tone: string } = invoicesPending
-    ? { label: 'Loading…', tone: 'text-slate-500' }
+    ? { label: 'Loading…', tone: 'text-subtle' }
     : billableInvoices.length === 0
-      ? { label: 'Not invoiced', tone: 'text-slate-500' }
+      ? { label: 'Not invoiced', tone: 'text-subtle' }
       : openInvoices.length === 0
         ? { label: 'Paid', tone: 'text-emerald-400' }
         : {
@@ -123,23 +123,23 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           };
 
   return (
-    <section className="rounded-md border border-[#4d3465] bg-[#261a32]/60 p-4">
+    <section className="rounded-md border border-line bg-surface-2/60 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-300">
+        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
           <span className="material-symbols-outlined text-base text-primary">request_quote</span>
           Billing
         </h3>
         <div className="flex flex-wrap gap-2">
           <Link
             to={`${ESTIMATES_BASE}/new?jobId=${job.id}`}
-            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10"
+            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New estimate
           </Link>
           <Link
             to={`${ACCOUNTING_BASE}/invoices/new?jobId=${job.id}`}
-            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10"
+            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New invoice
@@ -147,7 +147,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           <button
             type="button"
             onClick={() => setShowLink(true)}
-            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10"
+            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-sm">add_link</span>
             Link existing
@@ -157,20 +157,20 @@ export default function JobBillingPanel({ job }: { job: Job }) {
 
       {/* Billing roll-up — mirrors the auto-paid trigger; explains a job that reads "Paid". */}
       <p className="mb-3 flex items-center gap-2 text-sm">
-        <span className="text-slate-400">Billing:</span>
+        <span className="text-muted">Billing:</span>
         <span className={`font-semibold ${billingRollup.tone}`}>{billingRollup.label}</span>
       </p>
 
       {/* Customer */}
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-slate-400">Customer:</span>
+        <span className="text-muted">Customer:</span>
         {customer ? (
           <span className="font-semibold text-white">{customer.displayName}</span>
         ) : job.customerId ? (
           <span className="font-semibold text-white">(linked customer)</span>
         ) : (
           <>
-            <span className="italic text-slate-500">none linked</span>
+            <span className="italic text-subtle">none linked</span>
             {proposal && (
               <button
                 type="button"
@@ -193,28 +193,26 @@ export default function JobBillingPanel({ job }: { job: Job }) {
 
       {/* Estimates */}
       <div className="mb-3">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Estimates
-        </p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">Estimates</p>
         {estimatesPending ? (
-          <p className="text-xs text-slate-500">Loading…</p>
+          <p className="text-xs text-subtle">Loading…</p>
         ) : estimates.length === 0 ? (
-          <p className="text-xs italic text-slate-500">No estimates yet.</p>
+          <p className="text-xs italic text-subtle">No estimates yet.</p>
         ) : (
           <ul className="space-y-1">
             {estimates.map((e) => (
               <li key={e.id}>
                 <Link
                   to={`${ESTIMATES_BASE}/${e.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-sm px-1 py-0.5 text-sm text-slate-200 hover:bg-white/5"
+                  className="flex flex-wrap items-center gap-2 rounded-sm px-1 py-0.5 text-sm text-white hover:bg-white/5"
                 >
                   <span className="font-semibold text-white">{e.estimateNumber ?? 'Estimate'}</span>
-                  <span className="text-xs text-slate-400">{e.estimateDate}</span>
+                  <span className="text-xs text-muted">{e.estimateDate}</span>
                   <StatusPill
                     label={ESTIMATE_STATUS_LABELS[e.status]}
                     className={ESTIMATE_STATUS_STYLES[e.status]}
                   />
-                  <span className="ml-auto font-mono text-xs tabular-nums text-slate-300">
+                  <span className="ml-auto font-mono text-xs tabular-nums text-muted">
                     {formatMoney(e.total)}
                   </span>
                 </Link>
@@ -226,28 +224,26 @@ export default function JobBillingPanel({ job }: { job: Job }) {
 
       {/* Invoices */}
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Invoices
-        </p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-subtle">Invoices</p>
         {invoicesPending ? (
-          <p className="text-xs text-slate-500">Loading…</p>
+          <p className="text-xs text-subtle">Loading…</p>
         ) : invoices.length === 0 ? (
-          <p className="text-xs italic text-slate-500">No invoices yet.</p>
+          <p className="text-xs italic text-subtle">No invoices yet.</p>
         ) : (
           <ul className="space-y-1">
             {invoices.map((inv) => (
               <li key={inv.id}>
                 <Link
                   to={`${ACCOUNTING_BASE}/invoices/${inv.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-sm px-1 py-0.5 text-sm text-slate-200 hover:bg-white/5"
+                  className="flex flex-wrap items-center gap-2 rounded-sm px-1 py-0.5 text-sm text-white hover:bg-white/5"
                 >
                   <span className="font-semibold text-white">{inv.invoiceNumber ?? 'Invoice'}</span>
-                  <span className="text-xs text-slate-400">{inv.invoiceDate}</span>
+                  <span className="text-xs text-muted">{inv.invoiceDate}</span>
                   <StatusPill
                     label={INVOICE_STATUS_LABELS[inv.status]}
                     className={INVOICE_STATUS_STYLES[inv.status]}
                   />
-                  <span className="ml-auto font-mono text-xs tabular-nums text-slate-300">
+                  <span className="ml-auto font-mono text-xs tabular-nums text-muted">
                     {formatMoney(inv.total)}
                     {inv.balanceDue > 0 && inv.status !== 'void' && (
                       <span className="text-amber-300"> · {formatMoney(inv.balanceDue)} due</span>
@@ -262,7 +258,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
 
       {/* Legacy free-text references (read-only; real documents above are authoritative) */}
       {legacyRefs.length > 0 && (
-        <p className="mt-3 border-t border-white/10 pt-2 text-[11px] text-slate-500">
+        <p className="mt-3 border-t border-white/10 pt-2 text-[11px] text-subtle">
           Imported references: {legacyRefs.join(' · ')}
         </p>
       )}

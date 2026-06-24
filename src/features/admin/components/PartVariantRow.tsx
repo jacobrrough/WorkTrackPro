@@ -9,9 +9,9 @@ export function PartVariantRow({ variant, onEdit, onDelete }: PartVariantRowProp
     <div className="flex items-center justify-between rounded border border-white/10 bg-white/5 p-2 text-sm">
       <div>
         <span className="font-mono font-bold">{variant.variantSuffix}</span>
-        {variant.name && <span className="ml-2 text-slate-400">{variant.name}</span>}
+        {variant.name && <span className="ml-2 text-muted">{variant.name}</span>}
       </div>
-      <div className="flex items-center gap-3 text-xs text-slate-400">
+      <div className="flex items-center gap-3 text-xs text-muted">
         {variant.laborHours != null && <span>L {variant.laborHours}h</span>}
         {variant.pricePerVariant != null && <span>${variant.pricePerVariant}</span>}
         {(onEdit || onDelete) && (

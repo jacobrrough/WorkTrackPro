@@ -48,7 +48,7 @@ function PartsListStoreToggle({
       className={`flex min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center rounded-sm border transition-colors ${
         part.showOnStore
           ? 'border-primary/50 bg-primary/20 text-primary'
-          : 'border-white/10 bg-white/5 text-slate-500 hover:bg-white/10'
+          : 'border-white/10 bg-white/5 text-subtle hover:bg-white/10'
       } ${updating ? 'opacity-60' : ''}`}
       aria-label={part.showOnStore ? 'Hide from store' : 'Show on store'}
     >
@@ -190,14 +190,14 @@ const Parts: React.FC<PartsProps> = ({
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-slate-400">Loading parts...</div>
+        <div className="text-muted">Loading parts...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-950">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+    <div className="flex h-full min-h-0 flex-col bg-app">
+      <header className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
@@ -209,12 +209,12 @@ const Parts: React.FC<PartsProps> = ({
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Parts</h1>
-              <p className="text-sm text-slate-400">Master parts, variants, and set composition</p>
+              <p className="text-sm text-muted">Master parts, variants, and set composition</p>
             </div>
           </div>
           <button
             onClick={handleNewPart}
-            className="flex shrink-0 items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            className="flex shrink-0 items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90"
             aria-label="New part"
           >
             <span className="material-symbols-outlined text-lg">add</span>
@@ -225,7 +225,7 @@ const Parts: React.FC<PartsProps> = ({
 
       <div className="border-b border-white/10 px-4 py-3 sm:px-6 lg:px-8">
         <div className="relative mb-3">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">
             search
           </span>
           <input
@@ -233,7 +233,7 @@ const Parts: React.FC<PartsProps> = ({
             placeholder="Search by part number or name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-sm border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full rounded-sm border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
             aria-label="Search parts"
           />
         </div>
@@ -251,8 +251,8 @@ const Parts: React.FC<PartsProps> = ({
               onClick={() => setActiveTab(id)}
               className={`min-h-[36px] flex-1 rounded px-3 text-sm font-medium transition-colors ${
                 activeTab === id
-                  ? 'bg-primary text-white'
-                  : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'text-muted hover:bg-white/10 hover:text-white'
               }`}
             >
               {label}
@@ -269,13 +269,13 @@ const Parts: React.FC<PartsProps> = ({
       >
         {filteredParts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <span className="material-symbols-outlined mb-4 text-6xl text-slate-600">
+            <span className="material-symbols-outlined mb-4 text-6xl text-subtle">
               precision_manufacturing
             </span>
             <p className="mb-2 text-lg font-medium text-white">
               {searchQuery ? 'No parts found' : 'No parts yet'}
             </p>
-            <p className="mb-4 text-sm text-slate-400">
+            <p className="mb-4 text-sm text-muted">
               {searchQuery
                 ? 'Try a different search term or tab'
                 : 'Create a master part to define variants, set composition, and materials.'}
@@ -283,7 +283,7 @@ const Parts: React.FC<PartsProps> = ({
             {!searchQuery && (
               <button
                 onClick={handleNewPart}
-                className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-lg">add</span>
                 New Part
@@ -307,7 +307,7 @@ const Parts: React.FC<PartsProps> = ({
                           <span className="ml-1.5 font-normal text-primary">Rev {part.rev}</span>
                         )}
                       </span>
-                      <span className="text-sm text-slate-400">{part.name || part.partNumber}</span>
+                      <span className="text-sm text-muted">{part.name || part.partNumber}</span>
                     </div>
                     {partIdsInJobs.has(part.id) && (
                       <span
@@ -317,7 +317,7 @@ const Parts: React.FC<PartsProps> = ({
                         In use
                       </span>
                     )}
-                    <span className="material-symbols-outlined shrink-0 text-slate-500">
+                    <span className="material-symbols-outlined shrink-0 text-subtle">
                       chevron_right
                     </span>
                   </button>

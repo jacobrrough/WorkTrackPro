@@ -51,7 +51,7 @@ export function LedgerTable({
       <table className={tableClass}>
         <thead>
           <tr
-            className={`border-b border-white/10 bg-white/5 text-slate-400 ${
+            className={`border-b border-white/10 bg-white/5 text-muted ${
               stickyHeader ? 'sticky top-0 z-10' : ''
             }`}
           >

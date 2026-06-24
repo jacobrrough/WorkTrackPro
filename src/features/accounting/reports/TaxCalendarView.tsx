@@ -44,7 +44,7 @@ export default function TaxCalendarView() {
         <button
           type="button"
           onClick={() => navigate(REPORTS_BASE)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           All reports
@@ -53,7 +53,7 @@ export default function TaxCalendarView() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-white">Tax Calendar</h2>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted">
               Upcoming sales-tax filing deadlines{data ? ` · as of ${data.asOf}` : ''}
             </p>
           </div>
@@ -65,7 +65,7 @@ export default function TaxCalendarView() {
 
         <TaxDisclaimer representativeRates />
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           This is a read-only reference derived from each agency’s configured (or representative)
           filing cadence. <span className="font-semibold">No reminders are sent</span> — confirm
           exact due dates and obligations with the agency or your CPA/EA.
@@ -117,7 +117,7 @@ function CalendarRow({ entry, isNext }: { entry: TaxCalendarEntry; isNext: boole
     ? 'text-red-300'
     : entry.daysUntilDue <= 14
       ? 'text-amber-300'
-      : 'text-slate-300';
+      : 'text-muted';
 
   return (
     <tr className={rowClass}>
@@ -129,11 +129,9 @@ function CalendarRow({ entry, isNext }: { entry: TaxCalendarEntry; isNext: boole
         )}
         {entry.agencyName}
       </td>
-      <td className="px-3 py-2 text-slate-400">{TAX_FILING_FREQUENCY_LABELS[entry.frequency]}</td>
-      <td className="px-3 py-2 text-slate-300">{entry.periodLabel}</td>
-      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
-        {entry.dueDate}
-      </td>
+      <td className="px-3 py-2 text-muted">{TAX_FILING_FREQUENCY_LABELS[entry.frequency]}</td>
+      <td className="px-3 py-2 text-muted">{entry.periodLabel}</td>
+      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">{entry.dueDate}</td>
       <td className={`px-3 py-2 text-right text-xs font-semibold ${statusClass}`}>
         {dueInLabel(entry.daysUntilDue)}
       </td>

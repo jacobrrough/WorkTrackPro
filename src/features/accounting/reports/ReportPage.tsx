@@ -50,7 +50,7 @@ export function ReportPage({
         <button
           type="button"
           onClick={() => navigate(REPORTS_BASE)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           All reports
@@ -59,7 +59,7 @@ export function ReportPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-white">{title}</h2>
-            <p className="text-sm text-slate-400">{subtitle}</p>
+            <p className="text-sm text-muted">{subtitle}</p>
             {status && <div className="mt-1">{status}</div>}
           </div>
           <ExportButtons buildDocument={buildDocument} disabled={exportDisabled} />

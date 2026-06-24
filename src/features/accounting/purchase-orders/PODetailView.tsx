@@ -24,7 +24,7 @@ import {
 } from '../types';
 
 const STATUS_STYLES: Record<PoStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_received: 'bg-amber-500/15 text-amber-400',
   received: 'bg-green-500/15 text-green-400',
@@ -70,13 +70,13 @@ function ReceiveModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void 
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           Enter the total quantity received per line (capped at the quantity ordered). Receiving
           posts no journal entry — converting the PO to a bill and posting that bill records the
           expense.
@@ -133,14 +133,14 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
   const { data: bills = [], isPending } = usePurchaseOrderBills(po.id);
   const variances = useMemo(() => computePoVariances(po, bills), [po, bills]);
 
-  if (isPending) return <p className="text-sm text-slate-400">Loading match…</p>;
+  if (isPending) return <p className="text-sm text-muted">Loading match…</p>;
 
   const totalBillCount = bills.length;
 
   return (
     <section>
-      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">3-way match</h2>
-      <p className="mb-2 text-xs text-slate-500">
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">3-way match</h2>
+      <p className="mb-2 text-xs text-subtle">
         Ordered vs received quantity, and PO cost vs billed cost. Quantity short/over and any cost
         delta are flagged; a line with nothing billed shows a dash.
       </p>
@@ -164,33 +164,29 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
               <td className="px-3 py-2 text-white">
                 {v.description || '—'}
                 {v.billCount > 0 && (
-                  <span className="ml-2 text-xs text-slate-500">
+                  <span className="ml-2 text-xs text-subtle">
                     · {v.billCount} bill{v.billCount === 1 ? '' : 's'}
                   </span>
                 )}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-slate-300">
-                {v.quantityOrdered}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums text-slate-300">
-                {v.quantityReceived}
-              </td>
+              <td className="px-3 py-2 text-right tabular-nums text-muted">{v.quantityOrdered}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-muted">{v.quantityReceived}</td>
               <td
                 className={`px-3 py-2 text-right tabular-nums ${
-                  qtyShort ? 'text-amber-400' : qtyOver ? 'text-red-400' : 'text-slate-500'
+                  qtyShort ? 'text-amber-400' : qtyOver ? 'text-red-400' : 'text-subtle'
                 }`}
               >
                 {v.quantityVariance > 0 ? `+${v.quantityVariance}` : v.quantityVariance}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+              <td className="px-3 py-2 text-right tabular-nums text-muted">
                 {formatMoney(v.poUnitCost)}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+              <td className="px-3 py-2 text-right tabular-nums text-muted">
                 {v.billedUnitCost == null ? '—' : formatMoney(v.billedUnitCost)}
               </td>
               <td
                 className={`px-3 py-2 text-right tabular-nums ${
-                  costOff ? 'text-red-400' : 'text-slate-500'
+                  costOff ? 'text-red-400' : 'text-subtle'
                 }`}
               >
                 {v.costVariance == null
@@ -202,7 +198,7 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
         })}
         {variances.length === 0 && (
           <tr className="border-t border-white/5">
-            <td className="px-3 py-2 text-slate-500" colSpan={7}>
+            <td className="px-3 py-2 text-subtle" colSpan={7}>
               No lines to match.
             </td>
           </tr>
@@ -212,9 +208,7 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
       {/* Linked bills */}
       {totalBillCount > 0 && (
         <div className="mt-3">
-          <h3 className="mb-1 text-xs font-semibold uppercase text-slate-500">
-            Bills from this PO
-          </h3>
+          <h3 className="mb-1 text-xs font-semibold uppercase text-subtle">Bills from this PO</h3>
           <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
             {bills.map((b) => (
               <a
@@ -222,12 +216,12 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
                 href={`${ACCOUNTING_BASE}/bills/${b.id}`}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5"
               >
-                <span className="w-24 shrink-0 truncate font-mono text-xs text-slate-500">
+                <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
                   {b.billNumber || 'Draft'}
                 </span>
-                <span className="w-24 shrink-0 text-slate-400">{b.billDate}</span>
-                <span className="flex-1 truncate text-slate-300">{b.status}</span>
-                <span className="shrink-0 font-mono tabular-nums text-slate-200">
+                <span className="w-24 shrink-0 text-muted">{b.billDate}</span>
+                <span className="flex-1 truncate text-muted">{b.status}</span>
+                <span className="shrink-0 font-mono tabular-nums text-white">
                   {formatMoney(b.total)}
                 </span>
               </a>
@@ -328,9 +322,9 @@ export default function PODetailView() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading purchase order…</p>}
+      {isPending && <p className="text-muted">Loading purchase order…</p>}
       {isError && <p className="text-red-400">Could not load this purchase order.</p>}
-      {!isPending && !isError && !po && <p className="text-slate-400">Purchase order not found.</p>}
+      {!isPending && !isError && !po && <p className="text-muted">Purchase order not found.</p>}
 
       {po && (
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
@@ -343,14 +337,14 @@ export default function PODetailView() {
             >
               {PO_STATUS_LABELS[po.status]}
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Vendor <span className="text-white">{po.vendorName || po.vendorId}</span>
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Ordered <span className="text-white">{po.orderDate}</span>
             </span>
             {po.expectedDate && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Expected <span className="text-white">{po.expectedDate}</span>
               </span>
             )}
@@ -371,23 +365,23 @@ export default function PODetailView() {
             {lines.map((l) => (
               <tr key={l.id} className="border-t border-white/5">
                 <td className="px-3 py-2 text-white">{l.description || '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                <td className="px-3 py-2 text-right tabular-nums text-muted">
                   {l.quantityOrdered}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                <td className="px-3 py-2 text-right tabular-nums text-muted">
                   {l.quantityReceived}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                <td className="px-3 py-2 text-right tabular-nums text-muted">
                   {formatMoney(l.unitCost)}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-200">
+                <td className="px-3 py-2 text-right tabular-nums text-white">
                   {formatMoney(l.lineTotal)}
                 </td>
               </tr>
             ))}
             {lines.length === 0 && (
               <tr className="border-t border-white/5">
-                <td className="px-3 py-2 text-slate-500" colSpan={5}>
+                <td className="px-3 py-2 text-subtle" colSpan={5}>
                   No line items.
                 </td>
               </tr>
@@ -396,17 +390,13 @@ export default function PODetailView() {
 
           {/* Totals */}
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span className="font-mono tabular-nums text-slate-200">
-                {formatMoney(po.subtotal)}
-              </span>
+              <span className="font-mono tabular-nums text-white">{formatMoney(po.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Tax</span>
-              <span className="font-mono tabular-nums text-slate-200">
-                {formatMoney(po.taxTotal)}
-              </span>
+              <span className="font-mono tabular-nums text-white">{formatMoney(po.taxTotal)}</span>
             </div>
             <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
               <span>Total</span>

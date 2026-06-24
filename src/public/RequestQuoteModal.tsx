@@ -188,7 +188,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
       aria-modal="true"
       aria-labelledby="request-quote-title"
     >
-      <div className="w-full max-w-md rounded-lg border border-white/10 bg-[#0f0f14] p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-lg border border-white/10 bg-surface p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="request-quote-title" className="text-lg font-bold text-white">
             {cartMode ? 'Submit quote request' : 'Request quote'}
@@ -196,19 +196,19 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="min-h-[44px] min-w-[44px] rounded-sm text-muted hover:bg-white/10 hover:text-white"
             aria-label="Close"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
         {cartMode && cart ? (
-          <p className="mb-4 text-sm text-slate-300">
+          <p className="mb-4 text-sm text-muted">
             Requesting quote for {cart.length} item(s) ({cart.reduce((s, i) => s + i.quantity, 0)}{' '}
             total units)
           </p>
         ) : part ? (
-          <p className="mb-4 text-sm text-slate-300">
+          <p className="mb-4 text-sm text-muted">
             {part.partNumber}
             {effectiveVariant ? `-${effectiveVariant}` : ''} — {part.name}
           </p>
@@ -216,11 +216,11 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!cartMode && part && part.variants.length > 1 && (
             <label className="block">
-              <span className="mb-1 block text-sm text-slate-400">Variant</span>
+              <span className="mb-1 block text-sm text-muted">Variant</span>
               <select
                 value={selectedVariantSuffix ?? ''}
                 onChange={(e) => setSelectedVariantSuffix(e.target.value || undefined)}
-                className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               >
                 <option value="">— Select —</option>
                 {part.variants.map((v) => (
@@ -234,44 +234,44 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
           )}
           {!cartMode && part && (
             <label className="block">
-              <span className="mb-1 block text-sm text-slate-400">Quantity</span>
+              <span className="mb-1 block text-sm text-muted">Quantity</span>
               <input
                 type="number"
                 min={1}
                 step={1}
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value) || 1)}
-                className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               />
             </label>
           )}
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-400">Contact name *</span>
+            <span className="mb-1 block text-sm text-muted">Contact name *</span>
             <input
               type="text"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               required
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-400">Email *</span>
+            <span className="mb-1 block text-sm text-muted">Email *</span>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               required
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-400">Phone *</span>
+            <span className="mb-1 block text-sm text-muted">Phone *</span>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               required
             />
           </label>
@@ -290,7 +290,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
             <button
               type="submit"
               disabled={isSubmitting || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
-              className="min-h-[44px] flex-1 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="min-h-[44px] flex-1 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {isSubmitting ? 'Submitting…' : 'Submit'}
             </button>

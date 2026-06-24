@@ -25,7 +25,7 @@ const KIND_COLOR: Record<string, string> = {
   created: 'text-sky-300',
   edited: 'text-amber-300',
   status: 'text-violet-300',
-  version: 'text-slate-300',
+  version: 'text-muted',
   email: 'text-green-300',
   payment: 'text-green-300',
   deleted: 'text-red-300',
@@ -79,7 +79,7 @@ export function DocumentActivityPanel({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Audit history</h2>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Audit history</h2>
 
       {events.length > 0 && (
         <ol className="flex flex-col gap-0 overflow-hidden rounded-sm border border-white/10">
@@ -89,17 +89,17 @@ export function DocumentActivityPanel({
               className="flex items-start gap-3 border-b border-white/5 px-3 py-2 last:border-b-0"
             >
               <span
-                className={`material-symbols-outlined mt-0.5 text-lg ${KIND_COLOR[ev.kind] ?? 'text-slate-300'}`}
+                className={`material-symbols-outlined mt-0.5 text-lg ${KIND_COLOR[ev.kind] ?? 'text-muted'}`}
               >
                 {KIND_ICON[ev.kind] ?? 'circle'}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-white">{ev.title}</p>
-                {ev.detail && <p className="truncate text-xs text-slate-400">{ev.detail}</p>}
+                {ev.detail && <p className="truncate text-xs text-muted">{ev.detail}</p>}
               </div>
               <div className="shrink-0 text-right">
-                <p className="font-mono text-xs text-slate-400">{formatStamp(ev.at)}</p>
-                {ev.actor && <p className="truncate text-xs text-slate-500">{ev.actor}</p>}
+                <p className="font-mono text-xs text-muted">{formatStamp(ev.at)}</p>
+                {ev.actor && <p className="truncate text-xs text-subtle">{ev.actor}</p>}
               </div>
             </li>
           ))}
@@ -114,16 +114,16 @@ export function DocumentActivityPanel({
 
       {canRestore && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-subtle">
             Restore a version
           </h3>
           <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
             {snapshots.map((s) => (
               <div key={s.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                <span className="w-36 shrink-0 font-mono text-xs text-slate-400">
+                <span className="w-36 shrink-0 font-mono text-xs text-muted">
                   {formatStamp(s.createdAt)}
                 </span>
-                <span className="flex-1 truncate text-slate-300">{s.note ?? 'Saved version'}</span>
+                <span className="flex-1 truncate text-muted">{s.note ?? 'Saved version'}</span>
                 <Button
                   size="sm"
                   variant="secondary"

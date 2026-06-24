@@ -83,13 +83,13 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   };
 
   return (
-    <div className="flex min-h-0 flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d] pb-24">
+    <div className="flex min-h-0 flex-col bg-gradient-to-br from-app-2 to-surface-3 pb-24">
       {/* Header with back */}
       <header className="sticky top-0 z-30 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Back"
           >
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -100,7 +100,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
               {displayPartNumber ? ` – ${displayPartNumber}` : ''}
             </h1>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-slate-400">Job summary</p>
+              <p className="text-xs text-muted">Job summary</p>
               <PendingSyncBadge entityId={job.id} />
             </div>
           </div>
@@ -113,7 +113,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
           (job.parts ?? []).some((p) => Object.keys(p.dashQuantities ?? {}).length > 0)) ||
         (job.dashQuantities && Object.keys(job.dashQuantities).length > 0) ? (
           <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
-            <p className="mb-1 text-xs font-bold uppercase text-slate-400">Quantities</p>
+            <p className="mb-1 text-xs font-bold uppercase text-muted">Quantities</p>
             {isMultiPart ? (
               <div className="space-y-1">
                 {(job.parts ?? []).map((p, idx) => {
@@ -127,7 +127,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
                 })}
                 {totalQty > 0 && (
                   <p className="text-xl font-bold text-white">
-                    <span className="text-base font-medium text-slate-300">({totalQty} total)</span>
+                    <span className="text-base font-medium text-muted">({totalQty} total)</span>
                   </p>
                 )}
               </div>
@@ -135,9 +135,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
               <p className="text-xl font-bold text-white">
                 {formatDashSummary(job.dashQuantities)}
                 {totalQty > 0 && (
-                  <span className="ml-2 text-base font-medium text-slate-300">
-                    ({totalQty} total)
-                  </span>
+                  <span className="ml-2 text-base font-medium text-muted">({totalQty} total)</span>
                 )}
               </p>
             )}
@@ -146,7 +144,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
 
         {/* Due date */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-          <p className="mb-1 text-xs font-bold uppercase text-slate-400">Due</p>
+          <p className="mb-1 text-xs font-bold uppercase text-muted">Due</p>
           <p className="text-lg font-bold text-white">
             {job.dueDate ? formatDateOnly(job.dueDate) : job.ecd ? formatDateOnly(job.ecd) : '—'}
           </p>
@@ -159,19 +157,19 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
               href={drawingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-primary px-4 py-3 font-bold text-white transition-colors hover:bg-primary/90 active:scale-[0.98]"
+              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-primary px-4 py-3 font-bold text-on-accent transition-colors hover:bg-primary/90 active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-xl">picture_as_pdf</span>
               View Drawing
             </a>
           ) : (
-            <p className="py-2 text-center text-sm text-slate-500">No drawing available</p>
+            <p className="py-2 text-center text-sm text-subtle">No drawing available</p>
           )}
         </div>
 
         {/* Checklist */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-          <p className="mb-3 text-xs font-bold uppercase text-slate-400">Checklist</p>
+          <p className="mb-3 text-xs font-bold uppercase text-muted">Checklist</p>
           <ChecklistDisplay
             jobId={job.id}
             jobStatus={job.status}
@@ -214,7 +212,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
 
         {/* Current status */}
         <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-          <p className="mb-2 text-xs font-bold uppercase text-slate-400">Status</p>
+          <p className="mb-2 text-xs font-bold uppercase text-muted">Status</p>
           <StatusBadge status={job.status} size="md" />
         </div>
 

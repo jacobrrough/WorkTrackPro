@@ -52,21 +52,21 @@ export default function AllocateToJobModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
             aria-label="Close allocation dialog"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-300">
+        <p className="mb-3 text-sm text-muted">
           <span className="font-bold text-white">{item.name}</span> • Available now: {maxAvailable}{' '}
           {item.unit}
         </p>
 
         <form className="space-y-3" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-300" htmlFor="allocate-job">
+            <label className="mb-2 block text-sm font-bold text-muted" htmlFor="allocate-job">
               Job
             </label>
             <select
@@ -86,10 +86,7 @@ export default function AllocateToJobModal({
           </div>
 
           <div>
-            <label
-              className="mb-2 block text-sm font-bold text-slate-300"
-              htmlFor="allocate-quantity"
-            >
+            <label className="mb-2 block text-sm font-bold text-muted" htmlFor="allocate-quantity">
               Quantity
             </label>
             <input
@@ -106,7 +103,7 @@ export default function AllocateToJobModal({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-bold text-slate-300" htmlFor="allocate-notes">
+            <label className="mb-2 block text-sm font-bold text-muted" htmlFor="allocate-notes">
               Notes
             </label>
             <textarea
@@ -123,14 +120,14 @@ export default function AllocateToJobModal({
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[44px] rounded-sm border border-white/10 px-4 text-sm font-bold text-slate-200"
+              className="min-h-[44px] rounded-sm border border-white/10 px-4 text-sm font-bold text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !!quantityError || !jobId}
-              className="min-h-[44px] rounded-sm bg-primary px-4 text-sm font-bold text-white disabled:opacity-60"
+              className="min-h-[44px] rounded-sm bg-primary px-4 text-sm font-bold text-on-accent disabled:opacity-60"
             >
               {saving ? 'Allocating...' : 'Allocate'}
             </button>

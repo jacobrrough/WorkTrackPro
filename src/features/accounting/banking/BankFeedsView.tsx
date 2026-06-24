@@ -148,7 +148,7 @@ const STATUS_BADGE: Record<
   },
   disconnected: {
     label: 'Disconnected',
-    className: 'border-white/10 bg-white/5 text-slate-400',
+    className: 'border-white/10 bg-white/5 text-muted',
     icon: 'link_off',
   },
 };
@@ -378,7 +378,7 @@ function MappingStep({
             <span className="material-symbols-outlined text-primary">account_tree</span>
             Map {result.institutionName ?? 'the connected institution'}
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Choose where each account&rsquo;s transactions land. Map to an existing bank account or
             create a new one — only mapped accounts will sync. You can finish mapping later from the
             connection below.
@@ -388,7 +388,7 @@ function MappingStep({
           type="button"
           onClick={onClose}
           aria-label="Close mapping"
-          className="flex size-8 shrink-0 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+          className="flex size-8 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
@@ -416,7 +416,7 @@ function MappingStep({
                     <p className="truncate font-semibold text-white">
                       {acct.name || 'Account'}
                       {subtitle && (
-                        <span className="ml-2 text-xs font-normal text-slate-500">{subtitle}</span>
+                        <span className="ml-2 text-xs font-normal text-subtle">{subtitle}</span>
                       )}
                     </p>
                     {alreadyLinked && (
@@ -537,7 +537,7 @@ function MappingStep({
             </div>
           ) : (
             <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
-              <span className="mr-auto text-xs text-slate-500">
+              <span className="mr-auto text-xs text-subtle">
                 {itemPk
                   ? `${mappedCount} of ${result.accounts.length} account${
                       result.accounts.length === 1 ? '' : 's'
@@ -593,7 +593,7 @@ function ConnectionRow({
           </span>
           <StatusBadge status={item.status} />
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           {lastSync ? `Last synced ${lastSync}` : 'Not synced yet'}
           {connected ? ` · connected ${connected}` : ''}
         </p>
@@ -824,14 +824,13 @@ export default function BankFeedsView() {
       }
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Securely connect your bank or credit-card accounts through Plaid to pull transactions in
           automatically. Your bank credentials are entered on Plaid&rsquo;s secure screen and never
           touch this app. Synced transactions arrive as{' '}
-          <span className="font-semibold text-slate-300">unreviewed</span> and are categorized with
-          your existing{' '}
-          <span className="font-semibold text-slate-300">Bank Rules / review flow</span> before they
-          post.
+          <span className="font-semibold text-muted">unreviewed</span> and are categorized with your
+          existing <span className="font-semibold text-muted">Bank Rules / review flow</span> before
+          they post.
         </p>
 
         {error && (
@@ -849,14 +848,12 @@ export default function BankFeedsView() {
 
         {/* Connections list */}
         {itemsQuery.isPending ? (
-          <p className="text-slate-400">Loading connected banks…</p>
+          <p className="text-muted">Loading connected banks…</p>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">
-              account_balance
-            </span>
+            <span className="material-symbols-outlined text-4xl text-subtle">account_balance</span>
             <p className="text-lg font-bold text-white">No banks connected</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <p className="max-w-sm text-sm text-muted">
               Connect a bank to start pulling transactions automatically. Prefer to upload a
               statement instead? Use manual import from the Banking screen.
             </p>
@@ -881,7 +878,7 @@ export default function BankFeedsView() {
           </div>
         )}
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           Disconnecting removes the stored authorization and unlinks the bank accounts it fed; it
           does not delete anything already imported. You can reconnect a bank at any time.
         </p>

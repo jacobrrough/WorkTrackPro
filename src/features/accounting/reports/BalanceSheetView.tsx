@@ -104,15 +104,15 @@ export default function BalanceSheetView() {
 
           {/* Accounting-equation check */}
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Total assets</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {data.totalAssets.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
               </span>
             </div>
-            <div className="flex justify-between border-b border-white/10 pb-1 text-slate-400">
+            <div className="flex justify-between border-b border-white/10 pb-1 text-muted">
               <span>Liabilities + equity</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {(data.totalLiabilities + data.totalEquity).toLocaleString('en-US', {
                   style: 'currency',
                   currency: 'USD',

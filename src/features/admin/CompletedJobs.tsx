@@ -37,9 +37,9 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {completedJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <span className="material-symbols-outlined mb-4 text-6xl text-slate-600">archive</span>
-            <p className="text-lg font-medium text-slate-400">No completed jobs</p>
-            <p className="mt-2 text-sm text-slate-500">
+            <span className="material-symbols-outlined mb-4 text-6xl text-subtle">archive</span>
+            <p className="text-lg font-medium text-muted">No completed jobs</p>
+            <p className="mt-2 text-sm text-subtle">
               Jobs marked as Paid or Project Completed will appear here.
             </p>
           </div>
@@ -55,7 +55,7 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
                   <div className="flex-1">
                     <div className="mb-1 flex items-center gap-2">
                       <span className="font-bold text-white">#{job.jobCode}</span>
-                      <span className="text-sm font-medium text-slate-300">
+                      <span className="text-sm font-medium text-muted">
                         {getJobDisplayName(job)}
                       </span>
                       <span
@@ -69,9 +69,9 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
                       </span>
                     </div>
                     {job.description && (
-                      <p className="mb-2 line-clamp-2 text-sm text-slate-400">{job.description}</p>
+                      <p className="mb-2 line-clamp-2 text-sm text-muted">{job.description}</p>
                     )}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-subtle">
                       {job.po && (
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">receipt</span>
@@ -92,7 +92,7 @@ const CompletedJobs: React.FC<CompletedJobsProps> = ({
                       )}
                     </div>
                   </div>
-                  <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+                  <span className="material-symbols-outlined text-muted">chevron_right</span>
                 </div>
               </button>
             ))}

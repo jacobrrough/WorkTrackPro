@@ -2193,11 +2193,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-3 text-xs">
-                      <span className="text-slate-400">Set:</span>
+                      <span className="text-muted">Set:</span>
                       <span className="font-medium text-white">
                         {formatSetComposition(linkedPart.setComposition)}
                       </span>
-                      <span className="text-slate-400">Ordered:</span>
+                      <span className="text-muted">Ordered:</span>
                       <span className="font-medium text-white">
                         {formatDashSummary(dashQuantities)}
                       </span>
@@ -2213,7 +2213,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 ))) && (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-muted">
                     Source: <span className="font-semibold text-primary">{allocationSource}</span>
                   </span>
                   {linkedPart && Object.keys(dashQuantities).length > 0 && (
@@ -2260,7 +2260,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Part details (top) - one block per part */}
             <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
                 Part details
               </p>
               {partsLocked && (
@@ -2276,7 +2276,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   )}
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Part Number</label>
+                      <label className="mb-0.5 block text-[11px] text-muted">Part Number</label>
                       {idx === 0 ? (
                         <input
                           type="text"
@@ -2301,7 +2301,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       )}
                     </div>
                     <div>
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Rev</label>
+                      <label className="mb-0.5 block text-[11px] text-muted">Rev</label>
                       {idx === 0 ? (
                         <input
                           type="text"
@@ -2313,13 +2313,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           placeholder="A, B, NC"
                         />
                       ) : (
-                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-slate-500">
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-subtle">
                           —
                         </div>
                       )}
                     </div>
                     <div className="col-span-2 sm:col-span-1">
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Part Name</label>
+                      <label className="mb-0.5 block text-[11px] text-muted">Part Name</label>
                       {idx === 0 && linkedPart ? (
                         <input
                           type="text"
@@ -2336,7 +2336,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           {linkedParts[idx].name || '—'}
                         </div>
                       ) : (
-                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-500">
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-subtle">
                           —
                         </div>
                       )}
@@ -2348,7 +2348,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Job details */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
                 Job details
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -2356,7 +2356,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     link through the billing panel; legacy values stay stored + visible. */}
                 {JobCustomerSelect && (
                   <div className="col-span-2">
-                    <label className="mb-0.5 block text-[11px] text-slate-400">Customer</label>
+                    <label className="mb-0.5 block text-[11px] text-muted">Customer</label>
                     <Suspense
                       fallback={
                         <div className="h-[34px] w-full rounded border border-white/10 bg-white/5" />
@@ -2373,7 +2373,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </div>
                 )}
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">PO #</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">PO #</label>
                   <input
                     type="text"
                     value={editForm.po}
@@ -2383,7 +2383,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">OWR#</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">OWR#</label>
                   <input
                     type="text"
                     value={editForm.owrNumber}
@@ -2393,7 +2393,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Due</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">Due</label>
                   <input
                     type="date"
                     value={editForm.dueDate}
@@ -2402,7 +2402,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">ECD</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">ECD</label>
                   <input
                     type="date"
                     value={editForm.ecd}
@@ -2411,7 +2411,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Status</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">Status</label>
                   <select
                     value={editForm.status}
                     onChange={(e) =>
@@ -2420,14 +2420,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   >
                     {ALL_STATUSES.map((s) => (
-                      <option key={s.id} value={s.id} className="bg-[#1f1b2e] text-white">
+                      <option key={s.id} value={s.id} className="bg-surface text-white">
                         {s.label}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Bin</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">Bin</label>
                   <div className="flex gap-1">
                     <input
                       type="text"
@@ -2462,7 +2462,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </button>
                 </div>
                 <div className="col-span-2 sm:col-span-3 lg:col-span-4">
-                  <label className="mb-0.5 block text-[11px] text-slate-400">Description</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">Description</label>
                   <textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -2485,7 +2485,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               return (
                 <div key={link.partId} className="rounded-sm border border-white/10 bg-white/5 p-2">
                   {editingParts.length > 1 && (
-                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                       Part {partIdx + 1}: {link.partNumber}
                     </h3>
                   )}
@@ -2494,7 +2494,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   partForVariants.variants.length > 0 ? (
                     <>
                       {partIdx === 0 && (
-                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                           Variants & quantities
                         </h3>
                       )}
@@ -2502,7 +2502,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       linkedPart?.setComposition &&
                       Object.keys(linkedPart.setComposition).filter((k) => k !== '_').length > 0 ? (
                         <div className="mb-2 flex flex-wrap items-center gap-3">
-                          <span className="text-[11px] text-slate-400">Input by:</span>
+                          <span className="text-[11px] text-muted">Input by:</span>
                           <label
                             className={`flex items-center gap-1.5 ${partsLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                           >
@@ -2536,7 +2536,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       linkedPart?.setComposition &&
                       Object.keys(linkedPart.setComposition).length > 0 ? (
                         <div>
-                          <label className="mb-0.5 block text-[11px] text-slate-400">
+                          <label className="mb-0.5 block text-[11px] text-muted">
                             Number of sets
                           </label>
                           <input
@@ -2553,7 +2553,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             aria-label="Number of sets"
                           />
                           {derivedCompleteSets > 0 && (
-                            <p className="mt-1 text-xs text-slate-400">
+                            <p className="mt-1 text-xs text-muted">
                               {formatDashSummary(qtyForPart)} → Total{' '}
                               {totalFromDashQuantities(qtyForPart)} units
                             </p>
@@ -2561,10 +2561,10 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <p className="text-[11px] font-medium text-slate-400">
+                          <p className="text-[11px] font-medium text-muted">
                             Per-variant quantities
                           </p>
-                          <span className="block text-xs text-slate-400">
+                          <span className="block text-xs text-muted">
                             {formatDashSummary(qtyForPart)} → Total{' '}
                             {totalFromDashQuantities(qtyForPart)}
                           </span>
@@ -2612,7 +2612,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                       className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                       aria-label={`Quantity for ${label}`}
                                     />
-                                    <span className="text-[10px] text-slate-400">Qty</span>
+                                    <span className="text-[10px] text-muted">Qty</span>
                                   </div>
                                 </div>
                               );
@@ -2624,13 +2624,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   ) : (
                     <div>
                       {partIdx === 0 && (
-                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                        <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                           Set quantity
                         </h3>
                       )}
-                      <label className="mb-0.5 block text-[11px] text-slate-400">Sets</label>
+                      <label className="mb-0.5 block text-[11px] text-muted">Sets</label>
                       {totalFromDashQuantities(qtyForPart) > 0 ? (
-                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-300">
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-muted">
                           {formatDashSummary(qtyForPart)} → Total{' '}
                           {totalFromDashQuantities(qtyForPart)}
                         </div>
@@ -2646,7 +2646,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           aria-label="Quantity (sets)"
                         />
                       ) : (
-                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-slate-500">
+                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-subtle">
                           —
                         </div>
                       )}
@@ -2658,16 +2658,16 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
             {/* Labor & Materials intertwined with variants section */}
             <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">
                 Labor & materials
               </h3>
               {editingParts.length > 1 && perPartBreakdowns && (
                 <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2">
-                  <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
+                  <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                     Per-part (read-only)
                   </p>
                   {perPartBreakdowns.map((b, i) => (
-                    <p key={i} className="text-[11px] text-slate-300">
+                    <p key={i} className="text-[11px] text-muted">
                       Part {i + 1}: L {(b.laborHours || 0).toFixed(1)}h, CNC{' '}
                       {(b.cncHours || 0).toFixed(1)}h, 3D {(b.printer3DHours || 0).toFixed(1)}h
                     </p>
@@ -2680,7 +2680,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 <div>
                   <div className="mb-0.5 flex items-center justify-between">
-                    <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <label className="flex items-center gap-1.5 text-[11px] text-muted">
                       Labor hrs
                       {laborHoursFromPart && (
                         <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
@@ -2711,7 +2711,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
                 {canViewFinancials && (
                   <div>
-                    <label className="mb-0.5 block text-[11px] text-slate-400">Rate</label>
+                    <label className="mb-0.5 block text-[11px] text-muted">Rate</label>
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white">
                       ${laborRate}/hr
                     </div>
@@ -2719,14 +2719,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 )}
                 {canViewFinancials && (
                   <div>
-                    <label className="mb-0.5 block text-[11px] text-slate-400">Labor $</label>
+                    <label className="mb-0.5 block text-[11px] text-muted">Labor $</label>
                     <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
                       ${laborCost.toFixed(2)}
                     </div>
                   </div>
                 )}
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">CNC hrs</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">CNC hrs</label>
                   <input
                     type="number"
                     step="0.01"
@@ -2741,7 +2741,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[11px] text-slate-400">3D hrs</label>
+                  <label className="mb-0.5 block text-[11px] text-muted">3D hrs</label>
                   <input
                     type="number"
                     step="0.01"
@@ -2757,7 +2757,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
                 {currentUser.isAdmin && (
                   <div>
-                    <label className="mb-0.5 block text-[11px] text-slate-400">
+                    <label className="mb-0.5 block text-[11px] text-muted">
                       Progress estimate %
                     </label>
                     <input
@@ -2775,7 +2775,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 )}
                 {canViewFinancials && (
                   <div>
-                    <label className="mb-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                    <label className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted">
                       Materials $
                       {linkedPart && (
                         <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-medium text-primary">
@@ -2823,7 +2823,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 </div>
                 {!linkedPart ? (
                   !job.inventoryItems?.length ? (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted">
                       No materials assigned. Add from part or manually.
                     </p>
                   ) : (
@@ -2847,7 +2847,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               >
                                 {item.inventoryName || invItem?.name || 'Unknown'}
                               </button>
-                              <span className="ml-2 text-[10px] text-slate-400">
+                              <span className="ml-2 text-[10px] text-muted">
                                 {item.quantity} {item.unit}
                               </span>
                               {item.inventoryId &&
@@ -2860,7 +2860,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             <button
                               type="button"
                               onClick={() => item.id && onRemoveInventory(job.id, item.id)}
-                              className="ml-2 rounded p-1 text-slate-400 hover:bg-red-500/20 hover:text-red-400"
+                              className="ml-2 rounded p-1 text-muted hover:bg-red-500/20 hover:text-red-400"
                               aria-label="Remove"
                             >
                               <span className="material-symbols-outlined text-sm">close</span>
@@ -2871,7 +2871,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     </ul>
                   )
                 ) : (
-                  <p className="text-xs text-slate-400">From part BOM below.</p>
+                  <p className="text-xs text-muted">From part BOM below.</p>
                 )}
               </div>
             </div>
@@ -2892,12 +2892,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       : linkedPart.materials || [];
                   if (requiredMap.size === 0 && materialsFromPart.length === 0) {
                     return (
-                      <p className="text-xs text-slate-400">No materials defined for this part.</p>
+                      <p className="text-xs text-muted">No materials defined for this part.</p>
                     );
                   }
                   if (requiredMap.size === 0) {
                     return (
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted">
                         Set variant quantities above to see required materials.
                       </p>
                     );
@@ -2927,7 +2927,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                     {materialName}
                                   </span>
                                 )}
-                                <span className="shrink-0 text-[10px] text-slate-400">
+                                <span className="shrink-0 text-[10px] text-muted">
                                   {quantity.toFixed(2)} {unit}
                                 </span>
                               </div>
@@ -2962,7 +2962,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               <button
                 onClick={handleSaveEdit}
                 disabled={isSubmitting}
-                className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                className="flex-1 rounded-sm bg-primary py-3 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
               </button>
@@ -2971,7 +2971,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
         ) : (
           <>
             {/* Job section - job-level data only */}
-            <div className="bg-gradient-to-br from-[#2a1f35] to-[#1a1122] p-4">
+            <div className="bg-gradient-to-br from-surface-3 to-app-2 p-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {job.isRush && (
                   <span className="rounded bg-red-500 px-2 py-0.5 text-xs font-bold uppercase text-white">
@@ -3017,19 +3017,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {/* Job info grid: Due, Status, ECD, Bin */}
               <div className="mb-3 grid grid-cols-2 gap-2">
                 <div className="rounded-sm bg-white/5 p-2.5">
-                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Due Date</p>
+                  <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">Due Date</p>
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.dueDate)}</p>
                 </div>
                 <div className="rounded-sm bg-white/5 p-2.5">
-                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Status</p>
+                  <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">Status</p>
                   <StatusBadge status={job.status} size="sm" />
                 </div>
                 <div className="rounded-sm bg-white/5 p-2.5">
-                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">ECD</p>
+                  <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">ECD</p>
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.ecd)}</p>
                 </div>
                 <div className="rounded-sm bg-white/5 p-2.5">
-                  <p className="mb-0.5 text-[9px] font-bold uppercase text-slate-400">Bin</p>
+                  <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">Bin</p>
                   <p className="text-sm font-bold text-white">{job.binLocation || '—'}</p>
                 </div>
               </div>
@@ -3050,7 +3050,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {currentUser.isAdmin && (
                 <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2.5">
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
                       Completion
                     </p>
                     <div className="flex items-center gap-2">
@@ -3077,13 +3077,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       style={{ width: `${completionProgress.weightedPercent}%` }}
                     />
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted">
                     <span>L {completionProgress.laborPercent.toFixed(0)}%</span>
                     <span>CNC {completionProgress.cncPercent.toFixed(0)}%</span>
                     <span>3D {completionProgress.printer3DPercent.toFixed(0)}%</span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2">
-                    <span className="text-[10px] text-slate-500">Progress estimate %</span>
+                    <span className="text-[10px] text-subtle">Progress estimate %</span>
                     <ProgressEstimateInput
                       value={progressEstimateInput}
                       onChange={setProgressEstimateInput}
@@ -3140,9 +3140,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {/* Time / Shifts - list and link to Time Reports */}
               <div className="mb-3 rounded-sm border border-white/10 bg-white/5 p-2.5">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                    Time
-                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Time</p>
                   <button
                     type="button"
                     onClick={() => onNavigate('time-reports', job.id)}
@@ -3169,7 +3167,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       );
                   if (jobShifts.length === 0) {
                     return (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-subtle">
                         {currentUser.isAdmin
                           ? 'No time logged yet. Use Time Reports to add or view shifts.'
                           : 'No time logged on this job for you yet.'}
@@ -3183,7 +3181,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
                   return (
                     <div className="space-y-1">
-                      <p className="mb-1.5 text-xs text-slate-400">
+                      <p className="mb-1.5 text-xs text-muted">
                         {currentUser.isAdmin ? (
                           <>
                             {hoursSummary.toFixed(1)}h total · {jobShifts.length} shift
@@ -3208,7 +3206,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onClick={() => onNavigate('time-reports', job.id)}
                           className="flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-left text-[10px] transition-colors hover:bg-white/10"
                         >
-                          <span className="text-slate-300">
+                          <span className="text-muted">
                             {formatDateOnly(s.clockInTime)} · {s.userName || s.userInitials || '—'}
                           </span>
                           <span className="font-medium text-white">
@@ -3220,7 +3218,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         <button
                           type="button"
                           onClick={() => onNavigate('time-reports', job.id)}
-                          className="w-full pt-1 text-left text-[10px] text-slate-500 transition-colors hover:text-primary"
+                          className="w-full pt-1 text-left text-[10px] text-subtle transition-colors hover:text-primary"
                         >
                           +{jobShifts.length - 5} more · View in Time Reports
                         </button>
@@ -3274,7 +3272,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       location_on
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[9px] font-bold uppercase text-slate-400">Bin Location</p>
+                      <p className="text-[9px] font-bold uppercase text-muted">Bin Location</p>
                       <p className="truncate font-mono text-sm font-bold text-white">
                         {job.binLocation}
                       </p>
@@ -3322,12 +3320,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   {viewParts.map((link, idx) => (
                     <div key={link.partId || link.partNumber || idx} className="p-4 pt-0">
                       <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted">
                           Part {viewParts.length > 1 ? idx + 1 : ''}
                         </p>
                         <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                           <div>
-                            <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                            <p className="mb-0.5 text-[10px] font-bold uppercase text-muted">
                               Part Number
                             </p>
                             <p className="font-mono text-sm font-bold text-primary">
@@ -3335,7 +3333,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             </p>
                           </div>
                           <div>
-                            <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                            <p className="mb-0.5 text-[10px] font-bold uppercase text-muted">
                               Part Name
                             </p>
                             <p className="text-sm font-medium text-white">
@@ -3345,7 +3343,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             </p>
                           </div>
                           <div>
-                            <p className="mb-0.5 text-[10px] font-bold uppercase text-slate-400">
+                            <p className="mb-0.5 text-[10px] font-bold uppercase text-muted">
                               Part Rev
                             </p>
                             <p className="text-sm font-medium text-white">
@@ -3355,7 +3353,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </div>
                         {Object.keys(link.dashQuantities ?? {}).length > 0 ? (
                           <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-2">
-                            <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
+                            <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                               Variants & quantities
                             </p>
                             <p className="text-sm font-medium text-white">
@@ -3369,7 +3367,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           idx === 0 &&
                           job.qty && (
                             <div className="mb-2 rounded-sm border border-white/10 bg-white/5 p-2">
-                              <p className="mb-1 text-[10px] font-bold uppercase text-slate-400">
+                              <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                                 Quantity
                               </p>
                               <p className="text-sm font-medium text-white">{job.qty}</p>
@@ -3377,7 +3375,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           )
                         )}
                         {perPartBreakdowns && perPartBreakdowns[idx] && (
-                          <div className="flex flex-wrap gap-3 text-[11px] text-slate-300">
+                          <div className="flex flex-wrap gap-3 text-[11px] text-muted">
                             <span>
                               Labor {(perPartBreakdowns[idx].laborHours || 0).toFixed(1)}h
                             </span>
@@ -3398,7 +3396,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowAddPartToJob(true)}
-                          className="flex items-center gap-2 rounded border border-dashed border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-primary/50 hover:bg-white/10 hover:text-primary"
+                          className="flex items-center gap-2 rounded border border-dashed border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-primary/50 hover:bg-white/10 hover:text-primary"
                         >
                           <span className="material-symbols-outlined text-base">add</span>
                           Add part to job
@@ -3422,7 +3420,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowAddPartToJob(false)}
-                        className="mt-2 text-xs text-slate-400 underline hover:text-white"
+                        className="mt-2 text-xs text-muted underline hover:text-white"
                       >
                         Cancel
                       </button>
@@ -3444,7 +3442,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <span>CNC {machineTotals.cncHours.toFixed(1)}h</span>
                     <span>3D {machineTotals.printer3DHours.toFixed(1)}h</span>
                   </div>
-                  <p className="mt-2 text-[10px] text-slate-400">Materials combined below</p>
+                  <p className="mt-2 text-[10px] text-muted">Materials combined below</p>
                 </div>
               </div>
             )}
@@ -3452,8 +3450,8 @@ const JobDetail: React.FC<JobDetailProps> = ({
             {/* Currently Working */}
             {job.workers && job.workers.length > 0 && (
               <div className="p-3 pt-0">
-                <div className="rounded-sm bg-[#1a1122] p-3">
-                  <p className="mb-2 text-xs text-slate-400">Currently Working:</p>
+                <div className="rounded-sm bg-app-2 p-3">
+                  <p className="mb-2 text-xs text-muted">Currently Working:</p>
                   <div className="flex flex-wrap gap-2">
                     {job.workers.map((initials, idx) => (
                       <div
@@ -3477,7 +3475,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   </span>
                   Description
                 </h3>
-                <div className="max-h-96 space-y-2 overflow-y-auto rounded-sm bg-[#261a32] p-3 text-sm text-slate-300">
+                <div className="max-h-96 space-y-2 overflow-y-auto rounded-sm bg-surface-2 p-3 text-sm text-muted">
                   {job.description.split('\n').map((line, idx) => {
                     const trimmedLine = line.trim();
                     if (trimmedLine.startsWith('http')) {
@@ -3548,17 +3546,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         : linkedPart.materials || [];
                     if (requiredMap.size === 0 && materialsFromPart.length === 0) {
                       return (
-                        <div className="rounded-sm bg-[#261a32] p-3 text-center">
-                          <p className="text-sm text-slate-400">
-                            No materials defined for this part.
-                          </p>
+                        <div className="rounded-sm bg-surface-2 p-3 text-center">
+                          <p className="text-sm text-muted">No materials defined for this part.</p>
                         </div>
                       );
                     }
                     if (requiredMap.size === 0) {
                       return (
-                        <div className="rounded-sm bg-[#261a32] p-3 text-center">
-                          <p className="text-sm text-slate-400">
+                        <div className="rounded-sm bg-surface-2 p-3 text-center">
+                          <p className="text-sm text-muted">
                             Set variant quantities to see required materials.
                           </p>
                         </div>
@@ -3573,7 +3569,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             return (
                               <div
                                 key={inventoryId}
-                                className="flex items-center justify-between overflow-hidden rounded-sm bg-[#261a32] p-3"
+                                className="flex items-center justify-between overflow-hidden rounded-sm bg-surface-2 p-3"
                               >
                                 <div className="flex min-w-0 flex-1 items-center gap-3">
                                   {invItem ? (
@@ -3591,7 +3587,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                       {materialName}
                                     </span>
                                   )}
-                                  <span className="shrink-0 text-xs text-slate-400">
+                                  <span className="shrink-0 text-xs text-muted">
                                     {quantity.toFixed(2)} {unit}
                                   </span>
                                 </div>
@@ -3638,14 +3634,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     >
                       <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
                       <span className="truncate font-medium text-white">{drawing.filename}</span>
-                      <span className="material-symbols-outlined ml-auto text-slate-400">
+                      <span className="material-symbols-outlined ml-auto text-muted">
                         open_in_new
                       </span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <p className="py-2 text-sm text-slate-500">
+                <p className="py-2 text-sm text-subtle">
                   {job.partId
                     ? 'No drawings on file for this part.'
                     : 'No part linked — no drawings.'}

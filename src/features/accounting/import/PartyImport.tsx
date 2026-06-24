@@ -251,7 +251,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
                   </li>
                   <li>Upload that Excel file here — or save it as CSV first. Either works.</li>
                 </ol>
-                <p className="mt-3 text-xs text-slate-400">
+                <p className="mt-3 text-xs text-muted">
                   Existing {copy.plural} (matched by name or email) are skipped, so this is safe to
                   re-run.
                 </p>
@@ -263,12 +263,10 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
         {csv.step === 'review' && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-2 text-sm text-slate-300">
-                <span className="material-symbols-outlined text-lg text-slate-400">
-                  description
-                </span>
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <span className="material-symbols-outlined text-lg text-muted">description</span>
                 <span className="font-semibold text-white">{csv.fileName}</span>
-                <span className="text-slate-500">· {rows.length} rows</span>
+                <span className="text-subtle">· {rows.length} rows</span>
               </p>
               <Button variant="ghost" size="sm" icon="restart_alt" onClick={startOver}>
                 Start over
@@ -290,9 +288,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
             <div className="flex flex-wrap gap-2">
               <Chip className="bg-emerald-500/15 text-emerald-300">{counts.ready} ready</Chip>
               {counts.duplicate > 0 && (
-                <Chip className="bg-slate-500/15 text-slate-300">
-                  {counts.duplicate} already exist
-                </Chip>
+                <Chip className="bg-slate-500/15 text-muted">{counts.duplicate} already exist</Chip>
               )}
               {counts.error > 0 && (
                 <Chip className="bg-red-500/15 text-red-300">{counts.error} skipped</Chip>
@@ -301,7 +297,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
 
             <div className="max-h-[48vh] overflow-auto rounded-md border border-white/10">
               <table className="w-full border-collapse text-sm">
-                <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-slate-400">
+                <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-muted">
                   <tr>
                     <th className="px-3 py-2 font-semibold">#</th>
                     <th className="px-3 py-2 font-semibold">Name</th>
@@ -315,19 +311,19 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.rowNumber} className="border-t border-white/5">
-                      <td className="px-3 py-1.5 text-slate-500">{r.rowNumber}</td>
+                      <td className="px-3 py-1.5 text-subtle">{r.rowNumber}</td>
                       <td className="px-3 py-1.5 text-white">
-                        {r.displayName || <em className="text-slate-500">—</em>}
+                        {r.displayName || <em className="text-subtle">—</em>}
                       </td>
-                      <td className="px-3 py-1.5 text-slate-400">{r.detail || '—'}</td>
-                      <td className="px-3 py-1.5 text-slate-400">{r.extra || '—'}</td>
+                      <td className="px-3 py-1.5 text-muted">{r.detail || '—'}</td>
+                      <td className="px-3 py-1.5 text-muted">{r.extra || '—'}</td>
                       <td className="px-3 py-1.5">
                         <span
                           className={`rounded-sm px-1.5 py-0.5 text-xs font-semibold ${
                             r.status === 'ready'
                               ? 'bg-emerald-500/15 text-emerald-300'
                               : r.status === 'duplicate'
-                                ? 'bg-slate-500/15 text-slate-300'
+                                ? 'bg-slate-500/15 text-muted'
                                 : 'bg-red-500/15 text-red-300'
                           }`}
                           title={
@@ -368,7 +364,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
             <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
               <span className="material-symbols-outlined text-5xl text-emerald-400">task_alt</span>
               <h2 className="mt-2 text-xl font-bold text-white">{copy.plural} imported</h2>
-              <p className="mt-1 text-sm text-slate-300">
+              <p className="mt-1 text-sm text-muted">
                 <strong className="text-emerald-300">{result.created}</strong> created ·{' '}
                 <strong>{result.skipped}</strong> already existed ·{' '}
                 <strong className={result.failed.length ? 'text-red-300' : ''}>
@@ -380,10 +376,10 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
             {result.failed.length > 0 && (
               <div className="rounded-md border border-red-500/20 bg-card-dark p-4 text-sm">
                 <h3 className="mb-2 font-semibold text-red-300">Rows that failed</h3>
-                <ul className="space-y-1 text-slate-300">
+                <ul className="space-y-1 text-muted">
                   {result.failed.map((f) => (
                     <li key={f.rowNumber}>
-                      <span className="text-slate-500">Row {f.rowNumber}:</span> {f.name} —{' '}
+                      <span className="text-subtle">Row {f.rowNumber}:</span> {f.name} —{' '}
                       <span className="text-red-300">{f.error}</span>
                     </li>
                   ))}

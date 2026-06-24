@@ -102,7 +102,7 @@ function LineRow({
       <button
         type="button"
         aria-label={`Reorder line ${index + 1}`}
-        className="flex cursor-grab items-center justify-center text-slate-600 hover:text-slate-300 active:cursor-grabbing disabled:opacity-30"
+        className="flex cursor-grab items-center justify-center text-subtle hover:text-muted active:cursor-grabbing disabled:opacity-30"
         disabled={disabled}
         {...attributes}
         {...listeners}
@@ -157,7 +157,7 @@ function LineRow({
         disabled={disabled}
       />
 
-      <span className="hidden text-right font-mono text-sm tabular-nums text-slate-300 md:block">
+      <span className="hidden text-right font-mono text-sm tabular-nums text-muted md:block">
         {formatMoney(amountCents / 100)}
       </span>
 
@@ -177,7 +177,7 @@ function LineRow({
         onClick={onRemove}
         aria-label={`Remove line ${index + 1}`}
         disabled={disabled || !canRemove}
-        className="flex items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+        className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
       >
         <span className="material-symbols-outlined text-lg">delete</span>
       </button>
@@ -268,7 +268,7 @@ export default function SalesLineItemsEditor({
 
   return (
     <div>
-      <div className="hidden grid-cols-[24px_1fr_140px_70px_100px_90px_70px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase text-slate-500 md:grid">
+      <div className="hidden grid-cols-[24px_1fr_140px_70px_100px_90px_70px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase text-subtle md:grid">
         <span />
         <span>Description</span>
         <span>Part</span>

@@ -30,7 +30,7 @@ function Stat({
     emphasis === 'good' ? 'text-green-400' : emphasis === 'bad' ? 'text-amber-400' : 'text-white';
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark px-3 py-2">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-subtle">{label}</div>
       <div className={`font-mono text-base font-bold tabular-nums ${tone}`}>{children}</div>
     </div>
   );
@@ -85,7 +85,7 @@ function ClearableRow({
           aria-label={`Clear ${txn.description ?? 'transaction'}`}
           className="size-4 shrink-0 accent-primary disabled:opacity-40"
         />
-        <span className="w-20 shrink-0 text-xs text-slate-500">{txn.txnDate}</span>
+        <span className="w-20 shrink-0 text-xs text-subtle">{txn.txnDate}</span>
         <span className="min-w-0 flex-1 truncate text-sm text-white">
           {txn.description || txn.merchant || 'Transaction'}
         </span>
@@ -163,16 +163,16 @@ export default function BankReconcileDetailView() {
         <button
           type="button"
           onClick={() => navigate(`${BANKING_BASE}/${bankAccountId}/reconcile`)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           Reconciliations
         </button>
 
-        {recLoading && <p className="text-slate-400">Loading reconciliation…</p>}
+        {recLoading && <p className="text-muted">Loading reconciliation…</p>}
         {recError && <p className="text-red-400">Could not load this reconciliation.</p>}
         {!recLoading && !recError && !rec && (
-          <p className="text-slate-400">Reconciliation not found.</p>
+          <p className="text-muted">Reconciliation not found.</p>
         )}
 
         {rec && (
@@ -187,7 +187,7 @@ export default function BankReconcileDetailView() {
             {summary && <SummaryPanel summary={summary} />}
 
             {summary && !locked && (
-              <p className={`text-sm ${summary.reconciled ? 'text-green-400' : 'text-slate-400'}`}>
+              <p className={`text-sm ${summary.reconciled ? 'text-green-400' : 'text-muted'}`}>
                 {summary.reconciled
                   ? 'Balanced — the difference is 0.00. You can complete this reconciliation.'
                   : `Clear transactions until the difference is 0.00 (currently ${formatMoney(
@@ -197,10 +197,10 @@ export default function BankReconcileDetailView() {
             )}
 
             {/* Clearable transactions */}
-            {txnsLoading && <p className="text-slate-400">Loading transactions…</p>}
+            {txnsLoading && <p className="text-muted">Loading transactions…</p>}
 
             {!txnsLoading && rows.length === 0 && (
-              <div className="rounded-sm border border-dashed border-white/15 px-6 py-12 text-center text-sm text-slate-400">
+              <div className="rounded-sm border border-dashed border-white/15 px-6 py-12 text-center text-sm text-muted">
                 No transactions are available to clear for this account. Import and accept
                 transactions first.
               </div>

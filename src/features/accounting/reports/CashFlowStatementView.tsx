@@ -53,7 +53,7 @@ function ActivitySection({
       ))}
       {section.lines.length === 0 && (
         <tr className="border-t border-white/5">
-          <td className="px-3 py-2 text-slate-500" colSpan={2}>
+          <td className="px-3 py-2 text-subtle" colSpan={2}>
             No activity in this section.
           </td>
         </tr>
@@ -138,18 +138,18 @@ export default function CashFlowStatementView() {
 
           {/* Reconciliation: implied net change vs. the actual change in cash accounts. */}
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Net change in cash</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {data.netChangeInCash.toLocaleString('en-US', {
                   style: 'currency',
                   currency: 'USD',
                 })}
               </span>
             </div>
-            <div className="flex justify-between border-b border-white/10 pb-1 text-slate-400">
+            <div className="flex justify-between border-b border-white/10 pb-1 text-muted">
               <span>Change in cash accounts</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {data.cashChange.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
               </span>
             </div>

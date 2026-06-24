@@ -50,7 +50,7 @@ const inputClass =
 
 /** Per-status color for an invoice_emails row (the #6 email history list). */
 const EMAIL_STATUS_STYLES: Record<InvoiceEmail['status'], string> = {
-  queued: 'text-slate-400',
+  queued: 'text-muted',
   sent: 'text-green-400',
   failed: 'text-red-400',
   bounced: 'text-red-400',
@@ -125,7 +125,7 @@ function RecordPaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: (
         </div>
       }
     >
-      <p className="mb-3 text-sm text-slate-400">
+      <p className="mb-3 text-sm text-muted">
         Balance due{' '}
         <span className="font-mono font-bold text-white">{formatMoney(invoice.balanceDue)}</span>.
         Posts a balanced receipt entry (Dr Cash / Cr Accounts Receivable).
@@ -250,13 +250,13 @@ function EmailInvoiceModal({
       }
     >
       {sentTo ? (
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-muted">
           Invoice emailed to <span className="font-semibold text-white">{sentTo}</span> with a
           secure portal link.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted">
             Sends invoice{' '}
             <span className="font-semibold text-white">{invoice.invoiceNumber ?? 'Draft'}</span>{' '}
             with a secure link the customer can use to view and download it. No payment is taken.
@@ -389,9 +389,7 @@ function InvoiceEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () 
       </FormField>
 
       <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-          Line items
-        </h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
         <SalesLineItemsEditor
           lines={editor.lines}
           onChange={editor.setLines}
@@ -400,7 +398,7 @@ function InvoiceEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () 
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        <span className="mr-auto text-sm text-slate-400">
+        <span className="mr-auto text-sm text-muted">
           Total{' '}
           <span className="font-mono font-bold text-white">
             {formatMoney(editor.totals.totalCents / 100)}
@@ -649,9 +647,9 @@ export default function InvoiceDetailView() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading invoice…</p>}
+      {isPending && <p className="text-muted">Loading invoice…</p>}
       {isError && <p className="text-red-400">Could not load this invoice.</p>}
-      {!isPending && !isError && !invoice && <p className="text-slate-400">Invoice not found.</p>}
+      {!isPending && !isError && !invoice && <p className="text-muted">Invoice not found.</p>}
 
       {invoice && (
         <div className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -711,13 +709,13 @@ export default function InvoiceDetailView() {
           {/* Payment history */}
           {payments.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Payments
               </h2>
               <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                    <span className="w-24 shrink-0 text-slate-400">{p.paymentDate}</span>
+                    <span className="w-24 shrink-0 text-muted">{p.paymentDate}</span>
                     <span className="flex-1 truncate text-white">
                       {PAYMENT_METHOD_LABELS[p.method]}
                       {p.reference ? ` · ${p.reference}` : ''}
@@ -734,16 +732,14 @@ export default function InvoiceDetailView() {
           {/* #6 — email + reminder history for this invoice (manual sends and dunning rungs). */}
           {emails.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Email history
               </h2>
               <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
                 {emails.map((em) => (
                   <div key={em.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                    <span className="w-28 shrink-0 text-slate-400">
-                      {em.createdAt.slice(0, 10)}
-                    </span>
-                    <span className="w-32 shrink-0 text-slate-300">{emailKindLabel(em)}</span>
+                    <span className="w-28 shrink-0 text-muted">{em.createdAt.slice(0, 10)}</span>
+                    <span className="w-32 shrink-0 text-muted">{emailKindLabel(em)}</span>
                     <span className="flex-1 truncate text-white" title={em.toEmail}>
                       {em.toEmail || '—'}
                     </span>
@@ -773,7 +769,7 @@ export default function InvoiceDetailView() {
                 <input
                   readOnly
                   value={portalLink}
-                  className="w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 font-mono text-xs text-slate-200"
+                  className="w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 font-mono text-xs text-white"
                   onFocus={(e) => e.currentTarget.select()}
                 />
                 <Button
@@ -785,7 +781,7 @@ export default function InvoiceDetailView() {
                   Copy
                 </Button>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 Anyone with this link can view this invoice until it expires. Share it only with the
                 customer.
               </p>

@@ -2,11 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * THEME TOKENS
+ * Each color is stored as space-separated RGB channels so Tailwind's
+ * `rgb(var(--c-x) / <alpha-value>)` can apply opacity (e.g. bg-surface/40).
+ * :root holds the default (Midnight Purple) palette so any not-yet-tokenized
+ * style and the no-JS first paint still look correct. Each [data-theme] block
+ * overrides the full set. Keep the THEME_BG map in src/theme/themes.ts and the
+ * pre-paint script in index.html in sync with these background values.
+ */
+:root,
+[data-theme='midnight-purple'] {
+  color-scheme: dark;
+  --c-bg: 15 2 24;
+  --c-bg-2: 26 12 46;
+  --c-surface: 30 15 46;
+  --c-surface-2: 38 26 50;
+  --c-surface-3: 42 31 53;
+  --c-border: 77 52 101;
+  --c-border-strong: 107 79 135;
+  --c-text: 243 238 251;
+  --c-text-muted: 173 147 200;
+  --c-text-subtle: 143 124 170;
+  --c-accent: 147 51 234;
+  --c-accent-hover: 126 34 206;
+  --c-on-accent: 255 255 255;
+}
+
+[data-theme='deep-ocean'] {
+  color-scheme: dark;
+  --c-bg: 7 18 31;
+  --c-bg-2: 12 26 43;
+  --c-surface: 16 36 56;
+  --c-surface-2: 22 48 74;
+  --c-surface-3: 28 58 89;
+  --c-border: 36 74 103;
+  --c-border-strong: 47 93 128;
+  --c-text: 238 246 252;
+  --c-text-muted: 143 180 207;
+  --c-text-subtle: 111 147 173;
+  --c-accent: 14 165 233;
+  --c-accent-hover: 2 132 199;
+  --c-on-accent: 255 255 255;
+}
+
+[data-theme='forest'] {
+  color-scheme: dark;
+  --c-bg: 7 20 14;
+  --c-bg-2: 12 31 22;
+  --c-surface: 16 42 29;
+  --c-surface-2: 22 58 40;
+  --c-surface-3: 28 74 52;
+  --c-border: 31 87 64;
+  --c-border-strong: 42 112 83;
+  --c-text: 238 252 245;
+  --c-text-muted: 143 198 174;
+  --c-text-subtle: 111 163 137;
+  --c-accent: 16 185 129;
+  --c-accent-hover: 5 150 105;
+  --c-on-accent: 4 20 12;
+}
+
+[data-theme='ember'] {
+  color-scheme: dark;
+  --c-bg: 21 16 10;
+  --c-bg-2: 32 24 16;
+  --c-surface: 42 31 18;
+  --c-surface-2: 57 42 23;
+  --c-surface-3: 74 55 29;
+  --c-border: 90 67 34;
+  --c-border-strong: 115 87 49;
+  --c-text: 252 246 236;
+  --c-text-muted: 205 179 140;
+  --c-text-subtle: 168 144 108;
+  --c-accent: 245 158 11;
+  --c-accent-hover: 217 119 6;
+  --c-on-accent: 42 24 3;
+}
+
+[data-theme='crimson'] {
+  color-scheme: dark;
+  --c-bg: 21 4 7;
+  --c-bg-2: 32 10 15;
+  --c-surface: 42 15 21;
+  --c-surface-2: 58 22 31;
+  --c-surface-3: 74 29 40;
+  --c-border: 90 34 48;
+  --c-border-strong: 115 45 63;
+  --c-text: 252 238 240;
+  --c-text-muted: 205 143 153;
+  --c-text-subtle: 168 111 120;
+  --c-accent: 244 63 94;
+  --c-accent-hover: 225 29 72;
+  --c-on-accent: 255 255 255;
+}
+
+[data-theme='graphite'] {
+  color-scheme: dark;
+  --c-bg: 12 13 16;
+  --c-bg-2: 19 20 25;
+  --c-surface: 26 28 34;
+  --c-surface-2: 35 38 46;
+  --c-surface-3: 44 48 56;
+  --c-border: 52 56 66;
+  --c-border-strong: 69 75 87;
+  --c-text: 238 241 245;
+  --c-text-muted: 154 164 179;
+  --c-text-subtle: 112 121 136;
+  --c-accent: 203 213 225;
+  --c-accent-hover: 226 232 240;
+  --c-on-accent: 17 21 28;
+}
+
+[data-theme='daylight'] {
+  color-scheme: light;
+  --c-bg: 244 246 249;
+  --c-bg-2: 234 237 242;
+  --c-surface: 255 255 255;
+  --c-surface-2: 241 244 248;
+  --c-surface-3: 230 234 240;
+  --c-border: 214 220 229;
+  --c-border-strong: 194 202 214;
+  --c-text: 20 24 31;
+  --c-text-muted: 74 85 104;
+  --c-text-subtle: 107 118 137;
+  --c-accent: 147 51 234;
+  --c-accent-hover: 126 34 206;
+  --c-on-accent: 255 255 255;
+}
+
 :root {
   font-family: 'Plus Jakarta Sans', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,12 +144,16 @@
 html {
   height: 100%;
   overflow: hidden;
+  background: rgb(var(--c-bg));
+  color: rgb(var(--c-text));
 }
 
 body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  background: transparent;
+  color: inherit;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -34,12 +166,12 @@ body {
 
 select,
 option {
-  color-scheme: dark;
+  color-scheme: inherit;
 }
 
 option {
-  background-color: #1b1324;
-  color: #ffffff;
+  background-color: rgb(var(--c-surface-2));
+  color: rgb(var(--c-text));
 }
 
 @layer utilities {

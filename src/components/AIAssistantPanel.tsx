@@ -61,7 +61,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="flex h-[min(85dvh,700px)] w-full max-w-lg flex-col rounded-sm border border-white/10 bg-[#1a1122] shadow-2xl">
+      <div className="flex h-[min(85dvh,700px)] w-full max-w-lg flex-col rounded-sm border border-white/10 bg-app-2 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -132,12 +132,12 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               rows={1}
-              className="flex-1 resize-none rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none transition-colors focus:border-primary/50"
+              className="flex-1 resize-none rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle/40 outline-none transition-colors focus:border-primary/50"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="flex size-9 items-center justify-center rounded-sm bg-primary text-white transition-opacity disabled:opacity-40"
+              className="flex size-9 items-center justify-center rounded-sm bg-primary text-on-accent transition-opacity disabled:opacity-40"
               aria-label="Send message"
             >
               <span className="material-symbols-outlined text-[18px]">send</span>

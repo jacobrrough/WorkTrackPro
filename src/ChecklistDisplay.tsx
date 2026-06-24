@@ -181,7 +181,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
   };
 
   if (loading) {
-    return compact ? null : <p className="text-sm text-slate-500">Loading checklist...</p>;
+    return compact ? null : <p className="text-sm text-subtle">Loading checklist...</p>;
   }
 
   if (!checklist || checklist.items.length === 0) {
@@ -196,8 +196,8 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
     // Compact view for Kanban cards
     return (
       <div className="flex items-center gap-2 text-xs">
-        <span className="material-symbols-outlined text-sm text-slate-400">checklist</span>
-        <span className={`font-bold ${allComplete ? 'text-green-400' : 'text-slate-400'}`}>
+        <span className="material-symbols-outlined text-sm text-muted">checklist</span>
+        <span className={`font-bold ${allComplete ? 'text-green-400' : 'text-muted'}`}>
           {completedCount}/{totalCount}
         </span>
         {allComplete && <span className="text-green-400">✓</span>}
@@ -212,15 +212,13 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">checklist</span>
           <h3 className="font-bold text-white">Checklist</h3>
-          <span
-            className={`text-sm font-bold ${allComplete ? 'text-green-400' : 'text-slate-400'}`}
-          >
+          <span className={`text-sm font-bold ${allComplete ? 'text-green-400' : 'text-muted'}`}>
             ({completedCount}/{totalCount})
           </span>
         </div>
         <button
           onClick={loadHistory}
-          className="flex items-center gap-1 text-sm text-slate-400 hover:text-primary"
+          className="flex items-center gap-1 text-sm text-muted hover:text-primary"
           title="View who completed items"
         >
           <span className="material-symbols-outlined text-sm">history</span>
@@ -252,7 +250,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                   {item.text}
                 </p>
                 {item.checked && item.checkedByName && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-subtle">
                     Completed by {item.checkedByName}
                     {item.checkedAt && ` on ${new Date(item.checkedAt).toLocaleDateString()}`}
                   </p>
@@ -299,16 +297,13 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
           >
             <div className="flex items-center justify-between border-b border-white/10 p-3">
               <h3 className="font-bold text-white">Checklist History</h3>
-              <button
-                onClick={() => setShowHistory(false)}
-                className="text-slate-400 hover:text-white"
-              >
+              <button onClick={() => setShowHistory(false)} className="text-muted hover:text-white">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-3">
               {history.length === 0 ? (
-                <p className="py-8 text-center text-slate-400">No history yet</p>
+                <p className="py-8 text-center text-muted">No history yet</p>
               ) : (
                 <div className="space-y-3">
                   {history.map((record) => (
@@ -319,7 +314,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                       <div className="mb-2 flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-bold text-white">{record.userName}</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-muted">
                             {new Date(record.timestamp).toLocaleString()}
                             {'status' in record && record.status
                               ? ` · ${getStatusDisplayName(record.status!)}`
@@ -336,7 +331,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                           {record.checked ? 'Checked' : 'Unchecked'}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-300">{record.itemText}</p>
+                      <p className="text-sm text-muted">{record.itemText}</p>
                     </div>
                   ))}
                 </div>

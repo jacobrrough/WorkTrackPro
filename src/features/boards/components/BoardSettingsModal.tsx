@@ -56,12 +56,12 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
       <div className="w-full max-w-md rounded-lg border border-white/10 bg-surface-dark p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Board Settings</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-muted hover:text-white" aria-label="Close">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <label className="mb-1 block text-sm text-slate-400">Name</label>
+        <label className="mb-1 block text-sm text-muted">Name</label>
         <input
           className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
           value={name}
@@ -69,7 +69,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
           maxLength={100}
         />
 
-        <label className="mb-1 block text-sm text-slate-400">Description</label>
+        <label className="mb-1 block text-sm text-muted">Description</label>
         <textarea
           className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
           rows={2}
@@ -78,7 +78,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
           maxLength={300}
         />
 
-        <label className="mb-2 block text-sm text-slate-400">Visibility</label>
+        <label className="mb-2 block text-sm text-muted">Visibility</label>
         <div className="mb-4 flex gap-2">
           {(['private', 'members', 'everyone'] as BoardVisibility[]).map((v) => (
             <button
@@ -86,8 +86,8 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
               onClick={() => setVisibility(v)}
               className={`rounded px-3 py-1.5 text-xs font-medium capitalize ${
                 visibility === v
-                  ? 'bg-primary text-white'
-                  : 'border border-white/10 text-slate-400 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'border border-white/10 text-muted hover:text-white'
               }`}
             >
               {v}
@@ -97,7 +97,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
         {visibility === 'members' && (
           <div className="mb-4">
-            <label className="mb-2 block text-sm text-slate-400">Members</label>
+            <label className="mb-2 block text-sm text-muted">Members</label>
             <MemberPicker
               users={users}
               members={members}
@@ -113,7 +113,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
           <button
             onClick={handleSave}
             disabled={!name.trim() || saving}
-            className="mb-4 w-full rounded bg-primary py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="mb-4 w-full rounded bg-primary py-2 text-sm font-medium text-on-accent disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
@@ -137,7 +137,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="rounded px-4 py-1.5 text-sm text-slate-400 hover:text-white"
+                  className="rounded px-4 py-1.5 text-sm text-muted hover:text-white"
                 >
                   Cancel
                 </button>

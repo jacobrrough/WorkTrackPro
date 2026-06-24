@@ -252,7 +252,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       <h3 className="mb-3 text-sm font-bold text-white">Part & Dash Numbers</h3>
 
       <div className="mb-3">
-        <label className="mb-1 block text-xs font-medium text-slate-300">Part Number</label>
+        <label className="mb-1 block text-xs font-medium text-muted">Part Number</label>
         <div className="relative flex gap-2">
           <input
             type="text"
@@ -269,7 +269,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
               handleSearch();
             }}
             placeholder="e.g., SK-F35-0911"
-            className="flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
+            className="flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
           />
           {loading && (
             <span className="material-symbols-outlined animate-spin text-primary">refresh</span>
@@ -289,7 +289,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                   className="flex w-full items-center justify-between border-b border-white/5 px-3 py-2 text-left hover:bg-white/5"
                 >
                   <span className="font-mono text-xs text-white">{suggestion.partNumber}</span>
-                  <span className="truncate pl-3 text-xs text-slate-400">{suggestion.name}</span>
+                  <span className="truncate pl-3 text-xs text-muted">{suggestion.name}</span>
                 </button>
               ))}
             </div>
@@ -298,7 +298,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
         {part && (
           <div className="mt-1.5 rounded-sm border border-green-500/30 bg-green-500/10 p-2">
             <p className="text-xs font-medium text-green-400">✓ {part.name}</p>
-            <p className="text-[10px] text-slate-400">{part.partNumber}</p>
+            <p className="text-[10px] text-muted">{part.partNumber}</p>
           </div>
         )}
       </div>
@@ -308,7 +308,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           {hasSetMode && (
             <div className="mb-2 space-y-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-400">One set:</span>
+                <span className="text-xs text-muted">One set:</span>
                 <span className="text-xs font-medium text-white">
                   {formatSetComposition(effectiveSetComposition)}
                 </span>
@@ -319,7 +319,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                   onClick={() => handleQuantityModeChange('sets')}
                   className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
                     quantityMode === 'sets'
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-on-accent'
                       : 'text-primary hover:bg-primary/20'
                   }`}
                 >
@@ -330,7 +330,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                   onClick={() => handleQuantityModeChange('variants')}
                   className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
                     quantityMode === 'variants'
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-on-accent'
                       : 'text-primary hover:bg-primary/20'
                   }`}
                 >
@@ -341,7 +341,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           )}
           {quantityMode === 'sets' && hasSetMode ? (
             <div className="space-y-2 rounded-sm border border-white/10 bg-background-dark/40 p-2.5">
-              <label className="block text-xs font-medium text-slate-300">Number of sets</label>
+              <label className="block text-xs font-medium text-muted">Number of sets</label>
               <input
                 type="number"
                 min="0"
@@ -352,7 +352,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                 placeholder="0"
               />
               {totalQuantity > 0 && (
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-muted">
                   Auto dash quantities: {formatDashSummary(dashQuantities)}
                 </p>
               )}
@@ -367,9 +367,9 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           ) : (
             <>
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-300">Dash Quantities</label>
+                <label className="text-xs font-medium text-muted">Dash Quantities</label>
                 {totalQuantity > 0 && (
-                  <span className="text-[10px] text-slate-400">Total: {totalQuantity}</span>
+                  <span className="text-[10px] text-muted">Total: {totalQuantity}</span>
                 )}
               </div>
               <div className="space-y-1.5">
@@ -377,7 +377,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                   const qty = getDashQuantity(dashQuantities, variant.variantSuffix);
                   return (
                     <div key={variant.id} className="flex items-center gap-2">
-                      <label className="w-24 text-xs text-slate-400">
+                      <label className="w-24 text-xs text-muted">
                         {part.partNumber}-{variant.variantSuffix}:
                       </label>
                       <input
@@ -390,7 +390,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                         className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                         placeholder="0"
                       />
-                      <span className="text-[10px] text-slate-500">units</span>
+                      <span className="text-[10px] text-subtle">units</span>
                     </div>
                   );
                 })}

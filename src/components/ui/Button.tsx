@@ -25,13 +25,13 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const variantClasses = {
     primary:
-      'bg-primary text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed',
+      'bg-primary text-on-accent hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed',
     secondary:
       'bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed',
     ghost:
-      'bg-transparent text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed',
+      'bg-transparent text-muted hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed',
     danger:
-      'bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed',
+      'bg-red-500 text-pure-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed',
   };
 
   const sizeClasses = {

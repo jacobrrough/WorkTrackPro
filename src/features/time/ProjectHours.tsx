@@ -136,7 +136,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={onBack}
-            className="flex size-9 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-9 items-center justify-center rounded-full text-muted hover:bg-white/10 hover:text-white"
             aria-label="Back"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -145,7 +145,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
         </div>
         <button
           onClick={() => setShowNewProject((v) => !v)}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-primary/90"
         >
           <span className="material-symbols-outlined text-base">add</span>
           New
@@ -164,12 +164,12 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 placeholder="Project name"
-                className="flex-1 rounded-sm border border-white/10 bg-background-dark px-3 py-2 text-sm text-white placeholder:text-slate-500"
+                className="flex-1 rounded-sm border border-white/10 bg-background-dark px-3 py-2 text-sm text-white placeholder:text-subtle"
               />
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim() || creating}
-                className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 Create
               </button>
@@ -180,9 +180,9 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
           <div className="rounded-sm border border-primary/30 bg-primary/10 p-4">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Owed</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">Owed</p>
                 <p className="text-3xl font-bold text-white">{formatUsd(summary.owedPay)}</p>
-                <p className="text-sm text-slate-400">{summary.owedHours} hrs unpaid</p>
+                <p className="text-sm text-muted">{summary.owedHours} hrs unpaid</p>
               </div>
               <button
                 onClick={handleSettleAll}
@@ -193,7 +193,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
                 Mark all paid
               </button>
             </div>
-            <div className="mt-3 flex gap-4 border-t border-white/10 pt-2 text-xs text-slate-400">
+            <div className="mt-3 flex gap-4 border-t border-white/10 pt-2 text-xs text-muted">
               <span>Paid to date: {formatUsd(summary.paidPay)}</span>
               <span>Total: {formatUsd(summary.totalPay)}</span>
             </div>
@@ -209,7 +209,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
                   className={`rounded-sm px-2.5 py-1 text-xs font-medium ${
                     range === r.key
                       ? 'border border-primary bg-primary/20 text-primary'
-                      : 'bg-white/10 text-slate-400'
+                      : 'bg-white/10 text-muted'
                   }`}
                 >
                   {r.label}
@@ -225,7 +225,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
               Export CSV
             </button>
           </div>
-          <div className="flex items-center justify-end gap-4 text-xs text-slate-400">
+          <div className="flex items-center justify-end gap-4 text-xs text-muted">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -249,18 +249,18 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
           {/* Projects */}
           {isError ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <p className="text-slate-400">Couldn’t load project hours.</p>
+              <p className="text-muted">Couldn’t load project hours.</p>
               <button
                 onClick={retry}
-                className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white"
+                className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent"
               >
                 Try again
               </button>
             </div>
           ) : isLoading ? (
-            <p className="py-10 text-center text-slate-400">Loading…</p>
+            <p className="py-10 text-center text-muted">Loading…</p>
           ) : projectList.length === 0 ? (
-            <p className="py-10 text-center text-slate-400">
+            <p className="py-10 text-center text-muted">
               No projects yet. Create one to start logging hours.
             </p>
           ) : (

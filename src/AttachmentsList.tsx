@@ -79,7 +79,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
   return (
     <div className="space-y-2">
       {attachments.length === 0 ? (
-        <div className="py-8 text-center text-slate-400">
+        <div className="py-8 text-center text-muted">
           <span className="material-symbols-outlined mb-2 text-5xl opacity-50">cloud_upload</span>
           <p>No files attached yet</p>
           {canUpload && <p className="mt-1 text-sm">Upload files to share with the team</p>}
@@ -105,19 +105,19 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
               {/* File Info */}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-white">{attachment.filename}</p>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted">
                   {formatFileSize(attachment.url ?? '')} • {formatDate(attachment.created ?? '')}
                 </p>
               </div>
 
               {/* Arrow */}
-              <span className="material-symbols-outlined flex-shrink-0 text-slate-400">
+              <span className="material-symbols-outlined flex-shrink-0 text-muted">
                 chevron_right
               </span>
             </button>
 
             {showAdminOnlyToggle && onToggleAdminOnly && (
-              <label className="flex flex-shrink-0 items-center gap-2 text-sm text-slate-400">
+              <label className="flex flex-shrink-0 items-center gap-2 text-sm text-muted">
                 <span className="whitespace-nowrap">Admin only</span>
                 <input
                   type="checkbox"
@@ -136,7 +136,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
                 type="button"
                 onClick={(e) => handleDelete(e, attachment)}
                 disabled={deletingId === attachment.id}
-                className="flex size-10 flex-shrink-0 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
+                className="flex size-10 flex-shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
                 aria-label={`Delete ${attachment.filename}`}
               >
                 <span className="material-symbols-outlined text-lg">

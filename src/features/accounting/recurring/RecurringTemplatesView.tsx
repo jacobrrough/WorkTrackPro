@@ -35,7 +35,7 @@ const KIND_ICON: Record<RecurringKind, string> = {
 function StatusBadge({ tpl, asOf }: { tpl: RecurringTemplate; asOf: string }) {
   if (!tpl.active) {
     return (
-      <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-xs font-semibold text-slate-400">
+      <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-xs font-semibold text-muted">
         Paused
       </span>
     );
@@ -119,22 +119,22 @@ function TemplateCard({
             </button>
             <StatusBadge tpl={tpl} asOf={asOf} />
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             {RECURRING_KIND_LABELS[tpl.kind]} · {scheduleLabel(tpl)} · {lineCount}{' '}
             {lineCount === 1 ? 'line' : 'lines'}
           </p>
         </div>
-        <span className="shrink-0 font-mono text-sm tabular-nums text-slate-200">
+        <span className="shrink-0 font-mono text-sm tabular-nums text-white">
           {formatMoney(gross / 100)}
         </span>
       </div>
 
-      <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+      <div className="flex items-center justify-between gap-3 text-xs text-subtle">
         <span>
           {tpl.active ? (
             <>
               Next run{' '}
-              <span className={`font-mono ${due ? 'text-amber-300' : 'text-slate-300'}`}>
+              <span className={`font-mono ${due ? 'text-amber-300' : 'text-muted'}`}>
                 {tpl.nextRunDate}
               </span>
             </>
@@ -143,10 +143,10 @@ function TemplateCard({
           ) : (
             <>Paused — resume to schedule</>
           )}
-          {tpl.endDate && <span className="text-slate-600"> · ends {tpl.endDate}</span>}
+          {tpl.endDate && <span className="text-subtle"> · ends {tpl.endDate}</span>}
         </span>
         {tpl.lastRunDate && (
-          <span className="text-slate-600">
+          <span className="text-subtle">
             Last {tpl.lastRunDate} · {tpl.occurrencesGenerated}×
           </span>
         )}
@@ -215,7 +215,7 @@ function ResultRow({ result, templateName }: { result: GenerateResult; templateN
       <div className="min-w-0 flex-1">
         <span className="block truncate font-medium text-white">{templateName}</span>
         {ok ? (
-          <span className="block text-xs text-slate-400">
+          <span className="block text-xs text-muted">
             Posted{result.journalEntryId ? ' a balanced journal entry' : ''}.
             {result.ended && ' Template reached its end date and was paused.'}
             {result.error && <span className="text-amber-300"> {result.error}</span>}
@@ -303,7 +303,7 @@ export default function RecurringTemplatesView() {
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <TaxDisclaimer />
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Templates generate the next invoice, bill, or journal entry on a schedule. Generating
           posts a balanced journal entry and advances the schedule by one period — it does not
           back-fill several periods at once, so a long-overdue template may stay due after a run.
@@ -312,7 +312,7 @@ export default function RecurringTemplatesView() {
         {/* Due summary + generate-all */}
         {!isPending && !isError && templates.length > 0 && (
           <div className="flex items-center justify-between gap-3 rounded-sm border border-white/10 bg-white/5 px-3 py-2.5">
-            <span className="text-sm text-slate-300">
+            <span className="text-sm text-muted">
               {dueCount > 0 ? (
                 <>
                   <span className="font-bold text-amber-300">{dueCount}</span>{' '}
@@ -342,7 +342,7 @@ export default function RecurringTemplatesView() {
                 type="button"
                 onClick={() => setResults(null)}
                 aria-label="Dismiss results"
-                className="flex size-7 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+                className="flex size-7 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
               >
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
@@ -355,7 +355,7 @@ export default function RecurringTemplatesView() {
           </div>
         )}
 
-        {isPending && <p className="text-slate-400">Loading recurring templates…</p>}
+        {isPending && <p className="text-muted">Loading recurring templates…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load recurring templates. Confirm the accounting schema is exposed and you
@@ -365,9 +365,9 @@ export default function RecurringTemplatesView() {
 
         {!isPending && !isError && templates.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">event_repeat</span>
+            <span className="material-symbols-outlined text-4xl text-subtle">event_repeat</span>
             <p className="text-lg font-bold text-white">No recurring templates yet</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <p className="max-w-sm text-sm text-muted">
               Create a template to auto-generate a recurring invoice, bill, or journal entry on a
               schedule — for example, a monthly retainer invoice or a recurring rent bill.
             </p>

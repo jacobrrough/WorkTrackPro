@@ -35,7 +35,7 @@ function RemoveLineButton({
       onClick={onRemove}
       aria-label={`Remove line ${index + 1}`}
       disabled={count <= 1}
-      className="flex items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+      className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
     >
       <span className="material-symbols-outlined text-lg">delete</span>
     </button>
@@ -191,7 +191,7 @@ export function InvoicePayloadEditor({
               />
             </div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-slate-400">
+              <label className="flex items-center gap-1.5 text-xs text-muted">
                 <input
                   type="checkbox"
                   aria-label={`Line ${i + 1} taxable`}
@@ -398,10 +398,8 @@ export function JournalPayloadEditor({
       </FormField>
 
       <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-          Journal lines
-        </h3>
-        <p className="mb-2 text-xs text-slate-500">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Journal lines</h3>
+        <p className="mb-2 text-xs text-subtle">
           Enter an explicit debit or credit per account (not both). Total debits must equal total
           credits — the entry posts through the same balance-enforced ledger as a manual journal
           entry.
@@ -452,15 +450,15 @@ export function JournalPayloadEditor({
         {/* Live balance indicator */}
         <div className="mt-3 flex items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm">
           <span className="flex items-center gap-4">
-            <span className="text-slate-400">
+            <span className="text-muted">
               Debits{' '}
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {formatMoney(debitCents / 100)}
               </span>
             </span>
-            <span className="text-slate-400">
+            <span className="text-muted">
               Credits{' '}
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {formatMoney(creditCents / 100)}
               </span>
             </span>
@@ -497,10 +495,10 @@ function LineEditorFrame({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-400">{title}</h3>
-        <span className="text-sm text-slate-400">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-muted">{title}</h3>
+        <span className="text-sm text-muted">
           Lines total{' '}
-          <span className="font-mono tabular-nums text-slate-200">{formatMoney(total / 100)}</span>
+          <span className="font-mono tabular-nums text-white">{formatMoney(total / 100)}</span>
         </span>
       </div>
       <div className="flex flex-col gap-2">{children}</div>

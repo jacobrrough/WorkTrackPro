@@ -216,7 +216,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <h2 className="text-lg font-bold text-white">Manage Checklists</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-muted hover:text-white">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -225,7 +225,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
           {/* Left Panel - Checklist List */}
           <div className="w-1/3 overflow-y-auto border-r border-white/10 p-4">
             <div className="mb-4">
-              <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
+              <label className="mb-2 block text-xs font-bold uppercase text-muted">
                 Create New Checklist
               </label>
               <select
@@ -241,20 +241,18 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
               </select>
               <button
                 onClick={handleCreateChecklist}
-                className="w-full rounded bg-primary py-2 text-sm font-bold text-white transition-colors hover:bg-primary/80"
+                className="w-full rounded bg-primary py-2 text-sm font-bold text-on-accent transition-colors hover:bg-primary/80"
               >
                 Create Checklist
               </button>
             </div>
 
             <div className="space-y-2">
-              <h3 className="mb-2 text-xs font-bold uppercase text-slate-400">
-                Existing Checklists
-              </h3>
+              <h3 className="mb-2 text-xs font-bold uppercase text-muted">Existing Checklists</h3>
               {loading ? (
-                <p className="py-4 text-center text-sm text-slate-500">Loading...</p>
+                <p className="py-4 text-center text-sm text-subtle">Loading...</p>
               ) : checklists.length === 0 ? (
-                <p className="py-4 text-center text-sm text-slate-500">No checklists yet</p>
+                <p className="py-4 text-center text-sm text-subtle">No checklists yet</p>
               ) : (
                 checklists.map((checklist) => (
                   <button
@@ -263,13 +261,13 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                     className={`w-full rounded-sm border p-3 text-left transition-all ${
                       editingChecklist?.id === checklist.id
                         ? 'border-primary bg-primary/20 text-white'
-                        : 'border-white/10 bg-white/5 text-slate-300 hover:border-primary/50'
+                        : 'border-white/10 bg-white/5 text-muted hover:border-primary/50'
                     }`}
                   >
                     <p className="text-sm font-bold">
                       {STATUSES.find((s) => s.value === checklist.status)?.label}
                     </p>
-                    <p className="mt-1 text-xs text-slate-400">{checklist.items.length} items</p>
+                    <p className="mt-1 text-xs text-muted">{checklist.items.length} items</p>
                   </button>
                 ))
               )}
@@ -293,7 +291,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                 </div>
 
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <label className="mb-2 block text-xs font-bold uppercase text-slate-400">
+                  <label className="mb-2 block text-xs font-bold uppercase text-muted">
                     Add New Item
                   </label>
                   <div className="flex gap-2">
@@ -308,7 +306,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                     <button
                       onClick={handleAddItem}
                       disabled={!newItemText.trim()}
-                      className="rounded bg-primary px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded bg-primary px-4 py-2 text-sm font-bold text-on-accent disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Add
                     </button>
@@ -316,13 +314,11 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase text-slate-400">
+                  <h4 className="text-xs font-bold uppercase text-muted">
                     Checklist Items ({editingChecklist.items.length})
                   </h4>
                   {editingChecklist.items.length === 0 ? (
-                    <p className="py-8 text-center text-slate-500">
-                      No items yet. Add items above.
-                    </p>
+                    <p className="py-8 text-center text-subtle">No items yet. Add items above.</p>
                   ) : (
                     editingChecklist.items.map((item, index) => (
                       <div
@@ -333,7 +329,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                           <button
                             onClick={() => index > 0 && handleReorderItems(index, index - 1)}
                             disabled={index === 0}
-                            className="text-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                            className="text-muted hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <span className="material-symbols-outlined text-sm">arrow_upward</span>
                           </button>
@@ -343,7 +339,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                               handleReorderItems(index, index + 1)
                             }
                             disabled={index === editingChecklist.items.length - 1}
-                            className="text-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                            className="text-muted hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                           >
                             <span className="material-symbols-outlined text-sm">
                               arrow_downward
@@ -366,9 +362,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
                               : 'Material check gate: OFF'
                           }
                           className={
-                            item.isMaterialCheck
-                              ? 'text-primary'
-                              : 'text-slate-500 hover:text-slate-300'
+                            item.isMaterialCheck ? 'text-primary' : 'text-subtle hover:text-muted'
                           }
                         >
                           <span className="material-symbols-outlined text-sm">inventory_2</span>
@@ -386,7 +380,7 @@ const ChecklistManager: React.FC<ChecklistManagerProps> = ({
               </div>
             ) : (
               <div className="flex h-full items-center justify-center">
-                <p className="text-center text-slate-500">
+                <p className="text-center text-subtle">
                   Select a checklist to edit
                   <br />
                   or create a new one

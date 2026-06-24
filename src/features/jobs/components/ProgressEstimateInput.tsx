@@ -33,7 +33,7 @@ export function ProgressEstimateInput({
         type="button"
         onClick={onClear}
         disabled={disabled}
-        className="rounded border border-white/20 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/10"
+        className="rounded border border-white/20 px-2 py-1 text-[10px] text-muted hover:bg-white/10"
       >
         Clear
       </button>

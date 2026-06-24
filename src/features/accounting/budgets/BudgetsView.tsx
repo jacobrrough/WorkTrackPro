@@ -28,7 +28,7 @@ function StatusBadge({ status }: { status: BudgetStatus }) {
       ? 'bg-emerald-500/15 text-emerald-300'
       : status === 'draft'
         ? 'bg-amber-500/15 text-amber-300'
-        : 'bg-slate-500/15 text-slate-400';
+        : 'bg-slate-500/15 text-muted';
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>
       {BUDGET_STATUS_LABELS[status]}
@@ -74,13 +74,13 @@ function NewBudgetModal({ onClose }: { onClose: (createdId?: string) => void }) 
             type="button"
             onClick={() => onClose()}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           A budget is a plan for one fiscal year. After creating it, fill in the monthly amounts per
           account in the editor grid.
         </p>
@@ -180,7 +180,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
             </button>
             <StatusBadge status={budget.status} />
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             FY {budget.fiscalYear}
             {budget.description ? ` · ${budget.description}` : ''}
           </p>
@@ -189,7 +189,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
 
       {/* Status switcher */}
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="text-slate-500">Status:</span>
+        <span className="text-subtle">Status:</span>
         {BUDGET_STATUSES.map((s) => {
           const active = budget.status === s;
           return (
@@ -201,8 +201,8 @@ function BudgetCard({ budget }: { budget: Budget }) {
               aria-pressed={active}
               className={`rounded-sm px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
                 active
-                  ? 'bg-primary text-white'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-50'
+                  ? 'bg-primary text-on-accent'
+                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white disabled:opacity-50'
               }`}
             >
               {BUDGET_STATUS_LABELS[s]}
@@ -220,9 +220,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/5 pt-2">
         {confirmDelete ? (
           <>
-            <span className="mr-auto text-xs text-slate-400">
-              Delete this budget and its lines?
-            </span>
+            <span className="mr-auto text-xs text-muted">Delete this budget and its lines?</span>
             <Button
               size="sm"
               variant="ghost"
@@ -295,7 +293,7 @@ export default function BudgetsView() {
       }
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Plan monthly amounts per account for a fiscal year, then compare your plan against posted
           actuals. Budgets are planning artifacts — saving one posts no journal entry.
         </p>
@@ -311,14 +309,14 @@ export default function BudgetsView() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block font-semibold text-white">Cash-flow forecast</span>
-            <span className="block text-xs text-slate-500">
+            <span className="block text-xs text-subtle">
               Project cash in from open invoices minus cash out for open bills, by due date.
             </span>
           </span>
-          <span className="material-symbols-outlined text-slate-600">chevron_right</span>
+          <span className="material-symbols-outlined text-subtle">chevron_right</span>
         </button>
 
-        {isPending && <p className="text-slate-400">Loading budgets…</p>}
+        {isPending && <p className="text-muted">Loading budgets…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load budgets. Confirm the accounting schema is exposed and you have an
@@ -328,9 +326,9 @@ export default function BudgetsView() {
 
         {!isPending && !isError && sorted.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">savings</span>
+            <span className="material-symbols-outlined text-4xl text-subtle">savings</span>
             <p className="text-lg font-bold text-white">No budgets yet</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <p className="max-w-sm text-sm text-muted">
               Create a budget for a fiscal year, then enter your planned monthly amounts per
               account. Budget-vs-Actual will compare it to your posted journal activity.
             </p>

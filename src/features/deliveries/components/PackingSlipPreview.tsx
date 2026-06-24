@@ -79,16 +79,12 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
           <button
             onClick={handleDownloadPdf}
             disabled={downloading}
-            className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-accent disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-base">download</span>
             {downloading ? 'Generating...' : 'Download PDF'}
           </button>
-          <button
-            onClick={onClose}
-            className="ml-2 text-slate-400 hover:text-white"
-            aria-label="Close"
-          >
+          <button onClick={onClose} className="ml-2 text-muted hover:text-white" aria-label="Close">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -99,7 +95,7 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
             <span>This slip has no company name or logo yet.</span>
             <button
               onClick={() => setEditingBranding(true)}
-              className="shrink-0 rounded bg-primary px-3 py-1.5 text-xs font-bold text-white"
+              className="shrink-0 rounded bg-primary px-3 py-1.5 text-xs font-bold text-on-accent"
             >
               Add branding
             </button>

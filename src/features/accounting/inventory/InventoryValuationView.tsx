@@ -34,7 +34,7 @@ function MoneyCell({
   return (
     <td
       className={`px-3 py-2 text-right font-mono tabular-nums ${
-        strong ? 'font-bold text-white' : muted ? 'text-slate-400' : 'text-slate-200'
+        strong ? 'font-bold text-white' : muted ? 'text-muted' : 'text-white'
       }`}
     >
       {formatMoney(amount)}
@@ -56,7 +56,7 @@ function SummaryStat({
 }) {
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
           tone === 'accent' ? 'text-primary' : 'text-white'
@@ -64,7 +64,7 @@ function SummaryStat({
       >
         {value}
       </p>
-      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-subtle">{hint}</p>}
     </div>
   );
 }
@@ -95,14 +95,14 @@ export default function InventoryValuationView() {
       <div className="mx-auto flex max-w-4xl flex-col gap-4">
         <TaxDisclaimer />
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           FIFO valuation per stock item. Asset value is the sum of each open cost layer&apos;s
           remaining quantity × its unit cost, and ties to the Inventory Asset account (1300).
           Average unit cost is the weighted average of those open layers; lifetime COGS is the cost
           relieved to Cost of Goods Sold (5000) as jobs consumed stock.
         </p>
 
-        {isPending && <p className="text-slate-400">Loading inventory valuation…</p>}
+        {isPending && <p className="text-muted">Loading inventory valuation…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load inventory valuation. Confirm the accounting schema is exposed and you
@@ -112,9 +112,9 @@ export default function InventoryValuationView() {
 
         {!isPending && !isError && rows.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">inventory_2</span>
+            <span className="material-symbols-outlined text-4xl text-subtle">inventory_2</span>
             <p className="text-lg font-bold text-white">No inventory on the books yet</p>
-            <p className="max-w-md text-sm text-slate-400">
+            <p className="max-w-md text-sm text-muted">
               Valuation appears here once a stock item is received on a posted bill (which seeds a
               FIFO cost layer) or consumed by a job (which relieves cost to COGS). Receive inventory
               through a bill to start building cost layers.
@@ -156,7 +156,7 @@ export default function InventoryValuationView() {
             <div className="overflow-x-auto rounded-sm border border-white/10">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5 text-slate-400">
+                  <tr className="border-b border-white/10 bg-white/5 text-muted">
                     <th className="px-3 py-2 text-left font-semibold">Item</th>
                     <th className="px-3 py-2 text-right font-semibold">On hand</th>
                     <th className="px-3 py-2 text-right font-semibold">Avg cost</th>
@@ -175,15 +175,15 @@ export default function InventoryValuationView() {
                         <span className="block truncate font-medium text-white">
                           {row.inventoryName || 'Unnamed item'}
                         </span>
-                        <span className="block text-xs text-slate-500">
+                        <span className="block text-xs text-subtle">
                           {formatQty(row.qtyReceivedTotal)} received ·{' '}
                           {formatQty(row.qtyConsumedTotal)} consumed
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
                         {formatQty(row.qtyOnHand)}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                         {row.qtyOnHand > 0 ? formatUnitCost(row.avgUnitCost) : '—'}
                       </td>
                       <MoneyCell amount={row.assetValue} />
@@ -206,12 +206,12 @@ export default function InventoryValuationView() {
               </table>
             </div>
 
-            <p className="text-xs leading-relaxed text-slate-500">
-              <span className="font-semibold text-slate-400">How these are figured:</span> Asset
-              value and average cost reflect only OPEN FIFO layers (remaining quantity &gt; 0). An
-              item shows a dash for average cost when nothing is on hand. Lifetime
-              received/consumed/COGS are cumulative across all layers and consumption events. Tap a
-              row to see the item&apos;s detail.
+            <p className="text-xs leading-relaxed text-subtle">
+              <span className="font-semibold text-muted">How these are figured:</span> Asset value
+              and average cost reflect only OPEN FIFO layers (remaining quantity &gt; 0). An item
+              shows a dash for average cost when nothing is on hand. Lifetime received/consumed/COGS
+              are cumulative across all layers and consumption events. Tap a row to see the
+              item&apos;s detail.
             </p>
           </>
         )}

@@ -54,7 +54,7 @@ export function InventoryDetailHistory({
         </button>
       </div>
       {history.length === 0 ? (
-        <p className="py-4 text-center text-sm text-slate-500">No history records yet</p>
+        <p className="py-4 text-center text-sm text-subtle">No history records yet</p>
       ) : (
         <div className="space-y-3">
           {history.map((h) => (
@@ -62,8 +62,8 @@ export function InventoryDetailHistory({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>
-                  <p className="text-sm text-slate-400">{h.reason}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="text-sm text-muted">{h.reason}</p>
+                  <p className="mt-1 text-xs text-subtle">
                     {h.userName || 'System'} • {formatHistoryDate(h.createdAt)}
                   </p>
                 </div>
@@ -74,7 +74,7 @@ export function InventoryDetailHistory({
                     {h.changeAmount >= 0 ? '+' : ''}
                     {h.changeAmount}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-subtle">
                     {h.previousInStock} → {h.newInStock}
                   </p>
                 </div>

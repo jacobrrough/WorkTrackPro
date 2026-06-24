@@ -8,7 +8,7 @@ import { ClockOutCompletionGate } from '../features/jobs/components/ClockOutComp
 function AppViewFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background-dark">
-      <p className="text-slate-400">Loading view...</p>
+      <p className="text-muted">Loading view...</p>
     </div>
   );
 }

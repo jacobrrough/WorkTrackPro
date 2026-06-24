@@ -104,13 +104,13 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-cyan-400">local_shipping</span>
           <h3 className="text-base font-semibold text-white">Deliveries</h3>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-slate-300">
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-muted">
             {deliveries?.length ?? 0}
           </span>
         </div>
         <button
           onClick={() => setShowRecord(true)}
-          className="flex items-center gap-1 rounded bg-primary px-2.5 py-1 text-xs font-medium text-white"
+          className="flex items-center gap-1 rounded bg-primary px-2.5 py-1 text-xs font-medium text-on-accent"
         >
           <span className="material-symbols-outlined text-sm">add</span>
           Record Delivery
@@ -120,12 +120,12 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
       {ordered > 0 && (
         <div className="mb-3">
           <div className="mb-1 flex items-baseline justify-between text-sm">
-            <span className="text-slate-300">
+            <span className="text-muted">
               <span className="font-bold text-white">{totalDelivered}</span> of{' '}
               <span className="font-semibold">{ordered}</span> delivered
             </span>
             {remaining != null && remaining > 0 && (
-              <span className="text-xs text-slate-400">{remaining} remaining</span>
+              <span className="text-xs text-muted">{remaining} remaining</span>
             )}
             {remaining === 0 && (
               <span className="text-xs font-semibold text-green-400">Complete</span>
@@ -141,9 +141,9 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
       )}
 
       {isLoading ? (
-        <p className="py-4 text-center text-sm text-slate-500">Loading deliveries...</p>
+        <p className="py-4 text-center text-sm text-subtle">Loading deliveries...</p>
       ) : !deliveries?.length ? (
-        <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-slate-500">
+        <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-subtle">
           No deliveries recorded yet.
         </p>
       ) : (
@@ -187,13 +187,13 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-sm rounded-lg border border-white/10 bg-surface-dark p-5">
             <h3 className="mb-2 text-base font-semibold text-white">Delete delivery?</h3>
-            <p className="mb-4 text-sm text-slate-400">
+            <p className="mb-4 text-sm text-muted">
               This removes the record permanently. The packing slip can no longer be reprinted.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="rounded px-3 py-1.5 text-sm text-slate-400 hover:text-white"
+                className="rounded px-3 py-1.5 text-sm text-muted hover:text-white"
               >
                 Cancel
               </button>

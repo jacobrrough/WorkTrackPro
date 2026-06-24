@@ -39,7 +39,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({
   const navActive = 'border-primary/50 bg-primary/15 text-primary';
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#08090f]/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-app/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <Link
@@ -63,7 +63,7 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({
             <Link to="/" className="text-lg font-bold tracking-wide text-white hover:underline">
               Rough Cut Manufacturing
             </Link>
-            <p className="text-xs uppercase tracking-wider text-slate-300">
+            <p className="text-xs uppercase tracking-wider text-muted">
               Fabrication | Foam | Plastics | CNC | 3D Printing | FOD Protection
             </p>
           </div>

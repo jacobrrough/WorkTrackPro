@@ -252,7 +252,7 @@ export default function ProgressInvoiceCreateView() {
 
         {/* Schedule-of-values percent-complete entry */}
         <section>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
             Work completed
           </h2>
           <LedgerTable
@@ -271,10 +271,10 @@ export default function ProgressInvoiceCreateView() {
               return (
                 <tr key={r.sovLineId} className="border-t border-white/5">
                   <td className="px-3 py-2 text-white">{r.description}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                     {formatMoney(r.scheduledValue)}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                     {formatMoney(r.priorBilled)}
                   </td>
                   <td className="px-3 py-2">
@@ -293,10 +293,10 @@ export default function ProgressInvoiceCreateView() {
                       }}
                     />
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
                     {formatMoney((c?.currentCents ?? 0) / 100)}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-300">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                     {formatMoney((c?.retainageCents ?? 0) / 100)}
                   </td>
                   <td className="px-3 py-2 text-center">
@@ -313,7 +313,7 @@ export default function ProgressInvoiceCreateView() {
             })}
             {rows.length === 0 && (
               <tr className="border-t border-white/5">
-                <td className="px-3 py-2 text-slate-500" colSpan={7}>
+                <td className="px-3 py-2 text-subtle" colSpan={7}>
                   This project has no schedule-of-values lines yet. Add them on the project page.
                 </td>
               </tr>
@@ -323,22 +323,22 @@ export default function ProgressInvoiceCreateView() {
 
         {/* Period totals */}
         <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-          <div className="flex justify-between text-slate-400">
+          <div className="flex justify-between text-muted">
             <span>Work this period</span>
-            <span className="font-mono tabular-nums text-slate-200">
+            <span className="font-mono tabular-nums text-white">
               {formatMoney(workCents / 100)}
             </span>
           </div>
-          <div className="flex justify-between text-slate-400">
+          <div className="flex justify-between text-muted">
             <span>Less retainage</span>
-            <span className="font-mono tabular-nums text-slate-200">
+            <span className="font-mono tabular-nums text-white">
               −{formatMoney(retainageCents / 100)}
             </span>
           </div>
           {taxCents > 0 && (
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Tax</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {formatMoney(taxCents / 100)}
               </span>
             </div>
@@ -351,7 +351,7 @@ export default function ProgressInvoiceCreateView() {
 
         {/* JE preview — the exact balanced lines that will post. */}
         <section>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
             Journal entry preview
           </h2>
           {previewError && (
@@ -360,7 +360,7 @@ export default function ProgressInvoiceCreateView() {
             </p>
           )}
           {!previewError && !previewLines && (
-            <p className="rounded-sm border border-dashed border-white/10 px-3 py-3 text-sm text-slate-500">
+            <p className="rounded-sm border border-dashed border-white/10 px-3 py-3 text-sm text-subtle">
               Enter a percent complete above to preview the balanced entry.
             </p>
           )}
@@ -375,14 +375,14 @@ export default function ProgressInvoiceCreateView() {
             >
               {previewLines.map((l, i) => (
                 <tr key={i} className="border-t border-white/5">
-                  <td className="px-3 py-2 font-mono text-xs text-slate-300">
+                  <td className="px-3 py-2 font-mono text-xs text-muted">
                     {accountLabel(l.accountId)}
                   </td>
-                  <td className="px-3 py-2 text-slate-400">{l.lineMemo || '—'}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+                  <td className="px-3 py-2 text-muted">{l.lineMemo || '—'}</td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
                     {l.debit > 0 ? formatMoney(l.debit) : ''}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-200">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
                     {l.credit > 0 ? formatMoney(l.credit) : ''}
                   </td>
                 </tr>

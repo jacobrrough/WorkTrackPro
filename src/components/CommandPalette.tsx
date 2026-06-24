@@ -29,14 +29,14 @@ export function CommandPalette({
       open={open}
       onOpenChange={onOpenChange}
       label="Global search"
-      className="fixed left-1/2 top-[20%] z-[100] w-full max-w-xl -translate-x-1/2 rounded-sm border border-white/10 bg-[#1a1122] shadow-2xl"
+      className="fixed left-1/2 top-[20%] z-[100] w-full max-w-xl -translate-x-1/2 rounded-sm border border-white/10 bg-app-2 shadow-2xl"
     >
       <Command.Input
         placeholder="Search jobs, inventory, people..."
-        className="w-full border-b border-white/10 bg-transparent px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none"
+        className="w-full border-b border-white/10 bg-transparent px-4 py-3 text-white placeholder:text-subtle focus:outline-none"
       />
       <Command.List className="max-h-72 overflow-y-auto p-2">
-        <Command.Empty className="py-6 text-center text-sm text-slate-500">
+        <Command.Empty className="py-6 text-center text-sm text-subtle">
           No results found.
         </Command.Empty>
         <Command.Group heading="Jobs" className="text-xs font-bold uppercase text-primary">

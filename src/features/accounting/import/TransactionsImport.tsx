@@ -48,7 +48,7 @@ const STATUS_INFO: Record<EntryStatus, { label: string; className: string }> = {
   unmapped: { label: 'Unmatched account', className: 'bg-amber-500/15 text-amber-300' },
   'too-few-lines': { label: 'Only 1 line', className: 'bg-amber-500/15 text-amber-300' },
   'bad-date': { label: 'Bad date', className: 'bg-amber-500/15 text-amber-300' },
-  empty: { label: 'No lines', className: 'bg-slate-500/15 text-slate-300' },
+  empty: { label: 'No lines', className: 'bg-slate-500/15 text-muted' },
 };
 
 interface ImportResult {
@@ -226,7 +226,7 @@ export default function TransactionsImport() {
                     </li>
                     <li>Upload that Excel file here — or save it as CSV first. Either works.</li>
                   </ol>
-                  <p className="mt-3 text-xs text-slate-400">
+                  <p className="mt-3 text-xs text-muted">
                     Each transaction posts as one balanced journal entry. Re-running is safe —
                     entries already imported are skipped.
                   </p>
@@ -239,12 +239,10 @@ export default function TransactionsImport() {
         {csv.step === 'review' && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-2 text-sm text-slate-300">
-                <span className="material-symbols-outlined text-lg text-slate-400">
-                  description
-                </span>
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <span className="material-symbols-outlined text-lg text-muted">description</span>
                 <span className="font-semibold text-white">{csv.fileName}</span>
-                <span className="text-slate-500">· {entries.length} transactions</span>
+                <span className="text-subtle">· {entries.length} transactions</span>
               </p>
               <Button variant="ghost" size="sm" icon="restart_alt" onClick={startOver}>
                 Start over
@@ -290,7 +288,7 @@ export default function TransactionsImport() {
                 <h3 className="mb-1 text-sm font-semibold text-amber-300">
                   Unmatched accounts ({summary.unmappedAccountNames.length})
                 </h3>
-                <p className="mb-3 text-xs text-slate-400">
+                <p className="mb-3 text-xs text-muted">
                   These names don&apos;t match your Chart of Accounts. Map each to an account, or
                   import your Chart of Accounts first and come back. Transactions touching an
                   unmatched account can&apos;t be imported until every line maps.
@@ -298,10 +296,10 @@ export default function TransactionsImport() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   {summary.unmappedAccountNames.map((name) => (
                     <div key={name} className="flex items-center gap-2 text-sm">
-                      <span className="flex-1 truncate text-slate-300" title={name}>
+                      <span className="flex-1 truncate text-muted" title={name}>
                         {name}
                       </span>
-                      <span className="text-slate-600">→</span>
+                      <span className="text-subtle">→</span>
                       <select
                         value={accountOverrides[normName(name)] ?? ''}
                         onChange={(e) => setOverride(name, e.target.value)}
@@ -322,7 +320,7 @@ export default function TransactionsImport() {
             )}
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="flex items-center gap-2 text-sm text-muted">
                 <input
                   type="checkbox"
                   checked={onlyIssues}
@@ -332,7 +330,7 @@ export default function TransactionsImport() {
                 Show only transactions that need attention
               </label>
               {entries.length > PREVIEW_LIMIT && (
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-subtle">
                   Showing {visible.length} of{' '}
                   {onlyIssues ? entries.filter((e) => e.status !== 'ready').length : entries.length}
                 </span>
@@ -351,7 +349,7 @@ export default function TransactionsImport() {
 
             <div className="max-h-[50vh] overflow-auto rounded-md border border-white/10">
               <table className="w-full border-collapse text-sm">
-                <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-slate-400">
+                <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-muted">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Date</th>
                     <th className="px-3 py-2 font-semibold">Type</th>
@@ -368,11 +366,11 @@ export default function TransactionsImport() {
                         onClick={() => toggle(e.index)}
                         className="cursor-pointer border-t border-white/5 hover:bg-white/5"
                       >
-                        <td className="px-3 py-1.5 text-slate-300">{e.date || '—'}</td>
-                        <td className="px-3 py-1.5 text-slate-400">{e.type || '—'}</td>
-                        <td className="px-3 py-1.5 text-slate-500">{e.num || '—'}</td>
-                        <td className="px-3 py-1.5 text-slate-300">{e.name || '—'}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-slate-300">
+                        <td className="px-3 py-1.5 text-muted">{e.date || '—'}</td>
+                        <td className="px-3 py-1.5 text-muted">{e.type || '—'}</td>
+                        <td className="px-3 py-1.5 text-subtle">{e.num || '—'}</td>
+                        <td className="px-3 py-1.5 text-muted">{e.name || '—'}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-muted">
                           {fmt(e.totalDebit)}
                         </td>
                         <td className="px-3 py-1.5">
@@ -393,11 +391,11 @@ export default function TransactionsImport() {
                         e.lines.map((l, li) => (
                           <tr key={li} className="bg-black/20 text-xs">
                             <td className="px-3 py-1" colSpan={3} />
-                            <td className="px-3 py-1 text-slate-300">
+                            <td className="px-3 py-1 text-muted">
                               {l.account}
                               {!l.accountId && <span className="text-amber-300"> · unmatched</span>}
                             </td>
-                            <td className="px-3 py-1 text-right tabular-nums text-slate-400">
+                            <td className="px-3 py-1 text-right tabular-nums text-muted">
                               {l.debit ? fmt(l.debit) : `(${fmt(l.credit)})`}
                             </td>
                             <td className="px-3 py-1" />
@@ -429,7 +427,7 @@ export default function TransactionsImport() {
                   />
                 </div>
               )}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-subtle">
                 Only balanced, fully-mapped transactions post. The ledger rejects anything
                 unbalanced; re-running skips what&apos;s already imported.
               </p>
@@ -442,7 +440,7 @@ export default function TransactionsImport() {
             <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
               <span className="material-symbols-outlined text-5xl text-emerald-400">task_alt</span>
               <h2 className="mt-2 text-xl font-bold text-white">History imported</h2>
-              <p className="mt-1 text-sm text-slate-300">
+              <p className="mt-1 text-sm text-muted">
                 <strong className="text-emerald-300">{result.created}</strong> posted ·{' '}
                 <strong>{result.skippedExisting}</strong> already imported ·{' '}
                 <strong>{result.excluded}</strong> excluded (needs attention) ·{' '}
@@ -455,7 +453,7 @@ export default function TransactionsImport() {
             {result.failed.length > 0 && (
               <div className="rounded-md border border-red-500/20 bg-card-dark p-4 text-sm">
                 <h3 className="mb-2 font-semibold text-red-300">Transactions that failed</h3>
-                <ul className="max-h-60 space-y-1 overflow-auto text-slate-300">
+                <ul className="max-h-60 space-y-1 overflow-auto text-muted">
                   {result.failed.map((f, i) => (
                     <li key={i}>
                       {f.label} — <span className="text-red-300">{f.error}</span>

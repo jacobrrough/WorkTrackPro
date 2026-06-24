@@ -264,7 +264,7 @@ export default function InventoryMainView({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-bold text-white">{item.name}</p>
-              <p className="text-xs text-slate-400">SKU: {getSku(item)}</p>
+              <p className="text-xs text-muted">SKU: {getSku(item)}</p>
             </div>
             {stock.needsReorder && (
               <span className="rounded-sm border border-red-500/40 bg-red-500/20 px-2 py-1 text-xs font-bold text-red-300">
@@ -274,7 +274,7 @@ export default function InventoryMainView({
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
             <div>
-              <p className="text-xs text-slate-500">In Stock</p>
+              <p className="text-xs text-subtle">In Stock</p>
               {isStaging ? (
                 <p className="font-bold text-primary">
                   {item.inStock} → {projectedStock}
@@ -284,15 +284,15 @@ export default function InventoryMainView({
               )}
             </div>
             <div>
-              <p className="text-xs text-slate-500">Allocated</p>
+              <p className="text-xs text-subtle">Allocated</p>
               <p className="font-bold text-yellow-300">{stock.allocated}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Available</p>
+              <p className="text-xs text-subtle">Available</p>
               <p className={`font-bold ${availColor}`}>{stock.available}</p>
             </div>
           </div>
-          <div className="mt-2 text-xs text-slate-400">
+          <div className="mt-2 text-xs text-muted">
             Bin: {item.binLocation || 'Unassigned'} • {getCategoryDisplayName(item.category)}
           </div>
         </button>
@@ -333,7 +333,7 @@ export default function InventoryMainView({
                         setOrderModalQty(0);
                         closeRowMenu();
                       }}
-                      className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-200"
+                      className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-white"
                     >
                       <span className="material-symbols-outlined text-lg">pending_actions</span>
                       On order
@@ -395,7 +395,7 @@ export default function InventoryMainView({
           >
             <span className="text-sm font-medium text-primary">
               {item.inStock} → {projectedStock}{' '}
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 ({pendingDelta > 0 ? '+' : ''}
                 {pendingDelta})
               </span>
@@ -408,7 +408,7 @@ export default function InventoryMainView({
                   e.stopPropagation();
                   cancelAdjust(item.id);
                 }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-slate-300 disabled:opacity-50"
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-muted disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -419,7 +419,7 @@ export default function InventoryMainView({
                   e.stopPropagation();
                   void commitAdjust(item);
                 }}
-                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-white disabled:opacity-50"
+                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-on-accent disabled:opacity-50"
               >
                 {isCommitting ? 'Saving…' : 'Confirm'}
               </button>
@@ -474,28 +474,28 @@ export default function InventoryMainView({
           <button
             type="button"
             onClick={() => setTab('allParts')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'allParts' ? 'bg-primary text-white' : 'bg-white/5 text-slate-300'}`}
+            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'allParts' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
           >
             All Parts
           </button>
           <button
             type="button"
             onClick={() => setTab('needsReordering')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'needsReordering' ? 'bg-primary text-white' : 'bg-white/5 text-slate-300'}`}
+            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'needsReordering' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
           >
             Needs Reordering
           </button>
           <button
             type="button"
             onClick={() => setTab('lowStock')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'lowStock' ? 'bg-primary text-white' : 'bg-white/5 text-slate-300'}`}
+            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'lowStock' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
           >
             Low Stock
           </button>
           <button
             type="button"
             onClick={() => setTab('byBin')}
-            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'byBin' ? 'bg-primary text-white' : 'bg-white/5 text-slate-300'}`}
+            className={`min-h-[44px] rounded-sm text-xs font-bold ${tab === 'byBin' ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'}`}
           >
             By Bin Location
           </button>
@@ -539,8 +539,8 @@ export default function InventoryMainView({
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm">
-          <div className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
-            <p className="text-slate-400">Parts</p>
+          <div className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white">
+            <p className="text-muted">Parts</p>
             <p className="font-bold text-white">{summary.total}</p>
           </div>
           <div className="rounded-sm border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-200">
@@ -594,7 +594,7 @@ export default function InventoryMainView({
           <>
             <div className="hidden overflow-hidden rounded-sm border border-white/10 lg:block">
               <table className="w-full text-left text-sm">
-                <thead className="bg-white/5 text-slate-300">
+                <thead className="bg-white/5 text-muted">
                   <tr>
                     <th className="px-3 py-2">Name / SKU</th>
                     <th className="px-3 py-2">In Stock</th>
@@ -615,7 +615,7 @@ export default function InventoryMainView({
                         <td className="px-3 py-2">
                           <p className="font-bold text-white">{item.name}</p>
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-slate-400">{getSku(item)}</p>
+                            <p className="text-xs text-muted">{getSku(item)}</p>
                             {stock.needsReorder && (
                               <span className="rounded-sm border border-red-500/40 bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-300">
                                 Min Stock
@@ -638,9 +638,7 @@ export default function InventoryMainView({
                         >
                           {stock.available}
                         </td>
-                        <td className="px-3 py-2 text-slate-300">
-                          {item.binLocation || 'Unassigned'}
-                        </td>
+                        <td className="px-3 py-2 text-muted">{item.binLocation || 'Unassigned'}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <button
@@ -689,7 +687,7 @@ export default function InventoryMainView({
                                           setOrderModalQty(0);
                                           closeRowMenu();
                                         }}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-200"
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-white"
                                       >
                                         <span className="material-symbols-outlined">
                                           pending_actions
@@ -746,7 +744,7 @@ export default function InventoryMainView({
                                   type="button"
                                   disabled={isCommitting}
                                   onClick={() => cancelAdjust(item.id)}
-                                  className="min-h-[36px] rounded-sm border border-white/20 px-2 text-xs font-bold text-slate-300 disabled:opacity-50"
+                                  className="min-h-[36px] rounded-sm border border-white/20 px-2 text-xs font-bold text-muted disabled:opacity-50"
                                 >
                                   Cancel
                                 </button>
@@ -754,7 +752,7 @@ export default function InventoryMainView({
                                   type="button"
                                   disabled={isCommitting}
                                   onClick={() => void commitAdjust(item)}
-                                  className="min-h-[36px] rounded-sm bg-primary px-3 text-xs font-bold text-white disabled:opacity-50"
+                                  className="min-h-[36px] rounded-sm bg-primary px-3 text-xs font-bold text-on-accent disabled:opacity-50"
                                 >
                                   {isCommitting ? 'Saving…' : 'Confirm'}
                                 </button>
@@ -778,7 +776,7 @@ export default function InventoryMainView({
         <button
           type="button"
           onClick={onAddItem}
-          className="safe-area-pb fixed bottom-20 right-4 z-[45] flex min-h-[52px] items-center gap-2 rounded-full bg-primary px-5 font-bold text-white shadow-lg"
+          className="safe-area-pb fixed bottom-20 right-4 z-[45] flex min-h-[52px] items-center gap-2 rounded-full bg-primary px-5 font-bold text-on-accent shadow-lg"
         >
           <span className="material-symbols-outlined">add</span>
           Add Part
@@ -805,7 +803,7 @@ export default function InventoryMainView({
             <h3 className="mb-3 text-lg font-bold text-white">
               {orderModalMode === 'add' ? 'Add to order' : 'Receive order'}
             </h3>
-            <p className="mb-2 text-sm text-slate-400">{orderModalItem.name}</p>
+            <p className="mb-2 text-sm text-muted">{orderModalItem.name}</p>
             <div className="mb-4 flex items-center gap-2">
               <input
                 type="number"
@@ -823,9 +821,9 @@ export default function InventoryMainView({
                 }}
                 className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
               />
-              <span className="text-sm text-slate-500">{orderModalItem.unit}</span>
+              <span className="text-sm text-subtle">{orderModalItem.unit}</span>
               {orderModalMode === 'receive' && (
-                <span className="text-xs text-slate-500">max {orderModalItem.onOrder ?? 0}</span>
+                <span className="text-xs text-subtle">max {orderModalItem.onOrder ?? 0}</span>
               )}
             </div>
             <div className="flex gap-2">
@@ -851,7 +849,7 @@ export default function InventoryMainView({
                     );
                   }
                 }}
-                className="min-h-[44px] flex-1 rounded-sm bg-primary px-3 font-bold text-white"
+                className="min-h-[44px] flex-1 rounded-sm bg-primary px-3 font-bold text-on-accent"
               >
                 Confirm
               </button>
@@ -862,7 +860,7 @@ export default function InventoryMainView({
                   setOrderModalMode(null);
                   setOrderModalQty(0);
                 }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 font-bold text-slate-300"
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 font-bold text-muted"
               >
                 Cancel
               </button>

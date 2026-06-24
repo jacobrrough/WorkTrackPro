@@ -29,7 +29,7 @@ export default function CustomersView() {
 
   return (
     <AccountingShell active="customers" title="Customers">
-      {isPending && <p className="text-slate-400">Loading customers…</p>}
+      {isPending && <p className="text-muted">Loading customers…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load customers. Confirm the accounting schema is exposed and you have an
@@ -39,9 +39,9 @@ export default function CustomersView() {
 
       {!isPending && !isError && customers.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-500">group</span>
+          <span className="material-symbols-outlined text-4xl text-subtle">group</span>
           <p className="text-lg font-bold text-white">No customers yet</p>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm text-muted">
             Customers appear here once a proposal is accepted or an invoice/estimate is created for
             them.
           </p>
@@ -59,7 +59,7 @@ export default function CustomersView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-400">
+            <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded-sm border-white/20 bg-background-dark text-primary focus:ring-primary"
@@ -86,24 +86,24 @@ export default function CustomersView() {
                 <span className="flex-1 truncate text-white">
                   {c.displayName || c.companyName || c.contactName || 'Customer'}
                   {!c.isActive && (
-                    <span className="ml-2 rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-400">
+                    <span className="ml-2 rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
                       Inactive
                     </span>
                   )}
                 </span>
-                <span className="hidden flex-1 truncate text-sm text-slate-400 sm:block">
+                <span className="hidden flex-1 truncate text-sm text-muted sm:block">
                   {c.contactName || '—'}
                 </span>
-                <span className="hidden w-48 shrink-0 truncate text-sm text-slate-400 md:block">
+                <span className="hidden w-48 shrink-0 truncate text-sm text-muted md:block">
                   {c.email || '—'}
                 </span>
-                <span className="w-28 shrink-0 truncate text-right text-sm text-slate-400">
+                <span className="w-28 shrink-0 truncate text-right text-sm text-muted">
                   {c.terms || '—'}
                 </span>
               </button>
             ))}
             {filtered.length === 0 && (
-              <p className="px-3 py-6 text-center text-sm text-slate-500">
+              <p className="px-3 py-6 text-center text-sm text-subtle">
                 No customers match “{search}”.
               </p>
             )}

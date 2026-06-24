@@ -100,7 +100,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
         <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden="true"
-            className={`material-symbols-outlined text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            className={`material-symbols-outlined text-muted transition-transform ${expanded ? 'rotate-90' : ''}`}
           >
             chevron_right
           </span>
@@ -117,7 +117,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                 {project.status === 'finished' ? 'Finished' : 'Active'}
               </span>
               {archived && (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
+                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-muted">
                   Archived
                 </span>
               )}
@@ -128,7 +128,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
           <p className="font-bold text-white">
             {totals.owedPay > 0 ? `${formatUsd(totals.owedPay)} owed` : 'Settled'}
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             {totals.totalHours} hrs · {formatUsd(totals.totalPay)} total
           </p>
         </div>
@@ -156,7 +156,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
               <button
                 onClick={handleRename}
                 disabled={!nameDraft.trim() || renaming}
-                className="rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-on-accent disabled:opacity-50"
               >
                 Save
               </button>
@@ -165,7 +165,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                   setNameDraft(project.name);
                   setEditingName(false);
                 }}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Cancel
               </button>
@@ -187,7 +187,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
               <button
                 onClick={handleAdd}
                 disabled={!parsed.valid || saving}
-                className="w-full rounded-sm bg-primary py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="w-full rounded-sm bg-primary py-2 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 Log hours
                 {parsed.valid ? ` (${formatUsd(payFromHours(parsed.hours))})` : ''}
@@ -197,7 +197,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
 
           {/* Entries */}
           {filteredEntries.length === 0 ? (
-            <p className="py-2 text-center text-xs text-slate-500">No hours in this view.</p>
+            <p className="py-2 text-center text-xs text-subtle">No hours in this view.</p>
           ) : (
             <ul className="space-y-1">
               {filteredEntries.map((e) => (
@@ -233,14 +233,14 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                 setNameDraft(project.name);
                 setEditingName((v) => !v);
               }}
-              className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+              className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
             >
               Rename
             </button>
             {project.status === 'finished' ? (
               <button
                 onClick={() => mutations.setProjectStatus(project.id, 'active')}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Reopen
               </button>
@@ -255,7 +255,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
             {archived ? (
               <button
                 onClick={() => mutations.unarchiveProject(project.id)}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Restore
               </button>
@@ -268,7 +268,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                     onConfirm: () => mutations.archiveProject(project.id),
                   })
                 }
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Archive
               </button>

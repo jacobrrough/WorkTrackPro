@@ -156,11 +156,11 @@ export default function InventoryHub({
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold text-white">{item.name}</p>
-            <p className="truncate text-xs text-slate-400">SKU: {getSku(item)}</p>
+            <p className="truncate text-xs text-muted">SKU: {getSku(item)}</p>
           </div>
           <div className="shrink-0 text-right">
             <p className="font-bold text-white">
-              {item.inStock} <span className="text-xs font-normal text-slate-400">{item.unit}</span>
+              {item.inStock} <span className="text-xs font-normal text-muted">{item.unit}</span>
             </p>
             <span
               className={`mt-0.5 inline-block rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ${pill.className}`}
@@ -168,7 +168,7 @@ export default function InventoryHub({
               {pill.label}
             </span>
           </div>
-          <span className="material-symbols-outlined shrink-0 text-slate-500">chevron_right</span>
+          <span className="material-symbols-outlined shrink-0 text-subtle">chevron_right</span>
         </button>
       </li>
     );
@@ -188,7 +188,7 @@ export default function InventoryHub({
           </button>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white">Inventory</h1>
-            <p className="text-xs text-slate-400">Manage your stock</p>
+            <p className="text-xs text-muted">Manage your stock</p>
           </div>
           <button
             type="button"
@@ -211,16 +211,16 @@ export default function InventoryHub({
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1">
-                <h2 className="text-lg font-bold text-white">Quick Scan</h2>
-                <p className="mt-1 max-w-[16rem] text-sm text-white/80">
+                <h2 className="text-lg font-bold text-on-accent">Quick Scan</h2>
+                <p className="mt-1 max-w-[16rem] text-sm text-on-accent/80">
                   Scan a part&apos;s barcode or QR code to look it up or adjust stock.
                 </p>
-                <span className="mt-3 inline-flex items-center gap-2 rounded-sm bg-white/20 px-4 py-2 text-sm font-bold text-white backdrop-blur">
+                <span className="mt-3 inline-flex items-center gap-2 rounded-sm bg-pure-white/20 px-4 py-2 text-sm font-bold text-on-accent backdrop-blur">
                   <span className="material-symbols-outlined">qr_code_scanner</span>
                   Scan Item
                 </span>
               </div>
-              <span className="material-symbols-outlined text-7xl text-white/25" aria-hidden>
+              <span className="material-symbols-outlined text-7xl text-on-accent/25" aria-hidden>
                 barcode_scanner
               </span>
             </div>
@@ -258,9 +258,7 @@ export default function InventoryHub({
           {/* Overview */}
           <section>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                Overview
-              </h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted">Overview</h3>
               <button
                 type="button"
                 onClick={() => onViewAll()}
@@ -287,7 +285,7 @@ export default function InventoryHub({
           {/* Recent items */}
           <section>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted">
                 Recent Items
               </h3>
               <button
