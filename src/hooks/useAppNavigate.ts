@@ -95,8 +95,6 @@ export function useAppNavigate() {
           return navigate('/app/project-hours', opts);
         case 'tools':
           return navigate(resolvedId ? `/app/tools/${resolvedId}` : '/app/tools', opts);
-        case 'tools-admin':
-          return navigate('/app/tools/admin', opts);
       }
     },
     [navigate]

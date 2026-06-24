@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ClockPunchResult } from '@/core/clockPunch';
-import type { Comment, Job, JobStatus, InventoryItem, Shift, Tool, User } from '@/core/types';
+import type { Comment, Job, JobStatus, InventoryItem, Shift, User } from '@/core/types';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useActiveShift } from '@/hooks/useActiveShift';
 import { useAppQueries } from '@/hooks/useAppQueries';
@@ -54,7 +54,8 @@ export interface AppContextType {
   shifts: Shift[];
   users: User[];
   inventory: InventoryItem[];
-  tools: Tool[];
+  /** Inventory items in the 'tool' category (derived). Drives the tag-in/out hub. */
+  tools: InventoryItem[];
   activeShift: Shift | null;
   activeJob: Job | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -449,28 +450,6 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         }
       },
 
-      // ── Tools (custody) ───────────────────────────────────────────
-      onTool: (action, record) => {
-        if (typeof record.id !== 'string') return;
-        if (action === 'create') {
-          queryClient.setQueryData<Tool[]>(['tools'], (prev) =>
-            !prev
-              ? [record as Tool]
-              : prev.some((t) => t.id === record.id)
-                ? prev
-                : [record as Tool, ...prev]
-          );
-        } else if (action === 'update') {
-          queryClient.setQueryData<Tool[]>(['tools'], (prev) =>
-            prev ? prev.map((t) => (t.id === record.id ? record : t)) : prev
-          );
-        } else if (action === 'delete') {
-          queryClient.setQueryData<Tool[]>(['tools'], (prev) =>
-            prev ? prev.filter((t) => t.id !== record.id) : prev
-          );
-        }
-      },
-
       // ── Users/profiles ────────────────────────────────────────────
       // DELETE payloads only carry the PK (id) from payload.old — other
       // fields on `record` are defaults and must not be read in the delete branch.
@@ -549,6 +528,11 @@ function AppProviderInner({ children }: { children: ReactNode }) {
     () => stripInventoryFinancials(inventoryWithComputed, currentUser?.isAdmin === true),
     [inventoryWithComputed, currentUser?.isAdmin]
   );
+  // Tools are inventory items in the 'tool' category; the tag-in/out hub reads this derived list.
+  const toolItems = useMemo(
+    () => inventoryForRole.filter((i) => i.category === 'tool'),
+    [inventoryForRole]
+  );
 
   const contextValue = useMemo<AppContextType>(
     () => ({
@@ -560,7 +544,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       shifts: queries.shifts,
       users: queries.users,
       inventory: inventoryForRole,
-      tools: queries.tools,
+      tools: toolItems,
       activeShift,
       activeJob,
       login,
@@ -604,7 +588,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       refreshShifts: queries.refreshShifts,
       refreshUsers: queries.refreshUsers,
       refreshInventory: queries.refreshInventory,
-      refreshTools: queries.refreshTools,
+      refreshTools: queries.refreshInventory,
       calculateAvailable,
       calculateAllocated,
       pendingOfflinePunchCount,
@@ -624,7 +608,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       queries.shifts,
       queries.users,
       inventoryForRole,
-      queries.tools,
+      toolItems,
       activeShift,
       activeJob,
       login,
@@ -643,7 +627,6 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       queries.refreshShifts,
       queries.refreshUsers,
       queries.refreshInventory,
-      queries.refreshTools,
       calculateAvailable,
       calculateAllocated,
       pendingOfflinePunchCount,

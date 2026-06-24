@@ -42,6 +42,7 @@ const CATEGORY_COLORS: Record<InventoryCategory, string> = {
   chemicals: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   hardware: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   miscSupplies: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  tool: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({

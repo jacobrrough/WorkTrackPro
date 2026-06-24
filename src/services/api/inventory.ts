@@ -28,6 +28,7 @@ function mapRowToItem(row: Record<string, unknown>): InventoryItem {
     barcode: row.barcode as string | undefined,
     binLocation: row.bin_location as string | undefined,
     vendor: row.vendor as string | undefined,
+    currentHolderId: (row.current_holder_id as string) ?? undefined,
     attachmentCount: (row.attachment_count as number) ?? 0,
   };
 }

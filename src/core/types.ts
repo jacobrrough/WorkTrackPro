@@ -40,10 +40,11 @@ export function getStatusDisplayName(status: JobStatus): string {
 
 // Inventory category and display
 //
-// The 7 entries below are the fixed, built-in categories. Admins can add custom categories on
+// The entries below are the fixed, built-in categories. Admins can add custom categories on
 // top of these (stored in organization_settings, not in code), so a stored category value is
 // just a `string` — see `InventoryItem.category` and `useInventoryCategories`. This union stays
 // the source of truth for the built-in keys, their curated labels, and badge colors.
+// `tool` is the category for tools tracked via tag-in/out (custody on the inventory row).
 export type InventoryCategory =
   | 'material'
   | 'foam'
@@ -51,7 +52,8 @@ export type InventoryCategory =
   | 'printing3d'
   | 'chemicals'
   | 'hardware'
-  | 'miscSupplies';
+  | 'miscSupplies'
+  | 'tool';
 
 /** A selectable inventory category: a stable `key` (persisted on rows) + a human `label`. */
 export interface InventoryCategoryOption {
@@ -67,6 +69,7 @@ const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   chemicals: 'Chemicals',
   hardware: 'Hardware',
   miscSupplies: 'Misc Supplies',
+  tool: 'Tools',
 };
 
 /** Built-in categories in canonical display order. Custom categories are appended after these. */
@@ -171,8 +174,7 @@ export type ViewState =
   | 'notification-settings'
   | 'appearance'
   | 'project-hours'
-  | 'tools'
-  | 'tools-admin';
+  | 'tools';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -361,34 +363,24 @@ export interface InventoryItem {
   barcode?: string;
   binLocation?: string;
   vendor?: string;
+  /**
+   * Profile id of the employee currently holding this item, when it's a tool (category 'tool')
+   * that's checked out. Null/undefined = available / in its bin. Set only via the tag-in/out RPCs.
+   */
+  currentHolderId?: string;
   attachments?: Attachment[];
   attachmentCount?: number;
 }
 
-// Tools (tag-in / tag-out custody tracking — distinct from consumable inventory)
-export type ToolStatus = 'available' | 'out' | 'retired';
-
-export interface Tool {
-  id: string;
-  name: string;
-  /** Unique, human-assigned number encoded in the tool's printed QR code. */
-  toolNumber: string;
-  /** Home bin the tool must be returned to (A4c format). */
-  homeBin: string;
-  description?: string;
-  status: ToolStatus;
-  /** Profile id of the employee currently holding the tool, or undefined when available. */
-  currentHolderId?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export type ToolEventType = 'checkout' | 'checkin' | 'transfer' | 'retire';
+// Tools are inventory items in the 'tool' category; custody lives on the inventory row
+// (`currentHolderId`) and every take/hand-off/put-away appends a ToolEvent (keyed by inventory id).
+export type ToolEventType = 'checkout' | 'checkin' | 'transfer';
 
 /** One row of a tool's append-only custody audit trail. */
 export interface ToolEvent {
   id: string;
-  toolId: string;
+  /** The inventory item (tool) this event is about. */
+  inventoryId: string;
   eventType: ToolEventType;
   /** Who performed the action. */
   actorId?: string;

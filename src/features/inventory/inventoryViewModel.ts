@@ -190,6 +190,8 @@ export function categoryIcon(category: string): string {
       return 'science';
     case 'hardware':
       return 'build';
+    case 'tool':
+      return 'handyman';
     case 'miscSupplies':
       return 'inventory_2';
     default:

@@ -49,10 +49,6 @@ const AppearanceSettingsView = lazyWithRetry(
   'AppearanceSettingsView'
 );
 const ToolsScreen = lazyWithRetry(() => import('./features/tools/ToolsScreen'), 'ToolsScreen');
-const ToolsAdminScreen = lazyWithRetry(
-  () => import('./features/tools/ToolsAdminScreen'),
-  'ToolsAdminScreen'
-);
 
 // WorkTrackAccounting — single lazy entry, gated by the build-time flag. When the
 // flag is off this is null and the import() sits in a dead ternary branch, so Rollup
@@ -286,7 +282,7 @@ function ClockInRoute() {
 function ScannerRoute() {
   const appNavigate = useAppNavigate();
   const back = useInAppBack('/app');
-  const { jobs, inventory, tools, updateJob, updateInventoryItem, refreshJobs, refreshInventory } =
+  const { jobs, inventory, updateJob, updateInventoryItem, refreshJobs, refreshInventory } =
     useApp();
   // All outgoing navigation from the scanner replaces the scanner history entry
   // so it never sits in the middle of the stack. Without this, scanning a job
@@ -300,7 +296,6 @@ function ScannerRoute() {
     <ScannerScreen
       jobs={jobs}
       inventory={inventory}
-      tools={tools}
       onNavigate={navigateFromScanner}
       onBack={back}
       onUpdateJob={updateJob}
@@ -612,22 +607,12 @@ function AppearanceSettingsRoute() {
 function ToolsRoute() {
   const { toolId } = useParams<{ toolId: string }>();
   const appNavigate = useAppNavigate();
-  const { currentUser } = useApp();
   return (
     <>
-      <ToolsScreen
-        onNavigate={appNavigate}
-        isAdmin={currentUser?.isAdmin ?? false}
-        initialToolId={toolId}
-      />
+      <ToolsScreen onNavigate={appNavigate} initialToolId={toolId} />
       <BottomNavigation />
     </>
   );
-}
-
-function ToolsAdminRoute() {
-  const appNavigate = useAppNavigate();
-  return <ToolsAdminScreen onNavigate={appNavigate} />;
 }
 
 // ─── Router root ─────────────────────────────────────────────────────────────
@@ -707,16 +692,6 @@ export function AppRouter() {
           <RouteErrorBoundary>
             <ToolsRoute />
           </RouteErrorBoundary>
-        }
-      />
-      <Route
-        path="/app/tools/admin"
-        element={
-          <AdminGuard>
-            <RouteErrorBoundary>
-              <ToolsAdminRoute />
-            </RouteErrorBoundary>
-          </AdminGuard>
         }
       />
       <Route

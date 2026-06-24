@@ -1,64 +1,52 @@
 import { describe, it, expect } from 'vitest';
-import type { Tool } from '@/core/types';
-import {
-  binsMatch,
-  isToolScanPayload,
-  normalizeBin,
-  normalizeToolScan,
-  resolveToolByScan,
-} from './toolScan';
+import type { InventoryItem } from '@/core/types';
+import { binsMatch, normalizeBin, resolveToolByScan } from './toolScan';
 
-const tool = (over: Partial<Tool>): Tool => ({
-  id: '00000000-0000-0000-0000-000000000001',
+const tool = (over: Partial<InventoryItem>): InventoryItem => ({
+  id: 'id-x',
   name: 'Impact Driver',
-  toolNumber: 'T-100',
-  homeBin: 'A4c',
-  status: 'available',
+  category: 'tool',
+  inStock: 1,
+  available: 1,
+  disposed: 0,
+  onOrder: 0,
+  unit: 'ea',
+  barcode: 'T-100',
+  binLocation: 'A4c',
   ...over,
 });
 
-const tools: Tool[] = [
-  tool({ id: 'id-1', toolNumber: 'T-100' }),
-  tool({ id: 'id-2', toolNumber: 'DRILL-7', name: 'Drill' }),
+const tools: InventoryItem[] = [
+  tool({ id: 'id-1', barcode: 'T-100' }),
+  tool({ id: 'id-2', barcode: 'DRILL-7', name: 'Drill' }),
+  tool({ id: 'id-3', barcode: undefined, name: 'No Barcode' }),
 ];
 
-describe('normalizeToolScan / isToolScanPayload', () => {
-  it('strips a TOOL: prefix (any case) and trims', () => {
-    expect(normalizeToolScan('TOOL:T-100')).toBe('T-100');
-    expect(normalizeToolScan('tool: T-100 ')).toBe('T-100');
-    expect(normalizeToolScan('  T-100  ')).toBe('T-100');
-  });
-
-  it('detects the TOOL: prefix', () => {
-    expect(isToolScanPayload('TOOL:T-100')).toBe(true);
-    expect(isToolScanPayload('tool:x')).toBe(true);
-    expect(isToolScanPayload('T-100')).toBe(false);
-    expect(isToolScanPayload('A4c')).toBe(false);
-  });
-});
-
 describe('resolveToolByScan', () => {
-  it('matches by tool number, case-insensitively, with or without prefix', () => {
+  it('matches by barcode, case-insensitively and trimmed', () => {
     expect(resolveToolByScan('T-100', tools)?.id).toBe('id-1');
-    expect(resolveToolByScan('TOOL:t-100', tools)?.id).toBe('id-1');
+    expect(resolveToolByScan(' t-100 ', tools)?.id).toBe('id-1');
     expect(resolveToolByScan('drill-7', tools)?.id).toBe('id-2');
   });
 
-  it('falls back to matching by id', () => {
-    expect(resolveToolByScan('id-2', tools)?.id).toBe('id-2');
+  it('falls back to matching by item id', () => {
+    expect(resolveToolByScan('id-3', tools)?.id).toBe('id-3');
   });
 
   it('returns null for empty or unknown payloads', () => {
     expect(resolveToolByScan('', tools)).toBeNull();
     expect(resolveToolByScan('   ', tools)).toBeNull();
-    expect(resolveToolByScan('TOOL:', tools)).toBeNull();
     expect(resolveToolByScan('NOPE-999', tools)).toBeNull();
+  });
+
+  it('never matches an item that has no barcode by an empty scan', () => {
+    expect(resolveToolByScan('', tools)).toBeNull();
   });
 });
 
 describe('normalizeBin / binsMatch', () => {
   it('normalizes BIN: prefix, whitespace, and case', () => {
-    expect(normalizeBin('BIN:A4c')).toBe('A4c'.toUpperCase());
+    expect(normalizeBin('BIN:A4c')).toBe('A4C');
     expect(normalizeBin(' a4c ')).toBe('A4C');
   });
 
