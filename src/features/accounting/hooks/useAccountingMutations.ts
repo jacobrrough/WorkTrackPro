@@ -319,6 +319,23 @@ export function useSetInvoiceJob() {
   });
 }
 
+/**
+ * Manually override an invoice's number (QuickBooks reconciliation). Pure relabel — no money
+ * moves — so it stays within the invoices subtree (the list + this invoice's detail) plus the
+ * per-document audit timeline.
+ */
+export function useSetInvoiceNumber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, number }: { id: string; number: string }) =>
+      invoicesService.setNumber(id, number),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.invoices });
+      invalidateDocumentActivity(qc);
+    },
+  });
+}
+
 // ── Customer payments ────────────────────────────────────────────────────────
 /**
  * Record a customer payment: posts the balanced receipt JE (Dr Cash/Undeposited /
@@ -1338,6 +1355,23 @@ export function useSetEstimateJob() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
       qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.jobCosting });
+    },
+  });
+}
+
+/**
+ * Manually override an estimate's number (QuickBooks reconciliation). Pure relabel — estimates
+ * post no JE — so it stays within the estimates subtree (the list + this estimate's detail) plus
+ * the per-document audit timeline.
+ */
+export function useSetEstimateNumber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, number }: { id: string; number: string }) =>
+      estimatesService.setNumber(id, number),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
+      invalidateDocumentActivity(qc);
     },
   });
 }
