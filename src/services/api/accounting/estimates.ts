@@ -355,6 +355,28 @@ export const estimatesService = {
     return { ok: true };
   },
 
+  /**
+   * Manually set (or clear) an estimate's number. Numbers are normally auto-assigned and
+   * sequential (a DB trigger stamps EST-NNNN on insert); this is the deliberate override for
+   * reconciling against QuickBooks while both systems run side by side. estimate_number is UNIQUE,
+   * so a clash is rejected with a clear message. Pass an empty string to clear it.
+   */
+  async setNumber(id: string, estimateNumber: string): Promise<{ ok: boolean; error?: string }> {
+    const trimmed = estimateNumber.trim();
+    const { error } = await acct()
+      .from('estimates')
+      .update({ estimate_number: trimmed || null })
+      .eq('id', id);
+    if (error) {
+      const dup = /duplicate|unique/i.test(error.message);
+      return {
+        ok: false,
+        error: dup ? `Estimate number "${trimmed}" is already in use.` : error.message,
+      };
+    }
+    return { ok: true };
+  },
+
   /** Mark a draft estimate `sent`. No money moves (an estimate never posts a JE). */
   async send(id: string): Promise<{ estimate: Estimate | null; error?: string }> {
     const estimate = await this.getById(id);

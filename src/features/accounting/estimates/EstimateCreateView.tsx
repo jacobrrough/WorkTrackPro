@@ -13,7 +13,7 @@ import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
 import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 import { useCustomers, useTaxCodes } from '../hooks/useAccountingQueries';
-import { useCreateEstimateDraft } from '../hooks/useAccountingMutations';
+import { useCreateEstimateDraft, useSendEstimate } from '../hooks/useAccountingMutations';
 import { computeInvoiceTotals } from '../posting';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
@@ -157,6 +157,8 @@ export default function EstimateCreateView() {
   const { data: customers = [], isPending: customersLoading } = useCustomers();
   const { data: taxCodes = [] } = useTaxCodes();
   const createDraft = useCreateEstimateDraft();
+  const sendEstimate = useSendEstimate();
+  const saving = createDraft.isPending || sendEstimate.isPending;
 
   const [customerId, setCustomerId] = useState('');
   const [estimateDate, setEstimateDate] = useState(todayISO());
@@ -306,6 +308,14 @@ export default function EstimateCreateView() {
     if (res.error || !res.estimate) {
       setError(res.error ?? 'Could not create the estimate.');
       return;
+    }
+    // Save = finalized: assign the number (done by the DB trigger on insert) AND mark it issued
+    // (estimates post no ledger, so this just flips draft -> sent). Best-effort: if the status
+    // flip fails the numbered estimate is still saved, so we navigate either way.
+    try {
+      await sendEstimate.mutateAsync(res.estimate.id);
+    } catch {
+      /* lands as a numbered draft to issue from its detail page */
     }
     navigate(`${ACCOUNTING_BASE}/estimates/${res.estimate.id}`);
   };
@@ -460,12 +470,8 @@ export default function EstimateCreateView() {
           <Button variant="ghost" onClick={() => navigate(`${ACCOUNTING_BASE}/estimates`)}>
             Cancel
           </Button>
-          <Button
-            icon="save"
-            onClick={submit}
-            disabled={createDraft.isPending || !customerId || !hasAmount}
-          >
-            {createDraft.isPending ? 'Saving…' : 'Save draft'}
+          <Button icon="save" onClick={submit} disabled={saving || !customerId || !hasAmount}>
+            {saving ? 'Saving…' : 'Save estimate'}
           </Button>
         </div>
       </div>
