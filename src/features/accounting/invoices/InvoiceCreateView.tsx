@@ -14,7 +14,7 @@ import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
 import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 import { useCustomFieldDefs, useCustomers, useTaxCodes } from '../hooks/useAccountingQueries';
-import { useCreateInvoiceDraft } from '../hooks/useAccountingMutations';
+import { useCreateInvoiceDraft, useSendInvoice } from '../hooks/useAccountingMutations';
 import { computeInvoiceTotals } from '../posting';
 import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
@@ -159,6 +159,8 @@ export default function InvoiceCreateView() {
   // editable on the invoice detail screen once the draft has an id (D4).
   const { data: customFieldDefs = [] } = useCustomFieldDefs('invoice');
   const createDraft = useCreateInvoiceDraft();
+  const sendInvoice = useSendInvoice();
+  const saving = createDraft.isPending || sendInvoice.isPending;
 
   const [customerId, setCustomerId] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(todayISO());
@@ -310,6 +312,14 @@ export default function InvoiceCreateView() {
     if (res.error || !res.invoice) {
       setError(res.error ?? 'Could not create the invoice.');
       return;
+    }
+    // Save = finalized: assign the number (done by the DB trigger on insert) AND post the revenue
+    // entry now. If posting fails (e.g. default accounts unconfigured), the invoice is left as a
+    // numbered draft to retry Send from its detail page — so we navigate either way.
+    try {
+      await sendInvoice.mutateAsync(res.invoice.id);
+    } catch {
+      /* lands as a numbered draft to retry */
     }
     navigate(`${ACCOUNTING_BASE}/invoices/${res.invoice.id}`);
   };
@@ -476,12 +486,8 @@ export default function InvoiceCreateView() {
           <Button variant="ghost" onClick={() => navigate(`${ACCOUNTING_BASE}/invoices`)}>
             Cancel
           </Button>
-          <Button
-            icon="save"
-            onClick={submit}
-            disabled={createDraft.isPending || !customerId || !hasAmount}
-          >
-            {createDraft.isPending ? 'Saving…' : 'Save draft'}
+          <Button icon="save" onClick={submit} disabled={saving || !customerId || !hasAmount}>
+            {saving ? 'Saving…' : 'Save invoice'}
           </Button>
         </div>
       </div>

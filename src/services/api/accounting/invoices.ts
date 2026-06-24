@@ -283,6 +283,28 @@ export const invoicesService = {
   },
 
   /**
+   * Manually set (or clear) an invoice's number. Numbers are normally auto-assigned and
+   * sequential (a DB trigger stamps INV-NNNNN on insert); this is the deliberate override for
+   * reconciling against QuickBooks while both systems run side by side. invoice_number is UNIQUE,
+   * so a clash is rejected with a clear message. Pass an empty string to clear it.
+   */
+  async setNumber(id: string, invoiceNumber: string): Promise<{ ok: boolean; error?: string }> {
+    const trimmed = invoiceNumber.trim();
+    const { error } = await acct()
+      .from('invoices')
+      .update({ invoice_number: trimmed || null })
+      .eq('id', id);
+    if (error) {
+      const dup = /duplicate|unique/i.test(error.message);
+      return {
+        ok: false,
+        error: dup ? `Invoice number "${trimmed}" is already in use.` : error.message,
+      };
+    }
+    return { ok: true };
+  },
+
+  /**
    * Post the revenue JE for a draft invoice and mark it `sent`. The JE is built from
    * the (re-fetched) lines so it always reflects what is stored. If posting fails
    * (unbalanced, RLS, missing accounts) the invoice stays `draft` and the DB message

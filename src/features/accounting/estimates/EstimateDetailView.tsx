@@ -17,6 +17,7 @@ import {
   useDeleteEstimateDraft,
   useReissueEstimate,
   useSendEstimate,
+  useSetEstimateNumber,
   useUpdateEstimateDraft,
 } from '../hooks/useAccountingMutations';
 import { formatMoney } from '../accountingViewModel';
@@ -185,6 +186,7 @@ export default function EstimateDetailView() {
   const convertEstimate = useConvertEstimate();
   const reissueEstimate = useReissueEstimate();
   const deleteEstimate = useDeleteEstimateDraft();
+  const setEstimateNumber = useSetEstimateNumber();
   const printRef = useRef<HTMLDivElement>(null);
   // Land directly in the live editor (QuickBooks-style); Preview toggles to the read-only paper.
   const [editing, setEditing] = useState(true);
@@ -200,6 +202,20 @@ export default function EstimateDetailView() {
     setActionError(null);
     const res = await sendEstimate.mutateAsync(estimate.id);
     if (res.error) setActionError(res.error);
+  };
+
+  // Manually override this estimate's number (for reconciling against QuickBooks). Numbers are
+  // auto-assigned and sequential; this is the deliberate by-hand correction.
+  const onEditNumber = async () => {
+    if (!estimate) return;
+    const next = window.prompt(
+      'Estimate number — override for QuickBooks reconciliation:',
+      estimate.estimateNumber ?? ''
+    );
+    if (next == null) return;
+    setActionError(null);
+    const res = await setEstimateNumber.mutateAsync({ id: estimate.id, number: next });
+    if (!res.ok) setActionError(res.error ?? 'Could not update the estimate number.');
   };
 
   const onAccept = async () => {
@@ -394,6 +410,20 @@ export default function EstimateDetailView() {
               className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
             >
               {ESTIMATE_STATUS_LABELS[estimate.status]}
+            </span>
+            {/* Document number — auto-assigned & sequential, with a by-hand override for
+                QuickBooks reconciliation. */}
+            <span className="text-sm text-muted">
+              Estimate #{' '}
+              <span className="font-mono text-white">{estimate.estimateNumber ?? '—'}</span>
+              <button
+                type="button"
+                onClick={onEditNumber}
+                disabled={setEstimateNumber.isPending}
+                className="ml-2 text-xs font-semibold text-primary hover:text-primary-hover disabled:opacity-50"
+              >
+                {setEstimateNumber.isPending ? 'Saving…' : 'Edit'}
+              </button>
             </span>
             <span className="text-sm text-muted">
               Customer{' '}

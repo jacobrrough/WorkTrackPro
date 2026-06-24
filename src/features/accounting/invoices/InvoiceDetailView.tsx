@@ -25,6 +25,7 @@ import {
   useRecordPayment,
   useSendInvoice,
   useSendInvoiceEmail,
+  useSetInvoiceNumber,
   useVoidAndReissueInvoice,
   useVoidInvoice,
 } from '../hooks/useAccountingMutations';
@@ -431,6 +432,7 @@ export default function InvoiceDetailView() {
   const voidInvoice = useVoidInvoice();
   const voidAndReissue = useVoidAndReissueInvoice();
   const deleteDraft = useDeleteInvoiceDraft();
+  const setInvoiceNumber = useSetInvoiceNumber();
   const createPortalLink = useCreatePortalLink();
   const { settings } = useSettings();
   const printRef = useRef<HTMLDivElement>(null);
@@ -491,6 +493,20 @@ export default function InvoiceDetailView() {
     setActionError(null);
     const res = await sendInvoice.mutateAsync(invoice.id);
     if (res.error) setActionError(res.error);
+  };
+
+  // Manually override this invoice's number (for reconciling against QuickBooks). Numbers are
+  // auto-assigned and sequential; this is the deliberate by-hand correction.
+  const onEditNumber = async () => {
+    if (!invoice) return;
+    const next = window.prompt(
+      'Invoice number — override for QuickBooks reconciliation:',
+      invoice.invoiceNumber ?? ''
+    );
+    if (next == null) return;
+    setActionError(null);
+    const res = await setInvoiceNumber.mutateAsync({ id: invoice.id, number: next });
+    if (!res.ok) setActionError(res.error ?? 'Could not update the invoice number.');
   };
 
   const onVoid = async () => {
@@ -662,6 +678,25 @@ export default function InvoiceDetailView() {
             status={invoice.status}
             onResend={canEmail ? () => setShowEmail(true) : undefined}
           />
+
+          {/* Document number — auto-assigned & sequential, with a by-hand override for QuickBooks
+              reconciliation (a void invoice is read-only). */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted">Invoice #</span>
+            <span className="font-mono font-semibold text-white">
+              {invoice.invoiceNumber ?? '—'}
+            </span>
+            {invoice.status !== 'void' && (
+              <button
+                type="button"
+                onClick={onEditNumber}
+                disabled={setInvoiceNumber.isPending}
+                className="text-xs font-semibold text-primary hover:text-primary-hover disabled:opacity-50"
+              >
+                {setInvoiceNumber.isPending ? 'Saving…' : 'Edit number'}
+              </button>
+            )}
+          </div>
 
           {editing && isEditable ? (
             // The live editor is the default landing view; remounting per invoice id re-seeds it,
