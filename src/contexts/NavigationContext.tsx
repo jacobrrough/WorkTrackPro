@@ -21,6 +21,8 @@ interface NavigationState {
   inventorySupplier: string;
   /** Inventory list active tab: allParts | needsReordering | lowStock | byBin */
   inventoryTab: string;
+  /** Recently-viewed inventory item ids (most-recent first) powering the hub's Recent Items. */
+  inventoryRecentIds: string[];
   /** Parts list search (view-scoped so it does not overwrite other views). */
   partsSearchTerm: string;
   /** Custom ordering of dashboard quick-action keys. */
@@ -39,6 +41,7 @@ const defaultState: NavigationState = {
   inventoryCategory: 'all',
   inventorySupplier: 'all',
   inventoryTab: 'allParts',
+  inventoryRecentIds: [],
   partsSearchTerm: '',
   quickActionOrder: [],
   hiddenQuickActions: [],
