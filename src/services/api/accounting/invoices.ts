@@ -106,15 +106,18 @@ export const invoicesService = {
     return mapInvoiceRow(data as Row);
   },
 
-  /** Resolve an invoice by its number → a light ref for job-card deep links. */
-  async findByNumber(
-    invoiceNumber: string
-  ): Promise<{ id: string; status: string; customerName: string | null } | null> {
+  /** Resolve an invoice by its number → a light ref for job-card deep links + linking. */
+  async findByNumber(invoiceNumber: string): Promise<{
+    id: string;
+    status: string;
+    jobId: string | null;
+    customerName: string | null;
+  } | null> {
     const num = invoiceNumber.trim();
     if (!num) return null;
     const { data, error } = await acct()
       .from('invoices')
-      .select('id, status, customer:customers(display_name)')
+      .select('id, status, job_id, customer:customers(display_name)')
       .eq('invoice_number', num)
       .limit(1)
       .maybeSingle();
@@ -124,6 +127,7 @@ export const invoicesService = {
     return {
       id: String(row.id),
       status: String(row.status ?? ''),
+      jobId: row.job_id ? String(row.job_id) : null,
       customerName: customer?.display_name ? String(customer.display_name) : null,
     };
   },

@@ -27,6 +27,14 @@ const JobCustomerSelect = ACCOUNTING_BUILD_ENABLED
 const JobReferencePills = ACCOUNTING_BUILD_ENABLED
   ? lazyWithRetry(() => import('./features/accounting/jobs/JobReferencePills'), 'JobReferencePills')
   : null;
+// Inline "link this typed EST#/INV# to the real estimate/invoice" suggestion, shown in the edit
+// form as the numbers are typed. Lazy + flag-gated like JobReferencePills.
+const JobDocLinkSuggestion = ACCOUNTING_BUILD_ENABLED
+  ? lazyWithRetry(
+      () => import('./features/accounting/jobs/JobDocLinkSuggestion'),
+      'JobDocLinkSuggestion'
+    )
+  : null;
 
 function PlainEstInvPills({
   estNumber,
@@ -2503,6 +2511,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   />
                 </div>
               </div>
+              {/* When an EST#/INV# is typed, offer to link the matching estimate/invoice to this
+                  job (deep-links the real document into the billing panel + job costing). */}
+              {JobDocLinkSuggestion &&
+                (editForm.estNumber?.trim() || editForm.invNumber?.trim()) && (
+                  <Suspense fallback={null}>
+                    <JobDocLinkSuggestion
+                      jobId={job.id}
+                      estNumber={editForm.estNumber}
+                      invNumber={editForm.invNumber}
+                    />
+                  </Suspense>
+                )}
             </div>
 
             {/* Variants and quantities - one block per part */}

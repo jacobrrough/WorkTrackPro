@@ -182,15 +182,18 @@ export const estimatesService = {
     return mapEstimateRow(data as Row);
   },
 
-  /** Resolve an estimate by its unique number → a light ref for job-card deep links. */
-  async findByNumber(
-    estimateNumber: string
-  ): Promise<{ id: string; status: string; customerName: string | null } | null> {
+  /** Resolve an estimate by its unique number → a light ref for job-card deep links + linking. */
+  async findByNumber(estimateNumber: string): Promise<{
+    id: string;
+    status: string;
+    jobId: string | null;
+    customerName: string | null;
+  } | null> {
     const num = estimateNumber.trim();
     if (!num) return null;
     const { data, error } = await acct()
       .from('estimates')
-      .select('id, status, customer:customers(display_name)')
+      .select('id, status, job_id, customer:customers(display_name)')
       .eq('estimate_number', num)
       .limit(1)
       .maybeSingle();
@@ -200,6 +203,7 @@ export const estimatesService = {
     return {
       id: String(row.id),
       status: String(row.status ?? ''),
+      jobId: row.job_id ? String(row.job_id) : null,
       customerName: customer?.display_name ? String(customer.display_name) : null,
     };
   },
