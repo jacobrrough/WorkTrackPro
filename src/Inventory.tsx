@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { InventoryItem, Job, ViewState } from '@/core/types';
 import { useNavigation } from '@/contexts/NavigationContext';
 import InventoryDetail from './InventoryDetail';
 import AddInventoryItem from './AddInventoryItem';
 
 import InventoryMainView from '@/features/inventory/InventoryMainView';
-import type { InventoryFilters } from '@/features/inventory/inventoryViewModel';
+import InventoryHub from '@/features/inventory/InventoryHub';
+import type { InventoryFilters, InventoryTab } from '@/features/inventory/inventoryViewModel';
 
 interface InventoryProps {
   inventory: InventoryItem[];
@@ -33,7 +34,7 @@ interface InventoryProps {
   onBackFromDetail?: () => void;
 }
 
-type InventoryView = 'main' | 'add';
+type InventoryView = 'hub' | 'main' | 'add';
 
 const Inventory: React.FC<InventoryProps> = ({
   inventory,
@@ -56,7 +57,7 @@ const Inventory: React.FC<InventoryProps> = ({
   onBackFromDetail,
 }) => {
   const { state: navState, updateState } = useNavigation();
-  const [view, setView] = useState<InventoryView>('main');
+  const [view, setView] = useState<InventoryView>('hub');
   const [filters, setFilters] = useState<InventoryFilters>({
     search: navState.inventorySearchTerm ?? '',
     category: (navState.inventoryCategory as InventoryFilters['category']) ?? 'all',
@@ -66,11 +67,22 @@ const Inventory: React.FC<InventoryProps> = ({
   const selectedItem = initialItemId ? inventory.find((i) => i.id === initialItemId) : null;
   const showingDetail = !!initialItemId && !!selectedItem;
 
+  // Track recently-viewed items (most-recent first) for the hub's Recent Items list. Runs whenever
+  // a detail opens (deep link, hub, or list) since all paths set initialItemId via routing.
+  useEffect(() => {
+    if (!initialItemId) return;
+    const prev = navState.inventoryRecentIds ?? [];
+    if (prev[0] === initialItemId) return;
+    updateState({
+      inventoryRecentIds: [initialItemId, ...prev.filter((id) => id !== initialItemId)].slice(0, 8),
+    });
+  }, [initialItemId, navState.inventoryRecentIds, updateState]);
+
   const handleBack = () => {
     if (showingDetail && onBackFromDetail) {
       onBackFromDetail();
     } else {
-      setView('main');
+      setView('hub');
     }
   };
 
@@ -85,15 +97,11 @@ const Inventory: React.FC<InventoryProps> = ({
     }
     const newItem = await onCreateItem(payload);
     if (newItem) {
-      setView('main');
+      setView('hub');
       return true;
     }
     return false;
   };
-
-  if (view === 'add') {
-    return <AddInventoryItem onAdd={handleAddComplete} onCancel={handleBack} isAdmin={isAdmin} />;
-  }
 
   if (showingDetail && selectedItem) {
     return (
@@ -117,13 +125,37 @@ const Inventory: React.FC<InventoryProps> = ({
     );
   }
 
+  if (view === 'add') {
+    return <AddInventoryItem onAdd={handleAddComplete} onCancel={handleBack} isAdmin={isAdmin} />;
+  }
+
+  if (view === 'hub') {
+    return (
+      <InventoryHub
+        inventory={inventory}
+        isLoading={isLoading}
+        calculateAvailable={calculateAvailable}
+        calculateAllocated={calculateAllocated}
+        onUpdateStock={onUpdateStock}
+        onAddItem={handleAddItem}
+        onViewAll={(tab?: InventoryTab) => {
+          if (tab) updateState({ inventoryTab: tab });
+          setView('main');
+        }}
+        onOpenDetail={(itemId) => onNavigate('inventory-detail', itemId)}
+        onBack={() => onNavigate('dashboard')}
+        recentIds={navState.inventoryRecentIds ?? []}
+      />
+    );
+  }
+
   return (
     <InventoryMainView
       inventory={inventory}
       jobs={jobs}
       isAdmin={isAdmin}
       isLoading={isLoading}
-      onBack={() => onNavigate('dashboard')}
+      onBack={() => setView('hub')}
       filters={filters}
       onFiltersChange={(patch) => {
         const next = { ...filters, ...patch };

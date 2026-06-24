@@ -765,7 +765,7 @@ export default function InventoryMainView({
         <button
           type="button"
           onClick={onAddItem}
-          className="safe-area-pb fixed bottom-4 right-4 z-20 flex min-h-[52px] items-center gap-2 rounded-full bg-primary px-5 font-bold text-on-accent shadow-lg"
+          className="safe-area-pb fixed bottom-20 right-4 z-[45] flex min-h-[52px] items-center gap-2 rounded-full bg-primary px-5 font-bold text-on-accent shadow-lg"
         >
           <span className="material-symbols-outlined">add</span>
           Add Part
