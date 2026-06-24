@@ -7,6 +7,7 @@ import type {
 import {
   buildInvoiceRevenueJournalLines,
   computeInvoiceTotals,
+  journalLinesEquivalent,
   type InvoiceTotals,
 } from '../../../features/accounting/posting';
 import { acct } from './accountingClient';
@@ -356,6 +357,157 @@ export const invoicesService = {
       // The JE is posted but the link failed; void the entry to avoid a dangling post.
       await journalService.voidEntry(posted.entryId, 'Invoice send failed after posting');
       return { invoice: null, error: uErr.message };
+    }
+    // Pin a 'sent' snapshot + stamp the sent-version hash so the UI can show whether the customer
+    // holds the current copy. Best-effort — never fail a successful send over this bookkeeping.
+    try {
+      await acct().rpc('record_document_sent', { p_type: 'invoice', p_id: id });
+    } catch {
+      /* sent-version tracking is best-effort */
+    }
+    return { invoice: await this.getById(id) };
+  },
+
+  /**
+   * Edit a POSTED invoice in place (QuickBooks-style). Drafts route to updateDraft; a void invoice
+   * is rejected (reissue instead). When the rebuilt revenue JE is identical to the one already
+   * posted AND the invoice date is unchanged, the edit is ledger-neutral (memo/notes/terms/etc.)
+   * so we just rewrite the header + lines — no GL churn. Otherwise we REVERSE + RE-POST: post a
+   * fresh balanced revenue JE, then atomically swap header/lines + relink + void the old entry via
+   * accounting.apply_posted_invoice_edit. If that atomic step fails, the just-posted replacement is
+   * voided so the trial balance never drifts. A financial edit requires an unpaid invoice (and an
+   * open period — the post/void RPCs enforce the books-closed lock and surface a clear message).
+   */
+  async editPosted(
+    id: string,
+    input: UpdateInvoiceInput,
+    opts?: { customerTaxExempt?: boolean }
+  ): Promise<{ invoice: Invoice | null; error?: string }> {
+    const existing = await this.getById(id);
+    if (!existing) return { invoice: null, error: 'Invoice not found.' };
+    if (existing.status === 'void') {
+      return {
+        invoice: null,
+        error: 'A void invoice cannot be edited — reissue a new one instead.',
+      };
+    }
+    if (existing.status === 'draft') {
+      return this.updateDraft(id, input, opts);
+    }
+
+    const lines = input.lines ?? existing.lines?.map(toLineInput) ?? [];
+    if (!lines.length) return { invoice: null, error: 'An invoice needs at least one line.' };
+
+    const customerId = input.customerId !== undefined ? input.customerId : existing.customerId;
+    const headerTaxCode = input.taxCodeId !== undefined ? input.taxCodeId : existing.taxCodeId;
+    const invoiceDate = input.invoiceDate !== undefined ? input.invoiceDate : existing.invoiceDate;
+    const jobId = input.jobId !== undefined ? input.jobId : existing.jobId;
+
+    // Resolve the customer's tax-exempt flag so we never tax an exempt sale (mirror send()).
+    let taxExempt = opts?.customerTaxExempt ?? false;
+    if (opts?.customerTaxExempt === undefined) {
+      const { data: cust } = await acct()
+        .from('customers')
+        .select('tax_exempt')
+        .eq('id', customerId)
+        .maybeSingle();
+      if (cust) taxExempt = (cust as Row).tax_exempt === true;
+    }
+
+    const totals = await computeTotalsFor(lines, headerTaxCode, taxExempt);
+    const defaults = await accountingSettingsService.getDefaultAccounts();
+    let je;
+    try {
+      je = buildInvoiceRevenueJournalLines(totals, defaults, { customerId });
+    } catch (e) {
+      return {
+        invoice: null,
+        error: e instanceof Error ? e.message : 'Unable to build the revenue entry.',
+      };
+    }
+    const jeLines = jobId ? je.lines.map((l) => ({ ...l, jobId })) : je.lines;
+
+    // Header payload (snake_case) shared by both paths; lines reuse the create/update row builder.
+    const header: Record<string, unknown> = {
+      customer_id: customerId,
+      job_id: jobId,
+      invoice_date: invoiceDate,
+      due_date: input.dueDate !== undefined ? input.dueDate : existing.dueDate,
+      terms: input.terms !== undefined ? input.terms : existing.terms,
+      tax_code_id: headerTaxCode,
+      memo: input.memo !== undefined ? input.memo : existing.memo,
+      notes: input.notes !== undefined ? input.notes : existing.notes,
+      subtotal: je.subtotal,
+      discount_total: je.discountTotal,
+      tax_total: je.taxTotal,
+      total: je.total,
+      layout: input.layout !== undefined ? input.layout : existing.layout,
+    };
+    const linePayload = lineRows(id, lines);
+
+    // Ledger-neutral edit? Rebuilt JE identical to the posted one AND the (JE-dating) date unchanged.
+    const existingJe = existing.journalEntryId
+      ? await journalService.getById(existing.journalEntryId)
+      : null;
+    const ledgerUnchanged =
+      existingJe != null &&
+      existingJe.status === 'posted' &&
+      invoiceDate === existing.invoiceDate &&
+      journalLinesEquivalent(existingJe.lines ?? [], jeLines);
+
+    if (ledgerUnchanged) {
+      // No GL change: pin the pre-edit version, then rewrite header + lines only.
+      try {
+        await acct().rpc('capture_document_snapshot', {
+          p_type: 'invoice',
+          p_id: id,
+          p_note: 'before edit',
+        });
+      } catch {
+        /* version snapshot is best-effort */
+      }
+      const patch = {
+        ...header,
+        balance_due: Math.round((je.total - existing.amountPaid) * 100) / 100,
+      };
+      const { error: uErr } = await acct().from('invoices').update(patch).eq('id', id);
+      if (uErr) return { invoice: null, error: uErr.message };
+      await acct().from('invoice_lines').delete().eq('invoice_id', id);
+      const { error: lErr } = await acct().from('invoice_lines').insert(linePayload);
+      if (lErr) return { invoice: null, error: lErr.message };
+      return { invoice: await this.getById(id) };
+    }
+
+    // Financial edit: only on an unpaid invoice. Post the replacement JE first, then atomically swap.
+    if (existing.amountPaid > 0) {
+      return {
+        invoice: null,
+        error: 'Unapply payments before changing the amounts on this invoice.',
+      };
+    }
+    const posted = await journalService.createAndPost({
+      entryDate: invoiceDate || new Date().toISOString().slice(0, 10),
+      memo: `Invoice ${existing.invoiceNumber ?? id}`,
+      sourceType: 'invoice',
+      sourceId: id,
+      lines: jeLines,
+    });
+    if (!posted.entryId) {
+      return { invoice: null, error: posted.error ?? 'Failed to post the revised revenue entry.' };
+    }
+    const { error: rpcErr } = await acct().rpc('apply_posted_invoice_edit', {
+      p_invoice_id: id,
+      p_new_entry_id: posted.entryId,
+      p_header: header,
+      p_lines: linePayload,
+    });
+    if (rpcErr) {
+      // The replacement posted but the swap failed; void it so the books never drift.
+      await journalService.voidEntry(
+        posted.entryId,
+        'Invoice edit failed after posting replacement'
+      );
+      return { invoice: null, error: rpcErr.message };
     }
     return { invoice: await this.getById(id) };
   },

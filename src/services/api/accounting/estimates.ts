@@ -282,8 +282,11 @@ export const estimatesService = {
   },
 
   /**
-   * Replace a draft estimate's header + lines and recompute money fields. Only permitted
-   * while the estimate is still `draft` (a sent/accepted/converted estimate is locked).
+   * Replace an estimate's header + lines and recompute money fields. An estimate posts NOTHING to
+   * the ledger, so it can be edited in place at any live status (draft / sent / declined / expired)
+   * — editing a sent estimate just changes the content; the sent-version badge then flags it as
+   * "edited since last sent". Only `converted` (it spawned an invoice) and `accepted` (the customer
+   * has agreed) are locked. A pre-edit snapshot is captured so the change is restorable.
    */
   async updateDraft(
     id: string,
@@ -292,10 +295,10 @@ export const estimatesService = {
   ): Promise<{ estimate: Estimate | null; error?: string }> {
     const existing = await this.getById(id);
     if (!existing) return { estimate: null, error: 'Estimate not found.' };
-    if (existing.status !== 'draft') {
+    if (existing.status === 'converted' || existing.status === 'accepted') {
       return {
         estimate: null,
-        error: `Only draft estimates can be edited (this one is ${existing.status}).`,
+        error: `A ${existing.status} estimate can't be edited.`,
       };
     }
     // Snapshot the pre-edit state so this change can be reverted (best-effort; never block the save).
@@ -367,6 +370,12 @@ export const estimatesService = {
     }
     const { error } = await acct().from('estimates').update({ status: 'sent' }).eq('id', id);
     if (error) return { estimate: null, error: error.message };
+    // Pin a 'sent' snapshot + stamp the sent-version hash for the "current version sent?" badge.
+    try {
+      await acct().rpc('record_document_sent', { p_type: 'estimate', p_id: id });
+    } catch {
+      /* sent-version tracking is best-effort */
+    }
     return { estimate: await this.getById(id) };
   },
 

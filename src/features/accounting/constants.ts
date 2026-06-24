@@ -327,6 +327,12 @@ export const ACCOUNTING_QUERY_KEYS = {
   // Document version history (invoices & estimates) — restore points.
   documentSnapshots: (docType: string, docId: string) =>
     ['accounting', 'snapshots', docType, docId] as const,
+  // QuickBooks-style audit timeline for one document (invoice/estimate/bill).
+  documentTimeline: (docType: string, docId: string) =>
+    ['accounting', 'timeline', docType, docId] as const,
+  // Sent-version state ("customer has the current version?") for an invoice/estimate.
+  documentSentState: (docType: string, docId: string) =>
+    ['accounting', 'sent-state', docType, docId] as const,
   // ── #10 Progress billing. `projects` is the subtree root; per-project SOV/change-order/
   // application lists hang under it. Posting an application or releasing retainage posts a
   // balanced JE + invoice, so those mutations also invalidate journal+reports+jobCosting+invoices.
