@@ -1,20 +1,9 @@
-import type { InventoryItem, InventoryCategory } from '@/core/types';
-import { getCategoryDisplayName } from '@/core/types';
-
-const CATEGORIES: InventoryCategory[] = [
-  'material',
-  'foam',
-  'trimCord',
-  'printing3d',
-  'chemicals',
-  'hardware',
-  'miscSupplies',
-];
+import type { InventoryItem, InventoryCategoryOption } from '@/core/types';
 
 export interface InventoryDetailEditFormState {
   editName: string;
   editDescription: string;
-  editCategory: InventoryCategory;
+  editCategory: string;
   editInStock: number;
   editPrice: number;
   editUnit: string;
@@ -30,6 +19,8 @@ interface InventoryDetailEditProps {
   currentItem: InventoryItem;
   form: InventoryDetailEditFormState;
   setForm: (patch: Partial<InventoryDetailEditFormState>) => void;
+  /** Built-in + admin-defined custom categories to choose from. */
+  categoryOptions: InventoryCategoryOption[];
   allocated: number;
   isAdmin: boolean;
   isSaving: boolean;
@@ -43,6 +34,7 @@ export function InventoryDetailEdit({
   currentItem,
   form,
   setForm,
+  categoryOptions,
   allocated,
   isAdmin,
   isSaving,
@@ -98,12 +90,12 @@ export function InventoryDetailEdit({
             <label className="mb-2 block text-sm font-bold text-muted">Category *</label>
             <select
               value={form.editCategory}
-              onChange={(e) => setForm({ editCategory: e.target.value as InventoryCategory })}
+              onChange={(e) => setForm({ editCategory: e.target.value })}
               className="w-full cursor-pointer rounded-sm border-2 border-primary/50 bg-background-light px-4 py-3 font-bold text-white hover:border-primary focus:border-primary focus:outline-none"
             >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat} className="bg-background-dark text-white">
-                  {getCategoryDisplayName(cat)}
+              {categoryOptions.map((cat) => (
+                <option key={cat.key} value={cat.key} className="bg-background-dark text-white">
+                  {cat.label}
                 </option>
               ))}
             </select>

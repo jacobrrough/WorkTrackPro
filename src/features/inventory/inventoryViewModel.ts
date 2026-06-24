@@ -1,10 +1,11 @@
-import type { InventoryCategory, InventoryItem } from '@/core/types';
+import type { InventoryItem } from '@/core/types';
 
 export type InventoryTab = 'allParts' | 'needsReordering' | 'lowStock' | 'byBin';
 
 export interface InventoryFilters {
   search: string;
-  category: InventoryCategory | 'all';
+  /** A category key (built-in or custom), or 'all' for no category filter. */
+  category: string | 'all';
   supplier: string;
 }
 

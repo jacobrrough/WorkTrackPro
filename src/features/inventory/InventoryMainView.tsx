@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
-import type { InventoryCategory, InventoryItem, Job } from '@/core/types';
-import { getCategoryDisplayName } from '@/core/types';
+import type { InventoryItem, Job } from '@/core/types';
+import { useInventoryCategories } from './useInventoryCategories';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { EmptyState } from '@/components/EmptyState';
@@ -43,17 +43,6 @@ interface InventoryMainViewProps {
   calculateAllocated: (inventoryId: string) => number;
 }
 
-const CATEGORY_OPTIONS: Array<InventoryCategory | 'all'> = [
-  'all',
-  'material',
-  'foam',
-  'trimCord',
-  'printing3d',
-  'chemicals',
-  'hardware',
-  'miscSupplies',
-];
-
 export default function InventoryMainView({
   inventory,
   jobs,
@@ -73,6 +62,7 @@ export default function InventoryMainView({
   const { showToast } = useToast();
   const { state: navState, updateState } = useNavigation();
   const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore('inventory-list');
+  const { options: categoryOptions, getLabel: getCategoryLabel } = useInventoryCategories();
 
   const [tab, setTabState] = useState<InventoryTab>(
     () => (navState.inventoryTab as InventoryTab) || 'allParts'
@@ -293,7 +283,7 @@ export default function InventoryMainView({
             </div>
           </div>
           <div className="mt-2 text-xs text-muted">
-            Bin: {item.binLocation || 'Unassigned'} • {getCategoryDisplayName(item.category)}
+            Bin: {item.binLocation || 'Unassigned'} • {getCategoryLabel(item.category)}
           </div>
         </button>
         <div className="mt-3 flex items-center justify-end gap-2">
@@ -512,14 +502,13 @@ export default function InventoryMainView({
           <div className="grid grid-cols-2 gap-2">
             <select
               value={filters.category}
-              onChange={(event) =>
-                onFiltersChange({ category: event.target.value as InventoryCategory | 'all' })
-              }
+              onChange={(event) => onFiltersChange({ category: event.target.value })}
               className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-2 text-white"
             >
-              {CATEGORY_OPTIONS.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat === 'all' ? 'All Categories' : getCategoryDisplayName(cat)}
+              <option value="all">All Categories</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat.key} value={cat.key}>
+                  {cat.label}
                 </option>
               ))}
             </select>

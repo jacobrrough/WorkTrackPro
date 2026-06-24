@@ -1,3 +1,4 @@
+import type { InventoryCategoryOption } from '@/core/types';
 import { supabase } from './supabaseClient';
 
 const ORG_SETTINGS_KEY = 'default';
@@ -65,6 +66,8 @@ export interface OrganizationSettingsRecord {
   enforceOnSiteAtLogin: boolean;
   requireMfa: boolean;
   cncAbleCategories: string[];
+  /** Admin-defined inventory categories ({key,label}) layered on top of the built-in 7. */
+  customInventoryCategories: InventoryCategoryOption[];
   branding: BrandingRecord;
 }
 
@@ -104,12 +107,30 @@ type OrganizationSettingsRow = {
   enforce_on_site_at_login?: boolean;
   require_mfa?: boolean;
   cnc_able_categories?: unknown;
+  custom_inventory_categories?: unknown;
   branding?: Record<string, unknown> | null;
 };
 
 function mapCncAbleCategories(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.filter((c): c is string => typeof c === 'string');
   return ['foam'];
+}
+
+/** Coerce the stored jsonb into a clean {key,label}[], dropping malformed entries and key dupes. */
+function mapCustomInventoryCategories(raw: unknown): InventoryCategoryOption[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: InventoryCategoryOption[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    const key = typeof e.key === 'string' ? e.key.trim() : '';
+    const label = typeof e.label === 'string' ? e.label.trim() : '';
+    if (!key || !label || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, label });
+  }
+  return out;
 }
 
 function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecord {
@@ -135,6 +156,7 @@ function mapRowToRecord(row: OrganizationSettingsRow): OrganizationSettingsRecor
     // un-migrated row or absent column fails safe toward MFA being required.
     requireMfa: row.require_mfa ?? true,
     cncAbleCategories: mapCncAbleCategories(row.cnc_able_categories),
+    customInventoryCategories: mapCustomInventoryCategories(row.custom_inventory_categories),
     branding: mapBranding(row.branding),
   };
 }
@@ -176,6 +198,7 @@ export const adminSettingsService = {
       enforce_on_site_at_login: settings.enforceOnSiteAtLogin,
       require_mfa: settings.requireMfa ?? true,
       cnc_able_categories: settings.cncAbleCategories ?? ['foam'],
+      custom_inventory_categories: settings.customInventoryCategories ?? [],
       branding: settings.branding ?? EMPTY_BRANDING,
       updated_by: authData.user?.id ?? null,
       updated_at: new Date().toISOString(),

@@ -7,6 +7,7 @@ import React, {
   useRef,
   ReactNode,
 } from 'react';
+import type { InventoryCategoryOption } from '@/core/types';
 import {
   DEFAULT_WORK_WEEK_SCHEDULE,
   type WorkDaySchedule,
@@ -42,6 +43,8 @@ export interface AdminSettings {
   requireMfa: boolean;
   /** Inventory categories whose materials are CNC-able (deduct on the CNC milestone). Default ['foam']. */
   cncAbleCategories: string[];
+  /** Admin-defined inventory categories ({key,label}) layered on top of the built-in 7. Default []. */
+  customInventoryCategories: InventoryCategoryOption[];
   /** Company branding for packing slips: name, contact info, and uploaded logo. */
   branding: BrandingSettings;
 }
@@ -66,6 +69,7 @@ const defaults: AdminSettings = {
   enforceOnSiteAtLogin: false,
   requireMfa: true,
   cncAbleCategories: ['foam'],
+  customInventoryCategories: [],
   branding: { ...EMPTY_BRANDING },
 };
 
@@ -78,6 +82,26 @@ function sanitizeCncAbleCategories(raw: unknown, fallback: string[]): string[] {
     return cleaned;
   }
   return [...fallback];
+}
+
+/** Coerce arbitrary stored/incoming data into a clean {key,label}[], dropping malformed/dup-key entries. */
+function sanitizeCustomInventoryCategories(
+  raw: unknown,
+  fallback: InventoryCategoryOption[]
+): InventoryCategoryOption[] {
+  if (!Array.isArray(raw)) return [...fallback];
+  const seen = new Set<string>();
+  const out: InventoryCategoryOption[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    const key = typeof e.key === 'string' ? e.key.trim() : '';
+    const label = typeof e.label === 'string' ? e.label.trim() : '';
+    if (!key || !label || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, label });
+  }
+  return out;
 }
 
 function sanitizeBranding(
@@ -157,6 +181,10 @@ function loadSettings(): AdminSettings {
         cncAbleCategories: sanitizeCncAbleCategories(
           parsed.cncAbleCategories,
           defaults.cncAbleCategories
+        ),
+        customInventoryCategories: sanitizeCustomInventoryCategories(
+          parsed.customInventoryCategories,
+          defaults.customInventoryCategories
         ),
         branding: sanitizeBranding(defaults.branding, parsed.branding),
       };
@@ -246,6 +274,17 @@ function sanitizeSettings(base: AdminSettings, partial: Partial<AdminSettings>):
       ? sanitizeCncAbleCategories(partial.cncAbleCategories, base.cncAbleCategories)
       : sanitizeCncAbleCategories(next.cncAbleCategories, base.cncAbleCategories);
 
+  next.customInventoryCategories =
+    partial.customInventoryCategories !== undefined
+      ? sanitizeCustomInventoryCategories(
+          partial.customInventoryCategories,
+          base.customInventoryCategories
+        )
+      : sanitizeCustomInventoryCategories(
+          next.customInventoryCategories,
+          base.customInventoryCategories
+        );
+
   next.branding =
     partial.branding !== undefined
       ? sanitizeBranding(base.branding, partial.branding)
@@ -296,6 +335,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             enforceOnSiteAtLogin: shared.enforceOnSiteAtLogin,
             requireMfa: shared.requireMfa,
             cncAbleCategories: shared.cncAbleCategories,
+            customInventoryCategories: shared.customInventoryCategories,
             branding: shared.branding,
           })
         );
@@ -331,6 +371,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       enforceOnSiteAtLogin: optimistic.enforceOnSiteAtLogin,
       requireMfa: optimistic.requireMfa,
       cncAbleCategories: optimistic.cncAbleCategories,
+      customInventoryCategories: optimistic.customInventoryCategories,
       branding: optimistic.branding,
     });
 
@@ -357,6 +398,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           enforceOnSiteAtLogin: data.enforceOnSiteAtLogin,
           requireMfa: data.requireMfa,
           cncAbleCategories: data.cncAbleCategories,
+          customInventoryCategories: data.customInventoryCategories,
           branding: data.branding,
         })
       );

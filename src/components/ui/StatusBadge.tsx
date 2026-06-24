@@ -7,10 +7,14 @@ import {
 
 interface StatusBadgeProps {
   status?: JobStatus;
-  category?: InventoryCategory;
+  /** A category key — a built-in one or an admin-defined custom one. */
+  category?: string;
   className?: string;
   size?: 'sm' | 'md';
 }
+
+// Custom (admin-defined) categories have no curated color; fall back to a neutral chip.
+const DEFAULT_CATEGORY_COLOR = 'bg-gray-500/20 text-gray-400 border-gray-500/30';
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   pending: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
@@ -53,7 +57,11 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     : category
       ? getCategoryDisplayName(category)
       : '';
-  const colorClasses = status ? STATUS_COLORS[status] : category ? CATEGORY_COLORS[category] : '';
+  const colorClasses = status
+    ? STATUS_COLORS[status]
+    : category
+      ? (CATEGORY_COLORS[category as InventoryCategory] ?? DEFAULT_CATEGORY_COLOR)
+      : '';
 
   const sizeClasses = {
     sm: 'px-1.5 py-0.5 text-xs',

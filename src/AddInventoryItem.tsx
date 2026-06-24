@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { InventoryCategory } from '@/core/types';
+import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { useToast } from './Toast';
 import { FormField } from './components/ui/FormField';
 import { Button } from './components/ui/Button';
@@ -10,7 +10,7 @@ interface AddInventoryItemProps {
   onAdd: (data: {
     name: string;
     description?: string;
-    category: InventoryCategory;
+    category: string;
     inStock: number;
     unit: string;
     price?: number;
@@ -25,12 +25,13 @@ interface AddInventoryItemProps {
 
 const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, isAdmin = true }) => {
   const { showToast } = useToast();
+  const { options: categoryOptions } = useInventoryCategories();
   const [isSaving, setIsSaving] = useState(false);
 
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<InventoryCategory>('material');
+  const [category, setCategory] = useState<string>('material');
   const [inStock, setInStock] = useState(0);
   const [unit, setUnit] = useState('');
   const [price, setPrice] = useState<number>(0);
@@ -143,31 +144,15 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
             <select
               id="category"
               value={category}
-              onChange={(e) => setCategory(e.target.value as InventoryCategory)}
+              onChange={(e) => setCategory(e.target.value)}
               className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               style={{ colorScheme: 'dark' }}
             >
-              <option value="material" className="bg-background-dark text-white">
-                Material
-              </option>
-              <option value="foam" className="bg-background-dark text-white">
-                Foam
-              </option>
-              <option value="trimCord" className="bg-background-dark text-white">
-                Trim Cord
-              </option>
-              <option value="printing3d" className="bg-background-dark text-white">
-                3D Printing
-              </option>
-              <option value="chemicals" className="bg-background-dark text-white">
-                Chemicals
-              </option>
-              <option value="hardware" className="bg-background-dark text-white">
-                Hardware
-              </option>
-              <option value="miscSupplies" className="bg-background-dark text-white">
-                Misc Supplies
-              </option>
+              {categoryOptions.map((opt) => (
+                <option key={opt.key} value={opt.key} className="bg-background-dark text-white">
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </FormField>
 
