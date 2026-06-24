@@ -9,10 +9,12 @@ import type { NewInvoiceLineInput } from '../../../features/accounting/types';
  * `calculatePartQuote` (via the partsCalculations sanitizer) with the same rate
  * inputs the QuoteCalculator/PartDetail use, so the per-part total matches exactly.
  *
- * One invoice line is emitted per linked part. The line's `lineTotal` is the part
- * quote's `.total` (already at the customer-facing price, including the material
- * multiplier and labor); `quantity`/`unitPrice` are filled for display
- * (unitPrice = total / sets). When a part carries a stored `pricePerSet`, it anchors
+ * One invoice line is emitted per linked part, carrying that part's `partId` so the
+ * document line is a real link to public.parts (not just descriptive text) — the
+ * editor then shows it in the Part column and re-prices it on qty change. The line's
+ * `lineTotal` is the part quote's `.total` (already at the customer-facing price,
+ * including the material multiplier and labor); `quantity`/`unitPrice` are filled for
+ * display (unitPrice = total / sets). When a part carries a stored `pricePerSet`, it anchors
  * the quote (manualSetPrice) exactly like the on-screen calculator. If no part can
  * be quoted, falls back to a single line built from the job's inventory BOM.
  *
@@ -85,15 +87,50 @@ export function setsForPart(
   return summed > 0 ? summed : 1;
 }
 
-/** Resolve which Part a job-part link points to (by id, else by partNumber). */
+/**
+ * A part link a job bills from. `JobPartRef` is the shared shape so the document builder
+ * and the editor's part hydration resolve the job's parts the exact same way.
+ */
+export interface JobPartRef {
+  partId?: string;
+  partNumber?: string;
+  dashQuantities?: Record<string, number> | null;
+}
+
+/**
+ * The part links a job bills from: the multi-part `job.parts` list when present, else the
+ * single primary part (`job.partNumber` + `job.dashQuantities`). Exported so the prefill's
+ * part-hydration uses the SAME resolution the line builder uses.
+ */
+export function jobPartLinks(
+  job: Pick<Job, 'parts' | 'partNumber' | 'dashQuantities'>
+): JobPartRef[] {
+  if (job.parts && job.parts.length > 0) {
+    return job.parts.map((p) => ({
+      partId: p.partId,
+      partNumber: p.partNumber,
+      dashQuantities: p.dashQuantities,
+    }));
+  }
+  if (job.partNumber) {
+    return [{ partId: undefined, partNumber: job.partNumber, dashQuantities: job.dashQuantities }];
+  }
+  return [];
+}
+
+/**
+ * Resolve which Part a job-part link points to (by id, else by partNumber). The number
+ * match is case-insensitive so a job carrying 'p-100' still resolves the stored 'P-100'
+ * (mirrors partsService.getPartByNumber's case-insensitive fallback).
+ */
 function findPart(parts: Part[], link: { partId?: string; partNumber?: string }): Part | undefined {
   if (link.partId) {
     const byId = parts.find((p) => p.id === link.partId);
     if (byId) return byId;
   }
   if (link.partNumber) {
-    const target = link.partNumber.trim();
-    return parts.find((p) => p.partNumber?.trim() === target);
+    const target = link.partNumber.trim().toUpperCase();
+    return parts.find((p) => p.partNumber?.trim().toUpperCase() === target);
   }
   return undefined;
 }
@@ -146,20 +183,12 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
   const lines: NewInvoiceLineInput[] = [];
 
   // Determine the part links: prefer the multi-part list, else the primary part.
-  const links =
-    job.parts && job.parts.length > 0
-      ? job.parts.map((p) => ({
-          partId: p.partId,
-          partNumber: p.partNumber,
-          dashQuantities: p.dashQuantities,
-        }))
-      : job.partNumber
-        ? [{ partId: undefined, partNumber: job.partNumber, dashQuantities: job.dashQuantities }]
-        : [];
+  const links = jobPartLinks(job);
 
   // Re-quote each linked part from its current state. The per-part `total` is the live
   // quote; it is what we bill ONLY when the job has no saved quoted snapshot (older jobs).
-  const partTotals: { description: string; sets: number; total: number }[] = [];
+  // `partId` is carried through so the emitted line links the real part.
+  const partTotals: { partId: string; description: string; sets: number; total: number }[] = [];
   for (const link of links) {
     const part = findPart(parts, link);
     if (!part) continue;
@@ -170,6 +199,7 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
     if (!quoted) continue;
 
     partTotals.push({
+      partId: part.id,
       description: quoted.description,
       sets,
       total: quoted.lineTotal,
@@ -212,6 +242,7 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
             : round2(snapshot! / partTotals.length);
       }
       lines.push({
+        partId: p.partId,
         description: p.description,
         quantity: p.sets,
         unitPrice: round2(lineTotal / p.sets),

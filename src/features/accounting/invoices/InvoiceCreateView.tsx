@@ -2,16 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
-import type { Job } from '@/core/types';
 import { jobService } from '@/services/api/jobs';
-import { partsService } from '@/services/api/parts';
-import { inventoryService } from '@/services/api/inventory';
-import { adminSettingsService } from '@/services/api/adminSettings';
-import { buildInvoiceLinesFromJob, taxJurisdictionsService } from '@/services/api/accounting';
+import { taxJurisdictionsService } from '@/services/api/accounting';
 import { AccountingShell } from '../components/AccountingShell';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { buildSalesLinesForJob } from '../documents/buildLinesForJob';
 import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 import { useCustomFieldDefs, useCustomers, useTaxCodes } from '../hooks/useAccountingQueries';
 import { useCreateInvoiceDraft, useSendInvoice } from '../hooks/useAccountingMutations';
@@ -34,30 +31,6 @@ const emptyLine = (): NewInvoiceLineInput => ({
   discount: 0,
   taxable: true,
 });
-
-/**
- * Pull a job's parts/inventory/settings and price them with the same quote calculator
- * the job screen uses (buildInvoiceLinesFromJob -> calculatePartQuote). Reads public.* only.
- */
-async function buildLinesForJob(job: Job, taxCodeId: string | null) {
-  const [parts, inventory, settings] = await Promise.all([
-    partsService.getAllParts(),
-    inventoryService.getAllInventory(),
-    adminSettingsService.getOrganizationSettings(),
-  ]);
-  return buildInvoiceLinesFromJob({
-    job,
-    parts,
-    inventory,
-    settings: {
-      laborRate: settings?.laborRate ?? 0,
-      cncRate: settings?.cncRate ?? 0,
-      printer3DRate: settings?.printer3DRate ?? 0,
-      materialMultiplier: settings?.materialUpcharge,
-    },
-    taxCodeId,
-  });
-}
 
 function FromJobDialog({
   taxCodeId,
@@ -86,7 +59,7 @@ function FromJobDialog({
         setError(`No job found with code ${code}.`);
         return;
       }
-      const lines = await buildLinesForJob(job, taxCodeId);
+      const lines = await buildSalesLinesForJob(job, taxCodeId);
       if (lines.length === 0) {
         setError('That job has no quotable parts or inventory to invoice.');
         return;
@@ -275,7 +248,9 @@ export default function InvoiceCreateView() {
     (async () => {
       const job = await jobService.getJobById(prefillJobId);
       if (!job) return;
-      const jobLines = await buildLinesForJob(job, null).catch(() => [] as NewInvoiceLineInput[]);
+      const jobLines = await buildSalesLinesForJob(job, null).catch(
+        () => [] as NewInvoiceLineInput[]
+      );
       applyJobLines(jobLines, job.id, job.customerId ?? null);
     })().catch(() => {
       /* best-effort prefill — the form still works empty */

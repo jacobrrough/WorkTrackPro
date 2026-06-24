@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { InventoryItem, Job, Part } from '../../../core/types';
 import { calculatePartQuote } from '../../../lib/partsCalculations';
-import { buildInvoiceLinesFromJob, setsForPart } from './invoiceLinesFromJob';
+import { buildInvoiceLinesFromJob, setsForPart, jobPartLinks } from './invoiceLinesFromJob';
 
 const makeInventory = (id: string, price: number): InventoryItem =>
   ({
@@ -93,6 +93,35 @@ describe('setsForPart', () => {
   });
 });
 
+describe('jobPartLinks', () => {
+  it('returns the multi-part list when present', () => {
+    const job = makeJob({
+      partNumber: undefined,
+      dashQuantities: undefined,
+      parts: [
+        { partId: 'part-1', partNumber: 'P-100', dashQuantities: { '01': 1 } },
+        { partId: 'part-2', partNumber: 'P-200', dashQuantities: { '01': 2 } },
+      ],
+    });
+    expect(jobPartLinks(job)).toEqual([
+      { partId: 'part-1', partNumber: 'P-100', dashQuantities: { '01': 1 } },
+      { partId: 'part-2', partNumber: 'P-200', dashQuantities: { '01': 2 } },
+    ]);
+  });
+
+  it('falls back to the primary part (number + dash quantities) when there is no list', () => {
+    const job = makeJob({ partNumber: 'P-100', dashQuantities: { '01': 3 }, parts: undefined });
+    expect(jobPartLinks(job)).toEqual([
+      { partId: undefined, partNumber: 'P-100', dashQuantities: { '01': 3 } },
+    ]);
+  });
+
+  it('returns no links when the job has neither a parts list nor a part number', () => {
+    const job = makeJob({ partNumber: undefined, dashQuantities: undefined, parts: undefined });
+    expect(jobPartLinks(job)).toEqual([]);
+  });
+});
+
 describe('buildInvoiceLinesFromJob', () => {
   const inventory = [makeInventory('inv-1', 5)];
 
@@ -121,6 +150,8 @@ describe('buildInvoiceLinesFromJob', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].lineTotal).toBeCloseTo(Math.round((expected!.total ?? 0) * 100) / 100, 2);
     expect(lines[0].quantity).toBe(3);
+    // The line LINKS the resolved part (resolved here by part number) so the document is synced.
+    expect(lines[0].partId).toBe('part-1');
     expect(lines[0].jobId).toBe('job-1');
     expect(lines[0].incomeAccountId).toBe('acc-sales');
     expect(lines[0].taxCodeId).toBe('tax-1');
@@ -167,6 +198,16 @@ describe('buildInvoiceLinesFromJob', () => {
     });
     expect(lines).toHaveLength(2);
     expect(lines.map((l) => l.jobId)).toEqual(['job-1', 'job-1']);
+    // Each line links its own part.
+    expect(lines.map((l) => l.partId)).toEqual(['part-1', 'part-2']);
+  });
+
+  it('resolves a part whose number differs only by case (job carries a lowercase number)', () => {
+    const part = makePart(); // partNumber 'P-100'
+    const job = makeJob({ partNumber: 'p-100', dashQuantities: { '01': 1 } });
+    const lines = buildInvoiceLinesFromJob({ job, parts: [part], inventory, settings: SETTINGS });
+    expect(lines).toHaveLength(1);
+    expect(lines[0].partId).toBe('part-1');
   });
 
   it('falls back to the job inventory BOM when no part can be quoted', () => {
@@ -186,6 +227,8 @@ describe('buildInvoiceLinesFromJob', () => {
     // 4 * $5 * 2 = $40
     expect(lines[0].lineTotal).toBeCloseTo(40, 2);
     expect(lines[0].jobId).toBe('job-1');
+    // A BOM fallback line links no part (there is none to link).
+    expect(lines[0].partId == null).toBe(true);
   });
 
   it('returns no lines when there is nothing to invoice', () => {
@@ -206,6 +249,8 @@ describe('buildInvoiceLinesFromJob', () => {
       const lines = buildInvoiceLinesFromJob({ job, parts: [part], inventory, settings: SETTINGS });
 
       expect(lines).toHaveLength(1);
+      // The part stays linked even on the snapshot path.
+      expect(lines[0].partId).toBe('part-1');
       // The line total equals the snapshot exactly, regardless of what the part re-quotes to.
       expect(lines[0].lineTotal).toBeCloseTo(1234.56, 2);
       // unitPrice * quantity still reconstructs the (snapshot) total within rounding.

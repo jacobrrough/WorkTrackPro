@@ -67,8 +67,12 @@ export {
   buildRecurringBillInput,
   buildRecurringJournalLines,
 } from './recurringPayload';
-export { buildInvoiceLinesFromJob, setsForPart } from './invoiceLinesFromJob';
-export type { InvoiceLinesFromJobParams, QuoteRateSettings } from './invoiceLinesFromJob';
+export { buildInvoiceLinesFromJob, setsForPart, jobPartLinks } from './invoiceLinesFromJob';
+export type {
+  InvoiceLinesFromJobParams,
+  QuoteRateSettings,
+  JobPartRef,
+} from './invoiceLinesFromJob';
 // ── Banking (A4) ─────────────────────────────────────────────────────────────
 export { bankAccountsService } from './bankAccounts';
 export { bankTransactionsService } from './bankTransactions';
