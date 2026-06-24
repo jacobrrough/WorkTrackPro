@@ -445,6 +445,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       onClick: () => onNavigate('inventory'),
     },
     {
+      key: 'tools',
+      title: 'Tools',
+      subtitle: 'Tag in / tag out',
+      icon: 'handyman',
+      iconClassName: 'text-rose-400',
+      cardClassName: 'border-rose-500/30 bg-gradient-to-br from-rose-600/20 to-pink-600/20',
+      ariaLabel: 'Open tools',
+      onClick: () => onNavigate('tools'),
+    },
+    {
       key: 'scan',
       title: 'Scan',
       subtitle: 'QR Code',

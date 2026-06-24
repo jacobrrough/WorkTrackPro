@@ -4,11 +4,13 @@ import { useToast } from './Toast';
 import QRScanner from './components/QRScanner';
 import BinResultsView from './components/BinResultsView';
 import type { Job } from '@/core/types';
-import type { InventoryItem } from '@/core/types';
+import type { InventoryItem, Tool } from '@/core/types';
+import { isToolScanPayload, resolveToolByScan } from '@/features/tools/toolScan';
 
 interface ScannerScreenProps {
   jobs: Job[];
   inventory: InventoryItem[];
+  tools: Tool[];
   onNavigate: (view: ViewState, id?: string) => void;
   onBack?: () => void;
   onUpdateJob: (jobId: string, data: Partial<Job>) => Promise<Job | null>;
@@ -27,6 +29,7 @@ interface ScannerScreenProps {
 const ScannerScreen: React.FC<ScannerScreenProps> = ({
   jobs,
   inventory,
+  tools,
   onNavigate,
   onBack,
   onUpdateJob,
@@ -57,6 +60,18 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
       return;
     }
 
+    // An explicit tool QR (TOOL:<number>) always routes to the Tools hub.
+    if (isToolScanPayload(trimmed)) {
+      const tool = resolveToolByScan(trimmed, tools);
+      if (tool) {
+        showToast(`Found tool: ${tool.name}`, 'success');
+        onNavigate('tools', tool.id);
+      } else {
+        showToast(`Scanned a tool code with no match: ${trimmed}`, 'warning');
+      }
+      return;
+    }
+
     const inventoryItem = inventory.find((item) => item.id === trimmed || item.barcode === trimmed);
     const job = jobs.find((j) => j.id === trimmed || j.jobCode?.toString() === trimmed);
 
@@ -71,7 +86,14 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
       if (binMatch) {
         setScannedBinLocation(trimmed);
       } else {
-        showToast(`Scanned: ${trimmed} (not found)`, 'warning');
+        // Fall back to a bare tool number before giving up.
+        const tool = resolveToolByScan(trimmed, tools);
+        if (tool) {
+          showToast(`Found tool: ${tool.name}`, 'success');
+          onNavigate('tools', tool.id);
+        } else {
+          showToast(`Scanned: ${trimmed} (not found)`, 'warning');
+        }
       }
     }
   };
