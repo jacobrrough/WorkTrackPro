@@ -1,10 +1,11 @@
-import type { InventoryCategory, InventoryItem } from '@/core/types';
+import type { InventoryItem } from '@/core/types';
 
 export type InventoryTab = 'allParts' | 'needsReordering' | 'lowStock' | 'byBin';
 
 export interface InventoryFilters {
   search: string;
-  category: InventoryCategory | 'all';
+  /** A category key (built-in or custom), or 'all' for no category filter. */
+  category: string | 'all';
   supplier: string;
 }
 
@@ -173,8 +174,9 @@ export function stockStatePill(stock: StockComputed): StockStatePill {
   return { label: 'In stock', className: 'border-green-500/40 bg-green-500/15 text-green-300' };
 }
 
-/** Material Symbols icon name for an inventory category (thumbnail fallback when no image). */
-export function categoryIcon(category: InventoryCategory): string {
+/** Material Symbols icon name for an inventory category (thumbnail fallback when no image).
+ *  Accepts any category key — built-in or admin-defined custom — and falls back for unknown ones. */
+export function categoryIcon(category: string): string {
   switch (category) {
     case 'material':
       return 'category';

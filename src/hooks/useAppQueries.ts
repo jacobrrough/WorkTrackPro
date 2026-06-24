@@ -1,17 +1,19 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { InventoryItem, Job, Shift, User } from '@/core/types';
+import type { InventoryItem, Job, Shift, Tool, User } from '@/core/types';
 import { dedupeJobsById } from '@/lib/jobUtils';
 import { jobService } from '@/services/api/jobs';
 import { shiftService } from '@/services/api/shifts';
 import { userService } from '@/services/api/users';
 import { inventoryService } from '@/services/api/inventory';
+import { toolsService } from '@/services/api/tools';
 
 export interface UseAppQueriesResult {
   jobs: Job[];
   shifts: Shift[];
   users: User[];
   inventory: InventoryItem[];
+  tools: Tool[];
   /**
    * True while the core jobs/inventory queries are loading their first page of
    * data (and have nothing cached yet). Lets list views show a spinner instead
@@ -25,6 +27,7 @@ export interface UseAppQueriesResult {
   refreshShifts: () => Promise<void>;
   refreshUsers: () => Promise<void>;
   refreshInventory: () => Promise<void>;
+  refreshTools: () => Promise<void>;
 }
 
 export function useAppQueries(enabled: boolean): UseAppQueriesResult {
@@ -59,6 +62,12 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
   const { data: inventoryData = [], isLoading: inventoryLoading } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => inventoryService.getAllInventory(),
+    enabled,
+  });
+
+  const { data: toolsData = [] } = useQuery({
+    queryKey: ['tools'],
+    queryFn: () => toolsService.getAllTools(),
     enabled,
   });
 
@@ -111,16 +120,22 @@ export function useAppQueries(enabled: boolean): UseAppQueriesResult {
     await queryClient.invalidateQueries({ queryKey: ['inventory'] });
   }, [queryClient]);
 
+  const refreshTools = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['tools'] });
+  }, [queryClient]);
+
   return {
     jobs: jobsData,
     shifts: shiftsData,
     users: usersData,
     inventory: inventoryData,
+    tools: toolsData,
     isPending,
     refreshJobs,
     refreshJob,
     refreshShifts,
     refreshUsers,
     refreshInventory,
+    refreshTools,
   };
 }

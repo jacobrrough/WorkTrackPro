@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
-import type { InventoryCategory, InventoryItem } from '@/core/types';
-import { getCategoryDisplayName } from '@/core/types';
+import type { InventoryItem } from '@/core/types';
+import { useInventoryCategories } from './useInventoryCategories';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { EmptyState } from '@/components/EmptyState';
@@ -32,17 +32,6 @@ interface InventoryMainViewProps {
   calculateAllocated: (inventoryId: string) => number;
 }
 
-const CATEGORY_OPTIONS: Array<InventoryCategory | 'all'> = [
-  'all',
-  'material',
-  'foam',
-  'trimCord',
-  'printing3d',
-  'chemicals',
-  'hardware',
-  'miscSupplies',
-];
-
 const TABS: Array<{ key: InventoryTab; label: string }> = [
   { key: 'allParts', label: 'All Parts' },
   { key: 'needsReordering', label: 'Needs Reorder' },
@@ -64,6 +53,7 @@ export default function InventoryMainView({
   const { showToast } = useToast();
   const { state: navState, updateState } = useNavigation();
   const { ref: scrollRef, onScroll: handleScroll } = useScrollRestore('inventory-list');
+  const { options: categoryOptions } = useInventoryCategories();
 
   const [tab, setTabState] = useState<InventoryTab>(
     () => (navState.inventoryTab as InventoryTab) || 'allParts'
@@ -265,14 +255,13 @@ export default function InventoryMainView({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select
               value={filters.category}
-              onChange={(event) =>
-                onFiltersChange({ category: event.target.value as InventoryCategory | 'all' })
-              }
+              onChange={(event) => onFiltersChange({ category: event.target.value })}
               className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
             >
-              {CATEGORY_OPTIONS.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat === 'all' ? 'All Categories' : getCategoryDisplayName(cat)}
+              <option value="all">All Categories</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat.key} value={cat.key}>
+                  {cat.label}
                 </option>
               ))}
             </select>

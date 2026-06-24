@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ViewState, getCategoryDisplayName, getAllInventoryCategories } from '@/core/types';
+import { ViewState, makeCategoryKey, isBuiltInInventoryCategory } from '@/core/types';
 import { useApp } from '@/AppContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { useToast } from '@/Toast';
 import {
   WorkWeekSchedule,
@@ -42,8 +43,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
     refreshInventory,
   } = useApp();
   const { settings, updateSettings, isSyncing } = useSettings();
+  const { options: categoryOptions } = useInventoryCategories();
   const { showToast } = useToast();
   const isAdmin = currentUser?.isAdmin === true;
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
   const [laborRate, setLaborRate] = useState(String(settings.laborRate));
   const [materialUpcharge, setMaterialUpcharge] = useState(String(settings.materialUpcharge));
   const [cncRate, setCncRate] = useState(String(settings.cncRate));
@@ -309,6 +312,63 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       showToast(msg, 'error');
     } finally {
       setClearingBin(null);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!isAdmin) {
+      showToast('Admin access required', 'error');
+      return;
+    }
+    const label = newCategoryLabel.trim();
+    const key = makeCategoryKey(label);
+    if (!label || !key) {
+      showToast('Enter a category name with letters or numbers', 'error');
+      return;
+    }
+    // Reject a duplicate by derived key OR by case-insensitive label, against built-ins + custom.
+    const labelLower = label.toLowerCase();
+    if (categoryOptions.some((c) => c.key === key || c.label.toLowerCase() === labelLower)) {
+      showToast(`"${label}" already exists`, 'error');
+      return;
+    }
+    const next = [...settings.customInventoryCategories, { key, label }];
+    const result = await updateSettings({ customInventoryCategories: next });
+    if (result.success) {
+      showToast(`Added category "${label}"`, 'success');
+      setNewCategoryLabel('');
+    } else {
+      showToast(
+        result.error ? `Failed to add category: ${result.error}` : 'Failed to add category',
+        'error'
+      );
+    }
+  };
+
+  const handleRemoveCategory = async (key: string, label: string) => {
+    if (!isAdmin) {
+      showToast('Admin access required', 'error');
+      return;
+    }
+    const inUse = (inventory ?? []).filter((i) => i.category === key).length;
+    if (inUse > 0) {
+      showToast(`${inUse} item(s) still use "${label}" — reassign them first`, 'error');
+      return;
+    }
+    const next = settings.customInventoryCategories.filter((c) => c.key !== key);
+    // Drop the key from cncAbleCategories too so a removed category can't dangle in that set.
+    const nextCnc = (settings.cncAbleCategories ?? []).filter((c) => c !== key);
+    const result = await updateSettings({
+      customInventoryCategories: next,
+      cncAbleCategories: nextCnc,
+    });
+    if (result.success) {
+      showToast(`Removed category "${label}"`, 'success');
+    } else {
+      showToast(
+        result.error ? `Failed to remove category: ${result.error}` : 'Failed to remove category',
+        'error'
+      );
     }
   };
 
@@ -612,6 +672,73 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </button>
           </div>
 
+          {isAdmin && (
+            <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+              <h2 className="mb-1 text-sm font-semibold text-white">Inventory categories</h2>
+              <p className="mb-3 text-[11px] text-subtle">
+                Categories available when adding or editing inventory items. The 7 built-in
+                categories are always available; add your own below. A custom category can be
+                removed once no items use it.
+              </p>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {categoryOptions.map((opt) => {
+                  const builtIn = isBuiltInInventoryCategory(opt.key);
+                  return (
+                    <span
+                      key={opt.key}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold ${
+                        builtIn
+                          ? 'border-white/10 bg-white/5 text-muted'
+                          : 'border-primary/50 bg-primary/20 text-primary'
+                      }`}
+                    >
+                      {opt.label}
+                      {builtIn ? (
+                        <span className="text-[10px] font-normal text-subtle">built-in</span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={isSyncing}
+                          onClick={() => handleRemoveCategory(opt.key, opt.label)}
+                          className="ml-0.5 flex items-center text-primary/70 hover:text-primary disabled:opacity-50"
+                          aria-label={`Remove ${opt.label}`}
+                          title={`Remove ${opt.label}`}
+                        >
+                          <span className="material-symbols-outlined text-sm leading-none">
+                            close
+                          </span>
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCategoryLabel}
+                  onChange={(e) => setNewCategoryLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleAddCategory();
+                    }
+                  }}
+                  placeholder="New category name (e.g. Adhesives)"
+                  className="min-h-[44px] flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleAddCategory()}
+                  disabled={isSyncing || !newCategoryLabel.trim()}
+                  className="min-h-[44px] shrink-0 rounded-sm bg-primary px-4 py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-sm border border-white/10 bg-white/5 p-4">
             <h2 className="mb-1 text-sm font-semibold text-white">CNC-able material categories</h2>
             <p className="mb-3 text-[11px] text-subtle">
@@ -619,17 +746,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               else deducts when a unit is marked fully done.
             </p>
             <div className="flex flex-wrap gap-2">
-              {getAllInventoryCategories().map((cat) => {
-                const selected = (settings.cncAbleCategories ?? ['foam']).includes(cat);
+              {categoryOptions.map((opt) => {
+                const selected = (settings.cncAbleCategories ?? ['foam']).includes(opt.key);
                 return (
                   <button
-                    key={cat}
+                    key={opt.key}
                     type="button"
                     disabled={isSyncing}
                     onClick={() => {
                       const set = new Set(settings.cncAbleCategories ?? ['foam']);
-                      if (set.has(cat)) set.delete(cat);
-                      else set.add(cat);
+                      if (set.has(opt.key)) set.delete(opt.key);
+                      else set.add(opt.key);
                       void updateSettings({ cncAbleCategories: Array.from(set) });
                     }}
                     className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
@@ -638,7 +765,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         : 'border-white/10 bg-white/5 text-muted hover:bg-white/10'
                     } disabled:opacity-50`}
                   >
-                    {getCategoryDisplayName(cat)}
+                    {opt.label}
                     {selected ? ' ✓' : ''}
                   </button>
                 );

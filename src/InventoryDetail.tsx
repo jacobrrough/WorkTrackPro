@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { InventoryItem, ViewState, Attachment, Job } from '@/core/types';
-import { getCategoryDisplayName } from '@/core/types';
+import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { useToast } from './Toast';
 import QRScanner from './components/QRScanner';
 import FileViewer from './FileViewer';
@@ -80,6 +80,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   jobs = [],
 }) => {
   const { showToast } = useToast();
+  const { options: categoryOptions, getLabel: getCategoryLabel } = useInventoryCategories();
   const {
     currentItem,
     setCurrentItem,
@@ -331,6 +332,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           currentItem={currentItem}
           form={editForm}
           setForm={setEditForm}
+          categoryOptions={categoryOptions}
           allocated={allocated}
           isAdmin={isAdmin}
           isSaving={isSaving}
@@ -393,7 +395,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               </button>
               <div className="flex-1">
                 <h1 className="text-xl font-bold text-white">{currentItem.name}</h1>
-                <p className="text-sm text-muted">{getCategoryDisplayName(currentItem.category)}</p>
+                <p className="text-sm text-muted">{getCategoryLabel(currentItem.category)}</p>
               </div>
             </div>
             <button

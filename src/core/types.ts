@@ -39,6 +39,11 @@ export function getStatusDisplayName(status: JobStatus): string {
 }
 
 // Inventory category and display
+//
+// The 7 entries below are the fixed, built-in categories. Admins can add custom categories on
+// top of these (stored in organization_settings, not in code), so a stored category value is
+// just a `string` — see `InventoryItem.category` and `useInventoryCategories`. This union stays
+// the source of truth for the built-in keys, their curated labels, and badge colors.
 export type InventoryCategory =
   | 'material'
   | 'foam'
@@ -47,6 +52,12 @@ export type InventoryCategory =
   | 'chemicals'
   | 'hardware'
   | 'miscSupplies';
+
+/** A selectable inventory category: a stable `key` (persisted on rows) + a human `label`. */
+export interface InventoryCategoryOption {
+  key: string;
+  label: string;
+}
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   material: 'Material',
@@ -58,13 +69,80 @@ const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   miscSupplies: 'Misc Supplies',
 };
 
-export function getCategoryDisplayName(category: InventoryCategory): string {
-  return CATEGORY_LABELS[category] ?? category;
+/** Built-in categories in canonical display order. Custom categories are appended after these. */
+export const BUILTIN_INVENTORY_CATEGORIES: InventoryCategoryOption[] = (
+  Object.keys(CATEGORY_LABELS) as InventoryCategory[]
+).map((key) => ({ key, label: CATEGORY_LABELS[key] }));
+
+const BUILTIN_CATEGORY_KEYS: ReadonlySet<string> = new Set(Object.keys(CATEGORY_LABELS));
+
+/** True for one of the 7 fixed built-in categories (which can't be removed or renamed). */
+export function isBuiltInInventoryCategory(key: string): boolean {
+  return BUILTIN_CATEGORY_KEYS.has(key);
 }
 
-/** Canonical ordered list of all inventory categories (single source of truth for pickers). */
+/**
+ * Turn a stored category key into a readable label. Built-ins use their curated label;
+ * unknown/custom keys are humanized (`rawSteel` / `raw_steel` / `raw-steel` -> `Raw Steel`)
+ * so a badge never renders a raw slug even before custom labels have loaded from settings.
+ */
+export function humanizeCategoryKey(key: string): string {
+  const spaced = key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .trim();
+  if (!spaced) return key;
+  return spaced
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+export function getCategoryDisplayName(category: string): string {
+  return CATEGORY_LABELS[category as InventoryCategory] ?? humanizeCategoryKey(category);
+}
+
+/** Canonical ordered list of the built-in inventory category keys. */
 export function getAllInventoryCategories(): InventoryCategory[] {
   return Object.keys(CATEGORY_LABELS) as InventoryCategory[];
+}
+
+/**
+ * Derive a stable, storage-safe key from a user-entered label: camelCase, alphanumeric only
+ * (e.g. "Raw Steel!" -> "rawSteel"). Returns '' when the label has no usable characters, which
+ * the caller treats as an invalid label.
+ */
+export function makeCategoryKey(label: string): string {
+  const words = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return '';
+  return words.map((w, i) => (i === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1))).join('');
+}
+
+/**
+ * Merge the built-in categories with admin-defined custom ones for display. Built-ins come
+ * first; a custom entry can never shadow a built-in key, malformed entries are skipped, and
+ * custom keys are deduped (first occurrence wins).
+ */
+export function mergeInventoryCategories(
+  custom: InventoryCategoryOption[]
+): InventoryCategoryOption[] {
+  const seen = new Set<string>(BUILTIN_INVENTORY_CATEGORIES.map((c) => c.key));
+  const out: InventoryCategoryOption[] = [...BUILTIN_INVENTORY_CATEGORIES];
+  for (const c of custom) {
+    if (!c || typeof c.key !== 'string' || !c.key || typeof c.label !== 'string' || !c.label) {
+      continue;
+    }
+    if (seen.has(c.key)) continue;
+    seen.add(c.key);
+    out.push({ key: c.key, label: c.label });
+  }
+  return out;
 }
 
 // View state (app navigation)
@@ -92,7 +170,9 @@ export type ViewState =
   | 'chat-conversation'
   | 'notification-settings'
   | 'appearance'
-  | 'project-hours';
+  | 'project-hours'
+  | 'tools'
+  | 'tools-admin';
 
 export type BoardType = 'shopFloor' | 'admin';
 
@@ -267,7 +347,8 @@ export interface InventoryItem {
   id: string;
   name: string;
   description?: string;
-  category: InventoryCategory;
+  /** Category key — a built-in key or an admin-defined custom one. Free text (see InventoryCategory). */
+  category: string;
   inStock: number;
   available: number;
   disposed: number;
@@ -282,6 +363,44 @@ export interface InventoryItem {
   vendor?: string;
   attachments?: Attachment[];
   attachmentCount?: number;
+}
+
+// Tools (tag-in / tag-out custody tracking — distinct from consumable inventory)
+export type ToolStatus = 'available' | 'out' | 'retired';
+
+export interface Tool {
+  id: string;
+  name: string;
+  /** Unique, human-assigned number encoded in the tool's printed QR code. */
+  toolNumber: string;
+  /** Home bin the tool must be returned to (A4c format). */
+  homeBin: string;
+  description?: string;
+  status: ToolStatus;
+  /** Profile id of the employee currently holding the tool, or undefined when available. */
+  currentHolderId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ToolEventType = 'checkout' | 'checkin' | 'transfer' | 'retire';
+
+/** One row of a tool's append-only custody audit trail. */
+export interface ToolEvent {
+  id: string;
+  toolId: string;
+  eventType: ToolEventType;
+  /** Who performed the action. */
+  actorId?: string;
+  actorName?: string;
+  previousHolderId?: string;
+  previousHolderName?: string;
+  newHolderId?: string;
+  newHolderName?: string;
+  /** Bin involved on a check-in. */
+  bin?: string;
+  notes?: string;
+  createdAt: string;
 }
 
 // Part

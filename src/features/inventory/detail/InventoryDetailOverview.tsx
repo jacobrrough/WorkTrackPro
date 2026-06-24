@@ -1,6 +1,6 @@
 import React from 'react';
 import type { InventoryItem, Job, ViewState } from '@/core/types';
-import { getCategoryDisplayName } from '@/core/types';
+import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
 import { isAllocationActiveStatus, isConsumedStatus } from '@/lib/inventoryCalculations';
 import { StockTargetInput } from '@/features/inventory/StockTargetInput';
@@ -60,6 +60,7 @@ export function InventoryDetailOverview({
   onConfirmReceiveOrder,
   onScanBarcode,
 }: InventoryDetailOverviewProps) {
+  const { getLabel: getCategoryLabel } = useInventoryCategories();
   // Staged stock count: null = not editing, otherwise the target absolute in-stock value the
   // user is dialing in via the text box or the +/- nudges. Nothing is written until Confirm.
   const [stockTarget, setStockTarget] = React.useState<number | null>(null);
@@ -152,7 +153,7 @@ export function InventoryDetailOverview({
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
-            {getCategoryDisplayName(item.category)}
+            {getCategoryLabel(item.category)}
           </span>
           {item.vendor && (
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
