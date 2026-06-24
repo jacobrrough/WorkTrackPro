@@ -2352,8 +2352,9 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 Job details
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {/* EST#/RFQ#/INV# free-text editing is retired: real estimates/invoices
-                    link through the billing panel; legacy values stay stored + visible. */}
+                {/* Free-text reference numbers (EST#/RFQ#/INV#/PO#/OWR#) for cross-referencing
+                    QuickBooks while it runs alongside. Real estimates/invoices ALSO link through
+                    the billing panel; these stay editable by hand for reconciliation. */}
                 {JobCustomerSelect && (
                   <div className="col-span-2">
                     <label className="mb-0.5 block text-[11px] text-muted">Customer</label>
@@ -2372,6 +2373,36 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     </Suspense>
                   </div>
                 )}
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-muted">EST #</label>
+                  <input
+                    type="text"
+                    value={editForm.estNumber}
+                    onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="EST #"
+                  />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-muted">RFQ #</label>
+                  <input
+                    type="text"
+                    value={editForm.rfqNumber}
+                    onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="RFQ #"
+                  />
+                </div>
+                <div>
+                  <label className="mb-0.5 block text-[11px] text-muted">INV #</label>
+                  <input
+                    type="text"
+                    value={editForm.invNumber}
+                    onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })}
+                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    placeholder="INV #"
+                  />
+                </div>
                 <div>
                   <label className="mb-0.5 block text-[11px] text-muted">PO #</label>
                   <input
