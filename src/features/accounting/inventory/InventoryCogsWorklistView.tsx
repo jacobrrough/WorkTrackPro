@@ -51,7 +51,7 @@ function CostBadge({ job, result }: { job: ConsumableJob; result?: ConsumeJobCog
     );
   }
   return (
-    <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-xs font-semibold text-slate-400">
+    <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-xs font-semibold text-muted">
       Needs costing
     </span>
   );
@@ -61,14 +61,14 @@ function CostBadge({ job, result }: { job: ConsumableJob; result?: ConsumeJobCog
 function JobCogsEvents({ jobId }: { jobId: string }) {
   const { data: events = [], isPending, isError } = useJobCogsEvents(jobId);
 
-  if (isPending) return <p className="px-3 py-2 text-xs text-slate-500">Loading COGS events…</p>;
+  if (isPending) return <p className="px-3 py-2 text-xs text-subtle">Loading COGS events…</p>;
   if (isError)
     return (
       <p className="px-3 py-2 text-xs text-red-400">Could not load this job&apos;s COGS events.</p>
     );
   if (events.length === 0)
     return (
-      <p className="px-3 py-2 text-xs text-slate-500">No COGS events recorded for this job yet.</p>
+      <p className="px-3 py-2 text-xs text-subtle">No COGS events recorded for this job yet.</p>
     );
 
   return (
@@ -82,11 +82,11 @@ function JobCogsEvents({ jobId }: { jobId: string }) {
       >
         {events.map((ev) => (
           <tr key={ev.id} className="border-t border-white/5">
-            <td className="px-3 py-1.5 text-slate-400">{formatEventDate(ev.consumedAt)}</td>
-            <td className="px-3 py-1.5 text-right font-mono tabular-nums text-slate-300">
+            <td className="px-3 py-1.5 text-muted">{formatEventDate(ev.consumedAt)}</td>
+            <td className="px-3 py-1.5 text-right font-mono tabular-nums text-muted">
               {formatQty(ev.qty)}
             </td>
-            <td className="px-3 py-1.5 text-right font-mono tabular-nums text-slate-200">
+            <td className="px-3 py-1.5 text-right font-mono tabular-nums text-white">
               {formatMoney(ev.cost)}
             </td>
           </tr>
@@ -132,7 +132,7 @@ function JobRow({
             </button>
             <CostBadge job={job} result={result} />
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-subtle">
             {job.jobCode && <span className="font-mono">{job.jobCode} · </span>}
             Consumed {formatEventDate(job.consumedAt)}
             {job.status && <span> · {job.status}</span>}
@@ -242,14 +242,14 @@ export default function InventoryCogsWorklistView() {
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <TaxDisclaimer />
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Jobs that have consumed stock. Posting a job&apos;s COGS relieves the FIFO-consumed cost
           from inventory to Cost of Goods Sold with one balanced journal entry — Dr 5000 / Cr 1300 —
           and records a consumption event. Posting is idempotent: a job already costed is left
           unchanged.
         </p>
 
-        {isPending && <p className="text-slate-400">Loading the COGS work list…</p>}
+        {isPending && <p className="text-muted">Loading the COGS work list…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load the work list. Confirm the accounting schema is exposed and you have an
@@ -259,9 +259,9 @@ export default function InventoryCogsWorklistView() {
 
         {!isPending && !isError && jobs.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">checklist</span>
+            <span className="material-symbols-outlined text-4xl text-subtle">checklist</span>
             <p className="text-lg font-bold text-white">No consumed jobs to cost</p>
-            <p className="max-w-md text-sm text-slate-400">
+            <p className="max-w-md text-sm text-muted">
               When a job consumes inventory in the app, it appears here so its cost can be relieved
               to COGS. Nothing has consumed stock yet.
             </p>
@@ -291,7 +291,7 @@ export default function InventoryCogsWorklistView() {
         {/* Already costed */}
         {!isPending && !isError && costed.length > 0 && (
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
               Costed · {costed.length}
             </h2>
             {costed.map((job) => (

@@ -28,10 +28,10 @@ import {
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function varianceColorClass(amount: number, accountType?: AccountType): string {
-  if (amount === 0) return 'text-slate-300';
+  if (amount === 0) return 'text-muted';
   const favorable =
     accountType === 'income' ? amount > 0 : accountType === 'expense' ? amount < 0 : undefined;
-  if (favorable === undefined) return 'text-slate-300';
+  if (favorable === undefined) return 'text-muted';
   return favorable ? 'text-emerald-400' : 'text-red-400';
 }
 
@@ -54,7 +54,7 @@ function MonthlyDetail({ row }: { row: BudgetVsActualRow }) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead>
-              <tr className="text-slate-500">
+              <tr className="text-subtle">
                 <th className="px-2 py-1 text-left font-semibold">Month</th>
                 {BUDGET_MONTHS.map((m) => (
                   <th key={m} className="px-2 py-1 text-right font-semibold">
@@ -65,23 +65,17 @@ function MonthlyDetail({ row }: { row: BudgetVsActualRow }) {
             </thead>
             <tbody>
               <tr>
-                <td className="px-2 py-1 text-left text-slate-400">Budget</td>
+                <td className="px-2 py-1 text-left text-muted">Budget</td>
                 {row.budgetMonthly.map((v, i) => (
-                  <td
-                    key={i}
-                    className="px-2 py-1 text-right font-mono tabular-nums text-slate-400"
-                  >
+                  <td key={i} className="px-2 py-1 text-right font-mono tabular-nums text-muted">
                     {formatMoney(v)}
                   </td>
                 ))}
               </tr>
               <tr>
-                <td className="px-2 py-1 text-left text-slate-400">Actual</td>
+                <td className="px-2 py-1 text-left text-muted">Actual</td>
                 {row.actualMonthly.map((v, i) => (
-                  <td
-                    key={i}
-                    className="px-2 py-1 text-right font-mono tabular-nums text-slate-300"
-                  >
+                  <td key={i} className="px-2 py-1 text-right font-mono tabular-nums text-muted">
                     {formatMoney(v)}
                   </td>
                 ))}
@@ -106,11 +100,11 @@ function AccountRow({ row }: { row: BudgetVsActualRow }) {
             className="flex items-center gap-1 text-left hover:text-primary"
             aria-expanded={open}
           >
-            <span className="material-symbols-outlined text-base text-slate-500">
+            <span className="material-symbols-outlined text-base text-subtle">
               {open ? 'expand_more' : 'chevron_right'}
             </span>
             {row.accountNumber ? (
-              <span className="mr-1 font-mono text-xs text-slate-500">{row.accountNumber}</span>
+              <span className="mr-1 font-mono text-xs text-subtle">{row.accountNumber}</span>
             ) : null}
             {row.accountName}
           </button>
@@ -142,7 +136,7 @@ export default function BudgetVsActualView() {
   const hasRows = !!data && data.rows.length > 0;
 
   const status = data ? (
-    <span className="text-xs text-slate-400">
+    <span className="text-xs text-muted">
       Actuals are posted journal activity for FY {data.fiscalYear} — the same basis as the trial
       balance.
     </span>
@@ -161,7 +155,7 @@ export default function BudgetVsActualView() {
         <button
           type="button"
           onClick={() => navigate(BUDGETS_BASE)}
-          className="text-sm font-semibold text-slate-400 hover:text-white"
+          className="text-sm font-semibold text-muted hover:text-white"
         >
           All budgets
         </button>

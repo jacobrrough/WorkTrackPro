@@ -47,7 +47,7 @@ function ProductCard({
         {firstImage ? (
           <img src={firstImage.url} alt={part.name} className="h-full w-full object-contain p-2" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-slate-500">
+          <div className="flex h-full w-full items-center justify-center text-subtle">
             <span className="material-symbols-outlined text-5xl">precision_manufacturing</span>
           </div>
         )}
@@ -66,9 +66,9 @@ function ProductCard({
           {part.name}
         </Link>
         {part.description && (
-          <p className="mt-1 line-clamp-2 text-sm text-slate-400">{part.description}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-muted">{part.description}</p>
         )}
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-300">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
           {minPrice != null && Number.isFinite(minPrice) ? (
             <>
               {hasMultiplePrices ? (
@@ -112,7 +112,7 @@ function ProductCard({
               e.stopPropagation();
               onRequestQuote(part);
             }}
-            className="flex min-h-[44px] flex-1 touch-manipulation items-center justify-center rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+            className="flex min-h-[44px] flex-1 touch-manipulation items-center justify-center rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary/90"
           >
             Request quote
           </button>
@@ -135,7 +135,7 @@ function ProductDetail({
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
       <Link
         to="/shop"
-        className="inline-flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
+        className="inline-flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-muted hover:bg-white/10"
       >
         <span className="material-symbols-outlined text-lg">arrow_back</span>
         Back to shop
@@ -154,14 +154,14 @@ function ProductDetail({
             ))}
           </div>
         ) : (
-          <div className="flex aspect-video items-center justify-center bg-white/5 text-slate-500">
+          <div className="flex aspect-video items-center justify-center bg-white/5 text-subtle">
             <span className="material-symbols-outlined text-6xl">precision_manufacturing</span>
           </div>
         )}
         <div className="border-t border-white/10 p-4">
           <p className="font-mono text-sm font-semibold text-primary">{part.partNumber}</p>
           <h1 className="mt-1 text-xl font-bold text-white">{part.name}</h1>
-          {part.description && <p className="mt-3 text-slate-300">{part.description}</p>}
+          {part.description && <p className="mt-3 text-muted">{part.description}</p>}
         </div>
       </div>
 
@@ -174,7 +174,7 @@ function ProductDetail({
                 key={v.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-white/5 px-3 py-2"
               >
-                <span className="font-mono text-sm text-slate-200">
+                <span className="font-mono text-sm text-white">
                   {part.partNumber}-{v.variantSuffix}
                   {v.name ? ` — ${v.name}` : ''}
                 </span>
@@ -183,7 +183,7 @@ function ProductDetail({
                 ) : part.pricePerSet != null && Number.isFinite(part.pricePerSet) ? (
                   <span className="font-semibold text-white">${part.pricePerSet.toFixed(2)}</span>
                 ) : (
-                  <span className="text-slate-500">Price on request</span>
+                  <span className="text-subtle">Price on request</span>
                 )}
               </li>
             ))}
@@ -202,7 +202,7 @@ function ProductDetail({
         <button
           type="button"
           onClick={() => onRequestQuote(part)}
-          className="flex min-h-[48px] flex-1 touch-manipulation items-center justify-center rounded-sm bg-primary px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-primary/90"
+          className="flex min-h-[48px] flex-1 touch-manipulation items-center justify-center rounded-sm bg-primary px-4 py-3 text-base font-semibold text-on-accent transition-colors hover:bg-primary/90"
         >
           Request quote
         </button>
@@ -278,7 +278,7 @@ const Storefront: React.FC<StorefrontProps> = ({ onEmployeeLogin }) => {
   const totalCartItems = cart.reduce((s, i) => s + i.quantity, 0);
 
   return (
-    <div className="relative min-h-[100dvh] overflow-y-auto bg-[#08090f] text-white">
+    <div className="relative min-h-[100dvh] overflow-y-auto bg-app text-white">
       <PublicHeader
         onEmployeeLogin={onEmployeeLogin}
         currentPath="shop"
@@ -294,7 +294,7 @@ const Storefront: React.FC<StorefrontProps> = ({ onEmployeeLogin }) => {
           >
             <span className="material-symbols-outlined">shopping_cart</span>
             {totalCartItems > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-white">
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-on-accent">
                 {totalCartItems > 99 ? '99+' : totalCartItems}
               </span>
             )}
@@ -361,9 +361,7 @@ const Storefront: React.FC<StorefrontProps> = ({ onEmployeeLogin }) => {
           />
         ) : showDetail ? (
           detailLoading ? (
-            <div className="flex min-h-[40vh] items-center justify-center text-slate-400">
-              Loading…
-            </div>
+            <div className="flex min-h-[40vh] items-center justify-center text-muted">Loading…</div>
           ) : detailPart ? (
             <ProductDetail
               part={detailPart}
@@ -375,7 +373,7 @@ const Storefront: React.FC<StorefrontProps> = ({ onEmployeeLogin }) => {
             />
           ) : (
             <div className="py-12 text-center">
-              <p className="text-slate-400">Product not found.</p>
+              <p className="text-muted">Product not found.</p>
               <a href="/shop" className="mt-3 inline-block text-primary hover:underline">
                 Back to shop
               </a>
@@ -385,11 +383,11 @@ const Storefront: React.FC<StorefrontProps> = ({ onEmployeeLogin }) => {
           <>
             <h2 className="mb-4 text-2xl font-bold text-white">Shop</h2>
             {loading ? (
-              <div className="flex min-h-[40vh] items-center justify-center text-slate-400">
+              <div className="flex min-h-[40vh] items-center justify-center text-muted">
                 Loading…
               </div>
             ) : parts.length === 0 ? (
-              <div className="py-12 text-center text-slate-400">
+              <div className="py-12 text-center text-muted">
                 <span className="material-symbols-outlined text-5xl">storefront</span>
                 <p className="mt-4">No products on the store yet.</p>
               </div>

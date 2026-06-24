@@ -410,8 +410,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
   };
 
   return (
-    <div className="flex h-full flex-col bg-slate-950">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur">
+    <div className="flex h-full flex-col bg-app">
+      <header className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -422,9 +422,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Admin Settings</h1>
-              <p className="text-xs text-slate-400">
-                Pricing, machine rates, and scheduling capacity
-              </p>
+              <p className="text-xs text-muted">Pricing, machine rates, and scheduling capacity</p>
             </div>
           </div>
         </div>
@@ -437,9 +435,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-white">Users</h2>
-                  <p className="text-[10px] text-slate-500">
-                    Approve new users and set admin access.
-                  </p>
+                  <p className="text-[10px] text-subtle">Approve new users and set admin access.</p>
                 </div>
                 {pendingUsers.length > 0 && (
                   <span className="rounded-full bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-300">
@@ -449,7 +445,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               </div>
 
               {pendingUsers.length === 0 && (
-                <p className="text-sm text-slate-400">No users pending approval.</p>
+                <p className="text-sm text-muted">No users pending approval.</p>
               )}
 
               {pendingUsers.length > 0 && (
@@ -464,7 +460,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                           <p className="truncate text-sm font-semibold text-white">
                             {u.name || u.email || 'User'}
                           </p>
-                          <p className="truncate text-xs text-slate-300">{u.email}</p>
+                          <p className="truncate text-xs text-muted">{u.email}</p>
                         </div>
                         <span className="rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300">
                           Pending
@@ -476,7 +472,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                           type="button"
                           disabled={busyUserId === u.id}
                           onClick={() => handleApprove(u.id, false)}
-                          className="min-h-[44px] touch-manipulation rounded-sm bg-primary px-3 py-3 text-sm font-bold text-white disabled:opacity-60"
+                          className="min-h-[44px] touch-manipulation rounded-sm bg-primary px-3 py-3 text-sm font-bold text-on-accent disabled:opacity-60"
                         >
                           Approve
                         </button>
@@ -496,7 +492,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
               {approvedUsers.length > 0 && (
                 <div className="mt-5 space-y-2">
-                  <h3 className="text-xs font-semibold text-slate-300">Approved</h3>
+                  <h3 className="text-xs font-semibold text-muted">Approved</h3>
                   {approvedUsers.map((u) => (
                     <div
                       key={u.id}
@@ -506,7 +502,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         <p className="truncate text-sm font-semibold text-white">
                           {u.name || u.email || 'User'}
                         </p>
-                        <p className="truncate text-xs text-slate-400">{u.email}</p>
+                        <p className="truncate text-xs text-muted">{u.email}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <button
@@ -538,7 +534,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <h2 className="mb-4 text-sm font-semibold text-white">Pricing</h2>
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   Labor rate ($/hr)
                 </label>
                 <input
@@ -550,13 +546,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="175"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-subtle">
                   Used to auto-calculate labor cost (hours × rate). Manual prices are not
                   overwritten.
                 </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   Material upcharge (multiplier)
                 </label>
                 <input
@@ -568,12 +564,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="1.25"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-subtle">
                   Material cost we pay × upcharge = selling price (e.g. 1.25 = 25% markup).
                 </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   CNC rate ($/hr)
                 </label>
                 <input
@@ -585,12 +581,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="150"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-subtle">
                   Rate per hour for CNC machine time (used in part quotes).
                 </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   3D Printer rate ($/hr)
                 </label>
                 <input
@@ -602,7 +598,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="100"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-subtle">
                   Rate per hour for 3D printer time (used in part quotes).
                 </p>
               </div>
@@ -610,7 +606,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -618,7 +614,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
           <div className="rounded-sm border border-white/10 bg-white/5 p-4">
             <h2 className="mb-1 text-sm font-semibold text-white">CNC-able material categories</h2>
-            <p className="mb-3 text-[11px] text-slate-500">
+            <p className="mb-3 text-[11px] text-subtle">
               Materials in these categories are deducted when units are marked CNC-done. Everything
               else deducts when a unit is marked fully done.
             </p>
@@ -639,7 +635,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
                       selected
                         ? 'border-primary/50 bg-primary/20 text-primary'
-                        : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                        : 'border-white/10 bg-white/5 text-muted hover:bg-white/10'
                     } disabled:opacity-50`}
                   >
                     {getCategoryDisplayName(cat)}
@@ -654,7 +650,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <h2 className="mb-4 text-sm font-semibold text-white">Scheduling Capacity</h2>
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   Employees on shop floor
                 </label>
                 <input
@@ -666,13 +662,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="5"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-subtle">
                   Used to calculate total schedulable hours each day/week.
                 </p>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                <label className="mb-1.5 block text-xs font-medium text-muted">
                   Overtime multiplier
                 </label>
                 <input
@@ -684,14 +680,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="1.50"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-subtle">
                   Used to estimate additional labor cost for overtime hours (e.g., 1.5 = time and a
                   half).
                 </p>
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-slate-400">Work week schedule</p>
+                <p className="mb-2 text-xs font-medium text-muted">Work week schedule</p>
                 <div className="space-y-3">
                   {WEEK_DAYS.map(({ day, short, label }) => {
                     const daySchedule = workWeekSchedule[day];
@@ -699,12 +695,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     return (
                       <div
                         key={day}
-                        className="rounded-sm border border-white/10 bg-white/5 p-3 text-xs text-slate-300"
+                        className="rounded-sm border border-white/10 bg-white/5 p-3 text-xs text-muted"
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <div>
                             <p className="font-semibold text-white">{label}</p>
-                            <p className="text-[10px] text-slate-500">
+                            <p className="text-[10px] text-subtle">
                               {dayHours.regularHoursPerEmployee.toFixed(1)}h regular
                               {daySchedule.overtimeEnabled &&
                                 dayHours.overtimeHoursPerEmployee > 0 &&
@@ -726,7 +722,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         </div>
 
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                          <label className="text-[10px] text-slate-400">
+                          <label className="text-[10px] text-muted">
                             Start
                             <input
                               type="time"
@@ -738,7 +734,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                               className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                             />
                           </label>
-                          <label className="text-[10px] text-slate-400">
+                          <label className="text-[10px] text-muted">
                             End
                             <input
                               type="time"
@@ -750,7 +746,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                               className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                             />
                           </label>
-                          <label className="text-[10px] text-slate-400">
+                          <label className="text-[10px] text-muted">
                             Unpaid break (min)
                             <input
                               type="number"
@@ -771,7 +767,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
                         <div className="mt-2 rounded border border-white/10 bg-black/20 p-2">
                           <div className="mb-2 flex items-center justify-between">
-                            <span className="text-[10px] font-medium text-slate-300">
+                            <span className="text-[10px] font-medium text-muted">
                               Overtime window
                             </span>
                             <button
@@ -791,7 +787,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                             </button>
                           </div>
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <label className="text-[10px] text-slate-400">
+                            <label className="text-[10px] text-muted">
                               OT Start
                               <input
                                 type="time"
@@ -803,7 +799,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                 className="mt-1 w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                               />
                             </label>
-                            <label className="text-[10px] text-slate-400">
+                            <label className="text-[10px] text-muted">
                               OT End
                               <input
                                 type="time"
@@ -824,23 +820,23 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               </div>
 
               <div className="rounded-sm border border-primary/30 bg-primary/10 p-3 text-sm">
-                <p className="text-slate-300">
+                <p className="text-muted">
                   Weekly regular hours per employee:{' '}
                   <span className="font-bold text-white">
                     {regularHoursPerEmployee.toFixed(1)}h
                   </span>
                 </p>
-                <p className="mt-1 text-slate-300">
+                <p className="mt-1 text-muted">
                   Weekly possible overtime per employee:{' '}
                   <span className="font-bold text-amber-300">
                     {overtimeHoursPerEmployee.toFixed(1)}h
                   </span>
                 </p>
-                <p className="mt-1 text-slate-300">
+                <p className="mt-1 text-muted">
                   Weekly regular shop capacity:{' '}
                   <span className="font-bold text-primary">{weeklyCapacity.toFixed(1)}h</span>
                 </p>
-                <p className="mt-1 text-slate-300">
+                <p className="mt-1 text-muted">
                   Weekly max capacity with overtime:{' '}
                   <span className="font-bold text-amber-300">
                     {weeklyCapacityWithOt.toFixed(1)}h
@@ -852,7 +848,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -860,7 +856,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
 
           <div className="rounded-sm border border-white/10 bg-white/5 p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">On-site check</h2>
-            <p className="mb-4 text-xs text-slate-400">
+            <p className="mb-4 text-xs text-muted">
               Require employees to be within a radius of your site when clocking in (and optionally
               when logging in). Uses device location; HTTPS and location permission required.
             </p>
@@ -878,9 +874,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                 <>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div className="flex-1">
-                      <label className="mb-1 block text-xs font-medium text-slate-400">
-                        Latitude
-                      </label>
+                      <label className="mb-1 block text-xs font-medium text-muted">Latitude</label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -891,9 +885,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="mb-1 block text-xs font-medium text-slate-400">
-                        Longitude
-                      </label>
+                      <label className="mb-1 block text-xs font-medium text-muted">Longitude</label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -923,7 +915,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     )}
                   </button>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-400">
+                    <label className="mb-1 block text-xs font-medium text-muted">
                       Radius (meters)
                     </label>
                     <input
@@ -935,7 +927,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                       placeholder="200"
                     />
-                    <p className="mt-1 text-[10px] text-slate-500">
+                    <p className="mt-1 text-[10px] text-subtle">
                       Minimum 10 m. Employees must be within this distance to clock in.
                     </p>
                   </div>
@@ -957,12 +949,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             {isAdmin && (
               <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <h2 className="mb-1 text-sm font-semibold text-white">Shelf / Bin Reconcile</h2>
-                <p className="mb-3 text-[10px] text-slate-500">
+                <p className="mb-3 text-[10px] text-subtle">
                   Clear a shelf to remove bin location from all jobs and inventory at that bin. Use
                   Kanban bulk select + &quot;Set bin&quot; to assign multiple jobs to one location.
                 </p>
                 {binsWithCounts.length === 0 ? (
-                  <p className="text-sm text-slate-400">No bins in use.</p>
+                  <p className="text-sm text-muted">No bins in use.</p>
                 ) : (
                   <ul className="space-y-2">
                     {binsWithCounts.map(({ bin, jobIds, inventoryIds }) => (
@@ -972,7 +964,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       >
                         <div className="min-w-0">
                           <span className="font-mono font-semibold text-primary">{bin}</span>
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-muted">
                             {jobIds.length} job(s), {inventoryIds.length} inventory item(s)
                           </p>
                         </div>
@@ -993,7 +985,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+              className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -1002,7 +994,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           {isAdmin && (
             <div className="rounded-sm border border-white/10 bg-white/5 p-4">
               <h2 className="mb-4 text-sm font-semibold text-white">Security</h2>
-              <p className="mb-4 text-xs text-slate-400">
+              <p className="mb-4 text-xs text-muted">
                 Two-factor authentication adds a one-time code at login. Use &quot;Reset 2FA&quot;
                 on a user above to recover an account that&apos;s locked out of its authenticator.
               </p>
@@ -1018,7 +1010,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     Require two-factor authentication (administrators)
                   </span>
                 </label>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-subtle">
                   When on, affected users must enroll and pass 2FA at login. Turn this off as an
                   emergency kill-switch (e.g. an authenticator outage) to unblock logins.
                 </p>
@@ -1026,7 +1018,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               <button
                 onClick={handleSave}
                 disabled={isSyncing}
-                className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+                className="mt-4 w-full rounded-sm bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
               >
                 {isSyncing ? 'Saving...' : 'Save'}
               </button>

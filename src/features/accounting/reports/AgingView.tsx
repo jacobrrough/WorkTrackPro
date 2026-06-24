@@ -50,10 +50,10 @@ export function AgingView({ kind, query }: AgingViewProps) {
                 key={b}
                 className="rounded-sm border border-white/10 bg-card-dark p-2 text-center"
               >
-                <p className="text-[10px] font-semibold uppercase text-slate-500">
+                <p className="text-[10px] font-semibold uppercase text-subtle">
                   {AGING_BUCKET_LABELS[b]}
                 </p>
-                <p className="font-mono text-sm font-bold tabular-nums text-slate-200">
+                <p className="font-mono text-sm font-bold tabular-nums text-white">
                   {data.summary.byBucket[b].toLocaleString('en-US', {
                     style: 'currency',
                     currency: 'USD',
@@ -85,19 +85,19 @@ export function AgingView({ kind, query }: AgingViewProps) {
           >
             {data.rows.map((r) => (
               <tr key={r.documentId} className="border-t border-white/5">
-                <td className="px-3 py-2 font-mono text-xs text-slate-400">
+                <td className="px-3 py-2 font-mono text-xs text-muted">
                   {r.documentNumber || '—'}
                 </td>
                 <td className="px-3 py-2 text-white">{r.partyName || r.partyId}</td>
-                <td className="px-3 py-2 text-slate-400">{r.dueDate ?? r.documentDate}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                <td className="px-3 py-2 text-muted">{r.dueDate ?? r.documentDate}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted">
                   {r.daysOverdue > 0 ? r.daysOverdue : '—'}
                 </td>
                 <td className="px-3 py-2">
                   <span
                     className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
                       r.bucket === 'current'
-                        ? 'bg-white/10 text-slate-300'
+                        ? 'bg-white/10 text-muted'
                         : r.bucket === '90+'
                           ? 'bg-red-500/15 text-red-400'
                           : 'bg-amber-500/15 text-amber-400'

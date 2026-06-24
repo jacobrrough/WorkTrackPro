@@ -67,14 +67,14 @@ export default function CartPage({
 
       {cart.length === 0 ? (
         <div className="rounded border border-white/10 bg-white/5 p-8 text-center">
-          <p className="text-slate-400">Your cart is empty.</p>
+          <p className="text-muted">Your cart is empty.</p>
           <Link
             to="/shop"
             onClick={(e) => {
               e.preventDefault();
               onContinueShopping();
             }}
-            className="mt-4 inline-block min-h-[44px] touch-manipulation rounded-sm bg-primary px-4 py-3 font-semibold text-white transition-colors hover:bg-primary/90"
+            className="mt-4 inline-block min-h-[44px] touch-manipulation rounded-sm bg-primary px-4 py-3 font-semibold text-on-accent transition-colors hover:bg-primary/90"
           >
             Continue shopping
           </Link>
@@ -97,14 +97,14 @@ export default function CartPage({
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-sm font-medium text-white">{label}</p>
                     {item.partName && (
-                      <p className="truncate text-xs text-slate-400">{item.partName}</p>
+                      <p className="truncate text-xs text-muted">{item.partName}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => handleQtyChange(item, -1)}
-                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded border border-white/10 text-slate-300 hover:bg-white/10"
+                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded border border-white/10 text-muted hover:bg-white/10"
                       aria-label="Decrease quantity"
                     >
                       <span className="material-symbols-outlined text-lg">remove</span>
@@ -121,7 +121,7 @@ export default function CartPage({
                     <button
                       type="button"
                       onClick={() => handleQtyChange(item, 1)}
-                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded border border-white/10 text-slate-300 hover:bg-white/10"
+                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded border border-white/10 text-muted hover:bg-white/10"
                       aria-label="Increase quantity"
                     >
                       <span className="material-symbols-outlined text-lg">add</span>
@@ -140,7 +140,7 @@ export default function CartPage({
           </ul>
 
           <div className="mt-8 border-t border-white/10 pt-6">
-            <p className="mb-4 text-sm text-slate-400">
+            <p className="mb-4 text-sm text-muted">
               {totalUnits} unit{totalUnits !== 1 ? 's' : ''} total
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -157,7 +157,7 @@ export default function CartPage({
               <button
                 type="button"
                 onClick={onRequestQuote}
-                className="min-h-[48px] flex-1 rounded-sm bg-primary px-4 py-3 font-semibold text-white transition-colors hover:bg-primary/90 sm:min-w-[180px] sm:flex-initial"
+                className="min-h-[48px] flex-1 rounded-sm bg-primary px-4 py-3 font-semibold text-on-accent transition-colors hover:bg-primary/90 sm:min-w-[180px] sm:flex-initial"
               >
                 Request quote
               </button>

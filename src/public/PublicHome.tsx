@@ -254,7 +254,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
     return (
       <section
         id="services"
-        className="scroll-mt-24 overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-[#0f0f14] via-[#191321] to-[#2b1838]"
+        className="scroll-mt-24 overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-surface via-app-2 to-app-2"
       >
         <div className="grid gap-0 lg:grid-cols-5">
           <div className="p-8 lg:col-span-3">
@@ -264,7 +264,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
               Tough Protection Products Built for Real Production Floors
             </h2>
-            <p className="mt-4 max-w-2xl text-slate-200">
+            <p className="mt-4 max-w-2xl text-white">
               Rough Cut Manufacturing builds practical, durable protective products that hold up in
               demanding work. We focus on fabric, foam, and plastic solutions with high emphasis on
               FOD prevention.
@@ -290,7 +290,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
           </div>
           <div className="border-t border-white/10 bg-black/30 p-8 lg:col-span-2 lg:border-l lg:border-t-0">
             <h3 className="text-lg font-semibold text-white">Core Services</h3>
-            <ul className="mt-4 space-y-3 text-sm text-slate-200">
+            <ul className="mt-4 space-y-3 text-sm text-white">
               {[
                 'Custom fabricated protective products',
                 'Foam inlays and package protection',
@@ -311,7 +311,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
   };
 
   return (
-    <div className="max-h-[100dvh] min-h-[100dvh] overflow-y-auto overscroll-y-contain bg-[#08090f] text-white">
+    <div className="max-h-[100dvh] min-h-[100dvh] overflow-y-auto overscroll-y-contain bg-app text-white">
       <PublicHeader onEmployeeLogin={onEmployeeLogin} currentPath="home" />
 
       <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
@@ -319,10 +319,10 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
 
         <section
           id="submit-proposal"
-          className="scroll-mt-24 rounded-sm border border-primary/30 bg-[#120f1f] p-6 shadow-lg shadow-primary/10"
+          className="scroll-mt-24 rounded-sm border border-primary/30 bg-surface p-6 shadow-lg shadow-primary/10"
         >
           <h3 className="text-2xl font-bold">Submit Proposal & Paperwork</h3>
-          <p className="mt-2 text-sm text-slate-200">
+          <p className="mt-2 text-sm text-white">
             Complete this form and your request goes straight to our admin quoting board as
             <span className="font-semibold text-white"> Needs Quote</span> for immediate review.
           </p>
@@ -330,50 +330,50 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="mb-1 block text-slate-200">Contact name *</span>
+                <span className="mb-1 block text-white">Contact name *</span>
                 <input
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                   required
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block text-slate-200">Email *</span>
+                <span className="mb-1 block text-white">Email *</span>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                   required
                 />
               </label>
               <label className="block text-sm sm:col-span-2">
-                <span className="mb-1 block text-slate-200">Phone *</span>
+                <span className="mb-1 block text-white">Phone *</span>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                   required
                 />
               </label>
             </div>
 
             <label className="block text-sm">
-              <span className="mb-1 block text-slate-200">Proposal description *</span>
+              <span className="mb-1 block text-white">Proposal description *</span>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={6}
-                className="w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
                 placeholder="Tell us what you need, materials, quantities, FOD requirements, and any timing details."
                 required
               />
             </label>
 
             <label className="block text-sm">
-              <span className="mb-1 block text-slate-200">
+              <span className="mb-1 block text-white">
                 Upload paperwork (up to {MAX_FILES} files,{' '}
                 {Math.floor(MAX_FILE_SIZE_BYTES / 1024 / 1024)}
                 MB each)
@@ -383,7 +383,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
                 multiple
                 accept="*/*"
                 onChange={handleFileSelection}
-                className="block w-full rounded-sm border border-white/10 bg-[#1a1e31] px-3 py-2 text-white file:mr-3 file:rounded-sm file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary/30"
+                className="block w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white file:mr-3 file:rounded-sm file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary/30"
               />
             </label>
 
@@ -425,7 +425,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-[48px] rounded-sm bg-primary px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[48px] rounded-sm bg-primary px-5 py-3 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
             </button>

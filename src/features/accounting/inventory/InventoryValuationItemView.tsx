@@ -31,7 +31,7 @@ function StatCard({
 }) {
   return (
     <div className="rounded-sm border border-white/10 bg-card-dark p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
           tone === 'accent' ? 'text-primary' : 'text-white'
@@ -39,7 +39,7 @@ function StatCard({
       >
         {children}
       </p>
-      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-subtle">{hint}</p>}
     </div>
   );
 }
@@ -56,10 +56,8 @@ function FactRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2">
-      <span className="text-sm text-slate-400">{label}</span>
-      <span
-        className={`font-mono text-sm tabular-nums ${muted ? 'text-slate-400' : 'text-slate-200'}`}
-      >
+      <span className="text-sm text-muted">{label}</span>
+      <span className={`font-mono text-sm tabular-nums ${muted ? 'text-muted' : 'text-white'}`}>
         {value}
       </span>
     </div>
@@ -89,13 +87,13 @@ export default function InventoryValuationItemView() {
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
         <TaxDisclaimer />
 
-        {isPending && <p className="text-slate-400">Loading item valuation…</p>}
+        {isPending && <p className="text-muted">Loading item valuation…</p>}
         {isError && <p className="text-red-400">Could not load this item&apos;s valuation.</p>}
 
         {!isPending && !isError && !row && (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">inventory_2</span>
-            <p className="text-slate-400">
+            <span className="material-symbols-outlined text-4xl text-subtle">inventory_2</span>
+            <p className="text-muted">
               No valuation found for this item. It may have never been received on a posted bill or
               consumed by a job.
             </p>
@@ -127,7 +125,7 @@ export default function InventoryValuationItemView() {
 
             {/* Lifetime breakdown */}
             <section>
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Lifetime activity
               </h2>
               <div className="divide-y divide-white/5 rounded-sm border border-white/10 bg-card-dark">
@@ -145,7 +143,7 @@ export default function InventoryValuationItemView() {
               </div>
             </section>
 
-            <p className="text-xs leading-relaxed text-slate-500">
+            <p className="text-xs leading-relaxed text-subtle">
               Asset value and average cost reflect only OPEN FIFO layers (remaining quantity &gt;
               0). Receiving this item on a posted bill adds a cost layer; a job consuming it
               relieves cost oldest-layer-first to Cost of Goods Sold. Post a consuming job&apos;s

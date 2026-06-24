@@ -23,7 +23,7 @@ import {
 } from '../types';
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -31,7 +31,7 @@ const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
 };
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -44,7 +44,7 @@ const PAYMENT_STATUS_STYLE = 'bg-green-500/15 text-green-400';
 function StatCard({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1 rounded-sm border border-white/10 bg-background-dark/40 px-4 py-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</span>
       <span
         className={`truncate font-mono text-base font-bold tabular-nums ${tone ?? 'text-white'}`}
       >
@@ -75,10 +75,8 @@ const TYPE_LABEL: Record<Exclude<TxnTypeFilter, 'all'>, string> = {
 function InfoField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
-      <span className="break-words text-sm text-slate-200">{value || '—'}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-subtle">{label}</span>
+      <span className="break-words text-sm text-white">{value || '—'}</span>
     </div>
   );
 }
@@ -141,9 +139,9 @@ function NewTransactionMenu({ items }: { items: NewTransactionItem[] }) {
                 setOpen(false);
                 it.onSelect();
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-200 hover:bg-white/[0.06]"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/[0.06]"
             >
-              <span className="material-symbols-outlined text-base text-slate-400">{it.icon}</span>
+              <span className="material-symbols-outlined text-base text-muted">{it.icon}</span>
               {it.label}
             </button>
           ))}
@@ -160,13 +158,11 @@ function CustomerNotes({ notes }: { notes: string | null }) {
   const isLong = !!notes && (notes.length > 140 || (notes.match(/\n/g)?.length ?? 0) >= 2);
   return (
     <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        Notes
-      </span>
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-subtle">Notes</span>
       {notes ? (
         <>
           <p
-            className={`whitespace-pre-wrap text-sm text-slate-300 ${
+            className={`whitespace-pre-wrap text-sm text-muted ${
               !expanded && isLong ? 'line-clamp-2' : ''
             }`}
           >
@@ -183,7 +179,7 @@ function CustomerNotes({ notes }: { notes: string | null }) {
           )}
         </>
       ) : (
-        <span className="text-sm italic text-slate-500">No notes</span>
+        <span className="text-sm italic text-subtle">No notes</span>
       )}
     </div>
   );
@@ -322,9 +318,9 @@ export default function CustomerDetailView() {
 
   return (
     <AccountingShell active="customers" title={customer?.displayName || 'Customer'}>
-      {isPending && <p className="text-slate-400">Loading customer…</p>}
+      {isPending && <p className="text-muted">Loading customer…</p>}
       {isError && <p className="text-red-400">Could not load this customer.</p>}
-      {!isPending && !isError && !customer && <p className="text-slate-400">Customer not found.</p>}
+      {!isPending && !isError && !customer && <p className="text-muted">Customer not found.</p>}
 
       {customer && (
         <div className="mx-auto flex max-w-5xl flex-col gap-5">
@@ -341,7 +337,7 @@ export default function CustomerDetailView() {
                   </span>
                 )}
                 {!customer.isActive && (
-                  <span className="rounded-sm bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase text-slate-400">
+                  <span className="rounded-sm bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase text-muted">
                     Inactive
                   </span>
                 )}
@@ -436,13 +432,13 @@ export default function CustomerDetailView() {
                       className={`-mb-px flex items-center gap-2 rounded-t-md border px-3 py-2 text-sm font-semibold transition-colors ${
                         active
                           ? 'border-white/10 border-b-background-dark bg-background-dark/40 text-white'
-                          : 'border-transparent text-slate-400 hover:text-slate-200'
+                          : 'border-transparent text-muted hover:text-white'
                       }`}
                     >
                       {o.label}
                       <span
                         className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
-                          active ? 'bg-primary/20 text-primary' : 'bg-white/10 text-slate-400'
+                          active ? 'bg-primary/20 text-primary' : 'bg-white/10 text-muted'
                         }`}
                       >
                         {count}
@@ -472,7 +468,7 @@ export default function CustomerDetailView() {
             {/* Status filter + running total of whatever is currently shown (QuickBooks-style). */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-white/10 bg-background-dark/40 px-4 py-2 text-sm">
               <div className="flex items-center gap-2">
-                <span className="font-semibold uppercase tracking-wide text-slate-500">Status</span>
+                <span className="font-semibold uppercase tracking-wide text-subtle">Status</span>
                 <select
                   aria-label="Filter by status"
                   className="rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-sm text-white focus:border-primary focus:outline-none"
@@ -491,9 +487,7 @@ export default function CustomerDetailView() {
                   estimate, and payment amounts into a meaningless figure, so hide it there. */}
               {typeFilter !== 'all' && (
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold uppercase tracking-wide text-slate-500">
-                    Total
-                  </span>
+                  <span className="font-semibold uppercase tracking-wide text-subtle">Total</span>
                   <span className="font-mono text-base font-bold tabular-nums text-white">
                     {formatMoney(visibleTotal)}
                   </span>
@@ -502,14 +496,14 @@ export default function CustomerDetailView() {
             </div>
 
             {rows.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-slate-500">No transactions for this customer.</p>
+              <p className="px-3 py-4 text-sm text-subtle">No transactions for this customer.</p>
             ) : (
               <>
                 <div className={LIST_HEADER}>
                   <button
                     type="button"
                     onClick={() => toggleSort('date')}
-                    className="w-24 shrink-0 text-left uppercase hover:text-slate-300"
+                    className="w-24 shrink-0 text-left uppercase hover:text-muted"
                   >
                     Date{sortCaret('date')}
                   </button>
@@ -518,7 +512,7 @@ export default function CustomerDetailView() {
                   <button
                     type="button"
                     onClick={() => toggleSort('amount')}
-                    className="hidden w-28 shrink-0 text-right uppercase hover:text-slate-300 sm:block"
+                    className="hidden w-28 shrink-0 text-right uppercase hover:text-muted sm:block"
                   >
                     Amount{sortCaret('amount')}
                   </button>
@@ -534,21 +528,21 @@ export default function CustomerDetailView() {
                       disabled={!row.href}
                       className={`${LIST_ROW} ${row.href ? '' : 'cursor-default'}`}
                     >
-                      <span className="w-24 shrink-0 text-sm text-slate-400">{row.date}</span>
-                      <span className="w-20 shrink-0 text-xs uppercase tracking-wide text-slate-500">
+                      <span className="w-24 shrink-0 text-sm text-muted">{row.date}</span>
+                      <span className="w-20 shrink-0 text-xs uppercase tracking-wide text-subtle">
                         {TYPE_LABEL[row.type]}
                       </span>
-                      <span className="flex-1 truncate font-mono text-xs text-slate-400">
+                      <span className="flex-1 truncate font-mono text-xs text-muted">
                         {row.number}
                       </span>
                       <span
                         className={`hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums sm:block ${
-                          row.amount < 0 ? 'text-green-400' : 'text-slate-200'
+                          row.amount < 0 ? 'text-green-400' : 'text-white'
                         }`}
                       >
                         {formatMoney(row.amount)}
                       </span>
-                      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-200">
+                      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-white">
                         {row.balance == null ? '—' : formatMoney(row.balance)}
                       </span>
                       <span

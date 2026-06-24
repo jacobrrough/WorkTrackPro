@@ -72,7 +72,7 @@ export default function AccountLedgerView() {
         >
           {/* Opening balance carried in from before the window start. */}
           <tr className="border-t border-white/5 bg-white/[0.03]">
-            <td className="px-3 py-2 text-slate-400" colSpan={5}>
+            <td className="px-3 py-2 text-muted" colSpan={5}>
               Opening balance
             </td>
             <MoneyCell amount={data.openingBalance} />
@@ -80,7 +80,7 @@ export default function AccountLedgerView() {
 
           {data.lines.map((l, i) => (
             <tr key={`${l.entryId}-${i}`} className="border-t border-white/5">
-              <td className="px-3 py-2 text-slate-300">{l.date}</td>
+              <td className="px-3 py-2 text-muted">{l.date}</td>
               <td className="px-3 py-2">
                 <Link
                   to={`${ACCOUNTING_BASE}/journal/${l.entryId}`}
@@ -89,7 +89,7 @@ export default function AccountLedgerView() {
                   #{l.entryNumber}
                 </Link>
               </td>
-              <td className="px-3 py-2 text-slate-300">{l.memo ?? ''}</td>
+              <td className="px-3 py-2 text-muted">{l.memo ?? ''}</td>
               <MoneyCell amount={l.debit} />
               <MoneyCell amount={l.credit} />
               <MoneyCell amount={l.balance} />

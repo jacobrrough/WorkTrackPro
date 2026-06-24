@@ -61,7 +61,7 @@ function HeaderSection({ data, template }: { data: SalesDocumentData; template: 
             />
           ) : null}
           {lines.length > 0 && (
-            <div className="mt-1.5 text-xs text-slate-600">
+            <div className="mt-1.5 text-xs text-subtle">
               {lines.map((line, i) => (
                 <div key={i}>{line}</div>
               ))}
@@ -75,17 +75,17 @@ function HeaderSection({ data, template }: { data: SalesDocumentData; template: 
           >
             {title}
           </h1>
-          <div className="mt-0.5 text-sm text-slate-600">{data.number ?? 'Draft'}</div>
+          <div className="mt-0.5 text-sm text-subtle">{data.number ?? 'Draft'}</div>
           {data.statusLabel && (
-            <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-subtle">
               {data.statusLabel}
             </div>
           )}
           {metaRows.length > 0 && (
-            <div className="mt-1.5 text-xs text-slate-600">
+            <div className="mt-1.5 text-xs text-subtle">
               {metaRows.map(([label, value]) => (
                 <div key={label}>
-                  <span className="text-slate-500">{label}:</span> {value}
+                  <span className="text-subtle">{label}:</span> {value}
                 </div>
               ))}
             </div>
@@ -101,7 +101,7 @@ function HeaderSection({ data, template }: { data: SalesDocumentData; template: 
 function BillToSection({ data }: { data: SalesDocumentData }) {
   return (
     <div className="mt-[18px] text-xs">
-      <div className="text-slate-500">Bill to</div>
+      <div className="text-subtle">Bill to</div>
       <div className="font-bold">{data.customerName || '—'}</div>
     </div>
   );
@@ -140,7 +140,7 @@ function LineItemsSection({
   return (
     <table className="mt-3.5 w-full border-collapse text-xs text-slate-900">
       <thead>
-        <tr className="border-b border-slate-400 text-left text-slate-600">
+        <tr className="border-b border-slate-400 text-left text-subtle">
           <th className={th}>Description</th>
           {columns.qty && <th className={thNum}>Qty</th>}
           {columns.unitPrice && <th className={thNum}>Unit price</th>}
@@ -151,7 +151,7 @@ function LineItemsSection({
       <tbody>
         {data.lines.length === 0 ? (
           <tr>
-            <td className="border-t border-slate-200 px-2 py-1.5 text-slate-400" colSpan={colCount}>
+            <td className="border-t border-slate-200 px-2 py-1.5 text-muted" colSpan={colCount}>
               No line items.
             </td>
           </tr>
@@ -174,7 +174,7 @@ function TotalRow({
   bold?: boolean;
 }) {
   const base = 'px-2 py-0.5';
-  const labelCls = bold ? `${base} font-bold text-slate-900` : `${base} text-slate-600`;
+  const labelCls = bold ? `${base} font-bold text-slate-900` : `${base} text-subtle`;
   const valueCls = bold
     ? `${base} text-right tabular-nums font-bold text-slate-900`
     : `${base} text-right tabular-nums`;
@@ -214,15 +214,15 @@ function TotalsSection({ data }: { data: SalesDocumentData }) {
 
 /** Free-text memo block (gated by template.showMemo + a non-empty memo). */
 function MemoSection({ data }: { data: SalesDocumentData }) {
-  return <p className="mt-[18px] whitespace-pre-line text-xs text-slate-600">{data.memo}</p>;
+  return <p className="mt-[18px] whitespace-pre-line text-xs text-subtle">{data.memo}</p>;
 }
 
 /** Internal/notes block (gated by template.showNotes + non-empty notes). */
 function NotesSection({ data }: { data: SalesDocumentData }) {
   return (
     <div className="mt-3 text-xs">
-      <div className="text-slate-500">Notes</div>
-      <p className="whitespace-pre-line text-slate-600">{data.notes}</p>
+      <div className="text-subtle">Notes</div>
+      <p className="whitespace-pre-line text-subtle">{data.notes}</p>
     </div>
   );
 }
@@ -232,7 +232,7 @@ function FooterSection({ template }: { template: TemplateConfig }) {
   return (
     <footer className="mt-6">
       <div className="border-t" style={{ borderColor: template.accentColor }} />
-      <p className="mt-2 whitespace-pre-line text-center text-[11px] text-slate-500">
+      <p className="mt-2 whitespace-pre-line text-center text-[11px] text-subtle">
         {template.footerText}
       </p>
     </footer>

@@ -62,7 +62,7 @@ export const OnSiteGate: React.FC<OnSiteGateProps> = ({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark px-4">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <p className="mt-4 text-slate-400">Checking location...</p>
+        <p className="mt-4 text-muted">Checking location...</p>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export const OnSiteGate: React.FC<OnSiteGateProps> = ({
       <div className="max-w-sm rounded-lg border border-amber-500/30 bg-amber-500/10 p-6 text-center">
         <span className="material-symbols-outlined text-4xl text-amber-400">location_off</span>
         <h2 className="mt-4 text-lg font-bold text-white">On-site required</h2>
-        <p className="mt-2 text-sm text-slate-300">{reason}</p>
+        <p className="mt-2 text-sm text-muted">{reason}</p>
         <button
           type="button"
           onClick={onLogout}

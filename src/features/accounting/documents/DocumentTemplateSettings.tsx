@@ -143,7 +143,7 @@ function CheckboxRow({
       />
       <span>
         <span className="block text-sm font-medium text-white">{label}</span>
-        {hint && <span className="mt-0.5 block text-xs text-slate-500">{hint}</span>}
+        {hint && <span className="mt-0.5 block text-xs text-subtle">{hint}</span>}
       </span>
     </label>
   );
@@ -217,7 +217,7 @@ export default function DocumentTemplateSettings() {
         <span className="material-symbols-outlined text-primary">description</span>
         Document template
       </h2>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-1 text-sm text-muted">
         Style your invoices and estimates: accent color, footer, which line columns to show, and the
         optional memo / notes blocks. Changes preview live on the right and apply to every new and
         existing document once saved.
@@ -266,7 +266,7 @@ export default function DocumentTemplateSettings() {
           </FormField>
 
           <div className="flex flex-col gap-3">
-            <span className="text-sm font-bold text-slate-400">Logo</span>
+            <span className="text-sm font-bold text-muted">Logo</span>
             <CheckboxRow
               label="Show company logo"
               hint="Uses the logo uploaded in company branding. Has no effect until a logo is set."
@@ -276,7 +276,7 @@ export default function DocumentTemplateSettings() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-sm font-bold text-slate-400">Line-item columns</span>
+            <span className="text-sm font-bold text-muted">Line-item columns</span>
             <CheckboxRow
               label="Quantity"
               checked={draft.columns.qty ?? true}
@@ -295,7 +295,7 @@ export default function DocumentTemplateSettings() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-sm font-bold text-slate-400">Optional sections</span>
+            <span className="text-sm font-bold text-muted">Optional sections</span>
             <CheckboxRow
               label="Show memo"
               hint="The customer-facing memo block (only shows when a document has memo text)."
@@ -326,13 +326,13 @@ export default function DocumentTemplateSettings() {
 
         {/* Live preview */}
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
             Live preview
           </span>
           <div className="overflow-auto rounded-sm border border-white/10 bg-slate-200 p-3">
             <SalesDocument data={SAMPLE} template={previewTemplate} mode="read" />
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-subtle">
             Sample data — your real invoices and estimates use this style.
           </p>
         </div>

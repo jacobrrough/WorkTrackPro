@@ -119,7 +119,7 @@ function NoVariantSetQtyEditor({ qty, onSave }: { qty: number; onSave: (n: numbe
 
   return (
     <div className="mt-2 flex items-center gap-2">
-      <span className="text-sm text-slate-400">One set:</span>
+      <span className="text-sm text-muted">One set:</span>
       <input
         type="number"
         min={1}
@@ -127,7 +127,7 @@ function NoVariantSetQtyEditor({ qty, onSave }: { qty: number; onSave: (n: numbe
         onChange={(e) => setValue(parseInt(e.target.value, 10) || 1)}
         className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
-      <span className="text-sm text-slate-400">× unit</span>
+      <span className="text-sm text-muted">× unit</span>
       <button
         type="button"
         onClick={handleSave}
@@ -138,7 +138,7 @@ function NoVariantSetQtyEditor({ qty, onSave }: { qty: number; onSave: (n: numbe
       <button
         type="button"
         onClick={handleCancel}
-        className="rounded-sm border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-medium text-slate-400 hover:bg-white/10"
+        className="rounded-sm border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-medium text-muted hover:bg-white/10"
       >
         Cancel
       </button>
@@ -1157,7 +1157,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-slate-400">Loading part details...</div>
+        <div className="text-muted">Loading part details...</div>
       </div>
     );
   }
@@ -1192,9 +1192,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
         : [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-950">
+    <div className="flex h-full min-h-0 flex-col bg-app">
       {/* Header: Part Number first, then Part Name */}
-      <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -1206,7 +1206,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             </button>
             <div className="min-w-0">
               <h1 className="font-mono text-xl font-bold text-white">{part.partNumber}</h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted">
                 {part.name || part.partNumber}
                 {(part.rev ?? '--') !== '--' && (
                   <span className="ml-2 font-mono text-primary">Rev {part.rev}</span>
@@ -1245,7 +1245,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           <h2 className="mb-3 text-base font-semibold text-white sm:text-lg">Part Information</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="mb-1 block text-sm text-slate-400">Part Number</label>
+              <label className="mb-1 block text-sm text-muted">Part Number</label>
               <input
                 type="text"
                 value={partInfoDraft.partNumber}
@@ -1258,7 +1258,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">Part Name (required)</label>
+              <label className="mb-1 block text-sm text-muted">Part Name (required)</label>
               <input
                 type="text"
                 value={partInfoDraft.name}
@@ -1269,7 +1269,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-slate-400">Rev (required)</label>
+              <label className="mb-1 block text-sm text-muted">Rev (required)</label>
               <input
                 type="text"
                 value={partInfoDraft.rev}
@@ -1280,7 +1280,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
               />
             </div>
             <div className="lg:col-span-2">
-              <label className="mb-1 block text-sm text-slate-400">Description</label>
+              <label className="mb-1 block text-sm text-muted">Description</label>
               <textarea
                 value={partInfoDraft.description}
                 onChange={(e) =>
@@ -1302,7 +1302,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 />
                 <span className="text-sm text-white">Show on store</span>
               </label>
-              <span className="ml-2 text-xs text-slate-500">
+              <span className="ml-2 text-xs text-subtle">
                 (visible on public storefront when saved)
               </span>
             </div>
@@ -1312,7 +1312,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   type="button"
                   onClick={handleSavePartInfo}
                   disabled={!isPartInfoDirty || savingPartInfo}
-                  className="min-h-[44px] rounded-sm bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[44px] rounded-sm bg-primary px-3 py-1.5 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {savingPartInfo ? 'Saving…' : 'Save Part Info'}
                 </button>
@@ -1326,7 +1326,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 </button>
                 {!isVirtualPart && (
                   <div className="flex min-w-[280px] flex-1 flex-wrap items-center gap-2 rounded-sm border border-white/10 bg-white/5 p-2">
-                    <label className="text-xs text-slate-400">Apply pricing/materials from</label>
+                    <label className="text-xs text-muted">Apply pricing/materials from</label>
                     <select
                       value={templateSourcePartId}
                       onChange={(e) => setTemplateSourcePartId(e.target.value)}
@@ -1409,8 +1409,8 @@ const PartDetail: React.FC<PartDetailProps> = ({
             )}
             {!isVirtualPart && (
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm text-slate-400">Part Drawings</label>
-                <p className="mb-2 text-xs text-slate-500">
+                <label className="mb-1 block text-sm text-muted">Part Drawings</label>
+                <p className="mb-2 text-xs text-subtle">
                   Upload one or more drawing files. Shop-floor users can access these from job
                   cards.
                 </p>
@@ -1479,10 +1479,10 @@ const PartDetail: React.FC<PartDetailProps> = ({
             )}
             {!isVirtualPart && (
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm text-slate-400">
+                <label className="mb-1 block text-sm text-muted">
                   Product pictures (storefront)
                 </label>
-                <p className="mb-2 text-xs text-slate-500">
+                <p className="mb-2 text-xs text-subtle">
                   Images shown on the public store for this part. Upload one or more.
                 </p>
                 {productImages.length > 0 ? (
@@ -1559,12 +1559,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 Variants / Dash Numbers ({part.variants?.length ?? 0})
               </h3>
               {(part.variants?.length ?? 0) === 0 ? (
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-muted">
                   No variants — part number is the only SKU. Define materials and costs in Set
                   Information below.
                 </p>
               ) : (
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted">
                   {part.variants?.length} dash number{(part.variants?.length ?? 0) !== 1 ? 's' : ''}
                   : {part.variants?.map((v) => `-${v.variantSuffix}`).join(', ')}
                 </p>
@@ -1581,7 +1581,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             {displayVariants.length > 0 && (
               <>
                 <div>
-                  <p className="mb-1 text-xs font-bold uppercase text-slate-400">Set composition</p>
+                  <p className="mb-1 text-xs font-bold uppercase text-muted">Set composition</p>
                   {part.variants?.length === 0 ? (
                     <NoVariantSetQtyEditor
                       qty={part.setComposition?.['_'] ?? 1}
@@ -1639,7 +1639,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       <span className="material-symbols-outlined text-lg">content_copy</span>
                       Copy BOM & costs to all variants
                     </button>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted">
                       Copies first variant’s materials and labor/price to every other variant.
                     </p>
                   </div>
@@ -1780,7 +1780,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       >
                         {pushingQuoteToStorefront ? 'Updating…' : 'Use quote totals on storefront'}
                       </button>
-                      <p className="mt-1.5 text-xs text-slate-400">
+                      <p className="mt-1.5 text-xs text-muted">
                         Saves the current quote total for each variant (qty 1) so the public shop
                         shows these prices.
                       </p>
@@ -1811,7 +1811,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       </label>
                       {part.requiresCNC && (
                         <div className="flex items-center gap-2">
-                          <label className="text-sm text-slate-400">CNC time (hours per set)</label>
+                          <label className="text-sm text-muted">CNC time (hours per set)</label>
                           <input
                             type="number"
                             step="0.01"
@@ -1854,7 +1854,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       </label>
                       {part.requires3DPrint && (
                         <div className="flex items-center gap-2">
-                          <label className="text-sm text-slate-400">
+                          <label className="text-sm text-muted">
                             3D print time (hours per set)
                           </label>
                           <input
@@ -1920,7 +1920,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500">No materials defined for this part.</p>
+                      <p className="text-sm text-subtle">No materials defined for this part.</p>
                     )}
                   </div>
                   <QuoteCalculator
@@ -1944,7 +1944,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           defaultExpanded={false}
         >
           {laborFeedback.analyzedJobCount === 0 ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted">
               No completed jobs with recorded labor time yet. Clocked shifts and/or labor hours on
               completed jobs will appear here.
             </p>
@@ -1952,19 +1952,17 @@ const PartDetail: React.FC<PartDetailProps> = ({
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Completed jobs</p>
+                  <p className="text-[10px] font-bold uppercase text-muted">Completed jobs</p>
                   <p className="text-lg font-bold text-white">{laborFeedback.completedJobCount}</p>
                 </div>
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">
-                    Total actual hours
-                  </p>
+                  <p className="text-[10px] font-bold uppercase text-muted">Total actual hours</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.totalActualHours.toFixed(1)}h
                   </p>
                 </div>
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Actual avg / set</p>
+                  <p className="text-[10px] font-bold uppercase text-muted">Actual avg / set</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.averageActualPerSet != null
                       ? `${laborFeedback.averageActualPerSet.toFixed(2)}h`
@@ -1972,7 +1970,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   </p>
                 </div>
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">Estimate / set</p>
+                  <p className="text-[10px] font-bold uppercase text-muted">Estimate / set</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.estimatePerSet != null
                       ? `${laborFeedback.estimatePerSet.toFixed(2)}h`
@@ -1991,7 +1989,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
 
               {laborFeedback.variantRows.length > 0 && (
                 <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                  <p className="mb-2 text-xs font-bold uppercase text-slate-400">
+                  <p className="mb-2 text-xs font-bold uppercase text-muted">
                     Dash labor performance
                   </p>
                   <div className="space-y-2">
@@ -2003,12 +2001,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         <div className="font-mono font-semibold text-primary">
                           {row.variantSuffix ? `-${row.variantSuffix}` : 'All units'}
                         </div>
-                        <div className="text-slate-300">Units: {row.completedUnits.toFixed(1)}</div>
-                        <div className="text-slate-300">
+                        <div className="text-muted">Units: {row.completedUnits.toFixed(1)}</div>
+                        <div className="text-muted">
                           Actual/unit:{' '}
                           {row.actualPerUnit != null ? `${row.actualPerUnit.toFixed(2)}h` : '—'}
                         </div>
-                        <div className="text-slate-300">
+                        <div className="text-muted">
                           Est/unit:{' '}
                           {row.estimatedPerUnit != null
                             ? `${row.estimatedPerUnit.toFixed(2)}h`
@@ -2029,7 +2027,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
               )}
 
               <div className="rounded-sm border border-white/10 bg-white/5 p-3">
-                <p className="mb-2 text-xs font-bold uppercase text-slate-400">
+                <p className="mb-2 text-xs font-bold uppercase text-muted">
                   Recent completed jobs feeding estimates
                 </p>
                 <div className="space-y-1.5">
@@ -2041,9 +2039,9 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       className="flex w-full items-center justify-between rounded border border-white/10 bg-black/20 px-3 py-2 text-left text-xs transition-colors hover:border-primary/30 hover:bg-black/30"
                     >
                       <span className="font-semibold text-white">{formatJobCode(row.jobCode)}</span>
-                      <span className="text-slate-300">{row.actualHours.toFixed(1)}h</span>
-                      <span className="text-slate-300">{row.setCount.toFixed(1)} sets</span>
-                      <span className="text-slate-300">{row.actualPerSet.toFixed(2)}h/set</span>
+                      <span className="text-muted">{row.actualHours.toFixed(1)}h</span>
+                      <span className="text-muted">{row.setCount.toFixed(1)} sets</span>
+                      <span className="text-muted">{row.actualPerSet.toFixed(2)}h/set</span>
                     </button>
                   ))}
                 </div>
@@ -2055,7 +2053,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         {/* Section 5: Past Jobs (accordion) */}
         <Accordion title={`Past Jobs (${partJobs.length})`} defaultExpanded={false}>
           {partJobs.length === 0 ? (
-            <p className="text-sm text-slate-400">No jobs match this part number.</p>
+            <p className="text-sm text-muted">No jobs match this part number.</p>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {[...partJobs]
@@ -2075,11 +2073,11 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       <span className="font-mono text-sm font-semibold text-primary">
                         {job.partNumber ?? '—'}
                       </span>
-                      <span className="ml-2 text-xs text-slate-400">
+                      <span className="ml-2 text-xs text-muted">
                         {formatJobCode(job.jobCode)} · {getJobDisplayName(job)}
                       </span>
                       {job.dashQuantities && Object.keys(job.dashQuantities).length > 0 && (
-                        <p className="mt-0.5 text-xs text-slate-400">
+                        <p className="mt-0.5 text-xs text-muted">
                           {formatDashSummary(job.dashQuantities)}
                         </p>
                       )}
@@ -2089,19 +2087,15 @@ const PartDetail: React.FC<PartDetailProps> = ({
                         className={`rounded px-2 py-0.5 text-[10px] font-medium ${
                           job.status === 'paid'
                             ? 'bg-green-500/20 text-green-400'
-                            : 'bg-slate-500/20 text-slate-400'
+                            : 'bg-slate-500/20 text-muted'
                         }`}
                       >
                         {getStatusDisplayName(job.status)}
                       </span>
                       {job.dueDate && (
-                        <span className="text-xs text-slate-500">
-                          {formatDateOnly(job.dueDate)}
-                        </span>
+                        <span className="text-xs text-subtle">{formatDateOnly(job.dueDate)}</span>
                       )}
-                      <span className="material-symbols-outlined text-slate-400">
-                        chevron_right
-                      </span>
+                      <span className="material-symbols-outlined text-muted">chevron_right</span>
                     </div>
                   </button>
                 ))}
@@ -2267,7 +2261,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleSave}
-              className="min-h-[44px] rounded bg-primary px-3 py-1 text-sm text-white"
+              className="min-h-[44px] rounded bg-primary px-3 py-1 text-sm text-on-accent"
             >
               Save
             </button>
@@ -2314,7 +2308,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
         <div className="mb-3 grid grid-cols-2 gap-2">
           {showFinancials && (
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Price</label>
+              <label className="mb-1 block text-xs text-muted">Price</label>
               <input
                 type="number"
                 step="0.01"
@@ -2327,7 +2321,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           )}
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-slate-400">Labor Hours</label>
+              <label className="text-xs text-muted">Labor Hours</label>
               {autoLaborHours != null && (
                 <button
                   type="button"
@@ -2349,7 +2343,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-slate-400">Machine time (CNC hrs)</label>
+              <label className="text-xs text-muted">Machine time (CNC hrs)</label>
               {autoCncHours != null && (
                 <button
                   type="button"
@@ -2371,7 +2365,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">3D print time (hours)</label>
+            <label className="mb-1 block text-xs text-muted">3D print time (hours)</label>
             <input
               type="number"
               step="0.01"
@@ -2386,7 +2380,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
       )}
 
       {!isEditing && (
-        <div className="mb-3 flex gap-4 text-xs text-slate-400">
+        <div className="mb-3 flex gap-4 text-xs text-muted">
           {showFinancials && variant.pricePerVariant !== undefined && (
             <span>${variant.pricePerVariant.toFixed(2)}/variant</span>
           )}
@@ -2415,7 +2409,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
           <div className="mb-3 rounded-sm border border-primary/30 bg-primary/10 p-3">
             {allVariants.length >= 2 && (
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="text-xs text-slate-400">Add material to:</span>
+                <span className="text-xs text-muted">Add material to:</span>
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
@@ -2561,7 +2555,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                         </>
                       ) : (
                         <>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-muted">
                             {displayQty} {material.unit}
                           </span>
                           <button
@@ -2616,7 +2610,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                           className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
                             material.requiresCnc
                               ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'
-                              : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                              : 'bg-white/5 text-muted hover:bg-white/10'
                           }`}
                         >
                           <span className="material-symbols-outlined text-[13px]">
@@ -2657,7 +2651,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             })}
           </div>
         ) : (
-          <p className="text-xs text-slate-500">No materials defined</p>
+          <p className="text-xs text-subtle">No materials defined</p>
         )}
       </div>
 
@@ -3031,15 +3025,15 @@ function VariantQuoteMini({
 
   return (
     <div className="rounded border border-primary/20 bg-primary/5 p-3">
-      <p className="mb-2 text-xs font-bold uppercase text-slate-400">Quick reference</p>
+      <p className="mb-2 text-xs font-bold uppercase text-muted">Quick reference</p>
       {result ? (
         <div className="space-y-2 text-xs">
-          <div className="flex items-center justify-between gap-2 text-slate-300">
+          <div className="flex items-center justify-between gap-2 text-muted">
             <span>Material</span>
             <span className="text-white">${result.materialCostCustomer.toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center text-slate-300">
+            <span className="flex items-center text-muted">
               Labor hours
               {isLaborAuto && <AutoBadge />}
               {isLaborAuto ? (
@@ -3054,7 +3048,7 @@ function VariantQuoteMini({
                 <button
                   type="button"
                   onClick={useLaborAuto}
-                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  className="ml-2 text-xs text-subtle hover:text-primary hover:underline"
                 >
                   Use auto
                 </button>
@@ -3075,7 +3069,7 @@ function VariantQuoteMini({
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center text-slate-300">
+            <span className="flex items-center text-muted">
               Machine time (CNC hrs)
               {isCncAuto && <AutoBadge />}
               {isCncAuto ? (
@@ -3090,7 +3084,7 @@ function VariantQuoteMini({
                 <button
                   type="button"
                   onClick={useCncAuto}
-                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  className="ml-2 text-xs text-subtle hover:text-primary hover:underline"
                 >
                   Use auto
                 </button>
@@ -3111,7 +3105,7 @@ function VariantQuoteMini({
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center text-slate-300">
+            <span className="flex items-center text-muted">
               Machine time (3D hrs)
               {isPrinter3DAuto && <AutoBadge />}
               {isPrinter3DAuto ? (
@@ -3126,7 +3120,7 @@ function VariantQuoteMini({
                 <button
                   type="button"
                   onClick={usePrinter3DAuto}
-                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  className="ml-2 text-xs text-subtle hover:text-primary hover:underline"
                 >
                   Use auto
                 </button>
@@ -3146,7 +3140,7 @@ function VariantQuoteMini({
               placeholder={autoPrinter3DHours?.toString() ?? '0'}
             />
           </div>
-          <div className="flex items-center justify-between text-slate-300">
+          <div className="flex items-center justify-between text-muted">
             <span className="flex items-center">
               Labor
               {(isLaborAuto || result.isLaborAutoAdjusted) && <AutoBadge />}
@@ -3169,7 +3163,7 @@ function VariantQuoteMini({
                 <button
                   type="button"
                   onClick={useTotalAuto}
-                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  className="ml-2 text-xs text-subtle hover:text-primary hover:underline"
                 >
                   Use auto
                 </button>
@@ -3191,7 +3185,7 @@ function VariantQuoteMini({
           </div>
         </div>
       ) : (
-        <div className="space-y-2 text-xs text-slate-500">
+        <div className="space-y-2 text-xs text-subtle">
           <div className="flex justify-between">
             <span>Material</span>
             <span>—</span>
@@ -3212,7 +3206,7 @@ function VariantQuoteMini({
                 <button
                   type="button"
                   onClick={useLaborAuto}
-                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  className="ml-2 text-xs text-subtle hover:text-primary hover:underline"
                 >
                   Use auto
                 </button>
@@ -3247,7 +3241,7 @@ function VariantQuoteMini({
                 <button
                   type="button"
                   onClick={useTotalAuto}
-                  className="ml-2 text-xs text-slate-500 hover:text-primary hover:underline"
+                  className="ml-2 text-xs text-subtle hover:text-primary hover:underline"
                 >
                   Use auto
                 </button>
@@ -3374,17 +3368,17 @@ const AddVariantInline: React.FC<AddVariantInlineProps> = ({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="e.g. 14 (creates -01 through -14)"
-        className="w-48 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
+        className="w-48 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
         disabled={loading}
       />
       <button
         type="submit"
         disabled={loading || !input.trim()}
-        className="rounded-sm bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+        className="rounded-sm bg-primary px-3 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
       >
         {loading ? 'Creating…' : 'Add'}
       </button>
-      <span className="text-xs text-slate-400">
+      <span className="text-xs text-muted">
         Enter a number to create sequential variants (e.g., 14 creates -01 through -14)
       </span>
     </form>
@@ -3463,11 +3457,11 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Filter by type</label>
+          <label className="mb-1 block text-sm text-muted">Filter by type</label>
           <select
             value={categoryFilter}
             onChange={(e) => handleCategoryChange((e.target.value || '') as '' | InventoryCategory)}
-            className="w-full rounded-sm border border-white/10 bg-slate-800 px-3 py-2 text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full rounded-sm border border-white/10 bg-surface px-3 py-2 text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
             style={{
               colorScheme: 'dark',
               backgroundColor: '#1e293b',
@@ -3482,11 +3476,11 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Material</label>
+          <label className="mb-1 block text-sm text-muted">Material</label>
           <select
             value={inventoryId}
             onChange={(e) => handleMaterialChange(e.target.value)}
-            className="w-full rounded-sm border border-white/10 bg-slate-800 px-3 py-2 text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full rounded-sm border border-white/10 bg-surface px-3 py-2 text-white focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
             style={{
               colorScheme: 'dark',
               backgroundColor: '#1e293b',
@@ -3503,7 +3497,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Quantity</label>
+          <label className="mb-1 block text-sm text-muted">Quantity</label>
           <input
             type="number"
             step="0.01"
@@ -3514,7 +3508,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-300">Unit</label>
+          <label className="mb-1 block text-sm text-muted">Unit</label>
           <input
             type="text"
             value={unit}
@@ -3528,7 +3522,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
       <div className="mt-3 flex gap-2">
         <button
           type="submit"
-          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white"
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-on-accent"
         >
           Add Material
         </button>
@@ -3587,10 +3581,10 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
                 Contains {Object.keys(setComposition).length} dash number
                 {Object.keys(setComposition).length !== 1 ? 's' : ''}
               </p>
-              <p className="mt-1 text-xs text-slate-400">{formatSetComposition(setComposition)}</p>
+              <p className="mt-1 text-xs text-muted">{formatSetComposition(setComposition)}</p>
             </div>
           ) : (
-            <p className="text-sm text-slate-400">No set composition defined</p>
+            <p className="text-sm text-muted">No set composition defined</p>
           )}
           <button
             onClick={() => {
@@ -3609,15 +3603,13 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
         </div>
       ) : (
         <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
-          <p className="mb-2 text-xs font-bold uppercase text-slate-400">One set:</p>
+          <p className="mb-2 text-xs font-bold uppercase text-muted">One set:</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {variants.map((variant) => {
               const qty = localComposition[variant.variantSuffix] || 0;
               return (
                 <div key={variant.id} className="flex items-center gap-1.5">
-                  <label className="shrink-0 text-xs text-slate-300">
-                    -{variant.variantSuffix}:
-                  </label>
+                  <label className="shrink-0 text-xs text-muted">-{variant.variantSuffix}:</label>
                   <input
                     type="number"
                     min="0"
@@ -3641,7 +3633,7 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
             <button
               type="button"
               onClick={handleSave}
-              className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90"
+              className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-primary/90"
             >
               Save
             </button>
@@ -3726,8 +3718,8 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
   };
 
   return (
-    <div className="flex h-full flex-col bg-slate-950">
-      <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+    <div className="flex h-full flex-col bg-app">
+      <div className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <button
             onClick={onCancel}
@@ -3745,18 +3737,18 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
           className="mx-auto max-w-lg space-y-3 rounded-sm border border-white/10 bg-white/5 p-4"
         >
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-300">Part Number</label>
+            <label className="mb-1 block text-sm font-medium text-muted">Part Number</label>
             <input
               type="text"
               value={partNumber}
               onChange={(e) => setPartNumber(e.target.value.toUpperCase())}
               placeholder="e.g. SK-F35-0911"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
               required
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-300">
+            <label className="mb-1 block text-sm font-medium text-muted">
               Part Name (required)
             </label>
             <input
@@ -3764,24 +3756,24 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Required; defaults to part number if empty"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
               required
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-300">Description</label>
+            <label className="mb-1 block text-sm font-medium text-muted">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
             />
           </div>
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 rounded-sm bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="flex-1 rounded-sm bg-primary px-4 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {submitting ? 'Creating…' : 'Create Part'}
             </button>

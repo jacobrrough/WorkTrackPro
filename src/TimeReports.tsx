@@ -532,7 +532,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-gradient-to-br from-[#1a1122] to-[#2d1f3d]">
+    <div className="flex h-[100dvh] flex-col bg-gradient-to-br from-app-2 to-surface-3">
       <header className="sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <button
@@ -587,7 +587,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setSelectedUser(null);
                 }}
                 className={`flex-1 rounded-sm px-4 py-2 text-sm font-bold transition-all ${
-                  filter === 'mine' ? 'bg-primary text-white' : 'bg-white/10 text-slate-400'
+                  filter === 'mine' ? 'bg-primary text-on-accent' : 'bg-white/10 text-muted'
                 }`}
               >
                 My Time
@@ -599,7 +599,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setViewMode('users');
                 }}
                 className={`flex-1 rounded-sm px-4 py-2 text-sm font-bold transition-all ${
-                  filter === 'all' ? 'bg-primary text-white' : 'bg-white/10 text-slate-400'
+                  filter === 'all' ? 'bg-primary text-on-accent' : 'bg-white/10 text-muted'
                 }`}
               >
                 All Users
@@ -618,7 +618,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 className={`flex-1 rounded-sm px-3 py-2 text-xs font-bold uppercase transition-all ${
                   dateRange === range
                     ? 'border border-primary bg-primary/20 text-primary'
-                    : 'bg-white/5 text-slate-400'
+                    : 'bg-white/5 text-muted'
                 }`}
               >
                 {range}
@@ -630,7 +630,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
             <div className="flex items-center justify-between gap-2 rounded-sm border border-white/10 bg-white/5 p-2">
               <button
                 onClick={() => setPeriodOffset((prev) => prev + 1)}
-                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-sm border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition-colors hover:bg-white/20"
+                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-sm border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-white/20"
               >
                 <span className="material-symbols-outlined text-sm">chevron_left</span>
                 Older
@@ -641,7 +641,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <button
                 onClick={() => setPeriodOffset((prev) => Math.max(0, prev - 1))}
                 disabled={periodOffset === 0}
-                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-sm border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-sm border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Newer
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
@@ -659,7 +659,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <span className="text-3xl font-bold text-white">
                   {onTimeDelivery.rate.toFixed(0)}%
                 </span>
-                <span className="text-sm text-slate-400">
+                <span className="text-sm text-muted">
                   {onTimeDelivery.onTime} of {onTimeDelivery.total} completed jobs delivered on or
                   before ECD
                 </span>
@@ -676,7 +676,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   className={`flex-1 rounded-sm px-3 py-2 text-xs font-bold uppercase transition-all ${
                     viewMode === mode
                       ? 'border border-primary bg-primary/20 text-primary'
-                      : 'bg-white/5 text-slate-400'
+                      : 'bg-white/5 text-muted'
                   }`}
                 >
                   {mode}
@@ -689,15 +689,15 @@ const TimeReports: React.FC<TimeReportsProps> = ({
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-sm border border-white/5 bg-card-dark p-3">
-            <p className="mb-1 text-xs font-bold uppercase text-slate-400">Total Hours</p>
+            <p className="mb-1 text-xs font-bold uppercase text-muted">Total Hours</p>
             <p className="text-2xl font-bold text-white">{totalHours.toFixed(1)}h</p>
           </div>
           <div className="rounded-sm border border-white/5 bg-card-dark p-3">
-            <p className="mb-1 text-xs font-bold uppercase text-slate-400">Shifts</p>
+            <p className="mb-1 text-xs font-bold uppercase text-muted">Shifts</p>
             <p className="text-2xl font-bold text-white">{completedShifts.length}</p>
           </div>
           <div className="rounded-sm border border-white/5 bg-card-dark p-3">
-            <p className="mb-1 text-xs font-bold uppercase text-slate-400">Active</p>
+            <p className="mb-1 text-xs font-bold uppercase text-muted">Active</p>
             <p className="text-2xl font-bold text-green-400">{activeShifts.length}</p>
           </div>
         </div>
@@ -707,7 +707,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
           <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary">
             Daily Breakdown
           </h3>
-          <p className="-mt-2 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <p className="-mt-2 mb-3 text-[10px] font-bold uppercase tracking-widest text-subtle">
             {dateRange === 'all' ? 'Recent 7 days' : periodWindow.label}
           </p>
           <div className="flex h-32 items-end justify-between gap-2">
@@ -720,7 +720,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                     title={`${day.hours.toFixed(1)}h`}
                   ></div>
                 </div>
-                <p className="text-[10px] font-bold text-slate-500">{day.date}</p>
+                <p className="text-[10px] font-bold text-subtle">{day.date}</p>
               </div>
             ))}
           </div>
@@ -768,7 +768,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                     </div>
                     <div>
                       <p className="font-bold text-white">{getUserName(userId)}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted">
                         {data.shifts} shifts
                         {data.active && <span className="ml-2 text-green-400">● Active</span>}
                       </p>
@@ -781,7 +781,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               </button>
             ))}
             {totalsByUser.length === 0 && (
-              <p className="py-8 text-center text-slate-500">No shifts recorded</p>
+              <p className="py-8 text-center text-subtle">No shifts recorded</p>
             )}
           </div>
         )}
@@ -820,13 +820,13 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 return (
                   <div key={jobId} className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tight">
-                      <span className="flex-1 truncate text-slate-300">
+                      <span className="flex-1 truncate text-muted">
                         #{getJobCode(jobId)}
                         {!readOnly && po && ` • PO: ${po}`} • {getJobName(jobId)}
                       </span>
                       <span className="ml-2 text-white">{hours.toFixed(1)}h</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-sm bg-slate-800">
+                    <div className="h-2 overflow-hidden rounded-sm bg-surface">
                       <div
                         className="h-full bg-primary transition-all duration-500"
                         style={{ width: `${Math.min(100, percentage)}%` }}
@@ -856,7 +856,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                     <p className="truncate text-sm font-bold text-white">
                       #{s.jobCode || getJobCode(s.job)} • {s.jobName || getJobName(s.job)}
                     </p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted">
                       Since {formatTime(s.clockInTime)} · {formatShiftHours(s)} so far
                     </p>
                   </div>
@@ -887,14 +887,14 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                       <p className="text-sm font-bold text-white">
                         {s.userName || getUserName(s.user)}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-muted">
                         #{s.jobCode || getJobCode(s.job)} • {s.jobName || getJobName(s.job)}
                       </p>
                     </div>
                   </div>
                   <div className="ml-2 text-right">
                     <p className="font-bold text-green-400">{formatShiftHours(s)}</p>
-                    <p className="text-[9px] text-slate-500">since {formatTime(s.clockInTime)}</p>
+                    <p className="text-[9px] text-subtle">since {formatTime(s.clockInTime)}</p>
                     {currentUser.isAdmin && onRefreshShifts && (
                       <button
                         type="button"
@@ -940,10 +940,10 @@ const TimeReports: React.FC<TimeReportsProps> = ({
             <div className="space-y-3">
               {filteredShifts.length === 0 ? (
                 <div className="py-12 text-center">
-                  <span className="material-symbols-outlined mb-3 block text-5xl text-slate-600">
+                  <span className="material-symbols-outlined mb-3 block text-5xl text-subtle">
                     schedule
                   </span>
-                  <p className="text-slate-400">No shifts recorded</p>
+                  <p className="text-muted">No shifts recorded</p>
                 </div>
               ) : (
                 completedShifts.map((s) => (
@@ -954,7 +954,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                     {editingShiftId === s.id ? (
                       <div className="space-y-3">
                         <div>
-                          <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                          <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                             Clock In
                           </label>
                           <input
@@ -970,7 +970,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                          <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                             Clock Out
                           </label>
                           <input
@@ -986,7 +986,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                          <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                             Reason for Edit *
                           </label>
                           <textarea
@@ -1017,7 +1017,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                           <button
                             onClick={handleSaveEdit}
                             disabled={isSaving || !editingShiftData.reason.trim()}
-                            className="flex-1 rounded bg-primary py-2 text-xs font-bold text-white disabled:opacity-50"
+                            className="flex-1 rounded bg-primary py-2 text-xs font-bold text-on-accent disabled:opacity-50"
                           >
                             {isSaving ? 'Saving...' : 'Save'}
                           </button>
@@ -1036,7 +1036,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                               <p className="truncate text-sm font-bold text-white">
                                 #{s.jobCode || getJobCode(s.job)} • {s.jobName || getJobName(s.job)}
                               </p>
-                              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-subtle">
                                 {filter === 'all' &&
                                   !selectedUser &&
                                   `${s.userName || getUserName(s.user)} • `}
@@ -1046,7 +1046,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                           </div>
                           <div className="ml-2 shrink-0 text-right">
                             <p className="font-bold text-white">{formatShiftHours(s)}</p>
-                            <p className="whitespace-nowrap text-[9px] font-bold uppercase text-slate-500">
+                            <p className="whitespace-nowrap text-[9px] font-bold uppercase text-subtle">
                               {formatTime(s.clockInTime)} - {formatTime(s.clockOutTime!)}
                             </p>
                           </div>
@@ -1121,14 +1121,14 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <h3 className="font-bold text-white">Edit History</h3>
               <button
                 onClick={() => setViewingHistoryFor(null)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="max-h-[calc(80vh-80px)] overflow-y-auto p-3">
               {loadingHistory ? (
-                <p className="py-8 text-center text-slate-400">Loading...</p>
+                <p className="py-8 text-center text-muted">Loading...</p>
               ) : shiftEdits[viewingHistoryFor] && shiftEdits[viewingHistoryFor].length > 0 ? (
                 <div className="space-y-4">
                   {shiftEdits[viewingHistoryFor].map((edit) => (
@@ -1136,28 +1136,26 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                       <div className="mb-3 flex items-start justify-between">
                         <div>
                           <p className="text-sm font-bold text-white">{edit.editedByName}</p>
-                          <p className="text-xs text-slate-400">
-                            {formatDateTime(edit.editTimestamp)}
-                          </p>
+                          <p className="text-xs text-muted">{formatDateTime(edit.editTimestamp)}</p>
                         </div>
                       </div>
                       <div className="space-y-2 text-xs">
                         <div className="flex gap-3">
                           <div className="flex-1">
-                            <p className="mb-1 font-bold uppercase text-slate-500">
+                            <p className="mb-1 font-bold uppercase text-subtle">
                               Previous Clock In
                             </p>
                             <p className="text-red-400">{formatDateTime(edit.previousClockIn)}</p>
                           </div>
                           <div className="flex-1">
-                            <p className="mb-1 font-bold uppercase text-slate-500">New Clock In</p>
+                            <p className="mb-1 font-bold uppercase text-subtle">New Clock In</p>
                             <p className="text-green-400">{formatDateTime(edit.newClockIn)}</p>
                           </div>
                         </div>
                         {(edit.previousClockOut || edit.newClockOut) && (
                           <div className="flex gap-3">
                             <div className="flex-1">
-                              <p className="mb-1 font-bold uppercase text-slate-500">
+                              <p className="mb-1 font-bold uppercase text-subtle">
                                 Previous Clock Out
                               </p>
                               <p className="text-red-400">
@@ -1167,9 +1165,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                               </p>
                             </div>
                             <div className="flex-1">
-                              <p className="mb-1 font-bold uppercase text-slate-500">
-                                New Clock Out
-                              </p>
+                              <p className="mb-1 font-bold uppercase text-subtle">New Clock Out</p>
                               <p className="text-green-400">
                                 {edit.newClockOut ? formatDateTime(edit.newClockOut) : 'N/A'}
                               </p>
@@ -1178,8 +1174,8 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                         )}
                         {edit.reason && (
                           <div>
-                            <p className="mb-1 font-bold uppercase text-slate-500">Reason</p>
-                            <p className="text-slate-300">{edit.reason}</p>
+                            <p className="mb-1 font-bold uppercase text-subtle">Reason</p>
+                            <p className="text-muted">{edit.reason}</p>
                           </div>
                         )}
                       </div>
@@ -1187,7 +1183,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   ))}
                 </div>
               ) : (
-                <p className="py-8 text-center text-slate-400">No edit history</p>
+                <p className="py-8 text-center text-muted">No edit history</p>
               )}
             </div>
           </div>
@@ -1208,14 +1204,14 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <h3 className="font-bold text-white">Add Shift</h3>
               <button
                 onClick={() => !addingShift && setShowAddShift(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="space-y-4 p-3">
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                   User *
                 </label>
                 <select
@@ -1232,7 +1228,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                   Job *
                 </label>
                 <select
@@ -1249,7 +1245,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                   Clock In *
                 </label>
                 <input
@@ -1262,7 +1258,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">
+                <label className="mb-1 block text-[10px] font-bold uppercase text-muted">
                   Clock Out (optional)
                 </label>
                 <input
@@ -1273,9 +1269,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   }
                   className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
                 />
-                <p className="mt-1 text-xs text-slate-500">
-                  Leave empty for an active (open) shift.
-                </p>
+                <p className="mt-1 text-xs text-subtle">Leave empty for an active (open) shift.</p>
               </div>
             </div>
             <div className="flex gap-2 border-t border-white/10 px-4 py-3">
@@ -1294,7 +1288,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   !newShiftData.job ||
                   !newShiftData.clockInTime.trim()
                 }
-                className="flex-1 rounded-sm bg-primary py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-sm bg-primary py-2 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 {addingShift ? 'Adding...' : 'Add Shift'}
               </button>

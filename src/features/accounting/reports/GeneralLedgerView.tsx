@@ -21,7 +21,7 @@ export default function GeneralLedgerView() {
         <button
           type="button"
           onClick={() => navigate(REPORTS_BASE)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           All reports
@@ -29,7 +29,7 @@ export default function GeneralLedgerView() {
 
         <div>
           <h2 className="text-xl font-bold text-white">General Ledger</h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted">
             Pick an account to see every posted transaction and its running balance.
           </p>
         </div>
@@ -39,7 +39,7 @@ export default function GeneralLedgerView() {
         <div className="flex flex-col gap-2 rounded-sm border border-white/10 bg-card-dark p-3">
           <label
             htmlFor="gl-account"
-            className="text-xs font-semibold uppercase tracking-wide text-slate-400"
+            className="text-xs font-semibold uppercase tracking-wide text-muted"
           >
             Account
           </label>

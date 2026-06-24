@@ -96,7 +96,7 @@ export function NewConversationModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -112,8 +112,8 @@ export function NewConversationModal({
               }}
               className={`rounded-sm px-3 py-1.5 text-sm font-medium ${
                 mode === 'direct'
-                  ? 'bg-primary text-white'
-                  : 'bg-white/5 text-slate-400 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'bg-white/5 text-muted hover:text-white'
               }`}
             >
               Direct Message
@@ -123,8 +123,8 @@ export function NewConversationModal({
               onClick={() => setMode('group')}
               className={`rounded-sm px-3 py-1.5 text-sm font-medium ${
                 mode === 'group'
-                  ? 'bg-primary text-white'
-                  : 'bg-white/5 text-slate-400 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'bg-white/5 text-muted hover:text-white'
               }`}
             >
               Group Chat
@@ -139,14 +139,14 @@ export function NewConversationModal({
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
             />
           </div>
         )}
 
         <div className="px-4 py-2">
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-lg text-slate-500">
+            <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-lg text-subtle">
               search
             </span>
             <input
@@ -154,7 +154,7 @@ export function NewConversationModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users..."
-              className="w-full rounded-sm border border-white/10 bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+              className="w-full rounded-sm border border-white/10 bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               autoFocus
             />
           </div>
@@ -162,15 +162,15 @@ export function NewConversationModal({
 
         <div className="max-h-64 overflow-y-auto px-2 py-1">
           {encryptionReadyIds === null && (
-            <p className="py-4 text-center text-sm text-slate-500">Loading users...</p>
+            <p className="py-4 text-center text-sm text-subtle">Loading users...</p>
           )}
           {encryptionReadyIds !== null && filtered.length === 0 && (
             <div className="py-4 text-center">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-subtle">
                 {search ? 'No users found' : 'No users available for chat'}
               </p>
               {!search && otherUsers.length > chatReadyUsers.length && (
-                <p className="mt-1 text-xs text-slate-600">
+                <p className="mt-1 text-xs text-subtle">
                   {otherUsers.length - chatReadyUsers.length} user(s) haven't set up encryption yet.
                   They need to log in and visit Chat first.
                 </p>
@@ -194,12 +194,12 @@ export function NewConversationModal({
                   isSelected ? 'bg-primary/10' : 'hover:bg-white/5'
                 }`}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-slate-300">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-muted">
                   {user.initials ?? user.name?.charAt(0) ?? '?'}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-white">{user.name ?? user.email}</p>
-                  {user.name && <p className="truncate text-xs text-slate-500">{user.email}</p>}
+                  {user.name && <p className="truncate text-xs text-subtle">{user.email}</p>}
                 </div>
                 {isSelected && (
                   <span className="material-symbols-outlined text-lg text-primary">
@@ -215,7 +215,7 @@ export function NewConversationModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-sm px-4 py-2 text-sm text-slate-400 hover:text-white"
+            className="rounded-sm px-4 py-2 text-sm text-muted hover:text-white"
           >
             Cancel
           </button>
@@ -223,7 +223,7 @@ export function NewConversationModal({
             type="button"
             onClick={handleCreate}
             disabled={!canCreate || loading}
-            className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? 'Creating...' : mode === 'direct' ? 'Start Chat' : 'Create Group'}
           </button>

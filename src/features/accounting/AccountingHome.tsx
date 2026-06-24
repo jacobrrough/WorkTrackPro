@@ -17,7 +17,7 @@ export default function AccountingHome() {
       <div className="flex flex-col gap-6">
         {sections.map((section) => (
           <section key={section.group}>
-            <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-subtle">
               {section.label}
             </h2>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">

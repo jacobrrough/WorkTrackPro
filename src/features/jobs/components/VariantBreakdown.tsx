@@ -16,7 +16,7 @@ export function VariantBreakdown({ entries }: VariantBreakdownProps) {
   return (
     <div className="mb-3 space-y-0.5">
       {entries.map(({ suffix, qty, laborHoursTotal, cncHoursTotal, printer3DHoursTotal }) => (
-        <div key={suffix} className="flex justify-between text-[10px] text-slate-400">
+        <div key={suffix} className="flex justify-between text-[10px] text-muted">
           {suffix} ×{qty} = L {(laborHoursTotal ?? 0).toFixed(1)}h / CNC{' '}
           {(cncHoursTotal ?? 0).toFixed(1)}h / 3D {(printer3DHoursTotal ?? 0).toFixed(1)}h
         </div>

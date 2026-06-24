@@ -109,8 +109,8 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
               aria-pressed={isActive}
               className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors ${
                 isActive
-                  ? 'bg-primary text-white'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                  ? 'bg-primary text-on-accent'
+                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
               }`}
             >
               {p.label}
@@ -121,7 +121,7 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
 
       <div className="flex flex-wrap items-end gap-3">
         {!asOfOnly && (
-          <label className="flex flex-col gap-1 text-xs font-semibold text-slate-400">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
             From
             <input
               type="date"
@@ -133,7 +133,7 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
             />
           </label>
         )}
-        <label className="flex flex-col gap-1 text-xs font-semibold text-slate-400">
+        <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
           {asOfOnly ? 'As of' : 'To'}
           <input
             type="date"
@@ -148,7 +148,7 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
           <button
             type="button"
             onClick={() => onChange({ from: null, to: null })}
-            className="text-xs font-semibold text-slate-400 underline-offset-2 hover:text-white hover:underline"
+            className="text-xs font-semibold text-muted underline-offset-2 hover:text-white hover:underline"
           >
             Clear
           </button>

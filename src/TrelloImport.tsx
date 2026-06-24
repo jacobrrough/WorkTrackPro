@@ -2072,23 +2072,23 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md rounded-md border border-white/20 bg-card-dark p-4 shadow-xl">
             <h3 className="mb-2 text-lg font-bold text-white">No match for this material</h3>
-            <p className="mb-1 text-sm text-slate-300">
+            <p className="mb-1 text-sm text-muted">
               <span className="font-medium">{unmatchedPrompt.material}</span>
               {unmatchedPrompt.qty > 1 && (
-                <span className="ml-1 text-slate-400">(qty: {unmatchedPrompt.qty})</span>
+                <span className="ml-1 text-muted">(qty: {unmatchedPrompt.qty})</span>
               )}
             </p>
-            <p className="mb-3 text-xs text-slate-500">Job: {unmatchedPrompt.jobName}</p>
+            <p className="mb-3 text-xs text-subtle">Job: {unmatchedPrompt.jobName}</p>
             <input
               type="text"
               value={unmatchedSearch}
               onChange={(e) => setUnmatchedSearch(e.target.value)}
               placeholder="Search inventory..."
-              className="mb-3 w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+              className="mb-3 w-full rounded border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary focus:outline-none"
             />
             <div className="mb-4 max-h-48 overflow-y-auto rounded border border-white/10 bg-white/5">
               {filteredUnmatchedList.length === 0 ? (
-                <p className="p-3 text-center text-sm text-slate-500">No inventory items match</p>
+                <p className="p-3 text-center text-sm text-subtle">No inventory items match</p>
               ) : (
                 filteredUnmatchedList.map((item) => (
                   <button
@@ -2098,7 +2098,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                     className={`block w-full px-3 py-2 text-left text-sm transition ${
                       unmatchedSelectedId === item.id
                         ? 'bg-primary/30 text-white'
-                        : 'text-slate-300 hover:bg-white/10'
+                        : 'text-muted hover:bg-white/10'
                     }`}
                   >
                     {item.name}
@@ -2111,7 +2111,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 type="button"
                 onClick={handleUnmatchedLink}
                 disabled={!unmatchedSelectedId}
-                className="flex-1 rounded-sm bg-primary py-2.5 font-bold text-white transition hover:bg-primary/90 disabled:opacity-50 disabled:hover:bg-primary"
+                className="flex-1 rounded-sm bg-primary py-2.5 font-bold text-on-accent transition hover:bg-primary/90 disabled:opacity-50 disabled:hover:bg-primary"
               >
                 Link to selected
               </button>
@@ -2134,15 +2134,15 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
 
         <div className="space-y-6 p-6">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">Board Type</label>
+            <label className="mb-2 block text-sm font-medium text-muted">Board Type</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setBoardType('admin')}
                 disabled={isImporting}
                 className={`flex-1 rounded-sm py-3 font-bold transition ${
                   boardType === 'admin'
-                    ? 'bg-primary text-white'
-                    : 'bg-white/10 text-slate-400 hover:bg-white/15'
+                    ? 'bg-primary text-on-accent'
+                    : 'bg-white/10 text-muted hover:bg-white/15'
                 }`}
               >
                 Admin Jobs
@@ -2152,8 +2152,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 disabled={isImporting}
                 className={`flex-1 rounded-sm py-3 font-bold transition ${
                   boardType === 'shopFloor'
-                    ? 'bg-primary text-white'
-                    : 'bg-white/10 text-slate-400 hover:bg-white/15'
+                    ? 'bg-primary text-on-accent'
+                    : 'bg-white/10 text-muted hover:bg-white/15'
                 }`}
               >
                 Shop Floor
@@ -2163,8 +2163,8 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 disabled={isImporting}
                 className={`flex-1 rounded-sm py-3 font-bold transition ${
                   boardType === 'inventory'
-                    ? 'bg-primary text-white'
-                    : 'bg-white/10 text-slate-400 hover:bg-white/15'
+                    ? 'bg-primary text-on-accent'
+                    : 'bg-white/10 text-muted hover:bg-white/15'
                 }`}
               >
                 Inventory
@@ -2173,7 +2173,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">Upload JSON</label>
+            <label className="mb-2 block text-sm font-medium text-muted">Upload JSON</label>
             <input
               ref={fileInputRef}
               type="file"
@@ -2185,7 +2185,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           </div>
 
           <div className="space-y-2 rounded-sm border border-white/10 bg-white/5 p-3">
-            <p className="text-sm font-medium text-slate-200">
+            <p className="text-sm font-medium text-white">
               Trello API credentials (recommended for complete imports)
             </p>
             <input
@@ -2195,7 +2195,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               onChange={(e) => setTrelloApiKey(e.target.value)}
               placeholder="Trello API key"
               autoComplete="off"
-              className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+              className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary focus:outline-none"
             />
             <input
               type="password"
@@ -2204,9 +2204,9 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
               onChange={(e) => setTrelloApiToken(e.target.value)}
               placeholder="Trello API token"
               autoComplete="off"
-              className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+              className="w-full rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary focus:outline-none"
             />
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted">
               Use a read token from Trello to load full board data and attachments.
             </p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -2217,7 +2217,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 onChange={(e) => setTrelloBoardInput(e.target.value)}
                 placeholder="Trello board URL or ID"
                 autoComplete="off"
-                className="min-w-0 flex-1 rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+                className="min-w-0 flex-1 rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary focus:outline-none"
               />
               <div className="flex gap-2">
                 <button
@@ -2232,7 +2232,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                   type="button"
                   onClick={handleLoadFromApi}
                   disabled={isImporting || isLoadingFromApi || isValidatingTrelloAuth}
-                  className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:opacity-50"
+                  className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent transition hover:bg-primary/90 disabled:opacity-50"
                 >
                   {isLoadingFromApi ? 'Loading board...' : 'Load from API'}
                 </button>
@@ -2271,7 +2271,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 <div className="space-y-3 rounded-sm border border-white/10 bg-white/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-medium text-white">{trelloData.name}</p>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-muted">
                       {selectedCount} of {totalOpen} cards selected
                     </p>
                   </div>
@@ -2281,7 +2281,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                       placeholder="Filter by card or list name..."
                       value={cardListFilter}
                       onChange={(e) => setCardListFilter(e.target.value)}
-                      className="min-w-0 flex-1 rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                      className="min-w-0 flex-1 rounded-sm border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
                     />
                     <button
                       type="button"
@@ -2317,7 +2317,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                   <div className="max-h-64 overflow-y-auto rounded border border-white/10 bg-black/20">
                     <ul className="divide-y divide-white/10">
                       {openCards.length === 0 ? (
-                        <li className="px-3 py-4 text-center text-sm text-slate-400">
+                        <li className="px-3 py-4 text-center text-sm text-muted">
                           {cardListFilter.trim() ? 'No cards match the filter.' : 'No open cards.'}
                         </li>
                       ) : (
@@ -2340,7 +2340,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                               className="min-w-0 flex-1 cursor-pointer text-sm text-white"
                             >
                               <span className="font-medium">{card.name}</span>
-                              <span className="ml-2 text-slate-400">— {card.listName}</span>
+                              <span className="ml-2 text-muted">— {card.listName}</span>
                             </label>
                           </li>
                         ))
@@ -2354,7 +2354,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           {isImporting && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-300">{status}</span>
+                <span className="text-sm text-muted">{status}</span>
                 <span className="font-bold text-primary">{progress}%</span>
               </div>
               <div className="h-2 w-full rounded-sm bg-white/10">
@@ -2448,7 +2448,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                 if (result.success > 0) onImportComplete();
                 onClose();
               }}
-              className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition hover:bg-primary/90"
+              className="flex-1 rounded-sm bg-primary py-3 font-bold text-on-accent transition hover:bg-primary/90"
             >
               Finish
             </button>
@@ -2456,7 +2456,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             <button
               onClick={handleImport}
               disabled={!trelloData}
-              className="flex-1 rounded-sm bg-primary py-3 font-bold text-white transition hover:bg-primary/90 disabled:opacity-50"
+              className="flex-1 rounded-sm bg-primary py-3 font-bold text-on-accent transition hover:bg-primary/90 disabled:opacity-50"
             >
               Import
             </button>

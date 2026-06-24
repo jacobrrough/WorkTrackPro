@@ -160,7 +160,7 @@ export function BarcodeScannerModal({
             Scanning... ({scanAttempts} frames)
           </div>
         </div>
-        <p className="mt-4 text-center text-sm text-slate-400">
+        <p className="mt-4 text-center text-sm text-muted">
           Position barcode in view. Camera will auto-detect.
         </p>
       </div>

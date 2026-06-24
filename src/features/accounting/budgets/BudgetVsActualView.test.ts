@@ -10,7 +10,7 @@ import { varianceColorClass } from './BudgetVsActualView';
 describe('varianceColorClass', () => {
   const GREEN = 'text-emerald-400';
   const RED = 'text-red-400';
-  const NEUTRAL = 'text-slate-300';
+  const NEUTRAL = 'text-muted';
 
   describe('income / revenue accounts', () => {
     it('colours a beat (actual over budget, variance > 0) green', () => {

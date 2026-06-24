@@ -36,7 +36,7 @@ const Accordion: React.FC<AccordionProps> = ({
       >
         <span className="text-sm font-semibold text-white">{title}</span>
         <span
-          className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${
+          className={`material-symbols-outlined text-muted transition-transform duration-200 ${
             expanded ? 'rotate-180' : ''
           }`}
           aria-hidden

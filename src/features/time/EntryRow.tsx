@@ -90,13 +90,13 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           <button
             onClick={handleSave}
             disabled={!parsed.valid || saving}
-            className="flex-1 rounded-sm bg-primary py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            className="flex-1 rounded-sm bg-primary py-1.5 text-xs font-bold text-on-accent disabled:opacity-50"
           >
             Save{parsed.valid ? ` (${formatUsd(payFromHours(parsed.hours, entry.rate))})` : ''}
           </button>
           <button
             onClick={cancel}
-            className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10"
+            className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
           >
             Cancel
           </button>
@@ -111,7 +111,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
     <li className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-3 py-2 text-sm">
       <div className="min-w-0">
         <span className="text-white">{entry.entryDate}</span>
-        <span className="ml-2 text-slate-400">
+        <span className="ml-2 text-muted">
           {entry.hours} hrs · {formatUsd(computeEntryPay(entry))}
         </span>
         {paid && (
@@ -119,14 +119,14 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
             Paid
           </span>
         )}
-        {entry.note && <p className="truncate text-xs text-slate-500">{entry.note}</p>}
+        {entry.note && <p className="truncate text-xs text-subtle">{entry.note}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {paid ? (
           // A settled entry is locked (no edit/delete); it can only be reopened.
           <button
             onClick={() => mutations.unmarkEntryPaid(entry.id)}
-            className="rounded-sm border border-white/10 px-2 py-1 text-[11px] font-medium text-slate-300 hover:bg-white/10"
+            className="rounded-sm border border-white/10 px-2 py-1 text-[11px] font-medium text-muted hover:bg-white/10"
           >
             Unmark paid
           </button>
@@ -134,7 +134,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           <>
             <button
               onClick={openEdit}
-              className="flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-white/10 hover:text-white"
+              className="flex size-7 items-center justify-center rounded-full text-subtle hover:bg-white/10 hover:text-white"
               aria-label="Edit entry"
             >
               <span className="material-symbols-outlined text-base">edit</span>
@@ -147,7 +147,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
                   onConfirm: () => mutations.deleteEntry(entry.id),
                 })
               }
-              className="flex size-7 items-center justify-center rounded-full text-slate-500 hover:bg-red-500/20 hover:text-red-400"
+              className="flex size-7 items-center justify-center rounded-full text-subtle hover:bg-red-500/20 hover:text-red-400"
               aria-label="Delete entry"
             >
               <span className="material-symbols-outlined text-base">delete</span>

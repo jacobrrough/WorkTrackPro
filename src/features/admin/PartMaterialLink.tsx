@@ -152,7 +152,7 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
             </>
           ) : (
             <>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 {displayQty} {material.unit}
               </span>
               <button
@@ -176,7 +176,7 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
               className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
                 material.requiresCnc
                   ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  : 'bg-white/5 text-muted hover:bg-white/10'
               }`}
             >
               <span className="material-symbols-outlined text-[13px]">

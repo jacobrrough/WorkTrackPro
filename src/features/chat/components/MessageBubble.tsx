@@ -26,13 +26,13 @@ function ReadStatus({ message }: { message: Message }) {
   }
   if (hasDelivered) {
     return (
-      <span className="material-symbols-outlined text-[14px] text-slate-400" title="Delivered">
+      <span className="material-symbols-outlined text-[14px] text-muted" title="Delivered">
         done_all
       </span>
     );
   }
   return (
-    <span className="material-symbols-outlined text-[14px] text-slate-500" title="Sent">
+    <span className="material-symbols-outlined text-[14px] text-subtle" title="Sent">
       done
     </span>
   );
@@ -46,7 +46,7 @@ export function MessageBubble({ message, isMine }: MessageBubbleProps) {
   if (isSystem) {
     return (
       <div className="flex justify-center py-1">
-        <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-500">
+        <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-subtle">
           {content ?? 'System message'}
         </span>
       </div>
@@ -75,11 +75,11 @@ export function MessageBubble({ message, isMine }: MessageBubbleProps) {
 
         {isFile && fileInfo ? (
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-slate-400">attach_file</span>
+            <span className="material-symbols-outlined text-lg text-muted">attach_file</span>
             <div className="min-w-0">
               <p className="truncate text-sm text-white">{fileInfo.fileName ?? 'File'}</p>
               {fileInfo.size != null && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-subtle">
                   {fileInfo.size < 1024
                     ? `${fileInfo.size} B`
                     : fileInfo.size < 1048576
@@ -92,14 +92,14 @@ export function MessageBubble({ message, isMine }: MessageBubbleProps) {
         ) : content ? (
           <p className="whitespace-pre-wrap break-words text-sm text-white">{content}</p>
         ) : (
-          <p className="flex items-center gap-1 text-sm italic text-slate-500">
+          <p className="flex items-center gap-1 text-sm italic text-subtle">
             <span className="material-symbols-outlined text-xs">lock</span>
             Encrypted message
           </p>
         )}
 
         <div className={`mt-1 flex items-center gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
-          <span className="text-[10px] text-slate-500">{formatTime(message.createdAt)}</span>
+          <span className="text-[10px] text-subtle">{formatTime(message.createdAt)}</span>
           {isMine && <ReadStatus message={message} />}
         </div>
       </div>

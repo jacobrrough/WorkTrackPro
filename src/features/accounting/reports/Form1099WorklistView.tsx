@@ -37,7 +37,7 @@ function YearPicker({ value, onChange }: { value: number; onChange: (year: numbe
   const years = [now, now - 1, now - 2, now - 3, now - 4];
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-sm border border-white/10 bg-card-dark p-3">
-      <label className="flex items-center gap-2 text-sm font-semibold text-slate-400">
+      <label className="flex items-center gap-2 text-sm font-semibold text-muted">
         Tax year
         <select
           aria-label="Tax year"
@@ -52,7 +52,7 @@ function YearPicker({ value, onChange }: { value: number; onChange: (year: numbe
           ))}
         </select>
       </label>
-      <span className="text-xs text-slate-500">
+      <span className="text-xs text-subtle">
         Calendar-year totals of posted, non-card vendor payments.
       </span>
     </div>
@@ -83,14 +83,14 @@ export default function Form1099WorklistView() {
         <>
           {/* What this report is and what it deliberately leaves out. */}
           <div
-            className="rounded-sm border border-white/10 bg-card-dark p-3 text-xs text-slate-400"
+            className="rounded-sm border border-white/10 bg-card-dark p-3 text-xs text-muted"
             role="note"
           >
-            Lists vendors marked <span className="font-semibold text-slate-200">1099</span> whose
-            posted payments for {year} reach the{' '}
-            <span className="font-mono text-slate-200">{formatMoney(data.thresholdAmount)}</span>{' '}
+            Lists vendors marked <span className="font-semibold text-white">1099</span> whose posted
+            payments for {year} reach the{' '}
+            <span className="font-mono text-white">{formatMoney(data.thresholdAmount)}</span>{' '}
             1099-NEC threshold.{' '}
-            <span className="font-semibold text-slate-200">
+            <span className="font-semibold text-white">
               Card / third-party-network payments are excluded
             </span>{' '}
             — those are reported on a 1099-K by the processor, not on your 1099-NEC. This is a
@@ -142,7 +142,7 @@ export default function Form1099WorklistView() {
 
           {/* Below-threshold disclosure: summed, not listed. */}
           {data.belowThresholdCount > 0 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-subtle">
               {data.belowThresholdCount} 1099 vendor
               {data.belowThresholdCount === 1 ? '' : 's'} below the{' '}
               {formatMoney(data.thresholdAmount)} threshold ({formatMoney(data.belowThresholdTotal)}{' '}
@@ -162,12 +162,12 @@ function Worklist1099Row({ row }: { row: Form1099Row }) {
       <td className="px-3 py-2 text-white">
         {row.vendorName || row.vendorId}
         {row.exempt && (
-          <span className="ml-2 rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-300">
+          <span className="ml-2 rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
             Exempt
           </span>
         )}
       </td>
-      <td className="px-3 py-2 text-slate-300">
+      <td className="px-3 py-2 text-muted">
         {row.legalName || <span className="text-amber-400">— missing —</span>}
       </td>
       <td className="px-3 py-2 text-right">
@@ -177,7 +177,7 @@ function Worklist1099Row({ row }: { row: Form1099Row }) {
           <span className="text-amber-400">No</span>
         )}
       </td>
-      <td className="px-3 py-2 text-right tabular-nums text-slate-400">{row.paymentCount}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-muted">{row.paymentCount}</td>
       <MoneyCell amount={row.amount} />
     </tr>
   );

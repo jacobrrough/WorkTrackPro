@@ -30,8 +30,8 @@ export default function ReportsView() {
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <TaxDisclaimer />
 
-        <p className="text-sm text-slate-400">
-          All figures are derived from <span className="font-semibold text-slate-200">posted</span>{' '}
+        <p className="text-sm text-muted">
+          All figures are derived from <span className="font-semibold text-white">posted</span>{' '}
           journal activity only. Drafts and voided entries are excluded.
         </p>
 
@@ -46,12 +46,12 @@ export default function ReportsView() {
                 <span className="material-symbols-outlined text-2xl text-primary">{r.icon}</span>
                 <span className="font-bold text-white">{r.label}</span>
               </span>
-              <span className="text-xs text-slate-400">{r.description}</span>
+              <span className="text-xs text-muted">{r.description}</span>
             </Card>
           ))}
         </div>
 
-        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-subtle">
           General ledger &amp; cash flow
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -60,7 +60,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">menu_book</span>
               <span className="font-bold text-white">General Ledger</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Every posted transaction for an account, with a running balance. Drill in from any
               statement’s account row.
             </span>
@@ -70,14 +70,14 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">water_drop</span>
               <span className="font-bold text-white">Statement of Cash Flows</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Net income adjusted for balance-sheet changes (indirect method), split into operating,
               investing and financing.
             </span>
           </Card>
         </div>
 
-        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-subtle">
           Management reports
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -86,7 +86,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">groups</span>
               <span className="font-bold text-white">Sales by Customer</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Pre-tax invoice revenue grouped by customer, ranked. Non-void invoices.
             </span>
           </Card>
@@ -95,7 +95,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">category</span>
               <span className="font-bold text-white">Sales by Item</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Pre-tax invoice revenue grouped by item or service, ranked. Non-void invoices.
             </span>
           </Card>
@@ -106,13 +106,13 @@ export default function ReportsView() {
               </span>
               <span className="font-bold text-white">Purchases by Vendor</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Bill spend grouped by vendor, ranked. Non-void bills.
             </span>
           </Card>
         </div>
 
-        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-subtle">
           Planning &amp; forecasting
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -121,7 +121,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">savings</span>
               <span className="font-bold text-white">Budgets &amp; Budget vs Actual</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Plan monthly amounts per account, then compare your plan against posted actuals.
             </span>
           </Card>
@@ -132,13 +132,13 @@ export default function ReportsView() {
               </span>
               <span className="font-bold text-white">Cash-Flow Forecast</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Project cash in from open invoices minus cash out for open bills, by due date.
             </span>
           </Card>
         </div>
 
-        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-subtle">
           Sales tax &amp; compliance
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -147,7 +147,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">receipt_long</span>
               <span className="font-bold text-white">Sales-Tax Liability</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Tax collected (credits to Sales Tax Payable) by agency, with a CDTFA-style
               taxable/non-taxable summary. Reporting only — no e-filing.
             </span>
@@ -157,7 +157,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">event</span>
               <span className="font-bold text-white">Tax Calendar</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Upcoming sales-tax filing deadlines per agency, soonest first. Read-only — no
               reminders are sent.
             </span>
@@ -167,7 +167,7 @@ export default function ReportsView() {
               <span className="material-symbols-outlined text-2xl text-primary">badge</span>
               <span className="font-bold text-white">1099-NEC Worklist</span>
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               1099 vendors paid $600+ in a calendar year, with W-9 completeness. Card / third-party
               payments excluded. Reporting only — no e-file.
             </span>

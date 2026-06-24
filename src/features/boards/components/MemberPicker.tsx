@@ -41,7 +41,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
               {users.find((u) => u.id === ownerId)?.name ?? 'Owner'}
             </span>
           </div>
-          <span className="text-xs text-slate-500">Owner</span>
+          <span className="text-xs text-subtle">Owner</span>
         </div>
 
         {members.map((m) => (
@@ -50,7 +50,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
             className="flex items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2"
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-600 text-xs font-medium text-slate-300">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-600 text-xs font-medium text-muted">
                 {users.find((u) => u.id === m.userId)?.initials ?? '?'}
               </span>
               <span className="text-sm text-white">
@@ -61,14 +61,14 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
               <select
                 value={m.role}
                 onChange={(e) => onUpdateRole(m.id, e.target.value as BoardMemberRole)}
-                className="rounded border border-white/10 bg-transparent px-1 py-0.5 text-xs text-slate-300"
+                className="rounded border border-white/10 bg-transparent px-1 py-0.5 text-xs text-muted"
               >
                 <option value="editor">Editor</option>
                 <option value="viewer">Viewer</option>
               </select>
               <button
                 onClick={() => onRemove(m.userId)}
-                className="text-slate-500 hover:text-red-400"
+                className="text-subtle hover:text-red-400"
                 aria-label="Remove member"
               >
                 <span className="material-symbols-outlined text-base">close</span>
@@ -82,14 +82,14 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
         <div>
           <input
             autoFocus
-            className="mb-2 w-full rounded border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+            className="mb-2 w-full rounded border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email"
           />
           <div className="max-h-32 space-y-1 overflow-y-auto">
             {filteredUsers.length === 0 ? (
-              <p className="py-2 text-center text-xs text-slate-500">No users found</p>
+              <p className="py-2 text-center text-xs text-subtle">No users found</p>
             ) : (
               filteredUsers.slice(0, 10).map((u) => (
                 <button
@@ -99,9 +99,9 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
                     setSearch('');
                     setShowSearch(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-slate-300 hover:bg-white/10"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-white/10"
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 text-[10px] font-medium text-slate-300">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 text-[10px] font-medium text-muted">
                     {u.initials ?? u.name?.slice(0, 2)?.toUpperCase() ?? '?'}
                   </span>
                   <span>{u.name ?? u.email}</span>
@@ -114,7 +114,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
               setShowSearch(false);
               setSearch('');
             }}
-            className="mt-1 text-xs text-slate-500 hover:text-white"
+            className="mt-1 text-xs text-subtle hover:text-white"
           >
             Cancel
           </button>

@@ -196,7 +196,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       <div className="relative">
         <span
           aria-hidden="true"
-          className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+          className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
         >
           search
         </span>
@@ -221,7 +221,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder="Search jobs, PO, description, bin, status..."
-          className="w-full rounded-sm border border-white/10 bg-[#261a32] py-2.5 pl-10 pr-3 text-white placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full rounded-sm border border-white/10 bg-surface-2 py-2.5 pl-10 pr-3 text-white placeholder:text-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
           aria-label="Search"
         />
 
@@ -229,7 +229,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           <div
             id={listboxId}
             role="listbox"
-            className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-72 overflow-y-auto rounded-sm border border-white/10 bg-[#1a1122] shadow-lg"
+            className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-72 overflow-y-auto rounded-sm border border-white/10 bg-app-2 shadow-lg"
           >
             {suggestions.map((suggestion, index) => (
               <React.Fragment key={suggestion.id}>
@@ -250,13 +250,13 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                     index === activeIndex ? 'bg-primary/20' : 'hover:bg-white/5'
                   } ${suggestion.type === 'search' ? 'border-t border-white/10' : ''}`}
                 >
-                  <span className="material-symbols-outlined text-lg text-slate-400">
+                  <span className="material-symbols-outlined text-lg text-muted">
                     {suggestion.icon}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm text-white">{suggestion.label}</div>
                     {suggestion.sublabel && (
-                      <div className="truncate text-xs text-slate-400">{suggestion.sublabel}</div>
+                      <div className="truncate text-xs text-muted">{suggestion.sublabel}</div>
                     )}
                   </div>
                 </button>

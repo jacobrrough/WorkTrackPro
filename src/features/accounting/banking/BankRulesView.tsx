@@ -174,7 +174,7 @@ function RuleEditorModal({
         </div>
       }
     >
-      <p className="mb-3 text-sm text-slate-400">
+      <p className="mb-3 text-sm text-muted">
         When a transaction matches, it is auto-categorized to the chosen account. Higher priority
         wins when several rules match.
       </p>
@@ -272,7 +272,7 @@ function RuleEditorModal({
               onChange={(e) => patch({ priority: Number.parseInt(e.target.value, 10) || 0 })}
             />
           </FormField>
-          <label className="flex items-center gap-2 pb-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 pb-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={draft.scopeAll}
@@ -320,16 +320,16 @@ function RuleRow({
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.04]">
-      <span className="w-8 shrink-0 text-center font-mono text-xs text-slate-500">
+      <span className="w-8 shrink-0 text-center font-mono text-xs text-subtle">
         {rule.priority}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={`block text-sm ${rule.isActive ? 'text-white' : 'text-slate-500'}`}>
-          {fieldLabel} {opLabel} <span className="font-mono text-slate-300">{rule.matchValue}</span>
+        <span className={`block text-sm ${rule.isActive ? 'text-white' : 'text-subtle'}`}>
+          {fieldLabel} {opLabel} <span className="font-mono text-muted">{rule.matchValue}</span>
           {' → '}
           <span className="text-primary">{accountName}</span>
         </span>
-        <span className="block text-xs text-slate-500">
+        <span className="block text-xs text-subtle">
           {rule.bankAccountId == null ? 'All accounts' : 'This account'}
           {!rule.isActive && ' · inactive'}
         </span>
@@ -339,7 +339,7 @@ function RuleRow({
         onClick={onToggleActive}
         disabled={busy}
         aria-label={rule.isActive ? 'Deactivate rule' : 'Activate rule'}
-        className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {rule.isActive ? 'toggle_on' : 'toggle_off'}
@@ -350,7 +350,7 @@ function RuleRow({
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit rule"
-        className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -359,7 +359,7 @@ function RuleRow({
         onClick={onDelete}
         disabled={busy}
         aria-label="Delete rule"
-        className="flex size-9 items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400 disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">delete</span>
       </button>
@@ -401,26 +401,26 @@ export default function BankRulesView() {
         <button
           type="button"
           onClick={() => navigate(`${BANKING_BASE}/${bankAccountId}`)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           {account ? account.name : 'Back to account'}
         </button>
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Rules run when transactions are imported and auto-fill the category. Higher-priority rules
           win; the first match sets the category for review. Rules scoped to all accounts also apply
           here.
         </p>
 
-        {isPending && <p className="text-slate-400">Loading rules…</p>}
+        {isPending && <p className="text-muted">Loading rules…</p>}
         {isError && <p className="text-red-400">Could not load rules.</p>}
 
         {!isPending && !isError && rules.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">rule</span>
+            <span className="material-symbols-outlined text-4xl text-subtle">rule</span>
             <p className="text-lg font-bold text-white">No rules yet</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <p className="max-w-sm text-sm text-muted">
               Create a rule to auto-categorize matching transactions on import — for example, a
               description containing “SHELL” to your Fuel expense account.
             </p>
@@ -432,7 +432,7 @@ export default function BankRulesView() {
 
         {rules.length > 0 && (
           <>
-            <div className="flex items-center gap-3 px-4 pb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="flex items-center gap-3 px-4 pb-1.5 text-xs font-semibold uppercase tracking-wide text-subtle">
               <span className="w-8 shrink-0 text-center">Pri</span>
               <span className="flex-1">Rule</span>
               <span className="w-[120px] shrink-0 text-right">Actions</span>

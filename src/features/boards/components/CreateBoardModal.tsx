@@ -42,19 +42,19 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
       >
         <h2 className="mb-4 text-lg font-semibold text-white">New Board</h2>
 
-        <label className="mb-1 block text-sm text-slate-400">Name</label>
+        <label className="mb-1 block text-sm text-muted">Name</label>
         <input
           autoFocus
-          className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+          className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Board name"
           maxLength={100}
         />
 
-        <label className="mb-1 block text-sm text-slate-400">Description (optional)</label>
+        <label className="mb-1 block text-sm text-muted">Description (optional)</label>
         <textarea
-          className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+          className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -62,7 +62,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
           maxLength={300}
         />
 
-        <label className="mb-2 block text-sm text-slate-400">Visibility</label>
+        <label className="mb-2 block text-sm text-muted">Visibility</label>
         <div className="mb-6 space-y-2">
           {VISIBILITY_OPTIONS.map((opt) => (
             <label
@@ -70,7 +70,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
               className={`flex cursor-pointer items-center gap-3 rounded border px-3 py-2 transition-colors ${
                 visibility === opt.value
                   ? 'border-primary bg-primary/10 text-white'
-                  : 'border-white/10 text-slate-400 hover:border-white/20'
+                  : 'border-white/10 text-muted hover:border-white/20'
               }`}
             >
               <input
@@ -83,7 +83,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
               />
               <div>
                 <div className="text-sm font-medium">{opt.label}</div>
-                <div className="text-xs text-slate-500">{opt.desc}</div>
+                <div className="text-xs text-subtle">{opt.desc}</div>
               </div>
             </label>
           ))}
@@ -93,14 +93,14 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-4 py-2 text-sm text-slate-400 hover:text-white"
+            className="rounded px-4 py-2 text-sm text-muted hover:text-white"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!name.trim() || saving}
-            className="rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded bg-primary px-4 py-2 text-sm font-medium text-on-accent disabled:opacity-50"
           >
             {saving ? 'Creating...' : 'Create Board'}
           </button>

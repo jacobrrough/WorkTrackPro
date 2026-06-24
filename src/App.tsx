@@ -146,7 +146,7 @@ export default function App() {
       return (
         <Suspense
           fallback={
-            <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-500">
+            <div className="flex min-h-screen items-center justify-center bg-slate-100 text-subtle">
               Loading…
             </div>
           }
@@ -164,7 +164,7 @@ export default function App() {
       return (
         <Suspense
           fallback={
-            <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 text-subtle">
               Loading…
             </div>
           }
@@ -204,18 +204,18 @@ export default function App() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background-dark">
         <div className="px-4 text-center">
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-muted">Loading...</p>
           {showLoadingHelp && (
             <div className="mt-3 rounded-sm border border-primary/30 bg-primary/10 p-3 text-left">
-              <p className="text-sm text-slate-200">Startup is taking longer than expected.</p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="text-sm text-white">Startup is taking longer than expected.</p>
+              <p className="mt-1 text-xs text-muted">
                 If this persists, refresh to recover from a stale cached bundle or a temporary
                 network issue.
               </p>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="mt-3 rounded-sm bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90"
+                className="mt-3 rounded-sm bg-primary px-3 py-2 text-xs font-bold text-on-accent hover:bg-primary/90"
               >
                 Retry Loading
               </button>
@@ -232,13 +232,13 @@ export default function App() {
         <div className="w-full max-w-sm rounded-lg border border-white/10 bg-white/5 p-6 text-center">
           <span className="material-symbols-outlined text-4xl text-primary">shield_lock</span>
           <h2 className="mt-4 text-lg font-bold text-white">Pending approval</h2>
-          <p className="mt-2 text-sm text-slate-300">
+          <p className="mt-2 text-sm text-muted">
             Your account has been created, but an admin still needs to approve access.
           </p>
           <button
             type="button"
             onClick={logout}
-            className="mt-6 min-h-[44px] w-full touch-manipulation rounded-sm bg-primary px-4 py-3 font-bold text-white hover:bg-primary/90"
+            className="mt-6 min-h-[44px] w-full touch-manipulation rounded-sm bg-primary px-4 py-3 font-bold text-on-accent hover:bg-primary/90"
           >
             Log out
           </button>
@@ -264,7 +264,7 @@ export default function App() {
   if (currentUser && !mfaGateConfirmed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background-dark">
-        <p className="text-slate-400">Loading...</p>
+        <p className="text-muted">Loading...</p>
       </div>
     );
   }
@@ -293,14 +293,14 @@ export default function App() {
         fallback={
           <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark p-4 text-center">
             <p className="text-lg font-semibold text-white">Something went wrong</p>
-            <p className="mt-2 max-w-md text-sm text-slate-400">
+            <p className="mt-2 max-w-md text-sm text-muted">
               An unexpected error occurred. Please refresh the page. If the problem persists,
               contact your administrator.
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-6 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
+              className="mt-6 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
             >
               Refresh Page
             </button>

@@ -11,7 +11,7 @@ export function ProgressEstimate({ value, onChange, disabled }: ProgressEstimate
     <div>
       <div className="mb-1 flex items-center justify-between">
         <label className="text-xs font-semibold text-white">Progress Estimate</label>
-        <span className="text-xs text-slate-400">{displayValue}%</span>
+        <span className="text-xs text-muted">{displayValue}%</span>
       </div>
       <input
         type="range"

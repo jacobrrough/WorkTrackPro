@@ -242,7 +242,7 @@ export default function RecurringTemplateEditView() {
   if (isEdit && loadingExisting && !hydrated) {
     return (
       <AccountingShell active="recurring" title={title}>
-        <p className="text-slate-400">Loading template…</p>
+        <p className="text-muted">Loading template…</p>
       </AccountingShell>
     );
   }
@@ -250,7 +250,7 @@ export default function RecurringTemplateEditView() {
     return (
       <AccountingShell active="recurring" title={title}>
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 py-16 text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-500">search_off</span>
+          <span className="material-symbols-outlined text-4xl text-subtle">search_off</span>
           <p className="text-lg font-bold text-white">Template not found</p>
           <Button variant="secondary" icon="arrow_back" onClick={() => navigate(RECURRING_BASE)}>
             Back to recurring
@@ -268,7 +268,7 @@ export default function RecurringTemplateEditView() {
         <button
           type="button"
           onClick={() => navigate(RECURRING_BASE)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           Back to recurring
@@ -311,7 +311,7 @@ export default function RecurringTemplateEditView() {
 
         {/* Schedule */}
         <section className="flex flex-col gap-3 border-t border-white/10 pt-4">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Schedule</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Schedule</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Frequency" htmlFor="rec-freq">
               <select
@@ -413,7 +413,7 @@ export default function RecurringTemplateEditView() {
             )}
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={schedule.active}
@@ -426,7 +426,7 @@ export default function RecurringTemplateEditView() {
 
         {/* Payload (kind-specific) */}
         <section className="flex flex-col gap-3 border-t border-white/10 pt-4">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
             {RECURRING_KIND_LABELS[kind]} details
           </h2>
           {kind === 'invoice' && (

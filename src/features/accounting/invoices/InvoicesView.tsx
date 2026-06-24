@@ -16,7 +16,7 @@ import {
 } from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -36,9 +36,7 @@ function StatusPill({ status }: { status: InvoiceStatus }) {
 /** Compact "open the linked job" affordance (stops row-click navigation). */
 function JobCell({ jobId }: { jobId: string | null }) {
   if (!jobId) {
-    return (
-      <span className="hidden w-14 shrink-0 text-center text-xs text-slate-600 md:block">—</span>
-    );
+    return <span className="hidden w-14 shrink-0 text-center text-xs text-subtle md:block">—</span>;
   }
   return (
     <Link
@@ -56,18 +54,18 @@ function JobCell({ jobId }: { jobId: string | null }) {
 function InvoiceRow({ invoice, onOpen }: { invoice: Invoice; onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} className={LIST_ROW}>
-      <span className="w-24 shrink-0 truncate font-mono text-xs text-slate-500">
+      <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
         {invoice.invoiceNumber || 'Draft'}
       </span>
-      <span className="w-24 shrink-0 text-sm text-slate-400">{invoice.invoiceDate}</span>
+      <span className="w-24 shrink-0 text-sm text-muted">{invoice.invoiceDate}</span>
       <span className="flex-1 truncate text-white">
         {invoice.customerName || invoice.customerId}
       </span>
       <JobCell jobId={invoice.jobId} />
-      <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-400 sm:block">
+      <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-muted sm:block">
         {formatMoney(invoice.total)}
       </span>
-      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-200">
+      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-white">
         {formatMoney(invoice.balanceDue)}
       </span>
       <StatusPill status={invoice.status} />
@@ -111,7 +109,7 @@ export default function InvoicesView() {
         </Button>
       }
     >
-      {isPending && <p className="text-slate-400">Loading invoices…</p>}
+      {isPending && <p className="text-muted">Loading invoices…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load invoices. Confirm the accounting schema is exposed and you have an
@@ -121,9 +119,9 @@ export default function InvoicesView() {
 
       {!isPending && !isError && invoices.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-500">receipt_long</span>
+          <span className="material-symbols-outlined text-4xl text-subtle">receipt_long</span>
           <p className="text-lg font-bold text-white">No invoices yet</p>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm text-muted">
             Create an invoice from a job or from scratch. Sending it posts a balanced revenue entry
             to the general ledger.
           </p>
@@ -161,7 +159,7 @@ export default function InvoicesView() {
               />
             ))}
             {filtered.length === 0 && (
-              <p className="px-3 py-6 text-center text-sm text-slate-500">
+              <p className="px-3 py-6 text-center text-sm text-subtle">
                 No invoices match this filter.
               </p>
             )}

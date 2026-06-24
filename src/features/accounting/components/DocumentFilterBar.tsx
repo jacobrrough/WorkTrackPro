@@ -54,7 +54,7 @@ export function applyDocFilters<T>(items: T[], f: DocFilters, a: DocFilterAccess
 }
 
 const ctrl =
-  'rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-slate-300 focus:border-primary focus:outline-none';
+  'rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-muted focus:border-primary focus:outline-none';
 
 export function DocumentFilterBar({
   filters,
@@ -101,7 +101,7 @@ export function DocumentFilterBar({
           </option>
         ))}
       </select>
-      <label className="flex items-center gap-1 text-xs text-slate-500">
+      <label className="flex items-center gap-1 text-xs text-subtle">
         <span className="hidden sm:inline">From</span>
         <input
           type="date"
@@ -111,7 +111,7 @@ export function DocumentFilterBar({
           onChange={(e) => set({ from: e.target.value })}
         />
       </label>
-      <label className="flex items-center gap-1 text-xs text-slate-500">
+      <label className="flex items-center gap-1 text-xs text-subtle">
         <span className="hidden sm:inline">To</span>
         <input
           type="date"
@@ -125,12 +125,12 @@ export function DocumentFilterBar({
         <button
           type="button"
           onClick={() => onChange(initialDocFilters(defaultStatus))}
-          className="rounded-sm px-2 py-1 text-xs font-semibold text-slate-400 hover:bg-white/10 hover:text-white"
+          className="rounded-sm px-2 py-1 text-xs font-semibold text-muted hover:bg-white/10 hover:text-white"
         >
           Clear
         </button>
       )}
-      <span className="ml-auto text-xs text-slate-500">
+      <span className="ml-auto text-xs text-subtle">
         {resultCount} of {totalCount}
       </span>
     </div>

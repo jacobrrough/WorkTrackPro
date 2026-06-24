@@ -105,7 +105,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex size-11 touch-manipulation items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+        className="relative flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
         aria-label={displayCount > 0 ? `${displayCount} notifications` : 'Notifications'}
         aria-expanded={open}
       >
@@ -117,7 +117,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-sm border border-white/10 bg-[#1a1122] shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-sm border border-white/10 bg-app-2 shadow-xl">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
             <span className="text-sm font-bold text-white">Notifications</span>
             <div className="flex items-center gap-2">
@@ -136,7 +136,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   setOpen(false);
                   onNavigate?.('notification-settings' as ViewState);
                 }}
-                className="flex size-7 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-7 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Notification settings"
               >
                 <span className="material-symbols-outlined text-base">settings</span>
@@ -145,7 +145,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
           </div>
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-slate-500">No notifications</p>
+              <p className="px-3 py-6 text-center text-sm text-subtle">No notifications</p>
             ) : (
               notifications.slice(0, 20).map((n) => (
                 <button

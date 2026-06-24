@@ -41,14 +41,14 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-background-dark p-4">
-          <div className="w-full max-w-lg rounded-sm border border-red-500/20 bg-[#1a1625] p-4">
+          <div className="w-full max-w-lg rounded-sm border border-red-500/20 bg-surface p-4">
             <div className="mb-4 flex items-center gap-3">
               <div className="flex size-12 items-center justify-center rounded-sm bg-red-500/20">
                 <span className="material-symbols-outlined text-2xl text-red-500">error</span>
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Something went wrong</h2>
-                <p className="text-sm text-slate-400">The application encountered an error</p>
+                <p className="text-sm text-muted">The application encountered an error</p>
               </div>
             </div>
 
@@ -62,7 +62,7 @@ class ErrorBoundary extends Component<Props, State> {
                     <p className="mb-2 font-medium text-amber-400">
                       Supabase not configured correctly
                     </p>
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-muted">
                       Set <code className="rounded bg-black/30 px-1">VITE_SUPABASE_URL</code> and{' '}
                       <code className="rounded bg-black/30 px-1">VITE_SUPABASE_ANON_KEY</code> in
                       your Netlify site environment variables, then redeploy. Use your project URL
@@ -80,13 +80,13 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="flex gap-2">
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 rounded-sm bg-primary px-4 py-3 font-medium text-white transition-colors hover:bg-primary/90"
+                className="flex-1 rounded-sm bg-primary px-4 py-3 font-medium text-on-accent transition-colors hover:bg-primary/90"
               >
                 Reload App
               </button>
               <button
                 onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
-                className="flex-1 rounded-sm bg-slate-700 px-4 py-3 font-medium text-white transition-colors hover:bg-slate-600"
+                className="flex-1 rounded-sm bg-surface-3 px-4 py-3 font-medium text-white transition-colors hover:bg-slate-600"
               >
                 Try Again
               </button>
@@ -94,10 +94,10 @@ class ErrorBoundary extends Component<Props, State> {
 
             {import.meta.env.DEV && this.state.errorInfo && (
               <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-slate-400 hover:text-slate-300">
+                <summary className="cursor-pointer text-sm text-muted hover:text-muted">
                   View Error Details
                 </summary>
-                <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/30 p-2 text-xs text-slate-500">
+                <pre className="mt-2 max-h-64 overflow-auto rounded bg-black/30 p-2 text-xs text-subtle">
                   {this.state.errorInfo.componentStack}
                 </pre>
               </details>

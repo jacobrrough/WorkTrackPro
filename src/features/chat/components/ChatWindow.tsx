@@ -141,7 +141,7 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
   if (!convData) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-slate-400">Loading conversation...</p>
+        <p className="text-sm text-muted">Loading conversation...</p>
       </div>
     );
   }
@@ -166,7 +166,7 @@ export function ChatWindow({ conversationId, currentUserId, onBack }: ChatWindow
         onMessagesVisible={handleMessagesVisible}
       />
       {typingNames.length > 0 && (
-        <div className="px-4 py-1 text-xs italic text-slate-400">{formatTyping(typingNames)}</div>
+        <div className="px-4 py-1 text-xs italic text-muted">{formatTyping(typingNames)}</div>
       )}
       <MessageInput
         onSendText={handleSendText}

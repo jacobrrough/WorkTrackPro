@@ -182,11 +182,9 @@ export default function BillCreateView() {
 
         {/* Line items */}
         <div>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
-            Line items
-          </h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
 
-          <div className="hidden grid-cols-[1fr_1fr_70px_100px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase text-slate-500 md:grid">
+          <div className="hidden grid-cols-[1fr_1fr_70px_100px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase text-subtle md:grid">
             <span>Expense account</span>
             <span>Description</span>
             <span className="text-right">Qty</span>
@@ -229,7 +227,7 @@ export default function BillCreateView() {
                       updateLine(i, { unitCost: v, lineTotal: undefined })
                     }
                   />
-                  <span className="hidden text-right font-mono text-sm tabular-nums text-slate-300 md:block">
+                  <span className="hidden text-right font-mono text-sm tabular-nums text-muted md:block">
                     {formatMoney(amount / 100)}
                   </span>
                   <button
@@ -237,7 +235,7 @@ export default function BillCreateView() {
                     onClick={() => removeLine(i)}
                     aria-label={`Remove line ${i + 1}`}
                     disabled={lines.length <= 1}
-                    className="flex items-center justify-center rounded-sm text-slate-500 hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                    className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
                   </button>
@@ -254,7 +252,7 @@ export default function BillCreateView() {
             <span className="material-symbols-outlined text-lg">add</span>
             Add line
           </button>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-subtle">
             Leave the account blank to use{' '}
             {selectedVendor?.defaultExpenseAccountId
               ? "the vendor's default expense account"
@@ -265,13 +263,13 @@ export default function BillCreateView() {
 
         {/* Totals */}
         <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-          <div className="flex justify-between text-slate-400">
+          <div className="flex justify-between text-muted">
             <span>Subtotal</span>
-            <span className="font-mono tabular-nums text-slate-200">
+            <span className="font-mono tabular-nums text-white">
               {formatMoney(totals.subtotalCents / 100)}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-2 text-slate-400">
+          <div className="flex items-center justify-between gap-2 text-muted">
             <label htmlFor="bill-tax" className="shrink-0">
               Tax
             </label>

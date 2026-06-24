@@ -26,12 +26,12 @@ const TermsOfServicePage: React.FC = () => {
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Terms of Service
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-slate-600">
+          <p className="mt-4 text-base leading-relaxed text-subtle">
             <span className="font-semibold text-slate-900">Rough Cut Manufacturing</span>{' '}
             ("Company," "we," "us") provides the WorkTrackPro application (the "Service"). These
             Terms of Service ("Terms") govern your access to and use of the Service.
           </p>
-          <dl className="mt-6 space-y-1 text-sm text-slate-600">
+          <dl className="mt-6 space-y-1 text-sm text-subtle">
             <div>
               <dt className="inline font-semibold text-slate-900">Effective date: </dt>
               <dd className="inline">{EFFECTIVE_DATE}</dd>
@@ -211,7 +211,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
         </article>
 
-        <footer className="mt-12 border-t border-slate-200 pt-6 text-sm text-slate-500">
+        <footer className="mt-12 border-t border-slate-200 pt-6 text-sm text-subtle">
           <nav className="flex flex-wrap gap-x-6 gap-y-2">
             <Link to="/" className="hover:text-slate-700 hover:underline">
               Home

@@ -57,7 +57,7 @@ export default function QuickBooksImportView() {
   return (
     <AccountingShell active="import" title="Import from QuickBooks">
       <div className="mx-auto max-w-4xl space-y-4">
-        <div className="rounded-md border border-white/10 bg-card-dark p-4 text-sm text-slate-300">
+        <div className="rounded-md border border-white/10 bg-card-dark p-4 text-sm text-muted">
           <p>
             Move your books over from <strong>QuickBooks Online</strong>. Each importer takes a CSV
             you export from QuickBooks, lets you preview and map it, and only writes what you
@@ -78,19 +78,19 @@ export default function QuickBooksImportView() {
               </span>
               <span className="flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
                     Step {imp.step}
                   </span>
                 </span>
                 <span className="block font-bold text-white">{imp.title}</span>
-                <span className="mt-0.5 block text-sm text-slate-400">{imp.description}</span>
+                <span className="mt-0.5 block text-sm text-muted">{imp.description}</span>
               </span>
-              <span className="material-symbols-outlined text-slate-500">chevron_right</span>
+              <span className="material-symbols-outlined text-subtle">chevron_right</span>
             </button>
           ))}
         </div>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           Tip: re-running any importer is safe — records that already exist
           (accounts/customers/vendors by name, transactions by content) are skipped rather than
           duplicated.

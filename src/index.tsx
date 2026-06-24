@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import { AppProvider } from './AppContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './Toast';
 import ErrorBoundary from './ErrorBoundary';
 import SetupRequired from './SetupRequired';
@@ -58,9 +59,11 @@ try {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <ToastProvider>
-              <AppProvider>
-                <App />
-              </AppProvider>
+              <ThemeProvider>
+                <AppProvider>
+                  <App />
+                </AppProvider>
+              </ThemeProvider>
             </ToastProvider>
           </BrowserRouter>
         </QueryClientProvider>

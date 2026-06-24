@@ -50,7 +50,7 @@ function ChatViewInner({
   if (keyState.status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background-dark">
-        <p className="text-slate-400">Loading encryption keys...</p>
+        <p className="text-muted">Loading encryption keys...</p>
       </div>
     );
   }
@@ -130,12 +130,12 @@ function ChatViewInner({
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-600">forum</span>
-            <p className="text-slate-400">Select a conversation or start a new one</p>
+            <span className="material-symbols-outlined text-5xl text-subtle">forum</span>
+            <p className="text-muted">Select a conversation or start a new one</p>
             <button
               type="button"
               onClick={() => setShowNewModal(true)}
-              className="mt-2 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary/90"
+              className="mt-2 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
             >
               New Conversation
             </button>

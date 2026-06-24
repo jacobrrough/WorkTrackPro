@@ -106,11 +106,11 @@ function StatusBadge({ status }: { status: string }) {
     partially_paid: 'bg-amber-100 text-amber-700',
     paid: 'bg-green-100 text-green-700',
     void: 'bg-red-100 text-red-700',
-    draft: 'bg-slate-100 text-slate-600',
+    draft: 'bg-slate-100 text-subtle',
   };
   return (
     <span
-      className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${styles[status] ?? 'bg-slate-100 text-slate-600'}`}
+      className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${styles[status] ?? 'bg-slate-100 text-subtle'}`}
     >
       {STATUS_LABELS[status] ?? status}
     </span>
@@ -140,7 +140,7 @@ function InvoiceCard({ invoice, customerName }: { invoice: PortalInvoice; custom
           <h2 className="text-lg font-bold text-slate-900">
             Invoice {invoice.invoiceNumber ?? '—'}
           </h2>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-subtle">
             <StatusBadge status={invoice.status} />
             <span>Date {invoice.invoiceDate}</span>
             {invoice.dueDate && <span>Due {invoice.dueDate}</span>}
@@ -162,7 +162,7 @@ function InvoiceCard({ invoice, customerName }: { invoice: PortalInvoice; custom
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-300 text-left text-slate-500">
+            <tr className="border-b border-slate-300 text-left text-subtle">
               <th className="py-2 pr-3 font-medium">Description</th>
               <th className="px-3 py-2 text-right font-medium">Qty</th>
               <th className="px-3 py-2 text-right font-medium">Unit price</th>
@@ -173,8 +173,8 @@ function InvoiceCard({ invoice, customerName }: { invoice: PortalInvoice; custom
             {invoice.lines.map((l, i) => (
               <tr key={i} className="border-b border-slate-100">
                 <td className="py-2 pr-3 text-slate-800">{l.description || '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-600">{l.quantity}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                <td className="px-3 py-2 text-right tabular-nums text-subtle">{l.quantity}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-subtle">
                   {formatInvoiceMoney(l.unitPrice)}
                 </td>
                 <td className="py-2 pl-3 text-right tabular-nums text-slate-800">
@@ -184,7 +184,7 @@ function InvoiceCard({ invoice, customerName }: { invoice: PortalInvoice; custom
             ))}
             {invoice.lines.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-2 text-slate-400">
+                <td colSpan={4} className="py-2 text-muted">
                   No line items.
                 </td>
               </tr>
@@ -195,19 +195,19 @@ function InvoiceCard({ invoice, customerName }: { invoice: PortalInvoice; custom
 
       <div className="mt-4 flex justify-end">
         <dl className="w-full max-w-xs space-y-1 text-sm">
-          <div className="flex justify-between text-slate-500">
+          <div className="flex justify-between text-subtle">
             <dt>Subtotal</dt>
             <dd className="tabular-nums text-slate-700">{formatInvoiceMoney(invoice.subtotal)}</dd>
           </div>
           {invoice.discountTotal > 0 && (
-            <div className="flex justify-between text-slate-500">
+            <div className="flex justify-between text-subtle">
               <dt>Discount</dt>
               <dd className="tabular-nums text-slate-700">
                 −{formatInvoiceMoney(invoice.discountTotal)}
               </dd>
             </div>
           )}
-          <div className="flex justify-between text-slate-500">
+          <div className="flex justify-between text-subtle">
             <dt>Tax</dt>
             <dd className="tabular-nums text-slate-700">{formatInvoiceMoney(invoice.taxTotal)}</dd>
           </div>
@@ -228,7 +228,7 @@ function InvoiceCard({ invoice, customerName }: { invoice: PortalInvoice; custom
         </dl>
       </div>
 
-      {invoice.memo && <p className="mt-4 text-sm text-slate-500">{invoice.memo}</p>}
+      {invoice.memo && <p className="mt-4 text-sm text-subtle">{invoice.memo}</p>}
     </section>
   );
 }
@@ -239,11 +239,11 @@ function StatementCard({ rows }: { rows: PortalStatementRow[] }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold text-slate-900">Account statement</h2>
-      <p className="mt-1 text-sm text-slate-500">Open invoices with a balance due.</p>
+      <p className="mt-1 text-sm text-subtle">Open invoices with a balance due.</p>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-300 text-left text-slate-500">
+            <tr className="border-b border-slate-300 text-left text-subtle">
               <th className="py-2 pr-3 font-medium">Invoice</th>
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Due</th>
@@ -255,8 +255,8 @@ function StatementCard({ rows }: { rows: PortalStatementRow[] }) {
             {rows.map((r, i) => (
               <tr key={i} className="border-b border-slate-100">
                 <td className="py-2 pr-3 text-slate-800">{r.invoiceNumber ?? '—'}</td>
-                <td className="px-3 py-2 text-slate-600">{r.invoiceDate}</td>
-                <td className="px-3 py-2 text-slate-600">{r.dueDate ?? '—'}</td>
+                <td className="px-3 py-2 text-subtle">{r.invoiceDate}</td>
+                <td className="px-3 py-2 text-subtle">{r.dueDate ?? '—'}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-700">
                   {formatInvoiceMoney(r.total)}
                 </td>
@@ -340,11 +340,11 @@ export default function CustomerPortal() {
           <h1 className="text-xl font-bold text-slate-900">
             {state === 'ok' ? customerName : 'Customer Portal'}
           </h1>
-          <span className="text-xs text-slate-400">Secure invoice link</span>
+          <span className="text-xs text-muted">Secure invoice link</span>
         </header>
 
         {state === 'loading' && (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-500 shadow-sm">
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-subtle shadow-sm">
             Loading your invoice…
           </div>
         )}
@@ -365,7 +365,7 @@ export default function CustomerPortal() {
               <InvoiceCard key={inv.id} invoice={inv} customerName={customerName} />
             ))}
             {payload.invoices.length === 0 && (
-              <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-500 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 text-subtle shadow-sm">
                 There are no invoices to display for this link.
               </div>
             )}
@@ -373,7 +373,7 @@ export default function CustomerPortal() {
           </>
         )}
 
-        <footer className="pt-2 text-center text-xs text-slate-400">
+        <footer className="pt-2 text-center text-xs text-muted">
           This is a secure, read-only view of your invoice.
         </footer>
       </div>

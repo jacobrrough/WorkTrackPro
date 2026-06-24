@@ -139,7 +139,7 @@ export default function FixedAssetCreateView() {
         <button
           type="button"
           onClick={() => navigate(FIXED_ASSETS_BASE)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           All fixed assets
@@ -279,11 +279,11 @@ export default function FixedAssetCreateView() {
 
         {/* Live straight-line preview */}
         <section className="rounded-sm border border-white/10 bg-card-dark p-3">
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
             Schedule preview
           </h2>
           {baseCents <= 0 || schedule.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-subtle">
               Enter a cost greater than the salvage value and a useful life of at least one month to
               preview the straight-line schedule.
             </p>
@@ -291,7 +291,7 @@ export default function FixedAssetCreateView() {
             <div className="flex flex-col gap-2 text-sm">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
                     Depreciable base
                   </p>
                   <p className="font-mono tabular-nums text-white">
@@ -299,13 +299,13 @@ export default function FixedAssetCreateView() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
                     Periods
                   </p>
                   <p className="font-mono tabular-nums text-white">{schedule.length}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
                     Per period
                   </p>
                   <p className="font-mono tabular-nums text-white">
@@ -313,7 +313,7 @@ export default function FixedAssetCreateView() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">
                     Final period
                   </p>
                   <p className="font-mono tabular-nums text-white">
@@ -321,7 +321,7 @@ export default function FixedAssetCreateView() {
                   </p>
                 </div>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-subtle">
                 First period ends {formatAssetDate(schedule[0].periodDate)}; last period ends{' '}
                 {formatAssetDate(schedule[schedule.length - 1].periodDate)}. The rounding remainder
                 lands in the final period, so the lifetime total equals the depreciable base to the

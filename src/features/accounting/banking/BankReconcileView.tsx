@@ -60,13 +60,13 @@ function NewReconciliationModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           Enter the closing date and ending balance from your statement. The beginning balance is
           carried over from your last completed reconciliation.
         </p>
@@ -122,7 +122,7 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
       onClick={onOpen}
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-white/5 text-slate-400">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-white/5 text-muted">
         <span className="material-symbols-outlined text-lg">
           {done ? 'check_circle' : 'balance'}
         </span>
@@ -131,7 +131,7 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
         <span className="block truncate font-semibold text-white">
           Statement {rec.statementDate}
         </span>
-        <span className="block truncate text-xs text-slate-500">
+        <span className="block truncate text-xs text-subtle">
           Ending{' '}
           {rec.statementEndingBalance == null ? '—' : formatMoney(rec.statementEndingBalance)}
         </span>
@@ -143,7 +143,7 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
       >
         {done ? 'Completed' : 'In progress'}
       </span>
-      <span className="material-symbols-outlined text-slate-600">chevron_right</span>
+      <span className="material-symbols-outlined text-subtle">chevron_right</span>
     </button>
   );
 }
@@ -173,26 +173,26 @@ export default function BankReconcileView() {
         <button
           type="button"
           onClick={() => navigate(`${BANKING_BASE}/${bankAccountId}`)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           {account ? account.name : 'Back to account'}
         </button>
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Reconcile your books to a bank statement: mark each transaction that appears on the
           statement as cleared until the difference reaches 0.00, then complete it. Reconciling does
           not post entries — it confirms what already posted.
         </p>
 
-        {isPending && <p className="text-slate-400">Loading reconciliations…</p>}
+        {isPending && <p className="text-muted">Loading reconciliations…</p>}
         {isError && <p className="text-red-400">Could not load reconciliations.</p>}
 
         {!isPending && !isError && reconciliations.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-500">balance</span>
+            <span className="material-symbols-outlined text-4xl text-subtle">balance</span>
             <p className="text-lg font-bold text-white">No reconciliations yet</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <p className="max-w-sm text-sm text-muted">
               Start a reconciliation with your statement’s closing date and ending balance to begin
               matching transactions.
             </p>

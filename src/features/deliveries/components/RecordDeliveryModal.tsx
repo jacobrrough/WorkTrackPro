@@ -131,7 +131,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white"
+            className="text-muted hover:text-white"
             aria-label="Close"
           >
             <span className="material-symbols-outlined">close</span>
@@ -141,7 +141,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Delivery date</label>
+              <label className="mb-1 block text-xs text-muted">Delivery date</label>
               <input
                 type="date"
                 value={deliveredAt}
@@ -151,30 +151,30 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Recipient</label>
+              <label className="mb-1 block text-xs text-muted">Recipient</label>
               <input
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
                 placeholder="Who received it"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Carrier</label>
+              <label className="mb-1 block text-xs text-muted">Carrier</label>
               <input
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
                 placeholder="UPS, FedEx, customer pickup..."
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Tracking #</label>
+              <label className="mb-1 block text-xs text-muted">Tracking #</label>
               <input
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 placeholder="Optional"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               />
             </div>
           </div>
@@ -192,14 +192,14 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
           </div>
           <div className="mb-4 space-y-2">
             {lines.length === 0 ? (
-              <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-slate-500">
+              <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-subtle">
                 No items. Click "Add custom item" to add one.
               </p>
             ) : (
               lines.map((line, idx) => (
                 <div key={idx} className="rounded border border-white/10 bg-white/5 p-2">
                   <div className="mb-1 flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-medium text-slate-300">
+                    <span className="text-xs font-medium text-muted">
                       {line.partNumber
                         ? `${line.partNumber}${line.variantSuffix ? `-${line.variantSuffix}` : ''}`
                         : 'Custom'}
@@ -211,7 +211,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                             deliveryLineKey(line.partNumber, line.variantSuffix)
                           )
                             ? 'font-medium text-red-400'
-                            : 'text-slate-500'
+                            : 'text-subtle'
                         }`}
                       >
                         Ordered {line.ordered} · {line.remaining} remaining
@@ -223,7 +223,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                       value={line.description}
                       onChange={(e) => updateLine(idx, { description: e.target.value })}
                       placeholder="Description"
-                      className="col-span-6 rounded border border-white/10 bg-transparent px-2 py-1 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                      className="col-span-6 rounded border border-white/10 bg-transparent px-2 py-1 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
                     />
                     <input
                       type="number"
@@ -241,12 +241,12 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                       value={line.unit ?? ''}
                       onChange={(e) => updateLine(idx, { unit: e.target.value })}
                       placeholder="units"
-                      className="col-span-2 rounded border border-white/10 bg-transparent px-2 py-1 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+                      className="col-span-2 rounded border border-white/10 bg-transparent px-2 py-1 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => removeLine(idx)}
-                      className="col-span-1 flex items-center justify-center text-slate-500 hover:text-red-400"
+                      className="col-span-1 flex items-center justify-center text-subtle hover:text-red-400"
                       aria-label="Remove line"
                     >
                       <span className="material-symbols-outlined text-base">delete</span>
@@ -258,12 +258,12 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Notes</label>
+            <label className="mb-1 block text-xs text-muted">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-primary focus:outline-none"
+              className="w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               placeholder="Special instructions, packaging notes, etc."
             />
           </div>
@@ -279,21 +279,21 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
         )}
 
         <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted">
             Total: <span className="font-semibold text-white">{totalQty}</span>
           </p>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded px-4 py-2 text-sm text-slate-400 hover:text-white"
+              className="rounded px-4 py-2 text-sm text-muted hover:text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={totalQty === 0 || saving}
-              className="rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded bg-primary px-4 py-2 text-sm font-medium text-on-accent disabled:opacity-50"
             >
               {saving ? 'Saving...' : existing ? 'Save changes' : 'Record delivery'}
             </button>

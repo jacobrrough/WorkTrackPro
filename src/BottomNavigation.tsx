@@ -16,7 +16,7 @@ function BottomNavigation() {
 
   return (
     <nav
-      className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1a1122]/95 pt-2 backdrop-blur-lg md:hidden"
+      className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-app-2/95 pt-2 backdrop-blur-lg md:hidden"
       aria-label="Bottom navigation"
     >
       <div className="mx-auto flex max-w-md items-center justify-around px-3">
@@ -27,7 +27,7 @@ function BottomNavigation() {
             appNavigate('dashboard');
           }}
           aria-current={isHome ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isHome ? 'text-primary' : 'text-slate-400'}`}
+          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isHome ? 'text-primary' : 'text-muted'}`}
         >
           <span className={`material-symbols-outlined ${isHome ? 'fill-1' : ''}`}>grid_view</span>
           <span className="text-[10px] font-bold uppercase">Home</span>
@@ -39,7 +39,7 @@ function BottomNavigation() {
             appNavigate(isAdmin ? 'board-admin' : 'board-shop');
           }}
           aria-current={isJobs ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isJobs ? 'text-primary' : 'text-slate-400'}`}
+          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isJobs ? 'text-primary' : 'text-muted'}`}
         >
           <span className={`material-symbols-outlined ${isJobs ? 'fill-1' : ''}`}>assignment</span>
           <span className="text-[10px] font-bold uppercase">Jobs</span>
@@ -51,7 +51,7 @@ function BottomNavigation() {
             appNavigate('inventory');
           }}
           aria-current={isStock ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isStock ? 'text-primary' : 'text-slate-400'}`}
+          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isStock ? 'text-primary' : 'text-muted'}`}
         >
           <span className={`material-symbols-outlined ${isStock ? 'fill-1' : ''}`}>
             inventory_2
@@ -65,7 +65,7 @@ function BottomNavigation() {
             appNavigate('scanner');
           }}
           aria-current={isScanner ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isScanner ? 'text-primary' : 'text-slate-400'}`}
+          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isScanner ? 'text-primary' : 'text-muted'}`}
         >
           <span className={`material-symbols-outlined ${isScanner ? 'fill-1' : ''}`}>
             qr_code_scanner

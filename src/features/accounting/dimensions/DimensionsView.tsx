@@ -115,13 +115,13 @@ function DimensionEditorModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">{TYPE_HINT[type]}</p>
+        <p className="mb-3 text-sm text-muted">{TYPE_HINT[type]}</p>
 
         <div className="flex flex-col gap-3">
           <FormField label="Name" htmlFor="dim-name" required>
@@ -152,7 +152,7 @@ function DimensionEditorModal({
           </FormField>
 
           {dimension && (
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={draft.isActive}
@@ -201,11 +201,11 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
     <div className="flex items-center gap-3 px-3 py-2.5">
       <span className="min-w-0 flex-1">
         <span
-          className={`block truncate text-sm ${dimension.isActive ? 'text-white' : 'text-slate-500'}`}
+          className={`block truncate text-sm ${dimension.isActive ? 'text-white' : 'text-subtle'}`}
         >
           {dimension.name}
         </span>
-        <span className="block text-xs text-slate-500">
+        <span className="block text-xs text-subtle">
           {dimension.code ? <span className="font-mono">{dimension.code}</span> : 'No code'}
           {!dimension.isActive && ' · inactive'}
         </span>
@@ -216,7 +216,7 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
         disabled={busy}
         aria-label={dimension.isActive ? 'Deactivate' : 'Reactivate'}
         title={dimension.isActive ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {dimension.isActive ? 'toggle_on' : 'toggle_off'}
@@ -227,7 +227,7 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -250,12 +250,10 @@ function DimensionSection({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
           <span className="material-symbols-outlined text-lg text-primary">{TYPE_ICON[type]}</span>
           {plural}
-          <span className="font-mono text-xs font-normal text-slate-500">
-            ({dimensions.length})
-          </span>
+          <span className="font-mono text-xs font-normal text-subtle">({dimensions.length})</span>
         </h2>
         <Button size="sm" variant="secondary" icon="add" onClick={onAdd}>
           Add
@@ -263,7 +261,7 @@ function DimensionSection({
       </div>
 
       {dimensions.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-white/15 px-3 py-4 text-center text-sm text-slate-500">
+        <p className="rounded-sm border border-dashed border-white/15 px-3 py-4 text-center text-sm text-subtle">
           No {plural.toLowerCase()} yet. {TYPE_HINT[type]}
         </p>
       ) : (
@@ -301,12 +299,12 @@ export default function DimensionsView() {
     <AccountingShell active="dimensions" title="Dimensions">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-xl text-sm text-slate-400">
+          <p className="max-w-xl text-sm text-muted">
             Classes, locations, and departments are reporting tags you can attach to invoice, bill,
             and journal lines. They never move money — they slice the same postings so reports can
             be filtered by program, site, or team.
           </p>
-          <label className="flex shrink-0 items-center gap-2 text-sm text-slate-300">
+          <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={showInactive}
@@ -317,7 +315,7 @@ export default function DimensionsView() {
           </label>
         </div>
 
-        {isPending && <p className="text-slate-400">Loading dimensions…</p>}
+        {isPending && <p className="text-muted">Loading dimensions…</p>}
         {isError && (
           <p className="text-red-400">
             Could not load dimensions. Confirm the accounting schema is exposed and you have an

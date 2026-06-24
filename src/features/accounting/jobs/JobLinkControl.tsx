@@ -113,7 +113,7 @@ export default function JobLinkControl({
     <section className="rounded-sm border border-white/10 bg-background-dark/40 p-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="material-symbols-outlined text-base text-primary">work</span>
-        <span className="text-sm text-slate-400">Job</span>
+        <span className="text-sm text-muted">Job</span>
         {currentJob ? (
           <Link
             to={`/app/jobs/${currentJob.id}`}
@@ -130,7 +130,7 @@ export default function JobLinkControl({
             {jobsPending ? 'Linked job…' : 'View linked job'}
           </Link>
         ) : (
-          <span className="text-sm italic text-slate-500">Not linked to a job</span>
+          <span className="text-sm italic text-subtle">Not linked to a job</span>
         )}
 
         {canEdit && (
@@ -140,7 +140,7 @@ export default function JobLinkControl({
                 type="button"
                 onClick={() => void apply(null)}
                 disabled={mutation.isPending}
-                className="rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-slate-300 hover:bg-white/10 disabled:opacity-50"
+                className="rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-muted hover:bg-white/10 disabled:opacity-50"
               >
                 Unlink
               </button>
@@ -149,7 +149,7 @@ export default function JobLinkControl({
               type="button"
               onClick={openPicker}
               disabled={mutation.isPending}
-              className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-sm">
                 {currentJobId ? 'swap_horiz' : 'add_link'}
@@ -182,7 +182,7 @@ export default function JobLinkControl({
             <ul
               id={listboxId}
               role="listbox"
-              className="mt-1 max-h-60 overflow-y-auto rounded-sm border border-white/10 bg-[#1a1122]"
+              className="mt-1 max-h-60 overflow-y-auto rounded-sm border border-white/10 bg-app-2"
             >
               {results.map((j, i) => (
                 <li key={j.id} role="option" aria-selected={i === activeIndex}>
@@ -197,7 +197,7 @@ export default function JobLinkControl({
                   >
                     <span className="truncate">{jobLabel(j)}</span>
                     {j.id === currentJobId && (
-                      <span className="shrink-0 text-xs text-slate-400">current</span>
+                      <span className="shrink-0 text-xs text-muted">current</span>
                     )}
                   </button>
                 </li>
@@ -205,7 +205,7 @@ export default function JobLinkControl({
             </ul>
           )}
           {!jobsPending && query.trim() !== '' && results.length === 0 && (
-            <p className="mt-1 text-xs text-slate-500">No jobs match “{query.trim()}”.</p>
+            <p className="mt-1 text-xs text-subtle">No jobs match “{query.trim()}”.</p>
           )}
         </div>
       )}

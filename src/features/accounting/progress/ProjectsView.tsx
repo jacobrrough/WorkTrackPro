@@ -15,7 +15,7 @@ const inputClass =
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
   active: 'bg-sky-500/15 text-sky-400',
-  closed: 'bg-white/10 text-slate-300',
+  closed: 'bg-white/10 text-muted',
 };
 
 function StatusPill({ status }: { status: ProjectStatus }) {
@@ -72,7 +72,7 @@ function NewProjectModal({ onClose }: { onClose: (projectId?: string) => void })
             type="button"
             onClick={() => onClose()}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -161,13 +161,13 @@ function ProjectRow({ project, onOpen }: { project: Project; onOpen: () => void 
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
     >
       <span className="flex-1 truncate text-white">{project.name}</span>
-      <span className="hidden flex-1 truncate text-sm text-slate-400 sm:block">
+      <span className="hidden flex-1 truncate text-sm text-muted sm:block">
         {project.customerName || project.customerId}
       </span>
-      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-200">
+      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-white">
         {formatMoney(project.contractSum)}
       </span>
-      <span className="hidden w-16 shrink-0 text-right text-sm text-slate-400 sm:block">
+      <span className="hidden w-16 shrink-0 text-right text-sm text-muted sm:block">
         {(project.retainagePercent * 100).toFixed(1)}%
       </span>
       <StatusPill status={project.status} />
@@ -190,7 +190,7 @@ export default function ProjectsView() {
         </Button>
       }
     >
-      {isPending && <p className="text-slate-400">Loading projects…</p>}
+      {isPending && <p className="text-muted">Loading projects…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load projects. Confirm the accounting schema is exposed and you have an
@@ -200,9 +200,9 @@ export default function ProjectsView() {
 
       {!isPending && !isError && projects.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-500">foundation</span>
+          <span className="material-symbols-outlined text-4xl text-subtle">foundation</span>
           <p className="text-lg font-bold text-white">No projects yet</p>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm text-muted">
             Create a project with a contract sum and retainage percent, build its schedule of
             values, then bill each period by percent complete.
           </p>
@@ -214,7 +214,7 @@ export default function ProjectsView() {
 
       {projects.length > 0 && (
         <>
-          <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-slate-500 sm:flex">
+          <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-subtle sm:flex">
             <span className="flex-1">Project</span>
             <span className="flex-1">Customer</span>
             <span className="w-28 shrink-0 text-right">Contract</span>

@@ -129,12 +129,12 @@ export function ImportStepper({ steps, current }: { steps: string[]; current: Im
         <div key={label} className="flex items-center gap-2">
           <span
             className={`rounded-sm px-2 py-1 font-semibold ${
-              i <= idx ? 'bg-primary/20 text-primary' : 'bg-white/5 text-slate-500'
+              i <= idx ? 'bg-primary/20 text-primary' : 'bg-white/5 text-subtle'
             }`}
           >
             {i + 1}. {label}
           </span>
-          {i < steps.length - 1 && <span className="text-slate-600">›</span>}
+          {i < steps.length - 1 && <span className="text-subtle">›</span>}
         </div>
       ))}
     </div>
@@ -175,7 +175,7 @@ export function UploadDropzone({
         <span className="material-symbols-outlined text-5xl text-primary">upload_file</span>
         <div>
           <p className="font-semibold text-white">{title}</p>
-          {subtitle && <p className="text-sm text-slate-400">{subtitle}</p>}
+          {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
         </div>
         <Button onClick={onPick} icon="folder_open">
           Choose CSV file
@@ -189,7 +189,7 @@ export function UploadDropzone({
         />
       </div>
       {instructions && (
-        <aside className="rounded-md border border-white/10 bg-card-dark p-4 text-sm text-slate-300">
+        <aside className="rounded-md border border-white/10 bg-card-dark p-4 text-sm text-muted">
           {instructions}
         </aside>
       )}
@@ -216,7 +216,7 @@ export function ColumnMapper({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {roles.map(({ role, label, required }) => (
           <label key={role} className="block text-sm">
-            <span className="mb-1 block text-slate-400">
+            <span className="mb-1 block text-muted">
               {label}
               {required && <span className="text-red-400"> *</span>}
             </span>

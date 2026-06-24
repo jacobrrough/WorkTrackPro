@@ -53,7 +53,7 @@ function StatusCard({ status }: { status: QboStatus }) {
       className={`rounded-sm border p-3 ${
         connected
           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-          : 'border-white/10 bg-white/5 text-slate-300'
+          : 'border-white/10 bg-white/5 text-muted'
       }`}
       role="status"
     >
@@ -166,7 +166,7 @@ export default function QuickBooksConnectView() {
             <span className="material-symbols-outlined text-primary">sync_alt</span>
             QuickBooks Online
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             Securely link your QuickBooks Online company through Intuit. Once connected, you can
             verify the link and, later, sync your books. Authorization happens on Intuit&rsquo;s
             site — your QuickBooks credentials never touch this app.
@@ -187,7 +187,7 @@ export default function QuickBooksConnectView() {
         )}
 
         {statusQuery.isPending ? (
-          <p className="text-slate-400">Loading the QuickBooks connection…</p>
+          <p className="text-muted">Loading the QuickBooks connection…</p>
         ) : (
           <Card className="flex flex-col gap-4" padding="lg">
             <StatusCard status={status} />
@@ -230,7 +230,7 @@ export default function QuickBooksConnectView() {
           </Card>
         )}
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-subtle">
           You can disconnect at any time. Disconnecting removes the stored authorization; it does
           not delete anything already imported.
         </p>

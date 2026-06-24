@@ -16,4 +16,4 @@ export const LIST_ROW =
 
 /** Column-header strip above a list (hidden on narrow screens; align its spans to the row). */
 export const LIST_HEADER =
-  'hidden items-center gap-3 px-4 pb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:flex';
+  'hidden items-center gap-3 px-4 pb-1.5 text-xs font-semibold uppercase tracking-wide text-subtle sm:flex';

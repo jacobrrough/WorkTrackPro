@@ -44,7 +44,7 @@ function AddressFieldset({
   const set = (patch: Partial<AddressValue>) => onChange({ ...value, ...patch });
   return (
     <fieldset className="flex flex-col gap-3 rounded-sm border border-white/10 p-3">
-      <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-subtle">
         {legend}
       </legend>
       <FormField label="Street" htmlFor={`${idPrefix}-line1`}>
@@ -234,7 +234,7 @@ export default function EditCustomerDrawer({
             placeholder="Optional"
           />
         </FormField>
-        <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-300">
+        <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
             className="h-4 w-4 rounded-sm border-white/20 bg-background-dark text-primary focus:ring-primary"

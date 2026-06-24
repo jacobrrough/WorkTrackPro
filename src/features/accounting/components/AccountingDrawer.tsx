@@ -114,7 +114,7 @@ export function AccountingDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>

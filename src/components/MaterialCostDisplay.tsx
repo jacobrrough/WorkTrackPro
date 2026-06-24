@@ -18,7 +18,7 @@ const MaterialCostDisplay: React.FC<MaterialCostDisplayProps> = ({
   return (
     <div className={className}>
       <div className="text-base font-medium text-white">${customerPrice.toFixed(2)}</div>
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-subtle">
         Our cost: ${ourCost.toFixed(2)} (×{multiplier})
       </div>
     </div>

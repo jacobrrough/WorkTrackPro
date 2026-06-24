@@ -47,7 +47,7 @@ export default function SalesByItemView() {
           {data.rows.map((r) => (
             <tr key={r.itemId ?? '__uncategorized__'} className="border-t border-white/5">
               <td className="px-3 py-2 text-white">{r.itemName}</td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                 {r.lineCount}
               </td>
               <MoneyCell amount={r.amount} />

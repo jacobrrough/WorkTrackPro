@@ -98,7 +98,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <h2 id={titleId} className="mb-2 text-xl font-bold text-white">
             {title}
           </h2>
-          <p id={messageId} className="text-slate-400">
+          <p id={messageId} className="text-muted">
             {message}
           </p>
         </div>
@@ -115,7 +115,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             className={`flex-1 rounded-sm py-3 font-bold transition-colors ${
               destructive
                 ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-primary text-white hover:bg-primary/90'
+                : 'bg-primary text-on-accent hover:bg-primary/90'
             }`}
           >
             {confirmText}

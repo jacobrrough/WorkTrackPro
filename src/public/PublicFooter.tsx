@@ -8,11 +8,11 @@ import { Link } from 'react-router-dom';
  */
 const PublicFooter: React.FC = () => {
   const year = new Date().getFullYear();
-  const linkClass = 'text-slate-300 transition-colors hover:text-primary';
+  const linkClass = 'text-muted transition-colors hover:text-primary';
   return (
-    <footer className="border-t border-white/10 bg-[#08090f]">
+    <footer className="border-t border-white/10 bg-app">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm sm:flex-row">
-        <p className="text-slate-400">© {year} Rough Cut Manufacturing. All rights reserved.</p>
+        <p className="text-muted">© {year} Rough Cut Manufacturing. All rights reserved.</p>
         <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           <Link to="/" className={linkClass}>
             Home

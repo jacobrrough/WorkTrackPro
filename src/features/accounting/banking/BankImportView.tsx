@@ -69,13 +69,13 @@ export default function BankImportView() {
         <button
           type="button"
           onClick={() => navigate(`${BANKING_BASE}/${bankAccountId}`)}
-          className="flex items-center gap-1 self-start text-sm font-semibold text-slate-400 hover:text-white"
+          className="flex items-center gap-1 self-start text-sm font-semibold text-muted hover:text-white"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
           {account ? account.name : 'Back to account'}
         </button>
 
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           Choose a CSV, OFX, or QFX file exported from your bank. The file is parsed in your browser
           — nothing is uploaded until you import. Re-importing the same statement is safe:
           duplicates are skipped by transaction id.
@@ -100,12 +100,12 @@ export default function BankImportView() {
           >
             Choose file
           </Button>
-          {fileName && <span className="text-sm text-slate-300">{fileName}</span>}
+          {fileName && <span className="text-sm text-muted">{fileName}</span>}
           {(parsed || parseError) && (
             <button
               type="button"
               onClick={reset}
-              className="text-sm font-semibold text-slate-400 hover:text-white"
+              className="text-sm font-semibold text-muted hover:text-white"
             >
               Clear
             </button>
@@ -125,7 +125,7 @@ export default function BankImportView() {
               <span className="material-symbols-outlined text-green-400">task_alt</span>
               <h2 className="font-bold text-white">Import complete</h2>
             </div>
-            <ul className="space-y-1 text-sm text-slate-300">
+            <ul className="space-y-1 text-sm text-muted">
               <li>
                 <span className="font-mono font-bold text-white">{result.inserted}</span>{' '}
                 transaction
@@ -157,7 +157,7 @@ export default function BankImportView() {
         {parsed && !result && (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-muted">
                 Parsed <span className="font-bold text-white">{parsed.transactions.length}</span>{' '}
                 transaction
                 {parsed.transactions.length === 1 ? '' : 's'} from a{' '}
@@ -200,13 +200,11 @@ export default function BankImportView() {
             >
               {previewRows.map((t, i) => (
                 <tr key={i} className="border-t border-white/5">
-                  <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-400">
-                    {t.txnDate}
-                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-xs text-muted">{t.txnDate}</td>
                   <td className="px-3 py-2 text-white">
                     {t.description || t.merchant || '—'}
                     {t.merchant && t.description && (
-                      <span className="block text-xs text-slate-500">{t.merchant}</span>
+                      <span className="block text-xs text-subtle">{t.merchant}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -216,7 +214,7 @@ export default function BankImportView() {
               ))}
             </LedgerTable>
             {extraRows > 0 && (
-              <p className="text-center text-xs text-slate-500">
+              <p className="text-center text-xs text-subtle">
                 Showing the first {MAX_PREVIEW_ROWS} of {parsed.transactions.length}. All{' '}
                 {parsed.transactions.length} will be imported.
               </p>

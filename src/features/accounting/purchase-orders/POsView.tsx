@@ -7,7 +7,7 @@ import { PURCHASE_ORDERS_BASE } from '../constants';
 import { PO_STATUS_LABELS, type PurchaseOrder, type PoStatus } from '../types';
 
 const STATUS_STYLES: Record<PoStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_received: 'bg-amber-500/15 text-amber-400',
   received: 'bg-green-500/15 text-green-400',
@@ -32,15 +32,15 @@ function PORow({ po, onOpen }: { po: PurchaseOrder; onOpen: () => void }) {
       onClick={onOpen}
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
     >
-      <span className="w-24 shrink-0 truncate font-mono text-xs text-slate-500">
+      <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
         {po.poNumber || 'Draft'}
       </span>
-      <span className="w-24 shrink-0 text-sm text-slate-400">{po.orderDate}</span>
+      <span className="w-24 shrink-0 text-sm text-muted">{po.orderDate}</span>
       <span className="flex-1 truncate text-white">{po.vendorName || po.vendorId}</span>
-      <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-400 sm:block">
+      <span className="hidden w-28 shrink-0 text-right font-mono text-sm tabular-nums text-muted sm:block">
         {po.expectedDate || '—'}
       </span>
-      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-slate-200">
+      <span className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-white">
         {formatMoney(po.total)}
       </span>
       <StatusPill status={po.status} />
@@ -62,7 +62,7 @@ export default function POsView() {
         </Button>
       }
     >
-      {isPending && <p className="text-slate-400">Loading purchase orders…</p>}
+      {isPending && <p className="text-muted">Loading purchase orders…</p>}
       {isError && (
         <p className="text-red-400">
           Could not load purchase orders. Confirm the accounting schema is exposed and you have an
@@ -72,9 +72,9 @@ export default function POsView() {
 
       {!isPending && !isError && pos.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-500">shopping_cart</span>
+          <span className="material-symbols-outlined text-4xl text-subtle">shopping_cart</span>
           <p className="text-lg font-bold text-white">No purchase orders yet</p>
-          <p className="max-w-sm text-sm text-slate-400">
+          <p className="max-w-sm text-sm text-muted">
             Raise a purchase order to commit to buying from a vendor. A PO posts nothing to the
             ledger — converting it to a bill is what records the expense (Dr Expense / Cr Accounts
             Payable) when you post that bill.
@@ -87,7 +87,7 @@ export default function POsView() {
 
       {pos.length > 0 && (
         <>
-          <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-slate-500 sm:flex">
+          <div className="hidden items-center gap-3 px-3 pb-1 text-xs font-semibold uppercase text-subtle sm:flex">
             <span className="w-24 shrink-0">Number</span>
             <span className="w-24 shrink-0">Ordered</span>
             <span className="flex-1">Vendor</span>

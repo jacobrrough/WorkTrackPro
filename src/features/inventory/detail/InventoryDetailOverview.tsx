@@ -142,20 +142,20 @@ export function InventoryDetailOverview({
       <div className="rounded-sm border border-white/10 bg-card-dark p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">SKU</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">SKU</p>
             <p className="font-mono text-sm text-white">{sku}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">In Stock</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">In Stock</p>
             <p className="text-3xl font-bold text-white">{item.inStock}</p>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-200">
+          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
             {getCategoryDisplayName(item.category)}
           </span>
           {item.vendor && (
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-slate-200">
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
               {item.vendor}
             </span>
           )}
@@ -198,7 +198,7 @@ export function InventoryDetailOverview({
           >
             <span className="text-sm font-medium text-primary">
               {formatStockDisplay(item.inStock)} → {formatStockDisplay(displayTarget)}{' '}
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 ({stockDelta > 0 ? '+' : ''}
                 {formatStockDisplay(stockDelta)})
               </span>
@@ -208,7 +208,7 @@ export function InventoryDetailOverview({
                 type="button"
                 disabled={isSavingStock}
                 onClick={() => setStockTarget(null)}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-slate-300 disabled:opacity-50"
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-muted disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -216,7 +216,7 @@ export function InventoryDetailOverview({
                 type="button"
                 disabled={isSavingStock}
                 onClick={() => void confirmStock()}
-                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-white disabled:opacity-50"
+                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-on-accent disabled:opacity-50"
               >
                 {isSavingStock ? 'Saving…' : 'Confirm'}
               </button>
@@ -228,7 +228,7 @@ export function InventoryDetailOverview({
       {item.description && (
         <div className="rounded-sm bg-card-dark p-3">
           <h2 className="mb-2 text-sm font-bold text-white">Description</h2>
-          <p className="text-sm leading-relaxed text-slate-300">{item.description}</p>
+          <p className="text-sm leading-relaxed text-muted">{item.description}</p>
         </div>
       )}
 
@@ -236,20 +236,20 @@ export function InventoryDetailOverview({
         <h2 className="mb-4 text-lg font-bold text-white">Stock Overview</h2>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-sm bg-white/5 p-3">
-            <p className="text-sm text-slate-400">In Stock</p>
+            <p className="text-sm text-muted">In Stock</p>
             <p className="text-2xl font-bold text-white">{formatStockDisplay(item.inStock)}</p>
           </div>
           <div className="rounded-sm bg-white/5 p-3">
-            <p className="text-sm text-slate-400">Available</p>
+            <p className="text-sm text-muted">Available</p>
             <p className="text-2xl font-bold text-green-400">{formatStockDisplay(available)}</p>
           </div>
           <div className="rounded-sm bg-white/5 p-3">
-            <p className="text-sm text-slate-400">Allocated (needed for jobs)</p>
+            <p className="text-sm text-muted">Allocated (needed for jobs)</p>
             <p className="text-2xl font-bold text-yellow-400">{formatStockDisplay(allocated)}</p>
-            <p className="text-xs text-slate-500">PO&apos;d / in-production jobs only</p>
+            <p className="text-xs text-subtle">PO&apos;d / in-production jobs only</p>
           </div>
           <div className="rounded-sm bg-white/5 p-3">
-            <p className="text-sm text-slate-400">On Order</p>
+            <p className="text-sm text-muted">On Order</p>
             <p className="text-2xl font-bold text-blue-400">
               {formatStockDisplay(item.onOrder || 0)}
             </p>
@@ -290,7 +290,7 @@ export function InventoryDetailOverview({
 
         {showAddToOrder && onMarkOrdered && (
           <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
-            <p className="mb-2 text-sm font-bold text-slate-300">Add to order ({item.unit})</p>
+            <p className="mb-2 text-sm font-bold text-muted">Add to order ({item.unit})</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="number"
@@ -303,7 +303,7 @@ export function InventoryDetailOverview({
               <button
                 type="button"
                 onClick={onConfirmAddToOrder}
-                className="min-h-[44px] rounded-sm bg-primary px-3 text-sm font-bold text-white"
+                className="min-h-[44px] rounded-sm bg-primary px-3 text-sm font-bold text-on-accent"
               >
                 Confirm
               </button>
@@ -313,7 +313,7 @@ export function InventoryDetailOverview({
                   setShowAddToOrder(false);
                   setAddToOrderQty(0);
                 }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-slate-300"
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-muted"
               >
                 Cancel
               </button>
@@ -323,7 +323,7 @@ export function InventoryDetailOverview({
 
         {showReceiveOrder && onReceiveOrder && (
           <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
-            <p className="mb-2 text-sm font-bold text-slate-300">Receive order ({item.unit})</p>
+            <p className="mb-2 text-sm font-bold text-muted">Receive order ({item.unit})</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="number"
@@ -338,7 +338,7 @@ export function InventoryDetailOverview({
                 }
                 className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
               />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-subtle">
                 max {formatStockDisplay(item.onOrder ?? 0)}
               </span>
               <button
@@ -354,7 +354,7 @@ export function InventoryDetailOverview({
                   setShowReceiveOrder(false);
                   setReceiveOrderQty(0);
                 }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-slate-300"
+                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-muted"
               >
                 Cancel
               </button>
@@ -365,8 +365,8 @@ export function InventoryDetailOverview({
         {minStock > 0 && (
           <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
             <div className="mb-2 flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-300">Min Stock Coverage</span>
-              <span className="text-slate-400">
+              <span className="font-bold text-muted">Min Stock Coverage</span>
+              <span className="text-muted">
                 {formatStockDisplay(available)} / {minStock}
               </span>
             </div>
@@ -419,18 +419,18 @@ export function InventoryDetailOverview({
         <h2 className="mb-4 text-lg font-bold text-white">Location & Barcode</h2>
         {item.barcode && (
           <div className="flex justify-between border-b border-white/10 pb-2">
-            <p className="text-sm text-slate-400">Barcode</p>
+            <p className="text-sm text-muted">Barcode</p>
             <p className="font-mono text-sm text-white">{item.barcode}</p>
           </div>
         )}
         {item.binLocation && (
           <div className="flex justify-between border-b border-white/10 pb-2">
-            <p className="text-sm text-slate-400">Bin Location</p>
+            <p className="text-sm text-muted">Bin Location</p>
             <p className="font-bold text-white">{item.binLocation}</p>
           </div>
         )}
         <div className="flex justify-between border-b border-white/10 pb-2">
-          <p className="text-sm text-slate-400">Unit</p>
+          <p className="text-sm text-muted">Unit</p>
           <p className="font-bold text-white">{item.unit}</p>
         </div>
         {isAdmin && onScanBarcode && (
@@ -448,13 +448,13 @@ export function InventoryDetailOverview({
         <h2 className="mb-4 text-lg font-bold text-white">Supplier & Pricing</h2>
         {item.vendor && (
           <div className="flex justify-between border-b border-white/10 pb-2">
-            <p className="text-sm text-slate-400">Vendor</p>
+            <p className="text-sm text-muted">Vendor</p>
             <p className="text-white">{item.vendor}</p>
           </div>
         )}
         {shouldShowInventoryDetailPrice(item, isAdmin) && (
           <div className="flex justify-between border-b border-white/10 pb-2">
-            <p className="text-sm text-slate-400">Unit Price</p>
+            <p className="text-sm text-muted">Unit Price</p>
             <p className="font-bold text-white">
               ${(item.price ?? 0).toFixed(2)} / {item.unit}
             </p>
@@ -462,12 +462,12 @@ export function InventoryDetailOverview({
         )}
         {reorderCostEstimate != null && (
           <div className="flex justify-between border-b border-white/10 pb-2">
-            <p className="text-sm text-slate-400">Reorder Cost Estimate</p>
+            <p className="text-sm text-muted">Reorder Cost Estimate</p>
             <p className="font-bold text-white">${reorderCostEstimate.toFixed(2)}</p>
           </div>
         )}
         <div className="flex justify-between">
-          <p className="text-sm text-slate-400">Reorder Point</p>
+          <p className="text-sm text-muted">Reorder Point</p>
           <p
             className={`font-bold ${item.reorderPoint != null && item.reorderPoint > 0 && available <= item.reorderPoint ? 'text-orange-400' : 'text-white'}`}
           >
@@ -479,7 +479,7 @@ export function InventoryDetailOverview({
       <div className="rounded-sm bg-card-dark p-3">
         <h2 className="mb-3 text-lg font-bold text-white">Linked Jobs</h2>
         {linkedJobs.length === 0 ? (
-          <p className="text-sm text-slate-400">No active job allocations for this part.</p>
+          <p className="text-sm text-muted">No active job allocations for this part.</p>
         ) : (
           <div className="space-y-2">
             {linkedJobs.map(({ job, quantity, jobInventoryId }) => (
@@ -491,7 +491,7 @@ export function InventoryDetailOverview({
               >
                 <div>
                   <p className="font-bold text-white">Job #{job.jobCode}</p>
-                  <p className="text-xs text-slate-400">{job.name}</p>
+                  <p className="text-xs text-muted">{job.name}</p>
                 </div>
                 <p className="text-sm font-bold text-yellow-300">
                   {quantity} {item.unit}
@@ -505,7 +505,7 @@ export function InventoryDetailOverview({
       {consumedJobs.length > 0 && (
         <div className="rounded-sm bg-card-dark p-3">
           <h2 className="mb-3 text-lg font-bold text-white">Consumed Jobs</h2>
-          <p className="mb-2 text-xs text-slate-500">
+          <p className="mb-2 text-xs text-subtle">
             Stock has already been deducted for these jobs.
           </p>
           <div className="space-y-2">
@@ -518,12 +518,11 @@ export function InventoryDetailOverview({
               >
                 <div>
                   <p className="font-bold text-white">Job #{job.jobCode}</p>
-                  <p className="text-xs text-slate-400">
-                    {job.name}{' '}
-                    <span className="ml-1 capitalize text-slate-500">({job.status})</span>
+                  <p className="text-xs text-muted">
+                    {job.name} <span className="ml-1 capitalize text-subtle">({job.status})</span>
                   </p>
                 </div>
-                <p className="text-sm font-bold text-slate-400">
+                <p className="text-sm font-bold text-muted">
                   {quantity} {item.unit}
                 </p>
               </button>

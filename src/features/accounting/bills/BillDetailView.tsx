@@ -27,7 +27,7 @@ const inputClass =
   'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const STATUS_STYLES: Record<BillStatus, string> = {
-  draft: 'bg-white/10 text-slate-300',
+  draft: 'bg-white/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -89,13 +89,13 @@ function RecordVendorPaymentModal({ bill, onClose }: { bill: Bill; onClose: () =
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-muted">
           Balance due{' '}
           <span className="font-mono font-bold text-white">{formatMoney(bill.balanceDue)}</span>.
           Posts a balanced disbursement entry (Dr Accounts Payable / Cr Cash).
@@ -232,9 +232,9 @@ export default function BillDetailView() {
         ) : undefined
       }
     >
-      {isPending && <p className="text-slate-400">Loading bill…</p>}
+      {isPending && <p className="text-muted">Loading bill…</p>}
       {isError && <p className="text-red-400">Could not load this bill.</p>}
-      {!isPending && !isError && !bill && <p className="text-slate-400">Bill not found.</p>}
+      {!isPending && !isError && !bill && <p className="text-muted">Bill not found.</p>}
 
       {bill && (
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
@@ -247,19 +247,19 @@ export default function BillDetailView() {
             >
               {BILL_STATUS_LABELS[bill.status]}
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Vendor <span className="text-white">{bill.vendorName || bill.vendorId}</span>
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               Date <span className="text-white">{bill.billDate}</span>
             </span>
             {bill.dueDate && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Due <span className="text-white">{bill.dueDate}</span>
               </span>
             )}
             {bill.terms && (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted">
                 Terms <span className="text-white">{bill.terms}</span>
               </span>
             )}
@@ -279,18 +279,18 @@ export default function BillDetailView() {
             {lines.map((l) => (
               <tr key={l.id} className="border-t border-white/5">
                 <td className="px-3 py-2 text-white">{l.description || '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">{l.quantity}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+                <td className="px-3 py-2 text-right tabular-nums text-muted">{l.quantity}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted">
                   {formatMoney(l.unitCost)}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-slate-200">
+                <td className="px-3 py-2 text-right tabular-nums text-white">
                   {formatMoney(l.lineTotal)}
                 </td>
               </tr>
             ))}
             {lines.length === 0 && (
               <tr className="border-t border-white/5">
-                <td className="px-3 py-2 text-slate-500" colSpan={4}>
+                <td className="px-3 py-2 text-subtle" colSpan={4}>
                   No line items.
                 </td>
               </tr>
@@ -299,15 +299,15 @@ export default function BillDetailView() {
 
           {/* Totals */}
           <div className="ml-auto w-full max-w-xs space-y-1 text-sm">
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {formatMoney(bill.subtotal)}
               </span>
             </div>
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>Tax</span>
-              <span className="font-mono tabular-nums text-slate-200">
+              <span className="font-mono tabular-nums text-white">
                 {formatMoney(bill.taxTotal)}
               </span>
             </div>
@@ -342,13 +342,13 @@ export default function BillDetailView() {
           {/* Payment history */}
           {payments.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-400">
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Payments
               </h2>
               <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                    <span className="w-24 shrink-0 text-slate-400">{p.paymentDate}</span>
+                    <span className="w-24 shrink-0 text-muted">{p.paymentDate}</span>
                     <span className="flex-1 truncate text-white">
                       {PAYMENT_METHOD_LABELS[p.method]}
                       {p.reference ? ` · ${p.reference}` : ''}

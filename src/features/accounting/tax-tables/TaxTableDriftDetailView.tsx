@@ -43,7 +43,7 @@ function Pill({ children, className = '' }: { children: ReactNode; className?: s
 /** The action-verb cell for one comparison row (Update / New / Skipped). */
 function ActionTag({ row }: { row: DriftComparisonRow }) {
   if (row.action === 'skip') {
-    return <Pill className="bg-slate-500/15 text-slate-500">Skipped</Pill>;
+    return <Pill className="bg-slate-500/15 text-subtle">Skipped</Pill>;
   }
   if (row.action === 'insert') {
     return <Pill className="bg-emerald-500/15 text-emerald-300">New rate</Pill>;
@@ -51,7 +51,7 @@ function ActionTag({ row }: { row: DriftComparisonRow }) {
   return row.changed ? (
     <Pill className="bg-amber-500/15 text-amber-300">Update</Pill>
   ) : (
-    <Pill className="bg-slate-500/15 text-slate-400">No change</Pill>
+    <Pill className="bg-slate-500/15 text-muted">No change</Pill>
   );
 }
 
@@ -122,15 +122,15 @@ function ConfirmActionDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-slate-300">{message}</p>
+        <p className="mb-4 text-sm text-muted">{message}</p>
 
-        <p className="mb-4 text-xs text-slate-500">
+        <p className="mb-4 text-xs text-subtle">
           This action is restricted to the <span className="font-semibold">accounting_admin</span>{' '}
           role and is recorded in the accounting audit log.
         </p>
@@ -178,7 +178,7 @@ function DriftHeader({ drift }: { drift: TaxTableDrift }) {
           {drift.sourceName ?? 'Unknown source'}
         </span>
         {drift.sourceKind && (
-          <Pill className="bg-slate-500/15 text-slate-300">
+          <Pill className="bg-slate-500/15 text-muted">
             {TAX_TABLE_KIND_LABELS[drift.sourceKind]}
           </Pill>
         )}
@@ -189,7 +189,7 @@ function DriftHeader({ drift }: { drift: TaxTableDrift }) {
           {TAX_TABLE_DRIFT_STATUS_LABELS[drift.status]}
         </Pill>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-subtle">
         Detected {formatTimestamp(drift.detectedAt)}
         {drift.reviewedAt && ` · reviewed ${formatTimestamp(drift.reviewedAt)}`}
       </p>
@@ -244,7 +244,7 @@ export default function TaxTableDriftDetailView() {
           </Button>
         </div>
 
-        {driftQuery.isPending && <p className="text-sm text-slate-400">Loading drift…</p>}
+        {driftQuery.isPending && <p className="text-sm text-muted">Loading drift…</p>}
 
         {!driftQuery.isPending && driftQuery.isError && (
           <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
@@ -265,9 +265,9 @@ export default function TaxTableDriftDetailView() {
 
         {!driftQuery.isPending && !driftQuery.isError && !drift && (
           <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
-            <span className="material-symbols-outlined text-3xl text-slate-500">search_off</span>
+            <span className="material-symbols-outlined text-3xl text-subtle">search_off</span>
             <p className="font-bold text-white">Drift not found</p>
-            <p className="max-w-md text-sm text-slate-400">
+            <p className="max-w-md text-sm text-muted">
               This alert may have been removed. Return to the list to see current alerts.
             </p>
             <Button size="sm" icon="arrow_back" onClick={backToList}>
@@ -282,7 +282,7 @@ export default function TaxTableDriftDetailView() {
 
             <section>
               <h2 className="mb-2 text-base font-bold text-white">Proposed rate changes</h2>
-              <p className="mb-2 text-sm text-slate-400">
+              <p className="mb-2 text-sm text-muted">
                 The published rate next to your stored rate. Applying overwrites the matching active
                 rate (or creates it when missing). Entries we can&apos;t apply (no usable rate name
                 or no valid new rate) are shown but skipped.
@@ -299,7 +299,7 @@ export default function TaxTableDriftDetailView() {
               )}
 
               {rows.length === 0 ? (
-                <div className="rounded-sm border border-dashed border-white/15 px-6 py-10 text-center text-sm text-slate-400">
+                <div className="rounded-sm border border-dashed border-white/15 px-6 py-10 text-center text-sm text-muted">
                   This alert lists no rate changes.
                 </div>
               ) : (
@@ -318,23 +318,21 @@ export default function TaxTableDriftDetailView() {
                       <td className="px-3 py-2">
                         <span className="font-medium text-white">{row.rateName || '—'}</span>
                         {row.label && (
-                          <span className="block text-xs text-slate-500">{row.label}</span>
+                          <span className="block text-xs text-subtle">{row.label}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-slate-300">{row.jurisdiction ?? '—'}</td>
-                      <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-400">
+                      <td className="px-3 py-2 text-muted">{row.jurisdiction ?? '—'}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                         {formatRatePct(row.currentRate)}
                       </td>
                       <td
                         className={`px-3 py-2 text-right font-mono tabular-nums ${
-                          row.changed ? 'font-bold text-white' : 'text-slate-400'
+                          row.changed ? 'font-bold text-white' : 'text-muted'
                         }`}
                       >
                         {formatRatePct(row.newRate)}
                       </td>
-                      <td className="px-3 py-2 text-slate-300">
-                        {formatDriftDate(row.effectiveDate)}
-                      </td>
+                      <td className="px-3 py-2 text-muted">{formatDriftDate(row.effectiveDate)}</td>
                       <td className="px-3 py-2">
                         <ActionTag row={row} />
                       </td>
@@ -347,7 +345,7 @@ export default function TaxTableDriftDetailView() {
             {/* ── Actions ──────────────────────────────────────────────────────── */}
             {isActionable ? (
               <Card padding="lg" className="flex flex-col gap-3">
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-muted">
                   {applicableCount > 0 ? (
                     <>
                       Applying will change{' '}
@@ -378,9 +376,9 @@ export default function TaxTableDriftDetailView() {
                 </div>
               </Card>
             ) : (
-              <div className="rounded-sm border border-white/10 bg-white/5 p-3 text-sm text-slate-400">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-3 text-sm text-muted">
                 This alert is{' '}
-                <span className="font-semibold text-slate-300">
+                <span className="font-semibold text-muted">
                   {TAX_TABLE_DRIFT_STATUS_LABELS[drift.status].toLowerCase()}
                 </span>{' '}
                 and can no longer be applied or dismissed.
