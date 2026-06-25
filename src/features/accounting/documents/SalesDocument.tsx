@@ -48,6 +48,8 @@ function HeaderSection({ data, template }: { data: SalesDocumentData; template: 
   if (data.date) metaRows.push(['Date', data.date]);
   if (data.secondaryDate) metaRows.push([secondaryLabel, data.secondaryDate]);
   if (data.terms) metaRows.push(['Terms', data.terms]);
+  if (data.poNumber) metaRows.push(['P.O. Number', data.poNumber]);
+  if (data.salesRep) metaRows.push(['Sales Rep', data.salesRep]);
 
   return (
     <header>

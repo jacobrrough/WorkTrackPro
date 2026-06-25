@@ -81,6 +81,8 @@ export function estimateToSalesDocumentData(estimate: Estimate): SalesDocumentDa
     statusLabel: ESTIMATE_STATUS_LABELS[estimate.status],
     status: estimate.status,
     customerName: estimate.customerName ?? '',
+    poNumber: estimate.poNumber,
+    salesRep: estimate.salesRep,
     subtotal: estimate.subtotal,
     discountTotal: estimate.discountTotal,
     taxTotal: estimate.taxTotal,
@@ -88,7 +90,9 @@ export function estimateToSalesDocumentData(estimate: Estimate): SalesDocumentDa
     // Estimates have no payments block.
     amountPaid: null,
     balanceDue: null,
-    memo: estimate.memo,
+    // `memo` is the internal "memo on statement" — hidden from the customer-facing estimate, so it
+    // is intentionally NOT passed to the renderer. `notes` is the "Note to customer" and prints.
+    memo: null,
     notes: estimate.notes,
     lines: toSalesDocLines(estimate.lines),
     layout: estimate.layout ?? null,

@@ -100,6 +100,9 @@ export interface SalesDocumentData {
   /** Raw status string (e.g. "partially_paid") for tone selection. */
   status: string;
   customerName: string;
+  /** Optional header fields (estimate P.O. Number / Sales Rep). Undefined/null → not rendered. */
+  poNumber?: string | null;
+  salesRep?: string | null;
   subtotal: number;
   discountTotal: number;
   taxTotal: number;
