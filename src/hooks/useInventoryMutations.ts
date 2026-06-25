@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { InventoryHistoryAction, InventoryItem, Job, User } from '@/core/types';
-import { inventoryService } from '@/services/api/inventory';
+import { inventoryService, type DeleteInventoryResult } from '@/services/api/inventory';
 import { inventoryHistoryService } from '@/services/api/inventoryHistory';
 import { jobService } from '@/services/api/jobs';
 import { partsService } from '@/services/api/parts';
@@ -447,6 +447,27 @@ export function useInventoryMutations({
     [queryClient]
   );
 
+  // Permanent delete. The server refuses (without deleting) when the item is referenced by a job
+  // or part, so we only drop it from the cache when the RPC reports ok. The caller surfaces the
+  // reason (in_use / forbidden / error) to the user.
+  const deleteInventoryItem = useCallback(
+    async (id: string): Promise<DeleteInventoryResult> => {
+      try {
+        const result = await inventoryService.deleteInventory(id);
+        if (result.ok) {
+          queryClient.setQueryData<InventoryItem[]>(['inventory'], (prev) =>
+            prev ? prev.filter((i) => i.id !== id) : []
+          );
+        }
+        return result;
+      } catch (error) {
+        console.error('Delete inventory error:', error);
+        return { ok: false, reason: 'error' };
+      }
+    },
+    [queryClient]
+  );
+
   return {
     createInventory,
     updateInventoryItem,
@@ -458,5 +479,6 @@ export function useInventoryMutations({
     receiveInventoryOrder,
     setInventoryImage,
     clearInventoryImage,
+    deleteInventoryItem,
   };
 }

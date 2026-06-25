@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { InventoryItem, ViewState, Attachment, Job } from '@/core/types';
+import type { DeleteInventoryResult } from '@/services/api/inventory';
 import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { useToast } from './Toast';
 import QRScanner from './components/QRScanner';
 import FileViewer from './FileViewer';
+import ConfirmDialog from './ConfirmDialog';
 import AllocateToJobModal from '@/features/inventory/AllocateToJobModal';
 import {
   useInventoryDetail,
@@ -28,6 +30,7 @@ interface InventoryDetailProps {
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   onSetImage: (id: string, file: File) => Promise<InventoryItem | null>;
   onRemoveImage: (id: string) => Promise<InventoryItem | null>;
+  onDeleteItem: (id: string) => Promise<DeleteInventoryResult>;
   onReloadItem?: () => Promise<void>;
   onMarkOrdered?: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
   onReceiveOrder?: (itemId: string, quantity: number, notes?: string) => Promise<boolean>;
@@ -70,6 +73,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   onDeleteAttachment,
   onSetImage,
   onRemoveImage,
+  onDeleteItem,
   onReloadItem,
   onMarkOrdered,
   onReceiveOrder,
@@ -105,6 +109,8 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   const [showReceiveOrder, setShowReceiveOrder] = useState(false);
   const [receiveOrderQty, setReceiveOrderQty] = useState(0);
   const [imageBusy, setImageBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const allocated = calculateAllocated(currentItem.id);
   const available = calculateAvailable(currentItem);
@@ -162,6 +168,42 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
     setActiveSection('overview');
     setEditFormState(buildEditForm(currentItem));
   }, [currentItem]);
+
+  // Permanent delete. The server is the source of truth on whether it's safe (it refuses, without
+  // deleting, when the item is allocated to a job or used in a part's BOM), so we just act on its
+  // verdict: leave the now-dead detail on success, or explain precisely why it was blocked.
+  const handleConfirmDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const result = await onDeleteItem(currentItem.id);
+      if (result.ok) {
+        setConfirmingDelete(false);
+        showToast('Item deleted', 'success');
+        await onReloadItem?.();
+        onBack?.();
+        return;
+      }
+      setConfirmingDelete(false);
+      if (result.reason === 'in_use') {
+        const used: string[] = [];
+        if (result.jobCount) used.push(`${result.jobCount} job${result.jobCount === 1 ? '' : 's'}`);
+        if (result.partCount)
+          used.push(`${result.partCount} part${result.partCount === 1 ? '' : 's'}`);
+        const what = used.join(' and ') || 'other records';
+        showToast(
+          `Can't delete — this item is still used by ${what}. Remove it from those first.`,
+          'error',
+          6000
+        );
+      } else if (result.reason === 'forbidden') {
+        showToast('Only admins can delete inventory items.', 'error');
+      } else {
+        showToast('Failed to delete item. Please try again.', 'error');
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [onDeleteItem, currentItem.id, showToast, onReloadItem, onBack]);
 
   const handleSave = useCallback(async () => {
     if (!editForm.editName.trim()) {
@@ -343,6 +385,18 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           onUploadImage={handleUploadImage}
           onRemoveImage={handleRemoveImage}
           imageBusy={imageBusy}
+          onDelete={isAdmin ? () => setConfirmingDelete(true) : undefined}
+          isDeleting={isDeleting}
+        />
+        <ConfirmDialog
+          isOpen={confirmingDelete}
+          title="Delete this item?"
+          message={`"${currentItem.name}" will be permanently deleted, along with its stock history. This can't be undone. If it's allocated to a job or used in a part, deletion will be blocked.`}
+          confirmText={isDeleting ? 'Deleting…' : 'Delete'}
+          cancelText="Cancel"
+          destructive
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmingDelete(false)}
         />
         <BarcodeScannerModal
           open={showBarcodeScanner}
