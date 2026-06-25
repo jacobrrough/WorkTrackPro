@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { usePlaidLink, type PlaidLinkOnSuccess, type PlaidLinkOnExit } from 'react-plaid-link';
+import {
+  usePlaidLink,
+  type PlaidLinkOnSuccess,
+  type PlaidLinkOnExit,
+  type PlaidLinkError,
+  type PlaidLinkOnExitMetadata,
+} from 'react-plaid-link';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { AccountingShell } from '../components/AccountingShell';
@@ -187,7 +193,7 @@ function PlaidLinkLauncher({
 }: {
   token: string;
   onSuccess: (publicToken: string) => void;
-  onDone: () => void;
+  onDone: (error?: PlaidLinkError | null, metadata?: PlaidLinkOnExitMetadata) => void;
   receivedRedirectUri?: string;
 }) {
   const handleSuccess = useMemo<PlaidLinkOnSuccess>(
@@ -196,9 +202,13 @@ function PlaidLinkLauncher({
     },
     [onSuccess]
   );
+  // Forward Plaid's exit reason up. Link calls onExit on a clean user-cancel (error === null)
+  // AND on a real failure (e.g. an OAuth handoff that authenticated at the bank but never made
+  // it back to the SDK) — the parent decides what to surface so a failed connect is never
+  // silent. THIS is the case the user hits: "the code works but then it just goes away."
   const handleExit = useMemo<PlaidLinkOnExit>(
-    () => () => {
-      onDone();
+    () => (error, metadata) => {
+      onDone(error, metadata);
     },
     [onDone]
   );
@@ -711,6 +721,27 @@ export default function BankFeedsView() {
   const [syncingPk, setSyncingPk] = useState<string | null>(null);
   const [disconnectingItemId, setDisconnectingItemId] = useState<string | null>(null);
 
+  // OAuth return, but the link token we stashed before redirecting is GONE. Plaid sent the
+  // browser back (?oauth_state_id present) yet localStorage has no token to resume with —
+  // which means we came back to a DIFFERENT origin than the one that opened Link (the
+  // PLAID_REDIRECT_URI domain doesn't match the address you actually use — www vs non-www, a
+  // *.netlify.app vs the custom domain, http vs https), or storage was cleared. Without the
+  // token Link can't resume and the connection dies silently — THIS is "it just goes away and
+  // nothing happens." Surface it with a pointed message instead of rendering nothing.
+  useEffect(() => {
+    if (isOAuthReturn() && !readSavedLinkToken()) {
+      setError(
+        'Your bank sent you back, but this page couldn’t finish the connection. This almost ' +
+          'always means the app’s web address doesn’t EXACTLY match the Plaid redirect URL ' +
+          '(check www vs non-www, the domain, and https). Open the app at the same address that ' +
+          'matches your Plaid redirect URL, then connect again.'
+      );
+      stripOAuthParamsFromUrl();
+    }
+    // Mount-only: evaluate the URL we landed on. Safe to run once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Mint a Link token and mount the launcher. `itemId` (Plaid item_id) → update mode. */
   const startLink = async (plaidItemId?: string) => {
     setError(null);
@@ -735,13 +766,29 @@ export default function BankFeedsView() {
    *  launcher's usePlaidLink instance isn't re-created on every parent render. Also clears the
    *  OAuth resume state + persisted token and strips ?oauth_state_id so a refresh can't re-trigger
    *  a stale resume (no-op for the non-OAuth path beyond removing the just-saved token). */
-  const endLink = useCallback(() => {
-    setLinkToken(null);
-    setReconnectingItemId(null);
-    setOauthResumeToken(null);
-    clearSavedLinkToken();
-    stripOAuthParamsFromUrl();
-  }, []);
+  const endLink = useCallback(
+    (error?: PlaidLinkError | null, metadata?: PlaidLinkOnExitMetadata) => {
+      setLinkToken(null);
+      setReconnectingItemId(null);
+      setOauthResumeToken(null);
+      clearSavedLinkToken();
+      stripOAuthParamsFromUrl();
+      // Plaid passes a non-null error when Link FAILED (vs. a clean user-cancel, where error is
+      // null). Surface it so an OAuth / redirect failure that "just goes away" shows a real
+      // reason instead of nothing. error_code is the key diagnostic (e.g. INVALID_LINK_TOKEN,
+      // or an OAuth/redirect-uri mismatch that finishes at the bank but can't return here).
+      if (error) {
+        const inst = metadata?.institution?.name;
+        const code = error.error_code ? ` [${error.error_code}]` : '';
+        setError(
+          (error.display_message || error.error_message || 'The bank connection didn’t finish.') +
+            (inst ? ` (${inst})` : '') +
+            code
+        );
+      }
+    },
+    []
+  );
 
   const handleLinkSuccess = useCallback(
     async (publicToken: string) => {
