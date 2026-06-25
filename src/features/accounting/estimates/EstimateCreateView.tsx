@@ -7,12 +7,15 @@ import { taxJurisdictionsService } from '@/services/api/accounting';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { SalesDocumentHeader } from '../documents/form/SalesDocumentHeader';
+import { SalesDocumentTotalsPanel } from '../documents/form/SalesDocumentTotalsPanel';
+import { SalesDocumentMessages } from '../documents/form/SalesDocumentMessages';
+import { docInputClass } from '../documents/form/salesFormUi';
 import { buildSalesLinesForJob } from '../documents/buildLinesForJob';
 import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 import { useCustomers, useTaxCodes } from '../hooks/useAccountingQueries';
 import { useCreateEstimateDraft, useSendEstimate } from '../hooks/useAccountingMutations';
 import { computeInvoiceTotals } from '../posting';
-import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
 import type { NewEstimateInput, NewEstimateLineInput } from '../types';
 
@@ -308,21 +311,18 @@ export default function EstimateCreateView() {
 
   return (
     <AccountingShell active="estimates" title="New Estimate">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4">
         {taxShown && <TaxDisclaimer />}
 
-        {/* Header */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Customer" htmlFor="est-customer" required>
+        <SalesDocumentHeader
+          kind="estimate"
+          docNumber={null}
+          customerSlot={
             <select
-              id="est-customer"
-              className={inputClass}
+              id="estimate-customer"
+              className={docInputClass}
               value={customerId}
-              onChange={(e) => {
-                // The customer's preferred tax code is adopted automatically by
-                // resolveEffectiveTaxCodeId while the user has not chosen one.
-                setCustomerId(e.target.value);
-              }}
+              onChange={(e) => setCustomerId(e.target.value)}
               disabled={customersLoading}
             >
               <option value="">{customersLoading ? 'Loading…' : 'Select customer…'}</option>
@@ -333,177 +333,66 @@ export default function EstimateCreateView() {
                 </option>
               ))}
             </select>
-          </FormField>
+          }
+          primaryDateLabel="Estimate date"
+          primaryDate={estimateDate}
+          onPrimaryDate={setEstimateDate}
+          secondaryDateLabel="Expiration date"
+          secondaryDate={expiryDate}
+          onSecondaryDate={setExpiryDate}
+          terms={terms}
+          onTerms={setTerms}
+          poNumber={poNumber}
+          onPoNumber={setPoNumber}
+          salesRep={salesRep}
+          onSalesRep={setSalesRep}
+          acceptedBy={acceptedBy}
+          onAcceptedBy={setAcceptedBy}
+          acceptedDate={acceptedDate}
+          onAcceptedDate={setAcceptedDate}
+        />
 
-          <FormField
-            label="Tax code"
-            htmlFor="est-tax"
-            hint="Applied to taxable lines without their own code"
-          >
-            <select
-              id="est-tax"
-              className={inputClass}
-              value={effectiveTaxCodeId}
-              onChange={(e) => {
-                // Record an explicit choice (including "No tax" = '') so the default
-                // is no longer seeded over the user's selection.
-                setTaxCodeTouched(true);
-                setTaxCodeId(e.target.value);
-              }}
-            >
-              <option value="">{defaultTaxCode ? 'No tax' : 'None'}</option>
-              {taxCodes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.isTaxable ? ` (${(t.rate * 100).toFixed(3)}%)` : ' (non-taxable)'}
-                </option>
-              ))}
-            </select>
-            {showAddressHint && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-amber-300">
-                <span className="material-symbols-outlined text-sm">auto_fix_high</span>
-                Auto-selected from the customer&apos;s address — verify before sending.
-              </p>
-            )}
-          </FormField>
-
-          <FormField label="Estimate date" htmlFor="est-date">
-            <input
-              id="est-date"
-              type="date"
-              className={inputClass}
-              value={estimateDate}
-              onChange={(e) => setEstimateDate(e.target.value)}
-            />
-          </FormField>
-
-          <FormField label="Expires" htmlFor="est-expiry">
-            <input
-              id="est-expiry"
-              type="date"
-              className={inputClass}
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-            />
-          </FormField>
-
-          <FormField label="Terms" htmlFor="est-terms">
-            <input
-              id="est-terms"
-              className={inputClass}
-              value={terms}
-              onChange={(e) => setTerms(e.target.value)}
-              placeholder="e.g. Valid 30 days"
-            />
-          </FormField>
-
-          <FormField label="P.O. Number" htmlFor="est-po">
-            <input
-              id="est-po"
-              className={inputClass}
-              value={poNumber}
-              onChange={(e) => setPoNumber(e.target.value)}
-              placeholder="Customer PO #"
-            />
-          </FormField>
-
-          <FormField label="Sales Rep" htmlFor="est-rep">
-            <input
-              id="est-rep"
-              className={inputClass}
-              value={salesRep}
-              onChange={(e) => setSalesRep(e.target.value)}
-              placeholder="Name or initials"
-            />
-          </FormField>
-
-          <FormField label="Accepted by" htmlFor="est-acceptedby">
-            <input
-              id="est-acceptedby"
-              className={inputClass}
-              value={acceptedBy}
-              onChange={(e) => setAcceptedBy(e.target.value)}
-              placeholder="Who accepted it"
-            />
-          </FormField>
-
-          <FormField label="Accepted date" htmlFor="est-accepteddate">
-            <input
-              id="est-accepteddate"
-              type="date"
-              className={inputClass}
-              value={acceptedDate}
-              onChange={(e) => setAcceptedDate(e.target.value)}
-            />
-          </FormField>
-
-          <FormField
-            label="Note to customer"
-            htmlFor="est-notes"
-            hint="Prints on the estimate"
-            className="sm:col-span-2"
-          >
-            <textarea
-              id="est-notes"
-              className={inputClass}
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Thank you for your business."
-            />
-          </FormField>
-
-          <FormField
-            label="Memo on statement (hidden)"
-            htmlFor="est-memo"
-            hint="Not shown on the estimate"
-            className="sm:col-span-2"
-          >
-            <textarea
-              id="est-memo"
-              className={inputClass}
-              rows={2}
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="Internal note (statement only)"
-            />
-          </FormField>
-        </div>
-
-        {/* Line items */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
+        <SalesLineItemsEditor
+          lines={lines}
+          onChange={setLines}
+          lineAmountsCents={totals.lines.map((l) => l.netCents)}
+          headerAction={
             <Button size="sm" variant="secondary" icon="work" onClick={() => setShowFromJob(true)}>
               From job
             </Button>
-          </div>
+          }
+        />
 
-          <SalesLineItemsEditor
-            lines={lines}
-            onChange={setLines}
-            lineAmountsCents={totals.lines.map((l) => l.netCents)}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SalesDocumentMessages
+            kind="estimate"
+            notes={notes}
+            onNotes={setNotes}
+            memo={memo}
+            onMemo={setMemo}
           />
-        </div>
-
-        {/* Totals */}
-        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-          <div className="flex justify-between text-muted">
-            <span>Subtotal</span>
-            <span className="font-mono tabular-nums text-white">
-              {formatMoney(totals.subtotalCents / 100)}
-            </span>
-          </div>
-          <div className="flex justify-between text-muted">
-            <span>Tax</span>
-            <span className="font-mono tabular-nums text-white">
-              {formatMoney(totals.taxCents / 100)}
-            </span>
-          </div>
-          <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
-            <span>Total</span>
-            <span className="font-mono tabular-nums">{formatMoney(totals.totalCents / 100)}</span>
-          </div>
+          <SalesDocumentTotalsPanel
+            kind="estimate"
+            totals={totals}
+            taxCodes={taxCodes}
+            taxCodeId={effectiveTaxCodeId}
+            onTaxCodeId={(v) => {
+              // Record an explicit choice (including "No tax" = '') so the default
+              // is no longer seeded over the user's selection.
+              setTaxCodeTouched(true);
+              setTaxCodeId(v);
+            }}
+            hasDefaultTaxCode={!!defaultTaxCode}
+            taxExempt={selectedCustomer?.taxExempt ?? false}
+            hint={
+              showAddressHint ? (
+                <p className="flex items-center gap-1 text-xs text-amber-300">
+                  <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                  Auto-selected from the customer&apos;s address — verify before sending.
+                </p>
+              ) : undefined
+            }
+          />
         </div>
 
         {error && (

@@ -2,14 +2,13 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { FormField } from '@/components/ui/FormField';
 import { adminSettingsService } from '@/services/api/adminSettings';
 import { AccountingShell } from '../components/AccountingShell';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import { DocumentActivityPanel } from '../components/DocumentActivityPanel';
 import { DocumentSentBadge } from '../components/DocumentSentBadge';
 import JobLinkControl from '../jobs/JobLinkControl';
-import { useEstimate } from '../hooks/useAccountingQueries';
+import { useCustomers, useEstimate, useTaxCodes } from '../hooks/useAccountingQueries';
 import {
   useAcceptEstimate,
   useConvertEstimate,
@@ -20,9 +19,12 @@ import {
   useSetEstimateNumber,
   useUpdateEstimateDraft,
 } from '../hooks/useAccountingMutations';
-import { formatMoney } from '../accountingViewModel';
 import SalesDocument from '../documents/SalesDocument';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { SalesDocumentHeader } from '../documents/form/SalesDocumentHeader';
+import { SalesDocumentTotalsPanel } from '../documents/form/SalesDocumentTotalsPanel';
+import { SalesDocumentMessages } from '../documents/form/SalesDocumentMessages';
+import { docInputClass } from '../documents/form/salesFormUi';
 import { useSalesDocumentEditor } from '../documents/useSalesDocumentEditor';
 import { estimateToSalesDocumentData } from '../documents/salesDocumentMappers';
 import { resolveTemplateConfig } from '../documents/templateConfig';
@@ -40,9 +42,6 @@ const STATUS_STYLES: Record<EstimateStatus, string> = {
   converted: 'bg-violet-500/15 text-violet-400',
 };
 
-const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
-
 /**
  * Draft inline editor for an estimate — mirrors the invoice detail view's edit mode. Holds an
  * editable header (estimate date, expiry, terms, memo, notes) + the shared line grid via
@@ -53,7 +52,12 @@ const inputClass =
 function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClose: () => void }) {
   const editor = useSalesDocumentEditor('estimate', estimate);
   const updateDraft = useUpdateEstimateDraft();
+  const { data: customers = [] } = useCustomers();
+  const { data: taxCodes = [] } = useTaxCodes();
   const [error, setError] = useState<string | null>(null);
+
+  const defaultTaxCode = taxCodes.find((t) => t.isDefault) ?? null;
+  const busy = updateDraft.isPending;
 
   const onSave = async () => {
     setError(null);
@@ -67,142 +71,70 @@ function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClos
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FormField label="Estimate date" htmlFor="edit-est-date">
-          <input
-            id="edit-est-date"
-            type="date"
-            className={inputClass}
-            value={editor.date}
-            onChange={(e) => editor.setDate(e.target.value)}
-          />
-        </FormField>
+      <SalesDocumentHeader
+        kind="estimate"
+        docNumber={estimate.estimateNumber}
+        customerSlot={
+          <select
+            id="estimate-customer"
+            className={docInputClass}
+            value={editor.customerId}
+            onChange={(e) => editor.setCustomerId(e.target.value)}
+            disabled={busy}
+          >
+            <option value="">Select customer…</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.displayName}
+                {c.taxExempt ? ' (tax-exempt)' : ''}
+              </option>
+            ))}
+          </select>
+        }
+        primaryDateLabel="Estimate date"
+        primaryDate={editor.date}
+        onPrimaryDate={editor.setDate}
+        secondaryDateLabel="Expiration date"
+        secondaryDate={editor.secondaryDate}
+        onSecondaryDate={editor.setSecondaryDate}
+        terms={editor.terms}
+        onTerms={editor.setTerms}
+        poNumber={editor.poNumber}
+        onPoNumber={editor.setPoNumber}
+        salesRep={editor.salesRep}
+        onSalesRep={editor.setSalesRep}
+        acceptedBy={editor.acceptedBy}
+        onAcceptedBy={editor.setAcceptedBy}
+        acceptedDate={editor.acceptedDate}
+        onAcceptedDate={editor.setAcceptedDate}
+        disabled={busy}
+      />
 
-        <FormField label="Expires" htmlFor="edit-est-expiry">
-          <input
-            id="edit-est-expiry"
-            type="date"
-            className={inputClass}
-            value={editor.secondaryDate}
-            onChange={(e) => editor.setSecondaryDate(e.target.value)}
-          />
-        </FormField>
+      <SalesLineItemsEditor
+        lines={editor.lines}
+        onChange={editor.setLines}
+        lineAmountsCents={editor.totals.lines.map((l) => l.netCents)}
+        disabled={busy}
+      />
 
-        <FormField label="Terms" htmlFor="edit-est-terms">
-          <input
-            id="edit-est-terms"
-            className={inputClass}
-            value={editor.terms}
-            onChange={(e) => editor.setTerms(e.target.value)}
-            placeholder="e.g. Valid 30 days"
-          />
-        </FormField>
-
-        <FormField label="P.O. Number" htmlFor="edit-est-po">
-          <input
-            id="edit-est-po"
-            className={inputClass}
-            value={editor.poNumber}
-            onChange={(e) => editor.setPoNumber(e.target.value)}
-            placeholder="Customer PO #"
-          />
-        </FormField>
-
-        <FormField label="Sales Rep" htmlFor="edit-est-rep">
-          <input
-            id="edit-est-rep"
-            className={inputClass}
-            value={editor.salesRep}
-            onChange={(e) => editor.setSalesRep(e.target.value)}
-            placeholder="Name or initials"
-          />
-        </FormField>
-
-        <FormField label="Accepted by" htmlFor="edit-est-acceptedby">
-          <input
-            id="edit-est-acceptedby"
-            className={inputClass}
-            value={editor.acceptedBy}
-            onChange={(e) => editor.setAcceptedBy(e.target.value)}
-            placeholder="Who accepted it"
-          />
-        </FormField>
-
-        <FormField label="Accepted date" htmlFor="edit-est-accepteddate">
-          <input
-            id="edit-est-accepteddate"
-            type="date"
-            className={inputClass}
-            value={editor.acceptedDate}
-            onChange={(e) => editor.setAcceptedDate(e.target.value)}
-          />
-        </FormField>
-
-        <FormField
-          label="Note to customer"
-          htmlFor="edit-est-notes"
-          hint="Prints on the estimate"
-          className="sm:col-span-2"
-        >
-          <textarea
-            id="edit-est-notes"
-            className={inputClass}
-            rows={2}
-            value={editor.notes}
-            onChange={(e) => editor.setNotes(e.target.value)}
-            placeholder="Thank you for your business."
-          />
-        </FormField>
-
-        <FormField
-          label="Memo on statement (hidden)"
-          htmlFor="edit-est-memo"
-          hint="Not shown on the estimate"
-          className="sm:col-span-2"
-        >
-          <textarea
-            id="edit-est-memo"
-            className={inputClass}
-            rows={2}
-            value={editor.memo}
-            onChange={(e) => editor.setMemo(e.target.value)}
-            placeholder="Internal note (statement only)"
-          />
-        </FormField>
-      </div>
-
-      {/* Line items */}
-      <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
-        <SalesLineItemsEditor
-          lines={editor.lines}
-          onChange={editor.setLines}
-          lineAmountsCents={editor.totals.lines.map((l) => l.netCents)}
-          disabled={updateDraft.isPending}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SalesDocumentMessages
+          kind="estimate"
+          notes={editor.notes}
+          onNotes={editor.setNotes}
+          memo={editor.memo}
+          onMemo={editor.setMemo}
+          disabled={busy}
         />
-      </div>
-
-      {/* Totals */}
-      <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-        <div className="flex justify-between text-muted">
-          <span>Subtotal</span>
-          <span className="font-mono tabular-nums text-white">
-            {formatMoney(editor.totals.subtotalCents / 100)}
-          </span>
-        </div>
-        <div className="flex justify-between text-muted">
-          <span>Tax</span>
-          <span className="font-mono tabular-nums text-white">
-            {formatMoney(editor.totals.taxCents / 100)}
-          </span>
-        </div>
-        <div className="flex justify-between border-t border-white/10 pt-1 font-bold text-white">
-          <span>Total</span>
-          <span className="font-mono tabular-nums">
-            {formatMoney(editor.totals.totalCents / 100)}
-          </span>
-        </div>
+        <SalesDocumentTotalsPanel
+          kind="estimate"
+          totals={editor.totals}
+          taxCodes={taxCodes}
+          taxCodeId={editor.taxCodeId}
+          onTaxCodeId={editor.setTaxCodeId}
+          hasDefaultTaxCode={!!defaultTaxCode}
+          disabled={busy}
+        />
       </div>
 
       {error && (
@@ -212,11 +144,11 @@ function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClos
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose} disabled={updateDraft.isPending}>
+        <Button variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </Button>
-        <Button icon="save" onClick={onSave} disabled={updateDraft.isPending}>
-          {updateDraft.isPending ? 'Saving…' : 'Save'}
+        <Button icon="save" onClick={onSave} disabled={busy}>
+          {busy ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </div>

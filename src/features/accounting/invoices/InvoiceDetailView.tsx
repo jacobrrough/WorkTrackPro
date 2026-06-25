@@ -14,9 +14,11 @@ import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import JobLinkControl from '../jobs/JobLinkControl';
 import {
   useCustomer,
+  useCustomers,
   useInvoice,
   useInvoiceEmails,
   useInvoicePayments,
+  useTaxCodes,
 } from '../hooks/useAccountingQueries';
 import {
   useCreatePortalLink,
@@ -38,6 +40,10 @@ import { exportSalesDocumentPdf } from '../documents/exportSalesDocumentPdf';
 import { salesDocumentFilenameBase } from '../documents/salesDocumentTypes';
 import { useSalesDocumentEditor } from '../documents/useSalesDocumentEditor';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { SalesDocumentHeader } from '../documents/form/SalesDocumentHeader';
+import { SalesDocumentTotalsPanel } from '../documents/form/SalesDocumentTotalsPanel';
+import { SalesDocumentMessages } from '../documents/form/SalesDocumentMessages';
+import { docInputClass } from '../documents/form/salesFormUi';
 import {
   PAYMENT_METHOD_LABELS,
   type Invoice,
@@ -304,9 +310,13 @@ function EmailInvoiceModal({
 function InvoiceEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const editor = useSalesDocumentEditor('invoice', invoice);
   const saveEdits = useEditPostedInvoice();
+  const { data: customers = [] } = useCustomers();
+  const { data: taxCodes = [] } = useTaxCodes();
   const [error, setError] = useState<string | null>(null);
   const isPosted = invoice.status !== 'draft';
   const hasPayments = invoice.amountPaid > 0;
+  const defaultTaxCode = taxCodes.find((t) => t.isDefault) ?? null;
+  const busy = saveEdits.isPending;
 
   const save = async () => {
     setError(null);
@@ -332,89 +342,83 @@ function InvoiceEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () 
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-sm border border-white/10 bg-background-dark/40 p-4">
+    <div className="flex flex-col gap-4">
       {hasPayments && (
         <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           This invoice has payments applied — you can edit text and dates, but changing the amounts
           requires unapplying the payments first (or use void &amp; reissue).
         </p>
       )}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <FormField label="Invoice date" htmlFor="edit-invoice-date">
-          <input
-            id="edit-invoice-date"
-            type="date"
-            className={inputClass}
-            value={editor.date}
-            onChange={(e) => editor.setDate(e.target.value)}
-          />
-        </FormField>
-        <FormField label="Due date" htmlFor="edit-due-date">
-          <input
-            id="edit-due-date"
-            type="date"
-            className={inputClass}
-            value={editor.secondaryDate}
-            onChange={(e) => editor.setSecondaryDate(e.target.value)}
-          />
-        </FormField>
-        <FormField label="Terms" htmlFor="edit-terms">
-          <input
-            id="edit-terms"
-            className={inputClass}
-            value={editor.terms}
-            onChange={(e) => editor.setTerms(e.target.value)}
-            placeholder="e.g. Net 30"
-          />
-        </FormField>
-        <FormField label="Memo" htmlFor="edit-memo">
-          <input
-            id="edit-memo"
-            className={inputClass}
-            value={editor.memo}
-            onChange={(e) => editor.setMemo(e.target.value)}
-            placeholder="Optional"
-          />
-        </FormField>
-      </div>
 
-      <FormField label="Notes" htmlFor="edit-notes">
-        <textarea
-          id="edit-notes"
-          className={inputClass}
-          rows={2}
-          value={editor.notes}
-          onChange={(e) => editor.setNotes(e.target.value)}
-          placeholder="Optional"
+      <SalesDocumentHeader
+        kind="invoice"
+        docNumber={invoice.invoiceNumber}
+        customerSlot={
+          <select
+            id="invoice-customer"
+            className={docInputClass}
+            value={editor.customerId}
+            onChange={(e) => editor.setCustomerId(e.target.value)}
+            disabled={busy}
+          >
+            <option value="">Select customer…</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.displayName}
+                {c.taxExempt ? ' (tax-exempt)' : ''}
+              </option>
+            ))}
+          </select>
+        }
+        primaryDateLabel="Invoice date"
+        primaryDate={editor.date}
+        onPrimaryDate={editor.setDate}
+        secondaryDateLabel="Due date"
+        secondaryDate={editor.secondaryDate}
+        onSecondaryDate={editor.setSecondaryDate}
+        terms={editor.terms}
+        onTerms={editor.setTerms}
+        disabled={busy}
+      />
+
+      <SalesLineItemsEditor
+        lines={editor.lines}
+        onChange={editor.setLines}
+        lineAmountsCents={editor.totals.lines.map((l) => l.netCents)}
+        disabled={busy}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SalesDocumentMessages
+          kind="invoice"
+          notes={editor.notes}
+          onNotes={editor.setNotes}
+          memo={editor.memo}
+          onMemo={editor.setMemo}
+          disabled={busy}
         />
-      </FormField>
-
-      <div>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
-        <SalesLineItemsEditor
-          lines={editor.lines}
-          onChange={editor.setLines}
-          lineAmountsCents={editor.totals.lines.map((l) => l.netCents)}
+        <SalesDocumentTotalsPanel
+          kind="invoice"
+          totals={editor.totals}
+          taxCodes={taxCodes}
+          taxCodeId={editor.taxCodeId}
+          onTaxCodeId={editor.setTaxCodeId}
+          hasDefaultTaxCode={!!defaultTaxCode}
+          disabled={busy}
         />
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        <span className="mr-auto text-sm text-muted">
-          Total{' '}
-          <span className="font-mono font-bold text-white">
-            {formatMoney(editor.totals.totalCents / 100)}
-          </span>
-        </span>
         {error && (
-          <p className="text-sm text-red-400" role="alert">
+          <p className="mr-auto text-sm text-red-400" role="alert">
             {error}
           </p>
         )}
-        <Button variant="ghost" onClick={onClose} disabled={saveEdits.isPending}>
+        <Button variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </Button>
-        <Button onClick={save} disabled={saveEdits.isPending}>
-          {saveEdits.isPending ? 'Saving…' : 'Save'}
+        <Button icon="save" onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </div>
