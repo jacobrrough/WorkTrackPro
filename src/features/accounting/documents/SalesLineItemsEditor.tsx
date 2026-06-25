@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from 'react';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -18,6 +18,7 @@ import { toCents, formatMoney } from '../accountingViewModel';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { QuantityInput } from '../components/QuantityInput';
 import PartPicker from '../components/PartPicker';
+import { SalesFormCard, docInputClass } from './form/salesFormUi';
 import { usePartLineResolver } from './usePartLineResolver';
 import type { NewInvoiceLineInput } from '../types';
 
@@ -31,8 +32,14 @@ export interface EditorLine extends NewInvoiceLineInput {
   _key?: string;
 }
 
-const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+/**
+ * Shared grid template (desktop) for the QuickBooks-style line table. The header row and every
+ * line row use this same template so the columns line up:
+ *   drag | # | Product/service | Description | Qty | Rate | Amount | Tax | delete
+ * Each line wraps its controls in `md:contents` wrappers so on mobile they stack into a card and
+ * on md+ they flow into these columns without duplicating JSX.
+ */
+const DESKTOP_GRID = 'md:grid-cols-[24px_24px_180px_minmax(0,1fr)_68px_104px_112px_44px_32px]';
 
 /** Local net (post-discount) amount of a line, in cents — mirrors posting.lineNetCents for the
  *  amount cell when the caller hasn't supplied a precomputed lineAmountsCents. */
@@ -53,6 +60,8 @@ interface SalesLineItemsEditorProps {
   /** Optional precomputed per-line net amounts (cents) from the owner's totals; used for the
    *  amount cell when provided so the on-screen amount equals the persisted figure. */
   lineAmountsCents?: number[];
+  /** Optional control rendered top-right in the table card header (e.g. a "From job" button). */
+  headerAction?: ReactNode;
   disabled?: boolean;
 }
 
@@ -96,7 +105,7 @@ function LineRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="grid grid-cols-[24px_1fr_60px_84px_32px] items-center gap-2 md:grid-cols-[24px_1fr_140px_70px_100px_90px_70px_32px]"
+      className={`grid grid-cols-[24px_minmax(0,1fr)_32px] items-start gap-2 rounded-md border border-white/10 bg-background-dark/40 p-2 md:items-center md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:py-1.5 ${DESKTOP_GRID}`}
     >
       {/* Drag handle — only the handle starts a drag, so the inputs stay usable. */}
       <button
@@ -110,67 +119,74 @@ function LineRow({
         <span className="material-symbols-outlined text-lg">drag_indicator</span>
       </button>
 
-      <input
-        aria-label={`Line ${index + 1} description`}
-        className={`${inputClass} col-span-4 md:col-span-1`}
-        value={line.description ?? ''}
-        onChange={(e) => onPatch({ description: e.target.value })}
-        placeholder="Description"
-        disabled={disabled}
-      />
+      {/* Row number — desktop only. */}
+      <span className="hidden items-center justify-center text-xs tabular-nums text-subtle md:flex">
+        {index + 1}
+      </span>
 
-      {/* Link part — seeds description/price from the part quote; user can still edit after. */}
-      <div className="col-span-4 md:col-span-1">
+      {/* Mobile stacks these into a card; md:contents flattens them into the table columns. */}
+      <div className="min-w-0 space-y-2 md:contents">
         <PartPicker
           id={`line-${index + 1}-part`}
           value={line.partId ?? null}
           onChange={onPickPart}
           disabled={disabled}
-          className={`${inputClass} h-auto`}
+          className={`${docInputClass} h-auto`}
         />
-      </div>
 
-      {/* Integer qty for part-linked lines only; decimal qty otherwise. */}
-      {hasPart ? (
-        <QuantityInput
-          aria-label={`Line ${index + 1} quantity`}
-          value={line.quantity ?? 0}
-          onValueChange={onQuantity}
-          disabled={disabled}
-        />
-      ) : (
-        <CurrencyInput
-          aria-label={`Line ${index + 1} quantity`}
-          value={line.quantity ?? 0}
-          onValueChange={onQuantity}
-          disabled={disabled}
-        />
-      )}
-
-      <CurrencyInput
-        aria-label={`Line ${index + 1} unit price`}
-        value={line.unitPrice ?? 0}
-        onValueChange={(v) =>
-          // User-entered price supersedes any imported/seeded explicit lineTotal.
-          onPatch({ unitPrice: v, lineTotal: undefined })
-        }
-        disabled={disabled}
-      />
-
-      <span className="hidden text-right font-mono text-sm tabular-nums text-muted md:block">
-        {formatMoney(amountCents / 100)}
-      </span>
-
-      <label className="flex items-center justify-center">
         <input
-          type="checkbox"
-          aria-label={`Line ${index + 1} taxable`}
-          checked={line.taxable !== false}
-          onChange={(e) => onPatch({ taxable: e.target.checked })}
-          className="size-4 rounded-sm border-white/20 bg-background-dark"
+          aria-label={`Line ${index + 1} description`}
+          className={docInputClass}
+          value={line.description ?? ''}
+          onChange={(e) => onPatch({ description: e.target.value })}
+          placeholder="Description"
           disabled={disabled}
         />
-      </label>
+
+        {/* Qty / Rate / Amount / Tax — a 4-up row on mobile, individual columns on desktop. */}
+        <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-2 md:contents">
+          {hasPart ? (
+            <QuantityInput
+              aria-label={`Line ${index + 1} quantity`}
+              value={line.quantity ?? 0}
+              onValueChange={onQuantity}
+              disabled={disabled}
+            />
+          ) : (
+            <CurrencyInput
+              aria-label={`Line ${index + 1} quantity`}
+              value={line.quantity ?? 0}
+              onValueChange={onQuantity}
+              disabled={disabled}
+            />
+          )}
+
+          <CurrencyInput
+            aria-label={`Line ${index + 1} rate`}
+            value={line.unitPrice ?? 0}
+            onValueChange={(v) =>
+              // User-entered price supersedes any imported/seeded explicit lineTotal.
+              onPatch({ unitPrice: v, lineTotal: undefined })
+            }
+            disabled={disabled}
+          />
+
+          <span className="text-right font-mono text-sm tabular-nums text-white">
+            {formatMoney(amountCents / 100)}
+          </span>
+
+          <label className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              aria-label={`Line ${index + 1} taxable`}
+              checked={line.taxable !== false}
+              onChange={(e) => onPatch({ taxable: e.target.checked })}
+              className="size-4 rounded-sm border-white/20 bg-background-dark"
+              disabled={disabled}
+            />
+          </label>
+        </div>
+      </div>
 
       <button
         type="button"
@@ -186,16 +202,17 @@ function LineRow({
 }
 
 /**
- * Controlled sales-document line grid shared by the invoice/estimate create + draft-edit
- * views. Mirrors InvoiceCreateView's grid (description, qty, unit price, amount, taxable,
- * delete) and adds a per-line "Link part" picker plus drag-to-reorder. Pricing on part-pick
- * / qty-change reuses the shared part-quote core via usePartLineResolver, so an editor line
- * is priced exactly like the invoice-from-job seam (SEED, not lock — the user can still edit).
+ * Controlled QuickBooks-style "Product or service" table shared by the invoice/estimate create +
+ * draft-edit views. Columns: Product/service (a part link), Description, Qty, Rate, Amount, Tax,
+ * plus drag-to-reorder. Pricing on part-pick / qty-change reuses the shared part-quote core via
+ * usePartLineResolver, so an editor line is priced exactly like the invoice-from-job seam (SEED,
+ * not lock — the user can still edit).
  */
 export default function SalesLineItemsEditor({
   lines,
   onChange,
   lineAmountsCents,
+  headerAction,
   disabled,
 }: SalesLineItemsEditorProps) {
   const { resolve } = usePartLineResolver();
@@ -251,11 +268,17 @@ export default function SalesLineItemsEditor({
     onChange(lines.filter((_, i) => i !== index));
   };
 
-  const addLine = () =>
-    onChange([
-      ...lines,
-      { description: '', quantity: 1, unitPrice: 0, discount: 0, taxable: true },
-    ]);
+  const emptyLine = (): EditorLine => ({
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    discount: 0,
+    taxable: true,
+  });
+
+  const addLine = () => onChange([...lines, emptyLine()]);
+
+  const clearAllLines = () => onChange([emptyLine()]);
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -267,13 +290,17 @@ export default function SalesLineItemsEditor({
   };
 
   return (
-    <div>
-      <div className="hidden grid-cols-[24px_1fr_140px_70px_100px_90px_70px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase text-subtle md:grid">
+    <SalesFormCard title="Product or service" right={headerAction} bodyClassName="p-3 sm:p-4">
+      {/* Column header — desktop only (mobile rows are self-describing cards). */}
+      <div
+        className={`hidden gap-2 px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-subtle md:grid ${DESKTOP_GRID}`}
+      >
         <span />
+        <span className="text-center">#</span>
+        <span>Product/service</span>
         <span>Description</span>
-        <span>Part</span>
         <span className="text-right">Qty</span>
-        <span className="text-right">Unit price</span>
+        <span className="text-right">Rate</span>
         <span className="text-right">Amount</span>
         <span className="text-center">Tax</span>
         <span />
@@ -281,7 +308,7 @@ export default function SalesLineItemsEditor({
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
+          <div className="space-y-2 md:space-y-0 md:divide-y md:divide-white/5">
             {lines.map((line, i) => {
               const amountCents = lineAmountsCents?.[i] ?? localNetCents(line);
               return (
@@ -303,15 +330,25 @@ export default function SalesLineItemsEditor({
         </SortableContext>
       </DndContext>
 
-      <button
-        type="button"
-        onClick={addLine}
-        disabled={disabled}
-        className="mt-2 flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover disabled:opacity-40"
-      >
-        <span className="material-symbols-outlined text-lg">add</span>
-        Add line
-      </button>
-    </div>
+      <div className="mt-3 flex items-center gap-4 border-t border-white/10 pt-3">
+        <button
+          type="button"
+          onClick={addLine}
+          disabled={disabled}
+          className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover disabled:opacity-40"
+        >
+          <span className="material-symbols-outlined text-lg">add</span>
+          Add product or service
+        </button>
+        <button
+          type="button"
+          onClick={clearAllLines}
+          disabled={disabled || lines.length <= 1}
+          className="text-sm font-medium text-muted hover:text-white disabled:opacity-40"
+        >
+          Clear all lines
+        </button>
+      </div>
+    </SalesFormCard>
   );
 }

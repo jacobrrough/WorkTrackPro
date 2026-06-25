@@ -8,12 +8,15 @@ import { AccountingShell } from '../components/AccountingShell';
 import { CustomFieldsSection } from '../components/CustomFieldsSection';
 import { TaxDisclaimer } from '../components/TaxDisclaimer';
 import SalesLineItemsEditor from '../documents/SalesLineItemsEditor';
+import { SalesDocumentHeader } from '../documents/form/SalesDocumentHeader';
+import { SalesDocumentTotalsPanel } from '../documents/form/SalesDocumentTotalsPanel';
+import { SalesDocumentMessages } from '../documents/form/SalesDocumentMessages';
+import { docInputClass } from '../documents/form/salesFormUi';
 import { buildSalesLinesForJob } from '../documents/buildLinesForJob';
 import { resolveEffectiveTaxCodeId } from '../documents/taxCode';
 import { useCustomFieldDefs, useCustomers, useTaxCodes } from '../hooks/useAccountingQueries';
 import { useCreateInvoiceDraft, useSendInvoice } from '../hooks/useAccountingMutations';
 import { computeInvoiceTotals } from '../posting';
-import { formatMoney } from '../accountingViewModel';
 import { ACCOUNTING_BASE } from '../constants';
 import type { NewInvoiceInput, NewInvoiceLineInput } from '../types';
 
@@ -140,6 +143,7 @@ export default function InvoiceCreateView() {
   const [dueDate, setDueDate] = useState('');
   const [terms, setTerms] = useState('');
   const [memo, setMemo] = useState('');
+  const [notes, setNotes] = useState('');
   const [taxCodeId, setTaxCodeId] = useState('');
   // Whether the user has explicitly chosen a header tax code (including "No tax").
   // Until then the effective code is seeded from the customer/org default.
@@ -278,6 +282,7 @@ export default function InvoiceCreateView() {
       terms: terms.trim() || null,
       taxCodeId: effectiveTaxCodeId || null,
       memo: memo.trim() || null,
+      notes: notes.trim() || null,
       lines: realLines,
     };
     const res = await createDraft.mutateAsync({
@@ -303,22 +308,18 @@ export default function InvoiceCreateView() {
 
   return (
     <AccountingShell active="invoices" title="New Invoice">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4">
         {taxShown && <TaxDisclaimer />}
 
-        {/* Header */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Customer" htmlFor="inv-customer" required>
+        <SalesDocumentHeader
+          kind="invoice"
+          docNumber={null}
+          customerSlot={
             <select
-              id="inv-customer"
-              className={inputClass}
+              id="invoice-customer"
+              className={docInputClass}
               value={customerId}
-              onChange={(e) => {
-                // The customer's preferred tax code is adopted automatically by
-                // resolveEffectiveTaxCodeId while the user has not chosen one, so no
-                // tax-code side effect is needed here.
-                setCustomerId(e.target.value);
-              }}
+              onChange={(e) => setCustomerId(e.target.value)}
               disabled={customersLoading}
             >
               <option value="">{customersLoading ? 'Loading…' : 'Select customer…'}</option>
@@ -329,127 +330,69 @@ export default function InvoiceCreateView() {
                 </option>
               ))}
             </select>
-          </FormField>
+          }
+          primaryDateLabel="Invoice date"
+          primaryDate={invoiceDate}
+          onPrimaryDate={setInvoiceDate}
+          secondaryDateLabel="Due date"
+          secondaryDate={dueDate}
+          onSecondaryDate={setDueDate}
+          terms={terms}
+          onTerms={setTerms}
+        />
 
-          <FormField
-            label="Tax code"
-            htmlFor="inv-tax"
-            hint="Applied to taxable lines without their own code"
-          >
-            <select
-              id="inv-tax"
-              className={inputClass}
-              value={effectiveTaxCodeId}
-              onChange={(e) => {
-                // Record an explicit choice (including "No tax" = '') so the default
-                // is no longer seeded over the user's selection.
-                setTaxCodeTouched(true);
-                setTaxCodeId(e.target.value);
-              }}
-            >
-              <option value="">{defaultTaxCode ? 'No tax' : 'None'}</option>
-              {taxCodes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.isTaxable ? ` (${(t.rate * 100).toFixed(3)}%)` : ' (non-taxable)'}
-                </option>
-              ))}
-            </select>
-            {showAddressHint && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-amber-300">
-                <span className="material-symbols-outlined text-sm">auto_fix_high</span>
-                Auto-selected from the customer&apos;s address — verify before sending.
-              </p>
-            )}
-          </FormField>
-
-          <FormField label="Invoice date" htmlFor="inv-date">
-            <input
-              id="inv-date"
-              type="date"
-              className={inputClass}
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-            />
-          </FormField>
-
-          <FormField label="Due date" htmlFor="inv-due">
-            <input
-              id="inv-due"
-              type="date"
-              className={inputClass}
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
-          </FormField>
-
-          <FormField label="Terms" htmlFor="inv-terms">
-            <input
-              id="inv-terms"
-              className={inputClass}
-              value={terms}
-              onChange={(e) => setTerms(e.target.value)}
-              placeholder="e.g. Net 30"
-            />
-          </FormField>
-
-          <FormField label="Memo" htmlFor="inv-memo">
-            <input
-              id="inv-memo"
-              className={inputClass}
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="Optional note"
-            />
-          </FormField>
-        </div>
-
-        {/* Line items */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Line items</h2>
+        <SalesLineItemsEditor
+          lines={lines}
+          onChange={setLines}
+          lineAmountsCents={totals.lines.map((l) => l.netCents)}
+          headerAction={
             <Button size="sm" variant="secondary" icon="work" onClick={() => setShowFromJob(true)}>
               From job
             </Button>
-          </div>
+          }
+        />
 
-          <SalesLineItemsEditor
-            lines={lines}
-            onChange={setLines}
-            lineAmountsCents={totals.lines.map((l) => l.netCents)}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SalesDocumentMessages
+            kind="invoice"
+            notes={notes}
+            onNotes={setNotes}
+            memo={memo}
+            onMemo={setMemo}
+          >
+            {/* Additive custom-fields preview (D4). Read-only until the draft is saved;
+                values are entered/saved on the invoice detail screen. */}
+            {customFieldDefs.length > 0 && (
+              <CustomFieldsSection
+                entityType="invoice"
+                entityId={undefined}
+                draftPreview={customFieldDefs.map((def) => ({ def, value: null }))}
+              />
+            )}
+          </SalesDocumentMessages>
+          <SalesDocumentTotalsPanel
+            kind="invoice"
+            totals={totals}
+            taxCodes={taxCodes}
+            taxCodeId={effectiveTaxCodeId}
+            onTaxCodeId={(v) => {
+              // Record an explicit choice (including "No tax" = '') so the default
+              // is no longer seeded over the user's selection.
+              setTaxCodeTouched(true);
+              setTaxCodeId(v);
+            }}
+            hasDefaultTaxCode={!!defaultTaxCode}
+            taxExempt={selectedCustomer?.taxExempt ?? false}
+            hint={
+              showAddressHint ? (
+                <p className="flex items-center gap-1 text-xs text-amber-300">
+                  <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                  Auto-selected from the customer&apos;s address — verify before sending.
+                </p>
+              ) : undefined
+            }
           />
         </div>
-
-        {/* Totals */}
-        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
-          <div className="flex justify-between text-muted">
-            <span>Subtotal</span>
-            <span className="font-mono tabular-nums text-white">
-              {formatMoney(totals.subtotalCents / 100)}
-            </span>
-          </div>
-          <div className="flex justify-between text-muted">
-            <span>Tax</span>
-            <span className="font-mono tabular-nums text-white">
-              {formatMoney(totals.taxCents / 100)}
-            </span>
-          </div>
-          <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
-            <span>Total</span>
-            <span className="font-mono tabular-nums">{formatMoney(totals.totalCents / 100)}</span>
-          </div>
-        </div>
-
-        {/* Additive custom-fields preview (D4). Read-only until the draft is saved;
-            values are entered/saved on the invoice detail screen. Renders nothing when
-            no invoice custom fields are defined, so the create form is unchanged. */}
-        {customFieldDefs.length > 0 && (
-          <CustomFieldsSection
-            entityType="invoice"
-            entityId={undefined}
-            draftPreview={customFieldDefs.map((def) => ({ def, value: null }))}
-          />
-        )}
 
         {error && (
           <p className="text-sm text-red-400" role="alert">

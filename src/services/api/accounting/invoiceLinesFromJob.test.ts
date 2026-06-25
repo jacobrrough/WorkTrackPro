@@ -162,6 +162,56 @@ describe('buildInvoiceLinesFromJob', () => {
     );
   });
 
+  it('uses the job qty text when dash quantities are empty (the on-screen quote fallback)', () => {
+    // A qty-only job: the user typed "126" and never broke it into dash quantities, so the
+    // persisted dash map is empty. The line must bill 126 units (priced like the on-screen
+    // quote), NOT collapse to a single unit.
+    const part = makePart();
+    const job = makeJob({ dashQuantities: {}, qty: '126' });
+
+    const expected = calculatePartQuote(part, 126, inventory, {
+      laborRate: SETTINGS.laborRate,
+      cncRate: SETTINGS.cncRate,
+      printer3DRate: SETTINGS.printer3DRate,
+      overrideLaborHours: part.laborHours,
+    });
+    expect(expected).not.toBeNull();
+
+    const lines = buildInvoiceLinesFromJob({ job, parts: [part], inventory, settings: SETTINGS });
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0].quantity).toBe(126);
+    expect(lines[0].lineTotal).toBeCloseTo(Math.round((expected!.total ?? 0) * 100) / 100, 2);
+    // unitPrice * quantity reconstructs the (much larger) total — not a single-unit price.
+    expect((lines[0].unitPrice ?? 0) * (lines[0].quantity ?? 0)).toBeCloseTo(
+      lines[0].lineTotal!,
+      1
+    );
+  });
+
+  it('does NOT apply the job qty text to a multi-part job (each part keeps its own dash)', () => {
+    // The per-job qty is the whole-job figure; multi-part jobs persist each link's own dash
+    // quantities, so a stray qty must not be sprayed onto every line.
+    const partA = makePart();
+    const partB = { ...makePart(), id: 'part-2', partNumber: 'P-200', name: 'Plate' } as Part;
+    const job = makeJob({
+      partNumber: undefined,
+      dashQuantities: undefined,
+      qty: '999',
+      parts: [
+        { partId: 'part-1', partNumber: 'P-100', dashQuantities: { '01': 1 } },
+        { partId: 'part-2', partNumber: 'P-200', dashQuantities: { '01': 2 } },
+      ],
+    });
+    const lines = buildInvoiceLinesFromJob({
+      job,
+      parts: [partA, partB],
+      inventory,
+      settings: SETTINGS,
+    });
+    expect(lines.map((l) => l.quantity)).toEqual([1, 2]);
+  });
+
   it("anchors to a part's stored pricePerSet (manualSetPrice), matching the calculator", () => {
     const part = { ...makePart(), pricePerSet: 9300 } as Part;
     const job = makeJob({ dashQuantities: { '01': 1 } });

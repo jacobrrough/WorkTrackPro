@@ -105,6 +105,7 @@ import { UnitProgressAccordion } from '@/features/jobs/components/UnitProgressAc
 import { buildDistributedBom, unitCountsByVariant, cncableVariantKeys } from '@/lib/cncDeduction';
 import { logUnitProgress } from '@/services/api/unitProgress';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
+import { buildEffectivePartQuantities } from '@/lib/effectivePartQuantities';
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
 import { calculateJobPriceFromPart, calculateJobPriceFromParts } from '@/lib/jobPriceFromPart';
 import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
@@ -175,50 +176,6 @@ const ALL_STATUSES: { id: JobStatus; label: string }[] = [
 ];
 const normalizeLegacyRushStatus = (status: JobStatus): JobStatus =>
   status === 'rush' ? 'pending' : status;
-
-function parseQuantityFromText(value: string | undefined | null): number {
-  const match = String(value ?? '').match(/(\d+(?:\.\d+)?)/);
-  if (!match) return 0;
-  const parsed = Number.parseFloat(match[1]);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function buildEffectivePartQuantities(
-  part: Part | null,
-  dashQuantities: Record<string, number>,
-  qtyText: string | undefined | null
-): Record<string, number> {
-  const normalizedDash = normalizeDashQuantities(dashQuantities);
-  if (Object.values(normalizedDash).some((qty) => qty > 0)) return normalizedDash;
-  if (!part) return normalizedDash;
-
-  const totalQty = parseQuantityFromText(qtyText);
-  if (totalQty <= 0) return normalizedDash;
-
-  if (!part.variants?.length) {
-    return { '-01': totalQty };
-  }
-
-  // Multi-variant fallback: derive dash quantities from set composition × set qty.
-  if (part.setComposition && Object.keys(part.setComposition).length > 0) {
-    const fromSetCount: Record<string, number> = {};
-    for (const variant of part.variants) {
-      const qtyPerSet = getDashQuantity(part.setComposition, variant.variantSuffix);
-      if (qtyPerSet > 0) {
-        fromSetCount[toDashSuffix(variant.variantSuffix)] = qtyPerSet * totalQty;
-      }
-    }
-    const normalizedFromSetCount = normalizeDashQuantities(fromSetCount);
-    if (Object.keys(normalizedFromSetCount).length > 0) return normalizedFromSetCount;
-  }
-
-  // Copy/single-variant fallback when set composition is missing.
-  if (part.variantsAreCopies || part.variants.length === 1) {
-    return { [toDashSuffix(part.variants[0].variantSuffix)]: totalQty };
-  }
-
-  return normalizedDash;
-}
 
 function getMachineOverrideFromJob(
   job: Job

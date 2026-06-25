@@ -1,6 +1,7 @@
 import type { InventoryItem, Job, Part, PartVariant } from '../../../core/types';
 import { calculatePartQuote, normalizeDashQuantities } from '../../../lib/partsCalculations';
 import { getDashQuantity } from '../../../lib/variantMath';
+import { buildEffectivePartQuantities } from '../../../lib/effectivePartQuantities';
 import type { NewInvoiceLineInput } from '../../../features/accounting/types';
 
 /**
@@ -42,6 +43,7 @@ export interface InvoiceLinesFromJobParams {
     | 'jobCode'
     | 'name'
     | 'partNumber'
+    | 'qty'
     | 'dashQuantities'
     | 'parts'
     | 'inventoryItems'
@@ -184,6 +186,11 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
 
   // Determine the part links: prefer the multi-part list, else the primary part.
   const links = jobPartLinks(job);
+  // A single-part job may carry its count only in the free-text `qty` field (empty
+  // dash_quantities) — mirror the job screens' `qty`-text fallback so the line counts and
+  // prices the part exactly like the on-screen quote instead of collapsing to a single unit.
+  // Multi-part jobs persist each link's own dash quantities, so the per-job `qty` doesn't apply.
+  const singlePart = links.length === 1;
 
   // Re-quote each linked part from its current state. The per-part `total` is the live
   // quote; it is what we bill ONLY when the job has no saved quoted snapshot (older jobs).
@@ -192,7 +199,10 @@ export function buildInvoiceLinesFromJob(params: InvoiceLinesFromJobParams): New
   for (const link of links) {
     const part = findPart(parts, link);
     if (!part) continue;
-    const sets = setsForPart(part, link.dashQuantities);
+    const effectiveDash = singlePart
+      ? buildEffectivePartQuantities(part, link.dashQuantities, job.qty)
+      : link.dashQuantities;
+    const sets = setsForPart(part, effectiveDash);
     if (sets <= 0) continue;
 
     const quoted = quotePartLine(part, sets, inventory, settings);

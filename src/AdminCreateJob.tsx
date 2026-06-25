@@ -31,7 +31,7 @@ import {
   buildNoVariantMachineBreakdown,
 } from '@/features/jobs/hooks/variantBreakdownUtils';
 import { calculateJobPriceFromPart, calculateJobPriceFromParts } from '@/lib/jobPriceFromPart';
-import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
+import { buildEffectivePartQuantities } from '@/lib/effectivePartQuantities';
 import { partsService } from '@/services/api/parts';
 import { useToast } from '@/Toast';
 import PartSelector from '@/components/PartSelector';
@@ -172,46 +172,10 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
     revision: '',
   });
 
-  const parseQuantityFromText = (value: string): number => {
-    const match = value.match(/(\d+(?:\.\d+)?)/);
-    if (!match) return 0;
-    const parsed = Number.parseFloat(match[1]);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  };
-
-  const buildEffectiveQuantities = (part: Part | null): Record<string, number> => {
-    const normalizedDash = normalizeDashQuantities(dashQuantities);
-    if (Object.values(normalizedDash).some((qty) => qty > 0)) return normalizedDash;
-    if (!part) return normalizedDash;
-    const setQty = parseQuantityFromText(formData.qty);
-    if (setQty <= 0) return normalizedDash;
-
-    if (!(part.variants?.length ?? 0)) {
-      return { '-01': setQty };
-    }
-
-    if (
-      part.setComposition &&
-      Object.keys(part.setComposition).length > 0 &&
-      part.variants?.length
-    ) {
-      const fromSetCount: Record<string, number> = {};
-      for (const variant of part.variants) {
-        const qtyPerSet = getDashQuantity(part.setComposition, variant.variantSuffix);
-        if (qtyPerSet > 0) {
-          fromSetCount[toDashSuffix(variant.variantSuffix)] = qtyPerSet * setQty;
-        }
-      }
-      const normalizedFromSet = normalizeDashQuantities(fromSetCount);
-      if (Object.keys(normalizedFromSet).length > 0) return normalizedFromSet;
-    }
-
-    if ((part.variantsAreCopies || part.variants?.length === 1) && part.variants?.[0]) {
-      return { [toDashSuffix(part.variants[0].variantSuffix)]: setQty };
-    }
-
-    return normalizedDash;
-  };
+  // Shared with the job-detail screen and the estimate/invoice line builder so a qty-only job
+  // (empty dash_quantities, count in the free-text `qty`) is counted/priced identically everywhere.
+  const buildEffectiveQuantities = (part: Part | null): Record<string, number> =>
+    buildEffectivePartQuantities(part, dashQuantities, formData.qty);
 
   const deriveLaborHoursFromPart = (
     part: Part | null,
