@@ -51,6 +51,18 @@ export interface PaginatedInventoryResult {
   totalPages: number;
 }
 
+/**
+ * Outcome of a permanent delete attempt. `ok` true means the row is gone; otherwise `reason`
+ * explains why it was refused. `in_use` carries the blocking reference counts so the UI can tell
+ * the user exactly what to detach first.
+ */
+export interface DeleteInventoryResult {
+  ok: boolean;
+  reason?: 'forbidden' | 'not_found' | 'in_use' | 'error';
+  jobCount?: number;
+  partCount?: number;
+}
+
 export const inventoryService = {
   async getAllInventory(): Promise<InventoryItem[]> {
     const { data, error } = await supabase.from('inventory').select('*').order('name');
@@ -139,6 +151,31 @@ export const inventoryService = {
       .single();
     if (error) return null;
     return mapRowToItem(updated as unknown as Record<string, unknown>);
+  },
+
+  /**
+   * Permanently delete an inventory item via the safe-guarded delete_inventory_item RPC. The RPC
+   * refuses (without deleting) when the item is allocated to a job or used in a part's BOM, and is
+   * admin-only. Returns a structured verdict; a transport/RPC error maps to reason 'error'.
+   */
+  async deleteInventory(id: string): Promise<DeleteInventoryResult> {
+    const { data, error } = await supabase.rpc('delete_inventory_item', { p_id: id });
+    if (error) {
+      console.error('deleteInventory failed:', error.message);
+      return { ok: false, reason: 'error' };
+    }
+    const row = (data ?? {}) as {
+      ok?: boolean;
+      reason?: DeleteInventoryResult['reason'];
+      job_count?: number;
+      part_count?: number;
+    };
+    return {
+      ok: !!row.ok,
+      reason: row.reason,
+      jobCount: row.job_count,
+      partCount: row.part_count,
+    };
   },
 
   async getByIds(ids: string[]): Promise<InventoryItem[]> {

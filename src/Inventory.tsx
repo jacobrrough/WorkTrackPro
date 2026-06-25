@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { InventoryItem, Job, ViewState } from '@/core/types';
+import type { DeleteInventoryResult } from '@/services/api/inventory';
 import { useNavigation } from '@/contexts/NavigationContext';
 import InventoryDetail from './InventoryDetail';
 import AddInventoryItem from './AddInventoryItem';
@@ -21,6 +22,7 @@ interface InventoryProps {
   onDeleteAttachment: (attachmentId: string, inventoryId: string) => Promise<boolean>;
   onSetImage: (id: string, file: File) => Promise<InventoryItem | null>;
   onRemoveImage: (id: string) => Promise<InventoryItem | null>;
+  onDeleteItem: (id: string) => Promise<DeleteInventoryResult>;
   onReloadInventory?: () => Promise<void>;
   isAdmin: boolean;
   calculateAvailable: (item: InventoryItem) => number;
@@ -53,6 +55,7 @@ const Inventory: React.FC<InventoryProps> = ({
   onDeleteAttachment,
   onSetImage,
   onRemoveImage,
+  onDeleteItem,
   onReloadInventory,
   isAdmin,
   calculateAvailable,
@@ -122,6 +125,7 @@ const Inventory: React.FC<InventoryProps> = ({
         onDeleteAttachment={onDeleteAttachment}
         onSetImage={onSetImage}
         onRemoveImage={onRemoveImage}
+        onDeleteItem={onDeleteItem}
         onReloadItem={onReloadInventory}
         onMarkOrdered={onMarkOrdered}
         onReceiveOrder={onReceiveOrder}

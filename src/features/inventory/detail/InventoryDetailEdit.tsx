@@ -32,6 +32,10 @@ interface InventoryDetailEditProps {
   onUploadImage: (file: File) => void | Promise<void>;
   onRemoveImage: () => void | Promise<void>;
   imageBusy: boolean;
+  /** Opens the delete-confirmation flow. Omitted (button hidden) for non-admins. */
+  onDelete?: () => void;
+  /** True while a delete is in flight, to disable the danger-zone button. */
+  isDeleting?: boolean;
 }
 
 export function InventoryDetailEdit({
@@ -49,6 +53,8 @@ export function InventoryDetailEdit({
   onUploadImage,
   onRemoveImage,
   imageBusy,
+  onDelete,
+  isDeleting = false,
 }: InventoryDetailEditProps) {
   return (
     <div className="flex h-full flex-col bg-background-dark">
@@ -312,6 +318,25 @@ export function InventoryDetailEdit({
             />
           </div>
         </div>
+
+        {onDelete && (
+          <div className="space-y-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+            <h2 className="text-lg font-bold text-red-300">Danger Zone</h2>
+            <p className="text-sm text-muted">
+              Permanently delete this item and its stock history. Blocked if it's allocated to a job
+              or used in a part. This can't be undone.
+            </p>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-sm border border-red-500 bg-red-500/20 px-4 font-bold text-red-200 hover:bg-red-500/30 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined">delete</span>
+              {isDeleting ? 'Deleting…' : 'Delete item'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

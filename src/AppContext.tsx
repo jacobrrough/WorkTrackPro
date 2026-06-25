@@ -34,6 +34,7 @@ import {
 } from '@/lib/offlineActionQueue';
 import { syncOfflineActionQueue } from '@/lib/syncOfflineActionQueue';
 import { subscriptions } from '@/services/api/subscriptions';
+import type { DeleteInventoryResult } from '@/services/api/inventory';
 import {
   removeBoardCard,
   removeBoardColumn,
@@ -90,6 +91,8 @@ export interface AppContextType {
   updateInventoryStock: (id: string, inStock: number, reason?: string) => Promise<void>;
   setInventoryImage: (id: string, file: File) => Promise<InventoryItem | null>;
   clearInventoryImage: (id: string) => Promise<InventoryItem | null>;
+  /** Permanently delete an inventory item (admin-only; refused server-side if used by a job/part). */
+  deleteInventoryItem: (id: string) => Promise<DeleteInventoryResult>;
   addJobInventory: (
     jobId: string,
     inventoryId: string,
@@ -578,6 +581,7 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       receiveInventoryOrder: inventoryMutations.receiveInventoryOrder,
       setInventoryImage: inventoryMutations.setInventoryImage,
       clearInventoryImage: inventoryMutations.clearInventoryImage,
+      deleteInventoryItem: inventoryMutations.deleteInventoryItem,
       addAttachment: attachmentMutations.addAttachment,
       deleteAttachment: attachmentMutations.deleteAttachment,
       updateAttachmentAdminOnly: attachmentMutations.updateAttachmentAdminOnly,
