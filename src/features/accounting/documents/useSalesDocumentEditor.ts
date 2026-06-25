@@ -69,6 +69,16 @@ export interface SalesDocumentEditor {
   taxCodeId: string;
   setTaxCodeId: (v: string) => void;
 
+  /** Estimate-only QuickBooks header fields. For an invoice these stay '' and are not persisted. */
+  poNumber: string;
+  setPoNumber: (v: string) => void;
+  salesRep: string;
+  setSalesRep: (v: string) => void;
+  acceptedBy: string;
+  setAcceptedBy: (v: string) => void;
+  acceptedDate: string;
+  setAcceptedDate: (v: string) => void;
+
   lines: EditorLine[];
   setLines: (lines: EditorLine[]) => void;
 
@@ -107,6 +117,12 @@ export function useSalesDocumentEditor(
   const [memo, setMemo] = useState(seed.memo ?? '');
   const [notes, setNotes] = useState(seed.notes ?? '');
   const [taxCodeId, setTaxCodeId] = useState(seed.taxCodeId ?? '');
+  // Estimate-only header fields (the invoices table carries no such columns).
+  const seedEstimate = kind === 'estimate' ? (seed as Estimate) : null;
+  const [poNumber, setPoNumber] = useState(seedEstimate?.poNumber ?? '');
+  const [salesRep, setSalesRep] = useState(seedEstimate?.salesRep ?? '');
+  const [acceptedBy, setAcceptedBy] = useState(seedEstimate?.acceptedBy ?? '');
+  const [acceptedDate, setAcceptedDate] = useState(seedEstimate?.acceptedDate ?? '');
   const [lines, setLines] = useState<EditorLine[]>(() => {
     // seed.lines is InvoiceLine[] | EstimateLine[]; normalize the union so .map type-checks.
     const seeded = (seed.lines ?? []) as (InvoiceLine | EstimateLine)[];
@@ -149,6 +165,10 @@ export function useSalesDocumentEditor(
       expiryDate: secondaryDate || null,
       terms: terms.trim() || null,
       taxCodeId: taxCodeId || null,
+      poNumber: poNumber.trim() || null,
+      salesRep: salesRep.trim() || null,
+      acceptedBy: acceptedBy.trim() || null,
+      acceptedDate: acceptedDate || null,
       memo: memo.trim() || null,
       notes: notes.trim() || null,
       layout,
@@ -172,6 +192,14 @@ export function useSalesDocumentEditor(
     setNotes,
     taxCodeId,
     setTaxCodeId,
+    poNumber,
+    setPoNumber,
+    salesRep,
+    setSalesRep,
+    acceptedBy,
+    setAcceptedBy,
+    acceptedDate,
+    setAcceptedDate,
     lines,
     setLines,
     layout,

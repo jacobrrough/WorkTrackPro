@@ -99,24 +99,75 @@ function EstimateDraftEditor({ estimate, onClose }: { estimate: Estimate; onClos
           />
         </FormField>
 
-        <FormField label="Memo" htmlFor="edit-est-memo">
+        <FormField label="P.O. Number" htmlFor="edit-est-po">
           <input
-            id="edit-est-memo"
+            id="edit-est-po"
             className={inputClass}
-            value={editor.memo}
-            onChange={(e) => editor.setMemo(e.target.value)}
-            placeholder="Optional note"
+            value={editor.poNumber}
+            onChange={(e) => editor.setPoNumber(e.target.value)}
+            placeholder="Customer PO #"
           />
         </FormField>
 
-        <FormField label="Notes" htmlFor="edit-est-notes" className="sm:col-span-2">
+        <FormField label="Sales Rep" htmlFor="edit-est-rep">
+          <input
+            id="edit-est-rep"
+            className={inputClass}
+            value={editor.salesRep}
+            onChange={(e) => editor.setSalesRep(e.target.value)}
+            placeholder="Name or initials"
+          />
+        </FormField>
+
+        <FormField label="Accepted by" htmlFor="edit-est-acceptedby">
+          <input
+            id="edit-est-acceptedby"
+            className={inputClass}
+            value={editor.acceptedBy}
+            onChange={(e) => editor.setAcceptedBy(e.target.value)}
+            placeholder="Who accepted it"
+          />
+        </FormField>
+
+        <FormField label="Accepted date" htmlFor="edit-est-accepteddate">
+          <input
+            id="edit-est-accepteddate"
+            type="date"
+            className={inputClass}
+            value={editor.acceptedDate}
+            onChange={(e) => editor.setAcceptedDate(e.target.value)}
+          />
+        </FormField>
+
+        <FormField
+          label="Note to customer"
+          htmlFor="edit-est-notes"
+          hint="Prints on the estimate"
+          className="sm:col-span-2"
+        >
           <textarea
             id="edit-est-notes"
             className={inputClass}
             rows={2}
             value={editor.notes}
             onChange={(e) => editor.setNotes(e.target.value)}
-            placeholder="Optional notes shown on the estimate"
+            placeholder="Thank you for your business."
+          />
+        </FormField>
+
+        <FormField
+          label="Memo on statement (hidden)"
+          htmlFor="edit-est-memo"
+          hint="Not shown on the estimate"
+          className="sm:col-span-2"
+        >
+          <textarea
+            id="edit-est-memo"
+            className={inputClass}
+            rows={2}
+            value={editor.memo}
+            onChange={(e) => editor.setMemo(e.target.value)}
+            placeholder="Internal note (statement only)"
           />
         </FormField>
       </div>
@@ -440,6 +491,16 @@ export default function EstimateDetailView() {
             {estimate.terms && (
               <span className="text-sm text-muted">
                 Terms <span className="text-white">{estimate.terms}</span>
+              </span>
+            )}
+            {estimate.poNumber && (
+              <span className="text-sm text-muted">
+                P.O. <span className="text-white">{estimate.poNumber}</span>
+              </span>
+            )}
+            {estimate.salesRep && (
+              <span className="text-sm text-muted">
+                Sales Rep <span className="text-white">{estimate.salesRep}</span>
               </span>
             )}
           </div>

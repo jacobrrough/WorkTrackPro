@@ -939,7 +939,15 @@ export interface Estimate {
   /** The invoice this estimate was converted into (null until converted). */
   convertedInvoiceId: string | null;
   acceptedAt: string | null;
+  /** QuickBooks-style header fields (informational; estimates post no ledger). */
+  poNumber: string | null;
+  salesRep: string | null;
+  /** Manual acceptance capture, distinct from the `acceptedAt` workflow timestamp. */
+  acceptedBy: string | null;
+  acceptedDate: string | null;
+  /** Internal "memo on statement" — NOT shown on the customer-facing estimate/PDF. */
   memo: string | null;
+  /** "Note to customer" — prints on the estimate. */
   notes: string | null;
   /** Per-document section-layout override (jsonb); null = fall back to the org/template default. */
   layout: PerDocLayout | null;
@@ -978,7 +986,13 @@ export interface NewEstimateInput {
   terms?: string | null;
   /** Header-level tax code applied to taxable lines lacking their own code. */
   taxCodeId?: string | null;
+  poNumber?: string | null;
+  salesRep?: string | null;
+  acceptedBy?: string | null;
+  acceptedDate?: string | null;
+  /** Internal "memo on statement" — hidden from the customer-facing estimate. */
   memo?: string | null;
+  /** "Note to customer" — prints on the estimate. */
   notes?: string | null;
   lines: NewEstimateLineInput[];
 }
@@ -991,6 +1005,10 @@ export interface UpdateEstimateInput {
   expiryDate?: string | null;
   terms?: string | null;
   taxCodeId?: string | null;
+  poNumber?: string | null;
+  salesRep?: string | null;
+  acceptedBy?: string | null;
+  acceptedDate?: string | null;
   memo?: string | null;
   notes?: string | null;
   /** Per-document section-layout override; omit to leave unchanged, null clears it. */

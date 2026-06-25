@@ -95,6 +95,10 @@ function mapEstimateRow(row: Row): Estimate {
     taxCodeId: nstr(row.tax_code_id),
     convertedInvoiceId: nstr(row.converted_invoice_id),
     acceptedAt: nstr(row.accepted_at),
+    poNumber: nstr(row.po_number),
+    salesRep: nstr(row.sales_rep),
+    acceptedBy: nstr(row.accepted_by),
+    acceptedDate: nstr(row.accepted_date),
     memo: nstr(row.memo),
     notes: nstr(row.notes),
     layout: (row.layout as PerDocLayout | null) ?? null,
@@ -265,6 +269,10 @@ export const estimatesService = {
         tax_total: cents(totals.taxCents),
         total: cents(totals.totalCents),
         tax_code_id: input.taxCodeId ?? null,
+        po_number: input.poNumber ?? null,
+        sales_rep: input.salesRep ?? null,
+        accepted_by: input.acceptedBy ?? null,
+        accepted_date: input.acceptedDate ?? null,
         memo: input.memo ?? null,
         notes: input.notes ?? null,
       })
@@ -332,6 +340,10 @@ export const estimatesService = {
     if (input.expiryDate !== undefined) patch.expiry_date = input.expiryDate;
     if (input.terms !== undefined) patch.terms = input.terms;
     if (input.taxCodeId !== undefined) patch.tax_code_id = input.taxCodeId;
+    if (input.poNumber !== undefined) patch.po_number = input.poNumber;
+    if (input.salesRep !== undefined) patch.sales_rep = input.salesRep;
+    if (input.acceptedBy !== undefined) patch.accepted_by = input.acceptedBy;
+    if (input.acceptedDate !== undefined) patch.accepted_date = input.acceptedDate;
     if (input.memo !== undefined) patch.memo = input.memo;
     if (input.notes !== undefined) patch.notes = input.notes;
     if (input.layout !== undefined) patch.layout = input.layout;

@@ -137,6 +137,11 @@ export default function EstimateCreateView() {
   const [expiryDate, setExpiryDate] = useState('');
   const [terms, setTerms] = useState('');
   const [memo, setMemo] = useState('');
+  const [notes, setNotes] = useState('');
+  const [poNumber, setPoNumber] = useState('');
+  const [salesRep, setSalesRep] = useState('');
+  const [acceptedBy, setAcceptedBy] = useState('');
+  const [acceptedDate, setAcceptedDate] = useState('');
   const [taxCodeId, setTaxCodeId] = useState('');
   // Whether the user has explicitly chosen a header tax code (including "No tax").
   // Until then the effective code is seeded from the customer/org default.
@@ -272,7 +277,12 @@ export default function EstimateCreateView() {
       expiryDate: expiryDate || null,
       terms: terms.trim() || null,
       taxCodeId: effectiveTaxCodeId || null,
+      poNumber: poNumber.trim() || null,
+      salesRep: salesRep.trim() || null,
+      acceptedBy: acceptedBy.trim() || null,
+      acceptedDate: acceptedDate || null,
       memo: memo.trim() || null,
+      notes: notes.trim() || null,
       lines: realLines,
     };
     const res = await createDraft.mutateAsync({
@@ -387,13 +397,75 @@ export default function EstimateCreateView() {
             />
           </FormField>
 
-          <FormField label="Memo" htmlFor="est-memo">
+          <FormField label="P.O. Number" htmlFor="est-po">
             <input
+              id="est-po"
+              className={inputClass}
+              value={poNumber}
+              onChange={(e) => setPoNumber(e.target.value)}
+              placeholder="Customer PO #"
+            />
+          </FormField>
+
+          <FormField label="Sales Rep" htmlFor="est-rep">
+            <input
+              id="est-rep"
+              className={inputClass}
+              value={salesRep}
+              onChange={(e) => setSalesRep(e.target.value)}
+              placeholder="Name or initials"
+            />
+          </FormField>
+
+          <FormField label="Accepted by" htmlFor="est-acceptedby">
+            <input
+              id="est-acceptedby"
+              className={inputClass}
+              value={acceptedBy}
+              onChange={(e) => setAcceptedBy(e.target.value)}
+              placeholder="Who accepted it"
+            />
+          </FormField>
+
+          <FormField label="Accepted date" htmlFor="est-accepteddate">
+            <input
+              id="est-accepteddate"
+              type="date"
+              className={inputClass}
+              value={acceptedDate}
+              onChange={(e) => setAcceptedDate(e.target.value)}
+            />
+          </FormField>
+
+          <FormField
+            label="Note to customer"
+            htmlFor="est-notes"
+            hint="Prints on the estimate"
+            className="sm:col-span-2"
+          >
+            <textarea
+              id="est-notes"
+              className={inputClass}
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Thank you for your business."
+            />
+          </FormField>
+
+          <FormField
+            label="Memo on statement (hidden)"
+            htmlFor="est-memo"
+            hint="Not shown on the estimate"
+            className="sm:col-span-2"
+          >
+            <textarea
               id="est-memo"
               className={inputClass}
+              rows={2}
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
-              placeholder="Optional note"
+              placeholder="Internal note (statement only)"
             />
           </FormField>
         </div>
