@@ -159,17 +159,24 @@ export function usePaymentsByCustomer(customerId: string | undefined) {
   });
 }
 
-/** Version history (restore points) for one invoice or estimate. */
-export function useDocumentSnapshots(
-  documentType: 'invoice' | 'estimate',
+/** Full version history WITH payloads for the change feed (invoice/estimate; empty otherwise). */
+export function useDocumentVersions(
+  documentType: 'invoice' | 'estimate' | 'bill',
   documentId: string | undefined
 ) {
+  // Bills capture no snapshots, so there's nothing to diff — skip the round-trip entirely.
+  const supported = documentType === 'invoice' || documentType === 'estimate';
   return useQuery({
-    queryKey: documentId
-      ? ACCOUNTING_QUERY_KEYS.documentSnapshots(documentType, documentId)
-      : ['accounting', 'snapshots', 'none'],
-    queryFn: () => documentSnapshotsService.listForDocument(documentType, documentId as string),
-    enabled: !!documentId,
+    queryKey:
+      documentId && supported
+        ? ACCOUNTING_QUERY_KEYS.documentVersions(documentType, documentId)
+        : ['accounting', 'versions', 'none'],
+    queryFn: () =>
+      documentSnapshotsService.versions(
+        documentType as 'invoice' | 'estimate',
+        documentId as string
+      ),
+    enabled: !!documentId && supported,
   });
 }
 
