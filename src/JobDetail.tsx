@@ -1,4 +1,12 @@
-import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  Suspense,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   Job,
   ViewState,
@@ -298,6 +306,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [showAddPartToJob, setShowAddPartToJob] = useState(false);
   const [pendingDeleteCommentId, setPendingDeleteCommentId] = useState<string | null>(null);
   const editSeedRef = useRef<string | null>(null);
+  // Edit-mode Description textarea: starts at a comfortable minimum height and
+  // grows to fit its content (so long descriptions don't get crammed into 2 rows).
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const autosizeDescription = useCallback(() => {
+    const el = descriptionRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
   const [linkedPart, setLinkedPart] = useState<Part | null>(null);
   /** When job.parts?.length > 1, loaded Part entities for each link (same order as job.parts). */
   const [linkedParts, setLinkedParts] = useState<(Part | null)[] | null>(null);
@@ -510,6 +527,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
   const [progressEstimateInput, setProgressEstimateInput] = useState(
     job.progressEstimatePercent != null ? String(job.progressEstimatePercent) : ''
   );
+
+  // Size the Description textarea to its content whenever edit mode opens or the
+  // text changes programmatically (typing is handled inline in onChange).
+  // useLayoutEffect runs before paint so a long existing description never flashes
+  // at the minimum height before growing.
+  useLayoutEffect(() => {
+    if (isEditing) autosizeDescription();
+  }, [isEditing, editForm.description, autosizeDescription]);
 
   // Store current pathname and scrollPositions in refs to avoid dependency issues
   const pathnameRef = useRef(location.pathname);
@@ -2505,10 +2530,13 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <div className="col-span-2 sm:col-span-3 lg:col-span-4">
                   <label className="mb-0.5 block text-[11px] text-muted">Description</label>
                   <textarea
+                    ref={descriptionRef}
                     value={editForm.description}
-                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    rows={2}
-                    className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    onChange={(e) => {
+                      setEditForm({ ...editForm, description: e.target.value });
+                      autosizeDescription();
+                    }}
+                    className="min-h-[4.5rem] w-full resize-none overflow-hidden rounded border border-white/10 bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="Description..."
                   />
                 </div>
