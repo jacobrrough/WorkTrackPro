@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
 import { AppShell } from './components/AppShell';
 import { AppRouter } from './AppRouter';
@@ -12,6 +12,7 @@ import PublicHome from './public/PublicHome';
 import Storefront from './public/Storefront';
 import { CommandPalette } from './components/CommandPalette';
 import { useAuth } from './contexts/AuthContext';
+import { isInternalAppPath } from './lib/authPaths';
 
 // #7 — public customer portal (/portal/<token>). Lazy so the invoice PDF builder and the
 // portal view stay out of the main app bundle and only load for portal visitors.
@@ -21,6 +22,29 @@ const CustomerPortal = lazy(() => import('./public/portal/CustomerPortal'));
 // Lazy-loaded so the long static legal copy stays out of the main bundle.
 const PrivacyPolicyPage = lazy(() => import('./public/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./public/TermsOfServicePage'));
+
+// Validates a returnTo value before we redirect to it. Only internal employee-app
+// paths are allowed (via the shared isInternalAppPath predicate) — this is what
+// stops a crafted /login?returnTo=//evil.com (or a javascript: URL) from becoming
+// an open redirect.
+function safeReturnTo(raw: string | null): string {
+  // `raw` already comes URL-decoded from URLSearchParams.get, so validate it as-is.
+  // Decoding again would corrupt encoded chars (e.g. %20 → space) or throw on a
+  // literal %, silently degrading a legitimate deep link down to /app.
+  if (!raw) return '/app';
+  return isInternalAppPath(raw) ? raw : '/app';
+}
+
+// Shared full-screen spinner for the brief auth-resolution holds (session
+// hydration, MFA gate confirmation). The richer initial-load screen below has its
+// own "taking too long" affordance and stays separate.
+function CenteredLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background-dark">
+      <p className="text-muted">Loading...</p>
+    </div>
+  );
+}
 
 export default function App() {
   const {
@@ -84,7 +108,17 @@ export default function App() {
   const [showLoadingHelp, setShowLoadingHelp] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
-  // Read the session-expiry flag set by hardLogout before navigating to /app.
+  // True once the initial auth check has resolved at least once. Lets /login hold
+  // a full-screen loader ONLY during first hydration (so an already-authenticated
+  // visitor never flashes the form) while keeping the form mounted across login
+  // submits afterward — so its own disabled/spinner state shows instead of the app
+  // blanking to a loader mid-submit.
+  const [authSettled, setAuthSettled] = useState(false);
+  useEffect(() => {
+    if (!isLoading) setAuthSettled(true);
+  }, [isLoading]);
+
+  // Read the session-expiry flag set by hardLogout before navigating to /login.
   // sessionStorage persists across navigations within the tab but is cleared
   // on tab close. The flag (and this notice) persist across refreshes until
   // login() removes it after successful re-authentication.
@@ -134,12 +168,41 @@ export default function App() {
 
   const pathname = location.pathname;
   const isEmployeeAppPath = pathname === '/app' || pathname.startsWith('/app/');
+  const isLoginPath = pathname === '/login';
+  const returnToParam = new URLSearchParams(location.search).get('returnTo');
+
+  // ─── /login — the dedicated, real auth URL ─────────────────────────────────
+  // Logged-out users land here (never on a protected /app/* URL). Once a session
+  // exists we leave immediately for the originally-requested path (returnTo), or
+  // /app, so /login never lingers in the address bar or back-history.
+  if (isLoginPath) {
+    if (currentUser) {
+      return <Navigate to={safeReturnTo(returnToParam)} replace />;
+    }
+    // Hold ONLY during the first session hydration so an already-authenticated
+    // visitor doesn't flash the form before we redirect. The session-expiry notice
+    // skips the hold (initApp bails without hydrating, so it should show at once),
+    // and once auth has settled the form stays mounted across submits — isLoading
+    // then drives the form's own disabled/spinner state.
+    if (isLoading && !authSettled && !sessionExpiredNotice) {
+      return <CenteredLoading />;
+    }
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+        onResetPassword={resetPasswordForEmail}
+        error={sessionExpiredNotice ?? authError}
+        isLoading={isLoading}
+      />
+    );
+  }
 
   if (!isEmployeeAppPath) {
     // Replace (not push) so the public page doesn't sit in browser back-history
     // under the employee app — otherwise pressing back from /app exits the app
     // back to localhost:3000 (public home).
-    const onEmployeeLogin = () => window.location.assign('/app');
+    const onEmployeeLogin = () => window.location.assign('/login');
     // #7 — public customer portal. Token-gated, read-only invoice view; talks only to the
     // /api/portal-invoice function (never the accounting client). Sits beside /shop.
     if (pathname.startsWith('/portal/')) {
@@ -176,28 +239,13 @@ export default function App() {
     return <PublicHome onEmployeeLogin={onEmployeeLogin} />;
   }
 
-  if (!currentUser && sessionExpiredNotice) {
-    return (
-      <Login
-        onLogin={handleLogin}
-        onSignUp={handleSignUp}
-        onResetPassword={resetPasswordForEmail}
-        error={sessionExpiredNotice}
-        isLoading={false}
-      />
-    );
-  }
-
+  // Logged out on a protected /app/* URL → bounce to the real /login route,
+  // remembering where they were headed. The protected path never shows in the
+  // address bar for an unauthenticated visitor, and AppRouter — along with every
+  // query and realtime subscription, all gated on currentUser — stays unmounted.
   if (!currentUser && !isLoading) {
-    return (
-      <Login
-        onLogin={handleLogin}
-        onSignUp={handleSignUp}
-        onResetPassword={resetPasswordForEmail}
-        error={authError ?? sessionExpiredNotice}
-        isLoading={isLoading}
-      />
-    );
+    const returnTo = encodeURIComponent(pathname + location.search);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
   }
 
   if (isLoading) {
@@ -262,11 +310,7 @@ export default function App() {
   // (fresh-login frame before AuthContext's recompute effect runs). Hold the app
   // behind a loading screen so an MFA-required user is never flashed the app.
   if (currentUser && !mfaGateConfirmed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background-dark">
-        <p className="text-muted">Loading...</p>
-      </div>
-    );
+    return <CenteredLoading />;
   }
 
   return (
