@@ -298,6 +298,21 @@ export function useJobMutations({
             recordStatusChange(queryClient, jobId, currentUser.id, previousJob.status, data.status);
           }
           let jobForCache = { ...updatedJob, ...payload };
+          // updateJob resolves/normalizes the primary part from an explicit partNumber edit
+          // (it can map to a different part id and canonical casing) and rewrites the job_parts
+          // links. The request payload still carries the pre-edit values (the edit field is the
+          // source of truth for partNumber, not the editingParts array it ships in `parts`), so
+          // let the server response win for these fields — otherwise an edited part number looks
+          // like it reverts until the next refetch (no refetch happens on a non-pod save).
+          if (data.partNumber !== undefined) {
+            jobForCache.partNumber = updatedJob.partNumber;
+            jobForCache.partId = updatedJob.partId;
+            jobForCache.partRev = updatedJob.partRev;
+            jobForCache.dashQuantities = updatedJob.dashQuantities;
+          }
+          if (data.parts !== undefined) {
+            jobForCache.parts = updatedJob.parts;
+          }
           if (
             data.parts === undefined &&
             (updatedJob.parts == null || updatedJob.parts.length === 0)

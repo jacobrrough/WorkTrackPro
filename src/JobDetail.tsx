@@ -1927,6 +1927,41 @@ const JobDetail: React.FC<JobDetailProps> = ({
     []
   );
 
+  // Edit the part number of a non-primary part (the primary uses editForm.partNumber). The
+  // saved link is re-resolved from this number server-side, mirroring the primary's flow.
+  const setEditingPartNumber = useCallback((partIndex: number, partNumber: string) => {
+    setEditingParts((prev) => {
+      if (partIndex < 0 || partIndex >= prev.length) return prev;
+      const next = [...prev];
+      next[partIndex] = { ...next[partIndex], partNumber };
+      return next;
+    });
+  }, []);
+
+  // On blur of a non-primary part number, refresh that row's loaded part (variants/BOM shown
+  // below) so the quantity editor tracks the new number live — the analog of loadLinkedPart
+  // for the primary. Purely display state; the persisted link is resolved on save.
+  const reloadEditingLinkedPart = useCallback(async (partIndex: number, partNumber: string) => {
+    const trimmed = partNumber.trim();
+    if (!trimmed) return;
+    try {
+      let part = await partsService.getPartByNumber(trimmed);
+      if (!part) {
+        const base = trimmed.replace(/-\d{2}$/, '').trim();
+        if (base !== trimmed) part = await partsService.getPartByNumber(base);
+      }
+      const withVariants = part ? await partsService.getPartWithVariants(part.id) : null;
+      setLinkedParts((prev) => {
+        if (!prev || partIndex < 0 || partIndex >= prev.length) return prev;
+        const next = [...prev];
+        next[partIndex] = withVariants;
+        return next;
+      });
+    } catch (err) {
+      console.error('Reload linked part (multi-part) failed', err);
+    }
+  }, []);
+
   // File attachment handlers
   const handleFileUpload = async (file: File, isAdminOnly = false): Promise<boolean> => {
     try {
@@ -2260,9 +2295,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           placeholder="e.g., SK-F35-0911"
                         />
                       ) : (
-                        <div className="rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-sm text-white">
-                          {link.partNumber || '—'}
-                        </div>
+                        <input
+                          type="text"
+                          value={link.partNumber || ''}
+                          onChange={(e) => setEditingPartNumber(idx, e.target.value)}
+                          onBlur={(e) => {
+                            if (partsLocked) return;
+                            reloadEditingLinkedPart(idx, e.currentTarget.value);
+                          }}
+                          disabled={partsLocked}
+                          title={partsLockedReason ?? undefined}
+                          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          placeholder="e.g., SK-F35-0911"
+                        />
                       )}
                     </div>
                     <div>

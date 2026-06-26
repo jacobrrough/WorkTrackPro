@@ -874,6 +874,10 @@ export const jobService = {
     if (data.workers !== undefined) row.workers = data.workers;
     if ('binLocation' in data)
       row.bin_location = (data.binLocation ?? '').toString().trim() || null;
+    // When the caller explicitly edits the primary part number, resolve it once here and let
+    // it win over a possibly-stale parts[0] in the same payload (see the data.parts block).
+    // undefined = no explicit edit this save; null = cleared; string = resolved linked part id.
+    let resolvedPrimaryPartId: string | null | undefined;
     if (data.partNumber !== undefined) {
       const partNum = data.partNumber?.trim() || null;
       if (partNum) {
@@ -884,10 +888,12 @@ export const jobService = {
         });
         row.part_number = resolvedPart.partNumber;
         row.part_id = resolvedPart.partId;
+        resolvedPrimaryPartId = resolvedPart.partId;
       } else {
         row.part_number = null;
         row.part_id = null;
         row.part_rev = null;
+        resolvedPrimaryPartId = null;
       }
     }
     if (data.variantSuffix !== undefined) row.variant_suffix = data.variantSuffix;
@@ -919,8 +925,12 @@ export const jobService = {
     if (data.partId !== undefined) row.part_id = data.partId;
     if (data.parts !== undefined) {
       const primary = data.parts.length > 0 ? data.parts[0] : null;
-      row.part_id = primary?.partId ?? null;
-      row.part_number = primary?.partNumber ?? null;
+      // Don't clobber a freshly-resolved primary (from an explicit partNumber edit) with a
+      // stale parts[0]; doing so silently discarded part-number changes on still-editable jobs.
+      if (resolvedPrimaryPartId === undefined) {
+        row.part_id = primary?.partId ?? null;
+        row.part_number = primary?.partNumber ?? null;
+      }
       row.dash_quantities = primary?.dashQuantities ?? null;
     }
     if (data.partRev !== undefined) row.part_rev = data.partRev;
@@ -971,10 +981,23 @@ export const jobService = {
         if (deleteError && !isMissingTableError(deleteError)) throw deleteError;
         for (let i = 0; i < data.parts.length; i++) {
           const link = data.parts[i];
-          const rev = link.rev ?? (await getPartRev(link.partId));
+          // Resolve each row's part id from its (possibly edited) part number so multi-part
+          // numbers can be changed too — find-or-creating the part like the primary does. The
+          // primary reuses the id already resolved from the explicit partNumber edit; other rows
+          // resolve from their own number, falling back to the existing link id when blank.
+          let effectivePartId: string | null;
+          if (i === 0 && resolvedPrimaryPartId !== undefined) {
+            effectivePartId = resolvedPrimaryPartId;
+          } else if (link.partNumber && link.partNumber.trim()) {
+            effectivePartId = (await resolvePartForJob({ partNumber: link.partNumber })).partId;
+          } else {
+            effectivePartId = link.partId ?? null;
+          }
+          if (!effectivePartId) continue;
+          const rev = link.rev ?? (await getPartRev(effectivePartId));
           const { error: insertError } = await supabase.from('job_parts').insert({
             job_id: jobId,
-            part_id: link.partId,
+            part_id: effectivePartId,
             dash_quantities: link.dashQuantities ?? {},
             sort_order: i,
             ...(rev != null && { rev }),
