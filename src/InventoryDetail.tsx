@@ -4,6 +4,7 @@ import type { DeleteInventoryResult } from '@/services/api/inventory';
 import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { useToast } from './Toast';
 import QRScanner from './components/QRScanner';
+import { ScrollablePage } from './components/ScrollablePage';
 import FileViewer from './FileViewer';
 import ConfirmDialog from './ConfirmDialog';
 import AllocateToJobModal from '@/features/inventory/AllocateToJobModal';
@@ -476,7 +477,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <ScrollablePage className="px-3 pt-3">
           {activeSection === 'overview' && (
             <InventoryDetailOverview
               item={currentItem}
@@ -520,7 +521,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
               onDeleteAttachment={handleDeleteAttachmentFromList}
             />
           )}
-        </div>
+        </ScrollablePage>
       </div>
 
       {allocatingItem && onAllocateToJob && (

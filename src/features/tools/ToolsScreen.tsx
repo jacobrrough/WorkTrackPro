@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { ViewState } from '@/core/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { InventoryItem, ViewState } from '@/core/types';
 import { useApp } from '@/AppContext';
 import { useToast } from '@/Toast';
 import QRScanner from '@/components/QRScanner';
 import { EmptyState } from '@/components/EmptyState';
+import { ScrollablePage } from '@/components/ScrollablePage';
 import { ToolStatusPill } from './ToolStatusPill';
 import { ToolDetailSheet } from './ToolDetailSheet';
 import { resolveToolByScan } from './toolScan';
@@ -11,11 +12,23 @@ import { holderName } from './toolFormat';
 
 interface ToolsScreenProps {
   onNavigate: (view: ViewState) => void;
-  /** When set (e.g. arriving from a scan), opens this tool's detail sheet on mount. */
+  /** When set (e.g. arriving from a scan or deep link), opens this tool's detail sheet on mount. */
   initialToolId?: string;
+  /**
+   * The tool fetched directly by the route (getByIds) for a deep link. Used as a fallback so the
+   * detail sheet opens even when the global tools list hasn't loaded yet — or omits this tool.
+   */
+  initialTool?: InventoryItem | null;
+  /** True when the deep-link fetch failed (network/RLS) so we can tell the user instead of silently doing nothing. */
+  initialToolError?: boolean;
 }
 
-export default function ToolsScreen({ onNavigate, initialToolId }: ToolsScreenProps) {
+export default function ToolsScreen({
+  onNavigate,
+  initialToolId,
+  initialTool,
+  initialToolError,
+}: ToolsScreenProps) {
   const { tools, users } = useApp();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
@@ -26,10 +39,32 @@ export default function ToolsScreen({ onNavigate, initialToolId }: ToolsScreenPr
     if (initialToolId) setSelectedToolId(initialToolId);
   }, [initialToolId]);
 
+  // Prefer the live list entry; fall back to the directly-fetched tool so a deep link still
+  // opens the sheet when the tool isn't in the loaded list. The fallback is gated on the
+  // 'tool' category so a deep link to a non-tool inventory id can never open the custody sheet.
   const selectedTool = useMemo(
-    () => tools.find((t) => t.id === selectedToolId) ?? null,
-    [tools, selectedToolId]
+    () =>
+      tools.find((t) => t.id === selectedToolId) ??
+      (initialTool && initialTool.id === selectedToolId && initialTool.category === 'tool'
+        ? initialTool
+        : null),
+    [tools, selectedToolId, initialTool]
   );
+
+  // If a deep-linked tool fails to load (and can't be resolved from the list), tell the user
+  // rather than silently showing the bare list with no sheet. Fires once per failed id.
+  const erroredToastFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      initialToolId &&
+      initialToolError &&
+      !selectedTool &&
+      erroredToastFor.current !== initialToolId
+    ) {
+      erroredToastFor.current = initialToolId;
+      showToast("Couldn't load that tool — check your connection and try again.", 'error');
+    }
+  }, [initialToolId, initialToolError, selectedTool, showToast]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -95,7 +130,7 @@ export default function ToolsScreen({ onNavigate, initialToolId }: ToolsScreenPr
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <ScrollablePage className="px-4 pt-4">
         <div className="mx-auto max-w-2xl space-y-4">
           <button
             type="button"
@@ -150,7 +185,7 @@ export default function ToolsScreen({ onNavigate, initialToolId }: ToolsScreenPr
             </ul>
           )}
         </div>
-      </div>
+      </ScrollablePage>
 
       {selectedTool && (
         <ToolDetailSheet item={selectedTool} onClose={() => setSelectedToolId(null)} />

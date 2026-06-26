@@ -1,15 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { InventoryItem } from '@/core/types';
+import { inventoryHistoryService } from '@/services/api/inventoryHistory';
 import { EmptyState } from '@/components/EmptyState';
+import { ScrollablePage } from '@/components/ScrollablePage';
 import { LoadingSpinner } from '@/Loading';
-import StockAdjustFlow, { type StockAdjustFlowMode } from './StockAdjustFlow';
+import { type StockAdjustFlowMode } from './StockAdjustFlow';
 import {
   categoryIcon,
   computeHubSummary,
   computeStock,
   getSku,
   pickFallbackItems,
-  pickRecentItems,
   stockStatePill,
   type InventoryTab,
 } from './inventoryViewModel';
@@ -19,48 +21,125 @@ interface InventoryHubProps {
   isLoading?: boolean;
   calculateAvailable: (item: InventoryItem) => number;
   calculateAllocated: (inventoryId: string) => number;
-  onUpdateStock: (id: string, inStock: number, reason?: string) => Promise<void>;
   onAddItem: () => void;
   onViewAll: (tab?: InventoryTab) => void;
+  onOpenFlow: (mode: StockAdjustFlowMode) => void;
   onOpenDetail: (itemId: string) => void;
   onBack: () => void;
-  recentIds: string[];
 }
 
 const TILE_BASE =
-  'flex min-h-[7.25rem] w-full touch-manipulation flex-col items-start gap-3 rounded-sm border p-3 text-left transition-colors active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+  'flex w-full touch-manipulation items-center gap-2.5 rounded-sm border p-3 text-left transition-colors active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+
+// Generous ceiling on the Recent Items candidates we prepare. The number actually shown
+// is fit to the available viewport height at runtime (see the layout effect below) so the
+// hub never scrolls — this is just an upper bound. The viewed-id history that feeds it is
+// capped in Inventory.tsx.
+const RECENT_ITEMS_POOL = 30;
 
 export default function InventoryHub({
   inventory,
   isLoading = false,
   calculateAvailable,
   calculateAllocated,
-  onUpdateStock,
   onAddItem,
   onViewAll,
+  onOpenFlow,
   onOpenDetail,
   onBack,
-  recentIds,
 }: InventoryHubProps) {
-  const [flow, setFlow] = useState<StockAdjustFlowMode | null>(null);
-
   const summary = useMemo(
     () => computeHubSummary(inventory, calculateAvailable, calculateAllocated),
     [inventory, calculateAvailable, calculateAllocated]
   );
 
+  // Recent stock activity: the items most recently added to or deducted from — manual stock
+  // in/out, received orders, and job allocations. allocated_to_job logs changeAmount 0 (it moves
+  // "available", not "in stock"), so we filter by action, not amount. order_placed is excluded:
+  // ordering isn't an add/deduct until it's received.
+  const { data: recentHistory = [] } = useQuery({
+    queryKey: ['inventory-history-recent'],
+    queryFn: () => inventoryHistoryService.getAllHistory(80),
+    staleTime: 60 * 1000,
+  });
+
   const recentItems = useMemo(() => {
-    const recent = pickRecentItems(inventory, recentIds, 5);
-    return recent.length
-      ? recent
-      : pickFallbackItems(inventory, calculateAvailable, calculateAllocated, 5);
-  }, [inventory, recentIds, calculateAvailable, calculateAllocated]);
+    const byId = new Map(inventory.map((i) => [i.id, i]));
+    const seen = new Set<string>();
+    const items: InventoryItem[] = [];
+    for (const h of recentHistory) {
+      if (h.action === 'order_placed' || seen.has(h.inventoryId)) continue;
+      seen.add(h.inventoryId);
+      const item = byId.get(h.inventoryId);
+      if (item) items.push(item);
+      if (items.length >= RECENT_ITEMS_POOL) break;
+    }
+    // Before any stock activity exists, fall back to the most-actionable items so the section
+    // isn't empty.
+    return items.length
+      ? items
+      : pickFallbackItems(inventory, calculateAvailable, calculateAllocated, RECENT_ITEMS_POOL);
+  }, [recentHistory, inventory, calculateAvailable, calculateAllocated]);
+
+  // Auto-fit the Recent Items list to whatever space is left below the tiles/overview so
+  // the hub never scrolls on any device: measure one row + gap against the distance to the
+  // viewport bottom and show only as many rows as fit. Recomputes on viewport resize
+  // (rotation, split-screen, window resize). useLayoutEffect runs pre-paint so there's no
+  // flash of an over-long list.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [recentCapacity, setRecentCapacity] = useState(RECENT_ITEMS_POOL);
+  const visibleRecent = recentItems.slice(0, recentCapacity);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const list = listRef.current;
+    if (!viewport || !list) return;
+    const measure = () => {
+      const row = list.querySelector('li');
+      if (!row) return;
+      const rowH = row.getBoundingClientRect().height;
+      if (rowH <= 0) return;
+      const GAP = 8; // ul's space-y-2
+      const INNER_PAD_BOTTOM = 16; // inner content py-4 bottom
+      // The scroller reserves a large padding-bottom (content-above-nav, ~5.5rem) so the
+      // list clears the fixed bottom nav; read it live since it's safe-area dependent.
+      const scrollerPadBottom = parseFloat(getComputedStyle(viewport).paddingBottom) || 0;
+      // List top offset from the scroller's content top (add scrollTop so a stray scroll
+      // position doesn't skew the measurement).
+      const listTop =
+        list.getBoundingClientRect().top -
+        viewport.getBoundingClientRect().top +
+        viewport.scrollTop;
+      const available = viewport.clientHeight - listTop - INNER_PAD_BOTTOM - scrollerPadBottom;
+      const fit = Math.max(1, Math.floor((available + GAP) / (rowH + GAP)));
+      setRecentCapacity((prev) => (prev === fit ? prev : fit));
+    };
+    // First pass runs synchronously (pre-paint) so there's no flash of an over-long list.
+    measure();
+    // Re-measures are deferred to the next frame: mutating layout synchronously inside a
+    // ResizeObserver callback logs "ResizeObserver loop completed…" and can oscillate, and the
+    // rAF also lets a row settle (e.g. a lazy image finishing load) before we read its height.
+    let raf = 0;
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+    const ro = new ResizeObserver(schedule);
+    ro.observe(viewport); // available space: rotation, split-screen, mobile keyboard
+    ro.observe(list); // row reflow: a lazy image loading taller than first measured
+    window.addEventListener('resize', schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener('resize', schedule);
+    };
+  }, [recentItems.length]);
 
   const tiles = [
     {
       key: 'add',
       title: 'Add Part',
-      subtitle: 'New item',
       icon: 'add_box',
       iconClassName: 'text-primary',
       cardClassName: 'border-primary/30 bg-gradient-to-br from-primary/20 to-purple-600/20',
@@ -69,25 +148,22 @@ export default function InventoryHub({
     {
       key: 'in',
       title: 'Stock In',
-      subtitle: 'Add quantity',
       icon: 'add_circle',
       iconClassName: 'text-green-400',
       cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
-      onClick: () => setFlow('in'),
+      onClick: () => onOpenFlow('in'),
     },
     {
       key: 'out',
       title: 'Stock Out',
-      subtitle: 'Remove quantity',
       icon: 'remove_circle',
       iconClassName: 'text-amber-400',
       cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20',
-      onClick: () => setFlow('out'),
+      onClick: () => onOpenFlow('out'),
     },
     {
       key: 'low',
       title: 'Low Stock',
-      subtitle: summary.lowStock > 0 ? `${summary.lowStock} need attention` : 'All good',
       icon: 'warning',
       iconClassName: 'text-red-400',
       cardClassName: 'border-red-500/30 bg-gradient-to-br from-red-600/20 to-rose-600/20',
@@ -197,31 +273,8 @@ export default function InventoryHub({
         </div>
       </header>
 
-      <div className="content-above-nav flex-1 overflow-y-auto">
+      <ScrollablePage ref={viewportRef}>
         <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-4">
-          {/* Quick Scan banner */}
-          <button
-            type="button"
-            onClick={() => setFlow('lookup')}
-            className="relative w-full overflow-hidden rounded-sm bg-gradient-to-br from-primary to-purple-700 p-4 text-left shadow-lg transition-transform active:scale-[0.99]"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-on-accent">Quick Scan</h2>
-                <p className="mt-1 max-w-[16rem] text-sm text-on-accent/80">
-                  Scan a part&apos;s barcode or QR code to look it up or adjust stock.
-                </p>
-                <span className="mt-3 inline-flex items-center gap-2 rounded-sm bg-pure-white/20 px-4 py-2 text-sm font-bold text-on-accent backdrop-blur">
-                  <span className="material-symbols-outlined">qr_code_scanner</span>
-                  Scan Item
-                </span>
-              </div>
-              <span className="material-symbols-outlined text-7xl text-on-accent/25" aria-hidden>
-                barcode_scanner
-              </span>
-            </div>
-          </button>
-
           {/* Quick-action tiles */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {tiles.map((tile) => (
@@ -231,22 +284,15 @@ export default function InventoryHub({
                 onClick={tile.onClick}
                 className={`${TILE_BASE} ${tile.cardClassName}`}
               >
-                <span className="flex w-full items-start justify-between">
-                  <span className={`material-symbols-outlined text-3xl ${tile.iconClassName}`}>
-                    {tile.icon}
-                  </span>
-                  {tile.badge != null && tile.badge > 0 && (
-                    <span className="rounded-sm bg-red-500/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {tile.badge}
-                    </span>
-                  )}
+                <span className={`material-symbols-outlined text-2xl ${tile.iconClassName}`}>
+                  {tile.icon}
                 </span>
-                <span>
-                  <span className="block font-bold text-white">{tile.title}</span>
-                  <span className="block text-[10px] font-bold uppercase tracking-widest text-white/50">
-                    {tile.subtitle}
+                <span className="flex-1 text-sm font-bold text-white">{tile.title}</span>
+                {tile.badge != null && tile.badge > 0 && (
+                  <span className="rounded-sm bg-red-500/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {tile.badge}
                   </span>
-                </span>
+                )}
               </button>
             ))}
           </div>
@@ -282,7 +328,7 @@ export default function InventoryHub({
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wider text-muted">
-                Recent Items
+                Recently Changed
               </h3>
               <button
                 type="button"
@@ -303,22 +349,13 @@ export default function InventoryHub({
                 hint="Tap Add Part to start tracking stock, allocations, and reorder levels."
               />
             ) : (
-              <ul className="space-y-2">{recentItems.map(renderRecentRow)}</ul>
+              <ul ref={listRef} className="space-y-2">
+                {visibleRecent.map(renderRecentRow)}
+              </ul>
             )}
           </section>
         </div>
-      </div>
-
-      {flow && (
-        <StockAdjustFlow
-          mode={flow}
-          inventory={inventory}
-          onUpdateStock={onUpdateStock}
-          onOpenDetail={onOpenDetail}
-          onClose={() => setFlow(null)}
-          calculateAvailable={calculateAvailable}
-        />
-      )}
+      </ScrollablePage>
     </div>
   );
 }
