@@ -124,6 +124,26 @@ describe('SalesLineItemsEditor product/service dropdown', () => {
     expect(latest[0].unitPrice).toBe(50);
     expect(latest[0].description).toBe('Delivery');
     expect(latest[0].partId ?? null).toBeNull();
+    // Delivery is a service item → no part chooser.
+    expect(screen.queryByLabelText('Part')).toBeNull();
+  });
+
+  it('lets a goods item (Material) link a part while keeping its income account', async () => {
+    renderEditor([blankLine()]);
+    const select = await screen.findByLabelText('Product or service');
+    await waitFor(() => within(select).getByRole('option', { name: 'Material' }));
+
+    fireEvent.change(select, { target: { value: 'item:i-mat' } });
+
+    // A goods (non-service) item reveals the part chooser so a specific part can be attached.
+    const partSelect = await screen.findByLabelText('Part');
+    await waitFor(() => within(partSelect).getByRole('option', { name: /PN-1/ }));
+    fireEvent.change(partSelect, { target: { value: 'p-1' } });
+
+    await waitFor(() => expect(latest[0].partId).toBe('p-1'));
+    // The item category (and its income account) is preserved alongside the linked part.
+    expect(latest[0].itemId).toBe('i-mat');
+    expect(latest[0].incomeAccountId).toBe('a-4660');
   });
 
   it('reveals the part picker and links the part when "Part" is chosen', async () => {
