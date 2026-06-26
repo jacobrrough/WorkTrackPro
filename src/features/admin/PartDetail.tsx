@@ -49,7 +49,6 @@ import {
 } from '@/lib/variantPricingAuto';
 import { usePartJobs, usePartLaborFeedback } from '@/features/admin/hooks/usePartLaborFeedback';
 import { canViewPartFinancials } from '@/lib/priceVisibility';
-import PartMaterialLink from '@/features/admin/PartMaterialLink';
 
 interface PartDetailProps {
   partId: string;
@@ -155,11 +154,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
 }) => {
   const { currentUser } = useApp();
   const { settings, isSyncing: settingsSyncing } = useSettings();
-  // Categories whose materials can be CNC'd out (foam by default) — gates the per-material slider.
-  const cncAbleCategories = useMemo(
-    () => new Set(settings.cncAbleCategories ?? ['foam']),
-    [settings.cncAbleCategories]
-  );
   const [part, setPart] = useState<Part | null>(null);
   const [loading, setLoading] = useState(true);
   const [isVirtualPart, setIsVirtualPart] = useState(false);
@@ -168,7 +162,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
   const [inventoryLoaded, setInventoryLoaded] = useState(false);
   const [editingVariant, setEditingVariant] = useState<string | null>(null);
   const [showAddMaterial, setShowAddMaterial] = useState<{
-    partId?: string;
     variantId?: string;
   } | null>(null);
   const [creatingPart, setCreatingPart] = useState(false);
@@ -771,7 +764,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     const addedToVariantId = showAddMaterial?.variantId;
     try {
       const added = await partsService.addMaterial({
-        partId: showAddMaterial?.partId || part.id,
+        partId: part.id,
         variantId: addedToVariantId,
         inventoryId,
         quantity,
@@ -1789,140 +1782,6 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 </>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={!!part.requiresCNC}
-                          // Route no-variant cost edits through the synthetic-variant path so
-                          // the stored price resyncs to forward math (see handleUpdateVariant).
-                          onChange={(e) =>
-                            handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
-                              requiresCNC: e.target.checked,
-                              ...(e.target.checked && part.cncTimeHours == null
-                                ? { cncTimeHours: 0 }
-                                : {}),
-                            })
-                          }
-                          className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-white">CNC (machine time in quote)</span>
-                      </label>
-                      {part.requiresCNC && (
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm text-muted">CNC time (hours per set)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            value={part.cncTimeHours ?? ''}
-                            onChange={(e) =>
-                              handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
-                                cncTimeHours: e.target.value ? Number(e.target.value) : undefined,
-                              })
-                            }
-                            onBlur={(e) => {
-                              const value = e.target.value ? Number(e.target.value) : undefined;
-                              if (value !== part.cncTimeHours)
-                                handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
-                                  cncTimeHours: value ?? 0,
-                                });
-                            }}
-                            className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
-                            placeholder="0"
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={!!part.requires3DPrint}
-                          onChange={(e) =>
-                            handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
-                              requires3DPrint: e.target.checked,
-                              ...(e.target.checked && part.printer3DTimeHours == null
-                                ? { printer3DTimeHours: 0 }
-                                : {}),
-                            })
-                          }
-                          className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
-                        />
-                        <span className="text-sm text-white">3D Print (machine time in quote)</span>
-                      </label>
-                      {part.requires3DPrint && (
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm text-muted">
-                            3D print time (hours per set)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            value={part.printer3DTimeHours ?? ''}
-                            onChange={(e) =>
-                              handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
-                                printer3DTimeHours: e.target.value
-                                  ? Number(e.target.value)
-                                  : undefined,
-                              })
-                            }
-                            onBlur={(e) => {
-                              const value = e.target.value ? Number(e.target.value) : undefined;
-                              if (value !== part.printer3DTimeHours)
-                                handleUpdateVariant(SYNTHETIC_VARIANT_PREFIX + part.id, {
-                                  printer3DTimeHours: value ?? 0,
-                                });
-                            }}
-                            className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
-                            placeholder="0"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-sm font-medium text-white">Materials (per set)</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddMaterial({ partId: part.id })}
-                        className="min-h-[44px] rounded-sm px-2 text-xs text-primary hover:bg-primary/10 hover:underline"
-                      >
-                        Add Material
-                      </button>
-                    </div>
-                    {showAddMaterial?.partId && (
-                      <AddMaterialForm
-                        inventoryItems={inventoryItems}
-                        usageType="per_set"
-                        onSave={handleAddMaterial}
-                        onCancel={() => setShowAddMaterial(null)}
-                      />
-                    )}
-                    {part.materials && part.materials.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                        {part.materials.map((material) => {
-                          const inv = inventoryItems.find((i) => i.id === material.inventoryId);
-                          return (
-                            <PartMaterialLink
-                              key={material.id}
-                              material={material}
-                              inventoryItem={inv}
-                              cncAble={!!inv && cncAbleCategories.has(inv.category)}
-                              onUpdate={() => loadPart(true)}
-                              onNavigate={onNavigate}
-                              showFinancials={canViewFinancials}
-                            />
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-subtle">No materials defined for this part.</p>
-                    )}
-                  </div>
                   <QuoteCalculator
                     part={part}
                     inventoryItems={inventoryItems}
