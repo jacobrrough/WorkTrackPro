@@ -1,4 +1,5 @@
 import type { Part, PartVariant } from '@/core/types';
+import { round2 } from './quantity';
 import {
   getDashQuantity,
   normalizeDashQuantities,
@@ -13,10 +14,6 @@ export interface JobPriceFromPartResult {
   source: PriceSource;
   setCount?: number;
   missingVariantPrices: string[];
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 function compositionQtyForSuffix(

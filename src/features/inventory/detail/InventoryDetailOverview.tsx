@@ -3,14 +3,8 @@ import type { InventoryItem, Job, ViewState } from '@/core/types';
 import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
 import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
 import { isAllocationActiveStatus, isConsumedStatus } from '@/lib/inventoryCalculations';
+import { formatStockDisplay } from '@/lib/quantity';
 import { StockTargetInput } from '@/features/inventory/StockTargetInput';
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function formatStockDisplay(value: number): string {
-  if (Number.isInteger(value)) return String(value);
-  const rounded = Math.round(value * 100) / 100;
-  return rounded.toFixed(rounded % 1 === 0 ? 0 : 2);
-}
 
 interface InventoryDetailOverviewProps {
   item: InventoryItem;
@@ -148,7 +142,7 @@ export function InventoryDetailOverview({
           </div>
           <div className="text-right">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">In Stock</p>
-            <p className="text-3xl font-bold text-white">{item.inStock}</p>
+            <p className="text-3xl font-bold text-white">{formatStockDisplay(item.inStock)}</p>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -495,7 +489,7 @@ export function InventoryDetailOverview({
                   <p className="text-xs text-muted">{job.name}</p>
                 </div>
                 <p className="text-sm font-bold text-yellow-300">
-                  {quantity} {item.unit}
+                  {formatStockDisplay(quantity)} {item.unit}
                 </p>
               </button>
             ))}
@@ -524,7 +518,7 @@ export function InventoryDetailOverview({
                   </p>
                 </div>
                 <p className="text-sm font-bold text-muted">
-                  {quantity} {item.unit}
+                  {formatStockDisplay(quantity)} {item.unit}
                 </p>
               </button>
             ))}

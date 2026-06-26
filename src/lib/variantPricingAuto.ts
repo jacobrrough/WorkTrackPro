@@ -1,11 +1,10 @@
 import type { PartVariant } from '@/core/types';
+import { round2 } from './quantity';
 
 const normalizeSuffix = (suffix: string): string =>
   String(suffix ?? '')
     .replace(/^-/, '')
     .trim();
-
-const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 const unitsInComposition = (composition: Record<string, number>): number =>
   Object.values(composition).reduce((sum, rawQty) => {
