@@ -97,6 +97,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
           : undefined;
       const quote = calculateVariantQuote(part.partNumber, variant, variantQty, inventoryItems, {
         laborRate,
+        cncRate,
         printer3DRate,
         manualVariantPrice,
       });
@@ -112,10 +113,50 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
     variantQtyInputs,
     inventoryItems,
     laborRate,
+    cncRate,
     printer3DRate,
   ]);
 
   const totalFromVariants = variantQuotes.reduce((sum, { quote }) => sum + quote.total, 0);
+
+  // Aggregated category breakdown across every variant/set, shown at the bottom.
+  // Only categories with a non-zero contribution are displayed.
+  const totalsBreakdown = useMemo(() => {
+    let materials = 0;
+    let laborHours = 0;
+    let laborCost = 0;
+    let cncHours = 0;
+    let cncCost = 0;
+    let printer3DHours = 0;
+    let printer3DCost = 0;
+    // Manual variant pricing can make a variant's total differ from the sum of its
+    // categories (e.g. labor clamped to 0 when the manual price is below fixed costs).
+    // Track that residual so the breakdown rows always reconcile to the grand Total.
+    let adjustment = 0;
+    // Coerce to a finite number so a stray NaN/Infinity from upstream data can't poison
+    // the totals (which would silently hide rows while the grand Total reads "NaN").
+    const fin = (n: number) => (Number.isFinite(n) ? n : 0);
+    for (const { quote } of variantQuotes) {
+      materials += fin(quote.materialCostCustomer);
+      laborHours += fin(quote.laborHours);
+      laborCost += fin(quote.laborCost);
+      cncHours += fin(quote.cncHours);
+      cncCost += fin(quote.cncCost);
+      printer3DHours += fin(quote.printer3DHours);
+      printer3DCost += fin(quote.printer3DCost);
+      adjustment += fin(quote.markupAmount);
+    }
+    return {
+      materials,
+      laborHours,
+      laborCost,
+      cncHours,
+      cncCost,
+      printer3DHours,
+      printer3DCost,
+      adjustment,
+    };
+  }, [variantQuotes]);
   const effectiveResult =
     quoteBy === 'sets' && variantQuotes.length > 0
       ? ({ total: totalFromVariants, quantity: numSets || 1 } as PartQuoteResult)
@@ -280,6 +321,42 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                   </div>
                 </div>
               ))}
+              <div className="space-y-1 border-t border-white/10 pt-2">
+                <p className="text-[10px] font-bold uppercase text-muted">Totals breakdown</p>
+                {totalsBreakdown.cncCost > 0 && (
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>CNC ({totalsBreakdown.cncHours.toFixed(1)} h)</span>
+                    <span className="text-white">${totalsBreakdown.cncCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {totalsBreakdown.printer3DCost > 0 && (
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>3D Print ({totalsBreakdown.printer3DHours.toFixed(1)} h)</span>
+                    <span className="text-white">${totalsBreakdown.printer3DCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {totalsBreakdown.laborCost > 0 && (
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>Labor ({totalsBreakdown.laborHours.toFixed(1)} h)</span>
+                    <span className="text-white">${totalsBreakdown.laborCost.toFixed(2)}</span>
+                  </div>
+                )}
+                {totalsBreakdown.materials > 0 && (
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>Materials</span>
+                    <span className="text-white">${totalsBreakdown.materials.toFixed(2)}</span>
+                  </div>
+                )}
+                {Math.abs(totalsBreakdown.adjustment) >= 0.005 && (
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>Adjustment</span>
+                    <span className="text-white">
+                      {totalsBreakdown.adjustment < 0 ? '-' : ''}$
+                      {Math.abs(totalsBreakdown.adjustment).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="flex justify-between border-t border-primary/30 pt-2 text-base font-semibold text-white">
                 <span>
                   Total
