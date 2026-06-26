@@ -23,6 +23,7 @@ import {
   inventoryCogsService,
   invoicesService,
   invoiceEmailsService,
+  itemsService,
   jobCostingService,
   journalService,
   managementReportsService,
@@ -96,6 +97,15 @@ export function useTaxCodes(includeInactive = false) {
   return useQuery({
     queryKey: [...ACCOUNTING_QUERY_KEYS.taxCodes, { includeInactive }] as const,
     queryFn: () => taxService.getAll(includeInactive),
+  });
+}
+
+/** Products & services master (accounting.items). Active-only by default; the manage
+ *  screen passes includeInactive to reveal soft-deleted items for reactivation. */
+export function useItems(includeInactive = false) {
+  return useQuery({
+    queryKey: [...ACCOUNTING_QUERY_KEYS.items, { includeInactive }] as const,
+    queryFn: () => itemsService.getAll(includeInactive),
   });
 }
 

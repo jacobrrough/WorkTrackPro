@@ -194,6 +194,23 @@ export interface TaxCode {
 // ── Items (products & services) ──────────────────────────────────────────────
 export type ItemType = 'inventory' | 'non_inventory' | 'service' | 'assembly' | 'bundle';
 
+/** Item types offered in the Products & Services editor, in display order. */
+export const ITEM_TYPES: ItemType[] = [
+  'service',
+  'non_inventory',
+  'inventory',
+  'assembly',
+  'bundle',
+];
+
+export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
+  service: 'Service',
+  non_inventory: 'Non-inventory',
+  inventory: 'Inventory',
+  assembly: 'Assembly',
+  bundle: 'Bundle',
+};
+
 /** A sellable/purchasable product or service (accounting.items) mapped to GL accounts. */
 export interface Item {
   id: string;

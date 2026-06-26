@@ -15,6 +15,7 @@ import {
   inventoryCogsService,
   invoicesService,
   invoiceEmailsService,
+  itemsService,
   estimatesService,
   documentSnapshotsService,
   portalTokensService,
@@ -64,6 +65,7 @@ import type {
   NewDimensionInput,
   NewFixedAssetInput,
   NewInvoiceInput,
+  NewItemInput,
   NewJournalEntryInput,
   NewPaymentInput,
   NewReconciliationInput,
@@ -765,6 +767,33 @@ export function useDeactivateDimension() {
   return useMutation({
     mutationFn: (id: string) => dimensionsService.deactivate(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.dimensions }),
+  });
+}
+
+// ── Products & services (accounting.items) ────────────────────────────────────
+// The sellable/purchasable catalog mapped to income/expense accounts. Pure master
+// data — create/update move NO money, so each invalidates ONLY the `items` subtree.
+// (Deactivation is an update with isActive:false; there is no hard delete.)
+
+export function useCreateItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewItemInput) => itemsService.create(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.items }),
+  });
+}
+
+export function useUpdateItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Partial<NewItemInput> & { isActive?: boolean };
+    }) => itemsService.update(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.items }),
   });
 }
 

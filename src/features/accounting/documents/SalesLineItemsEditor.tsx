@@ -17,9 +17,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { toCents, formatMoney } from '../accountingViewModel';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { QuantityInput } from '../components/QuantityInput';
-import PartPicker from '../components/PartPicker';
+import LineProductPicker, { type LineProductSelection } from '../components/LineProductPicker';
 import { SalesFormCard, docInputClass } from './form/salesFormUi';
 import { usePartLineResolver } from './usePartLineResolver';
+import { useItems } from '../hooks/useAccountingQueries';
+import { lineFromItem } from './lineFromItem';
 import type { NewInvoiceLineInput } from '../types';
 
 /**
@@ -72,7 +74,7 @@ interface LineRowProps {
   disabled?: boolean;
   canRemove: boolean;
   onPatch: (patch: Partial<EditorLine>) => void;
-  onPickPart: (partId: string | null) => void;
+  onSelect: (sel: LineProductSelection) => void;
   onQuantity: (quantity: number) => void;
   onRemove: () => void;
 }
@@ -84,7 +86,7 @@ function LineRow({
   disabled,
   canRemove,
   onPatch,
-  onPickPart,
+  onSelect,
   onQuantity,
   onRemove,
 }: LineRowProps) {
@@ -126,10 +128,11 @@ function LineRow({
 
       {/* Mobile stacks these into a card; md:contents flattens them into the table columns. */}
       <div className="min-w-0 space-y-2 md:contents">
-        <PartPicker
-          id={`line-${index + 1}-part`}
-          value={line.partId ?? null}
-          onChange={onPickPart}
+        <LineProductPicker
+          id={`line-${index + 1}-product`}
+          itemId={line.itemId ?? null}
+          partId={line.partId ?? null}
+          onSelect={onSelect}
           disabled={disabled}
           className={`${docInputClass} h-auto`}
         />
@@ -216,6 +219,7 @@ export default function SalesLineItemsEditor({
   disabled,
 }: SalesLineItemsEditorProps) {
   const { resolve } = usePartLineResolver();
+  const { data: items = [] } = useItems();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -225,24 +229,42 @@ export default function SalesLineItemsEditor({
   const patchLine = (index: number, patch: Partial<EditorLine>) =>
     onChange(lines.map((l, i) => (i === index ? { ...l, ...patch } : l)));
 
-  const onPickPart = async (index: number, partId: string | null) => {
-    if (!partId) {
-      // Clearing the part: drop the link only; leave description/price as the user left them.
-      patchLine(index, { partId: null });
-      return;
-    }
+  const onPickPart = async (index: number, partId: string) => {
     const current = lines[index];
     // Set the link immediately so the qty input flips to whole-number while pricing resolves.
-    patchLine(index, { partId });
+    // A part bills the default sales income, so drop any item link + per-line income account.
+    patchLine(index, { partId, itemId: null, incomeAccountId: null });
     const result = await resolve(partId, current.quantity || 1);
     if (!result) return;
     // Seed description + price from the part quote (don't lock — user can edit after).
     patchLine(index, {
       partId,
+      itemId: null,
+      incomeAccountId: null,
       description: result.description,
       unitPrice: result.unitPrice,
       lineTotal: result.lineTotal,
     });
+  };
+
+  const onSelectProduct = (index: number, sel: LineProductSelection) => {
+    if (sel.kind === 'none') {
+      // Clear any product link; leave description/price as the user left them.
+      patchLine(index, { itemId: null, partId: null, incomeAccountId: null });
+      return;
+    }
+    if (sel.kind === 'part') {
+      void onPickPart(index, sel.id);
+      return;
+    }
+    // An accounting item (Labor / Delivery / Material / …): seed description, price, income
+    // account + tax code from the catalog so the revenue posts to the item's income account.
+    const item = items.find((i) => i.id === sel.id);
+    if (!item) {
+      patchLine(index, { itemId: sel.id, partId: null });
+      return;
+    }
+    patchLine(index, lineFromItem(item, lines[index]));
   };
 
   const onQuantity = async (index: number, quantity: number) => {
@@ -320,7 +342,7 @@ export default function SalesLineItemsEditor({
                   disabled={disabled}
                   canRemove={lines.length > 1}
                   onPatch={(patch) => patchLine(i, patch)}
-                  onPickPart={(partId) => void onPickPart(i, partId)}
+                  onSelect={(sel) => onSelectProduct(i, sel)}
                   onQuantity={(quantity) => void onQuantity(i, quantity)}
                   onRemove={() => removeLine(i)}
                 />

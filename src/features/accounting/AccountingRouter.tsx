@@ -49,6 +49,7 @@ const EstimateDetailView = lazyWithRetry(
   () => import('./estimates/EstimateDetailView'),
   'EstimateDetailView'
 );
+const ItemsView = lazyWithRetry(() => import('./items/ItemsView'), 'ItemsView');
 const CustomersView = lazyWithRetry(() => import('./customers/CustomersView'), 'CustomersView');
 const CustomerDetailView = lazyWithRetry(
   () => import('./customers/CustomerDetailView'),
@@ -243,6 +244,7 @@ export default function AccountingRouter() {
         <Route path="estimates" element={<EstimatesView />} />
         <Route path="estimates/new" element={<EstimateCreateView />} />
         <Route path="estimates/:estimateId" element={<EstimateDetailView />} />
+        <Route path="items" element={<ItemsView />} />
         <Route path="customers" element={<CustomersView />} />
         <Route path="customers/:customerId" element={<CustomerDetailView />} />
         <Route path="progress" element={<ProjectsView />} />
