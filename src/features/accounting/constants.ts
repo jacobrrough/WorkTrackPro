@@ -331,9 +331,9 @@ export const ACCOUNTING_QUERY_KEYS = {
   // ── #8 Estimates. `estimates` is the subtree root; the per-estimate detail hangs under it.
   estimates: ['accounting', 'estimates'] as const,
   estimate: (id: string) => ['accounting', 'estimates', id] as const,
-  // Document version history (invoices & estimates) — restore points.
-  documentSnapshots: (docType: string, docId: string) =>
-    ['accounting', 'snapshots', docType, docId] as const,
+  // Full version history WITH payloads for the Google-Docs-style change feed.
+  documentVersions: (docType: string, docId: string) =>
+    ['accounting', 'versions', docType, docId] as const,
   // QuickBooks-style audit timeline for one document (invoice/estimate/bill).
   documentTimeline: (docType: string, docId: string) =>
     ['accounting', 'timeline', docType, docId] as const,

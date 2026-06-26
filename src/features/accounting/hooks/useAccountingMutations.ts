@@ -157,7 +157,7 @@ export function useUpdateCustomer() {
 function invalidateDocumentActivity(qc: ReturnType<typeof useQueryClient>): void {
   qc.invalidateQueries({ queryKey: ['accounting', 'timeline'] });
   qc.invalidateQueries({ queryKey: ['accounting', 'sent-state'] });
-  qc.invalidateQueries({ queryKey: ['accounting', 'snapshots'] });
+  qc.invalidateQueries({ queryKey: ['accounting', 'versions'] });
 }
 
 // ── Invoices ─────────────────────────────────────────────────────────────────
@@ -1425,9 +1425,9 @@ export function useRestoreDocumentSnapshot() {
         qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimates });
         qc.invalidateQueries({ queryKey: ACCOUNTING_QUERY_KEYS.estimate(p.documentId) });
       }
-      qc.invalidateQueries({
-        queryKey: ACCOUNTING_QUERY_KEYS.documentSnapshots(p.documentType, p.documentId),
-      });
+      // A restore captures a "before restore" snapshot + rewrites content, so the whole audit
+      // surface (timeline + version feed) must refresh, not just the legacy snapshots list.
+      invalidateDocumentActivity(qc);
     },
   });
 }

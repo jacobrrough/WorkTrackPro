@@ -43,7 +43,11 @@ export { portalTokensService, portalLinkFor } from './portalTokens';
 export type { CreatePortalLinkParams } from './portalTokens';
 export { estimatesService } from './estimates';
 export { documentSnapshotsService } from './documentSnapshots';
-export type { DocumentSnapshot, SnapshotDocType } from './documentSnapshots';
+export type {
+  DocumentVersion,
+  DocumentSnapshotPayload,
+  SnapshotDocType,
+} from './documentSnapshots';
 // ── QuickBooks-style audit timeline + sent-version state ──────────────────────
 export { documentActivityService } from './documentActivity';
 export type {
