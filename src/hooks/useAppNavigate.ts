@@ -27,7 +27,14 @@ export function useAppNavigate() {
           return navigate('/app', opts);
         case 'job-detail': {
           const jid = requireId('job-detail');
-          return jid ? navigate(`/app/jobs/${jid}`, opts) : undefined;
+          if (!jid) return undefined;
+          // Stamp the page we're leaving into the job's history entry so its back
+          // button can return there even if the browser history index is later
+          // lost (PWA cold start, reload). The caller's opts win if they pass state.
+          return navigate(`/app/jobs/${jid}`, {
+            state: { from: window.location.pathname + window.location.search },
+            ...opts,
+          });
         }
         case 'clock-in':
           return navigate('/app/clock-in', opts);
