@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/core/types';
 import { authService } from '@/services/api/auth';
@@ -9,6 +10,7 @@ import { supabase } from '@/services/api/supabaseClient';
 import { generateAndWrapKeyPair, unlockPrivateKey, importPublicKey } from '@/lib/crypto';
 import { cryptoKeyCache } from '@/lib/crypto/keyCache';
 import { encryptionKeyService } from '@/services/api/encryptionKeys';
+import { isInternalAppPath } from '@/lib/authPaths';
 
 /**
  * MFA gate state for a logged-in session. App.tsx (next stage) renders the gate;
@@ -102,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaChecking, setMfaChecking] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Holds the most recent authoritative requireMfa value App.tsx forwards from
   // SettingsContext, so internally-triggered refreshes (TOKEN_REFRESHED, etc.)
@@ -122,6 +125,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // True once a reload has been scheduled — prevents a race condition where
   // both the idle timeout and onAuthStateChange try to reload simultaneously.
   const reloadPending = React.useRef(false);
+  // Monotonic auth generation. Bumped on every logout/hardLogout so a checkAuth()
+  // resolution from an in-flight TOKEN_REFRESHED that lands AFTER the logout is
+  // recognized as stale and ignored — otherwise it would re-populate currentUser
+  // and silently bounce a just-logged-out user back into the app.
+  const authEpoch = React.useRef(0);
+
+  // Evict every in-memory trace of the session: the decrypted E2E private key
+  // (module-memory cryptoKeyCache) and the previous user's React Query cache.
+  // Shared by both logout paths so a future "also clear X on logout" change can't
+  // land in one and miss the other.
+  const clearInMemorySession = useCallback(() => {
+    cryptoKeyCache.clear();
+    queryClient.clear();
+  }, [queryClient]);
 
   const tryUnlockKeys = useCallback(async (password: string) => {
     try {
@@ -338,14 +355,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Hard logout: used when the system forces a sign-out (idle timeout, token
   // refresh failure, or Supabase killing the session unexpectedly).
-  // Wipes login tokens from browser storage, then navigates to /app so there
+  // Wipes login tokens from browser storage, then navigates to /login so there
   // is zero stale state left in memory. A flag in sessionStorage tells the
   // login screen to show "Your session expired."
   const hardLogout = useCallback(async () => {
     if (reloadPending.current) return;
     reloadPending.current = true;
     userInitiatedLogout.current = true; // prevents onAuthStateChange from scheduling a second reload
+    authEpoch.current++; // invalidate any in-flight TOKEN_REFRESHED checkAuth resolution
     sessionStorage.setItem('wtp_session_expired', '1');
+    // Evict in-memory secrets NOW rather than trusting the page reload below to do
+    // it. The decrypted E2E private key and the previous user's query cache must be
+    // gone the instant we decide to force a logout, not merely whenever the browser
+    // gets around to unloading.
+    clearInMemorySession();
+    // Capture where they were so re-authentication returns them there. Uses the
+    // SAME isInternalAppPath predicate as App.tsx's safeReturnTo so the two never
+    // disagree — and because window.location.replace (unlike <Navigate>) honors
+    // absolute URLs, this sink must never receive anything but a vetted /app path.
+    const here = window.location.pathname + window.location.search;
+    const loginTarget = isInternalAppPath(here)
+      ? `/login?returnTo=${encodeURIComponent(here)}`
+      : '/login';
     try {
       await withTimeout(supabase.auth.signOut({ scope: 'local' }), 3000); // clears tokens from localStorage, no server call needed
     } catch (e) {
@@ -360,37 +391,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ignore — storage may be unavailable in some environments
       }
     } finally {
-      // Navigate to app root rather than reloading in place. reload() would
+      // Navigate to /login rather than reloading in place. reload() would
       // re-enter whatever authenticated view the worker was on, hit a lazy
       // Suspense boundary, and show a stuck "Loading view..." screen.
-      // replace('/app') lands at the root where the render guard catches it.
+      // replace() (not assign) keeps the dead /app/* URL out of back-history.
       try {
-        window.location.replace('/app');
+        window.location.replace(loginTarget);
       } catch {
         reloadPending.current = false; // unblock retries if navigation fails
         window.location.reload();
       }
     }
-  }, []);
+  }, [clearInMemorySession]);
 
   const logout = useCallback(() => {
     userInitiatedLogout.current = true;
+    authEpoch.current++; // invalidate any in-flight TOKEN_REFRESHED checkAuth resolution
     // Clear currentUser so per-user query consumers re-render disabled
     // (e.g. useDashboardPreferencesSync, gated on !!currentUser) and the app
     // swaps to the login screen.
     setCurrentUser(null);
-    cryptoKeyCache.clear();
-    // Wipe every cached query + mutation so nothing from this user survives in
-    // memory for the next user on a shared browser. Several per-user queries use
-    // intentionally user-agnostic keys (e.g. dashboard-preferences), so a
-    // targeted removeQueries would miss them — and this is a button logout, an
-    // in-memory transition with no page reload to clear the cache for us.
-    // clear() also drops the mutation cache, so an in-flight save cannot linger.
-    // (Any save that still rejects post-logout is an auth error its own onError
-    // now swallows, so it can't re-populate the cache we just cleared.)
-    queryClient.clear();
+    // Button logout is an in-memory transition with no page reload to clear caches
+    // for us, so wipe the decrypted key + query/mutation cache explicitly. Several
+    // per-user queries use intentionally user-agnostic keys (e.g.
+    // dashboard-preferences), so a full clear() — not targeted removeQueries — is
+    // what guarantees nothing from this user survives for the next on a shared
+    // browser. (Any save that still rejects post-logout is an auth error its own
+    // onError now swallows, so it can't re-populate the cache we just cleared.)
+    clearInMemorySession();
     authService.logout();
-  }, [queryClient]);
+    // Land on the real /login URL (replace, so the protected /app/* page they were
+    // on leaves the back-history). No returnTo: an explicit logout is a fresh start,
+    // so the next login goes to /app rather than bouncing back to where they left.
+    navigate('/login', { replace: true });
+  }, [clearInMemorySession, navigate]);
 
   // Initial auth check
   useEffect(() => {
@@ -462,9 +496,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'TOKEN_REFRESHED' && session?.user) {
+        const epoch = authEpoch.current;
         authService
           .checkAuth()
           .then((user) => {
+            // Ignore a resolution superseded by a logout that happened while this
+            // checkAuth was in flight — otherwise it would re-populate currentUser
+            // and bounce the just-logged-out user back into the app.
+            if (epoch !== authEpoch.current) return;
             if (user) setCurrentUser(user);
           })
           .catch((e) => console.warn('checkAuth after TOKEN_REFRESHED failed:', e));
