@@ -1,4 +1,5 @@
 import { useAccounts } from '../hooks/useAccountingQueries';
+import type { AccountType } from '../types';
 
 interface AccountPickerProps {
   value: string;
@@ -6,6 +7,12 @@ interface AccountPickerProps {
   id?: string;
   ariaLabel?: string;
   className?: string;
+  /** When set, only accounts of these types are offered (e.g. ['income'] for a revenue
+   *  mapping). The currently-selected account is always kept selectable even if it falls
+   *  outside the filter, so editing never silently drops an existing mapping. */
+  accountTypes?: AccountType[];
+  /** Placeholder for the empty option (default "Select account…"). */
+  placeholder?: string;
 }
 
 /** Searchable-ish GL account select backed by the chart of accounts. */
@@ -15,8 +22,13 @@ export function AccountPicker({
   id,
   ariaLabel,
   className = '',
+  accountTypes,
+  placeholder,
 }: AccountPickerProps) {
   const { data: accounts = [], isLoading } = useAccounts();
+  const visible = accounts.filter(
+    (a) => (a.isActive && (!accountTypes || accountTypes.includes(a.accountType))) || a.id === value
+  );
   return (
     <select
       id={id}
@@ -26,15 +38,13 @@ export function AccountPicker({
       disabled={isLoading}
       className={`w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none ${className}`}
     >
-      <option value="">{isLoading ? 'Loading…' : 'Select account…'}</option>
-      {accounts
-        .filter((a) => a.isActive)
-        .map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.accountNumber ? `${a.accountNumber} · ` : ''}
-            {a.name}
-          </option>
-        ))}
+      <option value="">{isLoading ? 'Loading…' : (placeholder ?? 'Select account…')}</option>
+      {visible.map((a) => (
+        <option key={a.id} value={a.id}>
+          {a.accountNumber ? `${a.accountNumber} · ` : ''}
+          {a.name}
+        </option>
+      ))}
     </select>
   );
 }

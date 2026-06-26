@@ -15,6 +15,8 @@ export const CUSTOM_FIELDS_BASE = `${ACCOUNTING_BASE}/custom-fields`;
 export const SETTINGS_BASE = `${ACCOUNTING_BASE}/settings`;
 export const ESTIMATES_BASE = `${ACCOUNTING_BASE}/estimates`;
 export const CUSTOMERS_BASE = `${ACCOUNTING_BASE}/customers`;
+/** Products & services master (accounting.items) — the sellable/purchasable catalog. */
+export const ITEMS_BASE = `${ACCOUNTING_BASE}/items`;
 export const PROGRESS_BASE = `${ACCOUNTING_BASE}/progress`;
 export const PURCHASE_ORDERS_BASE = `${ACCOUNTING_BASE}/purchase-orders`;
 /**
@@ -175,6 +177,11 @@ export const ACCOUNTING_QUERY_KEYS = {
   customerEstimates: (id: string) => ['accounting', 'customers', id, 'estimates'] as const,
   customerPayments: (id: string) => ['accounting', 'customers', id, 'payments'] as const,
   taxCodes: ['accounting', 'tax-codes'] as const,
+  // ── Products & services master (accounting.items). The sellable/purchasable catalog
+  // mapped to income/expense accounts, read by the sales-document line picker and the
+  // admin manage screen. Pure master data — mutations invalidate only this key. ────────
+  items: ['accounting', 'items'] as const,
+  item: (id: string) => ['accounting', 'items', id] as const,
   // #13 — address → tax-code jurisdiction map (reference data; moves no money).
   taxJurisdictions: ['accounting', 'tax-jurisdictions'] as const,
   // #12 — 1099 vendor tracking: the W-9 record hangs under the vendor; worklist totals by year.
@@ -486,6 +493,13 @@ export const ACCOUNTING_NAV: AccountingNavItem[] = [
     label: 'Estimates',
     icon: 'description',
     path: ESTIMATES_BASE,
+    group: 'sales',
+  },
+  {
+    key: 'items',
+    label: 'Products & services',
+    icon: 'category',
+    path: ITEMS_BASE,
     group: 'sales',
   },
   {

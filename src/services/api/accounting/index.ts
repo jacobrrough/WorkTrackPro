@@ -11,6 +11,7 @@ export { customersService } from './customers';
 export { vendorsService } from './vendors';
 export { taxService } from './tax';
 export { invoicesService } from './invoices';
+export { itemsService } from './items';
 export { paymentsService } from './payments';
 export { billsService } from './bills';
 export { vendorPaymentsService } from './vendorPayments';
