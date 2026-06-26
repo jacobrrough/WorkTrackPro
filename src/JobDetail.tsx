@@ -501,6 +501,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
     return out.length ? out : null;
   }, [job.parts, job.partId, job.partNumber, job.dashQuantities, linkedParts]);
 
+  /** Part name keyed by part number, sourced from the loaded Part records. Lets the
+   *  packing slip default each line's description to the part name (e.g. "SEAL CART
+   *  TARP") instead of repeating the part number. */
+  const partNamesByNumber = useMemo(() => {
+    const map: Record<string, string> = {};
+    const add = (part: Part | null | undefined) => {
+      if (part?.partNumber && part.name?.trim()) map[part.partNumber] = part.name.trim();
+    };
+    add(linkedPart);
+    linkedParts?.forEach(add);
+    return map;
+  }, [linkedPart, linkedParts]);
+
   const [editForm, setEditForm] = useState({
     po: job.po || '',
     description: job.description || '',
@@ -3810,7 +3823,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
               />
             </div>
 
-            <DeliveriesSection job={job} currentUser={currentUser} />
+            <DeliveriesSection
+              job={job}
+              currentUser={currentUser}
+              partNamesByNumber={partNamesByNumber}
+            />
 
             {currentUser.isAdmin && (
               <JobStatusHistory jobId={job.id} isAdmin={currentUser.isAdmin} />

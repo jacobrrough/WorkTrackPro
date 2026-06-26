@@ -33,11 +33,19 @@ function makeLine(
 export function buildInitialLines(
   job: Job,
   alreadyDelivered: Record<string, number>,
-  existing?: Delivery
+  existing?: Delivery,
+  /** Part name keyed by part number, used as the default line description so the
+   *  packing slip matches the part name shown in the job detail. */
+  partNamesByNumber?: Record<string, string>
 ): EditableLine[] {
   if (existing) {
     return existing.lineItems.map((li) => ({ ...li }));
   }
+
+  // Prefer the part's name (e.g. "SEAL CART TARP") for the description; fall back
+  // to the supplied default (the part number) when no name is known.
+  const describe = (partNumber: string, fallback: string): string =>
+    partNamesByNumber?.[partNumber]?.trim() || fallback;
 
   const lines: EditableLine[] = [];
 
@@ -52,7 +60,7 @@ export function buildInitialLines(
       if (variants.length === 0) {
         lines.push(
           makeLine(alreadyDelivered, singlePartFallbackQty, {
-            description: part.partNumber,
+            description: describe(part.partNumber, part.partNumber),
             partNumber: part.partNumber,
           })
         );
@@ -60,7 +68,7 @@ export function buildInitialLines(
         for (const v of variants) {
           lines.push(
             makeLine(alreadyDelivered, toOrderedQty(dq[v]), {
-              description: `${part.partNumber}-${v}`,
+              description: describe(part.partNumber, `${part.partNumber}-${v}`),
               partNumber: part.partNumber,
               variantSuffix: v,
             })
@@ -75,7 +83,7 @@ export function buildInitialLines(
       for (const v of variants) {
         lines.push(
           makeLine(alreadyDelivered, toOrderedQty(dq[v]), {
-            description: `${job.partNumber}-${v}`,
+            description: describe(job.partNumber, `${job.partNumber}-${v}`),
             partNumber: job.partNumber,
             variantSuffix: v,
           })
@@ -84,7 +92,7 @@ export function buildInitialLines(
     } else {
       lines.push(
         makeLine(alreadyDelivered, toOrderedQty(job.qty), {
-          description: job.partNumber,
+          description: describe(job.partNumber, job.partNumber),
           partNumber: job.partNumber,
         })
       );

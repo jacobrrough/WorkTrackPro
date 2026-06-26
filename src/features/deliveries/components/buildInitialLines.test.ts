@@ -137,4 +137,45 @@ describe('buildInitialLines', () => {
       quantity: 4,
     });
   });
+
+  it('uses the part name (not the part number) as the description when supplied', () => {
+    const names = { 'SK-02M-0106': 'SEAL CART TARP' };
+
+    // single job.parts part, no variants
+    const single = makeJob({
+      qty: '5',
+      parts: [{ partId: 'p1', partNumber: 'SK-02M-0106', dashQuantities: {} }],
+    });
+    expect(buildInitialLines(single, {}, undefined, names)[0]).toMatchObject({
+      partNumber: 'SK-02M-0106',
+      description: 'SEAL CART TARP',
+    });
+
+    // variant lines reuse the part name; the suffix stays in partNumber/variantSuffix
+    const withVariants = makeJob({
+      parts: [{ partId: 'p1', partNumber: 'SK-02M-0106', dashQuantities: { '01': 2 } }],
+    });
+    expect(buildInitialLines(withVariants, {}, undefined, names)[0]).toMatchObject({
+      partNumber: 'SK-02M-0106',
+      variantSuffix: '01',
+      description: 'SEAL CART TARP',
+    });
+
+    // legacy job.partNumber path
+    const legacy = makeJob({ qty: '4', partNumber: 'SK-02M-0106' });
+    expect(buildInitialLines(legacy, {}, undefined, names)[0]).toMatchObject({
+      description: 'SEAL CART TARP',
+    });
+  });
+
+  it('falls back to the part number when no name is supplied or the name is blank', () => {
+    const job = makeJob({
+      qty: '5',
+      parts: [{ partId: 'p1', partNumber: 'SK-02M-0106', dashQuantities: {} }],
+    });
+    expect(buildInitialLines(job, {})[0].description).toBe('SK-02M-0106');
+    expect(buildInitialLines(job, {}, undefined, { 'SK-02M-0106': '   ' })[0].description).toBe(
+      'SK-02M-0106'
+    );
+  });
 });
