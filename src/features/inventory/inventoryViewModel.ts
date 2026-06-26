@@ -110,30 +110,6 @@ export function computeHubSummary(
 }
 
 /**
- * Resolve recently-viewed item ids (most-recent first) to live items, de-duped, dropping ids that
- * no longer exist, capped at `limit`. Used for the hub's "Recent Items" list — `InventoryItem` has
- * no update timestamp, so recency is tracked as a viewed-id list in NavigationContext.
- */
-export function pickRecentItems(
-  items: InventoryItem[],
-  recentIds: string[],
-  limit = 5
-): InventoryItem[] {
-  const byId = new Map(items.map((item) => [item.id, item]));
-  const picked: InventoryItem[] = [];
-  const seen = new Set<string>();
-  for (const id of recentIds) {
-    if (seen.has(id)) continue;
-    const item = byId.get(id);
-    if (!item) continue;
-    seen.add(id);
-    picked.push(item);
-    if (picked.length >= limit) break;
-  }
-  return picked;
-}
-
-/**
  * Fallback list when there are no recently-viewed items yet: most-actionable first
  * (low/out-of-stock), then alphabetical. Keeps the "Recent Items" section from ever being empty.
  */

@@ -63,22 +63,36 @@ function NotFound({
   message,
   description,
   onBack,
+  onRetry,
 }: {
   message: string;
   description?: string;
   onBack: () => void;
+  /** When provided, shows a "Try again" button — used to distinguish a load failure from a truly-absent row. */
+  onRetry?: () => void;
 }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background-dark p-4 text-center">
       <p className="text-muted">{message}</p>
       {description && <p className="max-w-sm text-xs text-subtle">{description}</p>}
-      <button
-        type="button"
-        onClick={onBack}
-        className="rounded-sm bg-primary px-4 py-2 font-bold text-on-accent"
-      >
-        Back to Home
-      </button>
+      <div className="mt-1 flex gap-2">
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-sm border border-white/20 px-4 py-2 font-bold text-white hover:bg-white/10"
+          >
+            Try again
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-sm bg-primary px-4 py-2 font-bold text-on-accent"
+        >
+          Back to Home
+        </button>
+      </div>
     </div>
   );
 }
@@ -331,25 +345,48 @@ function AllPartsRoute() {
   );
 }
 
+// Deep-link arrival: the global inventory list (and the derived tools list) is gated on
+// login, so on a direct URL (e.g. after a /login?returnTo bounce) it may not have loaded
+// yet — or may omit the item. Fetch the single row directly so the detail can render
+// without depending on (or polluting) the shared list. Shared by InventoryDetailRoute and
+// ToolsRoute (tools are inventory rows in the 'tool' category).
+function useInventoryItemById(id: string | undefined) {
+  return useQuery({
+    queryKey: ['inventory-item', id],
+    queryFn: () => inventoryService.getByIds([id!]).then((r) => r[0] ?? null),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 function InventoryDetailRoute() {
   const { itemId } = useParams<{ itemId: string }>();
   const appNavigate = useAppNavigate();
   const back = useInAppBack('/app/inventory');
   const props = useInventoryRouteProps();
 
-  const { isPending } = useQuery({
-    queryKey: ['inventory-item', itemId],
-    queryFn: () => inventoryService.getByIds([itemId!]).then((r) => r[0] ?? null),
-    enabled: !!itemId,
-    staleTime: 2 * 60 * 1000,
-  });
+  const { data: detailItem, isPending, isError, refetch } = useInventoryItemById(itemId);
 
-  const item = props.inventory.find((i) => i.id === itemId);
+  // Prefer the live list entry (mutations keep it current); fall back to the direct
+  // fetch only to cover the deep-link gap.
+  const item = props.inventory.find((i) => i.id === itemId) ?? detailItem;
   if (isPending && !item) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-background-dark">
         <div className="text-muted">Loading item…</div>
       </div>
+    );
+  }
+  // A fetch failure (network/RLS, after retries) is NOT the same as a deleted row: show a
+  // retry instead of misleading the user into thinking the item is gone.
+  if (!item && isError) {
+    return (
+      <NotFound
+        message="Couldn't load this item."
+        description="There was a problem reaching the server. Check your connection and try again."
+        onBack={back}
+        onRetry={() => void refetch()}
+      />
     );
   }
   if (!item) {
@@ -367,6 +404,7 @@ function InventoryDetailRoute() {
         {...props}
         onNavigate={appNavigate}
         initialItemId={itemId}
+        initialItem={item}
         onBackFromDetail={back}
       />
       <BottomNavigation />
@@ -609,9 +647,19 @@ function AppearanceSettingsRoute() {
 function ToolsRoute() {
   const { toolId } = useParams<{ toolId: string }>();
   const appNavigate = useAppNavigate();
+  const { data: detailTool, isError: toolError } = useInventoryItemById(toolId);
+  // Only hand the fetched row to the tool sheet if it is actually a tool. getByIds resolves
+  // ANY inventory id, so without this guard a deep link to a non-tool item (raw material, part)
+  // would open the custody sheet — exposing Take/Put-away actions on a row that isn't a tool.
+  const initialTool = detailTool?.category === 'tool' ? detailTool : null;
   return (
     <>
-      <ToolsScreen onNavigate={appNavigate} initialToolId={toolId} />
+      <ToolsScreen
+        onNavigate={appNavigate}
+        initialToolId={toolId}
+        initialTool={initialTool}
+        initialToolError={toolError}
+      />
       <BottomNavigation />
     </>
   );

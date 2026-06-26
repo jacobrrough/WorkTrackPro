@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { InventoryItem } from '@/core/types';
-import { computeHubSummary, pickFallbackItems, pickRecentItems } from './inventoryViewModel';
+import { computeHubSummary, pickFallbackItems } from './inventoryViewModel';
 
 const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   id: 'item',
@@ -43,23 +43,6 @@ describe('computeHubSummary', () => {
       lowStock: 0,
       needsReorder: 0,
     });
-  });
-});
-
-describe('pickRecentItems', () => {
-  const items = [makeItem({ id: 'a' }), makeItem({ id: 'b' }), makeItem({ id: 'c' })];
-
-  it('resolves ids most-recent-first, de-dupes, and drops missing ids', () => {
-    const picked = pickRecentItems(items, ['c', 'x', 'c', 'a']);
-    expect(picked.map((i) => i.id)).toEqual(['c', 'a']);
-  });
-
-  it('caps the result at the limit', () => {
-    expect(pickRecentItems(items, ['a', 'b', 'c'], 1).map((i) => i.id)).toEqual(['a']);
-  });
-
-  it('returns an empty array when there are no recent ids', () => {
-    expect(pickRecentItems(items, [])).toEqual([]);
   });
 });
 

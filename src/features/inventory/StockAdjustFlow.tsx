@@ -1,23 +1,22 @@
 import { useRef, useState } from 'react';
 import type { InventoryItem } from '@/core/types';
 import { useToast } from '@/Toast';
+import { ScrollablePage } from '@/components/ScrollablePage';
 import { BarcodeScannerModal } from './detail/BarcodeScannerModal';
 import { computeStockTarget, resolveScannedItem } from './stockAdjust';
 import { getSku, matchesFilters } from './inventoryViewModel';
 
 /**
- * Scan-first quick flow shared by the hub's Quick Scan banner and the Stock In / Stock Out tiles.
- *  - 'lookup' opens the scanned (or searched) item's detail page.
- *  - 'in' / 'out' collect a quantity and write an absolute stock recount via onUpdateStock.
- * Always offers a manual search fallback (not every part has a barcode / the camera may be blocked).
+ * Scan-first quick flow behind the hub's Stock In / Stock Out tiles: collect a quantity
+ * and write an absolute stock recount via onUpdateStock. Always offers a manual search
+ * fallback (not every part has a barcode / the camera may be blocked).
  */
-export type StockAdjustFlowMode = 'in' | 'out' | 'lookup';
+export type StockAdjustFlowMode = 'in' | 'out';
 
 interface StockAdjustFlowProps {
   mode: StockAdjustFlowMode;
   inventory: InventoryItem[];
   onUpdateStock: (id: string, inStock: number, reason?: string) => Promise<void>;
-  onOpenDetail: (itemId: string) => void;
   onClose: () => void;
   calculateAvailable: (item: InventoryItem) => number;
 }
@@ -27,14 +26,12 @@ type Step = 'scan' | 'search' | 'qty';
 const MODE_LABEL: Record<StockAdjustFlowMode, string> = {
   in: 'Stock In',
   out: 'Stock Out',
-  lookup: 'Scan to look up',
 };
 
 export default function StockAdjustFlow({
   mode,
   inventory,
   onUpdateStock,
-  onOpenDetail,
   onClose,
   calculateAvailable,
 }: StockAdjustFlowProps) {
@@ -48,15 +45,9 @@ export default function StockAdjustFlow({
   // auto-close apart from the user tapping the X (which should cancel the whole flow).
   const justScannedRef = useRef(false);
 
-  const isAdjust = mode === 'in' || mode === 'out';
-  const adjustMode = mode === 'out' ? 'out' : 'in';
+  const adjustMode = mode; // 'in' | 'out'
 
   const chooseItem = (item: InventoryItem) => {
-    if (mode === 'lookup') {
-      onOpenDetail(item.id);
-      onClose();
-      return;
-    }
     setSelected(item);
     setQtyText('1');
     setStep('qty');
@@ -172,7 +163,7 @@ export default function StockAdjustFlow({
               className="mt-3 min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white focus:border-primary focus:outline-none"
             />
           </header>
-          <div className="content-above-nav flex-1 overflow-y-auto p-3">
+          <ScrollablePage className="p-3">
             {!searchTerm.trim() ? (
               <p className="py-12 text-center text-sm text-subtle">Start typing to find a part.</p>
             ) : searchResults.length === 0 ? (
@@ -203,11 +194,11 @@ export default function StockAdjustFlow({
                 ))}
               </ul>
             )}
-          </div>
+          </ScrollablePage>
         </div>
       )}
 
-      {step === 'qty' && selected && isAdjust && preview && (
+      {step === 'qty' && selected && preview && (
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-3"
           role="dialog"

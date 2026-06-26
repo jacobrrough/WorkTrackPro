@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useInventoryCategories } from '@/features/inventory/useInventoryCategories';
+import { BarcodeScannerModal } from '@/features/inventory/detail/BarcodeScannerModal';
 import { useToast } from './Toast';
 import { FormField } from './components/ui/FormField';
 import { Button } from './components/ui/Button';
 import { Card } from './components/ui/Card';
+import { ScrollablePage } from './components/ScrollablePage';
 import { validateRequired, validateQuantity, validatePrice } from '@/core/validation';
 
 interface AddInventoryItemProps {
@@ -23,6 +25,40 @@ interface AddInventoryItemProps {
   isAdmin?: boolean;
 }
 
+const FIELD_INPUT_CLASS =
+  'min-w-0 flex-1 rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary';
+
+// Text input paired with a camera Scan button (barcode + bin location both use this).
+// onScan opens the shared scanner; the scanned value is routed back to onChange by the caller.
+const ScannableInput: React.FC<{
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  onScan: () => void;
+  scanLabel: string;
+}> = ({ id, value, onChange, placeholder, onScan, scanLabel }) => (
+  <div className="flex gap-2">
+    <input
+      id={id}
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={FIELD_INPUT_CLASS}
+    />
+    <button
+      type="button"
+      onClick={onScan}
+      className="flex shrink-0 items-center gap-1.5 rounded-sm border border-white/10 bg-white/5 px-4 font-bold text-white hover:bg-white/10 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+      aria-label={scanLabel}
+    >
+      <span className="material-symbols-outlined text-xl">qr_code_scanner</span>
+      Scan
+    </button>
+  </div>
+);
+
 const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, isAdmin = true }) => {
   const { showToast } = useToast();
   const { options: categoryOptions } = useInventoryCategories();
@@ -36,6 +72,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
   const [unit, setUnit] = useState('');
   const [price, setPrice] = useState<number>(0);
   const [barcode, setBarcode] = useState('');
+  const [scanTarget, setScanTarget] = useState<'barcode' | 'binLocation' | null>(null);
   const [binLocation, setBinLocation] = useState('');
   const [vendor, setVendor] = useState('');
   const [reorderPoint, setReorderPoint] = useState<number>(0);
@@ -108,9 +145,9 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
       </div>
 
       {/* Form */}
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <ScrollablePage className="space-y-4 px-4 pt-4">
         {/* Basic Info */}
-        <Card>
+        <Card className="space-y-4">
           <h2 className="mb-4 text-lg font-bold text-white">Basic Information</h2>
 
           <FormField label="Name" htmlFor="name" error={errors.name} required>
@@ -191,7 +228,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
         </Card>
 
         {/* Stock */}
-        <Card>
+        <Card className="space-y-4">
           <h2 className="mb-4 text-lg font-bold text-white">Stock</h2>
 
           <FormField
@@ -240,28 +277,28 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
         </Card>
 
         {/* Location & Vendor */}
-        <Card>
+        <Card className="space-y-4">
           <h2 className="mb-4 text-lg font-bold text-white">Location & Vendor</h2>
 
           <FormField label="Barcode" htmlFor="barcode">
-            <input
+            <ScannableInput
               id="barcode"
-              type="text"
               value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
+              onChange={setBarcode}
               placeholder="Optional"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              onScan={() => setScanTarget('barcode')}
+              scanLabel="Scan barcode"
             />
           </FormField>
 
           <FormField label="Bin Location" htmlFor="binLocation">
-            <input
+            <ScannableInput
               id="binLocation"
-              type="text"
               value={binLocation}
-              onChange={(e) => setBinLocation(e.target.value)}
+              onChange={setBinLocation}
               placeholder="e.g., A3, B12, Shelf 2"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              onScan={() => setScanTarget('binLocation')}
+              scanLabel="Scan bin location"
             />
           </FormField>
 
@@ -276,7 +313,17 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
             />
           </FormField>
         </Card>
-      </div>
+      </ScrollablePage>
+
+      <BarcodeScannerModal
+        open={scanTarget !== null}
+        onClose={() => setScanTarget(null)}
+        onScanned={(value) => {
+          if (scanTarget === 'binLocation') setBinLocation(value);
+          else setBarcode(value);
+        }}
+        showToast={showToast}
+      />
     </div>
   );
 };

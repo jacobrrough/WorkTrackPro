@@ -5,6 +5,7 @@ import { useInventoryCategories } from './useInventoryCategories';
 import { useToast } from '@/Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { EmptyState } from '@/components/EmptyState';
+import { ScrollablePage } from '@/components/ScrollablePage';
 import { LoadingSpinner } from '@/Loading';
 
 import {
@@ -296,11 +297,7 @@ export default function InventoryMainView({
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="content-above-nav flex-1 overflow-y-auto p-3"
-      >
+      <ScrollablePage ref={scrollRef} onScroll={handleScroll} className="p-3">
         {isLoading && inventory.length === 0 ? (
           <div className="flex justify-center py-16" role="status" aria-live="polite">
             <LoadingSpinner text="Loading inventory…" />
@@ -335,7 +332,7 @@ export default function InventoryMainView({
         ) : (
           <div className="space-y-2">{tabFiltered.map(renderRow)}</div>
         )}
-      </div>
+      </ScrollablePage>
 
       <button
         type="button"
