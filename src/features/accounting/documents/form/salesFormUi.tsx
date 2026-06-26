@@ -40,26 +40,6 @@ export function SalesFormCard({
   );
 }
 
-/** Compact QuickBooks-style label:control row (label left, control right) for the header meta. */
-export function MetaRow({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 sm:justify-end">
-      <label htmlFor={htmlFor} className="shrink-0 text-xs font-medium text-muted sm:text-right">
-        {label}
-      </label>
-      <div className="w-full sm:w-44">{children}</div>
-    </div>
-  );
-}
-
 /** A stacked label-over-control field block for the wider header/message fields. */
 export function FieldBlock({
   label,

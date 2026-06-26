@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { SalesFormCard, MetaRow, FieldBlock, docInputClass } from './salesFormUi';
+import { SalesFormCard, FieldBlock, docInputClass } from './salesFormUi';
 
 /**
  * QuickBooks-style header card shared by the estimate/invoice create + edit screens.
@@ -81,7 +81,7 @@ export function SalesDocumentHeader({
 
         {/* Right: compact meta block */}
         <div className="space-y-2 lg:w-[26rem]">
-          <MetaRow label={numberLabel}>
+          <FieldBlock label={numberLabel}>
             <div
               className={`${docInputClass} flex items-center bg-white/[0.03] text-muted`}
               aria-label={numberLabel}
@@ -92,11 +92,14 @@ export function SalesDocumentHeader({
                 <span className="text-subtle">Auto-assigned on save</span>
               )}
             </div>
-          </MetaRow>
+          </FieldBlock>
 
-          <div className="grid gap-2 sm:grid-cols-2">
+          {/* Dates (+ acceptance for estimates) — labels stacked above the controls so the
+              narrow two-column layout never overflows into the neighbouring column. Invoices
+              have no acceptance fields, so they stay a single full-width column. */}
+          <div className={`grid gap-x-3 gap-y-2 ${showAcceptance ? 'sm:grid-cols-2' : ''}`}>
             <div className="space-y-2">
-              <MetaRow label={primaryDateLabel} htmlFor={`${idp}-pdate`}>
+              <FieldBlock label={primaryDateLabel} htmlFor={`${idp}-pdate`}>
                 <input
                   id={`${idp}-pdate`}
                   type="date"
@@ -105,8 +108,8 @@ export function SalesDocumentHeader({
                   onChange={(e) => onPrimaryDate(e.target.value)}
                   disabled={disabled}
                 />
-              </MetaRow>
-              <MetaRow label={secondaryDateLabel} htmlFor={`${idp}-sdate`}>
+              </FieldBlock>
+              <FieldBlock label={secondaryDateLabel} htmlFor={`${idp}-sdate`}>
                 <input
                   id={`${idp}-sdate`}
                   type="date"
@@ -115,12 +118,12 @@ export function SalesDocumentHeader({
                   onChange={(e) => onSecondaryDate(e.target.value)}
                   disabled={disabled}
                 />
-              </MetaRow>
+              </FieldBlock>
             </div>
 
             {showAcceptance && (
               <div className="space-y-2">
-                <MetaRow label="Accepted by" htmlFor={`${idp}-acceptedby`}>
+                <FieldBlock label="Accepted by" htmlFor={`${idp}-acceptedby`}>
                   <input
                     id={`${idp}-acceptedby`}
                     className={docInputClass}
@@ -129,8 +132,8 @@ export function SalesDocumentHeader({
                     placeholder="Name"
                     disabled={disabled}
                   />
-                </MetaRow>
-                <MetaRow label="Accepted date" htmlFor={`${idp}-accepteddate`}>
+                </FieldBlock>
+                <FieldBlock label="Accepted date" htmlFor={`${idp}-accepteddate`}>
                   <input
                     id={`${idp}-accepteddate`}
                     type="date"
@@ -139,7 +142,7 @@ export function SalesDocumentHeader({
                     onChange={(e) => onAcceptedDate?.(e.target.value)}
                     disabled={disabled}
                   />
-                </MetaRow>
+                </FieldBlock>
               </div>
             )}
           </div>
