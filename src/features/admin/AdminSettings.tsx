@@ -68,6 +68,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [resettingMfaUserId, setResettingMfaUserId] = useState<string | null>(null);
   const [clearingBin, setClearingBin] = useState<string | null>(null);
+  // Which rack accordions are expanded in Shelf / Bin Reconcile. Empty = all
+  // collapsed, which is the default.
+  const [openRacks, setOpenRacks] = useState<Set<string>>(new Set());
+  const toggleRack = (rack: string) =>
+    setOpenRacks((prev) => {
+      const next = new Set(prev);
+      if (next.has(rack)) next.delete(rack);
+      else next.add(rack);
+      return next;
+    });
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -292,6 +302,29 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       .map(([bin, counts]) => ({ bin, ...counts }))
       .sort((a, b) => a.bin.localeCompare(b.bin));
   }, [jobs, inventory]);
+
+  /**
+   * Bins grouped by rack — the first letter of the bin code (e.g. "A4c" → "A").
+   * Each group carries its bin/job/item totals for the collapsed accordion
+   * header, and groups are sorted alphabetically by rack letter.
+   */
+  const binsByRack = useMemo(() => {
+    const groups = new Map<string, typeof binsWithCounts>();
+    for (const entry of binsWithCounts) {
+      const rack = (entry.bin[0] ?? '?').toUpperCase();
+      const list = groups.get(rack) ?? [];
+      list.push(entry);
+      groups.set(rack, list);
+    }
+    return Array.from(groups.entries())
+      .map(([rack, bins]) => ({
+        rack,
+        bins,
+        jobTotal: bins.reduce((sum, b) => sum + b.jobIds.length, 0),
+        inventoryTotal: bins.reduce((sum, b) => sum + b.inventoryIds.length, 0),
+      }))
+      .sort((a, b) => a.rack.localeCompare(b.rack));
+  }, [binsWithCounts]);
 
   const handleClearShelf = async (bin: string) => {
     if (!updateJob || !updateInventoryItem) return;
@@ -1084,27 +1117,63 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   <p className="text-sm text-muted">No bins in use.</p>
                 ) : (
                   <ul className="space-y-2">
-                    {binsWithCounts.map(({ bin, jobIds, inventoryIds }) => (
-                      <li
-                        key={bin}
-                        className="flex items-center justify-between gap-3 rounded border border-white/10 bg-white/5 p-2"
-                      >
-                        <div className="min-w-0">
-                          <span className="font-mono font-semibold text-primary">{bin}</span>
-                          <p className="text-[10px] text-muted">
-                            {jobIds.length} job(s), {inventoryIds.length} inventory item(s)
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={clearingBin === bin}
-                          onClick={() => handleClearShelf(bin)}
-                          className="shrink-0 rounded border border-red-500/40 bg-red-500/20 px-2 py-1.5 text-xs font-bold text-red-300 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+                    {binsByRack.map(({ rack, bins, jobTotal, inventoryTotal }) => {
+                      const isOpen = openRacks.has(rack);
+                      return (
+                        <li
+                          key={rack}
+                          className="overflow-hidden rounded border border-white/10 bg-white/5"
                         >
-                          {clearingBin === bin ? 'Clearing…' : 'Clear shelf'}
-                        </button>
-                      </li>
-                    ))}
+                          <button
+                            type="button"
+                            onClick={() => toggleRack(rack)}
+                            aria-expanded={isOpen}
+                            className="flex w-full items-center gap-2 p-2 text-left transition-colors hover:bg-white/5"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`material-symbols-outlined text-base text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                            >
+                              chevron_right
+                            </span>
+                            <span className="font-mono text-sm font-bold text-primary">
+                              Rack {rack}
+                            </span>
+                            <span className="text-[10px] text-muted">
+                              {bins.length} bin(s) · {jobTotal} job(s) · {inventoryTotal} item(s)
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <ul className="space-y-2 border-t border-white/10 p-2">
+                              {bins.map(({ bin, jobIds, inventoryIds }) => (
+                                <li
+                                  key={bin}
+                                  className="flex items-center justify-between gap-3 rounded border border-white/10 bg-white/5 p-2"
+                                >
+                                  <div className="min-w-0">
+                                    <span className="font-mono font-semibold text-primary">
+                                      {bin}
+                                    </span>
+                                    <p className="text-[10px] text-muted">
+                                      {jobIds.length} job(s), {inventoryIds.length} inventory
+                                      item(s)
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={clearingBin === bin}
+                                    onClick={() => handleClearShelf(bin)}
+                                    className="shrink-0 rounded border border-red-500/40 bg-red-500/20 px-2 py-1.5 text-xs font-bold text-red-300 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+                                  >
+                                    {clearingBin === bin ? 'Clearing…' : 'Clear shelf'}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
