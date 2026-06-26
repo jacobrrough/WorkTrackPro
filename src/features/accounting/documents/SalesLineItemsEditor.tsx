@@ -18,6 +18,7 @@ import { toCents, formatMoney } from '../accountingViewModel';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { QuantityInput } from '../components/QuantityInput';
 import LineProductPicker, { type LineProductSelection } from '../components/LineProductPicker';
+import PartPicker from '../components/PartPicker';
 import { SalesFormCard, docInputClass } from './form/salesFormUi';
 import { usePartLineResolver } from './usePartLineResolver';
 import { useItems } from '../hooks/useAccountingQueries';
@@ -32,6 +33,10 @@ import type { NewInvoiceLineInput } from '../types';
 export interface EditorLine extends NewInvoiceLineInput {
   /** Transient stable key for dnd; not persisted. */
   _key?: string;
+  /** Transient "this line is a Part" flag so the Description cell shows the part chooser even
+   *  before a specific part is picked (or after it's cleared). Not persisted — `lineRows`
+   *  ignores unknown fields, and part-ness is re-derived from `partId` when a line reloads. */
+  _isPart?: boolean;
 }
 
 /**
@@ -75,6 +80,7 @@ interface LineRowProps {
   canRemove: boolean;
   onPatch: (patch: Partial<EditorLine>) => void;
   onSelect: (sel: LineProductSelection) => void;
+  onPickPart: (partId: string | null) => void;
   onQuantity: (quantity: number) => void;
   onRemove: () => void;
 }
@@ -87,6 +93,7 @@ function LineRow({
   canRemove,
   onPatch,
   onSelect,
+  onPickPart,
   onQuantity,
   onRemove,
 }: LineRowProps) {
@@ -102,6 +109,7 @@ function LineRow({
   };
 
   const hasPart = !!line.partId;
+  const isPartMode = !!line._isPart || hasPart;
 
   return (
     <div
@@ -131,20 +139,33 @@ function LineRow({
         <LineProductPicker
           id={`line-${index + 1}-product`}
           itemId={line.itemId ?? null}
-          partId={line.partId ?? null}
+          isPart={isPartMode}
           onSelect={onSelect}
           disabled={disabled}
           className={`${docInputClass} h-auto`}
         />
 
-        <input
-          aria-label={`Line ${index + 1} description`}
-          className={docInputClass}
-          value={line.description ?? ''}
-          onChange={(e) => onPatch({ description: e.target.value })}
-          placeholder="Description"
-          disabled={disabled}
-        />
+        {/* Description column. Always a free-text box; in "part mode" a part chooser sits above
+            it and auto-fills the text (and price/qty) when a part is picked. */}
+        <div className="min-w-0 space-y-1">
+          {isPartMode && (
+            <PartPicker
+              id={`line-${index + 1}-part`}
+              value={line.partId ?? null}
+              onChange={onPickPart}
+              disabled={disabled}
+              className={`${docInputClass} h-auto`}
+            />
+          )}
+          <input
+            aria-label={`Line ${index + 1} description`}
+            className={docInputClass}
+            value={line.description ?? ''}
+            onChange={(e) => onPatch({ description: e.target.value })}
+            placeholder={isPartMode ? 'Auto-filled from part — editable' : 'Description'}
+            disabled={disabled}
+          />
+        </div>
 
         {/* Qty / Rate / Amount / Tax — a 4-up row on mobile, individual columns on desktop. */}
         <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-2 md:contents">
@@ -229,18 +250,30 @@ export default function SalesLineItemsEditor({
   const patchLine = (index: number, patch: Partial<EditorLine>) =>
     onChange(lines.map((l, i) => (i === index ? { ...l, ...patch } : l)));
 
-  const onPickPart = async (index: number, partId: string) => {
+  const onPickPart = async (index: number, partId: string | null) => {
+    if (!partId) {
+      // Cleared the part chooser: stay in part mode, drop the link + its auto-filled price/desc.
+      patchLine(index, {
+        partId: null,
+        _isPart: true,
+        description: '',
+        unitPrice: 0,
+        lineTotal: undefined,
+      });
+      return;
+    }
     const current = lines[index];
     // Set the link immediately so the qty input flips to whole-number while pricing resolves.
     // A part bills the default sales income, so drop any item link + per-line income account.
-    patchLine(index, { partId, itemId: null, incomeAccountId: null });
+    patchLine(index, { partId, itemId: null, incomeAccountId: null, _isPart: true });
     const result = await resolve(partId, current.quantity || 1);
     if (!result) return;
-    // Seed description + price from the part quote (don't lock — user can edit after).
+    // Auto-fill description + price from the part quote (don't lock — user can edit after).
     patchLine(index, {
       partId,
       itemId: null,
       incomeAccountId: null,
+      _isPart: true,
       description: result.description,
       unitPrice: result.unitPrice,
       lineTotal: result.lineTotal,
@@ -249,22 +282,32 @@ export default function SalesLineItemsEditor({
 
   const onSelectProduct = (index: number, sel: LineProductSelection) => {
     if (sel.kind === 'none') {
-      // Clear any product link; leave description/price as the user left them.
-      patchLine(index, { itemId: null, partId: null, incomeAccountId: null });
+      // Custom / free-text line: drop any catalog link; leave the typed description alone.
+      patchLine(index, { itemId: null, partId: null, incomeAccountId: null, _isPart: false });
       return;
     }
     if (sel.kind === 'part') {
-      void onPickPart(index, sel.id);
+      // Enter "part mode" — the Description cell reveals the part chooser, which auto-fills the
+      // line. Clear any prior item/text so the upcoming part auto-fill starts clean.
+      patchLine(index, {
+        _isPart: true,
+        itemId: null,
+        partId: null,
+        incomeAccountId: null,
+        description: '',
+        unitPrice: 0,
+        lineTotal: undefined,
+      });
       return;
     }
     // An accounting item (Labor / Delivery / Material / …): seed description, price, income
     // account + tax code from the catalog so the revenue posts to the item's income account.
     const item = items.find((i) => i.id === sel.id);
     if (!item) {
-      patchLine(index, { itemId: sel.id, partId: null });
+      patchLine(index, { itemId: sel.id, partId: null, _isPart: false });
       return;
     }
-    patchLine(index, lineFromItem(item, lines[index]));
+    patchLine(index, { ...lineFromItem(item, lines[index]), _isPart: false });
   };
 
   const onQuantity = async (index: number, quantity: number) => {
@@ -343,6 +386,7 @@ export default function SalesLineItemsEditor({
                   canRemove={lines.length > 1}
                   onPatch={(patch) => patchLine(i, patch)}
                   onSelect={(sel) => onSelectProduct(i, sel)}
+                  onPickPart={(partId) => void onPickPart(i, partId)}
                   onQuantity={(quantity) => void onQuantity(i, quantity)}
                   onRemove={() => removeLine(i)}
                 />
