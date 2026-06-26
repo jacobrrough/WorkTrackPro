@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from './AppContext';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { ViewState } from '@/core/types';
@@ -22,6 +22,21 @@ import { ACCOUNTING_BUILD_ENABLED } from './lib/featureFlags';
 import MFAEnrollScreen from './MFAEnrollScreen';
 import { mfaService } from '@/services/api/mfa';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { reorderQuickActionKeys } from './lib/quickActions';
 
 const AIAssistantPanel = lazyWithRetry(
   () => import('./components/AIAssistantPanel'),
@@ -69,6 +84,90 @@ interface DashboardQuickAction {
   /** Hidden for admins by default (e.g. Shop Floor, since admins use the Admin Board). */
   hideForAdmin?: boolean;
 }
+
+/** Droppable id for the "drop here to hide" zone shown while dragging a quick action. */
+const QUICK_ACTION_HIDE_ZONE_ID = '__quick-action-hide-zone__';
+
+const quickActionCardBaseClassName =
+  'flex min-h-[3.5rem] w-full touch-manipulation items-center gap-2.5 rounded-sm border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:opacity-90';
+
+/** The visual contents of a quick-action card — shared by the live card and the drag clone. */
+const QuickActionCardInner: React.FC<{ action: DashboardQuickAction }> = ({ action }) => (
+  <>
+    <span
+      aria-hidden="true"
+      className={`material-symbols-outlined text-2xl ${action.iconClassName}`}
+    >
+      {action.icon}
+    </span>
+    <span className="truncate text-sm font-semibold text-white">{action.title}</span>
+  </>
+);
+
+/**
+ * A single quick-action card that is sortable via drag (long-press on touch,
+ * 8px drag on pointer). A plain tap/click still fires onClick because the
+ * sensors only start a drag once the activation threshold is crossed.
+ *
+ * While this card is the one being dragged, its slot renders a dashed skeleton
+ * placeholder that tracks the projected drop position — the lifted card itself
+ * floats in the DragOverlay — so it's clear where it will land.
+ */
+const SortableQuickActionCard: React.FC<{ action: DashboardQuickAction }> = ({ action }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: action.key,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    // Block native scroll/zoom while holding so the TouchSensor delay isn't racing
+    // the browser's pan gesture (same fix as the board cards).
+    touchAction: 'none',
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} className="min-w-0">
+      {isDragging ? (
+        <div
+          aria-hidden="true"
+          className="h-full min-h-[3.5rem] rounded-sm border-2 border-dashed border-primary/60 bg-primary/10"
+        />
+      ) : (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={action.onClick}
+          className={`${quickActionCardBaseClassName} ${action.cardClassName}`}
+          aria-label={action.ariaLabel}
+        >
+          <QuickActionCardInner action={action} />
+        </button>
+      )}
+    </li>
+  );
+};
+
+/** The "drop here to hide" target that only appears while a card is being dragged. */
+const QuickActionHideZone: React.FC = () => {
+  const { setNodeRef, isOver } = useDroppable({ id: QUICK_ACTION_HIDE_ZONE_ID });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mt-3 flex items-center justify-center gap-2 rounded-sm border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
+        isOver
+          ? 'border-red-400 bg-red-500/20 text-red-300'
+          : 'border-white/20 bg-white/[0.02] text-muted'
+      }`}
+    >
+      <span aria-hidden="true" className="material-symbols-outlined">
+        delete
+      </span>
+      Drop here to hide
+    </div>
+  );
+};
 
 /**
  * SecuritySettingsModal — lightweight self-service 2FA manager any signed-in
@@ -307,17 +406,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [addingJobToBin, setAddingJobToBin] = useState(false);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isClockOutLoading, setIsClockOutLoading] = useState(false);
-  const [isEditingActions, setIsEditingActions] = useState(false);
+  const [activeDragKey, setActiveDragKey] = useState<string | null>(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { syncToServer } = useDashboardPreferencesSync(!!currentUser);
+
+  // Close the header dropdown menu on outside click or Escape.
+  useEffect(() => {
+    if (!showMenu) return;
+    const handlePointer = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMenu(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [showMenu]);
 
   const activeCount = jobs.filter((j) => j.status === 'inProgress').length;
   const pendingCount = jobs.filter((j) => j.status === 'pending').length;
-  const resumeJobId =
-    navState.lastViewedJobId && jobs.some((job) => job.id === navState.lastViewedJobId)
-      ? navState.lastViewedJobId
-      : null;
+  const resumeJob =
+    (navState.lastViewedJobId && jobs.find((job) => job.id === navState.lastViewedJobId)) || null;
 
   const handleSearchSubmit = (term: string) => {
     updateState({ searchTerm: term });
@@ -404,9 +522,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     setIsClockOutLoading(false);
   };
 
-  const quickActionButtonBaseClassName =
-    'flex min-h-[7.25rem] w-full touch-manipulation flex-col items-start gap-3 rounded-sm border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:opacity-90';
-
   const quickActions: DashboardQuickAction[] = [
     {
       key: 'board-shop',
@@ -419,21 +534,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       onClick: () => onNavigate('board-shop'),
       hideForAdmin: true,
     },
-    ...(resumeJobId
-      ? [
-          {
-            key: 'resume-job',
-            title: 'Resume Job',
-            subtitle: 'Open last viewed',
-            icon: 'history',
-            iconClassName: 'text-violet-400',
-            cardClassName:
-              'border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-purple-700/20',
-            ariaLabel: 'Open last viewed job',
-            onClick: () => onNavigate('job-detail', resumeJobId),
-          } satisfies DashboardQuickAction,
-        ]
-      : []),
     {
       key: 'inventory',
       title: 'Inventory',
@@ -550,37 +650,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       adminOnly: true,
     },
     {
-      key: 'admin-settings',
-      title: 'Settings',
-      subtitle: 'Labor rate & upcharge',
-      icon: 'settings',
-      iconClassName: 'text-muted',
-      cardClassName: 'border-slate-500/30 bg-gradient-to-br from-slate-600/20 to-slate-700/20',
-      ariaLabel: 'Open admin settings',
-      onClick: () => onNavigate('admin-settings'),
-      adminOnly: true,
-    },
-    {
-      key: 'notification-settings',
-      title: 'Notifications',
-      subtitle: 'Choose what alerts you',
-      icon: 'notifications',
-      iconClassName: 'text-amber-400',
-      cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-yellow-600/20',
-      ariaLabel: 'Open notification settings',
-      onClick: () => onNavigate('notification-settings'),
-    },
-    {
-      key: 'appearance',
-      title: 'Appearance',
-      subtitle: 'Theme & colors',
-      icon: 'palette',
-      iconClassName: 'text-fuchsia-400',
-      cardClassName: 'border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-600/20 to-purple-600/20',
-      ariaLabel: 'Open appearance settings',
-      onClick: () => onNavigate('appearance'),
-    },
-    {
       key: 'trello-import',
       title: 'Import Trello',
       subtitle: 'From JSON',
@@ -642,37 +711,107 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return sorted;
   }, [roleFilteredActions, navState.quickActionOrder]);
 
-  const visibleQuickActions = isEditingActions
-    ? orderedActions
-    : orderedActions.filter((a) => !navState.hiddenQuickActions.includes(a.key));
-
-  const moveAction = useCallback(
-    (key: string, direction: -1 | 1) => {
-      const keys = orderedActions.map((a) => a.key);
-      const idx = keys.indexOf(key);
-      const target = idx + direction;
-      if (target < 0 || target >= keys.length) return;
-      [keys[idx], keys[target]] = [keys[target], keys[idx]];
-      updateState({ quickActionOrder: keys });
-      syncToServer({ quickActionOrder: keys, hiddenQuickActions: navState.hiddenQuickActions });
-    },
-    [orderedActions, updateState, syncToServer, navState.hiddenQuickActions]
+  const visibleQuickActions = orderedActions.filter(
+    (a) => !navState.hiddenQuickActions.includes(a.key)
   );
 
-  const toggleHidden = useCallback(
-    (key: string) => {
-      const hidden = navState.hiddenQuickActions;
-      const next = hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key];
+  const hiddenActions = orderedActions.filter((a) => navState.hiddenQuickActions.includes(a.key));
+
+  // Pointer = 8px drag before a reorder starts (so taps still fire onClick).
+  // Touch = 200ms long-press (Apple-style) so scrolling the page still works.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
+
+  const setHidden = useCallback(
+    (key: string, hidden: boolean) => {
+      const current = navState.hiddenQuickActions;
+      const next = hidden
+        ? current.includes(key)
+          ? current
+          : [...current, key]
+        : current.includes(key)
+          ? current.filter((k) => k !== key)
+          : current;
+      if (next === current) return;
       updateState({ hiddenQuickActions: next });
       syncToServer({ quickActionOrder: navState.quickActionOrder, hiddenQuickActions: next });
     },
     [navState.hiddenQuickActions, navState.quickActionOrder, updateState, syncToServer]
   );
 
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragKey(String(event.active.id));
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveDragKey(null);
+      if (!over) return;
+
+      // Dropped on the hide zone → hide the card.
+      if (over.id === QUICK_ACTION_HIDE_ZONE_ID) {
+        setHidden(String(active.id), true);
+        return;
+      }
+
+      // Reordered onto another card → persist the new full order. Both ids are
+      // visible cards, so we move within the full ordered-key list, which keeps
+      // any hidden cards in their existing slots.
+      const fullKeys = orderedActions.map((a) => a.key);
+      const nextOrder = reorderQuickActionKeys(fullKeys, String(active.id), String(over.id));
+      if (nextOrder === fullKeys) return;
+      updateState({ quickActionOrder: nextOrder });
+      syncToServer({
+        quickActionOrder: nextOrder,
+        hiddenQuickActions: navState.hiddenQuickActions,
+      });
+    },
+    [orderedActions, setHidden, updateState, syncToServer, navState.hiddenQuickActions]
+  );
+
   const resetCustomization = useCallback(() => {
     updateState({ quickActionOrder: [], hiddenQuickActions: [] });
     syncToServer({ quickActionOrder: [], hiddenQuickActions: [] });
   }, [updateState, syncToServer]);
+
+  // Header dropdown entries. `dividerBefore` separates the settings group from
+  // the account actions; `adminOnly` items are filtered out for non-admins.
+  const menuItems: ReadonlyArray<{
+    label: string;
+    icon: string;
+    onSelect: () => void;
+    adminOnly?: boolean;
+    danger?: boolean;
+    dividerBefore?: boolean;
+  }> = [
+    { label: 'Appearance', icon: 'palette', onSelect: () => onNavigate('appearance') },
+    {
+      label: 'Notification settings',
+      icon: 'notifications',
+      onSelect: () => onNavigate('notification-settings'),
+    },
+    {
+      label: 'See more settings',
+      icon: 'tune',
+      onSelect: () => onNavigate('admin-settings'),
+      adminOnly: true,
+    },
+    {
+      label: 'Two-factor (MFA)',
+      icon: 'shield_person',
+      onSelect: () => setShowSecurity(true),
+      dividerBefore: true,
+    },
+    { label: 'Log out', icon: 'logout', onSelect: logout, danger: true },
+  ];
+
+  // The card currently being dragged, rendered as the floating DragOverlay clone.
+  const activeDragAction = activeDragKey
+    ? visibleQuickActions.find((a) => a.key === activeDragKey)
+    : null;
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
@@ -696,27 +835,55 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-2">
           <OfflineIndicator />
           <NotificationBell onNavigate={onNavigate} />
-          <button
-            type="button"
-            onClick={() => setShowSecurity(true)}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
-            aria-label="Security and two-factor authentication"
-            title="Security / Two-factor"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined">
-              shield_person
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
-            aria-label="Log out"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined">
-              logout
-            </span>
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setShowMenu((open) => !open)}
+              className={`flex size-11 touch-manipulation items-center justify-center rounded-sm transition-colors hover:bg-white/10 hover:text-white ${showMenu ? 'bg-white/10 text-white' : 'text-muted'}`}
+              aria-label="Menu"
+              title="Menu"
+              aria-haspopup="menu"
+              aria-expanded={showMenu}
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">
+                menu
+              </span>
+            </button>
+            {showMenu && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-sm border border-white/10 bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
+              >
+                <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-subtle">
+                  Settings
+                </p>
+                {menuItems
+                  .filter((item) => !item.adminOnly || isAdmin)
+                  .map((item) => (
+                    <React.Fragment key={item.label}>
+                      {item.dividerBefore && <div className="my-1 border-t border-white/10" />}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setShowMenu(false);
+                          item.onSelect();
+                        }}
+                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-red-300 hover:bg-red-500/10' : 'text-white/90 hover:bg-white/10'}`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`material-symbols-outlined text-lg ${item.danger ? '' : 'text-muted'}`}
+                        >
+                          {item.icon}
+                        </span>
+                        {item.label}
+                      </button>
+                    </React.Fragment>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -750,121 +917,103 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           onNavigateDirect={onNavigate}
         />
 
+        {resumeJob && (
+          <button
+            type="button"
+            onClick={() => onNavigate('job-detail', resumeJob.id)}
+            aria-label={`Resume job #${resumeJob.jobCode} ${resumeJob.name}`}
+            className="mb-4 flex w-full touch-manipulation items-center gap-3 rounded-sm border border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-purple-700/20 p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:opacity-90"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined text-2xl text-violet-400">
+              history
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                Resume Job
+              </p>
+              <p className="truncate font-bold text-white">
+                #{resumeJob.jobCode} • {resumeJob.name}
+              </p>
+            </div>
+            <span aria-hidden="true" className="material-symbols-outlined text-white/40">
+              chevron_right
+            </span>
+          </button>
+        )}
+
         <section aria-labelledby="quick-actions-heading">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="quick-actions-heading" className="text-lg font-bold tracking-tight text-white">
-              Quick Actions
-            </h2>
-            <div className="flex items-center gap-2">
-              {isEditingActions && (
-                <button
-                  type="button"
-                  onClick={resetCustomization}
-                  className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-white/10 hover:text-white"
+          <h2
+            id="quick-actions-heading"
+            className="mb-4 text-lg font-bold tracking-tight text-white"
+          >
+            Quick Actions
+          </h2>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveDragKey(null)}
+          >
+            <SortableContext
+              items={visibleQuickActions.map((a) => a.key)}
+              strategy={rectSortingStrategy}
+            >
+              <ul className="grid grid-cols-2 gap-2.5" role="list">
+                {visibleQuickActions.map((action) => (
+                  <SortableQuickActionCard key={action.key} action={action} />
+                ))}
+              </ul>
+            </SortableContext>
+
+            {activeDragKey && <QuickActionHideZone />}
+
+            {/* The lifted card that floats under the cursor while dragging. */}
+            <DragOverlay>
+              {activeDragAction ? (
+                <div
+                  className={`${quickActionCardBaseClassName} ${activeDragAction.cardClassName} shadow-lg shadow-black/40`}
                 >
-                  <span aria-hidden="true" className="material-symbols-outlined text-sm">
-                    restart_alt
-                  </span>
-                  Reset
-                </button>
+                  <QuickActionCardInner action={activeDragAction} />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+
+          {(navState.quickActionOrder.length > 0 || navState.hiddenQuickActions.length > 0) && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {hiddenActions.length > 0 && (
+                <span className="text-[10px] font-bold uppercase tracking-widest text-subtle">
+                  Hidden
+                </span>
               )}
+              {hiddenActions.map((action) => (
+                <button
+                  key={action.key}
+                  type="button"
+                  onClick={() => setHidden(action.key, false)}
+                  className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-white/20 hover:text-white"
+                  aria-label={`Restore ${action.title}`}
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-xs">
+                    add
+                  </span>
+                  {action.title}
+                </button>
+              ))}
               <button
                 type="button"
-                onClick={() => setIsEditingActions(!isEditingActions)}
-                className={`flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium transition-colors hover:bg-white/10 ${isEditingActions ? 'text-primary' : 'text-muted hover:text-white'}`}
+                onClick={resetCustomization}
+                className="ml-auto flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-white/10 hover:text-white"
               >
-                <span aria-hidden="true" className="material-symbols-outlined text-sm">
-                  {isEditingActions ? 'check' : 'edit'}
+                <span aria-hidden="true" className="material-symbols-outlined text-xs">
+                  restart_alt
                 </span>
-                {isEditingActions ? 'Done' : 'Edit'}
+                Reset
               </button>
             </div>
-          </div>
-          <ul
-            className={isEditingActions ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'}
-            role="list"
-          >
-            {visibleQuickActions.map((action, idx) => {
-              const isHidden = navState.hiddenQuickActions.includes(action.key);
-
-              if (isEditingActions) {
-                return (
-                  <li
-                    key={action.key}
-                    className={`flex items-center gap-2 rounded-sm border p-2 transition-colors ${isHidden ? 'border-white/5 bg-white/[0.02] opacity-50' : `${action.cardClassName}`}`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`material-symbols-outlined text-xl ${isHidden ? 'text-subtle' : action.iconClassName}`}
-                    >
-                      {action.icon}
-                    </span>
-                    <span
-                      className={`flex-1 text-sm font-bold ${isHidden ? 'text-subtle line-through' : 'text-white'}`}
-                    >
-                      {action.title}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleHidden(action.key)}
-                      className="flex size-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
-                      aria-label={isHidden ? `Show ${action.title}` : `Hide ${action.title}`}
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-lg">
-                        {isHidden ? 'visibility_off' : 'visibility'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveAction(action.key, -1)}
-                      disabled={idx === 0}
-                      className="flex size-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
-                      aria-label={`Move ${action.title} up`}
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-lg">
-                        arrow_upward
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveAction(action.key, 1)}
-                      disabled={idx === visibleQuickActions.length - 1}
-                      className="flex size-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white disabled:opacity-25"
-                      aria-label={`Move ${action.title} down`}
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-lg">
-                        arrow_downward
-                      </span>
-                    </button>
-                  </li>
-                );
-              }
-
-              return (
-                <li key={action.key} className="min-w-0">
-                  <button
-                    type="button"
-                    onClick={action.onClick}
-                    className={`${quickActionButtonBaseClassName} ${action.cardClassName}`}
-                    aria-label={action.ariaLabel}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`material-symbols-outlined text-3xl ${action.iconClassName}`}
-                    >
-                      {action.icon}
-                    </span>
-                    <div>
-                      <p className="font-bold text-white">{action.title}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                        {action.subtitle}
-                      </p>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          )}
         </section>
 
         <section aria-labelledby="active-jobs-heading" className="mt-6">
