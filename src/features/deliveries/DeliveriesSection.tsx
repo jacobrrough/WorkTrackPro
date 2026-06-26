@@ -10,6 +10,8 @@ import DeliveryCard from './components/DeliveryCard';
 interface DeliveriesSectionProps {
   job: Job;
   currentUser: User | null;
+  /** Part name keyed by part number, so new packing slips default to the part name. */
+  partNamesByNumber?: Record<string, string>;
 }
 
 function lineKey(partNumber?: string, variantSuffix?: string) {
@@ -33,7 +35,11 @@ function totalOrderedQty(job: Job): number {
   return Number(job.qty) || 0;
 }
 
-const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser }) => {
+const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
+  job,
+  currentUser,
+  partNamesByNumber,
+}) => {
   const { showToast } = useToast();
   const { data: deliveries, isLoading } = useJobDeliveries(job.id);
   const { createDelivery, updateDelivery, deleteDelivery } = useDeliveryMutations({
@@ -166,6 +172,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({ job, currentUser 
           job={job}
           existing={editing ?? undefined}
           alreadyDeliveredByKey={editing ? baselineForEditing : alreadyDeliveredByKey}
+          partNamesByNumber={partNamesByNumber}
           onClose={() => {
             setShowRecord(false);
             setEditing(null);

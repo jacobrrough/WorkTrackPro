@@ -7,6 +7,8 @@ interface RecordDeliveryModalProps {
   job: Job;
   existing?: Delivery;
   alreadyDeliveredByKey: Record<string, number>;
+  /** Part name keyed by part number, used to default line descriptions to the part name. */
+  partNamesByNumber?: Record<string, string>;
   onClose: () => void;
   onSave: (data: {
     deliveredAt: string;
@@ -22,6 +24,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
   job,
   existing,
   alreadyDeliveredByKey,
+  partNamesByNumber,
   onClose,
   onSave,
 }) => {
@@ -32,7 +35,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
   const [recipientName, setRecipientName] = useState(existing?.recipientName ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [lines, setLines] = useState<EditableLine[]>(() =>
-    buildInitialLines(job, alreadyDeliveredByKey, existing)
+    buildInitialLines(job, alreadyDeliveredByKey, existing, partNamesByNumber)
   );
   const [saving, setSaving] = useState(false);
   const [overDeliveryError, setOverDeliveryError] = useState<string | null>(null);
