@@ -145,7 +145,9 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
           </div>
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-subtle sm:text-sm">No notifications</p>
+              <p className="px-3 py-6 text-center text-xs text-subtle sm:text-sm">
+                No notifications
+              </p>
             ) : (
               notifications.slice(0, 20).map((n) => (
                 <button
