@@ -12,6 +12,7 @@ import {
   ViewState,
 } from '@/core/types';
 import { partsService } from '@/services/api/parts';
+import { useMountedRef } from '@/hooks/useMountedRef';
 import { inventoryService } from '@/services/api/inventory';
 import { useToast } from '@/Toast';
 import { useApp } from '@/AppContext';
@@ -59,6 +60,9 @@ const ACCEPTED_IMAGE_MIME_TYPES = [
   'image/webp',
   'image/gif',
 ];
+
+/** File-picker `accept` filter derived from the validator allowlist so the two can't drift. */
+const PRODUCT_IMAGE_ACCEPT = ACCEPTED_IMAGE_MIME_TYPES.join(',');
 
 /**
  * Validate a file picked for a product image. Returns a user-facing error message, or null when
@@ -1547,7 +1551,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   ))}
                   <FileUploadButton
                     label={productImages.length > 0 ? 'Upload more' : 'Upload product images'}
-                    accept="image/*"
+                    accept={PRODUCT_IMAGE_ACCEPT}
                     multiple
                     onUpload={handleProductImageUpload}
                   />
@@ -3532,17 +3536,10 @@ interface ProductImageRowProps {
 
 const ProductImageRow: React.FC<ProductImageRowProps> = ({ img, partId, onChanged, showToast }) => {
   const replaceInputRef = useRef<HTMLInputElement>(null);
-  const mountedRef = useRef(true);
+  const mountedRef = useMountedRef();
   // Latch guards re-entry before `busy` state has painted (fast double-click / Enter-repeat).
   const busyRef = useRef(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   const handleReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -3557,21 +3554,19 @@ const ProductImageRow: React.FC<ProductImageRowProps> = ({ img, partId, onChange
     busyRef.current = true;
     setBusy(true);
     try {
-      // Upload the new image first so a failure never loses the existing one.
-      const result = await partsService.addPartProductImage(partId, file);
-      if (!result.success) {
-        throw new Error(result.error || 'Upload failed');
-      }
-      const removed = await partsService.deletePartProductImage(img.id);
-      if (!removed) {
+      const result = await partsService.replacePartProductImage(partId, img.id, file);
+      if (result.status === 'upload_failed') {
+        showToast(result.error || 'Failed to replace image', 'error');
+      } else if (result.status === 'old_not_removed') {
         showToast(
           'New image uploaded, but the old one could not be removed — it is still listed below. Remove it manually.',
           'warning'
         );
+        await onChanged();
       } else {
         showToast(`Replaced with "${file.name}"`, 'success');
+        await onChanged();
       }
-      await onChanged();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to replace image', 'error');
     } finally {
@@ -3615,7 +3610,7 @@ const ProductImageRow: React.FC<ProductImageRowProps> = ({ img, partId, onChange
       <input
         ref={replaceInputRef}
         type="file"
-        accept="image/*"
+        accept={PRODUCT_IMAGE_ACCEPT}
         onChange={handleReplace}
         className="hidden"
       />
@@ -3651,17 +3646,25 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
   const [description, setDescription] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // Set when the entered part number is already taken. Drives the red SKU field + a persistent
+  // inline error (naming the existing part) that stays until the user edits the number or closes
+  // the form — deliberately not an auto-dismissing toast, so a duplicate is hard to miss.
+  const [duplicateError, setDuplicateError] = useState<{
+    message: string;
+    existingId: string;
+  } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   // Latch guards re-entry before `submitting` state has painted (Enter + click double-fire).
   const submittingRef = useRef(false);
-  const mountedRef = useRef(true);
+  const mountedRef = useMountedRef();
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  /** Flag the entered part number as a duplicate of an existing part (block creation, show inline). */
+  const flagDuplicatePart = (existing: Part, enteredNumber: string) => {
+    setDuplicateError({
+      message: `Part number "${enteredNumber}" is already used by "${existing.name || existing.partNumber}". Choose a different number.`,
+      existingId: existing.id,
+    });
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -3692,6 +3695,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       return;
     }
 
+    setDuplicateError(null);
     submittingRef.current = true;
     setSubmitting(true);
     try {
@@ -3699,8 +3703,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       try {
         const existing = await partsService.getPartByNumber(pn);
         if (existing) {
-          showToast(`Part "${pn}" already exists. Opening existing part.`, 'warning');
-          onCreated(existing.id);
+          flagDuplicatePart(existing, pn);
           return;
         }
       } catch (err) {
@@ -3714,6 +3717,13 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
         description: description.trim() || undefined,
       });
       if (!created || !created.id) {
+        // A concurrent client may have won the part-number race (DB unique constraint). Re-fetch
+        // and flag the duplicate inline rather than reporting a bare failure.
+        const existing = await partsService.getPartByNumber(pn);
+        if (existing) {
+          flagDuplicatePart(existing, pn);
+          return;
+        }
         showToast('Failed to create part. It may already exist.', 'error');
         return;
       }
@@ -3749,11 +3759,10 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       const errorMsg =
         err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unknown error';
       if (errorMsg.includes('duplicate') || errorMsg.includes('unique')) {
-        // Try to find and open the existing part
+        // Flag the conflicting part inline rather than failing with a raw error.
         const existing = await partsService.getPartByNumber(pn);
         if (existing) {
-          showToast(`Part "${pn}" already exists. Opening existing part.`, 'warning');
-          onCreated(existing.id);
+          flagDuplicatePart(existing, pn);
           return;
         }
       }
@@ -3789,11 +3798,35 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
             <input
               type="text"
               value={partNumber}
-              onChange={(e) => setPartNumber(e.target.value.toUpperCase())}
+              onChange={(e) => {
+                setPartNumber(e.target.value.toUpperCase());
+                // Clear the duplicate warning as soon as they start changing the number.
+                if (duplicateError) setDuplicateError(null);
+              }}
               placeholder="e.g. SK-F35-0911"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+              aria-invalid={duplicateError ? true : undefined}
+              className={`w-full rounded-sm border bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:outline-none ${
+                duplicateError
+                  ? 'border-red-500/70 focus:border-red-500'
+                  : 'border-white/10 focus:border-primary/50'
+              }`}
               required
             />
+            {duplicateError && (
+              <div
+                role="alert"
+                className="mt-2 rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+              >
+                <p>{duplicateError.message}</p>
+                <button
+                  type="button"
+                  onClick={() => onCreated(duplicateError.existingId)}
+                  className="mt-1 font-medium text-red-200 underline hover:text-white"
+                >
+                  Open existing part
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-muted">
@@ -3845,7 +3878,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
             <input
               ref={imageInputRef}
               type="file"
-              accept="image/*"
+              accept={PRODUCT_IMAGE_ACCEPT}
               multiple
               onChange={handleImageSelect}
               className="hidden"
