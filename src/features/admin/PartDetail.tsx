@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Part,
   PartVariant,
@@ -49,6 +49,36 @@ import {
 } from '@/lib/variantPricingAuto';
 import { usePartJobs, usePartLaborFeedback } from '@/features/admin/hooks/usePartLaborFeedback';
 import { canViewPartFinancials } from '@/lib/priceVisibility';
+
+/** Max size for a product image upload. Mirrors the cap enforced by FileUploadButton. */
+const MAX_PRODUCT_IMAGE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+];
+
+/**
+ * Validate a file picked for a product image. Returns a user-facing error message, or null when
+ * the file is acceptable. The client check is for UX/defense-in-depth only — the storage bucket
+ * policy is the real control — but it stops the obvious cases before a round-trip. The type must
+ * be in the allowlist, so an empty/spoofed MIME or `image/svg+xml` (a stored-XSS vector on the
+ * public storefront) is rejected rather than waved through.
+ */
+function validateProductImageFile(file: File): string | null {
+  if (!ACCEPTED_IMAGE_MIME_TYPES.includes(file.type)) {
+    return `"${file.name}" is not a supported image type (PNG, JPG, WEBP, or GIF).`;
+  }
+  if (file.size === 0) {
+    return `"${file.name}" is empty.`;
+  }
+  if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+    return `"${file.name}" is too large (max 10MB).`;
+  }
+  return null;
+}
 
 interface PartDetailProps {
   partId: string;
@@ -179,6 +209,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
     null
   );
   const [productImages, setProductImages] = useState<Attachment[]>([]);
+  const productImagesReqRef = useRef(0);
   const [savingPartInfo, setSavingPartInfo] = useState(false);
   const [confirmDeletePart, setConfirmDeletePart] = useState(false);
   const [deletingPart, setDeletingPart] = useState(false);
@@ -292,19 +323,45 @@ const PartDetail: React.FC<PartDetailProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keep draft stable while editing; reset only when switching parts
   }, [part?.id]);
 
+  /**
+   * Refetch product images and apply only if this is still the latest request. The request-id
+   * guard prevents an out-of-order response (e.g. two rows replacing concurrently) from clobbering
+   * the list with a stale snapshot.
+   */
+  const refreshProductImages = useCallback(async (partIdToLoad: string) => {
+    const reqId = ++productImagesReqRef.current;
+    const list = await partsService.getPartProductImages(partIdToLoad);
+    if (reqId === productImagesReqRef.current) {
+      setProductImages(list);
+    }
+  }, []);
+
+  /** Shared upload handler for the product-images FileUploadButton (validate → upload → refresh). */
+  const handleProductImageUpload = useCallback(
+    async (file: File) => {
+      if (!part?.id) throw new Error('Part not loaded');
+      const validationError = validateProductImageFile(file);
+      if (validationError) throw new Error(validationError);
+      const result = await partsService.addPartProductImage(part.id, file);
+      if (result.success) {
+        await refreshProductImages(part.id);
+        showToast(`Uploaded "${file.name}"`, 'success');
+        return true;
+      }
+      throw new Error(result.error || 'Upload failed');
+    },
+    [part?.id, refreshProductImages, showToast]
+  );
+
   useEffect(() => {
     if (!part?.id || isVirtualPart) {
+      // Invalidate any in-flight refresh so its response can't land after we clear the list.
+      productImagesReqRef.current++;
       setProductImages([]);
       return;
     }
-    let cancelled = false;
-    partsService.getPartProductImages(part.id).then((list) => {
-      if (!cancelled) setProductImages(list);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [part?.id, isVirtualPart]);
+    void refreshProductImages(part.id);
+  }, [part?.id, isVirtualPart, refreshProductImages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1478,67 +1535,23 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 <p className="mb-2 text-xs text-subtle">
                   Images shown on the public store for this part. Upload one or more.
                 </p>
-                {productImages.length > 0 ? (
-                  <div className="space-y-2">
-                    {productImages.map((img) => (
-                      <div key={img.id} className="flex flex-wrap items-center gap-2">
-                        <a
-                          href={img.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-[44px] items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
-                        >
-                          <span className="material-symbols-outlined text-primary">image</span>
-                          {img.filename}
-                        </a>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const ok = await partsService.deletePartProductImage(img.id);
-                            if (ok) {
-                              setProductImages((prev) => prev.filter((a) => a.id !== img.id));
-                              showToast('Product image removed', 'success');
-                            } else {
-                              showToast('Failed to remove image', 'error');
-                            }
-                          }}
-                          className="min-h-[44px] rounded-sm border border-red-500/30 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                    <FileUploadButton
-                      label="Upload more"
-                      multiple
-                      onUpload={async (file) => {
-                        const result = await partsService.addPartProductImage(part.id, file);
-                        if (result.success) {
-                          const list = await partsService.getPartProductImages(part.id);
-                          setProductImages(list);
-                          showToast(`Uploaded "${file.name}"`, 'success');
-                          return true;
-                        }
-                        throw new Error(result.error || 'Upload failed');
-                      }}
+                <div className="space-y-2">
+                  {productImages.map((img) => (
+                    <ProductImageRow
+                      key={img.id}
+                      img={img}
+                      partId={part.id}
+                      onChanged={() => refreshProductImages(part.id)}
+                      showToast={showToast}
                     />
-                  </div>
-                ) : (
+                  ))}
                   <FileUploadButton
-                    label="Upload product images"
+                    label={productImages.length > 0 ? 'Upload more' : 'Upload product images'}
+                    accept="image/*"
                     multiple
-                    onUpload={async (file) => {
-                      const result = await partsService.addPartProductImage(part.id, file);
-                      if (result.success) {
-                        const list = await partsService.getPartProductImages(part.id);
-                        setProductImages(list);
-                        showToast(`Uploaded "${file.name}"`, 'success');
-                        return true;
-                      }
-                      throw new Error(result.error || 'Upload failed');
-                    }}
+                    onUpload={handleProductImageUpload}
                   />
-                )}
+                </div>
               </div>
             )}
           </div>
@@ -3510,6 +3523,122 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
   );
 };
 
+interface ProductImageRowProps {
+  img: Attachment;
+  partId: string;
+  onChanged: () => Promise<void> | void;
+  showToast: (message: string, type: 'success' | 'error' | 'warning') => void;
+}
+
+const ProductImageRow: React.FC<ProductImageRowProps> = ({ img, partId, onChanged, showToast }) => {
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(true);
+  // Latch guards re-entry before `busy` state has painted (fast double-click / Enter-repeat).
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (replaceInputRef.current) replaceInputRef.current.value = '';
+    if (!file) return;
+    const validationError = validateProductImageFile(file);
+    if (validationError) {
+      showToast(validationError, 'error');
+      return;
+    }
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      // Upload the new image first so a failure never loses the existing one.
+      const result = await partsService.addPartProductImage(partId, file);
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+      const removed = await partsService.deletePartProductImage(img.id);
+      if (!removed) {
+        showToast(
+          'New image uploaded, but the old one could not be removed — it is still listed below. Remove it manually.',
+          'warning'
+        );
+      } else {
+        showToast(`Replaced with "${file.name}"`, 'success');
+      }
+      await onChanged();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to replace image', 'error');
+    } finally {
+      busyRef.current = false;
+      // Guard: onChanged may unmount this row (the image is gone from the refreshed list).
+      if (mountedRef.current) setBusy(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const ok = await partsService.deletePartProductImage(img.id);
+      if (ok) {
+        await onChanged();
+        showToast('Product image removed', 'success');
+      } else {
+        showToast('Failed to remove image', 'error');
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to remove image', 'error');
+    } finally {
+      busyRef.current = false;
+      if (mountedRef.current) setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <a
+        href={img.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+      >
+        <span className="material-symbols-outlined text-primary">image</span>
+        {img.filename}
+      </a>
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleReplace}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={() => replaceInputRef.current?.click()}
+        disabled={busy}
+        className="min-h-[44px] rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {busy ? 'Working…' : 'Replace'}
+      </button>
+      <button
+        type="button"
+        onClick={handleRemove}
+        disabled={busy}
+        className="min-h-[44px] rounded-sm border border-red-500/30 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Remove
+      </button>
+    </div>
+  );
+};
+
 interface CreatePartFormProps {
   onCreated: (partId: string) => void;
   onCancel: () => void;
@@ -3520,10 +3649,42 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
   const [partNumber, setPartNumber] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  // Latch guards re-entry before `submitting` state has painted (Enter + click double-fire).
+  const submittingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    const valid = selected.filter((file) => {
+      const validationError = validateProductImageFile(file);
+      if (validationError) {
+        showToast(validationError, 'error');
+        return false;
+      }
+      return true;
+    });
+    setImages((prev) => [...prev, ...valid]);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     const pn = partNumber.trim().toUpperCase();
     const n = name.trim() || pn;
     if (!pn) {
@@ -3531,20 +3692,21 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       return;
     }
 
-    // Check if part already exists
-    try {
-      const existing = await partsService.getPartByNumber(pn);
-      if (existing) {
-        showToast(`Part "${pn}" already exists. Opening existing part.`, 'warning');
-        onCreated(existing.id);
-        return;
-      }
-    } catch (err) {
-      console.error('Error checking for existing part:', err);
-    }
-
+    submittingRef.current = true;
     setSubmitting(true);
     try {
+      // Check if part already exists
+      try {
+        const existing = await partsService.getPartByNumber(pn);
+        if (existing) {
+          showToast(`Part "${pn}" already exists. Opening existing part.`, 'warning');
+          onCreated(existing.id);
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking for existing part:', err);
+      }
+
       const created = await partsService.createPart({
         partNumber: pn,
         name: n,
@@ -3553,6 +3715,31 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       });
       if (!created || !created.id) {
         showToast('Failed to create part. It may already exist.', 'error');
+        return;
+      }
+      if (images.length > 0) {
+        let uploaded = 0;
+        for (const file of images) {
+          const result = await partsService.addPartProductImage(created.id, file);
+          if (result.success) uploaded += 1;
+        }
+        if (uploaded === images.length) {
+          showToast(
+            `Part created with ${uploaded} image${uploaded === 1 ? '' : 's'}. Add variants and set composition.`,
+            'success'
+          );
+        } else if (uploaded > 0) {
+          showToast(
+            `Part created with ${uploaded} of ${images.length} images — ${images.length - uploaded} failed. Add the rest from the part page.`,
+            'warning'
+          );
+        } else {
+          showToast(
+            'Part created, but no images could be uploaded. Add them from the part page.',
+            'warning'
+          );
+        }
+        onCreated(created.id);
         return;
       }
       showToast('Part created. Add variants and set composition.', 'success');
@@ -3572,7 +3759,9 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       }
       showToast(`Failed to create part: ${errorMsg}`, 'error');
     } finally {
-      setSubmitting(false);
+      submittingRef.current = false;
+      // onCreated may have navigated away and unmounted this form.
+      if (mountedRef.current) setSubmitting(false);
     }
   };
 
@@ -3627,6 +3816,48 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               rows={2}
               className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-muted">Image (optional)</label>
+            <p className="mb-2 text-xs text-subtle">
+              Add one or more product pictures. Shown on the public store for this part.
+            </p>
+            {images.length > 0 && (
+              <div className="mb-2 space-y-2">
+                {images.map((file, index) => (
+                  <div
+                    key={`${file.name}-${index}`}
+                    className="flex items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2"
+                  >
+                    <span className="material-symbols-outlined text-primary">image</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-white">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="shrink-0 rounded-sm border border-red-500/30 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
+              {images.length > 0 ? 'Add another image' : 'Add image'}
+            </button>
           </div>
           <div className="flex gap-3 pt-2">
             <button
