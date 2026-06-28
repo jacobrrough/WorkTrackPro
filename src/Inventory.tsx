@@ -208,6 +208,11 @@ const Inventory: React.FC<InventoryProps> = ({
           if (tab) updateState({ inventoryTab: tab });
           openView('all');
         }}
+        onSearch={(term) => {
+          setFilters((prev) => ({ ...prev, search: term }));
+          updateState({ inventorySearchTerm: term, inventoryTab: 'allParts' });
+          openView('all');
+        }}
         onOpenFlow={(mode) => openView(mode)}
         onOpenDetail={(itemId) => onNavigate('inventory-detail', itemId)}
         onBack={() => onNavigate('dashboard')}
