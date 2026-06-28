@@ -117,15 +117,15 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-sm border border-white/10 bg-app-2 shadow-xl">
-          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-            <span className="text-sm font-bold text-white">Notifications</span>
+        <div className="absolute right-0 top-full z-50 mt-1 w-72 max-w-[calc(100vw-1.5rem)] rounded-sm border border-white/10 bg-app-2 shadow-xl sm:w-80">
+          <div className="flex items-center justify-between border-b border-white/10 px-2.5 py-1.5 sm:px-3 sm:py-2">
+            <span className="text-xs font-bold text-white sm:text-sm">Notifications</span>
             <div className="flex items-center gap-2">
               {notifications.some((n) => !n.readAt) && (
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="text-xs text-primary hover:underline"
+                  className="text-[11px] text-primary hover:underline sm:text-xs"
                 >
                   Mark all read
                 </button>
@@ -136,30 +136,30 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   setOpen(false);
                   onNavigate?.('notification-settings' as ViewState);
                 }}
-                className="flex size-7 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-6 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white sm:size-7"
                 aria-label="Notification settings"
               >
-                <span className="material-symbols-outlined text-base">settings</span>
+                <span className="material-symbols-outlined text-sm sm:text-base">settings</span>
               </button>
             </div>
           </div>
           <div className="max-h-72 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-subtle">No notifications</p>
+              <p className="px-3 py-6 text-center text-xs text-subtle sm:text-sm">No notifications</p>
             ) : (
               notifications.slice(0, 20).map((n) => (
                 <button
                   key={n.id}
                   type="button"
                   onClick={() => handleSelect(n)}
-                  className={`flex w-full flex-col items-start gap-0.5 border-b border-white/5 px-3 py-2 text-left transition-colors hover:bg-white/10 ${
+                  className={`flex w-full flex-col items-start gap-0.5 border-b border-white/5 px-2.5 py-1.5 text-left transition-colors hover:bg-white/10 sm:px-3 sm:py-2 ${
                     n.readAt ? 'opacity-80' : ''
                   }`}
                 >
-                  <span className="text-xs font-bold uppercase text-primary">
+                  <span className="text-[10px] font-bold uppercase text-primary sm:text-xs">
                     {TYPE_LABELS[n.type] ?? n.type.replace(/_/g, ' ')}
                   </span>
-                  <span className="text-sm text-white">{n.message}</span>
+                  <span className="text-xs text-white sm:text-sm">{n.message}</span>
                 </button>
               ))
             )}
