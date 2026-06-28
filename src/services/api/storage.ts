@@ -69,7 +69,7 @@ export async function uploadAttachment(
   const path = `${prefix}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage
     .from(BUCKET_ATTACHMENTS)
-    .upload(path, file, { upsert: false });
+    .upload(path, file, { upsert: false, contentType: file.type || undefined });
   if (error) {
     console.error('Upload attachment failed:', error);
     return { id: null, error: error.message || 'Storage upload failed' };
@@ -107,7 +107,18 @@ export async function deleteAttachmentRecord(attachmentId: string): Promise<bool
     .eq('id', attachmentId)
     .single();
   if (att?.storage_path) {
-    await supabase.storage.from(BUCKET_ATTACHMENTS).remove([att.storage_path]);
+    const { error: removeErr } = await supabase.storage
+      .from(BUCKET_ATTACHMENTS)
+      .remove([att.storage_path]);
+    if (removeErr) {
+      // Don't fail the whole delete — the DB row is the source of truth for listings —
+      // but log so an orphaned (publicly reachable) storage object can be reconciled.
+      console.error(
+        'Failed to remove attachment storage object (orphaned):',
+        att.storage_path,
+        removeErr
+      );
+    }
   }
   const { error } = await supabase.from('attachments').delete().eq('id', attachmentId);
   return !error;
