@@ -16,6 +16,7 @@ import {
   getSku,
   getSuppliers,
   groupByBin,
+  groupBinsByLetter,
   matchesFilters,
   stockStatePill,
 } from './inventoryViewModel';
@@ -64,6 +65,15 @@ export default function InventoryMainView({
     updateState({ inventoryTab: t });
   };
 
+  // Whole sub-header (tabs + search/filters + stats) collapses to just the title bar so the
+  // list gets the screen. The choice is persisted so it sticks across navigation/reloads.
+  const [headerExpanded, setHeaderExpanded] = useState(() => navState.inventoryFiltersOpen ?? true);
+  const toggleHeader = () => {
+    const next = !headerExpanded;
+    setHeaderExpanded(next);
+    updateState({ inventoryFiltersOpen: next });
+  };
+
   const suppliers = useMemo(() => getSuppliers(inventory), [inventory]);
   const baseFiltered = useMemo(
     () =>
@@ -92,6 +102,7 @@ export default function InventoryMainView({
   }, [baseFiltered, calculateAllocated, calculateAvailable, tab]);
 
   const bins = useMemo(() => groupByBin(baseFiltered), [baseFiltered]);
+  const binLetterGroups = useMemo(() => groupBinsByLetter(bins), [bins]);
   const summary = useMemo(() => {
     let needsReorder = 0;
     let lowStock = 0;
@@ -245,56 +256,89 @@ export default function InventoryMainView({
           ))}
         </div>
 
-        <div className="space-y-2">
-          <input
-            type="search"
-            value={filters.search}
-            onChange={(event) => onFiltersChange({ search: event.target.value })}
-            placeholder="Search name, SKU, bin, category"
-            className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
-          />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <select
-              value={filters.category}
-              onChange={(event) => onFiltersChange({ category: event.target.value })}
-              className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
-            >
-              <option value="all">All Categories</option>
-              {categoryOptions.map((cat) => (
-                <option key={cat.key} value={cat.key}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filters.supplier}
-              onChange={(event) => onFiltersChange({ supplier: event.target.value })}
-              className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
-            >
-              <option value="all">All Suppliers</option>
-              {suppliers.map((supplier) => (
-                <option key={supplier} value={supplier}>
-                  {supplier}
-                </option>
-              ))}
-            </select>
+        {/* Search / filters / stats — collapses with a smooth height + fade transition.
+            The grid-rows 1fr→0fr trick animates height without measuring the content. */}
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+            headerExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div
+            id="inventory-filters-panel"
+            className="min-h-0 overflow-hidden"
+            inert={!headerExpanded ? true : undefined}
+          >
+            <div className="space-y-2">
+              <input
+                type="search"
+                value={filters.search}
+                onChange={(event) => onFiltersChange({ search: event.target.value })}
+                placeholder="Search name, SKU, bin, category"
+                className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+              />
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <select
+                  value={filters.category}
+                  onChange={(event) => onFiltersChange({ category: event.target.value })}
+                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
+                >
+                  <option value="all">All Categories</option>
+                  {categoryOptions.map((cat) => (
+                    <option key={cat.key} value={cat.key}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.supplier}
+                  onChange={(event) => onFiltersChange({ supplier: event.target.value })}
+                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
+                >
+                  <option value="all">All Suppliers</option>
+                  {suppliers.map((supplier) => (
+                    <option key={supplier} value={supplier}>
+                      {supplier}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:text-sm">
+              <div className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white">
+                <p className="text-muted">Parts</p>
+                <p className="font-bold text-white">{summary.total}</p>
+              </div>
+              <div className="rounded-sm border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-200">
+                <p className="text-yellow-300/80">Needs Reorder</p>
+                <p className="font-bold">{summary.needsReorder}</p>
+              </div>
+              <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
+                <p className="text-red-300/80">Low/Critical</p>
+                <p className="font-bold">{summary.lowStock}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:text-sm">
-          <div className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white">
-            <p className="text-muted">Parts</p>
-            <p className="font-bold text-white">{summary.total}</p>
-          </div>
-          <div className="rounded-sm border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-200">
-            <p className="text-yellow-300/80">Needs Reorder</p>
-            <p className="font-bold">{summary.needsReorder}</p>
-          </div>
-          <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
-            <p className="text-red-300/80">Low/Critical</p>
-            <p className="font-bold">{summary.lowStock}</p>
-          </div>
-        </div>
+        {/* Collapse/expand strip: tucks the tabs, search, filters, and stats away so the
+            list gets the full screen, leaving just the title bar. */}
+        <button
+          type="button"
+          onClick={toggleHeader}
+          aria-expanded={headerExpanded}
+          aria-controls="inventory-filters-panel"
+          aria-label={headerExpanded ? 'Collapse filters' : 'Expand filters'}
+          className="mt-2 flex w-full items-center justify-center rounded-sm py-1 text-muted hover:bg-white/5 hover:text-white"
+        >
+          <span
+            className={`material-symbols-outlined text-xl transition-transform duration-300 ease-in-out ${
+              headerExpanded ? 'rotate-180' : ''
+            }`}
+          >
+            keyboard_arrow_down
+          </span>
+        </button>
       </div>
 
       <ScrollablePage ref={scrollRef} onScroll={handleScroll} className="p-3">
@@ -316,16 +360,31 @@ export default function InventoryMainView({
           />
         ) : tab === 'byBin' ? (
           <div className="space-y-3">
-            {bins.map((group) => (
+            {binLetterGroups.map((letterGroup) => (
               <details
-                key={group.bin}
-                open
+                key={letterGroup.letter}
                 className="rounded-sm border border-white/10 bg-white/5"
               >
-                <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-white">
-                  {group.bin} ({group.items.length})
+                <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-white">
+                  <span>{letterGroup.letter}</span>
+                  <span className="text-xs font-normal text-muted">
+                    {letterGroup.bins.length} bin{letterGroup.bins.length !== 1 ? 's' : ''} ·{' '}
+                    {letterGroup.itemCount} item{letterGroup.itemCount !== 1 ? 's' : ''}
+                  </span>
                 </summary>
-                <div className="space-y-2 p-2">{group.items.map(renderRow)}</div>
+                <div className="space-y-2 p-2">
+                  {letterGroup.bins.map((group) => (
+                    <details
+                      key={group.bin}
+                      className="rounded-sm border border-white/10 bg-background-dark"
+                    >
+                      <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-white">
+                        {group.bin} ({group.items.length})
+                      </summary>
+                      <div className="space-y-2 p-2">{group.items.map(renderRow)}</div>
+                    </details>
+                  ))}
+                </div>
               </details>
             ))}
           </div>

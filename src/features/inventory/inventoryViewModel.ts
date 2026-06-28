@@ -64,7 +64,12 @@ export function matchesFilters(item: InventoryItem, filters: InventoryFilters): 
   return bag.includes(q);
 }
 
-export function groupByBin(items: InventoryItem[]): Array<{ bin: string; items: InventoryItem[] }> {
+export interface BinGroup {
+  bin: string;
+  items: InventoryItem[];
+}
+
+export function groupByBin(items: InventoryItem[]): BinGroup[] {
   const bins = new Map<string, InventoryItem[]>();
   for (const item of items) {
     const key = item.binLocation?.trim() || 'Unassigned';
@@ -78,6 +83,43 @@ export function groupByBin(items: InventoryItem[]): Array<{ bin: string; items: 
       items: groupedItems.sort((a, b) => a.name.localeCompare(b.name)),
     }))
     .sort((a, b) => a.bin.localeCompare(b.bin));
+}
+
+export interface BinLetterGroup {
+  /**
+   * Leading letter of the bin (e.g. "C" for C1a, C3b). Bins with no location group under
+   * "Unassigned"; bins not starting with a letter fall under "#".
+   */
+  letter: string;
+  bins: BinGroup[];
+  itemCount: number;
+}
+
+// Roll the flat bin list up under its first letter so "By Bin" can show a compact
+// alphabetical index (C ▸ C1a, C3b …) that the user expands one letter at a time.
+export function groupBinsByLetter(bins: BinGroup[]): BinLetterGroup[] {
+  const letters = new Map<string, BinGroup[]>();
+  for (const group of bins) {
+    // Keep the synthetic "Unassigned" bucket in its own group rather than folding it under
+    // "U" alongside genuine U-prefixed bins.
+    let letter: string;
+    if (group.bin === 'Unassigned') {
+      letter = 'Unassigned';
+    } else {
+      const first = group.bin.charAt(0).toUpperCase();
+      letter = /[A-Z]/.test(first) ? first : '#';
+    }
+    const arr = letters.get(letter) ?? [];
+    arr.push(group);
+    letters.set(letter, arr);
+  }
+  return Array.from(letters.entries())
+    .map(([letter, groupedBins]) => ({
+      letter,
+      bins: groupedBins.sort((a, b) => a.bin.localeCompare(b.bin)),
+      itemCount: groupedBins.reduce((sum, g) => sum + g.items.length, 0),
+    }))
+    .sort((a, b) => a.letter.localeCompare(b.letter));
 }
 
 export interface HubSummary {
