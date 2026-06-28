@@ -71,3 +71,12 @@ backups/
 .claude/worktrees/
 .claude/worktrees/**
 
+# impeccable design skill (third-party, installed via `npx impeccable install`)
+.impeccable/
+.claude/skills/
+.claude/settings.local.json
+.cursor/hooks.json
+.cursor/skills/impeccable/
+.github/hooks/
+.github/skills/
+

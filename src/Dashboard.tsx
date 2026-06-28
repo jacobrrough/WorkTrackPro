@@ -88,8 +88,15 @@ interface DashboardQuickAction {
 /** Droppable id for the "drop here to hide" zone shown while dragging a quick action. */
 const QUICK_ACTION_HIDE_ZONE_ID = '__quick-action-hide-zone__';
 
+/**
+ * Shared activation gate for both the pointer and touch drag sensors: a card only
+ * lifts after a deliberate ~1s press-and-hold that stays within 5px. Any earlier
+ * movement is treated as a click/scroll, so a reorder never triggers by accident.
+ */
+const QUICK_ACTION_DRAG_ACTIVATION = { delay: 1000, tolerance: 5 } as const;
+
 const quickActionCardBaseClassName =
-  'flex min-h-[3.5rem] w-full touch-manipulation items-center gap-2.5 rounded-sm border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:opacity-90';
+  'flex min-h-[3.5rem] w-full touch-manipulation items-center gap-2.5 rounded-sm border p-2.5 text-left transition-[transform,colors] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.97] active:opacity-90';
 
 /** The visual contents of a quick-action card — shared by the live card and the drag clone. */
 const QuickActionCardInner: React.FC<{ action: DashboardQuickAction }> = ({ action }) => (
@@ -105,9 +112,15 @@ const QuickActionCardInner: React.FC<{ action: DashboardQuickAction }> = ({ acti
 );
 
 /**
- * A single quick-action card that is sortable via drag (long-press on touch,
- * 8px drag on pointer). A plain tap/click still fires onClick because the
- * sensors only start a drag once the activation threshold is crossed.
+ * A single quick-action card that is sortable via drag. Both mouse and touch
+ * require a deliberate ~1s press-and-hold before the card lifts (see the sensor
+ * activation constraints). A plain tap/click still fires onClick because a drag
+ * only begins once the hold completes without the pointer drifting.
+ *
+ * Touch behaviour is iOS-like: a *moving* swipe scrolls the page (we leave
+ * vertical panning to the browser via `touch-action: pan-y`), while a *stationary*
+ * press-and-hold lifts the card — at which point handleDragStart fires a haptic
+ * "click" so it feels picked up, exactly like rearranging apps on a home screen.
  *
  * While this card is the one being dragged, its slot renders a dashed skeleton
  * placeholder that tracks the projected drop position — the lifted card itself
@@ -121,9 +134,11 @@ const SortableQuickActionCard: React.FC<{ action: DashboardQuickAction }> = ({ a
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    // Block native scroll/zoom while holding so the TouchSensor delay isn't racing
-    // the browser's pan gesture (same fix as the board cards).
-    touchAction: 'none',
+    // Let the browser handle vertical scrolling so a swipe that starts on a card
+    // still scrolls the page; the TouchSensor's hold-delay is what distinguishes
+    // a deliberate pick-up from a scroll. (Blocking all touch-action here was the
+    // bug that made scrolling feel like it was being eaten / mistaken for a drag.)
+    touchAction: 'pan-y',
   };
 
   return (
@@ -717,11 +732,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   const hiddenActions = orderedActions.filter((a) => navState.hiddenQuickActions.includes(a.key));
 
-  // Pointer = 8px drag before a reorder starts (so taps still fire onClick).
-  // Touch = 200ms long-press (Apple-style) so scrolling the page still works.
+  // Both pointer (mouse) and touch gate on the same deliberate press-and-hold
+  // (QUICK_ACTION_DRAG_ACTIVATION) so a reorder only starts when intended — never
+  // on the slightest drag/scroll. handleDragStart fires the haptic on activation.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: QUICK_ACTION_DRAG_ACTIVATION }),
+    useSensor(TouchSensor, { activationConstraint: QUICK_ACTION_DRAG_ACTIVATION })
   );
 
   const setHidden = useCallback(
@@ -742,6 +758,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    // Haptic "click" the instant a card is picked up, so a touch drag feels like
+    // lifting an app icon on an iOS home screen. No-op where unsupported (iOS
+    // Safari ignores it; Android/Chrome buzzes).
+    navigator.vibrate?.(10);
     setActiveDragKey(String(event.active.id));
   }, []);
 
