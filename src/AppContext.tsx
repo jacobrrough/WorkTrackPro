@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useActiveShift } from '@/hooks/useActiveShift';
 import { useAppQueries } from '@/hooks/useAppQueries';
 import { useJobMutations } from '@/hooks/useJobMutations';
+import { getNextWorkflowStatus } from '@/lib/jobWorkflow';
 import { useClockMutations } from '@/hooks/useClockMutations';
 import { useInventoryMutations } from '@/hooks/useInventoryMutations';
 import { useAttachmentMutations } from '@/hooks/useAttachmentMutations';
@@ -84,6 +85,10 @@ export interface AppContextType {
   clockOutPromptJob: Job | null;
   /** Resolve the pending clock-out prompt so the deferred punch can proceed. */
   completeClockOutPrompt: () => void;
+  /** Job whose In Progress -> QC "used more than estimate?" popup is pending. Hosted in AppShell. */
+  qcMaterialPromptJob: Job | null;
+  /** Resolve the pending QC material prompt so the deferred status change can proceed. */
+  completeQcMaterialPrompt: () => void;
   startLunch: () => Promise<boolean>;
   endLunch: () => Promise<boolean>;
   createInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
@@ -309,6 +314,54 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       return clockMutations.clockIn(jobId);
     },
     [clockMutations, queries.jobs, activeShift, jobNeedsCompletionPrompt, promptForJob]
+  );
+
+  // In Progress -> Quality Control material-usage gate: before the move, ask "used more than the
+  // estimate?" per BOM material so scrap/mistakes don't leave hidden inventory drift. Online-only
+  // (the extra-usage RPC has no offline queue, mirroring the per-unit progress log); offline the
+  // status change just proceeds via its normal path.
+  const [qcMaterialPrompt, setQcMaterialPrompt] = useState<{
+    job: Job;
+    resolve: () => void;
+  } | null>(null);
+  const qcMaterialResolverRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    return () => {
+      qcMaterialResolverRef.current?.();
+      qcMaterialResolverRef.current = null;
+    };
+  }, []);
+
+  const promptForQcMaterials = useCallback(async (job: Job) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    // Re-entrancy guard: don't overwrite an open prompt's resolver.
+    if (qcMaterialResolverRef.current) return;
+    await new Promise<void>((resolve) => {
+      qcMaterialResolverRef.current = resolve;
+      setQcMaterialPrompt({ job, resolve });
+    });
+  }, []);
+
+  const updateJobStatus = useCallback(
+    async (jobId: string, status: JobStatus, expectedCurrentStatus?: JobStatus) => {
+      const job = queries.jobs.find((j) => j.id === jobId);
+      if (job?.status === 'inProgress' && status === 'qualityControl') {
+        await promptForQcMaterials(job);
+      }
+      return jobMutations.updateJobStatus(jobId, status, expectedCurrentStatus);
+    },
+    [jobMutations, queries.jobs, promptForQcMaterials]
+  );
+
+  const advanceJobToNextStatus = useCallback(
+    async (jobId: string) => {
+      const job = queries.jobs.find((j) => j.id === jobId);
+      if (job?.status === 'inProgress' && getNextWorkflowStatus(job.status) === 'qualityControl') {
+        await promptForQcMaterials(job);
+      }
+      return jobMutations.advanceJobToNextStatus(jobId);
+    },
+    [jobMutations, queries.jobs, promptForQcMaterials]
   );
 
   const inventoryMutations = useInventoryMutations({
@@ -557,8 +610,8 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       createJob: jobMutations.createJob,
       updateJob: jobMutations.updateJob,
       deleteJob: jobMutations.deleteJob,
-      updateJobStatus: jobMutations.updateJobStatus,
-      advanceJobToNextStatus: jobMutations.advanceJobToNextStatus,
+      updateJobStatus,
+      advanceJobToNextStatus,
       addJobComment: jobMutations.addJobComment,
       getJobByCode: jobMutations.getJobByCode,
       clockIn,
@@ -568,6 +621,12 @@ function AppProviderInner({ children }: { children: ReactNode }) {
         clockOutPrompt?.resolve();
         clockOutResolverRef.current = null;
         setClockOutPrompt(null);
+      },
+      qcMaterialPromptJob: qcMaterialPrompt?.job ?? null,
+      completeQcMaterialPrompt: () => {
+        qcMaterialPrompt?.resolve();
+        qcMaterialResolverRef.current = null;
+        setQcMaterialPrompt(null);
       },
       startLunch: clockMutations.startLunch,
       endLunch: clockMutations.endLunch,
@@ -624,6 +683,9 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       clockIn,
       clockOut,
       clockOutPrompt,
+      updateJobStatus,
+      advanceJobToNextStatus,
+      qcMaterialPrompt,
       inventoryMutations,
       attachmentMutations,
       queries.refreshJobs,
