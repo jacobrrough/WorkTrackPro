@@ -96,7 +96,10 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
     setAssigningId(item.id);
     try {
       const ok = await onUpdateInventoryItem(item.id, { binLocation: bin });
-      showToast(ok ? `Added ${item.name} to bin` : 'Failed to add to bin', ok ? 'success' : 'error');
+      showToast(
+        ok ? `Added ${item.name} to bin` : 'Failed to add to bin',
+        ok ? 'success' : 'error'
+      );
       if (ok) {
         setAddMode(null);
         setPickerSearch('');
@@ -150,9 +153,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
   };
 
   const handleRemoveSelectedInventory = async () => {
-    const ids = inventoryAtBin
-      .filter((i) => selectedInventoryIds.has(i.id))
-      .map((i) => i.id);
+    const ids = inventoryAtBin.filter((i) => selectedInventoryIds.has(i.id)).map((i) => i.id);
     if (ids.length === 0 || removingInventory) return;
 
     setRemovingInventory(true);
@@ -231,7 +232,11 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
 
   if (addMode === 'create' && onCreateInventory) {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-background-dark" role="dialog" aria-modal="true">
+      <div
+        className="fixed inset-0 z-[100] flex flex-col bg-background-dark"
+        role="dialog"
+        aria-modal="true"
+      >
         <AddInventoryItem
           onAdd={handleCreateInBin}
           onCancel={() => setAddMode(null)}
