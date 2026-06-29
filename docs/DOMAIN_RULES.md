@@ -46,6 +46,18 @@ Each item cites its source — if code and this doc ever disagree, **code wins**
 - **Machine hours:** `machineBreakdownByVariant` is the source of truth; all consumers read via
   `getMachineTotalsFromJob()`.
 
+## UI & role-based rendering (salvaged from old Cursor skills, verified)
+- **Shop-floor (non-admin) users must NEVER see financial data** — no price, unit cost, labor/CNC
+  rate, total, margin, markup, budget, quote, or invoice figures. Gate every financial field behind
+  `currentUser.isAdmin` and/or the `priceVisibility` helper. This is a privacy boundary, not just UX.
+- **Toast-first UX:** every mutation gives immediate toast feedback (`showToast`). **Never use
+  `alert()` or `confirm()`** — there are zero in the codebase; keep it that way (use a toast or an
+  in-app confirm component).
+- **Persistent UI state goes through `NavigationContext`** (search, filters, scroll positions,
+  expanded groups, last job, active tab, minimal view) — never component-local state for anything
+  that should survive a refresh or browser back.
+- **Mobile-first:** shop-floor runs on tablets/phones — large tap targets, icon buttons over text.
+
 ## Service-layer convention
 - Every function in `src/services/api/` returns a typed result and handles its own errors;
   **don't change existing function names/signatures** when refactoring — only internals.

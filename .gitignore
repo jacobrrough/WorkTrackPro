@@ -75,8 +75,6 @@ backups/
 .impeccable/
 .claude/skills/
 .claude/settings.local.json
-.cursor/hooks.json
-.cursor/skills/impeccable/
 .github/hooks/
 .github/skills/
 

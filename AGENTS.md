@@ -1,6 +1,6 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
+## Project setup & environment
 
 ### Project overview
 
@@ -15,7 +15,7 @@ WorkTrack Pro is a job, inventory & time-tracking SaaS for manufacturing. Single
 
 ### Environment variables
 
-**Single template:** `.env.example` (copy to `.env.local` for local dev). The app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` (gitignored). Cursor Cloud injects these via the update script.
+**Single template:** `.env.example` (copy to `.env.local` for local dev). The app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` (gitignored). Cloud-agent setups may inject these via a setup script.
 
 The update script writes from injected shell env vars into `.env.local`. A `sed` strip removes any accidental `VITE_SUPABASE_URL=` prefix (safe no-op if already correct).
 
