@@ -115,7 +115,6 @@ import { logUnitProgress } from '@/services/api/unitProgress';
 import { getDashQuantity, normalizeDashQuantities, toDashSuffix } from '@/lib/variantMath';
 import { buildEffectivePartQuantities } from '@/lib/effectivePartQuantities';
 import { canViewJobFinancials, shouldComputeJobFinancials } from '@/lib/priceVisibility';
-import { calculateJobPriceFromPart, calculateJobPriceFromParts } from '@/lib/jobPriceFromPart';
 import { useMaterialSync } from '@/features/jobs/hooks/useMaterialSync';
 import {
   useMaterialCosts,
@@ -1005,15 +1004,6 @@ const JobDetail: React.FC<JobDetailProps> = ({
     const hours = parseFloat(editForm.laborHours) || 0;
     return hours * laborRate;
   }, [editForm.laborHours, laborRate]);
-
-  const partDerivedPrice = useMemo(() => {
-    if (partsWithPartData?.length) {
-      return calculateJobPriceFromParts(
-        partsWithPartData.map(({ part, dashQuantities }) => ({ part, dashQuantities }))
-      );
-    }
-    return linkedPart ? calculateJobPriceFromPart(linkedPart, effectiveMaterialQuantities) : null;
-  }, [linkedPart, effectiveMaterialQuantities, partsWithPartData]);
 
   const computedCostTotal = useMemo(
     () =>
@@ -2885,27 +2875,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
               </div>
               {canViewFinancials && (
                 <div className="mb-3 rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-sm font-bold text-primary">
-                  {(() => {
-                    const totalFromPart =
-                      linkedPart && partDerivedPrice?.totalPrice
-                        ? partDerivedPrice.totalPrice
-                        : null;
-                    const effectiveTotal =
-                      totalFromPart != null && totalFromPart > 0
-                        ? totalFromPart
-                        : computedCostTotal;
-                    return <>Total ${effectiveTotal.toFixed(2)}</>;
-                  })()}
+                  {/* Live cost buildup that always equals the sum of the Labor $, Materials $, CNC
+                      and 3D lines shown above, so the breakdown always reconciles to this Total.
+                      Labor/CNC/3D come from the part's hours × current rates (synced into the form),
+                      and materials are the BOM cost (computePartDerivedMaterialTotal × the org
+                      material upcharge). It recomputes every render, so changing any hours moves it
+                      — it can never freeze, and it is never the part's stored/frozen quote price.
+                      Equals the part Quote Calculator's value for the same set/variant quantities
+                      whenever no manual variant price or extra markup is in play. */}
+                  Total ${computedCostTotal.toFixed(2)}
                   <span className="ml-2 text-[10px] font-normal text-primary/80">
                     (Labor + Materials + CNC + 3D)
                   </span>
-                  {linkedPart &&
-                    partDerivedPrice?.totalPrice != null &&
-                    partDerivedPrice.totalPrice > 0 && (
-                      <p className="mt-1 text-[10px] font-normal text-primary/80">
-                        From part (set × qty): ${partDerivedPrice.totalPrice.toFixed(2)}
-                      </p>
-                    )}
                 </div>
               )}
               <VariantBreakdown entries={laborBreakdownByDash?.entries ?? []} />
