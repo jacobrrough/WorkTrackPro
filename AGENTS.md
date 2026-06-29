@@ -6,6 +6,13 @@
 
 WorkTrack Pro is a job, inventory & time-tracking SaaS for manufacturing. Single-package Vite + React 19 + TypeScript + Tailwind CSS frontend backed by **hosted Supabase only** (auth, DB, storage). No PocketBase or local server in repo. Hosting: Netlify (auto-deploy from GitHub). See `README.md` for full feature list and available npm scripts.
 
+> **Where does code live? Read `docs/CODE_MAP.md` FIRST.** It maps features → file + symbol
+> anchor for the data layer, contexts, and the big 2k–4k-line screens (JobDetail, PartDetail,
+> KanbanBoard, accounting). **Grep the anchor and ranged-read; never read those files whole.**
+
+> **Claude/AI users:** install the project context skill once with `node scripts/sync-wtp-skill.mjs`
+> (no UI — installs to `~/.claude/skills/`), then invoke `/worktrackpro-context` for full domain context.
+
 ### Environment variables
 
 **Single template:** `.env.example` (copy to `.env.local` for local dev). The app requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` (gitignored). Cursor Cloud injects these via the update script.
@@ -70,7 +77,7 @@ Sign-up is available from the login page. **Navigation:** Internal app uses view
 
 ### Architecture (refactored — completed)
 
-The AppContext refactor plan (see `docs/archive/APPCONTEXT-REFACTOR-PLAN.md`) has been executed:
+The AppContext refactor has been executed:
 
 - **Auth:** `AuthContext` (`useAuth()`) — currentUser, login, signUp, logout, password reset, session expiry guards, idle timeout, + E2E key unlock/generation for chat.
 - **Server state:** `useAppQueries(enabled)` — the 4 core TanStack queries (jobs, shifts, users, inventory) with smart refreshers (including part-data healing).
@@ -85,8 +92,9 @@ The AppContext refactor plan (see `docs/archive/APPCONTEXT-REFACTOR-PLAN.md`) ha
 
 **Deep reference docs (highly recommended):**
 - `docs/SYSTEM_MASTERY.md` — verified DB schema, relations, RLS, encryption, job workflow.
-- `docs/archive/APPCONTEXT-REFACTOR-PLAN.md` — the executed refactor.
 - `docs/JOB_AND_PART_DATA_FLOW.md`, `docs/PART_DETAIL_AUTO_CALCULATIONS.md`, etc.
+- `docs/CODE_MAP.md` — feature → file + symbol-anchor routing map (read before exploring).
+- `docs/DOMAIN_RULES.md` — durable rates ($175/hr labor, $150/hr CNC), security & inventory safeguards, job invariants.
 
 ### Notes
 

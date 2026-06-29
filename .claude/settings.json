@@ -13,6 +13,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/code-map-sync-hook.mjs\" 2>/dev/null || true",
+            "statusMessage": "Checking CODE_MAP sync..."
+          }
+        ]
+      }
     ]
   }
 }
