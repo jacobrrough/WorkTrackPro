@@ -4,6 +4,7 @@ import { SettingsProvider } from '../contexts/SettingsContext';
 import { ClockInProvider } from '../contexts/ClockInContext';
 import { useApp } from '../AppContext';
 import { ClockOutCompletionGate } from '../features/jobs/components/ClockOutCompletionGate';
+import { MaterialUsageModal } from '../features/jobs/components/MaterialUsageModal';
 
 function AppViewFallback() {
   return (
@@ -23,6 +24,13 @@ function ClockOutPromptHost() {
   return <ClockOutCompletionGate job={clockOutPromptJob} onComplete={completeClockOutPrompt} />;
 }
 
+/** Hosts the In Progress -> QC "used more than estimate?" material-usage popup. */
+function QcMaterialPromptHost() {
+  const { qcMaterialPromptJob, completeQcMaterialPrompt } = useApp();
+  if (!qcMaterialPromptJob) return null;
+  return <MaterialUsageModal job={qcMaterialPromptJob} onComplete={completeQcMaterialPrompt} />;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <NavigationProvider>
@@ -30,6 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ClockInProvider>
           <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
           <ClockOutPromptHost />
+          <QcMaterialPromptHost />
         </ClockInProvider>
       </SettingsProvider>
     </NavigationProvider>

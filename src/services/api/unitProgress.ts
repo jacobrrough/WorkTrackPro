@@ -94,3 +94,36 @@ export async function logUnitProgress(args: LogUnitProgressArgs): Promise<boolea
   }
   return true;
 }
+
+/** One material's extra consumption beyond its BOM estimate (the line's `quantity`). */
+export interface ExtraMaterialUsage {
+  inventoryId: string;
+  /** Amount used ABOVE the estimate, in the line's own unit. Only positive values deduct. */
+  extra: number;
+}
+
+/**
+ * Apply "used more than the estimate" top-ups for a job's BOM materials (the In Progress -> QC
+ * handoff). One-directional: only positive extras deduct; zero/negative are dropped client-side
+ * (and ignored again server-side). Each extra grows the line's quantity + consumed_quantity and
+ * pulls the amount from stock now — see `log_extra_material_usage` (migration). Returns false on
+ * failure. A no-op (no positive extras) returns true without a round-trip.
+ */
+export async function logExtraMaterialUsage(
+  jobId: string,
+  extras: ExtraMaterialUsage[]
+): Promise<boolean> {
+  const positive = extras.filter((e) => Number.isFinite(e.extra) && e.extra > 0);
+  if (positive.length === 0) return true;
+
+  const { error } = await supabase.rpc('log_extra_material_usage', {
+    p_job_id: jobId,
+    // The RPC reads each element's `inventory_id` (snake_case); map at the boundary.
+    p_extra_deltas: positive.map((e) => ({ inventory_id: e.inventoryId, extra: e.extra })),
+  });
+  if (error) {
+    console.error('logExtraMaterialUsage failed:', error.message);
+    return false;
+  }
+  return true;
+}

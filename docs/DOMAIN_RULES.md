@@ -29,9 +29,29 @@ Each item cites its source — if code and this doc ever disagree, **code wins**
     `handleClockIn`/`handleClockOut` (`JobDetail.tsx`), `useClockMutations`.
 
 ## Inventory invariants
+- **Stock leaves incrementally, per unit, during In Progress — NOT in one shot at Finished.**
+  As units are checked off, `log_unit_progress` decrements `in_stock` and bumps
+  `job_inventory.consumed_quantity` for that unit's share of the BOM. The two milestones:
+  CNC-checkoff deducts only the CNC-able (foam) share of the unit; unit-done deducts the rest.
+  **Finished is only a true-up backstop** — its trigger
+  (`jobs_reconcile_inventory_on_status`) deducts just the leftover `quantity − consumed_quantity`
+  for units nobody logged. So by the time a card reaches QC→Finished, most stock has already
+  left. (History: pre-`20260622000001` deduction happened entirely at Finished; that migration
+  is the source of the stale "deducts at Finished" mental model — it's wrong now.)
+  Source: `supabase/migrations/20260622000001_cnc_unit_progress.sql`,
+  `src/lib/cncDeduction.ts`, `docs/cnc-unit-progress-deduction.md`.
+- **The deduction basis is the intentionally over-padded BOM.** The owner over-estimates the
+  BOM on purpose; the distributed per-unit shares sum to that padded total, so the system reads
+  **lower** than what's physically on the shelf — a deliberate safety buffer. Consequence for any
+  "verify inventory" feature: the happy path is already biased pessimistic, so a yes/no shelf-
+  confirm at checkoff just trains rubber-stamping. The real un-modeled drift is **scrap/remakes**
+  (ruined units consume material but complete no unit, so their BOM never deducts) — there is no
+  scrap tracking today.
 - **Over-allocation guard:** a job cannot allocate more than `in_stock`. Enforced two ways —
   client via `isAllocationActiveStatus` (`src/lib/inventoryCalculations.ts`) and server via the
-  Supabase trigger `job_inventory_allocate_guard` (race-safe).
+  Supabase trigger `job_inventory_allocate_guard` (race-safe). "Allocated" nets out
+  `consumed_quantity` (already-consumed stock left `in_stock`, so it isn't double-counted as an
+  outstanding reservation).
 - **Reorder signal:** an item "needs reordering" when `available < minStock`
   (a.k.a. `quantity <= reorderPoint`). Drives the low-stock banner / summary cards.
 - **Quantity validation:** guard against negative / zero / non-finite `quantity_per_unit`
