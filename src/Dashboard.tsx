@@ -408,6 +408,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     clockOut,
     updateJob,
     updateInventoryItem,
+    createInventory,
     refreshJobs,
     refreshInventory,
   } = useApp();
@@ -467,16 +468,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     if (addingJobToBin && scannedBinLocation) {
       setShowScanner(false);
       setAddingJobToBin(false);
+      const invItem = inventory.find((i) => i.id === trimmed || i.barcode === trimmed);
       const job = jobs.find((j) => j.id === trimmed || j.jobCode.toString() === trimmed);
-      if (job) {
+      if (invItem && invItem.category === 'tool') {
+        showToast('Use tool check-in to place a tool in a bin', 'warning');
+      } else if (invItem) {
+        updateInventoryItem(invItem.id, { binLocation: scannedBinLocation })
+          .then(() => {
+            showToast(`${invItem.name} added to bin ${scannedBinLocation}`, 'success');
+            return refreshInventory();
+          })
+          .catch(() => showToast('Failed to add to bin', 'error'));
+      } else if (job) {
         updateJob(job.id, { binLocation: scannedBinLocation })
           .then(() => {
             showToast(`Job #${job.jobCode} added to bin ${scannedBinLocation}`, 'success');
             return refreshJobs();
           })
-          .catch(() => showToast('Failed to add job to bin', 'error'));
+          .catch(() => showToast('Failed to add to bin', 'error'));
       } else {
-        showToast('Scan a job code to add to this bin', 'warning');
+        showToast('Scan a job or inventory code to add to this bin', 'warning');
       }
       return;
     }
@@ -1167,14 +1178,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           inventory={inventory}
           onUpdateJob={updateJob}
           onUpdateInventoryItem={updateInventoryItem}
+          onCreateInventory={createInventory}
           onRefreshJobs={refreshJobs}
           onRefreshInventory={refreshInventory}
           onNavigate={onNavigate}
           onClose={() => setScannedBinLocation(null)}
-          onAddJobToBin={() => {
+          onAddByScan={() => {
             setAddingJobToBin(true);
             setShowScanner(true);
           }}
+          isAdmin={isAdmin}
         />
       )}
 
