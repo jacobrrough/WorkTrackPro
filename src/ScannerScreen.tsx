@@ -16,8 +16,10 @@ interface ScannerScreenProps {
     id: string,
     data: Partial<InventoryItem>
   ) => Promise<InventoryItem | null>;
+  onCreateInventory: (data: Partial<InventoryItem>) => Promise<InventoryItem | null>;
   onRefreshJobs: () => Promise<void>;
   onRefreshInventory: () => Promise<void>;
+  isAdmin?: boolean;
 }
 
 /**
@@ -31,28 +33,41 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
   onBack,
   onUpdateJob,
   onUpdateInventoryItem,
+  onCreateInventory,
   onRefreshJobs,
   onRefreshInventory,
+  isAdmin = false,
 }) => {
   const { showToast } = useToast();
   const [scannedBinLocation, setScannedBinLocation] = useState<string | null>(null);
-  const [addingJobToBin, setAddingJobToBin] = useState(false);
+  const [addingToBin, setAddingToBin] = useState(false);
 
   const handleScanComplete = (scannedData: string) => {
     const trimmed = scannedData.trim();
 
-    if (addingJobToBin && scannedBinLocation) {
+    if (addingToBin && scannedBinLocation) {
+      const invItem = inventory.find((i) => i.id === trimmed || i.barcode === trimmed);
       const job = jobs.find((j) => j.id === trimmed || j.jobCode?.toString() === trimmed);
-      if (job) {
+      if (invItem && invItem.category === 'tool') {
+        showToast('Use tool check-in to place a tool in a bin', 'warning');
+      } else if (invItem) {
+        onUpdateInventoryItem(invItem.id, { binLocation: scannedBinLocation })
+          .then(() => {
+            showToast(`${invItem.name} added to bin ${scannedBinLocation}`, 'success');
+            return onRefreshInventory();
+          })
+          .then(() => setAddingToBin(false))
+          .catch(() => showToast('Failed to add to bin', 'error'));
+      } else if (job) {
         onUpdateJob(job.id, { binLocation: scannedBinLocation })
           .then(() => {
             showToast(`Job #${job.jobCode} added to bin ${scannedBinLocation}`, 'success');
             return onRefreshJobs();
           })
-          .then(() => setAddingJobToBin(false))
-          .catch(() => showToast('Failed to add job to bin', 'error'));
+          .then(() => setAddingToBin(false))
+          .catch(() => showToast('Failed to add to bin', 'error'));
       } else {
-        showToast('Scan a job code to add to this bin', 'warning');
+        showToast('Scan a job or inventory code to add to this bin', 'warning');
       }
       return;
     }
@@ -82,7 +97,7 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
     }
   };
 
-  if (scannedBinLocation && !addingJobToBin) {
+  if (scannedBinLocation && !addingToBin) {
     return (
       <BinResultsView
         binLocation={scannedBinLocation}
@@ -90,37 +105,39 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
         inventory={inventory}
         onUpdateJob={onUpdateJob}
         onUpdateInventoryItem={onUpdateInventoryItem}
+        onCreateInventory={onCreateInventory}
         onRefreshJobs={onRefreshJobs}
         onRefreshInventory={onRefreshInventory}
         onNavigate={onNavigate}
         onClose={() => setScannedBinLocation(null)}
-        onAddJobToBin={() => setAddingJobToBin(true)}
+        onAddByScan={() => setAddingToBin(true)}
+        isAdmin={isAdmin}
       />
     );
   }
 
-  if (addingJobToBin && scannedBinLocation) {
+  if (addingToBin && scannedBinLocation) {
     return (
       <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
         <header className="safe-area-top flex shrink-0 items-center justify-between border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
           <button
             type="button"
-            onClick={() => setAddingJobToBin(false)}
+            onClick={() => setAddingToBin(false)}
             className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Back to bin"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="text-lg font-bold text-white">Add job to bin {scannedBinLocation}</h1>
+          <h1 className="text-lg font-bold text-white">Add to bin {scannedBinLocation}</h1>
           <div className="size-11" aria-hidden />
         </header>
         <div className="min-h-0 flex-1">
           <QRScanner
             scanType="any"
             onScanComplete={handleScanComplete}
-            onClose={() => setAddingJobToBin(false)}
-            title="Scan job to add to bin"
-            description="Scan a job code to assign to this bin"
+            onClose={() => setAddingToBin(false)}
+            title="Scan to add to bin"
+            description="Scan a job or inventory code to assign to this bin"
           />
         </div>
       </div>

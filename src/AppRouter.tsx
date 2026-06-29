@@ -298,8 +298,16 @@ function ClockInRoute() {
 function ScannerRoute() {
   const appNavigate = useAppNavigate();
   const back = useInAppBack('/app');
-  const { jobs, inventory, updateJob, updateInventoryItem, refreshJobs, refreshInventory } =
-    useApp();
+  const {
+    currentUser,
+    jobs,
+    inventory,
+    updateJob,
+    updateInventoryItem,
+    createInventory,
+    refreshJobs,
+    refreshInventory,
+  } = useApp();
   // All outgoing navigation from the scanner replaces the scanner history entry
   // so it never sits in the middle of the stack. Without this, scanning a job
   // pushes /app/jobs/123 on top of /app/scanner — pressing back from the job
@@ -316,8 +324,10 @@ function ScannerRoute() {
       onBack={back}
       onUpdateJob={updateJob}
       onUpdateInventoryItem={updateInventoryItem}
+      onCreateInventory={createInventory}
       onRefreshJobs={refreshJobs}
       onRefreshInventory={refreshInventory}
+      isAdmin={currentUser?.isAdmin ?? false}
     />
   );
 }

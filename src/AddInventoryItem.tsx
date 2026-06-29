@@ -23,6 +23,8 @@ interface AddInventoryItemProps {
   }) => Promise<boolean>;
   onCancel: () => void;
   isAdmin?: boolean;
+  /** Pre-fill the bin location (e.g. when creating an item straight into a scanned bin). */
+  initialBinLocation?: string;
 }
 
 const FIELD_INPUT_CLASS =
@@ -59,7 +61,12 @@ const ScannableInput: React.FC<{
   </div>
 );
 
-const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, isAdmin = true }) => {
+const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
+  onAdd,
+  onCancel,
+  isAdmin = true,
+  initialBinLocation = '',
+}) => {
   const { showToast } = useToast();
   const { options: categoryOptions } = useInventoryCategories();
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +80,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({ onAdd, onCancel, is
   const [price, setPrice] = useState<number>(0);
   const [barcode, setBarcode] = useState('');
   const [scanTarget, setScanTarget] = useState<'barcode' | 'binLocation' | null>(null);
-  const [binLocation, setBinLocation] = useState('');
+  const [binLocation, setBinLocation] = useState(initialBinLocation);
   const [vendor, setVendor] = useState('');
   const [reorderPoint, setReorderPoint] = useState<number>(0);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
