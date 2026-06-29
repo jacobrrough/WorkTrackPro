@@ -14,7 +14,7 @@ const EFFECTIVE_DATE = 'June 17, 2026';
 
 const TermsOfServicePage: React.FC = () => {
   return (
-    <div className="min-h-[100dvh] bg-slate-50 text-slate-800">
+    <div className="max-h-[100dvh] min-h-[100dvh] overflow-y-auto overscroll-y-contain bg-slate-50 text-slate-800">
       <main className="mx-auto w-full max-w-3xl px-6 py-12 sm:py-16">
         <header className="mb-10 border-b border-slate-200 pb-8">
           <Link

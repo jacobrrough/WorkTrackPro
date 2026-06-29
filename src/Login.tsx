@@ -70,7 +70,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-background-dark to-app-2 px-6">
       <div className="mb-8 flex w-full max-w-[400px] flex-col items-center">
-        {/* Company logo — the same /logo.png brand mark used on the public site header.
+        {/* Company logo — the same purple brand mark used on the public site header.
             Falls back to the generic icon only if the image fails to load. */}
         {logoError ? (
           <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-md bg-amber-500/20 text-amber-400 shadow-xl">
@@ -79,9 +79,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
             </span>
           </div>
         ) : (
-          <div className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-md bg-white/95 p-2 shadow-xl">
+          <div className="mb-4 flex h-24 w-24 items-center justify-center">
             <img
-              src="/logo.png"
+              src="/logo-purple.png"
               alt="Rough Cut Manufacturing logo"
               className="h-full w-full object-contain"
               onError={() => setLogoError(true)}
