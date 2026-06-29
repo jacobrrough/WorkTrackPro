@@ -2,18 +2,12 @@ import type { Part, PartVariant, PartMaterial, Attachment } from '../../core/typ
 import { supabase } from './supabaseClient';
 import { getAttachmentPublicUrl } from './storage';
 import { uploadAttachment, deleteAttachmentRecord } from './storage';
-import type { UploadAttachmentResult } from './storage';
 
 type SupabaseErrorLike = {
   code?: string;
   message?: string;
   details?: string;
 };
-
-export type ReplacePartProductImageResult =
-  | { status: 'replaced' }
-  | { status: 'old_not_removed' }
-  | { status: 'upload_failed'; error: string };
 
 /** Record a part revision change in part_revision_history (best-effort; ignores if table missing). */
 async function recordPartRevisionHistory(
@@ -388,32 +382,6 @@ export const partsService = {
     return deleteAttachmentRecord(attachmentId);
   },
 
-  /**
-   * Replace a product image: upload the new file first (so a failure never loses the existing
-   * image), then delete the old record. Returns a discriminated result the UI maps to a toast:
-   *  - `replaced`        — new image is up, old record removed.
-   *  - `old_not_removed` — new image is up, but the old DB row could not be deleted (still listed).
-   *  - `upload_failed`   — new image did not upload; the old image is untouched.
-   */
-  async replacePartProductImage(
-    partId: string,
-    oldAttachmentId: string,
-    file: File
-  ): Promise<ReplacePartProductImageResult> {
-    let result: UploadAttachmentResult;
-    try {
-      result = await uploadAttachment(undefined, undefined, partId, file, false, 'product_image');
-    } catch (e) {
-      const error = e instanceof Error ? e.message : 'Product image upload failed';
-      return { status: 'upload_failed', error };
-    }
-    if (result.id == null) {
-      return { status: 'upload_failed', error: result.error || 'Product image upload failed' };
-    }
-    const removed = await deleteAttachmentRecord(oldAttachmentId);
-    return removed ? { status: 'replaced' } : { status: 'old_not_removed' };
-  },
-
   async createPart(data: Partial<Part>): Promise<Part | null> {
     const row: Record<string, unknown> = {
       part_number: data.partNumber ?? '',
@@ -431,18 +399,7 @@ export const partsService = {
     if (data.variantsAreCopies != null) row.variants_are_copies = data.variantsAreCopies;
     if (data.showOnStore != null) row.show_on_store = data.showOnStore;
     const { data: created, error } = await supabase.from('parts').insert(row).select('*').single();
-    if (error) {
-      // TOCTOU: another client may have inserted the same part number between the caller's
-      // getPartByNumber check and this insert. The DB unique index on lower(part_number)
-      // (migration 20260628120000_parts_part_number_unique_ci) turns that race into a 23505 here —
-      // re-fetch and return the winning row so the caller transparently opens the existing part
-      // instead of seeing a bare failure.
-      if (isDuplicatePartNumberError(error)) {
-        const existing = await this.getPartByNumber(String(row.part_number ?? ''));
-        if (existing) return existing;
-      }
-      return null;
-    }
+    if (error) return null;
     return mapRowToPart(created as unknown as Record<string, unknown>);
   },
 
