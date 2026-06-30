@@ -80,10 +80,10 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({
   return (
     <header ref={headerRef} className="rcm-site hdr">
       <div className="hdr-in">
-        <Link to="/" className="brand" aria-label="Rough Cut Manufacturing — home" onClick={goHome}>
-          <span className="rcm-badger" role="img" aria-label="Rough Cut Manufacturing logo" />
+        <Link to="/" className="brand" onClick={goHome}>
+          <span className="rcm-badger" aria-hidden="true" />
           <span className="wm">
-            Rough Cut<span>Manufacturing</span>
+            Rough Cut <span>Manufacturing</span>
           </span>
         </Link>
 

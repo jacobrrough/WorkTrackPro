@@ -169,206 +169,214 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
       <PublicHeader onEmployeeLogin={onEmployeeLogin} currentPath="home" />
 
       <main>
-      {/* HERO */}
-      <section className="hero">
-        <div className="h-in wrap">
-          <span className="h-kick">Built for real production floors</span>
-          <h1>Protective products and precision parts, made to spec.</h1>
-          <p>
-            Durable fabric, foam, and plastic protection, precision CNC, and 3D printing, all under
-            one roof, with a heavy emphasis on FOD prevention.
-          </p>
-          <div className="h-cta">
-            <Link to="/quote" className="btn btn-primary">
+        {/* HERO */}
+        <section className="hero">
+          <div className="h-in wrap">
+            <span className="h-kick">Built for real production floors</span>
+            <h1>Protective products and precision parts, made to spec.</h1>
+            <p>
+              Durable fabric, foam, and plastic protection, precision CNC, and 3D printing, all
+              under one roof, with a heavy emphasis on FOD prevention.
+            </p>
+            <div className="h-cta">
+              <Link to="/quote" className="btn btn-primary">
+                Request a Quote
+              </Link>
+              <a href="#products" onClick={scrollTo('products')} className="btn btn-line">
+                Explore Products
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* PRODUCTS */}
+        <section className="sec" id="products">
+          <div className="sec-head">
+            <div className="ey">What we make</div>
+            <h2>Five capabilities, built in-house.</h2>
+            <p>
+              From cut-to-fit foam to tight-tolerance machining, the whole job stays under one roof,
+              so quality and timing stay in our hands.
+            </p>
+          </div>
+          <div className="tiles">
+            {TILES.map((tile) => (
+              <Link
+                key={tile.label}
+                to={tile.href ?? '/shop'}
+                className={['tile', tile.fill && 'fill', tile.cta && 'cta']
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <div className="pic">
+                  {tile.img ? (
+                    <img
+                      src={tile.img.src}
+                      srcSet={tile.img.srcSet}
+                      sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw"
+                      width={880}
+                      height={550}
+                      alt={tile.img.alt}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    tile.icon
+                  )}
+                </div>
+                <div className="lab">
+                  <b>{tile.label}</b>
+                  <span className="ar" aria-hidden="true">
+                    →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* TRUST BAND */}
+        <section className="trust">
+          <div className="trust-in">
+            <div className="trust-panel">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" />
+                <path d="M9 12l2 2 4-4" strokeWidth="2.2" />
+              </svg>
+              <b>Checked before it ships</b>
+              <span>FOD-first inspection on every job, materials to finishing.</span>
+            </div>
+            <div>
+              <div className="ey">Why Rough Cut</div>
+              <h2
+                style={{
+                  fontSize: 25,
+                  fontWeight: 800,
+                  letterSpacing: '-0.015em',
+                  lineHeight: 1.15,
+                }}
+              >
+                Built in-house, checked before it ships.
+              </h2>
+              <ul>
+                <li>
+                  <Check /> Heavy emphasis on FOD prevention
+                </li>
+                <li>
+                  <Check /> One shop for fabric, foam, plastic, and metal
+                </li>
+                <li>
+                  <Check /> Quotes routed straight to our production board
+                </li>
+              </ul>
+              <div className="stats">
+                <div className="stat">
+                  <div className="n">1 roof</div>
+                  <div className="t">Materials to finishing</div>
+                </div>
+                <div className="stat">
+                  <div className="n">5</div>
+                  <div className="t">Core capabilities</div>
+                </div>
+                <div className="stat">
+                  <div className="n">FOD-first</div>
+                  <div className="t">On every job</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* QUOTE CTA */}
+        <section className="qband">
+          <div className="qband-in">
+            <h2>Have a part to protect? Get a quote.</h2>
+            <p>
+              Send your drawings and requirements. It routes straight to our quoting board for
+              review.
+            </p>
+            <Link to="/quote" className="btn btn-onaccent">
               Request a Quote
             </Link>
-            <a href="#products" onClick={scrollTo('products')} className="btn btn-line">
-              Explore Products
-            </a>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* PRODUCTS */}
-      <section className="sec" id="products">
-        <div className="sec-head">
-          <div className="ey">What we make</div>
-          <h2>Five capabilities, built in-house.</h2>
-          <p>
-            From cut-to-fit foam to tight-tolerance machining, the whole job stays under one roof,
-            so quality and timing stay in our hands.
-          </p>
-        </div>
-        <div className="tiles">
-          {TILES.map((tile) => (
-            <Link
-              key={tile.label}
-              to={tile.href ?? '/shop'}
-              className={['tile', tile.fill && 'fill', tile.cta && 'cta'].filter(Boolean).join(' ')}
-            >
-              <div className="pic">
-                {tile.img ? (
-                  <img
-                    src={tile.img.src}
-                    srcSet={tile.img.srcSet}
-                    sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw"
-                    width={880}
-                    height={550}
-                    alt={tile.img.alt}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  tile.icon
-                )}
-              </div>
-              <div className="lab">
-                <b>{tile.label}</b>
-                <span className="ar" aria-hidden="true">
-                  →
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* TRUST BAND */}
-      <section className="trust">
-        <div className="trust-in">
-          <div className="trust-panel">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              aria-hidden="true"
-            >
-              <path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" />
-              <path d="M9 12l2 2 4-4" strokeWidth="2.2" />
-            </svg>
-            <b>Checked before it ships</b>
-            <span>FOD-first inspection on every job, materials to finishing.</span>
+        {/* CONTACT */}
+        <section className="sec contact" id="contact">
+          <div className="sec-head">
+            <div className="ey">Get in touch</div>
+            <h2>Talk to the shop.</h2>
           </div>
-          <div>
-            <div className="ey">Why Rough Cut</div>
-            <h2
-              style={{ fontSize: 25, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.15 }}
-            >
-              Built in-house, checked before it ships.
-            </h2>
-            <ul>
-              <li>
-                <Check /> Heavy emphasis on FOD prevention
-              </li>
-              <li>
-                <Check /> One shop for fabric, foam, plastic, and metal
-              </li>
-              <li>
-                <Check /> Quotes routed straight to our production board
-              </li>
-            </ul>
-            <div className="stats">
-              <div className="stat">
-                <div className="n">1 roof</div>
-                <div className="t">Materials to finishing</div>
-              </div>
-              <div className="stat">
-                <div className="n">5</div>
-                <div className="t">Core capabilities</div>
-              </div>
-              <div className="stat">
-                <div className="n">FOD-first</div>
-                <div className="t">On every job</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* QUOTE CTA */}
-      <section className="qband">
-        <div className="qband-in">
-          <h2>Have a part to protect? Get a quote.</h2>
-          <p>
-            Send your drawings and requirements. It routes straight to our quoting board for review.
-          </p>
-          <Link to="/quote" className="btn btn-onaccent">
-            Request a Quote
-          </Link>
-        </div>
-      </section>
-
-      {/* CONTACT */}
-      <section className="sec contact" id="contact">
-        <div className="sec-head">
-          <div className="ey">Get in touch</div>
-          <h2>Talk to the shop.</h2>
-        </div>
-        <div className="contact-in">
-          <div className="row">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
-            </svg>
-            <div>
-              <b>Phone</b>
-              <a href="tel:+16619487111" style={{ color: 'inherit', textDecoration: 'none' }}>
-                (661) 948-7111
-              </a>
-            </div>
-          </div>
-          <div className="row">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <rect x="2" y="4" width="20" height="16" rx="2" />
-              <path d="m22 7-10 6L2 7" />
-            </svg>
-            <div>
-              <b>Email</b>
-              <a
-                href="mailto:General@roughcutmfg.com"
-                style={{ color: 'inherit', textDecoration: 'none' }}
+          <div className="contact-in">
+            <div className="row">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
               >
-                General@roughcutmfg.com
-              </a>
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              <div>
+                <b>Phone</b>
+                <a href="tel:+16619487111" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  (661) 948-7111
+                </a>
+              </div>
             </div>
-          </div>
-          <div className="row">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            <div>
-              <b>Location</b>
-              <a
-                href={SHOP_MAPS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: 'inherit', textDecoration: 'none' }}
+            <div className="row">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
               >
-                {SHOP_ADDRESS}
-              </a>
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-10 6L2 7" />
+              </svg>
+              <div>
+                <b>Email</b>
+                <a
+                  href="mailto:General@roughcutmfg.com"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                >
+                  General@roughcutmfg.com
+                </a>
+              </div>
+            </div>
+            <div className="row">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <div>
+                <b>Location</b>
+                <a
+                  href={SHOP_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                >
+                  {SHOP_ADDRESS}
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
       </main>
 
       <PublicFooter />

@@ -34,14 +34,14 @@ const PublicFooter: React.FC = () => {
           </p>
         </div>
         <div className="col">
-          <h4>Products</h4>
+          <h3>Products</h3>
           <Link to="/shop">Shop</Link>
           <Link to="/shop">Protection</Link>
           <Link to="/shop">Foam inlays</Link>
           <Link to="/shop">CNC machining</Link>
         </div>
         <div className="col">
-          <h4>Company</h4>
+          <h3>Company</h3>
           <Link to="/quote">Request a Quote</Link>
           <Link to="/#contact">Contact</Link>
           <Link to="/" onClick={goHome}>
@@ -49,7 +49,7 @@ const PublicFooter: React.FC = () => {
           </Link>
         </div>
         <div className="col">
-          <h4>Legal</h4>
+          <h3>Legal</h3>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
         </div>

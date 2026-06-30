@@ -94,7 +94,7 @@
     --c-text: 242 244 247;
     --c-text-muted: 165 173 184;
     --c-text-subtle: 128 136 147;
-    --c-accent: 232 59 59;
+    --c-accent: 234 68 68;
     --c-accent-hover: 212 42 42;
     --c-accent-bg: 207 46 46; /* darker red so white text on it clears WCAG AA (5.1:1) */
     --c-on-accent: 255 255 255;
@@ -114,7 +114,7 @@
   --c-text: 242 244 247;
   --c-text-muted: 165 173 184;
   --c-text-subtle: 128 136 147;
-  --c-accent: 232 59 59;
+  --c-accent: 234 68 68;
   --c-accent-hover: 212 42 42;
   --c-accent-bg: 207 46 46; /* darker red so white text on it clears WCAG AA (5.1:1) */
   --c-on-accent: 255 255 255;
@@ -442,7 +442,7 @@
 }
 .rcm-site .btn-onaccent {
   background: rgb(var(--c-on-accent));
-  color: rgb(var(--c-accent));
+  color: rgb(var(--c-accent-bg)); /* darker red clears AA on the white button */
 }
 .rcm-site .btn-onaccent:hover {
   background: rgb(var(--c-on-accent) / 0.9);
@@ -705,7 +705,7 @@
   line-height: 1.55;
   max-width: 34ch;
 }
-.rcm-site .ft .col h4 {
+.rcm-site .ft .col h3 {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
