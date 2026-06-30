@@ -200,7 +200,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
             <Link
               key={tile.label}
               to={tile.href ?? '/shop'}
-              className={`tile${tile.fill ? 'fill' : ''}${tile.cta ? 'cta' : ''}`}
+              className={['tile', tile.fill && 'fill', tile.cta && 'cta'].filter(Boolean).join(' ')}
             >
               <div className="pic">
                 {tile.img ? (
