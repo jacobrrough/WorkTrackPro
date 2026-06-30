@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-
-const LOGO_CANDIDATES = ['/logo.png', '/logo.svg', '/logo'];
+import { Link, useNavigate } from 'react-router-dom';
+import './public.css';
 
 interface PublicHeaderProps {
   onEmployeeLogin: () => void;
@@ -11,99 +10,147 @@ interface PublicHeaderProps {
   cartCount?: number;
 }
 
+/**
+ * Shared public header ("Direction E"). Carries `.rcm-site` so its red
+ * auto-light/dark theme applies even when it sits above the (still-Tailwind)
+ * storefront/legal bodies — those never carry `.rcm-site`, so nothing bleeds.
+ *
+ * Nav IA: Products → /shop · Request a Quote → /quote · Contact → /#contact.
+ * Props (`onEmployeeLogin`, `currentPath`, `cartCount`) are preserved so the
+ * storefront keeps working unchanged.
+ */
 const PublicHeader: React.FC<PublicHeaderProps> = ({
   onEmployeeLogin,
   currentPath = 'home',
   cartCount,
 }) => {
-  const [logoIndex, setLogoIndex] = React.useState(0);
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const headerRef = React.useRef<HTMLElement>(null);
 
-  const handleSectionLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    const href = e.currentTarget.getAttribute('href') ?? '';
-    if (!href.startsWith('#')) return;
-    e.preventDefault();
-    if (window.location.pathname !== '/') {
-      window.location.href = `/${href}`;
-      return;
+  // Close the mobile menu on Escape or a pointer-down outside the header.
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [menuOpen]);
+
+  // Logo / Home: when already on the homepage, scroll the page container to the
+  // top. A same-route <Link to="/"> is otherwise a no-op when scrolled down.
+  const goHome = (e: React.MouseEvent) => {
+    setMenuOpen(false);
+    if (window.location.pathname === '/') {
+      e.preventDefault();
+      if (window.location.hash) window.history.pushState(null, '', '/');
+      (document.querySelector('.rcm-page') as HTMLElement | null)?.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
     }
-    if (window.location.hash !== href) {
-      window.history.pushState(null, '', href);
-    }
-    const sectionId = href.replace('#', '').trim();
-    const target = document.getElementById(sectionId);
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const navLink =
-    'min-h-[44px] rounded-sm border border-white/20 bg-white/5 px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/10 touch-manipulation';
-  const navActive = 'border-primary/50 bg-primary/15 text-primary';
+  // Contact lives in a homepage section. From the homepage, smooth-scroll to it;
+  // from any other public page, navigate home with the hash so PublicHome scrolls.
+  const goToContact = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMenuOpen(false);
+    if (window.location.pathname === '/') {
+      if (window.location.hash !== '#contact') {
+        window.history.pushState(null, '', '#contact');
+      }
+      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      navigate('/#contact');
+    }
+  };
+
+  const cartLabel =
+    cartCount != null && cartCount > 0 ? `Cart (${cartCount > 99 ? '99+' : cartCount})` : 'Cart';
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-app/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/"
-            className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-white/95"
-          >
-            {logoIndex < LOGO_CANDIDATES.length ? (
-              <img
-                src={LOGO_CANDIDATES[logoIndex]}
-                alt="Rough Cut Manufacturing logo"
-                className="h-12 w-12 object-contain"
-                onError={() => setLogoIndex((prev) => prev + 1)}
-              />
-            ) : (
-              <span className="material-symbols-outlined text-primary">
-                precision_manufacturing
-              </span>
-            )}
+    <header ref={headerRef} className="rcm-site hdr">
+      <div className="hdr-in">
+        <Link to="/" className="brand" onClick={goHome}>
+          <span className="rcm-badger" aria-hidden="true" />
+          <span className="wm">
+            Rough Cut <span>Manufacturing</span>
+          </span>
+        </Link>
+
+        <nav className="nav" aria-label="Primary">
+          <Link to="/shop" className={currentPath === 'shop' ? 'is-active' : undefined}>
+            Products
           </Link>
-          <div>
-            <Link to="/" className="text-lg font-bold tracking-wide text-white hover:underline">
-              Rough Cut Manufacturing
-            </Link>
-            <p className="text-xs uppercase tracking-wider text-muted">
-              Fabrication | Foam | Plastics | CNC | 3D Printing | FOD Protection
-            </p>
-          </div>
-        </div>
-        <nav className="flex items-center gap-2">
-          <Link
-            to="/"
-            className={`hidden ${navLink} ${currentPath === 'home' ? navActive : 'text-slate-100'} sm:inline-flex`}
-          >
-            Home
-          </Link>
-          <Link
-            to="/shop"
-            className={`${navLink} ${currentPath === 'shop' ? navActive : 'text-slate-100'} inline-flex`}
-          >
-            Shop
-          </Link>
+          <Link to="/quote">Request a Quote</Link>
+          <a href="/#contact" onClick={goToContact}>
+            Contact
+          </a>
           {currentPath === 'shop' && (
-            <Link to="/shop/cart" className={`${navLink} inline-flex items-center text-slate-100`}>
-              {cartCount != null && cartCount > 0
-                ? `Cart (${cartCount > 99 ? '99+' : cartCount})`
-                : 'Cart'}
+            <Link to="/shop/cart" aria-label={`Cart, ${cartCount ?? 0} items`}>
+              {cartLabel}
             </Link>
           )}
-          <a
-            href="#submit-proposal"
-            onClick={handleSectionLinkClick}
-            className={`hidden ${navLink} text-slate-100 sm:inline-flex`}
-          >
-            Submit Proposal
-          </a>
+        </nav>
+
+        <div className="hdr-cta">
+          <button type="button" className="login" onClick={onEmployeeLogin}>
+            Employee Login
+          </button>
+          <Link to="/quote" className="quote-btn">
+            Request a Quote
+          </Link>
           <button
             type="button"
-            onClick={onEmployeeLogin}
-            className="min-h-[44px] touch-manipulation rounded-sm border border-primary/50 bg-primary/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/30"
+            className="burger"
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            aria-controls="rcm-mobile-menu"
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
+      </div>
+
+      {menuOpen && (
+        <div className="mobile-menu" id="rcm-mobile-menu">
+          <Link to="/shop" onClick={() => setMenuOpen(false)}>
+            Products
+          </Link>
+          <a href="/#contact" onClick={goToContact}>
+            Contact
+          </a>
+          {currentPath === 'shop' && (
+            <Link to="/shop/cart" onClick={() => setMenuOpen(false)}>
+              {cartLabel}
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              onEmployeeLogin();
+            }}
           >
             Employee Login
           </button>
-        </nav>
-      </div>
+          <Link to="/quote" className="mm-quote" onClick={() => setMenuOpen(false)}>
+            Request a Quote
+          </Link>
+        </div>
+      )}
     </header>
   );
 };

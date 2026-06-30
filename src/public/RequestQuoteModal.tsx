@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { StorePart } from '@/services/api/storefront';
 import type { CartItem } from './storefrontCart';
+import { CloseIcon } from './icons';
 
 declare global {
   interface Window {
@@ -188,7 +189,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
       aria-modal="true"
       aria-labelledby="request-quote-title"
     >
-      <div className="w-full max-w-md rounded-lg border border-white/10 bg-surface p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-[16px] border border-line bg-surface p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 id="request-quote-title" className="text-lg font-bold text-white">
             {cartMode ? 'Submit quote request' : 'Request quote'}
@@ -196,10 +197,10 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[10px] text-muted hover:bg-white/10 hover:text-white"
             aria-label="Close"
           >
-            <span className="material-symbols-outlined">close</span>
+            <CloseIcon />
           </button>
         </div>
         {cartMode && cart ? (
@@ -220,7 +221,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
               <select
                 value={selectedVariantSuffix ?? ''}
                 onChange={(e) => setSelectedVariantSuffix(e.target.value || undefined)}
-                className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                className="w-full rounded-[8px] border border-line bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               >
                 <option value="">— Select —</option>
                 {part.variants.map((v) => (
@@ -241,7 +242,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
                 step={1}
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value) || 1)}
-                className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+                className="w-full rounded-[8px] border border-line bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               />
             </label>
           )}
@@ -251,7 +252,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
               type="text"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+              className="w-full rounded-[8px] border border-line bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               required
             />
           </label>
@@ -261,7 +262,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+              className="w-full rounded-[8px] border border-line bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               required
             />
           </label>
@@ -271,7 +272,7 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
+              className="w-full rounded-[8px] border border-line bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
               required
             />
           </label>
@@ -283,14 +284,14 @@ export default function RequestQuoteModal(props: RequestQuoteModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[44px] flex-1 rounded-sm border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+              className="min-h-[44px] flex-1 rounded-[10px] border border-line bg-surface-2 px-4 py-2 text-sm font-medium text-white hover:bg-surface-3"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
-              className="min-h-[44px] flex-1 rounded-sm bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="min-h-[44px] flex-1 rounded-[10px] bg-primary px-4 py-2 text-sm font-semibold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {isSubmitting ? 'Submitting…' : 'Submit'}
             </button>

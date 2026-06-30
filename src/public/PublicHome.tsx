@@ -1,435 +1,381 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from '@/services/api/supabaseClient';
+import React, { useCallback, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import PublicHeader from './PublicHeader';
 import PublicFooter from './PublicFooter';
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (selector: string | HTMLElement, options: Record<string, unknown>) => string;
-      reset: (widgetId?: string) => void;
-      remove: (widgetId?: string) => void;
-    };
-  }
-}
-
-type UploadedProposalFile = {
-  filename: string;
-  storagePath: string;
-  contentType: string;
-  sizeBytes: number;
-  publicUrl?: string;
-};
+import './public.css';
 
 interface PublicHomeProps {
   onEmployeeLogin: () => void;
 }
 
-const MAX_FILES = 10;
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB per file (common portal default)
-const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined)?.trim();
+/** Capability tiles + a closing quote CTA (fills the 3-col grid evenly on desktop).
+ *  Icons are inline SVG (no Material Symbols on public). */
+const TILES: {
+  label: string;
+  href?: string;
+  fill?: boolean;
+  cta?: boolean;
+  img?: { src: string; srcSet: string; alt: string };
+  icon: React.ReactNode;
+}[] = [
+  {
+    label: 'Custom fabricated protection',
+    img: {
+      src: '/tile-protection.webp',
+      srcSet: '/tile-protection-440.webp 440w, /tile-protection.webp 880w',
+      alt: 'Stacked custom red protective mats in the Rough Cut shop',
+    },
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Foam inlays & packaging',
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <path d="M3 7l9-4 9 4-9 4-9-4z" />
+        <path d="M3 12l9 4 9-4M3 17l9 4 9-4" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Shop-floor safety pads',
+    fill: true,
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <path d="M12 2v6m0 0l3-3m-3 3L9 5" />
+        <rect x="4" y="12" width="16" height="9" rx="2" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Precision CNC machining',
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="3.2" />
+        <path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2.1 2.1M16.9 16.9L19 19M19 5l-2.1 2.1M7.1 16.9L5 19" />
+      </svg>
+    ),
+  },
+  {
+    label: '3D printing services',
+    img: {
+      src: '/tile-3dprint.webp',
+      srcSet: '/tile-3dprint-440.webp 440w, /tile-3dprint.webp 880w',
+      alt: 'Red 3D-printed brackets fresh off the printer bed',
+    },
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <path d="M12 2l9 5v10l-9 5-9-5V7l9-5z" />
+        <path d="M12 12l9-5M12 12v10M12 12L3 7" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Something else? Send us a quote',
+    href: '/quote',
+    cta: true,
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      </svg>
+    ),
+  },
+];
+
+const SHOP_ADDRESS = '220 West Avenue I, Lancaster, CA 93534';
+const SHOP_MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(SHOP_ADDRESS)}`;
+
+const Check = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+    <path d="M20 6L9 17l-5-5" />
+  </svg>
+);
 
 const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
-  const [contactName, setContactName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [description, setDescription] = useState('');
-  const [files, setFiles] = useState<File[]>([]);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const turnstileWidgetIdRef = useRef<string | null>(null);
-  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Prefill proposal description from store "Request quote" link (?product= & ?variant=)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const product = params.get('product')?.trim();
-    if (!product) return;
-    const variant = params.get('variant')?.trim();
-    const prefill = variant
-      ? `Requesting quote for product: ${product}-${variant}`
-      : `Requesting quote for product: ${product}`;
-    setDescription((prev) => (prev.trim() ? prev : prefill));
-  }, []);
-
-  useEffect(() => {
-    if (!TURNSTILE_SITE_KEY) return;
-
-    const ensureWidget = () => {
-      if (!window.turnstile || !turnstileContainerRef.current) return;
-      if (turnstileWidgetIdRef.current) {
-        window.turnstile.remove(turnstileWidgetIdRef.current);
-      }
-      turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
-        sitekey: TURNSTILE_SITE_KEY,
-        callback: (token: string) => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-        'error-callback': () => setTurnstileToken(''),
-        theme: 'dark',
-      });
-    };
-
-    if (window.turnstile) {
-      ensureWidget();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.defer = true;
-    script.onload = ensureWidget;
-    document.head.appendChild(script);
-
-    return () => {
-      script.remove();
-      if (window.turnstile && turnstileWidgetIdRef.current) {
-        window.turnstile.remove(turnstileWidgetIdRef.current);
-      }
-    };
-  }, []);
-
-  const sanitizeFileName = (input: string) => input.replace(/[^a-zA-Z0-9._-]/g, '_');
-
-  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files ?? []);
-    const merged = [...files, ...selected].slice(0, MAX_FILES);
-    setFiles(merged);
-  };
-
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, idx) => idx !== index));
-  };
-
-  const uploadFiles = async (submissionId: string): Promise<UploadedProposalFile[]> => {
-    const uploaded: UploadedProposalFile[] = [];
-
-    for (const file of files) {
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        throw new Error(`"${file.name}" is larger than 25 MB.`);
-      }
-
-      const filePath = `${submissionId}/${Date.now()}-${sanitizeFileName(file.name)}`;
-      const { error } = await supabase.storage.from('customer-proposals').upload(filePath, file, {
-        upsert: false,
-        contentType: file.type || 'application/octet-stream',
-      });
-      if (error) throw new Error(`Failed to upload "${file.name}": ${error.message}`);
-
-      const { data } = supabase.storage.from('customer-proposals').getPublicUrl(filePath);
-      uploaded.push({
-        filename: file.name,
-        storagePath: filePath,
-        contentType: file.type || 'application/octet-stream',
-        sizeBytes: file.size,
-        publicUrl: data.publicUrl,
-      });
-    }
-
-    return uploaded;
-  };
+  const navigate = useNavigate();
 
   const navigateToSection = useCallback((hashValue: string) => {
-    if (typeof window === 'undefined') return;
     const sectionId = hashValue.replace(/^#/, '').trim();
     if (!sectionId) return;
-    const target = document.getElementById(sectionId);
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  // Smooth-scroll anchors + back-compat for the old IDs the previous design used:
+  //   #submit-proposal → the form now lives on /quote
+  //   #services        → maps to the products section
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (window.location.hash) {
-      window.requestAnimationFrame(() => navigateToSection(window.location.hash));
-    }
-    const onHashChange = () => navigateToSection(window.location.hash);
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, [navigateToSection]);
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (!contactName.trim() || !email.trim() || !phone.trim() || !description.trim()) {
-      setErrorMessage('Please complete all required fields.');
-      return;
-    }
-    if (files.length > MAX_FILES) {
-      setErrorMessage(`Please upload no more than ${MAX_FILES} files.`);
-      return;
-    }
-    if (!TURNSTILE_SITE_KEY) {
-      setErrorMessage('Turnstile is not configured. Add VITE_TURNSTILE_SITE_KEY to continue.');
-      return;
-    }
-    if (!turnstileToken) {
-      setErrorMessage('Please complete the anti-spam check.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const submissionId = crypto.randomUUID();
-      const uploadedFiles = await uploadFiles(submissionId);
-
-      const apiOrigin = (import.meta.env.VITE_API_ORIGIN as string) || '';
-      const response = await fetch(`${apiOrigin}/api/submit-proposal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionId,
-          contactName: contactName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          description: description.trim(),
-          turnstileToken,
-          files: uploadedFiles,
-        }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string;
-        message?: string;
-        warnings?: string[];
-        warningDetails?: string[];
-        emailQueue?: {
-          admin?: { id: string; status: number; lastEvent?: string | null } | null;
-          customer?: { id: string; status: number; lastEvent?: string | null } | null;
-        };
-      } | null;
-      if (!response.ok) {
-        throw new Error(payload?.error || payload?.message || 'Failed to submit proposal.');
+    const handleHash = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+      if (hash === '#submit-proposal') {
+        navigate('/quote', { replace: true });
+        return;
       }
+      navigateToSection(hash === '#services' ? '#products' : hash);
+    };
+    window.requestAnimationFrame(handleHash);
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [navigate, navigateToSection]);
 
-      const emailWarnings = payload?.warnings ?? [];
-      const warningDetails = payload?.warningDetails ?? [];
-      const customerLastEvent = payload?.emailQueue?.customer?.lastEvent ?? null;
-      const customerFailed =
-        customerLastEvent != null &&
-        ['bounced', 'failed', 'suppressed', 'complained', 'canceled'].includes(
-          customerLastEvent.toLowerCase()
-        );
-      if (customerFailed && !emailWarnings.includes('customer_email_failed')) {
-        emailWarnings.push('customer_email_failed');
-      }
-      const queuedAdmin = payload?.emailQueue?.admin?.id ? 'admin' : null;
-      const queuedCustomer = payload?.emailQueue?.customer?.id ? 'customer' : null;
-      const queuedTargets = [queuedAdmin, queuedCustomer].filter(Boolean);
-      if (emailWarnings.length > 0) {
-        const detailsText = warningDetails.length > 0 ? ` ${warningDetails.join(' ')}` : '';
-        setSuccessMessage(
-          `Proposal submitted and routed to quoting, but one or more email notifications failed.${detailsText}`
-        );
-      } else {
-        setSuccessMessage(
-          queuedTargets.length > 0
-            ? `Proposal submitted and email notification queued (${queuedTargets.join(' + ')}).`
-            : 'Proposal submitted and routed to quoting.'
-        );
-      }
-      setContactName('');
-      setEmail('');
-      setPhone('');
-      setDescription('');
-      setFiles([]);
-      setTurnstileToken('');
-      if (window.turnstile && turnstileWidgetIdRef.current) {
-        window.turnstile.reset(turnstileWidgetIdRef.current);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to submit proposal.';
-      setErrorMessage(message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const renderHero = () => {
-    return (
-      <section
-        id="services"
-        className="scroll-mt-24 overflow-hidden rounded-sm border border-white/10 bg-gradient-to-br from-surface via-app-2 to-app-2"
-      >
-        <div className="grid gap-0 lg:grid-cols-5">
-          <div className="p-8 lg:col-span-3">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-primary/90">
-              Shop-Tested Manufacturing
-            </p>
-            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-              Tough Protection Products Built for Real Production Floors
-            </h2>
-            <p className="mt-4 max-w-2xl text-white">
-              Rough Cut Manufacturing builds practical, durable protective products that hold up in
-              demanding work. We focus on fabric, foam, and plastic solutions with high emphasis on
-              FOD prevention.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-xs">
-              {[
-                'Knee pads',
-                'Custom inlays',
-                'Part protection',
-                'Paint protection',
-                'FOD controls',
-                'Precision CNC machining',
-                '3D printing services',
-              ].map((item) => (
-                <span
-                  key={item}
-                  className="rounded-sm border border-primary/40 bg-primary/10 px-3 py-1 text-slate-100"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="border-t border-white/10 bg-black/30 p-8 lg:col-span-2 lg:border-l lg:border-t-0">
-            <h3 className="text-lg font-semibold text-white">Core Services</h3>
-            <ul className="mt-4 space-y-3 text-sm text-white">
-              {[
-                'Custom fabricated protective products',
-                'Foam inlays and package protection',
-                'Shop-floor safety and ergonomic pads',
-                'Precision CNC machining',
-                '3D printing services',
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-0.5 text-primary">■</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-    );
+  const scrollTo = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (window.location.hash !== `#${id}`) window.history.pushState(null, '', `#${id}`);
+    navigateToSection(`#${id}`);
   };
 
   return (
-    <div className="max-h-[100dvh] min-h-[100dvh] overflow-y-auto overscroll-y-contain bg-app text-white">
+    <div className="rcm-site rcm-page">
       <PublicHeader onEmployeeLogin={onEmployeeLogin} currentPath="home" />
 
-      <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
-        {renderHero()}
-
-        <section
-          id="submit-proposal"
-          className="scroll-mt-24 rounded-sm border border-primary/30 bg-surface p-6 shadow-lg shadow-primary/10"
-        >
-          <h3 className="text-2xl font-bold">Submit Proposal & Paperwork</h3>
-          <p className="mt-2 text-sm text-white">
-            Complete this form and your request goes straight to our admin quoting board as
-            <span className="font-semibold text-white"> Needs Quote</span> for immediate review.
-          </p>
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm">
-                <span className="mb-1 block text-white">Contact name *</span>
-                <input
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
-                  required
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block text-white">Email *</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
-                  required
-                />
-              </label>
-              <label className="block text-sm sm:col-span-2">
-                <span className="mb-1 block text-white">Phone *</span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
-                  required
-                />
-              </label>
+      <main>
+        {/* HERO */}
+        <section className="hero">
+          <div className="h-in wrap">
+            <span className="h-kick">Built for real production floors</span>
+            <h1>Protective products and precision parts, made to spec.</h1>
+            <p>
+              Durable fabric, foam, and plastic protection, precision CNC, and 3D printing, all
+              under one roof, with a heavy emphasis on FOD prevention.
+            </p>
+            <div className="h-cta">
+              <Link to="/quote" className="btn btn-primary">
+                Request a Quote
+              </Link>
+              <a href="#products" onClick={scrollTo('products')} className="btn btn-line">
+                Explore Products
+              </a>
             </div>
+          </div>
+        </section>
 
-            <label className="block text-sm">
-              <span className="mb-1 block text-white">Proposal description *</span>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={6}
-                className="w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white focus:border-primary/60 focus:outline-none"
-                placeholder="Tell us what you need, materials, quantities, FOD requirements, and any timing details."
-                required
-              />
-            </label>
+        {/* PRODUCTS */}
+        <section className="sec" id="products">
+          <div className="sec-head">
+            <div className="ey">What we make</div>
+            <h2>Five capabilities, built in-house.</h2>
+            <p>
+              From cut-to-fit foam to tight-tolerance machining, the whole job stays under one roof,
+              so quality and timing stay in our hands.
+            </p>
+          </div>
+          <div className="tiles">
+            {TILES.map((tile) => (
+              <Link
+                key={tile.label}
+                to={tile.href ?? '/shop'}
+                className={['tile', tile.fill && 'fill', tile.cta && 'cta']
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                <div className="pic">
+                  {tile.img ? (
+                    <img
+                      src={tile.img.src}
+                      srcSet={tile.img.srcSet}
+                      sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw"
+                      width={880}
+                      height={550}
+                      alt={tile.img.alt}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    tile.icon
+                  )}
+                </div>
+                <div className="lab">
+                  <b>{tile.label}</b>
+                  <span className="ar" aria-hidden="true">
+                    →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-            <label className="block text-sm">
-              <span className="mb-1 block text-white">
-                Upload paperwork (up to {MAX_FILES} files,{' '}
-                {Math.floor(MAX_FILE_SIZE_BYTES / 1024 / 1024)}
-                MB each)
-              </span>
-              <input
-                type="file"
-                multiple
-                accept="*/*"
-                onChange={handleFileSelection}
-                className="block w-full rounded-sm border border-white/10 bg-surface-2 px-3 py-2 text-white file:mr-3 file:rounded-sm file:border-0 file:bg-primary/20 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary/30"
-              />
-            </label>
-
-            {files.length > 0 && (
-              <ul className="space-y-2 rounded-sm border border-white/10 bg-white/5 p-3 text-sm">
-                {files.map((file, idx) => (
-                  <li
-                    key={`${file.name}-${idx}`}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <span className="truncate text-slate-100">
-                      {file.name} ({(file.size / (1024 * 1024)).toFixed(1)} MB)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(idx)}
-                      className="rounded-sm border border-red-500/40 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
+        {/* TRUST BAND */}
+        <section className="trust">
+          <div className="trust-in">
+            <div className="trust-panel">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" />
+                <path d="M9 12l2 2 4-4" strokeWidth="2.2" />
+              </svg>
+              <b>Checked before it ships</b>
+              <span>FOD-first inspection on every job, materials to finishing.</span>
+            </div>
+            <div>
+              <div className="ey">Why Rough Cut</div>
+              <h2
+                style={{
+                  fontSize: 25,
+                  fontWeight: 800,
+                  letterSpacing: '-0.015em',
+                  lineHeight: 1.15,
+                }}
+              >
+                Built in-house, checked before it ships.
+              </h2>
+              <ul>
+                <li>
+                  <Check /> Heavy emphasis on FOD prevention
+                </li>
+                <li>
+                  <Check /> One shop for fabric, foam, plastic, and metal
+                </li>
+                <li>
+                  <Check /> Quotes routed straight to our production board
+                </li>
               </ul>
-            )}
+              <div className="stats">
+                <div className="stat">
+                  <div className="n">1 roof</div>
+                  <div className="t">Materials to finishing</div>
+                </div>
+                <div className="stat">
+                  <div className="n">5</div>
+                  <div className="t">Core capabilities</div>
+                </div>
+                <div className="stat">
+                  <div className="n">FOD-first</div>
+                  <div className="t">On every job</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            <div ref={turnstileContainerRef} className="min-h-[64px]" />
+        {/* QUOTE CTA */}
+        <section className="qband">
+          <div className="qband-in">
+            <h2>Have a part to protect? Get a quote.</h2>
+            <p>
+              Send your drawings and requirements. It routes straight to our quoting board for
+              review.
+            </p>
+            <Link to="/quote" className="btn btn-onaccent">
+              Request a Quote
+            </Link>
+          </div>
+        </section>
 
-            {errorMessage && (
-              <p className="rounded-sm border border-red-500/40 bg-red-500/15 px-3 py-2 text-sm text-red-200">
-                {errorMessage}
-              </p>
-            )}
-            {successMessage && (
-              <p className="rounded-sm border border-green-500/40 bg-green-500/15 px-3 py-2 text-sm text-green-200">
-                {successMessage}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="min-h-[48px] rounded-sm bg-primary px-5 py-3 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
-            </button>
-          </form>
+        {/* CONTACT */}
+        <section className="sec contact" id="contact">
+          <div className="sec-head">
+            <div className="ey">Get in touch</div>
+            <h2>Talk to the shop.</h2>
+          </div>
+          <div className="contact-in">
+            <div className="row">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              <div>
+                <b>Phone</b>
+                <a href="tel:+16619487111" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  (661) 948-7111
+                </a>
+              </div>
+            </div>
+            <div className="row">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-10 6L2 7" />
+              </svg>
+              <div>
+                <b>Email</b>
+                <a
+                  href="mailto:General@roughcutmfg.com"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                >
+                  General@roughcutmfg.com
+                </a>
+              </div>
+            </div>
+            <div className="row">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <div>
+                <b>Location</b>
+                <a
+                  href={SHOP_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                >
+                  {SHOP_ADDRESS}
+                </a>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 

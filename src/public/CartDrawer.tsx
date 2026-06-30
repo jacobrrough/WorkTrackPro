@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { CartItem } from './storefrontCart';
 import { removeFromCart, updateCartItemQty, cartTotalItems } from './storefrontCart';
+import { CloseIcon, MinusIcon, PlusIcon } from './icons';
 
 interface CartDrawerProps {
   cart: CartItem[];
@@ -43,10 +44,10 @@ export default function CartDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[44px] min-w-[44px] rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[10px] text-muted hover:bg-white/10 hover:text-white"
             aria-label="Close cart"
           >
-            <span className="material-symbols-outlined">close</span>
+            <CloseIcon />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -61,7 +62,7 @@ export default function CartDrawer({
                 return (
                   <li
                     key={`${item.partId}:${item.variantSuffix ?? ''}`}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded border border-white/10 bg-white/5 p-3"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-line bg-surface-2 p-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-sm font-medium text-white">{label}</p>
@@ -73,10 +74,10 @@ export default function CartDrawer({
                       <button
                         type="button"
                         onClick={() => handleQtyChange(item, -1)}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-white/10 text-muted hover:bg-white/10"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-line text-muted hover:bg-surface-2"
                         aria-label="Decrease quantity"
                       >
-                        <span className="material-symbols-outlined text-lg">remove</span>
+                        <MinusIcon />
                       </button>
                       <span className="min-w-[2rem] text-center text-sm font-medium text-white">
                         {item.quantity}
@@ -84,10 +85,10 @@ export default function CartDrawer({
                       <button
                         type="button"
                         onClick={() => handleQtyChange(item, 1)}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-white/10 text-muted hover:bg-white/10"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-line text-muted hover:bg-surface-2"
                         aria-label="Increase quantity"
                       >
-                        <span className="material-symbols-outlined text-lg">add</span>
+                        <PlusIcon />
                       </button>
                     </div>
                     <button
@@ -118,7 +119,7 @@ export default function CartDrawer({
             <button
               type="button"
               onClick={onSubmitQuote}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-sm bg-primary py-3 text-base font-semibold text-on-accent transition-colors hover:bg-primary/90"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-[12px] bg-primary py-3 text-base font-semibold text-on-accent transition-colors hover:bg-primary/90"
             >
               Request quote
             </button>
