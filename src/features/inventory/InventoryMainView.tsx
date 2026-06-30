@@ -7,6 +7,7 @@ import { useNavigation } from '@/contexts/NavigationContext';
 import { EmptyState } from '@/components/EmptyState';
 import { ScrollablePage } from '@/components/ScrollablePage';
 import { LoadingSpinner } from '@/Loading';
+import { ShortBadge } from './ShortBadge';
 
 import {
   InventoryFilters,
@@ -87,9 +88,7 @@ export default function InventoryMainView({
     if (tab === 'allParts') return baseFiltered;
     if (tab === 'needsReordering') {
       return baseFiltered.filter(
-        (item) =>
-          computeStock(item, calculateAvailable, calculateAllocated).needsReorder &&
-          (item.onOrder ?? 0) <= 0
+        (item) => computeStock(item, calculateAvailable, calculateAllocated).needsReorder
       );
     }
     if (tab === 'lowStock') {
@@ -108,7 +107,7 @@ export default function InventoryMainView({
     let lowStock = 0;
     for (const item of baseFiltered) {
       const stock = computeStock(item, calculateAvailable, calculateAllocated);
-      if (stock.needsReorder && (item.onOrder ?? 0) <= 0) needsReorder += 1;
+      if (stock.needsReorder) needsReorder += 1;
       if (stock.lowStock || stock.available <= 0) lowStock += 1;
     }
     return { total: baseFiltered.length, needsReorder, lowStock };
@@ -196,6 +195,7 @@ export default function InventoryMainView({
         >
           {pill.label}
         </span>
+        <ShortBadge shortfall={stock.shortfall} className="shrink-0" />
         <span className="material-symbols-outlined shrink-0 text-subtle">chevron_right</span>
       </button>
     );
@@ -207,7 +207,7 @@ export default function InventoryMainView({
         {summary.lowStock > 0 && (
           <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-amber-500/50 bg-amber-500/20 px-3 py-2 text-amber-200">
             <span className="text-sm font-medium">
-              {summary.lowStock} item{summary.lowStock !== 1 ? 's' : ''} below reorder threshold.
+              {summary.lowStock} item{summary.lowStock !== 1 ? 's' : ''} low or out of stock.
             </span>
             <button
               type="button"
