@@ -121,6 +121,9 @@ const TILES: {
   },
 ];
 
+const SHOP_ADDRESS = '220 West Avenue I, Lancaster, CA 93534';
+const SHOP_MAPS_URL = `https://maps.google.com/?q=${encodeURIComponent(SHOP_ADDRESS)}`;
+
 const Check = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
     <path d="M20 6L9 17l-5-5" />
@@ -354,12 +357,12 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
             <div>
               <b>Location</b>
               <a
-                href="https://maps.google.com/?q=220+West+Avenue+I,+Lancaster,+CA+93534"
+                href={SHOP_MAPS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
-                220 West Avenue I, Lancaster, CA 93534
+                {SHOP_ADDRESS}
               </a>
             </div>
           </div>
