@@ -23,6 +23,10 @@ const CustomerPortal = lazy(() => import('./public/portal/CustomerPortal'));
 const PrivacyPolicyPage = lazy(() => import('./public/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./public/TermsOfServicePage'));
 
+// Public "Request a Quote" route. Lazy so the proposal form's upload + Turnstile
+// code (and the @supabase/supabase-js it pulls) stays off the homepage path.
+const RequestQuote = lazy(() => import('./public/RequestQuote'));
+
 // Validates a returnTo value before we redirect to it. Only internal employee-app
 // paths are allowed (via the shared isInternalAppPath predicate) — this is what
 // stops a crafted /login?returnTo=//evil.com (or a javascript: URL) from becoming
@@ -220,6 +224,20 @@ export default function App() {
     }
     if (pathname === '/shop' || pathname.startsWith('/shop/')) {
       return <Storefront onEmployeeLogin={onEmployeeLogin} />;
+    }
+    // Public "Request a Quote" route — the proposal form on its own roomy page.
+    if (pathname === '/quote') {
+      return (
+        <Suspense
+          fallback={
+            <div className="flex min-h-screen items-center justify-center bg-slate-100 text-subtle">
+              Loading…
+            </div>
+          }
+        >
+          <RequestQuote onEmployeeLogin={onEmployeeLogin} />
+        </Suspense>
+      );
     }
     // Public (no-auth) legal pages. Reachable by logged-out visitors and Plaid
     // reviewers since this branch runs before any auth gate. Light-themed.

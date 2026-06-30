@@ -34,6 +34,35 @@
         } catch (e) {}
       })();
     </script>
+    <script>
+      // Preload the above-the-fold public-site fonts ONLY on public routes, so the
+      // employee app (/login, /app/*) never pays for them. Mirrors the pre-paint
+      // theme script above. Self-hosted subsets live in /public/fonts.
+      (function () {
+        try {
+          var p = window.location.pathname;
+          var isPublic =
+            p === '/' ||
+            p === '/quote' ||
+            p === '/privacy' ||
+            p === '/terms' ||
+            p === '/shop' ||
+            p.indexOf('/shop/') === 0;
+          if (!isPublic) return;
+          ['/fonts/schibsted-grotesk-800.woff2', '/fonts/hanken-grotesk-400.woff2', '/fonts/hanken-grotesk-600.woff2', '/fonts/hanken-grotesk-700.woff2'].forEach(
+            function (href) {
+              var l = document.createElement('link');
+              l.rel = 'preload';
+              l.as = 'font';
+              l.type = 'font/woff2';
+              l.crossOrigin = 'anonymous';
+              l.href = href;
+              document.head.appendChild(l);
+            }
+          );
+        } catch (e) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>WorkTrack Pro</title>

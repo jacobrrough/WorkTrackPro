@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CartItem } from './storefrontCart';
 import { removeFromCart, updateCartItemQty, cartTotalItems } from './storefrontCart';
+import { MinusIcon, PlusIcon } from './icons';
 
 interface CartPageProps {
   cart: CartItem[];
@@ -66,7 +67,7 @@ export default function CartPage({
       <h1 className="mb-6 text-2xl font-bold text-white">Cart</h1>
 
       {cart.length === 0 ? (
-        <div className="rounded border border-white/10 bg-white/5 p-8 text-center">
+        <div className="rounded-[10px] border border-line bg-surface-2 p-8 text-center">
           <p className="text-muted">Your cart is empty.</p>
           <Link
             to="/shop"
@@ -74,7 +75,7 @@ export default function CartPage({
               e.preventDefault();
               onContinueShopping();
             }}
-            className="mt-4 inline-block min-h-[44px] touch-manipulation rounded-sm bg-primary px-4 py-3 font-semibold text-on-accent transition-colors hover:bg-primary/90"
+            className="mt-4 inline-block min-h-[44px] touch-manipulation rounded-[12px] bg-primary px-4 py-3 font-semibold text-on-accent transition-colors hover:bg-primary/90"
           >
             Continue shopping
           </Link>
@@ -92,7 +93,7 @@ export default function CartPage({
               return (
                 <li
                   key={key}
-                  className="flex flex-wrap items-center gap-3 rounded border border-white/10 bg-white/5 p-4"
+                  className="flex flex-wrap items-center gap-3 rounded-[10px] border border-line bg-surface-2 p-4"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-sm font-medium text-white">{label}</p>
@@ -104,10 +105,10 @@ export default function CartPage({
                     <button
                       type="button"
                       onClick={() => handleQtyChange(item, -1)}
-                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded border border-white/10 text-muted hover:bg-white/10"
+                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-[8px] border border-line text-muted hover:bg-surface-2"
                       aria-label="Decrease quantity"
                     >
-                      <span className="material-symbols-outlined text-lg">remove</span>
+                      <MinusIcon />
                     </button>
                     <input
                       type="number"
@@ -115,22 +116,22 @@ export default function CartPage({
                       value={displayQty}
                       onChange={(e) => handleQtyInputChange(item, e.target.value)}
                       onBlur={() => handleQtyInputBlur(item)}
-                      className="w-14 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm font-medium text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-14 rounded-[10px] border border-line bg-surface-2 px-2 py-1.5 text-center text-sm font-medium text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       aria-label={`Quantity for ${label}`}
                     />
                     <button
                       type="button"
                       onClick={() => handleQtyChange(item, 1)}
-                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded border border-white/10 text-muted hover:bg-white/10"
+                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-[8px] border border-line text-muted hover:bg-surface-2"
                       aria-label="Increase quantity"
                     >
-                      <span className="material-symbols-outlined text-lg">add</span>
+                      <PlusIcon />
                     </button>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleRemove(item)}
-                    className="min-h-[44px] touch-manipulation rounded border border-red-500/30 px-3 text-sm text-red-400 hover:bg-red-500/10"
+                    className="min-h-[44px] touch-manipulation rounded-[8px] border border-red-500/30 px-3 text-sm text-red-400 hover:bg-red-500/10"
                   >
                     Remove
                   </button>
@@ -150,14 +151,14 @@ export default function CartPage({
                   e.preventDefault();
                   onContinueShopping();
                 }}
-                className="min-h-[48px] touch-manipulation rounded-sm border border-white/20 px-4 py-3 text-center font-semibold text-white transition-colors hover:bg-white/10"
+                className="min-h-[48px] touch-manipulation rounded-[12px] border border-line px-4 py-3 text-center font-semibold text-white transition-colors hover:bg-surface-2"
               >
                 Continue shopping
               </Link>
               <button
                 type="button"
                 onClick={onRequestQuote}
-                className="min-h-[48px] flex-1 rounded-sm bg-primary px-4 py-3 font-semibold text-on-accent transition-colors hover:bg-primary/90 sm:min-w-[180px] sm:flex-initial"
+                className="min-h-[48px] flex-1 rounded-[12px] bg-primary px-4 py-3 font-semibold text-on-accent transition-colors hover:bg-primary/90 sm:min-w-[180px] sm:flex-initial"
               >
                 Request quote
               </button>
