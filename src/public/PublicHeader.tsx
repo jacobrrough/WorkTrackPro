@@ -15,7 +15,9 @@ interface PublicHeaderProps {
  * auto-light/dark theme applies even when it sits above the (still-Tailwind)
  * storefront/legal bodies — those never carry `.rcm-site`, so nothing bleeds.
  *
- * Nav IA: Products → /shop · Request a Quote → /quote · Contact → /#contact.
+ * Nav IA: Products → /shop · Contact → /#contact. "Request a Quote" lives
+ * only in the CTA (red button on desktop, .mm-quote in the mobile menu) so it
+ * isn't duplicated in the primary nav.
  * Props (`onEmployeeLogin`, `currentPath`, `cartCount`) are preserved so the
  * storefront keeps working unchanged.
  */
@@ -91,7 +93,6 @@ const PublicHeader: React.FC<PublicHeaderProps> = ({
           <Link to="/shop" className={currentPath === 'shop' ? 'is-active' : undefined}>
             Products
           </Link>
-          <Link to="/quote">Request a Quote</Link>
           <a href="/#contact" onClick={goToContact}>
             Contact
           </a>
