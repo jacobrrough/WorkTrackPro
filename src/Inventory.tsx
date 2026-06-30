@@ -205,12 +205,11 @@ const Inventory: React.FC<InventoryProps> = ({
         calculateAllocated={calculateAllocated}
         onAddItem={() => openView('add')}
         onViewAll={(tab?: InventoryTab) => {
-          if (tab) updateState({ inventoryTab: tab });
-          openView('all');
-        }}
-        onSearch={(term) => {
-          setFilters((prev) => ({ ...prev, search: term }));
-          updateState({ inventorySearchTerm: term, inventoryTab: 'allParts' });
+          // Browsing via a tile/stat is an unfiltered-browse intent, so drop any search the
+          // user left active in the All Parts list earlier (it's persisted in nav state). Without
+          // this the leftover term silently filters the tab down to "no matches".
+          setFilters((prev) => ({ ...prev, search: '' }));
+          updateState({ inventoryTab: tab ?? 'allParts', inventorySearchTerm: '' });
           openView('all');
         }}
         onOpenFlow={(mode) => openView(mode)}

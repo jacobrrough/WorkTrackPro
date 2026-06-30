@@ -530,7 +530,18 @@ function AppProviderInner({ children }: { children: ReactNode }) {
       // ── Job-related tables (comments, attachments, job_parts, etc.)
       onJobRelated: (table, _action, record) => {
         const jobId = record.job_id as string | undefined;
-        if (!jobId) return;
+        if (!jobId) {
+          // DELETE payloads under default replica identity carry only the PK, so a job_inventory
+          // row removal (material unallocated, or job-delete cascade) arrives with no job_id. That
+          // changes a part's allocated total — and possibly clears/moves a shortage on a part that
+          // shares stock — so fall back to a full jobs+inventory refresh rather than dropping it.
+          // Without this the Needs Reorder flag can stay stale for the whole 30-min staleTime.
+          if (table === 'job_inventory') {
+            debounce('jobinv-orphan-refresh', () => void queries.refreshJobs());
+            debounce('inventory-refresh', () => void queries.refreshInventory());
+          }
+          return;
+        }
         debounce(`job-${jobId}`, () => void queries.refreshJob(jobId));
         if (table === 'job_inventory') {
           debounce('inventory-refresh', () => void queries.refreshInventory());

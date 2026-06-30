@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ScrollablePage } from '@/components/ScrollablePage';
 import { LoadingSpinner } from '@/Loading';
 import { type StockAdjustFlowMode } from './StockAdjustFlow';
+import { ShortBadge } from './ShortBadge';
 import {
   categoryIcon,
   computeHubSummary,
@@ -23,7 +24,6 @@ interface InventoryHubProps {
   calculateAllocated: (inventoryId: string) => number;
   onAddItem: () => void;
   onViewAll: (tab?: InventoryTab) => void;
-  onSearch: (term: string) => void;
   onOpenFlow: (mode: StockAdjustFlowMode) => void;
   onOpenDetail: (itemId: string) => void;
   onBack: () => void;
@@ -45,19 +45,10 @@ export default function InventoryHub({
   calculateAllocated,
   onAddItem,
   onViewAll,
-  onSearch,
   onOpenFlow,
   onOpenDetail,
   onBack,
 }: InventoryHubProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const submitSearch = () => {
-    const term = searchTerm.trim();
-    // Ignore an empty submit so pressing Enter in a blank field doesn't reset the list's tab.
-    if (!term) return;
-    onSearch(term);
-  };
   const summary = useMemo(
     () => computeHubSummary(inventory, calculateAvailable, calculateAllocated),
     [inventory, calculateAvailable, calculateAllocated]
@@ -249,6 +240,7 @@ export default function InventoryHub({
             >
               {pill.label}
             </span>
+            <ShortBadge shortfall={stock.shortfall} className="ml-1 mt-0.5 inline-block" />
           </div>
           <span className="material-symbols-outlined shrink-0 text-subtle">chevron_right</span>
         </button>
@@ -285,26 +277,6 @@ export default function InventoryHub({
 
       <ScrollablePage ref={viewportRef}>
         <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-4">
-          {/* Quick search — routes to the All Parts list with the term pre-applied */}
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitSearch();
-            }}
-            className="flex items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 focus-within:border-primary/50"
-          >
-            <span className="material-symbols-outlined text-xl text-muted">search</span>
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search parts by name, SKU, bin…"
-              className="min-h-[44px] flex-1 bg-transparent text-white placeholder:text-muted focus:outline-none"
-              aria-label="Search inventory"
-              enterKeyHint="search"
-            />
-          </form>
-
           {/* Quick-action tiles */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {tiles.map((tile) => (

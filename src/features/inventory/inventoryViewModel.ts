@@ -14,6 +14,18 @@ export interface StockComputed {
   available: number;
   needsReorder: boolean;
   lowStock: boolean;
+  /**
+   * Units you'd still need to order to clear the reorder condition — i.e. enough to get back to
+   * the reorder point AND cover current job demand, net of what's already on order. 0 when the
+   * item doesn't need reordering. Lets a row show *how short* it is, not just that it's short.
+   */
+  shortfall: number;
+  /** Still at/below the reorder point even after outstanding orders land. A reason for needsReorder. */
+  belowThresholdAfterOrders: boolean;
+  /** Jobs reserve more than inStock + onOrder — short for current demand. A reason for needsReorder. */
+  shortForJobs: boolean;
+  /** Out of stock with nothing on order (no reorder point / demand needed). A reason for needsReorder. */
+  outOfStock: boolean;
 }
 
 export function getSuppliers(items: InventoryItem[]): string[] {
@@ -29,19 +41,71 @@ export function getSku(item: InventoryItem): string {
   return item.barcode?.trim() || item.id.slice(0, 8).toUpperCase();
 }
 
+/**
+ * Derive an item's stock status. The two computed signal families are:
+ *   - "now"          → current shelf state (drives the Low pill / banner)
+ *   - "after orders" → projected once everything on order lands (drives needsReorder), so a real
+ *                      shortage stays flagged until an inbound order actually closes the gap
+ * over the two axes {below reorder threshold, short for job demand}, plus a standalone out-of-stock
+ * reason. INVARIANT: `calculateAvailable(item)` MUST equal `max(0, item.inStock - allocated)` —
+ * the demand math reads `item.inStock` directly, so a caller passing an `available` decoupled from
+ * inStock would make the two halves disagree. All real callers go through useInventoryAllocation,
+ * which guarantees this; keep it that way.
+ */
 export function computeStock(
   item: InventoryItem,
   calculateAvailable: (it: InventoryItem) => number,
   calculateAllocated: (inventoryId: string) => number
 ): StockComputed {
+  const round2 = (n: number) => Math.round(n * 100) / 100;
   const allocated = calculateAllocated(item.id);
   const available = calculateAvailable(item);
   const reorderPoint = item.reorderPoint ?? 0;
+  // on_order is clamped to >= 0 at the DB (adjust RPC), so this is always a non-negative qty.
+  const onOrder = item.onOrder ?? 0;
+
+  // Signals are {now, after-orders} × {below threshold, short for demand}, plus outOfStock:
+  //   below*  — available (after orders) at/under the reorder point
+  //   short*  — allocated exceeds what we physically have (inStock), after orders
+  // "now" variants feed lowStock (current shelf); "after orders" variants feed needsReorder.
+  const belowThreshold = reorderPoint > 0 && available <= reorderPoint;
+  // Jobs reserve more than we physically have in stock — a genuine shortage even with no
+  // threshold configured. inStock (not the 0-clamped `available`) is used so this still fires
+  // when stock has been driven negative to show a deficit.
+  const shortForDemand = allocated > item.inStock;
+
+  // Projected signals (what's still true once everything on order arrives). Reordering is only
+  // "handled" when the incoming order actually closes the gap — a token under-order shouldn't
+  // make a real shortage disappear from the list.
+  const belowThresholdAfterOrders = reorderPoint > 0 && available + onOrder <= reorderPoint;
+  const shortAfterOrders = allocated > item.inStock + onOrder;
+  // Out of stock with nothing on the way: nothing available AND no incoming order (onOrder is
+  // >= 0, so this is `available <= 0 && onOrder == 0`). Catches an item sitting at zero that has
+  // no reorder point and no current job demand — the owner still needs to know it's out and
+  // restock it. An item that's out but already on order is considered handled, so it won't nag.
+  // Rounded so float residue in `available` (fractional-unit subtraction) can't leave a hair of
+  // phantom stock that under-flags a physically-out item.
+  const outOfStock = round2(available + onOrder) <= 0;
+
+  // How much you'd need to order now to clear the condition: the larger of the threshold gap
+  // and the demand gap, both net of what's already on order. Rounded to avoid float noise.
+  const thresholdDeficit = reorderPoint > 0 ? reorderPoint - (available + onOrder) : 0;
+  const demandDeficit = allocated - (item.inStock + onOrder);
+  const shortfall = Math.max(0, round2(Math.max(thresholdDeficit, demandDeficit)));
+
   return {
     allocated,
     available,
-    needsReorder: reorderPoint > 0 && available <= reorderPoint,
-    lowStock: reorderPoint > 0 && available <= reorderPoint,
+    // "Needs reorder" is the actionable signal: even accounting for what's already on order, we'd
+    // still be below the reorder point, short for current job demand, or flat out of stock.
+    needsReorder: belowThresholdAfterOrders || shortAfterOrders || outOfStock,
+    // "Low stock" reflects the current shelf state (drives the Low pill / banner), regardless
+    // of incoming orders.
+    lowStock: belowThreshold || shortForDemand,
+    shortfall,
+    belowThresholdAfterOrders,
+    shortForJobs: shortAfterOrders,
+    outOfStock,
   };
 }
 
@@ -131,8 +195,9 @@ export interface HubSummary {
 
 /**
  * Overview counts for the inventory hub. Mirrors the summary logic in InventoryMainView so the
- * hub and the list agree: an item "needs reorder" only when it's below threshold AND not already
- * on order; "low stock" covers below-threshold OR fully out.
+ * hub and the list agree: "needs reorder" is the actionable signal from computeStock (below
+ * threshold with nothing on order, or short for demand beyond what's on order); "low stock"
+ * covers below-threshold OR fully out.
  */
 export function computeHubSummary(
   items: InventoryItem[],
@@ -144,7 +209,7 @@ export function computeHubSummary(
   let needsReorder = 0;
   for (const item of items) {
     const stock = computeStock(item, calculateAvailable, calculateAllocated);
-    if (stock.needsReorder && (item.onOrder ?? 0) <= 0) needsReorder += 1;
+    if (stock.needsReorder) needsReorder += 1;
     if (stock.lowStock || stock.available <= 0) lowStock += 1;
     if (stock.available > 0) inStock += 1;
   }

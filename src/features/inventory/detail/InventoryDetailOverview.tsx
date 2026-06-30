@@ -5,6 +5,7 @@ import { shouldShowInventoryDetailPrice } from '@/lib/priceVisibility';
 import { isAllocationActiveStatus, isConsumedStatus } from '@/lib/inventoryCalculations';
 import { formatStockDisplay } from '@/lib/quantity';
 import { StockTargetInput } from '@/features/inventory/StockTargetInput';
+import { computeStock } from '@/features/inventory/inventoryViewModel';
 
 interface InventoryDetailOverviewProps {
   item: InventoryItem;
@@ -101,6 +102,19 @@ export function InventoryDetailOverview({
 
   const minStock = item.reorderPoint ?? 0;
   const minStockPercent = minStock > 0 ? Math.min(200, (available / minStock) * 100) : 100;
+
+  // Reorder warning — driven straight off the canonical computeStock so this banner cannot
+  // disagree with the Needs Reorder list or show a different shortfall number. The resolved
+  // `available`/`allocated` scalars are the same inputs the list feeds into computeStock, so we
+  // pass them through trivial accessors. Gating on `needsReorder` (after-orders) means an item
+  // fully covered by an incoming order won't alarm here either.
+  const stock = computeStock(
+    item,
+    () => available,
+    () => allocated
+  );
+  const belowReorderPoint = stock.belowThresholdAfterOrders;
+  const shortForJobs = stock.shortForJobs;
   const sku = (item.barcode || item.id.slice(0, 8)).toUpperCase();
   const reorderCostEstimate =
     shouldShowInventoryDetailPrice(item, isAdmin) && minStock > 0
@@ -374,36 +388,37 @@ export function InventoryDetailOverview({
           </div>
         )}
 
-        {(item.reorderPoint != null && item.reorderPoint > 0 && available <= item.reorderPoint) ||
-        (allocated > 0 && available < allocated) ? (
+        {stock.needsReorder ? (
           <div className="mt-4 space-y-1 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
             <p className="font-bold text-red-400">
-              {item.reorderPoint != null &&
-              item.reorderPoint > 0 &&
-              available <= item.reorderPoint &&
-              allocated > 0 &&
-              available < allocated
+              {belowReorderPoint && shortForJobs
                 ? '⚠️ Below reorder point & short for jobs'
-                : item.reorderPoint != null &&
-                    item.reorderPoint > 0 &&
-                    available <= item.reorderPoint
+                : belowReorderPoint
                   ? '⚠️ Below reorder point'
-                  : '⚠️ Short for jobs'}
+                  : shortForJobs
+                    ? '⚠️ Short for jobs'
+                    : '⚠️ Out of stock'}
             </p>
-            {item.reorderPoint != null &&
-              item.reorderPoint > 0 &&
-              available <= item.reorderPoint && (
-                <p className="text-sm font-bold text-red-300">
-                  Available ({formatStockDisplay(available)}) is at or below reorder point (
-                  {item.reorderPoint}).
-                </p>
-              )}
-            {allocated > 0 && available < allocated && (
+            {belowReorderPoint && (
+              <p className="text-sm font-bold text-red-300">
+                Available ({formatStockDisplay(available)}) is at or below reorder point (
+                {item.reorderPoint}).
+              </p>
+            )}
+            {shortForJobs && (
               <p className="text-sm text-red-300">
                 {formatStockDisplay(allocated)} {item.unit} needed to complete all jobs (committed
-                to PO&apos;d / in-production jobs). Short by{' '}
-                {formatStockDisplay(allocated - available)} {item.unit} — order at least this much
-                to fulfill current jobs.
+                to PO&apos;d / in-production jobs).
+              </p>
+            )}
+            {stock.outOfStock && !shortForJobs && !belowReorderPoint && (
+              <p className="text-sm text-red-300">
+                Out of stock with nothing on order — reorder to restock.
+              </p>
+            )}
+            {stock.shortfall > 0 && (
+              <p className="text-sm font-bold text-red-300">
+                Order at least {formatStockDisplay(stock.shortfall)} {item.unit} to restock.
               </p>
             )}
           </div>
