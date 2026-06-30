@@ -168,6 +168,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
     <div className="rcm-site rcm-page">
       <PublicHeader onEmployeeLogin={onEmployeeLogin} currentPath="home" />
 
+      <main>
       {/* HERO */}
       <section className="hero">
         <div className="h-in wrap">
@@ -368,6 +369,7 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
           </div>
         </div>
       </section>
+      </main>
 
       <PublicFooter />
     </div>

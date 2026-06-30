@@ -66,6 +66,7 @@
   --c-text-subtle: 100 108 119; /* darkened from 120/129/141 for WCAG AA on small text */
   --c-accent: 201 42 42;
   --c-accent-hover: 168 30 30;
+  --c-accent-bg: 201 42 42; /* accent used as a BG behind white text; light = same */
   --c-on-accent: 255 255 255;
   color-scheme: light;
 
@@ -95,6 +96,7 @@
     --c-text-subtle: 128 136 147;
     --c-accent: 232 59 59;
     --c-accent-hover: 212 42 42;
+    --c-accent-bg: 207 46 46; /* darker red so white text on it clears WCAG AA (5.1:1) */
     --c-on-accent: 255 255 255;
     color-scheme: dark;
   }
@@ -114,6 +116,7 @@
   --c-text-subtle: 128 136 147;
   --c-accent: 232 59 59;
   --c-accent-hover: 212 42 42;
+  --c-accent-bg: 207 46 46; /* darker red so white text on it clears WCAG AA (5.1:1) */
   --c-on-accent: 255 255 255;
   color-scheme: dark;
 }
@@ -128,6 +131,15 @@
 .rcm-site h3,
 .rcm-site .wm {
   font-family: 'Schibsted Grotesk', 'Hanken Grotesk', sans-serif;
+}
+
+/* Branded keyboard-focus ring for all interactive elements (inputs keep their
+   accent border-color focus below). */
+.rcm-site a:focus-visible,
+.rcm-site button:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 /* page-level scroll container (home, /quote). Keeps global html{overflow:hidden}
@@ -228,7 +240,7 @@
 }
 .rcm-site .quote-btn {
   display: none;
-  background: rgb(var(--c-accent));
+  background: rgb(var(--c-accent-bg));
   color: rgb(var(--c-on-accent));
   font-size: 13.5px;
   font-weight: 700;
@@ -316,7 +328,7 @@
   background: rgb(var(--c-surface-2));
 }
 .rcm-site .mobile-menu .mm-quote {
-  background: rgb(var(--c-accent));
+  background: rgb(var(--c-accent-bg));
   color: rgb(var(--c-on-accent));
   text-align: center;
   margin-top: 0.35rem;
@@ -359,7 +371,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: rgb(var(--c-on-accent));
-  background: rgb(var(--c-accent));
+  background: rgb(var(--c-accent-bg));
   padding: 0.35rem 0.7rem;
   border-radius: 5px;
   margin-bottom: 1.1rem;
@@ -411,7 +423,7 @@
   transform: translateY(1px);
 }
 .rcm-site .btn-primary {
-  background: rgb(var(--c-accent));
+  background: rgb(var(--c-accent-bg));
   color: rgb(var(--c-on-accent));
 }
 .rcm-site .btn-primary:hover {
@@ -505,7 +517,7 @@
   display: block;
 }
 .rcm-site .tile.fill .pic {
-  background: linear-gradient(140deg, rgb(var(--c-accent) / 0.92), rgb(var(--c-accent-hover)));
+  background: linear-gradient(140deg, rgb(var(--c-accent-bg) / 0.92), rgb(var(--c-accent-hover)));
   color: rgb(var(--c-on-accent));
 }
 .rcm-site .tile.cta .pic {
@@ -617,7 +629,7 @@
 
 /* ===== quote CTA band ===================================================== */
 .rcm-site .qband {
-  background: rgb(var(--c-accent));
+  background: rgb(var(--c-accent-bg));
   color: rgb(var(--c-on-accent));
 }
 .rcm-site .qband-in {
