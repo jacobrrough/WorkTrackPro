@@ -314,8 +314,8 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
             </svg>
             <div>
               <b>Phone</b>
-              <a href="tel:+13128471928" style={{ color: 'inherit', textDecoration: 'none' }}>
-                (312) 847-1928
+              <a href="tel:+16619487111" style={{ color: 'inherit', textDecoration: 'none' }}>
+                (661) 948-7111
               </a>
             </div>
           </div>
@@ -333,10 +333,10 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
             <div>
               <b>Email</b>
               <a
-                href="mailto:quotes@roughcutmfg.com"
+                href="mailto:General@roughcutmfg.com"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
-                quotes@roughcutmfg.com
+                General@roughcutmfg.com
               </a>
             </div>
           </div>
@@ -352,8 +352,15 @@ const PublicHome: React.FC<PublicHomeProps> = ({ onEmployeeLogin }) => {
               <circle cx="12" cy="10" r="3" />
             </svg>
             <div>
-              <b>Shop</b>
-              Open weekdays, by appointment
+              <b>Location</b>
+              <a
+                href="https://maps.google.com/?q=220+West+Avenue+I,+Lancaster,+CA+93534"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
+                220 West Avenue I, Lancaster, CA 93534
+              </a>
             </div>
           </div>
         </div>
