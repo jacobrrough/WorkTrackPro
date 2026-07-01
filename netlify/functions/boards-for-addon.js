@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import { isAuthorized } from './lib/addonAuth.mjs';
 
 // Read-only endpoint: returns boards + columns for the Gmail Add-on dropdown.
 // Authenticated via a static API key (GMAIL_ADDON_API_KEY env var).
+
+// Re-exported so existing unit tests can import the auth boundary from this module.
+export { isAuthorized };
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,17 +13,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,OPTIONS',
   'Content-Type': 'application/json',
 };
-
-// Pure Bearer-token check. Holds the exact comparison used to gate this
-// endpoint: a missing/empty expected key never authorizes, the header must
-// carry a "Bearer " prefix, and the trimmed token must equal the key exactly.
-// Exported so the boundary can be unit-tested without invoking the handler.
-export function isAuthorized(authHeader, expectedKey) {
-  if (!expectedKey) return false;
-  const auth = (authHeader || '').trim();
-  if (!auth.startsWith('Bearer ')) return false;
-  return auth.slice(7).trim() === expectedKey;
-}
 
 function verifyApiKey(event) {
   const key = process.env.GMAIL_ADDON_API_KEY;
@@ -65,10 +58,7 @@ export async function handler(event) {
     // Optionally scope to a specific user's boards via GMAIL_ADDON_USER_ID.
     const scopedUserId = (process.env.GMAIL_ADDON_USER_ID || '').trim() || null;
 
-    let boardsQuery = supabase
-      .from('boards')
-      .select('id, name')
-      .order('name', { ascending: true });
+    let boardsQuery = supabase.from('boards').select('id, name').order('name', { ascending: true });
 
     if (scopedUserId) {
       boardsQuery = boardsQuery.eq('created_by', scopedUserId);

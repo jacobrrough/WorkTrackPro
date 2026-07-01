@@ -80,6 +80,18 @@ export function sanitizeText(input) {
   return String(input ?? '').trim();
 }
 
+// Length caps for customer-supplied free text. This is a public, unauthenticated
+// endpoint, so an unbounded field lets a caller bloat the DB row and the emails we
+// send. Caps are generous for legitimate use but bound the abuse.
+const MAX_CONTACT_NAME = 200;
+const MAX_EMAIL = 320; // RFC 5321 max address length
+const MAX_PHONE = 50;
+const MAX_DESCRIPTION = 20000;
+
+export function capText(input, max) {
+  return sanitizeText(input).slice(0, max);
+}
+
 function escapeHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -282,10 +294,10 @@ export async function handler(event) {
 
   try {
     const payload = JSON.parse(event.body || '{}');
-    const contactName = sanitizeText(payload.contactName);
-    const email = sanitizeText(payload.email);
-    const phone = sanitizeText(payload.phone);
-    let description = sanitizeText(payload.description);
+    const contactName = capText(payload.contactName, MAX_CONTACT_NAME);
+    const email = capText(payload.email, MAX_EMAIL);
+    const phone = capText(payload.phone, MAX_PHONE);
+    let description = capText(payload.description, MAX_DESCRIPTION);
     const submissionId = sanitizeText(payload.submissionId);
     const turnstileToken = sanitizeText(payload.turnstileToken);
     const files = Array.isArray(payload.files) ? payload.files : [];
@@ -325,6 +337,9 @@ export async function handler(event) {
       lines.push('', `Contact: ${contactName}`, `Email: ${email}`, `Phone: ${phone}`);
       description = lines.join('\n');
     }
+    // Re-cap: store/cart branches rebuild description from other fields (incl. a
+    // caller-controlled cart array), so bound the final text too.
+    description = description.slice(0, MAX_DESCRIPTION);
 
     if (!contactName || !email || !phone) {
       return {
