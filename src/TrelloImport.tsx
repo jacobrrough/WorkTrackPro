@@ -2184,7 +2184,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
             />
           </div>
 
-          <div className="space-y-2 rounded-2xl border border-line bg-overlay/5 p-3">
+          <div className="app-list-row space-y-2 p-3">
             <p className="text-sm font-medium text-white">
               Trello API credentials (recommended for complete imports)
             </p>
@@ -2268,7 +2268,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
                   ? trelloData.cards.filter((c) => !c.closed && selectedCardIds[c.id]).length
                   : totalOpen;
               return (
-                <div className="space-y-3 rounded-2xl border border-line bg-overlay/5 p-4">
+                <div className="app-list-row space-y-3 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-medium text-white">{trelloData.name}</p>
                     <p className="text-sm text-muted">
@@ -2367,7 +2367,7 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
           )}
 
           {result && (
-            <div className="space-y-2 rounded-2xl border border-line bg-overlay/5 p-3">
+            <div className="app-list-row space-y-2 p-3">
               <div className="flex justify-between">
                 <span className="text-green-400">Success:</span>
                 <span className="font-bold text-white">{result.success}</span>

@@ -526,7 +526,7 @@ export default function QuickBooksSyncView() {
             )}
 
             {skips.length > 0 && (
-              <details className="rounded-2xl border border-line bg-overlay/5 p-2">
+              <details className="app-list-row p-2">
                 <summary className="cursor-pointer text-sm font-semibold text-muted">
                   {skips.length} record{skips.length === 1 ? '' : 's'} skipped — no effect on your
                   books

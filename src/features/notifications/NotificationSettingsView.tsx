@@ -520,7 +520,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
             })}
 
             {/* Group toggle helpers */}
-            <div className="mt-6 rounded-2xl border border-line bg-overlay/5 p-4">
+            <div className="app-list-row mt-6 p-4">
               <h3 className="text-sm font-semibold text-white">Quick Actions</h3>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button

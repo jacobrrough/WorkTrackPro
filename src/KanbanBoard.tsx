@@ -1577,7 +1577,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     {visibleAttachments.map((attachment) => (
                       <div
                         key={attachment.id}
-                        className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-overlay/5 p-2.5"
+                        className="app-list-row flex items-center justify-between gap-2 p-2.5"
                       >
                         <div className="min-w-0">
                           <a
@@ -1822,7 +1822,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
           ) : (
             <div className="space-y-3">
               {/* Add Item */}
-              <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+              <div className="app-list-row p-3">
                 <label className="mb-2 block text-xs font-bold uppercase text-muted">
                   Add New Item
                 </label>
@@ -1855,10 +1855,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
                 ) : (
                   checklist.items.map(
                     (item: { id: string; text?: string; checked?: boolean }, index: number) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 rounded-2xl border border-line bg-overlay/5 p-3"
-                      >
+                      <div key={item.id} className="app-list-row flex items-center gap-3 p-3">
                         <div className="flex flex-col gap-1">
                           <button
                             onClick={() => handleReorderItem(index, 'up')}

@@ -166,7 +166,7 @@ export default function ToolsScreen({
                   <button
                     type="button"
                     onClick={() => setSelectedToolId(tool.id)}
-                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-overlay/5 p-3 text-left transition-colors hover:bg-overlay/10"
+                    className="app-list-row flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-overlay/10"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-bold text-white">{tool.name}</p>

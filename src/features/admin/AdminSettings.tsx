@@ -524,7 +524,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-md space-y-6">
           {isAdmin && (
-            <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+            <div className="app-list-row p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-white">Users</h2>
@@ -589,7 +589,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   {approvedUsers.map((u) => (
                     <div
                       key={u.id}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-overlay/5 p-3"
+                      className="app-list-row flex items-center justify-between gap-3 p-3"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-white">
@@ -623,7 +623,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
           )}
 
-          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+          <div className="app-list-row p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">Pricing</h2>
             <div className="space-y-4">
               <div>
@@ -706,7 +706,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           </div>
 
           {isAdmin && (
-            <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+            <div className="app-list-row p-4">
               <h2 className="mb-1 text-sm font-semibold text-white">Inventory categories</h2>
               <p className="mb-3 text-[11px] text-subtle">
                 Categories available when adding or editing inventory items. The 7 built-in
@@ -772,7 +772,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
           )}
 
-          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+          <div className="app-list-row p-4">
             <h2 className="mb-1 text-sm font-semibold text-white">CNC-able material categories</h2>
             <p className="mb-3 text-[11px] text-subtle">
               Materials in these categories are deducted when units are marked CNC-done. Everything
@@ -806,7 +806,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+          <div className="app-list-row p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">Scheduling Capacity</h2>
             <div className="space-y-4">
               <div>
@@ -853,10 +853,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     const daySchedule = workWeekSchedule[day];
                     const dayHours = getDayScheduleHours(daySchedule);
                     return (
-                      <div
-                        key={day}
-                        className="rounded-2xl border border-line bg-overlay/5 p-3 text-xs text-muted"
-                      >
+                      <div key={day} className="app-list-row p-3 text-xs text-muted">
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <div>
                             <p className="font-semibold text-white">{label}</p>
@@ -1014,7 +1011,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </button>
           </div>
 
-          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+          <div className="app-list-row p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">On-site check</h2>
             <p className="mb-4 text-xs text-muted">
               Require employees to be within a radius of your site when clocking in (and optionally
@@ -1107,7 +1104,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
             {/* Shelf / Bin Reconcile */}
             {isAdmin && (
-              <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+              <div className="app-list-row p-4">
                 <h2 className="mb-1 text-sm font-semibold text-white">Shelf / Bin Reconcile</h2>
                 <p className="mb-3 text-[10px] text-subtle">
                   Clear a shelf to remove bin location from all jobs and inventory at that bin. Use
@@ -1188,7 +1185,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           </div>
 
           {isAdmin && (
-            <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+            <div className="app-list-row p-4">
               <h2 className="mb-4 text-sm font-semibold text-white">Security</h2>
               <p className="mb-4 text-xs text-muted">
                 Two-factor authentication adds a one-time code at login. Use &quot;Reset 2FA&quot;

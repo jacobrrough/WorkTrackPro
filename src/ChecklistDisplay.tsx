@@ -207,7 +207,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
 
   // Full view for detail page
   return (
-    <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+    <div className="app-list-row p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">checklist</span>
@@ -307,10 +307,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
               ) : (
                 <div className="space-y-3">
                   {history.map((record) => (
-                    <div
-                      key={record.id}
-                      className="rounded-2xl border border-line bg-overlay/5 p-3"
-                    >
+                    <div key={record.id} className="app-list-row p-3">
                       <div className="mb-2 flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-bold text-white">{record.userName}</p>

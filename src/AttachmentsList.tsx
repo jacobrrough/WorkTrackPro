@@ -88,7 +88,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
         attachments.map((attachment) => (
           <div
             key={attachment.id}
-            className="flex w-full items-center gap-3 rounded-2xl border border-line bg-overlay/5 p-3 transition-colors hover:bg-overlay/10"
+            className="app-list-row flex w-full items-center gap-3 p-3 transition-colors hover:bg-overlay/10"
           >
             <button
               type="button"

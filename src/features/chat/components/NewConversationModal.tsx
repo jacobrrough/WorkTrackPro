@@ -89,7 +89,7 @@ export function NewConversationModal({
       : selectedIds.length >= 1 && groupName.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="app-modal-backdrop z-50 p-4">
       <div className="w-full max-w-md rounded-lg border border-line bg-background-dark shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h3 className="text-lg font-bold text-white">New Conversation</h3>

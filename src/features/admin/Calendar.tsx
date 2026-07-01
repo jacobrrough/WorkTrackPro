@@ -834,7 +834,7 @@ const Calendar: React.FC<CalendarProps> = ({
           )}
         </div>
 
-        <div className="mb-4 rounded-2xl border border-line bg-overlay/5 p-2.5 sm:p-3">
+        <div className="app-list-row mb-4 p-2.5 sm:p-3">
           <h3 className="mb-2 text-sm font-bold text-white sm:mb-3">New Job Planner</h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
             <label className="col-span-2 text-xs text-muted sm:col-span-1">
@@ -1077,7 +1077,7 @@ const Calendar: React.FC<CalendarProps> = ({
         </div>
 
         {/* Summary: Upcoming jobs - mobile-friendly wrap and touch targets */}
-        <div className="mt-4 rounded-2xl border border-line bg-overlay/5 p-2.5 sm:p-3">
+        <div className="app-list-row mt-4 p-2.5 sm:p-3">
           <h3 className="mb-2 text-base font-bold text-white sm:mb-3 sm:text-lg">Upcoming Jobs</h3>
           {jobTimelines.length === 0 ? (
             <p className="text-sm text-muted">No jobs with due dates</p>
@@ -1090,7 +1090,7 @@ const Calendar: React.FC<CalendarProps> = ({
                   <button
                     key={tl.job.id}
                     onClick={() => onNavigate('job-detail', tl.job.id)}
-                    className="w-full touch-manipulation rounded-2xl border border-line bg-overlay/5 p-2.5 text-left transition-colors active:bg-overlay/10 sm:p-3 sm:hover:bg-overlay/10"
+                    className="app-list-row w-full touch-manipulation p-2.5 text-left transition-colors active:bg-overlay/10 sm:p-3 sm:hover:bg-overlay/10"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -1228,7 +1228,7 @@ const Calendar: React.FC<CalendarProps> = ({
 
       {pastEcdApprovalModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="app-modal-backdrop z-50 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="past-ecd-title"

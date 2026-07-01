@@ -156,7 +156,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
         <div className="mx-auto max-w-2xl space-y-4">
           {/* New project form */}
           {showNewProject && (
-            <div className="flex gap-2 rounded-2xl border border-line bg-overlay/5 p-3">
+            <div className="app-list-row flex gap-2 p-3">
               <input
                 autoFocus
                 aria-label="Project name"

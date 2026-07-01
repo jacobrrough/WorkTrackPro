@@ -190,6 +190,33 @@
   transform: scale(0.99);
 }
 
+/* List row — the repeated bordered surface behind list/detail items on nearly
+   every screen (rounded-2xl border border-line bg-overlay/5). Just the surface
+   lives here; padding, flex layout, and any hover/active tint stay as utilities
+   beside it, since those vary per row. Distinct 12px shape from .app-card (14px).
+   Scoped with :where() so the selector keeps single-class specificity (0,1,0) —
+   identical to the bg-overlay/5 utility it replaces — so per-row hover:/active:
+   tint utilities (0,2,0) always win the cascade regardless of stylesheet order. */
+.app :where(.app-list-row) {
+  border-radius: 12px;
+  border: 1px solid rgb(var(--c-border));
+  background: rgb(var(--c-overlay) / 0.05);
+}
+
+/* Modal backdrop — the full-screen dimming scrim + centering that wraps a dialog
+   on the app surface. The scrim stays a literal black/60 (a dim behind the modal
+   reads the same in light and dark by design — this is not a theme surface).
+   z-index (per-modal stacking) and padding stay utilities beside it. Public
+   (.rcm-site) modals keep their own backdrop — this class is .app-scoped. */
+.app .app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+}
+
 /* ---- form controls & buttons (off-Tailwind extraction) ---------------------
  * The most-repeated utility combos in the app, pulled into one place. New code
  * uses these; the sweep converts the exact-match existing usages. Layout/size

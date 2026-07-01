@@ -627,7 +627,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
           </div>
 
           {dateRange !== 'all' && (
-            <div className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-overlay/5 p-2">
+            <div className="app-list-row flex items-center justify-between gap-2 p-2">
               <button
                 onClick={() => setPeriodOffset((prev) => prev + 1)}
                 className="flex min-h-10 touch-manipulation items-center gap-1 rounded-lg border border-line bg-overlay/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-overlay/20"
@@ -1132,7 +1132,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               ) : shiftEdits[viewingHistoryFor] && shiftEdits[viewingHistoryFor].length > 0 ? (
                 <div className="space-y-4">
                   {shiftEdits[viewingHistoryFor].map((edit) => (
-                    <div key={edit.id} className="rounded-2xl border border-line bg-overlay/5 p-3">
+                    <div key={edit.id} className="app-list-row p-3">
                       <div className="mb-3 flex items-start justify-between">
                         <div>
                           <p className="text-sm font-bold text-white">{edit.editedByName}</p>

@@ -248,7 +248,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const hasSetMode = !!effectiveSetComposition;
 
   return (
-    <div className="rounded-2xl border border-line bg-overlay/5 p-4">
+    <div className="app-list-row p-4">
       <h3 className="mb-3 text-sm font-bold text-white">Part & Dash Numbers</h3>
 
       <div className="mb-3">

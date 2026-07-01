@@ -298,7 +298,7 @@ export function InventoryDetailOverview({
         )}
 
         {showAddToOrder && onMarkOrdered && (
-          <div className="mt-4 rounded-2xl border border-line bg-overlay/5 p-3">
+          <div className="app-list-row mt-4 p-3">
             <p className="mb-2 text-sm font-bold text-muted">Add to order ({item.unit})</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -331,7 +331,7 @@ export function InventoryDetailOverview({
         )}
 
         {showReceiveOrder && onReceiveOrder && (
-          <div className="mt-4 rounded-2xl border border-line bg-overlay/5 p-3">
+          <div className="app-list-row mt-4 p-3">
             <p className="mb-2 text-sm font-bold text-muted">Receive order ({item.unit})</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -372,7 +372,7 @@ export function InventoryDetailOverview({
         )}
 
         {minStock > 0 && (
-          <div className="mt-4 rounded-2xl border border-line bg-overlay/5 p-3">
+          <div className="app-list-row mt-4 p-3">
             <div className="mb-2 flex items-center justify-between text-xs">
               <span className="font-bold text-muted">Min Stock Coverage</span>
               <span className="text-muted">

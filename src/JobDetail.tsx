@@ -2385,7 +2385,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             {/* Job details */}
-            <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+            <div className="app-list-row p-3">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
                 Job details
               </p>
@@ -2567,7 +2567,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   ? setDashQuantities
                   : (next: Record<string, number>) => setEditingPartDashQuantities(partIdx, next);
               return (
-                <div key={link.partId} className="rounded-2xl border border-line bg-overlay/5 p-2">
+                <div key={link.partId} className="app-list-row p-2">
                   {editingParts.length > 1 && (
                     <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                       Part {partIdx + 1}: {link.partNumber}
@@ -2741,12 +2741,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
             })}
 
             {/* Labor & Materials intertwined with variants section */}
-            <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+            <div className="app-list-row p-3">
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">
                 Labor & materials
               </h3>
               {editingParts.length > 1 && perPartBreakdowns && (
-                <div className="mb-3 rounded-2xl border border-line bg-overlay/5 p-2">
+                <div className="app-list-row mb-3 p-2">
                   <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                     Per-part (read-only)
                   </p>
@@ -2952,7 +2952,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             {linkedPart && (
-              <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+              <div className="app-list-row p-3">
                 <h3 className="mb-1.5 text-xs font-semibold text-white">
                   Part BOM ({linkedPart.partNumber})
                 </h3>
@@ -3123,7 +3123,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
 
               {currentUser.isAdmin && (
-                <div className="mb-3 rounded-2xl border border-line bg-overlay/5 p-2.5">
+                <div className="app-list-row mb-3 p-2.5">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
                       Completion
@@ -3213,7 +3213,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
 
               {/* Time / Shifts - list and link to Time Reports */}
-              <div className="mb-3 rounded-2xl border border-line bg-overlay/5 p-2.5">
+              <div className="app-list-row mb-3 p-2.5">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Time</p>
                   <button
@@ -3362,7 +3362,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {!job.binLocation && currentUser.isAdmin && (
                 <button
                   onClick={() => setShowBinLocationScanner(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-overlay/5 p-2.5 transition-colors hover:bg-overlay/10"
+                  className="app-list-row flex w-full items-center justify-center gap-2 p-2.5 transition-colors hover:bg-overlay/10"
                 >
                   <span className="material-symbols-outlined text-base text-primary">
                     add_location
@@ -3427,7 +3427,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           </div>
                         </div>
                         {Object.keys(link.dashQuantities ?? {}).length > 0 ? (
-                          <div className="mb-2 rounded-2xl border border-line bg-overlay/5 p-2">
+                          <div className="app-list-row mb-2 p-2">
                             <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                               Variants & quantities
                             </p>
@@ -3441,7 +3441,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           // part isn't left without a quantity readout.
                           idx === 0 &&
                           job.qty && (
-                            <div className="mb-2 rounded-2xl border border-line bg-overlay/5 p-2">
+                            <div className="app-list-row mb-2 p-2">
                               <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                                 Quantity
                               </p>
@@ -3705,7 +3705,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <button
                       key={drawing.id}
                       onClick={() => window.open(drawing.url, '_blank')}
-                      className="flex min-h-[48px] w-full touch-manipulation items-center gap-3 rounded-2xl border border-line bg-overlay/5 p-3 text-left transition-colors hover:bg-overlay/10"
+                      className="app-list-row flex min-h-[48px] w-full touch-manipulation items-center gap-3 p-3 text-left transition-colors hover:bg-overlay/10"
                     >
                       <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
                       <span className="truncate font-medium text-white">{drawing.filename}</span>

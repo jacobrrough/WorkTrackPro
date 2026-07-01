@@ -186,7 +186,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
         <button
           type="button"
           onClick={() => setShowHistory((v) => !v)}
-          className="mt-4 flex w-full items-center justify-between rounded-2xl border border-line bg-overlay/5 px-4 py-3 text-sm font-semibold text-white"
+          className="app-list-row mt-4 flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-white"
         >
           <span>Custody history</span>
           <span className="material-symbols-outlined">
@@ -200,10 +200,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
               <p className="text-sm text-muted">No activity yet.</p>
             )}
             {history.map((ev) => (
-              <div
-                key={ev.id}
-                className="flex items-start gap-3 rounded-2xl border border-line bg-overlay/5 p-3"
-              >
+              <div key={ev.id} className="app-list-row flex items-start gap-3 p-3">
                 <span className="material-symbols-outlined text-base text-muted">
                   {EVENT_ICON[ev.eventType] ?? 'history'}
                 </span>

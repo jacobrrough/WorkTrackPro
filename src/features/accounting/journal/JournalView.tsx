@@ -68,7 +68,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+    <div className="app-modal-backdrop z-[100] p-4">
       <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col rounded-lg border border-line bg-card-dark shadow-xl">
         <div className="flex items-center justify-between border-b border-line p-4">
           <h2 className="text-lg font-bold text-white">New Journal Entry</h2>

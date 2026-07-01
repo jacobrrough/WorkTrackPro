@@ -1295,7 +1295,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {/* Section 1: Part Information (always expanded) */}
-        <div className="rounded-2xl border border-line bg-overlay/5 p-3 sm:p-4">
+        <div className="app-list-row p-3 sm:p-4">
           <h2 className="mb-3 text-base font-semibold text-white sm:text-lg">Part Information</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -1379,7 +1379,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   Reset
                 </button>
                 {!isVirtualPart && (
-                  <div className="flex min-w-[280px] flex-1 flex-wrap items-center gap-2 rounded-2xl border border-line bg-overlay/5 p-2">
+                  <div className="app-list-row flex min-w-[280px] flex-1 flex-wrap items-center gap-2 p-2">
                     <label className="text-xs text-muted">Apply pricing/materials from</label>
                     <select
                       value={templateSourcePartId}
@@ -1624,7 +1624,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   )}
                 </div>
                 {part.variants && part.variants.length >= 2 && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-overlay/5 p-3">
+                  <div className="app-list-row flex flex-wrap items-center gap-2 p-3">
                     <button
                       type="button"
                       onClick={async () => {
@@ -1827,17 +1827,17 @@ const PartDetail: React.FC<PartDetailProps> = ({
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+                <div className="app-list-row p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Completed jobs</p>
                   <p className="text-lg font-bold text-white">{laborFeedback.completedJobCount}</p>
                 </div>
-                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+                <div className="app-list-row p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Total actual hours</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.totalActualHours.toFixed(1)}h
                   </p>
                 </div>
-                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+                <div className="app-list-row p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Actual avg / set</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.averageActualPerSet != null
@@ -1845,7 +1845,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       : '—'}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+                <div className="app-list-row p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Estimate / set</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.estimatePerSet != null
@@ -1864,7 +1864,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
               </div>
 
               {laborFeedback.variantRows.length > 0 && (
-                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+                <div className="app-list-row p-3">
                   <p className="mb-2 text-xs font-bold uppercase text-muted">
                     Dash labor performance
                   </p>
@@ -1902,7 +1902,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 </div>
               )}
 
-              <div className="rounded-2xl border border-line bg-overlay/5 p-3">
+              <div className="app-list-row p-3">
                 <p className="mb-2 text-xs font-bold uppercase text-muted">
                   Recent completed jobs feeding estimates
                 </p>
@@ -2115,7 +2115,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-line bg-overlay/5 p-3 sm:p-4">
+    <div className="app-list-row p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <span className="font-mono font-semibold text-primary">
@@ -3789,10 +3789,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-        <form
-          onSubmit={handleSubmit}
-          className="mx-auto max-w-lg space-y-3 rounded-2xl border border-line bg-overlay/5 p-4"
-        >
+        <form onSubmit={handleSubmit} className="app-list-row mx-auto max-w-lg space-y-3 p-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-muted">Part Number</label>
             <input

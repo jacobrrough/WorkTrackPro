@@ -64,7 +64,7 @@ function NewProjectModal({ onClose }: { onClose: (projectId?: string) => void })
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+    <div className="app-modal-backdrop z-[100] p-4">
       <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">New project</h2>
