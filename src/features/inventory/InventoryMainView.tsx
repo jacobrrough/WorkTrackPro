@@ -156,17 +156,17 @@ export default function InventoryMainView({
         key={item.id}
         type="button"
         onClick={() => onOpenDetail(item.id)}
-        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-sm border border-white/10 bg-card-dark p-2.5 text-left hover:border-primary/40"
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-card-dark p-2.5 text-left hover:border-primary/40"
       >
         {item.hasImage && item.imageUrl ? (
           <img
             src={item.imageUrl}
             alt=""
-            className="size-11 shrink-0 rounded-sm object-cover"
+            className="size-11 shrink-0 rounded-lg object-cover"
             loading="lazy"
           />
         ) : (
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
             <span className="material-symbols-outlined">{categoryIcon(item.category)}</span>
           </span>
         )}
@@ -177,21 +177,21 @@ export default function InventoryMainView({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="min-w-[3.25rem] rounded-sm bg-white/5 px-2 py-1 text-center">
+          <div className="min-w-[3.25rem] rounded-lg bg-white/5 px-2 py-1 text-center">
             <span className="block text-[10px] text-subtle">In</span>
             <span className="block text-xs font-bold text-white">{item.inStock}</span>
           </div>
-          <div className="min-w-[3.25rem] rounded-sm bg-white/5 px-2 py-1 text-center">
+          <div className="min-w-[3.25rem] rounded-lg bg-white/5 px-2 py-1 text-center">
             <span className="block text-[10px] text-subtle">Alloc</span>
             <span className="block text-xs font-bold text-yellow-300">{stock.allocated}</span>
           </div>
-          <div className="min-w-[3.25rem] rounded-sm bg-white/5 px-2 py-1 text-center">
+          <div className="min-w-[3.25rem] rounded-lg bg-white/5 px-2 py-1 text-center">
             <span className="block text-[10px] text-subtle">Avail</span>
             <span className={`block text-xs font-bold ${availColor}`}>{stock.available}</span>
           </div>
         </div>
         <span
-          className={`shrink-0 rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ${pill.className}`}
+          className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold ${pill.className}`}
         >
           {pill.label}
         </span>
@@ -203,9 +203,9 @@ export default function InventoryMainView({
 
   return (
     <div className="flex h-full flex-col bg-background-dark">
-      <div className="sticky top-0 z-20 border-b border-white/10 bg-background-dark px-3 py-3">
+      <div className="sticky top-0 z-20 border-b border-line bg-background-dark px-3 py-3">
         {summary.lowStock > 0 && (
-          <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-amber-500/50 bg-amber-500/20 px-3 py-2 text-amber-200">
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl border border-amber-500/50 bg-amber-500/20 px-3 py-2 text-amber-200">
             <span className="text-sm font-medium">
               {summary.lowStock} item{summary.lowStock !== 1 ? 's' : ''} low or out of stock.
             </span>
@@ -223,7 +223,7 @@ export default function InventoryMainView({
             <button
               type="button"
               onClick={onBack}
-              className="flex size-10 items-center justify-center rounded-sm border border-white/10 text-white hover:bg-white/10"
+              className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
               aria-label="Back to dashboard"
             >
               <span className="material-symbols-outlined">arrow_back</span>
@@ -234,7 +234,7 @@ export default function InventoryMainView({
             <button
               type="button"
               onClick={exportCsv}
-              className="min-h-[44px] rounded-sm border border-white/10 px-3 text-xs font-bold text-white"
+              className="min-h-[44px] rounded-lg border border-line px-3 text-xs font-bold text-white"
             >
               Export CSV
             </button>
@@ -247,7 +247,7 @@ export default function InventoryMainView({
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-sm px-4 text-xs font-bold ${
+              className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-lg px-4 text-xs font-bold ${
                 tab === t.key ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'
               }`}
             >
@@ -274,13 +274,13 @@ export default function InventoryMainView({
                 value={filters.search}
                 onChange={(event) => onFiltersChange({ search: event.target.value })}
                 placeholder="Search name, SKU, bin, category"
-                className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+                className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white"
               />
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <select
                   value={filters.category}
                   onChange={(event) => onFiltersChange({ category: event.target.value })}
-                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
+                  className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-sm text-white"
                 >
                   <option value="all">All Categories</option>
                   {categoryOptions.map((cat) => (
@@ -292,7 +292,7 @@ export default function InventoryMainView({
                 <select
                   value={filters.supplier}
                   onChange={(event) => onFiltersChange({ supplier: event.target.value })}
-                  className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-sm text-white"
+                  className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-sm text-white"
                 >
                   <option value="all">All Suppliers</option>
                   {suppliers.map((supplier) => (
@@ -305,15 +305,15 @@ export default function InventoryMainView({
             </div>
 
             <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:text-sm">
-              <div className="rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white">
+              <div className="rounded-lg border border-line bg-white/5 px-3 py-2 text-white">
                 <p className="text-muted">Parts</p>
                 <p className="font-bold text-white">{summary.total}</p>
               </div>
-              <div className="rounded-sm border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-200">
+              <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-200">
                 <p className="text-yellow-300/80">Needs Reorder</p>
                 <p className="font-bold">{summary.needsReorder}</p>
               </div>
-              <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
                 <p className="text-red-300/80">Low/Critical</p>
                 <p className="font-bold">{summary.lowStock}</p>
               </div>
@@ -329,7 +329,7 @@ export default function InventoryMainView({
           aria-expanded={headerExpanded}
           aria-controls="inventory-filters-panel"
           aria-label={headerExpanded ? 'Collapse filters' : 'Expand filters'}
-          className="mt-2 flex w-full items-center justify-center rounded-sm py-1 text-muted hover:bg-white/5 hover:text-white"
+          className="mt-2 flex w-full items-center justify-center rounded-lg py-1 text-muted hover:bg-white/5 hover:text-white"
         >
           <span
             className={`material-symbols-outlined text-xl transition-transform duration-300 ease-in-out ${
@@ -363,7 +363,7 @@ export default function InventoryMainView({
             {binLetterGroups.map((letterGroup) => (
               <details
                 key={letterGroup.letter}
-                className="rounded-sm border border-white/10 bg-white/5"
+                className="rounded-lg border border-line bg-white/5"
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-white">
                   <span>{letterGroup.letter}</span>
@@ -376,7 +376,7 @@ export default function InventoryMainView({
                   {letterGroup.bins.map((group) => (
                     <details
                       key={group.bin}
-                      className="rounded-sm border border-white/10 bg-background-dark"
+                      className="rounded-2xl border border-line bg-background-dark"
                     >
                       <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-white">
                         {group.bin} ({group.items.length})

@@ -45,14 +45,14 @@ export function BarcodeScannerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
-      <div className="w-full max-w-md rounded-sm bg-card-dark p-3">
+      <div className="w-full max-w-md rounded-lg bg-card-dark p-3">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">Scan Barcode</h3>
           <button type="button" onClick={onClose} className="text-white" aria-label="Close scanner">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-        <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
           <ScannerViewport
             scanner={scanner}
             fit="cover"

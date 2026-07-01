@@ -148,7 +148,7 @@ export function InventoryDetailOverview({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+      <div className="rounded-2xl border border-line bg-card-dark p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-muted">SKU</p>
@@ -160,11 +160,11 @@ export function InventoryDetailOverview({
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
+          <span className="rounded-full border border-line bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
             {getCategoryLabel(item.category)}
           </span>
           {item.vendor && (
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
+            <span className="rounded-full border border-line bg-white/5 px-2.5 py-1 text-xs font-bold text-white">
               {item.vendor}
             </span>
           )}
@@ -173,7 +173,7 @@ export function InventoryDetailOverview({
           <button
             type="button"
             onClick={() => nudgeTarget(-1)}
-            className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
+            className="flex size-11 items-center justify-center rounded-lg border border-line text-white"
             aria-label="Decrease stock"
           >
             <span className="material-symbols-outlined">remove</span>
@@ -181,13 +181,13 @@ export function InventoryDetailOverview({
           <StockTargetInput
             value={displayTarget}
             onChangeNumber={applyTarget}
-            className="w-20 rounded-sm border border-white/10 bg-white/5 px-2 py-2 text-center text-white"
+            className="w-20 rounded-lg border border-line bg-white/5 px-2 py-2 text-center text-white"
             ariaLabel="Set stock count"
           />
           <button
             type="button"
             onClick={() => nudgeTarget(1)}
-            className="flex size-11 items-center justify-center rounded-sm border border-white/10 text-white"
+            className="flex size-11 items-center justify-center rounded-lg border border-line text-white"
             aria-label="Increase stock"
           >
             <span className="material-symbols-outlined">add</span>
@@ -195,14 +195,14 @@ export function InventoryDetailOverview({
           <button
             type="button"
             onClick={onOpenAllocate}
-            className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
+            className="min-h-[44px] rounded-2xl border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
           >
             Allocate to job
           </button>
         </div>
         {isStagingStock && (
           <div
-            className="mt-3 flex items-center justify-between gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-2"
+            className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-primary/40 bg-primary/10 px-3 py-2"
             aria-live="polite"
           >
             <span className="text-sm font-medium text-primary">
@@ -217,7 +217,7 @@ export function InventoryDetailOverview({
                 type="button"
                 disabled={isSavingStock}
                 onClick={() => setStockTarget(null)}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-xs font-bold text-muted disabled:opacity-50"
+                className="min-h-[44px] rounded-lg border border-line-strong px-3 text-xs font-bold text-muted disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -225,7 +225,7 @@ export function InventoryDetailOverview({
                 type="button"
                 disabled={isSavingStock}
                 onClick={() => void confirmStock()}
-                className="min-h-[44px] rounded-sm bg-primary px-4 text-xs font-bold text-on-accent disabled:opacity-50"
+                className="min-h-[44px] rounded-lg bg-primary px-4 text-xs font-bold text-on-accent disabled:opacity-50"
               >
                 {isSavingStock ? 'Saving…' : 'Confirm'}
               </button>
@@ -235,29 +235,29 @@ export function InventoryDetailOverview({
       </div>
 
       {item.description && (
-        <div className="rounded-sm bg-card-dark p-3">
+        <div className="rounded-lg bg-card-dark p-3">
           <h2 className="mb-2 text-sm font-bold text-white">Description</h2>
           <p className="text-sm leading-relaxed text-muted">{item.description}</p>
         </div>
       )}
 
-      <div className="rounded-sm bg-card-dark p-3">
+      <div className="rounded-lg bg-card-dark p-3">
         <h2 className="mb-4 text-lg font-bold text-white">Stock Overview</h2>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-sm bg-white/5 p-3">
+          <div className="rounded-lg bg-white/5 p-3">
             <p className="text-sm text-muted">In Stock</p>
             <p className="text-2xl font-bold text-white">{formatStockDisplay(item.inStock)}</p>
           </div>
-          <div className="rounded-sm bg-white/5 p-3">
+          <div className="rounded-lg bg-white/5 p-3">
             <p className="text-sm text-muted">Available</p>
             <p className="text-2xl font-bold text-green-400">{formatStockDisplay(available)}</p>
           </div>
-          <div className="rounded-sm bg-white/5 p-3">
+          <div className="rounded-lg bg-white/5 p-3">
             <p className="text-sm text-muted">Allocated (needed for jobs)</p>
             <p className="text-2xl font-bold text-yellow-400">{formatStockDisplay(allocated)}</p>
             <p className="text-xs text-subtle">PO&apos;d / in-production jobs only</p>
           </div>
-          <div className="rounded-sm bg-white/5 p-3">
+          <div className="rounded-lg bg-white/5 p-3">
             <p className="text-sm text-muted">On Order</p>
             <p className="text-2xl font-bold text-blue-400">
               {formatStockDisplay(item.onOrder || 0)}
@@ -271,7 +271,7 @@ export function InventoryDetailOverview({
               <button
                 type="button"
                 onClick={() => setShowAddToOrder(true)}
-                className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
+                className="min-h-[44px] rounded-2xl border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
               >
                 <span className="material-symbols-outlined mr-1 align-middle text-lg">
                   pending_actions
@@ -286,7 +286,7 @@ export function InventoryDetailOverview({
                   setReceiveOrderQty(item.onOrder ?? 0);
                   setShowReceiveOrder(true);
                 }}
-                className="min-h-[44px] rounded-sm border border-green-500/30 bg-green-500/10 px-3 text-sm font-bold text-green-400"
+                className="min-h-[44px] rounded-2xl border border-green-500/30 bg-green-500/10 px-3 text-sm font-bold text-green-400"
               >
                 <span className="material-symbols-outlined mr-1 align-middle text-lg">
                   local_shipping
@@ -298,7 +298,7 @@ export function InventoryDetailOverview({
         )}
 
         {showAddToOrder && onMarkOrdered && (
-          <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
+          <div className="mt-4 rounded-2xl border border-line bg-white/5 p-3">
             <p className="mb-2 text-sm font-bold text-muted">Add to order ({item.unit})</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -307,12 +307,12 @@ export function InventoryDetailOverview({
                 step={1}
                 value={addToOrderQty}
                 onChange={(e) => setAddToOrderQty(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
+                className="w-24 rounded-lg border border-line bg-white/5 px-3 py-2 text-white"
               />
               <button
                 type="button"
                 onClick={onConfirmAddToOrder}
-                className="min-h-[44px] rounded-sm bg-primary px-3 text-sm font-bold text-on-accent"
+                className="min-h-[44px] rounded-lg bg-primary px-3 text-sm font-bold text-on-accent"
               >
                 Confirm
               </button>
@@ -322,7 +322,7 @@ export function InventoryDetailOverview({
                   setShowAddToOrder(false);
                   setAddToOrderQty(0);
                 }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-muted"
+                className="min-h-[44px] rounded-lg border border-line-strong px-3 text-sm text-muted"
               >
                 Cancel
               </button>
@@ -331,7 +331,7 @@ export function InventoryDetailOverview({
         )}
 
         {showReceiveOrder && onReceiveOrder && (
-          <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
+          <div className="mt-4 rounded-2xl border border-line bg-white/5 p-3">
             <p className="mb-2 text-sm font-bold text-muted">Receive order ({item.unit})</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -345,7 +345,7 @@ export function InventoryDetailOverview({
                     Math.max(0, Math.min(item.onOrder ?? 0, parseFloat(e.target.value) || 0))
                   )
                 }
-                className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
+                className="w-24 rounded-lg border border-line bg-white/5 px-3 py-2 text-white"
               />
               <span className="text-xs text-subtle">
                 max {formatStockDisplay(item.onOrder ?? 0)}
@@ -353,7 +353,7 @@ export function InventoryDetailOverview({
               <button
                 type="button"
                 onClick={onConfirmReceiveOrder}
-                className="min-h-[44px] rounded-sm bg-green-600 px-3 text-sm font-bold text-white"
+                className="min-h-[44px] rounded-lg bg-green-600 px-3 text-sm font-bold text-white"
               >
                 Confirm
               </button>
@@ -363,7 +363,7 @@ export function InventoryDetailOverview({
                   setShowReceiveOrder(false);
                   setReceiveOrderQty(0);
                 }}
-                className="min-h-[44px] rounded-sm border border-white/20 px-3 text-sm text-muted"
+                className="min-h-[44px] rounded-lg border border-line-strong px-3 text-sm text-muted"
               >
                 Cancel
               </button>
@@ -372,7 +372,7 @@ export function InventoryDetailOverview({
         )}
 
         {minStock > 0 && (
-          <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-3">
+          <div className="mt-4 rounded-2xl border border-line bg-white/5 p-3">
             <div className="mb-2 flex items-center justify-between text-xs">
               <span className="font-bold text-muted">Min Stock Coverage</span>
               <span className="text-muted">
@@ -389,7 +389,7 @@ export function InventoryDetailOverview({
         )}
 
         {stock.needsReorder ? (
-          <div className="mt-4 space-y-1 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+          <div className="mt-4 space-y-1 rounded-2xl border border-red-500/30 bg-red-500/10 p-3">
             <p className="font-bold text-red-400">
               {belowReorderPoint && shortForJobs
                 ? '⚠️ Below reorder point & short for jobs'
@@ -425,21 +425,21 @@ export function InventoryDetailOverview({
         ) : null}
       </div>
 
-      <div className="space-y-3 rounded-sm bg-card-dark p-3">
+      <div className="space-y-3 rounded-lg bg-card-dark p-3">
         <h2 className="mb-4 text-lg font-bold text-white">Location & Barcode</h2>
         {item.barcode && (
-          <div className="flex justify-between border-b border-white/10 pb-2">
+          <div className="flex justify-between border-b border-line pb-2">
             <p className="text-sm text-muted">Barcode</p>
             <p className="font-mono text-sm text-white">{item.barcode}</p>
           </div>
         )}
         {item.binLocation && (
-          <div className="flex justify-between border-b border-white/10 pb-2">
+          <div className="flex justify-between border-b border-line pb-2">
             <p className="text-sm text-muted">Bin Location</p>
             <p className="font-bold text-white">{item.binLocation}</p>
           </div>
         )}
-        <div className="flex justify-between border-b border-white/10 pb-2">
+        <div className="flex justify-between border-b border-line pb-2">
           <p className="text-sm text-muted">Unit</p>
           <p className="font-bold text-white">{item.unit}</p>
         </div>
@@ -447,23 +447,23 @@ export function InventoryDetailOverview({
           <button
             type="button"
             onClick={onScanBarcode}
-            className="min-h-[44px] rounded-sm border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
+            className="min-h-[44px] rounded-2xl border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary"
           >
             Scan Barcode
           </button>
         )}
       </div>
 
-      <div className="space-y-3 rounded-sm bg-card-dark p-3">
+      <div className="space-y-3 rounded-lg bg-card-dark p-3">
         <h2 className="mb-4 text-lg font-bold text-white">Supplier & Pricing</h2>
         {item.vendor && (
-          <div className="flex justify-between border-b border-white/10 pb-2">
+          <div className="flex justify-between border-b border-line pb-2">
             <p className="text-sm text-muted">Vendor</p>
             <p className="text-white">{item.vendor}</p>
           </div>
         )}
         {shouldShowInventoryDetailPrice(item, isAdmin) && (
-          <div className="flex justify-between border-b border-white/10 pb-2">
+          <div className="flex justify-between border-b border-line pb-2">
             <p className="text-sm text-muted">Unit Price</p>
             <p className="font-bold text-white">
               ${(item.price ?? 0).toFixed(2)} / {item.unit}
@@ -471,7 +471,7 @@ export function InventoryDetailOverview({
           </div>
         )}
         {reorderCostEstimate != null && (
-          <div className="flex justify-between border-b border-white/10 pb-2">
+          <div className="flex justify-between border-b border-line pb-2">
             <p className="text-sm text-muted">Reorder Cost Estimate</p>
             <p className="font-bold text-white">${reorderCostEstimate.toFixed(2)}</p>
           </div>
@@ -486,7 +486,7 @@ export function InventoryDetailOverview({
         </div>
       </div>
 
-      <div className="rounded-sm bg-card-dark p-3">
+      <div className="rounded-lg bg-card-dark p-3">
         <h2 className="mb-3 text-lg font-bold text-white">Linked Jobs</h2>
         {linkedJobs.length === 0 ? (
           <p className="text-sm text-muted">No active job allocations for this part.</p>
@@ -497,7 +497,7 @@ export function InventoryDetailOverview({
                 type="button"
                 key={jobInventoryId}
                 onClick={() => onNavigate('job-detail', job.id)}
-                className="flex w-full items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
+                className="flex w-full items-center justify-between rounded-lg border border-line bg-white/5 px-3 py-2 text-left hover:bg-white/10"
               >
                 <div>
                   <p className="font-bold text-white">Job #{job.jobCode}</p>
@@ -513,7 +513,7 @@ export function InventoryDetailOverview({
       </div>
 
       {consumedJobs.length > 0 && (
-        <div className="rounded-sm bg-card-dark p-3">
+        <div className="rounded-lg bg-card-dark p-3">
           <h2 className="mb-3 text-lg font-bold text-white">Consumed Jobs</h2>
           <p className="mb-2 text-xs text-subtle">
             Stock has already been deducted for these jobs.
@@ -524,7 +524,7 @@ export function InventoryDetailOverview({
                 type="button"
                 key={jobInventoryId}
                 onClick={() => onNavigate('job-detail', job.id)}
-                className="flex w-full items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10"
+                className="flex w-full items-center justify-between rounded-lg border border-line bg-white/5 px-3 py-2 text-left hover:bg-white/10"
               >
                 <div>
                   <p className="font-bold text-white">Job #{job.jobCode}</p>

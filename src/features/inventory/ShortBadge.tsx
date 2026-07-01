@@ -14,7 +14,7 @@ export function ShortBadge({
   if (shortfall <= 0) return null;
   return (
     <span
-      className={`rounded-sm border border-red-500/40 bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-300 ${className}`}
+      className={`rounded-2xl border border-red-500/40 bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-300 ${className}`}
       title="Units still needed to reach the reorder point and cover job demand, after what's on order"
     >
       Short {shortfall}

@@ -41,7 +41,7 @@ export function InventoryDetailHistory({
   onRefresh,
 }: InventoryDetailHistoryProps) {
   return (
-    <div className="rounded-sm bg-card-dark p-3">
+    <div className="rounded-lg bg-card-dark p-3">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold text-white">Stock History</h2>
         <button

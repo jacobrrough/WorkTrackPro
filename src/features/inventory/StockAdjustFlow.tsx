@@ -121,7 +121,7 @@ export default function StockAdjustFlow({
           <button
             type="button"
             onClick={() => setStep('search')}
-            className="flex min-h-[48px] items-center gap-2 rounded-sm border border-white/20 bg-card-dark px-5 font-bold text-white shadow-lg"
+            className="flex min-h-[48px] items-center gap-2 rounded-lg border border-line-strong bg-card-dark px-5 font-bold text-white shadow-lg"
           >
             <span className="material-symbols-outlined">search</span>
             Enter manually / Search
@@ -131,12 +131,12 @@ export default function StockAdjustFlow({
 
       {step === 'search' && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background-dark">
-          <header className="safe-area-top sticky top-0 z-10 border-b border-white/10 bg-background-dark px-3 py-3">
+          <header className="safe-area-top sticky top-0 z-10 border-b border-line bg-background-dark px-3 py-3">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-sm border border-white/10 text-white hover:bg-white/10"
+                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -148,7 +148,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={() => setStep('scan')}
-                className="flex size-10 items-center justify-center rounded-sm border border-white/10 text-white hover:bg-white/10"
+                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
                 aria-label="Back to scanner"
               >
                 <span className="material-symbols-outlined">qr_code_scanner</span>
@@ -160,7 +160,7 @@ export default function StockAdjustFlow({
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Part name, SKU, bin, category…"
               autoFocus
-              className="mt-3 min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white focus:border-primary focus:outline-none"
+              className="mt-3 min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white focus:border-primary focus:outline-none"
             />
           </header>
           <ScrollablePage className="p-3">
@@ -177,7 +177,7 @@ export default function StockAdjustFlow({
                     <button
                       type="button"
                       onClick={() => chooseItem(item)}
-                      className="flex w-full items-center justify-between gap-3 rounded-sm border border-white/10 bg-card-dark p-3 text-left hover:border-primary/40"
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-card-dark p-3 text-left hover:border-primary/40"
                     >
                       <div className="min-w-0">
                         <p className="truncate font-bold text-white">{item.name}</p>
@@ -207,7 +207,7 @@ export default function StockAdjustFlow({
           onClick={onClose}
         >
           <div
-            className="w-full max-w-md rounded-sm border border-primary/30 bg-surface-2 p-4 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-primary/30 bg-surface-2 p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -227,7 +227,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -247,7 +247,7 @@ export default function StockAdjustFlow({
                   const next = (Number.isFinite(qty) ? qty : 0) - 1;
                   setQtyText(String(Math.max(0, next)));
                 }}
-                className="flex size-12 items-center justify-center rounded-sm border border-white/10 text-white"
+                className="flex size-12 items-center justify-center rounded-lg border border-line text-white"
                 aria-label="Decrease quantity"
               >
                 <span className="material-symbols-outlined">remove</span>
@@ -260,7 +260,7 @@ export default function StockAdjustFlow({
                 step="any"
                 value={qtyText}
                 onChange={(e) => setQtyText(e.target.value)}
-                className="min-h-[48px] flex-1 rounded-sm border border-white/10 bg-white/5 px-3 text-center text-lg font-bold text-white focus:border-primary focus:outline-none"
+                className="min-h-[48px] flex-1 rounded-lg border border-line bg-white/5 px-3 text-center text-lg font-bold text-white focus:border-primary focus:outline-none"
               />
               <button
                 type="button"
@@ -268,14 +268,14 @@ export default function StockAdjustFlow({
                   const next = (Number.isFinite(qty) ? qty : 0) + 1;
                   setQtyText(String(next));
                 }}
-                className="flex size-12 items-center justify-center rounded-sm border border-white/10 text-white"
+                className="flex size-12 items-center justify-center rounded-lg border border-line text-white"
                 aria-label="Increase quantity"
               >
                 <span className="material-symbols-outlined">add</span>
               </button>
             </div>
 
-            <div className="mt-3 rounded-sm border border-white/10 bg-black/20 p-3 text-sm text-muted">
+            <div className="mt-3 rounded-lg border border-line bg-black/20 p-3 text-sm text-muted">
               New count:{' '}
               <span className="font-bold text-white">
                 {selected.inStock} → {preview.target} {selected.unit}
@@ -292,7 +292,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-[48px] flex-1 rounded-sm border border-white/20 px-4 font-bold text-muted"
+                className="min-h-[48px] flex-1 rounded-lg border border-line-strong px-4 font-bold text-muted"
               >
                 Cancel
               </button>
@@ -300,7 +300,7 @@ export default function StockAdjustFlow({
                 type="button"
                 onClick={() => void handleConfirm()}
                 disabled={!validQty || saving}
-                className={`min-h-[48px] flex-1 rounded-sm px-4 font-bold text-white disabled:opacity-50 ${
+                className={`min-h-[48px] flex-1 rounded-lg px-4 font-bold text-white disabled:opacity-50 ${
                   mode === 'in' ? 'bg-green-600' : 'bg-amber-600'
                 }`}
               >
