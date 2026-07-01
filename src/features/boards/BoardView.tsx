@@ -4,7 +4,7 @@ import {
   closestCorners,
   pointerWithin,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -27,6 +27,8 @@ import AddColumnButton from './components/AddColumnButton';
 import CardEditorModal, { type CardSaveData } from './components/CardEditorModal';
 import BoardSettingsModal from './components/BoardSettingsModal';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
+import { useDirectionalBoardScroll } from '@/hooks/useDirectionalBoardScroll';
+import { useViewportWidth } from '@/hooks/useViewportWidth';
 
 interface BoardViewProps {
   boardId: string;
@@ -45,7 +47,7 @@ function DroppableColumn({ column, children }: { column: BoardColumn; children: 
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-[80px] flex-1 flex-col gap-2 overflow-y-auto overscroll-contain rounded-b-lg p-2 transition-colors ${
+      className={`flex min-h-[80px] flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain rounded-b-lg p-2 transition-colors ${
         isOver ? 'bg-primary/5' : ''
       }`}
     >
@@ -79,6 +81,13 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     axis: 'x',
     ready: !isLoading && !!board,
   });
+
+  // Tablet/desktop is multi-column (md:snap-none); route swipe-over-a-column gestures by
+  // direction so left/right scrolls the board and up/down scrolls the column. Phone width
+  // keeps native one-column snap swiping. Disabled while a card is being dragged as a
+  // safety net (touch drags already go through TouchSensor's 200ms press, not a quick swipe).
+  const isMultiColumn = useViewportWidth() >= 768;
+  useDirectionalBoardScroll(boardScrollRef, isMultiColumn && !!board && !activeCardId);
 
   const dataCards = data?.cards;
   const cards = useMemo(() => localCards ?? dataCards ?? [], [localCards, dataCards]);
@@ -116,8 +125,11 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
     return map;
   }, [columns, cards]);
 
+  // MouseSensor (not PointerSensor) so touch is governed solely by TouchSensor's 200ms
+  // press-and-hold. That keeps a quick horizontal finger-swipe free to scroll the board
+  // instead of being hijacked into a card drag (which PointerSensor would do with no delay).
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
