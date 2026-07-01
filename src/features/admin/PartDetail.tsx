@@ -1297,7 +1297,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         {/* Section 1: Part Information (always expanded) */}
         <div className="rounded-2xl border border-line bg-white/5 p-3 sm:p-4">
           <h2 className="mb-3 text-base font-semibold text-white sm:text-lg">Part Information</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm text-muted">Part Number</label>
               <input
@@ -1826,7 +1826,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
             </p>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-2xl border border-line bg-white/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Completed jobs</p>
                   <p className="text-lg font-bold text-white">{laborFeedback.completedJobCount}</p>
@@ -3331,7 +3331,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
       onSubmit={handleSubmit}
       className="mb-4 rounded-lg border border-primary/30 bg-primary/10 p-4"
     >
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="mb-1 block text-sm text-muted">Filter by type</label>
           <select
