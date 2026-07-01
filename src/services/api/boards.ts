@@ -47,6 +47,7 @@ export function mapCardRow(row: Record<string, unknown>): BoardCard {
     color: (row.color as string) ?? undefined,
     sortOrder: (row.sort_order as number) ?? 0,
     createdAt: row.created_at as string,
+    createdBy: (row.created_by as string) ?? undefined,
   };
 }
 
@@ -369,9 +370,20 @@ export const boardService = {
     return mapCardRow(row as Record<string, unknown>);
   },
 
-  async deleteCard(cardId: string): Promise<boolean> {
-    const { error } = await supabase.from('board_cards').delete().eq('id', cardId);
-    return !error;
+  // 'deleted' → row removed; 'blocked' → RLS/permission (or already gone) filtered it to 0
+  // rows with NO error; 'error' → network/server failure. Callers use this to avoid falsely
+  // reporting success (card would reappear on reload) AND to avoid falsely blaming permissions
+  // for a network error.
+  async deleteCard(cardId: string): Promise<'deleted' | 'blocked' | 'error'> {
+    // `.select()` so a row is returned on a real delete. When RLS blocks the delete it
+    // filters to 0 rows and returns NO error, so row-count is the only success signal.
+    const { data, error } = await supabase
+      .from('board_cards')
+      .delete()
+      .eq('id', cardId)
+      .select('id');
+    if (error) return 'error';
+    return (data?.length ?? 0) > 0 ? 'deleted' : 'blocked';
   },
 
   // ── Members ─────────────────────────────────────────────

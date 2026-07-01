@@ -26,6 +26,7 @@ import BoardColumnHeader from './components/BoardColumnHeader';
 import AddColumnButton from './components/AddColumnButton';
 import CardEditorModal, { type CardSaveData } from './components/CardEditorModal';
 import BoardSettingsModal from './components/BoardSettingsModal';
+import { canManageCard } from './permissions';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { useDirectionalBoardScroll } from '@/hooks/useDirectionalBoardScroll';
 import { useViewportWidth } from '@/hooks/useViewportWidth';
@@ -463,7 +464,9 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
           canManageAttachments={!readOnly}
           onClose={() => setEditingCardId(null)}
           onSave={handleUpdateCard}
-          onDelete={handleDeleteCard}
+          onDelete={
+            canManageCard(editingCard, board, members, currentUser) ? handleDeleteCard : undefined
+          }
           onUploadAttachment={(cardId, file) => mutations.addCardAttachment(boardId, cardId, file)}
           onDeleteAttachment={(attachmentId) =>
             mutations.deleteCardAttachment(boardId, attachmentId)
