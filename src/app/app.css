@@ -18,7 +18,13 @@
   display: flex;
   flex-direction: column;
   font-family:
-    'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, Arial,
+    'Hanken Grotesk',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    system-ui,
+    Arial,
     sans-serif;
 }
 

@@ -28,8 +28,8 @@ const PrivacyPolicyPage: React.FC = () => {
             Privacy Policy
           </h1>
           <p className="mt-4 text-base leading-relaxed text-subtle">
-            <span className="font-semibold text-white">Rough Cut Manufacturing</span> ("we,"
-            "us," "our") operates the WorkTrackPro application (the "Service"). This Privacy Policy
+            <span className="font-semibold text-white">Rough Cut Manufacturing</span> ("we," "us,"
+            "our") operates the WorkTrackPro application (the "Service"). This Privacy Policy
             explains what information we collect, how we use and protect it, and the choices you
             have.
           </p>
@@ -72,8 +72,8 @@ const PrivacyPolicyPage: React.FC = () => {
                   className="mt-2 size-1.5 shrink-0 rounded-full bg-subtle"
                 />
                 <span>
-                  <span className="font-semibold text-white">Account information:</span> name,
-                  email address, and role, used to create and secure user accounts.
+                  <span className="font-semibold text-white">Account information:</span> name, email
+                  address, and role, used to create and secure user accounts.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -120,10 +120,10 @@ const PrivacyPolicyPage: React.FC = () => {
                   className="mt-2 size-1.5 shrink-0 rounded-full bg-subtle"
                 />
                 <span>
-                  <span className="font-semibold text-white">Usage and security data:</span>{' '}
-                  limited technical data needed to operate and secure the Service, such as
-                  authentication events and basic logs. We use Cloudflare Turnstile on public forms
-                  to prevent abuse.
+                  <span className="font-semibold text-white">Usage and security data:</span> limited
+                  technical data needed to operate and secure the Service, such as authentication
+                  events and basic logs. We use Cloudflare Turnstile on public forms to prevent
+                  abuse.
                 </span>
               </li>
             </ul>
@@ -141,9 +141,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              4. How we share information
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">4. How we share information</h2>
             <p className="mb-3">We share information only as needed to operate the Service:</p>
             <ul className="space-y-3 pl-1">
               <li className="flex gap-2">
@@ -212,9 +210,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              7. How we protect information
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">7. How we protect information</h2>
             <p>
               We apply administrative, technical, and physical safeguards described in our
               Information Security Policy, including encryption in transit (TLS 1.2+), encryption at
@@ -226,9 +222,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              8. Your rights and choices
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">8. Your rights and choices</h2>
             <p>
               Depending on your location, you may have the right to access, correct, or delete
               personal information we hold about you, to obtain a copy of it, and to object to or
@@ -266,9 +260,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              11. Changes to this policy
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">11. Changes to this policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will post the updated version
               with a new effective date and, where required, provide additional notice.

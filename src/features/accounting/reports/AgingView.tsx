@@ -46,10 +46,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
           {/* Bucket summary cards */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {AGING_BUCKETS.map((b) => (
-              <div
-                key={b}
-                className="rounded-2xl border border-line bg-card-dark p-2 text-center"
-              >
+              <div key={b} className="rounded-2xl border border-line bg-card-dark p-2 text-center">
                 <p className="text-[10px] font-semibold uppercase text-subtle">
                   {AGING_BUCKET_LABELS[b]}
                 </p>

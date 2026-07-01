@@ -279,12 +279,7 @@ export default function InventoryHub({
           {/* Quick-action tiles */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {tiles.map((tile) => (
-              <button
-                key={tile.key}
-                type="button"
-                onClick={tile.onClick}
-                className={TILE_BASE}
-              >
+              <button key={tile.key} type="button" onClick={tile.onClick} className={TILE_BASE}>
                 <span
                   className={`flex size-10 shrink-0 items-center justify-center rounded-2xl ${tile.badgeClassName}`}
                 >

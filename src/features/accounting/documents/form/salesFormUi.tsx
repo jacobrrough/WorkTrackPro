@@ -26,9 +26,7 @@ export function SalesFormCard({
   bodyClassName?: string;
 }) {
   return (
-    <section
-      className={`overflow-hidden rounded-lg border border-line bg-card-dark ${className}`}
-    >
+    <section className={`overflow-hidden rounded-lg border border-line bg-card-dark ${className}`}>
       {(title || right) && (
         <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           {title ? <h2 className="text-sm font-semibold text-white">{title}</h2> : <span />}

@@ -28,9 +28,9 @@ const TermsOfServicePage: React.FC = () => {
             Terms of Service
           </h1>
           <p className="mt-4 text-base leading-relaxed text-subtle">
-            <span className="font-semibold text-white">Rough Cut Manufacturing</span>{' '}
-            ("Company," "we," "us") provides the WorkTrackPro application (the "Service"). These
-            Terms of Service ("Terms") govern your access to and use of the Service.
+            <span className="font-semibold text-white">Rough Cut Manufacturing</span> ("Company,"
+            "we," "us") provides the WorkTrackPro application (the "Service"). These Terms of
+            Service ("Terms") govern your access to and use of the Service.
           </p>
           <dl className="mt-6 space-y-1 text-sm text-subtle">
             <div>
@@ -54,9 +54,7 @@ const TermsOfServicePage: React.FC = () => {
 
         <article className="space-y-10 text-base leading-relaxed text-white">
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              1. Acceptance of these Terms
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">1. Acceptance of these Terms</h2>
             <p>
               By accessing or using the Service, you agree to these Terms and to our Privacy Policy.
               If you do not agree, do not use the Service. If you use the Service on behalf of an
@@ -74,9 +72,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              3. Accounts and eligibility
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">3. Accounts and eligibility</h2>
             <p>
               You must provide accurate information, keep your credentials confidential, enable
               multi-factor authentication where required, and are responsible for activity under
@@ -147,9 +143,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              10. Limitation of liability
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">10. Limitation of liability</h2>
             <p>
               To the maximum extent permitted by law, the Company will not be liable for indirect,
               incidental, special, consequential, or punitive damages, or for lost profits or data.
@@ -188,9 +182,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-white">
-              14. Changes to these Terms
-            </h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">14. Changes to these Terms</h2>
             <p>
               We may update these Terms; we will post the updated version with a new effective date
               and, where required, provide additional notice. Continued use after changes means you

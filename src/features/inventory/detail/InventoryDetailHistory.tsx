@@ -58,7 +58,10 @@ export function InventoryDetailHistory({
       ) : (
         <div className="space-y-3">
           {history.map((h) => (
-            <div key={h.id} className="rounded-r border-l-4 border-primary/50 bg-overlay/5 py-2 pl-3">
+            <div
+              key={h.id}
+              className="rounded-r border-l-4 border-primary/50 bg-overlay/5 py-2 pl-3"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>

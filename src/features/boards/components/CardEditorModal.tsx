@@ -94,7 +94,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
           <label className="mb-1 block text-sm text-muted">Title</label>
           <input
             autoFocus
-            className="mb-4 app-input"
+            className="app-input mb-4"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Card title"

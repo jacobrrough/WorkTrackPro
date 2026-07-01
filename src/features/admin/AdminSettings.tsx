@@ -699,7 +699,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
+              className="app-btn app-btn-primary mt-4 w-full py-2.5 text-sm"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -1008,7 +1008,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
+              className="app-btn app-btn-primary mt-4 w-full py-2.5 text-sm"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -1181,7 +1181,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
+              className="app-btn app-btn-primary mt-4 w-full py-2.5 text-sm"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -1214,7 +1214,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               <button
                 onClick={handleSave}
                 disabled={isSyncing}
-                className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
+                className="app-btn app-btn-primary mt-4 w-full py-2.5 text-sm"
               >
                 {isSyncing ? 'Saving...' : 'Save'}
               </button>

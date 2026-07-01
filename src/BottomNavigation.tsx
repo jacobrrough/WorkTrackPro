@@ -24,7 +24,12 @@ function BottomNavigation() {
 
   const tabs: NavTab[] = [
     { label: 'Home', icon: 'grid_view', active: isHome, view: 'dashboard' },
-    { label: 'Jobs', icon: 'assignment', active: isJobs, view: isAdmin ? 'board-admin' : 'board-shop' },
+    {
+      label: 'Jobs',
+      icon: 'assignment',
+      active: isJobs,
+      view: isAdmin ? 'board-admin' : 'board-shop',
+    },
     { label: 'Stock', icon: 'inventory_2', active: isStock, view: 'inventory' },
     { label: 'Scan', icon: 'qr_code_scanner', active: isScanner, view: 'scanner' },
   ];

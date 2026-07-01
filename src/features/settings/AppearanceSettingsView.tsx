@@ -72,8 +72,8 @@ export function AppearanceSettingsView({ onBack }: AppearanceSettingsViewProps) 
           <section>
             <h2 className="text-base font-bold text-white">Color theme</h2>
             <p className="mt-1 text-sm text-muted">
-              Pick a color palette. Your choice is saved to your account and follows you across every
-              device you sign in on.
+              Pick a color palette. Your choice is saved to your account and follows you across
+              every device you sign in on.
             </p>
             <ThemePicker className="mt-3" />
           </section>

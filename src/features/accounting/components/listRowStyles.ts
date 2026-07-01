@@ -7,8 +7,7 @@
  */
 
 /** Bordered, rounded list container with row dividers. */
-export const LIST_CONTAINER =
-  'divide-y divide-line overflow-hidden rounded-2xl border border-line';
+export const LIST_CONTAINER = 'divide-y divide-line overflow-hidden rounded-2xl border border-line';
 
 /** An interactive list row: roomy padding + a clear hover. */
 export const LIST_ROW =
