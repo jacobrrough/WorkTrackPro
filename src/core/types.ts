@@ -662,6 +662,7 @@ export interface BoardCard {
   color?: string;
   sortOrder: number;
   createdAt?: string;
+  createdBy?: string;
   attachments?: Attachment[];
   attachmentCount?: number;
 }

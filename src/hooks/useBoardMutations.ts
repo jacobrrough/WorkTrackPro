@@ -229,13 +229,17 @@ export function useBoardMutations({ currentUser, showToast }: UseBoardMutationsP
 
   const deleteCard = useCallback(
     async (_boardId: string, cardId: string) => {
-      const ok = await boardService.deleteCard(cardId);
-      if (ok) {
+      const result = await boardService.deleteCard(cardId);
+      if (result === 'deleted') {
         removeBoardCard(queryClient, cardId);
+      } else if (result === 'blocked') {
+        showToast("Couldn't delete card — you don't have permission", 'error');
+      } else {
+        showToast("Couldn't delete card — please try again", 'error');
       }
-      return ok;
+      return result === 'deleted';
     },
-    [queryClient]
+    [queryClient, showToast]
   );
 
   // ── Members ─────────────────────────────────────────────
