@@ -40,6 +40,7 @@ architecture summary; `docs/SYSTEM_MASTERY.md` is the DB/schema/RLS authority;
 - **Pre-existing TypeScript/ESLint warnings**: do not fix unless directly related to the current task
 - **Service-role key**: only in `netlify/functions/`, never in `src/` / frontend
 - **Schema changes**: write a migration in `supabase/migrations/` first (migrations auto-apply on merge)
+- **UI changes**: follow the hybrid design system (§ Design System below) — kit for appearance, Tailwind for layout; verify in light + dark + one non-default palette
 
 ## Rates (defaults — admin-overridable in Settings)
 
@@ -137,6 +138,34 @@ job billing pills and customer selects fall back to plain UI.
 **Invariants (do not break):** debits == credits; posted entries are immutable (void, never edit/delete);
 no posting into a locked period; COGS recognized once via layer consumption. Full rules in
 `src/features/accounting/CLAUDE.md`; types grouped in `types.ts`; posting math in `posting.ts`.
+
+## Design System — HYBRID (Direction E)
+
+The employee app (`/app/*`) uses a **hybrid** styling model — the owner-chosen endpoint,
+NOT a transition state:
+
+- **Appearance** (anything visual that repeats) lives in the semantic `.app-*` kit in
+  `src/app/app.css`, scoped under `.app` on AppShell. **Layout** (flex/grid/gap/p-*/
+  text-size/responsive) stays Tailwind utilities. Never add a new repeated appearance
+  combo inline — extend the kit. Full Tailwind removal is explicitly not a goal.
+- **Theming**: everything reads `--c-*` tokens (`src/index.css`). Appearance =
+  palette (`data-theme`) × mode (`data-mode`): 6 palettes, each light + dark, mode
+  defaults to System. Any UI change must hold in light AND dark AND a non-default palette.
+- **Status colors are semantics**: green success / amber caution / blue info /
+  red overdue-rush. Write them as the usual dark-tuned literals (`text-red-400` etc.) —
+  a `[data-mode='light']` block in `index.css` auto-remaps them to legible 700/800 shades.
+- **Hard styling rules**: `bg-overlay/N` never `bg-white/N`; `--c-danger` is fill-only
+  (pair `text-on-danger`), danger text = `text-danger-fg`; shape lock — surfaces 12–14px,
+  controls 8px, pills `rounded-full`; z-index only via the semantic scale
+  (`z-nav/fab/header/overlay/dropdown/dialog/sheet/modal/picker/confirm/alert/toast`),
+  never arbitrary `z-[N]`; **always-black surfaces** (camera scanner, lightbox) use
+  `text-pure-white` — token `text-white`/`text-muted` flips dark in light mode.
+- The public marketing surface (`.rcm-site`, `src/public/`) and login/MFA chrome are a
+  separate fixed system — do not apply `.app-*` there or vice versa.
+- Full map + extraction methodology: `docs/CODE_MAP.md` § "Design system".
+  `tailwind.config.js` changes require a dev-server restart (no HMR).
+
+---
 
 ## Other Views
 

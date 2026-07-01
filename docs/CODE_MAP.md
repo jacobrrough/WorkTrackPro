@@ -40,6 +40,35 @@ Anchors are **symbol names, never line numbers** — line numbers drift, `grep` 
 
 ---
 
+## Design system — HYBRID (semantic kit + Tailwind layout)
+
+**The rule:** repeated *appearance* lives in the semantic `.app-*` kit; Tailwind utilities
+handle *layout only* (flex/grid/gap/p-*/text-size/responsive). Do NOT add new repeated
+appearance combos inline — extend the kit. Full Tailwind removal is explicitly NOT the goal.
+
+| Concern | Where |
+|---|---|
+| `.app-*` kit (cards, list rows, buttons, inputs, header, modal backdrop, icon badges, typography) | `src/app/app.css` — scoped under `.app` (set on `AppShell`); public `.rcm-site` surface is separate (`src/public/public.css`, isolated, don't touch) |
+| Theme tokens + engine | `src/index.css` — `--c-*` RGB-channel tokens; appearance = palette (`data-theme`) × mode (`data-mode`), 6 palettes × light/dark/system; pre-paint script in `index.html`; `src/theme/themes.ts` + `applyTheme.ts` |
+| Tailwind's role | `tailwind.config.js` — token color aliases (`rgb(var(--c-x) / <alpha-value>)`), radius scale, semantic z-index. **Config changes need a dev-server restart (no HMR).** |
+| Light-mode status legibility | `[data-mode='light'] .app` remap block in `src/index.css` — dark-tuned literals (`text-red-400`, `text-green-300`, …) auto-remap to 700/800 shades; write status colors as usual, the block handles light mode |
+| Semantic z-index | `z-nav/fab/header/overlay/dropdown/dialog/sheet/modal/picker/confirm/alert/toast` — never arbitrary `z-[N]`; `z-10/20/30` stay numeric for local stacking |
+
+**Non-negotiables:** semantic status colors (green success / amber caution / blue info /
+red overdue-rush) are meaning, never decoration; `bg-overlay/N` not `bg-white/N` (theme-aware);
+`--c-danger` is a FILL (pair `text-on-danger`), danger *text* uses `text-danger-fg`; shape lock
+(surfaces 12–14px `rounded-2xl/3xl`, controls 8px `rounded-lg`, pills `rounded-full`);
+**always-black surfaces** (camera scanner, lightbox) use `text-pure-white` / literal hex —
+token `text-white`/`text-muted` flips dark in light mode and goes invisible on black.
+
+**Extraction methodology** (when a combo repeats enough to join the kit): measure exact
+repeated className strings with grep → add one `.app-*` class (appearance only, layout stays
+utilities) → exact-match perl sweep → `npm run format` (mandatory; prettier reorders classes) →
+typecheck+lint+build+test green → verify computed styles byte-identical in the preview.
+Scope with `.app :where(.app-x)` when per-element `hover:`/`active:` utilities must win the cascade.
+
+---
+
 ## Big screens — grep the anchor, do NOT read whole
 
 ### `src/JobDetail.tsx` (~3,950 lines) — one mega-component `JobDetail`

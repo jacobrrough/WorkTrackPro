@@ -1,4 +1,10 @@
 /** @type {import('tailwindcss').Config} */
+// HYBRID DESIGN SYSTEM (owner decision, 2026-07): Tailwind stays as the LAYOUT
+// layer (flex/grid/gap/p-*/text-size/responsive variants); repeated APPEARANCE
+// lives in the semantic `.app-*` kit (src/app/app.css) built on the `--c-*`
+// theme tokens (src/index.css). Do not add new repeated appearance combos as
+// inline utilities — extend the kit. Full Tailwind removal is explicitly NOT
+// the goal. NOTE: changes to this file need a dev-server restart (no HMR).
 export default {
   content: [
     "./index.html",
@@ -51,10 +57,7 @@ export default {
           DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
           hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
         },
-        accent: {
-          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
-          hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
-        },
+        accent: 'rgb(var(--c-accent) / <alpha-value>)',
         'on-accent': 'rgb(var(--c-on-accent) / <alpha-value>)',
         // Destructive/error — distinct from the brand accent (see --c-danger).
         // `danger` = solid FILL (pair with text-on-danger). `danger-fg` = legible
@@ -87,20 +90,20 @@ export default {
         // text-white usages flip to dark text in the light theme. Accent-filled
         // surfaces use text-on-accent instead (handled in the sweep).
         white: 'rgb(var(--c-text) / <alpha-value>)',
-        // Escape hatches for the rare spots that must stay literally white/black
-        // in every theme (e.g. light text on a dark status badge).
+        // Escape hatch for the spots that must stay literally white in every
+        // theme: always-black surfaces (camera scanner, lightbox) where the
+        // `white`→--c-text token would flip DARK in light mode.
         'pure-white': '#ffffff',
-        'pure-black': '#000000',
       },
       fontFamily: {
         // Direction E typography, self-hosted (@font-face in src/index.css).
+        // Display face (Schibsted) is applied via the kit's `.app-display`
+        // class, not a Tailwind alias.
         sans: ['Hanken Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'system-ui', 'Arial', 'sans-serif'],
-        display: ['Schibsted Grotesk', 'Hanken Grotesk', 'system-ui', 'Arial', 'sans-serif'],
       },
       animation: {
         'slide-in-right': 'slideInRight 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
-        'scan-line': 'scanLine 2s ease-in-out infinite',
       },
       keyframes: {
         slideInRight: {
@@ -110,10 +113,6 @@ export default {
         fadeIn: {
           '0%': { opacity: 0 },
           '100%': { opacity: 1 },
-        },
-        scanLine: {
-          '0%, 100%': { transform: 'translateY(0)', opacity: 0.8 },
-          '50%': { transform: 'translateY(256px)', opacity: 1 },
         },
       },
     },
