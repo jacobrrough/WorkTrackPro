@@ -29,7 +29,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** A fresh payload of the right shape for a kind (used on create + on kind switch). */
 function emptyPayloadFor(kind: RecurringKind): RecurringPayload {
@@ -310,7 +310,7 @@ export default function RecurringTemplateEditView() {
         </section>
 
         {/* Schedule */}
-        <section className="flex flex-col gap-3 border-t border-white/10 pt-4">
+        <section className="flex flex-col gap-3 border-t border-line pt-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Schedule</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Frequency" htmlFor="rec-freq">
@@ -425,7 +425,7 @@ export default function RecurringTemplateEditView() {
         </section>
 
         {/* Payload (kind-specific) */}
-        <section className="flex flex-col gap-3 border-t border-white/10 pt-4">
+        <section className="flex flex-col gap-3 border-t border-line pt-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
             {RECURRING_KIND_LABELS[kind]} details
           </h2>
@@ -455,7 +455,7 @@ export default function RecurringTemplateEditView() {
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={() => navigate(RECURRING_BASE)}>
             Cancel
           </Button>

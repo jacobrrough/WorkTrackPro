@@ -114,17 +114,17 @@ export default function ToolsScreen({
 
   return (
     <div className="flex h-full flex-col bg-app">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur">
+      <header className="app-header px-4 py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex size-10 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+            className="app-icon-btn border border-line bg-overlay/5 text-white"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined text-lg">arrow_back</span>
           </button>
           <div>
-            <h1 className="text-xl font-bold text-white">Tools</h1>
+            <h1 className="app-section-title text-white">Tools</h1>
             <p className="text-xs text-muted">Scan to take or put away</p>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function ToolsScreen({
           <button
             type="button"
             onClick={() => setScanning(true)}
-            className="flex min-h-[64px] w-full items-center justify-center gap-3 rounded-sm bg-primary text-lg font-bold text-on-accent transition-colors hover:bg-primary/90"
+            className="flex min-h-[64px] w-full items-center justify-center gap-3 rounded-lg bg-primary text-lg font-bold text-on-accent transition-colors hover:bg-primary/90"
           >
             <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
             Scan a tool
@@ -146,7 +146,7 @@ export default function ToolsScreen({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, barcode, bin, or who has it"
-            className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+            className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
           />
 
           {visible.length === 0 ? (
@@ -166,7 +166,7 @@ export default function ToolsScreen({
                   <button
                     type="button"
                     onClick={() => setSelectedToolId(tool.id)}
-                    className="flex w-full items-center justify-between gap-3 rounded-sm border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                    className="app-list-row flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-overlay/10"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-bold text-white">{tool.name}</p>

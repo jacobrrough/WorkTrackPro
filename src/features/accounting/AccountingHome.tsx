@@ -9,7 +9,7 @@ export default function AccountingHome() {
 
   return (
     <AccountingShell active="overview" title="Accounting">
-      <div className="mb-4 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+      <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
         <span className="font-bold">Disclaimer:</span> Not certified tax software. Always verify
         figures with a CPA/EA. You are responsible for tax accuracy and timely filing.
       </div>
@@ -27,7 +27,9 @@ export default function AccountingHome() {
                   onClick={() => navigate(t.path)}
                   className="flex flex-col items-start gap-2"
                 >
-                  <span className="material-symbols-outlined text-2xl text-primary">{t.icon}</span>
+                  <span className="app-icon-badge">
+                    <span className="material-symbols-outlined text-2xl">{t.icon}</span>
+                  </span>
                   <span className="font-bold text-white">{t.label}</span>
                 </Card>
               ))}

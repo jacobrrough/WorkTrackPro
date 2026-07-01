@@ -321,12 +321,12 @@ function Toggle({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onToggle}
-      className={`h-6 w-12 shrink-0 rounded-sm transition-colors ${
-        enabled ? 'bg-primary' : 'bg-white/20'
+      className={`h-6 w-12 shrink-0 rounded-full transition-colors ${
+        enabled ? 'bg-primary' : 'bg-overlay/20'
       } ${disabled ? 'opacity-40' : ''}`}
     >
       <span
-        className={`block h-5 w-5 rounded-sm bg-white transition-transform ${
+        className={`block h-5 w-5 rounded-full bg-white transition-transform ${
           enabled ? 'translate-x-6' : 'translate-x-0.5'
         }`}
       />
@@ -409,23 +409,23 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
   return (
     <div className="flex h-full flex-col bg-app">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur">
+      <header className="app-header px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onBack}
-              className="flex size-10 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+              className="app-icon-btn border border-line bg-overlay/5 text-white"
               aria-label="Go back"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
-            <h1 className="text-lg font-bold text-white">Notification Settings</h1>
+            <h1 className="app-section-title text-white">Notification Settings</h1>
           </div>
           <button
             type="button"
             onClick={handleResetDefaults}
-            className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-overlay/10 hover:text-white"
           >
             Reset to Defaults
           </button>
@@ -433,7 +433,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
       </header>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 px-4">
+      <div className="flex border-b border-line px-4">
         <button
           type="button"
           onClick={() => setActiveTab('in_app')}
@@ -451,7 +451,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
           className="flex items-center gap-2 px-4 py-2.5 text-sm text-subtle"
         >
           Email
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+          <span className="rounded bg-overlay/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase">
             Coming soon
           </span>
         </button>
@@ -462,7 +462,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-sm bg-white/5" />
+              <div key={i} className="h-14 animate-pulse rounded-lg bg-overlay/5" />
             ))}
           </div>
         ) : (
@@ -482,7 +482,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
                   defaultExpanded={group.key === 'jobs'}
                 >
                   <div className="space-y-1">
-                    <div className="mb-1 flex items-center justify-between gap-3 rounded-sm bg-white/5 px-2 py-2.5">
+                    <div className="mb-1 flex items-center justify-between gap-3 rounded-lg bg-overlay/5 px-2 py-2.5">
                       <p className="text-sm font-semibold text-white">All {group.label}</p>
                       <Toggle
                         enabled={groupAllEnabled}
@@ -499,7 +499,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
                       return (
                         <div
                           key={config.type}
-                          className="flex items-center justify-between gap-3 rounded-sm px-2 py-2.5 transition-colors hover:bg-white/5"
+                          className="flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-overlay/5"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-white">{config.label}</p>
@@ -520,7 +520,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
             })}
 
             {/* Group toggle helpers */}
-            <div className="mt-6 rounded-sm border border-white/10 bg-white/5 p-4">
+            <div className="app-list-row mt-6 p-4">
               <h3 className="text-sm font-semibold text-white">Quick Actions</h3>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -534,7 +534,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
                       'All in-app notifications enabled'
                     )
                   }
-                  className="rounded-sm bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/30"
+                  className="rounded-lg bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/30"
                 >
                   Enable All
                 </button>
@@ -551,7 +551,7 @@ const NotificationSettingsView: React.FC<NotificationSettingsViewProps> = ({ onB
                       'All in-app notifications disabled'
                     )
                   }
-                  className="rounded-sm bg-white/10 px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-white/20"
+                  className="rounded-lg bg-overlay/10 px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-overlay/20"
                 >
                   Disable All
                 </button>

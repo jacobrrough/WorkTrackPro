@@ -43,7 +43,7 @@ export function DimensionPicker({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled || isLoading}
-      className={`w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none ${className}`}
+      className={`w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none ${className}`}
     >
       <option value="">{isLoading ? 'Loading…' : `No ${label.toLowerCase()}`}</option>
       {dimensions.map((d) => (

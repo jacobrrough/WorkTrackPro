@@ -18,7 +18,7 @@ import {
 
 function AccountRow({ line, range }: { line: ReportLine; range: DateRange }) {
   return (
-    <tr className="border-t border-white/5">
+    <tr className="border-t border-line/60">
       <td className="px-3 py-2">
         <AccountLink
           accountId={line.accountId}
@@ -74,7 +74,7 @@ export default function ProfitAndLossView() {
               <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             {data.income.lines.length === 0 && (
-              <tr className="border-t border-white/5">
+              <tr className="border-t border-line/60">
                 <td className="px-3 py-2 text-subtle" colSpan={2}>
                   No income accounts with activity.
                 </td>
@@ -87,7 +87,7 @@ export default function ProfitAndLossView() {
               <AccountRow key={l.accountId} line={l} range={range} />
             ))}
             {data.expense.lines.length === 0 && (
-              <tr className="border-t border-white/5">
+              <tr className="border-t border-line/60">
                 <td className="px-3 py-2 text-subtle" colSpan={2}>
                   No expense accounts with activity.
                 </td>
@@ -97,7 +97,7 @@ export default function ProfitAndLossView() {
           </LedgerTable>
 
           {/* Net income callout */}
-          <div className="ml-auto flex w-full max-w-xs items-center justify-between rounded-sm border border-white/10 bg-white/5 px-3 py-2">
+          <div className="ml-auto flex w-full max-w-xs items-center justify-between rounded-lg border border-line bg-overlay/5 px-3 py-2">
             <span className="font-bold text-white">Net income</span>
             <span
               className={`font-mono text-base font-bold tabular-nums ${

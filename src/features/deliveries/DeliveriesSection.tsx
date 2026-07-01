@@ -105,12 +105,12 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
   };
 
   return (
-    <section className="mb-4 rounded-md border border-white/10 bg-surface-dark p-3">
+    <section className="mb-4 rounded-lg border border-line bg-surface-dark p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-cyan-400">local_shipping</span>
           <h3 className="text-base font-semibold text-white">Deliveries</h3>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-muted">
+          <span className="rounded bg-overlay/10 px-1.5 py-0.5 text-xs text-muted">
             {deliveries?.length ?? 0}
           </span>
         </div>
@@ -137,7 +137,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
               <span className="text-xs font-semibold text-green-400">Complete</span>
             )}
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1.5 overflow-hidden rounded-full bg-overlay/10">
             <div
               className="h-full rounded-full bg-cyan-500 transition-all"
               style={{ width: `${progressPercent}%` }}
@@ -149,7 +149,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
       {isLoading ? (
         <p className="py-4 text-center text-sm text-subtle">Loading deliveries...</p>
       ) : !deliveries?.length ? (
-        <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-subtle">
+        <p className="rounded border border-dashed border-line py-4 text-center text-sm text-subtle">
           No deliveries recorded yet.
         </p>
       ) : (
@@ -191,8 +191,8 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
       )}
 
       {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-white/10 bg-surface-dark p-5">
+        <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-line bg-surface-dark p-5">
             <h3 className="mb-2 text-base font-semibold text-white">Delete delivery?</h3>
             <p className="mb-4 text-sm text-muted">
               This removes the record permanently. The packing slip can no longer be reprinted.
@@ -206,7 +206,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
               </button>
               <button
                 onClick={handleDelete}
-                className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white"
+                className="rounded bg-danger px-3 py-1.5 text-sm font-medium text-on-danger"
               >
                 Delete
               </button>

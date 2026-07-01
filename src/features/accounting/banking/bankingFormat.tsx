@@ -8,7 +8,7 @@ import { BANK_TXN_STATUS_LABELS, type BankTransactionStatus } from '../types';
  */
 
 const STATUS_STYLES: Record<BankTransactionStatus, string> = {
-  unreviewed: 'bg-white/10 text-muted',
+  unreviewed: 'bg-overlay/10 text-muted',
   categorized: 'bg-sky-500/15 text-sky-400',
   matched: 'bg-green-500/15 text-green-400',
   excluded: 'bg-amber-500/15 text-amber-400',
@@ -18,7 +18,7 @@ const STATUS_STYLES: Record<BankTransactionStatus, string> = {
 export function TxnStatusPill({ status }: { status: BankTransactionStatus }) {
   return (
     <span
-      className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {BANK_TXN_STATUS_LABELS[status]}
     </span>

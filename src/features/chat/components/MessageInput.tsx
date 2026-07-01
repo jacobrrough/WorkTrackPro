@@ -52,13 +52,13 @@ export function MessageInput({ onSendText, onSendFile, onTyping, disabled }: Mes
   );
 
   return (
-    <div className="border-t border-white/10 bg-surface-dark p-3">
+    <div className="border-t border-line bg-surface-dark p-3">
       <div className="flex items-end gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || sending}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white disabled:opacity-50"
           title="Attach file"
         >
           <span className="material-symbols-outlined text-xl">attach_file</span>
@@ -82,14 +82,14 @@ export function MessageInput({ onSendText, onSendFile, onTyping, disabled }: Mes
           placeholder="Type a message..."
           disabled={disabled || sending}
           rows={1}
-          className="max-h-32 min-h-[40px] flex-1 resize-none rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none disabled:opacity-50"
+          className="max-h-32 min-h-[40px] flex-1 resize-none rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none disabled:opacity-50"
         />
 
         <button
           type="button"
           onClick={handleSend}
           disabled={disabled || sending || !text.trim()}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-primary text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
           title="Send"
         >
           <span className="material-symbols-outlined text-xl">

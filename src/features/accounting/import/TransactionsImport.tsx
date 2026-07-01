@@ -187,14 +187,14 @@ export default function TransactionsImport() {
         <ImportStepper steps={['Upload', 'Review & balance', 'Done']} current={csv.step} />
 
         {csv.error && (
-          <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {csv.error}
           </div>
         )}
 
         {csv.step === 'upload' && (
           <>
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
               <strong>Import your Chart of Accounts first</strong> (and ideally customers &amp;
               vendors). Every transaction line maps onto an account by name — accounts that
               aren&apos;t found are flagged here so you can map them before anything is posted.
@@ -284,7 +284,7 @@ export default function TransactionsImport() {
             </div>
 
             {summary.unmappedAccountNames.length > 0 && (
-              <div className="rounded-md border border-amber-500/30 bg-card-dark p-4">
+              <div className="rounded-lg border border-amber-500/30 bg-card-dark p-4">
                 <h3 className="mb-1 text-sm font-semibold text-amber-300">
                   Unmatched accounts ({summary.unmappedAccountNames.length})
                 </h3>
@@ -338,7 +338,7 @@ export default function TransactionsImport() {
             </div>
 
             {entries.length === 0 && (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
                 No transactions found in this file. Check that the <strong>Date</strong>,{' '}
                 <strong>Account</strong>, and <strong>Debit</strong>/<strong>Credit</strong> columns
                 are mapped above. Make sure you exported the <strong>Journal</strong> report
@@ -347,7 +347,7 @@ export default function TransactionsImport() {
               </div>
             )}
 
-            <div className="max-h-[50vh] overflow-auto rounded-md border border-white/10">
+            <div className="max-h-[50vh] overflow-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-muted">
                   <tr>
@@ -364,7 +364,7 @@ export default function TransactionsImport() {
                     <Fragment key={e.index}>
                       <tr
                         onClick={() => toggle(e.index)}
-                        className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                        className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                       >
                         <td className="px-3 py-1.5 text-muted">{e.date || '—'}</td>
                         <td className="px-3 py-1.5 text-muted">{e.type || '—'}</td>
@@ -375,7 +375,7 @@ export default function TransactionsImport() {
                         </td>
                         <td className="px-3 py-1.5">
                           <span
-                            className={`rounded-sm px-1.5 py-0.5 text-xs font-semibold ${STATUS_INFO[e.status].className}`}
+                            className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${STATUS_INFO[e.status].className}`}
                             title={
                               e.status === 'unbalanced'
                                 ? `Off by ${fmt(Math.abs(e.difference))}`
@@ -418,7 +418,7 @@ export default function TransactionsImport() {
                   : `Import ${summary.ready} balanced ${summary.ready === 1 ? 'entry' : 'entries'}`}
               </Button>
               {importing && (
-                <div className="h-2 w-48 overflow-hidden rounded-full bg-white/10">
+                <div className="h-2 w-48 overflow-hidden rounded-full bg-overlay/10">
                   <div
                     className="h-full bg-primary transition-all"
                     style={{
@@ -437,7 +437,7 @@ export default function TransactionsImport() {
 
         {csv.step === 'done' && result && (
           <div className="space-y-4">
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
               <span className="material-symbols-outlined text-5xl text-emerald-400">task_alt</span>
               <h2 className="mt-2 text-xl font-bold text-white">History imported</h2>
               <p className="mt-1 text-sm text-muted">
@@ -451,7 +451,7 @@ export default function TransactionsImport() {
               </p>
             </div>
             {result.failed.length > 0 && (
-              <div className="rounded-md border border-red-500/20 bg-card-dark p-4 text-sm">
+              <div className="rounded-lg border border-red-500/20 bg-card-dark p-4 text-sm">
                 <h3 className="mb-2 font-semibold text-red-300">Transactions that failed</h3>
                 <ul className="max-h-60 space-y-1 overflow-auto text-muted">
                   {result.failed.map((f, i) => (

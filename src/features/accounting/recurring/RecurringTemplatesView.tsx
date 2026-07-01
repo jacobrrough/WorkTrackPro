@@ -103,7 +103,7 @@ function TemplateCard({
   const busy = generating || setActive.isPending;
 
   return (
-    <div className="flex flex-col gap-3 rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card-dark p-3">
       <div className="flex items-start gap-3">
         <span className="material-symbols-outlined mt-0.5 text-xl text-primary">
           {KIND_ICON[tpl.kind]}
@@ -152,7 +152,7 @@ function TemplateCard({
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-white/5 pt-2">
+      <div className="flex items-center justify-end gap-2 border-t border-line/60 pt-2">
         {ended ? (
           // Ended template: its cursor is frozen at an already-generated period, so a
           // bare re-activate would let Generate re-post a duplicate. Route to the editor
@@ -311,7 +311,7 @@ export default function RecurringTemplatesView() {
 
         {/* Due summary + generate-all */}
         {!isPending && !isError && templates.length > 0 && (
-          <div className="flex items-center justify-between gap-3 rounded-sm border border-white/10 bg-white/5 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-overlay/5 px-3 py-2.5">
             <span className="text-sm text-muted">
               {dueCount > 0 ? (
                 <>
@@ -335,19 +335,19 @@ export default function RecurringTemplatesView() {
 
         {/* Results of the last run */}
         {results && results.length > 0 && (
-          <div className="overflow-hidden rounded-sm border border-white/10">
-            <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-3 py-2">
+          <div className="overflow-hidden rounded-lg border border-line">
+            <div className="flex items-center justify-between border-b border-line bg-overlay/5 px-3 py-2">
               <span className="text-sm font-bold text-white">Last run</span>
               <button
                 type="button"
                 onClick={() => setResults(null)}
                 aria-label="Dismiss results"
-                className="flex size-7 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+                className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
               >
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-overlay/5">
               {results.map(({ result, name }, i) => (
                 <ResultRow key={`${result.templateId}-${i}`} result={result} templateName={name} />
               ))}
@@ -364,7 +364,7 @@ export default function RecurringTemplatesView() {
         )}
 
         {!isPending && !isError && templates.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">event_repeat</span>
             <p className="text-lg font-bold text-white">No recurring templates yet</p>
             <p className="max-w-sm text-sm text-muted">

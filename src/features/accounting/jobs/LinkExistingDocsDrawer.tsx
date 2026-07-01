@@ -135,7 +135,7 @@ export default function LinkExistingDocsDrawer({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by number or customer…"
           aria-label="Search documents"
-          className="w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none"
+          className="w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none"
         />
 
         {error && (
@@ -149,7 +149,7 @@ export default function LinkExistingDocsDrawer({
         ) : visible.length === 0 ? (
           <p className="text-sm italic text-subtle">No matching documents to link.</p>
         ) : (
-          <ul className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <ul className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {visible.map((d) => (
               <li key={`${d.kind}-${d.id}`} className="flex items-center gap-3 px-3 py-2">
                 <span
@@ -185,7 +185,7 @@ export default function LinkExistingDocsDrawer({
                   type="button"
                   onClick={() => void attach(d)}
                   disabled={savingId != null}
-                  className="shrink-0 rounded-sm border border-primary/40 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-primary/40 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
                 >
                   {savingId === d.id ? 'Linking…' : d.jobId ? 'Move here' : 'Attach'}
                 </button>

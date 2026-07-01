@@ -32,19 +32,19 @@ export function ThemePicker({ className = '' }: { className?: string }) {
             }`}
           >
             <span className="flex h-16 items-stretch gap-1 p-2" style={{ background: t.swatch.bg }}>
-              <span className="w-2 rounded-sm" style={{ background: t.swatch.accent }} />
-              <span className="flex-1 rounded-sm" style={{ background: t.swatch.surface }} />
+              <span className="w-2 rounded-lg" style={{ background: t.swatch.accent }} />
+              <span className="flex-1 rounded-lg" style={{ background: t.swatch.surface }} />
               <span className="flex w-1/3 flex-col gap-1 py-0.5">
                 <span
-                  className="h-1.5 rounded-sm"
+                  className="h-1.5 rounded-lg"
                   style={{ background: t.swatch.muted, opacity: 0.7 }}
                 />
                 <span
-                  className="h-1.5 w-2/3 rounded-sm"
+                  className="h-1.5 w-2/3 rounded-lg"
                   style={{ background: t.swatch.muted, opacity: 0.4 }}
                 />
                 <span
-                  className="mt-auto h-3 w-10 rounded-sm"
+                  className="mt-auto h-3 w-10 rounded-lg"
                   style={{ background: t.swatch.accent }}
                 />
               </span>

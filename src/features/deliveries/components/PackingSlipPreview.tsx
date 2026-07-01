@@ -53,8 +53,8 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
-      <header className="flex items-center justify-between border-b border-white/10 bg-surface-dark px-4 py-3">
+    <div className="fixed inset-0 z-overlay flex flex-col bg-black/90">
+      <header className="flex items-center justify-between border-b border-line bg-surface-dark px-4 py-3">
         <h2 className="text-base font-semibold text-white">
           Packing Slip — Job #{job.jobCode}, Delivery #{delivery.deliveryNumber}
         </h2>
@@ -62,7 +62,7 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
           {canEditBranding && (
             <button
               onClick={() => setEditingBranding(true)}
-              className="flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+              className="flex items-center gap-1.5 rounded bg-overlay/10 px-3 py-1.5 text-sm text-white hover:bg-overlay/20"
               title="Edit company name, contact info and logo"
             >
               <span className="material-symbols-outlined text-base">branding_watermark</span>
@@ -71,7 +71,7 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
           )}
           <button
             onClick={() => handlePrint()}
-            className="flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+            className="flex items-center gap-1.5 rounded bg-overlay/10 px-3 py-1.5 text-sm text-white hover:bg-overlay/20"
           >
             <span className="material-symbols-outlined text-base">print</span>
             Print

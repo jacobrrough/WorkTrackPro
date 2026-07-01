@@ -16,7 +16,7 @@ interface HoursFieldsProps {
 }
 
 const inputClass =
-  'rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white placeholder:text-subtle';
+  'rounded-lg border border-line bg-background-dark px-2 py-1.5 text-sm text-white placeholder:text-subtle';
 
 /** Shared date + hours + optional-note inputs, used by both the add-hours and edit forms. */
 const HoursFields: React.FC<HoursFieldsProps> = ({

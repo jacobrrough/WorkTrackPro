@@ -27,7 +27,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <div
       role="status"
-      className={`flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center ${className}`}
+      className={`flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center ${className}`}
     >
       <span aria-hidden="true" className="material-symbols-outlined text-4xl text-subtle">
         {icon}

@@ -221,7 +221,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder="Search jobs, PO, description, bin, status..."
-          className="w-full rounded-sm border border-white/10 bg-surface-2 py-2.5 pl-10 pr-3 text-white placeholder:text-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full rounded-lg border border-line bg-surface-2 py-2.5 pl-10 pr-3 text-white placeholder:text-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
           aria-label="Search"
         />
 
@@ -229,7 +229,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
           <div
             id={listboxId}
             role="listbox"
-            className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-72 overflow-y-auto rounded-sm border border-white/10 bg-app-2 shadow-lg"
+            className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-72 overflow-y-auto rounded-lg border border-line bg-app-2 shadow-lg"
           >
             {suggestions.map((suggestion, index) => (
               <React.Fragment key={suggestion.id}>
@@ -247,8 +247,8 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                   onClick={() => selectSuggestion(suggestion)}
                   onMouseEnter={() => setActiveIndex(index)}
                   className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
-                    index === activeIndex ? 'bg-primary/20' : 'hover:bg-white/5'
-                  } ${suggestion.type === 'search' ? 'border-t border-white/10' : ''}`}
+                    index === activeIndex ? 'bg-primary/20' : 'hover:bg-overlay/5'
+                  } ${suggestion.type === 'search' ? 'border-t border-line' : ''}`}
                 >
                   <span className="material-symbols-outlined text-lg text-muted">
                     {suggestion.icon}

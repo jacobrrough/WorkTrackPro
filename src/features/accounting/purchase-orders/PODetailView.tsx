@@ -24,7 +24,7 @@ import {
 } from '../types';
 
 const STATUS_STYLES: Record<PoStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_received: 'bg-amber-500/15 text-amber-400',
   received: 'bg-green-500/15 text-green-400',
@@ -62,15 +62,15 @@ function ReceiveModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+    <div className="app-modal-backdrop z-modal p-4">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Receive items</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -160,7 +160,7 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
           const qtyOver = v.quantityVariance > 0;
           const costOff = v.costVariance != null && Math.abs(v.costVariance) >= 0.005;
           return (
-            <tr key={v.poLineId} className="border-t border-white/5">
+            <tr key={v.poLineId} className="border-t border-line/60">
               <td className="px-3 py-2 text-white">
                 {v.description || '—'}
                 {v.billCount > 0 && (
@@ -197,7 +197,7 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
           );
         })}
         {variances.length === 0 && (
-          <tr className="border-t border-white/5">
+          <tr className="border-t border-line/60">
             <td className="px-3 py-2 text-subtle" colSpan={7}>
               No lines to match.
             </td>
@@ -209,12 +209,12 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
       {totalBillCount > 0 && (
         <div className="mt-3">
           <h3 className="mb-1 text-xs font-semibold uppercase text-subtle">Bills from this PO</h3>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {bills.map((b) => (
               <a
                 key={b.id}
                 href={`${ACCOUNTING_BASE}/bills/${b.id}`}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5"
+                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-overlay/5"
               >
                 <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
                   {b.billNumber || 'Draft'}
@@ -333,7 +333,7 @@ export default function PODetailView() {
           {/* Status + meta */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span
-              className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[po.status]}`}
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[po.status]}`}
             >
               {PO_STATUS_LABELS[po.status]}
             </span>
@@ -363,7 +363,7 @@ export default function PODetailView() {
             ]}
           >
             {lines.map((l) => (
-              <tr key={l.id} className="border-t border-white/5">
+              <tr key={l.id} className="border-t border-line/60">
                 <td className="px-3 py-2 text-white">{l.description || '—'}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-muted">
                   {l.quantityOrdered}
@@ -380,7 +380,7 @@ export default function PODetailView() {
               </tr>
             ))}
             {lines.length === 0 && (
-              <tr className="border-t border-white/5">
+              <tr className="border-t border-line/60">
                 <td className="px-3 py-2 text-subtle" colSpan={5}>
                   No line items.
                 </td>
@@ -398,7 +398,7 @@ export default function PODetailView() {
               <span>Tax</span>
               <span className="font-mono tabular-nums text-white">{formatMoney(po.taxTotal)}</span>
             </div>
-            <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
+            <div className="flex justify-between border-t border-line pt-1 text-base font-bold text-white">
               <span>Total</span>
               <span className="font-mono tabular-nums">{formatMoney(po.total)}</span>
             </div>

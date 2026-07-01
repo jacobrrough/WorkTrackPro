@@ -18,7 +18,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** A short caption explaining what each dimension kind slices for reporting. */
 const TYPE_HINT: Record<DimensionType, string> = {
@@ -105,8 +105,8 @@ function DimensionEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+    <div className="app-modal-backdrop z-modal p-4">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">
             {dimension ? `Edit ${label.toLowerCase()}` : `New ${label.toLowerCase()}`}
@@ -115,7 +115,7 @@ function DimensionEditorModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -216,7 +216,7 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
         disabled={busy}
         aria-label={dimension.isActive ? 'Deactivate' : 'Reactivate'}
         title={dimension.isActive ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {dimension.isActive ? 'toggle_on' : 'toggle_off'}
@@ -227,7 +227,7 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -261,11 +261,11 @@ function DimensionSection({
       </div>
 
       {dimensions.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-white/15 px-3 py-4 text-center text-sm text-subtle">
+        <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-sm text-subtle">
           No {plural.toLowerCase()} yet. {TYPE_HINT[type]}
         </p>
       ) : (
-        <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+        <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
           {dimensions.map((d) => (
             <DimensionRow key={d.id} dimension={d} onEdit={() => onEdit(d)} />
           ))}

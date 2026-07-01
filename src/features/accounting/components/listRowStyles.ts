@@ -7,12 +7,11 @@
  */
 
 /** Bordered, rounded list container with row dividers. */
-export const LIST_CONTAINER =
-  'divide-y divide-white/10 overflow-hidden rounded-sm border border-white/10';
+export const LIST_CONTAINER = 'divide-y divide-line overflow-hidden rounded-2xl border border-line';
 
 /** An interactive list row: roomy padding + a clear hover. */
 export const LIST_ROW =
-  'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04]';
+  'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-overlay/[0.04]';
 
 /** Column-header strip above a list (hidden on narrow screens; align its spans to the row). */
 export const LIST_HEADER =

@@ -248,7 +248,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const hasSetMode = !!effectiveSetComposition;
 
   return (
-    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+    <div className="app-list-row p-4">
       <h3 className="mb-3 text-sm font-bold text-white">Part & Dash Numbers</h3>
 
       <div className="mb-3">
@@ -269,13 +269,13 @@ const PartSelector: React.FC<PartSelectorProps> = ({
               handleSearch();
             }}
             placeholder="e.g., SK-F35-0911"
-            className="flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+            className="flex-1 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
           />
           {loading && (
             <span className="material-symbols-outlined animate-spin text-primary">refresh</span>
           )}
           {showSuggestions && filteredSuggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-56 overflow-y-auto rounded-sm border border-white/10 bg-background-dark shadow-lg">
+            <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-56 overflow-y-auto rounded-lg border border-line bg-background-dark shadow-lg">
               {filteredSuggestions.map((suggestion) => (
                 <button
                   key={suggestion.id}
@@ -286,7 +286,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                     setShowSuggestions(false);
                     loadPart(suggestion.partNumber);
                   }}
-                  className="flex w-full items-center justify-between border-b border-white/5 px-3 py-2 text-left hover:bg-white/5"
+                  className="flex w-full items-center justify-between border-b border-line/60 px-3 py-2 text-left hover:bg-overlay/5"
                 >
                   <span className="font-mono text-xs text-white">{suggestion.partNumber}</span>
                   <span className="truncate pl-3 text-xs text-muted">{suggestion.name}</span>
@@ -296,7 +296,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
           )}
         </div>
         {part && (
-          <div className="mt-1.5 rounded-sm border border-green-500/30 bg-green-500/10 p-2">
+          <div className="mt-1.5 rounded-lg border border-green-500/30 bg-green-500/10 p-2">
             <p className="text-xs font-medium text-green-400">✓ {part.name}</p>
             <p className="text-[10px] text-muted">{part.partNumber}</p>
           </div>
@@ -306,14 +306,14 @@ const PartSelector: React.FC<PartSelectorProps> = ({
       {part && part.variants && part.variants.length > 0 && (
         <div className="mb-3">
           {hasSetMode && (
-            <div className="mb-2 space-y-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-2">
+            <div className="mb-2 space-y-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted">One set:</span>
                 <span className="text-xs font-medium text-white">
                   {formatSetComposition(effectiveSetComposition)}
                 </span>
               </div>
-              <div className="inline-flex rounded-sm border border-primary/30 bg-background-dark p-0.5">
+              <div className="inline-flex rounded-lg border border-primary/30 bg-background-dark p-0.5">
                 <button
                   type="button"
                   onClick={() => handleQuantityModeChange('sets')}
@@ -340,7 +340,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
             </div>
           )}
           {quantityMode === 'sets' && hasSetMode ? (
-            <div className="space-y-2 rounded-sm border border-white/10 bg-background-dark/40 p-2.5">
+            <div className="space-y-2 rounded-2xl border border-line bg-background-dark/40 p-2.5">
               <label className="block text-xs font-medium text-muted">Number of sets</label>
               <input
                 type="number"
@@ -348,7 +348,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                 step="1"
                 value={setCount}
                 onChange={(e) => handleSetCountChange(parseInt(e.target.value) || 0)}
-                className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                 placeholder="0"
               />
               {totalQuantity > 0 && (
@@ -387,7 +387,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                         onChange={(e) =>
                           handleQuantityChange(variant.variantSuffix, parseInt(e.target.value) || 0)
                         }
-                        className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        className="flex-1 rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                         placeholder="0"
                       />
                       <span className="text-[10px] text-subtle">units</span>
@@ -404,7 +404,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
         <button
           type="button"
           onClick={handleAutoAssign}
-          className="w-full rounded-sm border border-primary/30 bg-primary/20 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/30"
+          className="w-full rounded-lg border border-primary/30 bg-primary/20 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/30"
         >
           Apply Part & Dash Quantities
         </button>

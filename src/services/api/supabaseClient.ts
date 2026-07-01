@@ -8,7 +8,20 @@ function getClient(): SupabaseClient {
   const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = getSupabaseAnonKey();
   try {
-    _client = createClient(supabaseUrl, supabaseAnonKey);
+    _client = createClient(supabaseUrl, supabaseAnonKey, {
+      realtime: {
+        // Heartbeat from a Web Worker instead of a main-thread setInterval.
+        // Main-thread timers are throttled in backgrounded tabs / locked phones,
+        // which silently starved the heartbeat until Supabase dropped the socket
+        // (~60s), causing the cyclic "[realtime:core] TIMED_OUT — reconnecting"
+        // and stalled live updates (chat, boards, notifications) while away.
+        // The worker file is served same-origin to satisfy the CSP in
+        // public/_headers (the realtime-js default is a Blob URL, which
+        // script-src 'self' blocks). Protocol notes in public/realtime-worker.js.
+        worker: true,
+        workerUrl: '/realtime-worker.js',
+      },
+    });
     return _client;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

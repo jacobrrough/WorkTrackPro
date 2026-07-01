@@ -11,7 +11,7 @@ import { BANKING_BASE } from '../constants';
 import type { NewReconciliationInput, Reconciliation } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -52,15 +52,15 @@ function NewReconciliationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+    <div className="app-modal-backdrop z-modal p-4">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Start Reconciliation</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -120,9 +120,9 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-white/5 text-muted">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-overlay/5 text-muted">
         <span className="material-symbols-outlined text-lg">
           {done ? 'check_circle' : 'balance'}
         </span>
@@ -137,7 +137,7 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
         </span>
       </span>
       <span
-        className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
           done ? 'bg-green-500/15 text-green-400' : 'bg-sky-500/15 text-sky-400'
         }`}
       >
@@ -189,7 +189,7 @@ export default function BankReconcileView() {
         {isError && <p className="text-red-400">Could not load reconciliations.</p>}
 
         {!isPending && !isError && reconciliations.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">balance</span>
             <p className="text-lg font-bold text-white">No reconciliations yet</p>
             <p className="max-w-sm text-sm text-muted">
@@ -205,7 +205,7 @@ export default function BankReconcileView() {
         )}
 
         {reconciliations.length > 0 && (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {reconciliations.map((rec) => (
               <ReconciliationRow key={rec.id} rec={rec} onOpen={() => openDetail(rec.id)} />
             ))}

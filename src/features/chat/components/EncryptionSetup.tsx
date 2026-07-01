@@ -81,7 +81,7 @@ export function EncryptionSetup({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-lg border border-white/10 bg-white/5 p-6">
+      <div className="w-full max-w-sm rounded-lg border border-line bg-overlay/5 p-6">
         <div className="mb-4 flex items-center gap-3">
           <span className="material-symbols-outlined text-3xl text-primary">
             {mode === 'regenerate' ? 'restart_alt' : 'lock'}
@@ -114,7 +114,7 @@ export function EncryptionSetup({
                 type="password"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input"
                 placeholder="Password before the reset"
                 autoFocus
               />
@@ -130,7 +130,7 @@ export function EncryptionSetup({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="app-input"
               placeholder={
                 mode === 'recover' ? 'Your new account password' : 'Your account password'
               }
@@ -163,7 +163,7 @@ export function EncryptionSetup({
               (mode === 'recover' && !oldPassword.trim()) ||
               (mode === 'regenerate' && !confirmRegenerate)
             }
-            className="w-full rounded-sm bg-primary px-4 py-2 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="w-full rounded-lg bg-primary px-4 py-2 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {loading
               ? 'Processing...'
@@ -178,7 +178,7 @@ export function EncryptionSetup({
         </form>
 
         {isError && mode === 'normal' && (
-          <div className="mt-4 space-y-3 rounded-sm border border-amber-500/20 bg-amber-500/5 p-3">
+          <div className="mt-4 space-y-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
             <p className="text-sm text-amber-300">
               This usually happens after a password reset. Your chat keys were encrypted with your
               previous password.
@@ -187,14 +187,14 @@ export function EncryptionSetup({
               <button
                 type="button"
                 onClick={() => switchMode('recover')}
-                className="w-full rounded-sm border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary hover:bg-primary/20"
+                className="w-full rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary hover:bg-primary/20"
               >
                 I know my previous password
               </button>
               <button
                 type="button"
                 onClick={() => switchMode('regenerate')}
-                className="w-full rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
+                className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
               >
                 Start fresh (lose old message access)
               </button>
@@ -202,7 +202,7 @@ export function EncryptionSetup({
           </div>
         )}
 
-        <div className="mt-4 flex items-start gap-2 rounded-sm border border-primary/20 bg-primary/5 p-3">
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <span className="material-symbols-outlined text-sm text-primary">shield</span>
           <p className="text-xs text-muted">
             Messages are encrypted end-to-end. Only you and the recipients can read them.

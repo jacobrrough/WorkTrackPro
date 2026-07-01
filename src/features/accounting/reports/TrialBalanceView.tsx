@@ -57,7 +57,7 @@ export default function TrialBalanceView() {
             const debit = r.balance > 0 ? r.balance : 0;
             const credit = r.balance < 0 ? -r.balance : 0;
             return (
-              <tr key={r.accountId} className="border-t border-white/5">
+              <tr key={r.accountId} className="border-t border-line/60">
                 <td className="px-3 py-2">
                   <AccountLink
                     accountId={r.accountId}
@@ -71,7 +71,7 @@ export default function TrialBalanceView() {
               </tr>
             );
           })}
-          <tr className="border-t border-white/10 bg-white/5">
+          <tr className="border-t border-line bg-overlay/5">
             <td className="px-3 py-2 font-bold text-white">Total</td>
             <MoneyCell amount={data.totalDebit} strong />
             <MoneyCell amount={data.totalCredit} strong />

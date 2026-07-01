@@ -2,34 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * THEME TOKENS
- * Each color is stored as space-separated RGB channels so Tailwind's
- * `rgb(var(--c-x) / <alpha-value>)` can apply opacity (e.g. bg-surface/40).
- * :root holds the default (Midnight Purple) palette so any not-yet-tokenized
- * style and the no-JS first paint still look correct. Each [data-theme] block
- * overrides the full set. Keep the THEME_BG map in src/theme/themes.ts and the
- * pre-paint script in index.html in sync with these background values.
+/* ---- self-hosted app typography (Direction E) ----------------------------
+ * Schibsted Grotesk (display) + Hanken Grotesk (body), same subsets the public
+ * surface vendors in /public/fonts. Declared here (global) so the employee app
+ * gets them without loading public.css. @font-face is inherently global; the
+ * public surface's own copies in public.css point at the same files (deduped).
  */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/schibsted-grotesk-800.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-700.woff2') format('woff2');
+}
+
+/*
+ * THEME TOKENS — appearance = a color PALETTE × a MODE (light / dark).
+ * Colors are space-separated RGB channels so Tailwind's `rgb(var(--c-x) / <a>)`
+ * opacity modifiers work. Structure (order matters for equal-specificity wins):
+ *   :root                                = Signal Red DARK — no-JS / no-attribute fallback
+ *   [data-theme='X'][data-mode='dark']   = each palette's own dark token set
+ *   [data-mode='dark' | 'light']         = mode-level danger-fg + overlay
+ *   [data-mode='light']                  = shared neutral LIGHT surfaces (+ default red accent)
+ *   [data-theme='X'][data-mode='light']  = that palette's accent, on the light surfaces
+ * `data-mode` is always a resolved 'light'|'dark' (JS resolves 'system'). Keep the
+ * bg maps in src/theme/themes.ts + the pre-paint script in index.html in sync.
+ */
+
+/* Destructive FILL — identical in every palette + mode (paired with white text). */
+:root {
+  --c-danger: 220 38 38;
+  --c-danger-hover: 185 28 28;
+  --c-on-danger: 255 255 255;
+}
+
+/* ---- palette DARK token sets ---------------------------------------------- */
 :root,
-[data-theme='midnight-purple'] {
+[data-theme='signal-red'][data-mode='dark'] {
   color-scheme: dark;
-  --c-bg: 15 2 24;
-  --c-bg-2: 26 12 46;
-  --c-surface: 30 15 46;
-  --c-surface-2: 38 26 50;
-  --c-surface-3: 42 31 53;
-  --c-border: 77 52 101;
-  --c-border-strong: 107 79 135;
-  --c-text: 243 238 251;
-  --c-text-muted: 173 147 200;
-  --c-text-subtle: 143 124 170;
-  --c-accent: 147 51 234;
-  --c-accent-hover: 126 34 206;
+  --c-bg: 18 18 20;
+  --c-bg-2: 24 25 28;
+  --c-surface: 30 32 36;
+  --c-surface-2: 40 43 48;
+  --c-surface-3: 51 55 61;
+  --c-border: 58 62 69;
+  --c-border-strong: 78 84 93;
+  --c-text: 244 245 247;
+  --c-text-muted: 168 174 183;
+  --c-text-subtle: 130 137 147;
+  --c-accent: 234 68 68;
+  --c-accent-hover: 212 42 42;
   --c-on-accent: 255 255 255;
 }
 
-[data-theme='deep-ocean'] {
+[data-theme='deep-ocean'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 7 18 31;
   --c-bg-2: 12 26 43;
@@ -46,7 +100,7 @@
   --c-on-accent: 255 255 255;
 }
 
-[data-theme='forest'] {
+[data-theme='forest'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 7 20 14;
   --c-bg-2: 12 31 22;
@@ -63,7 +117,7 @@
   --c-on-accent: 4 20 12;
 }
 
-[data-theme='ember'] {
+[data-theme='ember'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 21 16 10;
   --c-bg-2: 32 24 16;
@@ -80,7 +134,7 @@
   --c-on-accent: 42 24 3;
 }
 
-[data-theme='crimson'] {
+[data-theme='crimson'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 21 4 7;
   --c-bg-2: 32 10 15;
@@ -97,7 +151,7 @@
   --c-on-accent: 255 255 255;
 }
 
-[data-theme='graphite'] {
+[data-theme='graphite'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 12 13 16;
   --c-bg-2: 19 20 25;
@@ -114,7 +168,14 @@
   --c-on-accent: 17 21 28;
 }
 
-[data-theme='daylight'] {
+/* ---- mode-level tokens (danger text + overlay flip with light/dark) -------- */
+[data-mode='dark'] {
+  --c-danger-fg: 248 113 113;
+  --c-overlay: 255 255 255;
+}
+
+/* ---- LIGHT: shared neutral surfaces; each palette's identity via its accent -- */
+[data-mode='light'] {
   color-scheme: light;
   --c-bg: 244 246 249;
   --c-bg-2: 234 237 242;
@@ -126,13 +187,44 @@
   --c-text: 20 24 31;
   --c-text-muted: 74 85 104;
   --c-text-subtle: 107 118 137;
-  --c-accent: 147 51 234;
-  --c-accent-hover: 126 34 206;
+  /* default accent (Signal Red), deepened for contrast on white */
+  --c-accent: 220 38 38;
+  --c-accent-hover: 185 28 28;
   --c-on-accent: 255 255 255;
+  --c-danger-fg: 185 28 28;
+  --c-overlay: 20 24 31;
+}
+[data-theme='deep-ocean'][data-mode='light'] {
+  --c-accent: 2 132 199;
+  --c-accent-hover: 3 105 161;
+}
+[data-theme='forest'][data-mode='light'] {
+  --c-accent: 4 120 87;
+  --c-accent-hover: 6 95 70;
+}
+[data-theme='ember'][data-mode='light'] {
+  --c-accent: 180 83 9;
+  --c-accent-hover: 146 64 14;
+}
+[data-theme='crimson'][data-mode='light'] {
+  --c-accent: 225 29 72;
+  --c-accent-hover: 190 18 60;
+}
+[data-theme='graphite'][data-mode='light'] {
+  --c-accent: 71 85 105;
+  --c-accent-hover: 51 65 85;
 }
 
 :root {
-  font-family: 'Plus Jakarta Sans', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family:
+    'Hanken Grotesk',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    system-ui,
+    Arial,
+    sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -172,6 +264,102 @@ option {
 option {
   background-color: rgb(var(--c-surface-2));
   color: rgb(var(--c-text));
+}
+
+/* ---- Light-mode status-text legibility (WCAG 1.4.3) --------------------------
+ * The semantic status vocabulary (green success, amber caution, blue info,
+ * red overdue/rush) is written as Tailwind literals tuned for DARK surfaces
+ * (text-red-400, text-green-300, ...). On the light-mode surfaces those shades
+ * fall to 1.1-2.8:1 (measured: inventory "Needs Reorder" 1.07:1). Rather than
+ * rewrite ~700 call sites, remap each light shade to its dark-on-light
+ * equivalent (same hue, 700/800 step, all >=4.5:1 on the light surfaces) when
+ * [data-mode='light'] — the same per-mode strategy as --c-danger-fg/--c-overlay.
+ * Scoped to .app: the public .rcm-site and always-black camera/lightbox
+ * surfaces (which use text-pure-white / literal hex) are untouched.
+ * Hover variants that RE-COLOR text to a status hue get the same remap. */
+[data-mode='light']
+  .app
+  :is(.text-red-100, .text-red-200, .text-red-300, .text-red-400, .text-red-500) {
+  color: #b91c1c; /* red-700 */
+}
+[data-mode='light'] .app :is(.text-green-200, .text-green-300, .text-green-400, .text-green-500) {
+  color: #15803d; /* green-700 */
+}
+[data-mode='light'] .app :is(.text-emerald-200, .text-emerald-300, .text-emerald-400) {
+  color: #047857; /* emerald-700 */
+}
+[data-mode='light'] .app :is(.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400) {
+  color: #92400e; /* amber-800 (amber needs the extra step for 4.5:1 on tints) */
+}
+[data-mode='light'] .app :is(.text-yellow-200, .text-yellow-300, .text-yellow-400) {
+  color: #854d0e; /* yellow-800 */
+}
+[data-mode='light'] .app :is(.text-sky-300, .text-sky-400) {
+  color: #0369a1; /* sky-700 */
+}
+[data-mode='light'] .app :is(.text-blue-200, .text-blue-300, .text-blue-400) {
+  color: #1d4ed8; /* blue-700 */
+}
+[data-mode='light'] .app :is(.text-orange-300, .text-orange-400) {
+  color: #c2410c; /* orange-700 */
+}
+[data-mode='light'] .app :is(.text-teal-300, .text-teal-400) {
+  color: #0f766e; /* teal-700 */
+}
+[data-mode='light'] .app :is(.text-cyan-200, .text-cyan-300, .text-cyan-400) {
+  color: #0e7490; /* cyan-700 */
+}
+[data-mode='light'] .app :is(.text-indigo-200, .text-indigo-300, .text-indigo-400) {
+  color: #4338ca; /* indigo-700 */
+}
+[data-mode='light'] .app :is(.text-purple-200, .text-purple-300, .text-purple-400) {
+  color: #7e22ce; /* purple-700 */
+}
+[data-mode='light'] .app :is(.text-violet-200, .text-violet-300, .text-violet-400) {
+  color: #6d28d9; /* violet-700 */
+}
+[data-mode='light'] .app :is(.text-pink-200, .text-pink-300, .text-pink-400) {
+  color: #be185d; /* pink-700 */
+}
+[data-mode='light'] .app :is(.text-rose-200, .text-rose-300, .text-rose-400) {
+  color: #be123c; /* rose-700 */
+}
+[data-mode='light']
+  .app
+  :is(.hover\:text-red-300, .hover\:text-red-400, .hover\:text-red-500):hover {
+  color: #b91c1c;
+}
+[data-mode='light'] .app .hover\:text-green-300:hover {
+  color: #15803d;
+}
+[data-mode='light'] .app :is(.hover\:text-amber-300, .hover\:text-amber-400):hover {
+  color: #92400e;
+}
+
+/* App-wide keyboard focus ring (WCAG 2.4.7). The public surface has its own in
+   public.css; this covers every employee-app control, including chrome rendered
+   outside the `.app` scope (modals via portal, login). Accent-filled controls
+   opt into an on-accent ring so the red ring stays visible on red. */
+:where(a, button, [role='button'], input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+}
+.focus-ring-on-accent:focus-visible {
+  outline-color: rgb(var(--c-on-accent));
+}
+
+/* Global reduced-motion (WCAG 2.3.3). The `.app` kit has its own block, but
+   Tailwind keyframes (slide-in, fade-in, scan-line) and animate-pulse/spin also
+   run on chrome outside `.app`; honor the OS setting document-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer utilities {

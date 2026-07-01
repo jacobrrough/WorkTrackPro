@@ -40,18 +40,18 @@ export function LedgerTable({
     'w-full border-collapse text-sm',
     '[&_tbody_td]:px-4 [&_tbody_td]:align-middle',
     bodyPadY,
-    '[&_tbody_tr:hover]:bg-white/[0.03]',
-    zebra ? '[&_tbody_tr:nth-child(even)]:bg-white/[0.02]' : '',
+    '[&_tbody_tr:hover]:bg-overlay/[0.03]',
+    zebra ? '[&_tbody_tr:nth-child(even)]:bg-overlay/[0.02]' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
-    <div className="overflow-x-auto rounded-sm border border-white/10">
+    <div className="overflow-x-auto rounded-lg border border-line">
       <table className={tableClass}>
         <thead>
           <tr
-            className={`border-b border-white/10 bg-white/5 text-muted ${
+            className={`border-b border-line bg-overlay/5 text-muted ${
               stickyHeader ? 'sticky top-0 z-10' : ''
             }`}
           >

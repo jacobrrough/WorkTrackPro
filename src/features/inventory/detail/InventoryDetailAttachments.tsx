@@ -22,7 +22,7 @@ export function InventoryDetailAttachments({
   return (
     <div className="space-y-3">
       {isAdmin && (
-        <div className="rounded-sm bg-card-dark p-3">
+        <div className="rounded-lg bg-card-dark p-3">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-sm font-bold text-white">
               <span className="material-symbols-outlined text-lg text-red-400">
@@ -45,7 +45,7 @@ export function InventoryDetailAttachments({
           />
         </div>
       )}
-      <div className="rounded-sm bg-card-dark p-3">
+      <div className="rounded-lg bg-card-dark p-3">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-sm font-bold text-white">
             <span className="material-symbols-outlined text-lg text-primary">attach_file</span>

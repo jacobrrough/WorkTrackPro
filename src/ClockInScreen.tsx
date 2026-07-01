@@ -111,7 +111,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
       {/* Header */}
-      <header className="safe-area-top sticky top-0 z-50 border-b border-white/10 bg-background-dark p-3">
+      <header className="safe-area-top sticky top-0 z-header border-b border-line bg-background-dark p-3">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack || (() => onNavigate('dashboard'))}
@@ -120,7 +120,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
-            <h1 className="text-lg font-bold text-white">Clock In by Code</h1>
+            <h1 className="app-section-title text-white">Clock In by Code</h1>
             <p className="text-xs text-muted">Enter your job code</p>
           </div>
         </div>
@@ -131,7 +131,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
       <main className="content-above-nav flex min-h-0 flex-1 flex-col items-center justify-center p-4">
         {/* Active Job Alert */}
         {activeShift && activeJob && (
-          <div className="mb-4 w-full max-w-sm rounded-sm border border-green-500/30 bg-green-500/10 p-3">
+          <div className="mb-4 w-full max-w-sm rounded-lg border border-green-500/30 bg-green-500/10 p-3">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-green-500">info</span>
               <div className="flex-1">
@@ -143,7 +143,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
               <button
                 type="button"
                 onClick={() => void handleClockOut()}
-                className="rounded-sm bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600"
+                className="rounded-lg bg-danger px-4 py-2 text-sm font-bold text-on-danger hover:bg-danger-hover"
               >
                 Clock Out
               </button>
@@ -153,7 +153,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
 
         {/* Code Display */}
         <div className="mb-4 w-full max-w-sm">
-          <div className="rounded-sm border-2 border-primary/30 bg-card-dark p-4 text-center">
+          <div className="rounded-2xl border-2 border-primary/30 bg-card-dark p-4 text-center">
             <p className="mb-2 text-sm text-muted">Job Code</p>
             <div className="flex h-16 items-center justify-center text-5xl font-bold tracking-widest text-white">
               {jobCode || '----'}
@@ -164,7 +164,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
         {/* Result Message */}
         {result && (
           <div
-            className={`mb-4 w-full max-w-sm rounded-sm p-3 ${
+            className={`mb-4 w-full max-w-sm rounded-lg p-3 ${
               result.success
                 ? 'border border-green-500/30 bg-green-500/10'
                 : result.queued
@@ -193,7 +193,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
               <button
                 key={num}
                 onClick={() => handleNumberClick(num.toString())}
-                className="h-16 rounded-sm border border-white/10 bg-card-dark text-2xl font-bold text-white transition-all hover:bg-primary/20 active:scale-95"
+                className="h-16 rounded-lg border border-line bg-card-dark text-2xl font-bold text-white transition-all hover:bg-primary/20 active:scale-95"
               >
                 {num}
               </button>
@@ -203,19 +203,19 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={handleClear}
-              className="h-16 rounded-sm border border-white/10 bg-card-dark font-bold text-red-400 transition-all hover:bg-red-500/20 active:scale-95"
+              className="h-16 rounded-lg border border-line bg-card-dark font-bold text-red-400 transition-all hover:bg-red-500/20 active:scale-95"
             >
               Clear
             </button>
             <button
               onClick={() => handleNumberClick('0')}
-              className="h-16 rounded-sm border border-white/10 bg-card-dark text-2xl font-bold text-white transition-all hover:bg-primary/20 active:scale-95"
+              className="h-16 rounded-lg border border-line bg-card-dark text-2xl font-bold text-white transition-all hover:bg-primary/20 active:scale-95"
             >
               0
             </button>
             <button
               onClick={handleBackspace}
-              className="flex h-16 items-center justify-center rounded-sm border border-white/10 bg-card-dark text-orange-400 transition-all hover:bg-orange-500/20 active:scale-95"
+              className="flex h-16 items-center justify-center rounded-lg border border-line bg-card-dark text-orange-400 transition-all hover:bg-orange-500/20 active:scale-95"
             >
               <span className="material-symbols-outlined text-3xl">backspace</span>
             </button>
@@ -225,11 +225,11 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
           <button
             onClick={handleSubmit}
             disabled={!jobCode || isLoading}
-            className="mt-6 flex h-24 min-h-24 w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 text-lg font-bold text-on-accent transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-subtle md:h-14 md:min-h-0"
+            className="mt-6 flex h-24 min-h-24 w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-lg font-bold text-on-accent transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-subtle md:h-14 md:min-h-0"
           >
             {isLoading ? (
               <>
-                <div className="h-5 w-5 animate-spin rounded-sm border-2 border-white border-t-transparent"></div>
+                <div className="h-5 w-5 animate-spin rounded-lg border-2 border-white border-t-transparent"></div>
                 <span>Clocking In...</span>
               </>
             ) : (

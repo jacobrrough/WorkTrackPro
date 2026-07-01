@@ -65,11 +65,11 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
         <button
           type="button"
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white md:hidden"
         >
           <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>
@@ -84,7 +84,7 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
           <button
             type="button"
             onClick={handleMarkAllRead}
-            className="rounded-sm px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
           >
             Mark all read
           </button>

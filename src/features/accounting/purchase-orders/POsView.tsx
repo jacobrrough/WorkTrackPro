@@ -7,7 +7,7 @@ import { PURCHASE_ORDERS_BASE } from '../constants';
 import { PO_STATUS_LABELS, type PurchaseOrder, type PoStatus } from '../types';
 
 const STATUS_STYLES: Record<PoStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_received: 'bg-amber-500/15 text-amber-400',
   received: 'bg-green-500/15 text-green-400',
@@ -18,7 +18,7 @@ const STATUS_STYLES: Record<PoStatus, string> = {
 function StatusPill({ status }: { status: PoStatus }) {
   return (
     <span
-      className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {PO_STATUS_LABELS[status]}
     </span>
@@ -30,7 +30,7 @@ function PORow({ po, onOpen }: { po: PurchaseOrder; onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
         {po.poNumber || 'Draft'}
@@ -71,7 +71,7 @@ export default function POsView() {
       )}
 
       {!isPending && !isError && pos.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
           <span className="material-symbols-outlined text-4xl text-subtle">shopping_cart</span>
           <p className="text-lg font-bold text-white">No purchase orders yet</p>
           <p className="max-w-sm text-sm text-muted">
@@ -95,7 +95,7 @@ export default function POsView() {
             <span className="w-28 shrink-0 text-right">Total</span>
             <span className="w-[88px] shrink-0" />
           </div>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {pos.map((po) => (
               <PORow
                 key={po.id}

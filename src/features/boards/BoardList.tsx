@@ -35,16 +35,16 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
-      <header className="safe-area-top flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="safe-area-top flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
-          <h1 className="text-lg font-bold text-white">Boards</h1>
+          <h1 className="app-section-title text-white">Boards</h1>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -82,7 +82,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
                 <button
                   key={board.id}
                   onClick={() => onNavigate('board-detail', board.id)}
-                  className="flex flex-col items-start rounded-lg border border-white/10 bg-surface-dark p-4 text-left transition-colors hover:border-white/20 hover:bg-white/5"
+                  className="flex flex-col items-start rounded-lg border border-line bg-surface-dark p-4 text-left transition-colors hover:border-line-strong hover:bg-overlay/5"
                 >
                   <div className="mb-2 flex w-full items-start justify-between">
                     <h3 className="font-semibold text-white">{board.name}</h3>

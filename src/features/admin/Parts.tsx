@@ -45,10 +45,10 @@ function PartsListStoreToggle({
       title={
         part.showOnStore ? 'Shown on store (click to hide)' : 'Hidden from store (click to show)'
       }
-      className={`flex min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center rounded-sm border transition-colors ${
+      className={`flex min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center rounded-lg border transition-colors ${
         part.showOnStore
           ? 'border-primary/50 bg-primary/20 text-primary'
-          : 'border-white/10 bg-white/5 text-subtle hover:bg-white/10'
+          : 'border-line bg-overlay/5 text-subtle hover:bg-overlay/10'
       } ${updating ? 'opacity-60' : ''}`}
       aria-label={part.showOnStore ? 'Hide from store' : 'Show on store'}
     >
@@ -197,24 +197,24 @@ const Parts: React.FC<PartsProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-app">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <header className="app-header px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={onNavigateBack}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
               aria-label="Go back"
             >
               <span className="material-symbols-outlined text-lg">arrow_back</span>
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">Parts</h1>
+              <h1 className="app-section-title text-white">Parts</h1>
               <p className="text-sm text-muted">Master parts, variants, and set composition</p>
             </div>
           </div>
           <button
             onClick={handleNewPart}
-            className="flex shrink-0 items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90"
+            className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90"
             aria-label="New part"
           >
             <span className="material-symbols-outlined text-lg">add</span>
@@ -223,7 +223,7 @@ const Parts: React.FC<PartsProps> = ({
         </div>
       </header>
 
-      <div className="border-b border-white/10 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="border-b border-line px-4 py-3 sm:px-6 lg:px-8">
         <div className="relative mb-3">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">
             search
@@ -233,11 +233,11 @@ const Parts: React.FC<PartsProps> = ({
             placeholder="Search by part number or name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-sm border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full rounded-lg border border-line bg-overlay/5 px-10 py-2.5 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
             aria-label="Search parts"
           />
         </div>
-        <div className="flex gap-1 rounded-sm bg-white/5 p-1">
+        <div className="flex gap-1 rounded-lg bg-overlay/5 p-1">
           {(
             [
               { id: 'all' as const, label: 'All Parts' },
@@ -252,7 +252,7 @@ const Parts: React.FC<PartsProps> = ({
               className={`min-h-[36px] flex-1 rounded px-3 text-sm font-medium transition-colors ${
                 activeTab === id
                   ? 'bg-primary text-on-accent'
-                  : 'text-muted hover:bg-white/10 hover:text-white'
+                  : 'text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               {label}
@@ -283,7 +283,7 @@ const Parts: React.FC<PartsProps> = ({
             {!searchQuery && (
               <button
                 onClick={handleNewPart}
-                className="flex items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90"
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-lg">add</span>
                 New Part
@@ -291,14 +291,14 @@ const Parts: React.FC<PartsProps> = ({
             )}
           </div>
         ) : (
-          <ul className="space-y-0 divide-y divide-white/10">
+          <ul className="space-y-0 divide-y divide-overlay/10">
             {filteredParts.map((part) => (
               <li key={part.id}>
                 <div className="flex w-full items-center justify-between gap-3 py-4">
                   <button
                     type="button"
                     onClick={() => handlePartClick(part.id)}
-                    className="-m-2 flex min-w-0 flex-1 items-center gap-3 rounded-sm p-2 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                    className="-m-2 flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-overlay/5 active:bg-overlay/10"
                   >
                     <div className="flex min-w-0 flex-col items-start gap-0.5">
                       <span className="font-mono text-base font-semibold text-white">

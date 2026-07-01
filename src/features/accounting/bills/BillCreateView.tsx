@@ -15,7 +15,7 @@ import { ACCOUNTING_BASE } from '../constants';
 import type { NewBillInput, NewBillLineInput } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -235,7 +235,7 @@ export default function BillCreateView() {
                     onClick={() => removeLine(i)}
                     aria-label={`Remove line ${i + 1}`}
                     disabled={lines.length <= 1}
-                    className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                    className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
                   </button>
@@ -262,7 +262,7 @@ export default function BillCreateView() {
         </div>
 
         {/* Totals */}
-        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
+        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-line pt-3 text-sm">
           <div className="flex justify-between text-muted">
             <span>Subtotal</span>
             <span className="font-mono tabular-nums text-white">
@@ -282,7 +282,7 @@ export default function BillCreateView() {
               />
             </div>
           </div>
-          <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
+          <div className="flex justify-between border-t border-line pt-1 text-base font-bold text-white">
             <span>Total</span>
             <span className="font-mono tabular-nums">{formatMoney(totals.totalCents / 100)}</span>
           </div>
@@ -305,7 +305,7 @@ export default function BillCreateView() {
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={() => navigate(`${ACCOUNTING_BASE}/bills`)}>
             Cancel
           </Button>

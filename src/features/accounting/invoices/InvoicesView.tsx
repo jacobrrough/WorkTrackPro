@@ -16,7 +16,7 @@ import {
 } from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -26,7 +26,7 @@ const STATUS_STYLES: Record<InvoiceStatus, string> = {
 function StatusPill({ status }: { status: InvoiceStatus }) {
   return (
     <span
-      className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {INVOICE_STATUS_LABELS[status]}
     </span>
@@ -118,7 +118,7 @@ export default function InvoicesView() {
       )}
 
       {!isPending && !isError && invoices.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
           <span className="material-symbols-outlined text-4xl text-subtle">receipt_long</span>
           <p className="text-lg font-bold text-white">No invoices yet</p>
           <p className="max-w-sm text-sm text-muted">

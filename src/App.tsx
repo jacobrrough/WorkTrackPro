@@ -272,7 +272,7 @@ export default function App() {
         <div className="px-4 text-center">
           <p className="text-muted">Loading...</p>
           {showLoadingHelp && (
-            <div className="mt-3 rounded-sm border border-primary/30 bg-primary/10 p-3 text-left">
+            <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-left">
               <p className="text-sm text-white">Startup is taking longer than expected.</p>
               <p className="mt-1 text-xs text-muted">
                 If this persists, refresh to recover from a stale cached bundle or a temporary
@@ -281,7 +281,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="mt-3 rounded-sm bg-primary px-3 py-2 text-xs font-bold text-on-accent hover:bg-primary/90"
+                className="mt-3 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-on-accent hover:bg-primary/90"
               >
                 Retry Loading
               </button>
@@ -295,7 +295,7 @@ export default function App() {
   if (currentUser && currentUser.isApproved === false) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark px-4">
-        <div className="w-full max-w-sm rounded-lg border border-white/10 bg-white/5 p-6 text-center">
+        <div className="w-full max-w-sm rounded-lg border border-line bg-overlay/5 p-6 text-center">
           <span className="material-symbols-outlined text-4xl text-primary">shield_lock</span>
           <h2 className="mt-4 text-lg font-bold text-white">Pending approval</h2>
           <p className="mt-2 text-sm text-muted">
@@ -304,7 +304,7 @@ export default function App() {
           <button
             type="button"
             onClick={logout}
-            className="mt-6 min-h-[44px] w-full touch-manipulation rounded-sm bg-primary px-4 py-3 font-bold text-on-accent hover:bg-primary/90"
+            className="mt-6 min-h-[44px] w-full touch-manipulation rounded-lg bg-primary px-4 py-3 font-bold text-on-accent hover:bg-primary/90"
           >
             Log out
           </button>
@@ -336,7 +336,7 @@ export default function App() {
       {currentUser && (
         <ErrorBoundary
           fallback={
-            <div className="fixed bottom-4 right-4 rounded-sm border border-red-500/30 bg-background-dark/95 px-3 py-2 text-sm text-red-400">
+            <div className="fixed bottom-4 right-4 rounded-lg border border-red-500/30 bg-background-dark/95 px-3 py-2 text-sm text-red-400">
               Command palette unavailable
             </div>
           }
@@ -362,7 +362,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-6 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
+              className="mt-6 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
             >
               Refresh Page
             </button>

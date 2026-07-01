@@ -438,7 +438,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
   return (
     <>
       <div className="flex h-full flex-col bg-background-dark">
-        <div className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-3">
+        <div className="sticky top-0 z-20 border-b border-line bg-gradient-to-b from-background-light to-background-dark p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -449,14 +449,14 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 <span className="material-symbols-outlined">close</span>
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-white">{currentItem.name}</h1>
+                <h1 className="app-section-title text-white">{currentItem.name}</h1>
                 <p className="text-sm text-muted">{getCategoryLabel(currentItem.category)}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleStartEdit}
-              className="rounded-sm bg-primary px-4 py-2 font-bold text-on-accent"
+              className="rounded-lg bg-primary px-4 py-2 font-bold text-on-accent"
             >
               Edit
             </button>
@@ -467,8 +467,10 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 key={section}
                 type="button"
                 onClick={() => setActiveSection(section)}
-                className={`min-h-[40px] rounded-sm px-3 text-sm font-bold capitalize ${
-                  activeSection === section ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'
+                className={`min-h-[40px] rounded-lg px-3 text-sm font-bold capitalize ${
+                  activeSection === section
+                    ? 'bg-primary text-on-accent'
+                    : 'bg-overlay/5 text-muted'
                 }`}
               >
                 {section}

@@ -80,7 +80,7 @@ function NotFound({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-sm border border-white/20 px-4 py-2 font-bold text-white hover:bg-white/10"
+            className="rounded-lg border border-line-strong px-4 py-2 font-bold text-white hover:bg-overlay/10"
           >
             Try again
           </button>
@@ -88,7 +88,7 @@ function NotFound({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-sm bg-primary px-4 py-2 font-bold text-on-accent"
+          className="rounded-lg bg-primary px-4 py-2 font-bold text-on-accent"
         >
           Back to Home
         </button>
@@ -606,15 +606,15 @@ function TrelloImportRoute() {
   const { refreshJobs } = useApp();
   return (
     <div className="flex min-h-screen flex-col bg-background-dark">
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-header flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <button
           type="button"
           onClick={() => appNavigate('dashboard')}
-          className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+          className="app-icon-btn text-muted hover:text-white"
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-lg font-bold text-white">Import Trello</h1>
+        <h1 className="app-section-title text-white">Import Trello</h1>
         <div className="size-10" />
       </header>
       <main className="flex-1 overflow-y-auto p-4">

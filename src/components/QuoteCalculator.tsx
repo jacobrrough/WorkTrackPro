@@ -184,20 +184,20 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
   };
 
   return (
-    <div className={`rounded-sm border border-primary/30 bg-primary/10 p-4 ${className}`}>
+    <div className={`rounded-lg border border-primary/30 bg-primary/10 p-4 ${className}`}>
       <p className="mb-3 text-xs font-bold uppercase text-muted">Quote calculator</p>
 
       {hasVariants && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted">Quote by:</span>
-          <div className="flex rounded border border-white/10 bg-black/20 p-0.5">
+          <div className="flex rounded border border-line bg-black/20 p-0.5">
             <button
               type="button"
               onClick={() => setQuoteBy('sets')}
               className={`min-h-[36px] rounded px-3 text-sm font-medium transition-colors ${
                 quoteBy === 'sets'
                   ? 'bg-primary text-on-accent'
-                  : 'text-muted hover:bg-white/10 hover:text-white'
+                  : 'text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               Sets
@@ -211,7 +211,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               className={`min-h-[36px] rounded px-3 text-sm font-medium transition-colors ${
                 quoteBy === 'variants'
                   ? 'bg-primary text-on-accent'
-                  : 'text-muted hover:bg-white/10 hover:text-white'
+                  : 'text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               Variants
@@ -235,7 +235,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               const n = parseInt(e.target.value, 10);
               setQuantityInput(!Number.isNaN(n) && n >= 1 ? String(n) : '1');
             }}
-            className="w-24 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+            className="w-24 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
           />
         </div>
       )}
@@ -257,7 +257,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                     value={variantQtyInputs[key] ?? ''}
                     onChange={(e) => setVariantQty(key, e.target.value)}
                     placeholder="0"
-                    className="w-20 rounded-sm border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-20 rounded-lg border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                   />
                 </label>
               );
@@ -273,7 +273,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               {variantQuotes.map(({ variant, qty, quote }) => (
                 <div
                   key={variant.id}
-                  className="space-y-1 rounded border border-white/10 bg-black/20 p-2"
+                  className="space-y-1 rounded border border-line bg-black/20 p-2"
                 >
                   <p className="text-[10px] font-bold uppercase text-muted">
                     Variant -{normSuffix(variant.variantSuffix)} (×{qty})
@@ -315,13 +315,13 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                       <span className="text-white">${quote.printer3DCost.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-muted">
+                  <div className="flex justify-between border-t border-line pt-1 font-medium text-muted">
                     <span>Variant total</span>
                     <span className="text-white">${quote.total.toFixed(2)}</span>
                   </div>
                 </div>
               ))}
-              <div className="space-y-1 border-t border-white/10 pt-2">
+              <div className="space-y-1 border-t border-line pt-2">
                 <p className="text-[10px] font-bold uppercase text-muted">Totals breakdown</p>
                 {totalsBreakdown.cncCost > 0 && (
                   <div className="flex justify-between text-xs text-muted">
@@ -369,7 +369,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
             </>
           ) : result ? (
             <>
-              <div className="space-y-1 rounded border border-white/10 bg-black/20 p-2">
+              <div className="space-y-1 rounded border border-line bg-black/20 p-2">
                 <p className="text-[10px] font-bold uppercase text-muted">
                   {part.partNumber || 'Part'}
                 </p>
@@ -401,7 +401,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                     <span className="text-white">${result.printer3DCost.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between border-t border-white/10 pt-1 font-medium text-muted">
+                <div className="flex justify-between border-t border-line pt-1 font-medium text-muted">
                   <span>Subtotal</span>
                   <span className="text-white">${result.subtotal.toFixed(2)}</span>
                 </div>

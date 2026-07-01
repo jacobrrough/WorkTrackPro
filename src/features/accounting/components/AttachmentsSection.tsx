@@ -124,7 +124,7 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
       ) : attachments.length === 0 ? (
         <p className="text-sm text-subtle">No attachments yet.</p>
       ) : (
-        <ul className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+        <ul className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
           {attachments.map((att) => (
             <li key={att.id} className="flex items-center gap-3 px-3 py-2 text-sm">
               <span className="material-symbols-outlined text-lg text-muted">description</span>
@@ -142,7 +142,7 @@ export function AttachmentsSection({ entityType, entityId }: AttachmentsSectionP
                 onClick={() => void onDelete(att)}
                 disabled={del.isPending}
                 aria-label={`Delete ${att.filename}`}
-                className="flex size-8 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-red-400 disabled:opacity-50"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-red-400 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-lg">delete</span>
               </button>

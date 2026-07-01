@@ -28,19 +28,19 @@ export default function JobDetailHeaderBar({
   onEditOrSave,
 }: JobDetailHeaderBarProps) {
   return (
-    <header className="safe-area-top sticky top-0 z-50 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
+    <header className="safe-area-top sticky top-0 z-header border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
       <div className="flex items-center justify-between">
         <button
           onClick={onBackOrClose}
           disabled={pendingAttachmentToggleCount > 0}
-          className="flex size-12 touch-manipulation items-center justify-center rounded-sm text-muted hover:bg-white/5 hover:text-white disabled:opacity-50"
+          className="flex size-12 touch-manipulation items-center justify-center rounded-lg text-muted hover:bg-overlay/5 hover:text-white disabled:opacity-50"
           aria-label={isEditing ? 'Cancel editing and close' : 'Close job detail'}
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
         <div className="flex-1 text-center">
-          <h1 className="text-lg font-bold text-white">
+          <h1 className="app-section-title text-white">
             {isEditing ? 'Edit Job' : formatJobCode(jobCode)}
           </h1>
           {!isEditing && <StatusBadge status={status} size="sm" />}
@@ -51,7 +51,7 @@ export default function JobDetailHeaderBar({
           {isAdmin && !isEditing && (
             <button
               onClick={onToggleMinimalView}
-              className="flex size-12 touch-manipulation items-center justify-center rounded-sm text-muted hover:bg-white/5 hover:text-white"
+              className="flex size-12 touch-manipulation items-center justify-center rounded-lg text-muted hover:bg-overlay/5 hover:text-white"
               title="Toggle minimal view"
               aria-label="Toggle minimal view"
             >
@@ -65,11 +65,11 @@ export default function JobDetailHeaderBar({
             <button
               onClick={onEditOrSave}
               disabled={isSubmitting}
-              className={`flex size-12 touch-manipulation items-center justify-center rounded-sm ${
+              className={`flex size-12 touch-manipulation items-center justify-center rounded-lg ${
                 isEditing
                   ? 'text-green-400 hover:text-green-300'
                   : 'text-primary hover:text-primary/80'
-              } ${isSubmitting ? 'opacity-50' : 'hover:bg-white/5'}`}
+              } ${isSubmitting ? 'opacity-50' : 'hover:bg-overlay/5'}`}
               aria-label={isEditing ? 'Save job changes' : 'Edit job'}
             >
               <span className="material-symbols-outlined">{isEditing ? 'check' : 'edit'}</span>
@@ -77,7 +77,7 @@ export default function JobDetailHeaderBar({
           )}
 
           {!isAdmin && (
-            <div className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+            <div className="rounded-lg border border-line bg-overlay/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
               View Only
             </div>
           )}

@@ -1,6 +1,14 @@
 import { useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
 import { useAppNavigate } from './hooks/useAppNavigate';
+import type { ViewState } from './core/types';
+
+interface NavTab {
+  label: string;
+  icon: string;
+  active: boolean;
+  view: ViewState;
+}
 
 function BottomNavigation() {
   const { pathname } = useLocation();
@@ -11,67 +19,53 @@ function BottomNavigation() {
   const isJobs = pathname.startsWith('/app/board/');
   const isStock = pathname.startsWith('/app/inventory');
   const isScanner = pathname.startsWith('/app/scanner');
-  // Home is active for any /app route not claimed by another tab
+  // Home is active for any /app route not claimed by another tab.
   const isHome = !isJobs && !isStock && !isScanner && pathname.startsWith('/app');
+
+  const tabs: NavTab[] = [
+    { label: 'Home', icon: 'grid_view', active: isHome, view: 'dashboard' },
+    {
+      label: 'Jobs',
+      icon: 'assignment',
+      active: isJobs,
+      view: isAdmin ? 'board-admin' : 'board-shop',
+    },
+    { label: 'Stock', icon: 'inventory_2', active: isStock, view: 'inventory' },
+    { label: 'Scan', icon: 'qr_code_scanner', active: isScanner, view: 'scanner' },
+  ];
 
   return (
     <nav
-      className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-app-2/95 pt-2 backdrop-blur-lg md:hidden"
+      className="pb-safe fixed bottom-0 left-0 right-0 z-nav border-t border-line bg-app-2/95 pt-2 backdrop-blur-lg md:hidden"
       aria-label="Bottom navigation"
     >
       <div className="mx-auto flex max-w-md items-center justify-around px-3">
-        <button
-          type="button"
-          onClick={() => {
-            if (isHome) return;
-            appNavigate('dashboard');
-          }}
-          aria-current={isHome ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isHome ? 'text-primary' : 'text-muted'}`}
-        >
-          <span className={`material-symbols-outlined ${isHome ? 'fill-1' : ''}`}>grid_view</span>
-          <span className="text-[10px] font-bold uppercase">Home</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (isJobs) return;
-            appNavigate(isAdmin ? 'board-admin' : 'board-shop');
-          }}
-          aria-current={isJobs ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isJobs ? 'text-primary' : 'text-muted'}`}
-        >
-          <span className={`material-symbols-outlined ${isJobs ? 'fill-1' : ''}`}>assignment</span>
-          <span className="text-[10px] font-bold uppercase">Jobs</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (isStock) return;
-            appNavigate('inventory');
-          }}
-          aria-current={isStock ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isStock ? 'text-primary' : 'text-muted'}`}
-        >
-          <span className={`material-symbols-outlined ${isStock ? 'fill-1' : ''}`}>
-            inventory_2
-          </span>
-          <span className="text-[10px] font-bold uppercase">Stock</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (isScanner) return;
-            appNavigate('scanner');
-          }}
-          aria-current={isScanner ? 'page' : undefined}
-          className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${isScanner ? 'text-primary' : 'text-muted'}`}
-        >
-          <span className={`material-symbols-outlined ${isScanner ? 'fill-1' : ''}`}>
-            qr_code_scanner
-          </span>
-          <span className="text-[10px] font-bold uppercase">Scan</span>
-        </button>
+        {tabs.map((tab) => (
+          <button
+            key={tab.label}
+            type="button"
+            onClick={() => {
+              if (!tab.active) appNavigate(tab.view);
+            }}
+            aria-current={tab.active ? 'page' : undefined}
+            className={`flex min-h-[48px] min-w-[48px] touch-manipulation flex-col items-center justify-center gap-1 transition-colors active:opacity-70 ${
+              tab.active ? 'text-primary' : 'text-muted'
+            }`}
+          >
+            {/* Accent pill behind the active icon — a stronger "current location"
+                cue than color alone (Material-3 style), accent only when active. */}
+            <span
+              className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${
+                tab.active ? 'bg-primary/15' : 'bg-transparent'
+              }`}
+            >
+              <span className={`material-symbols-outlined ${tab.active ? 'fill-1' : ''}`}>
+                {tab.icon}
+              </span>
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wide">{tab.label}</span>
+          </button>
+        ))}
       </div>
     </nav>
   );

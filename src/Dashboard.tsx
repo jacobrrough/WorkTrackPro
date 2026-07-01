@@ -14,7 +14,6 @@ import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
 import { EmptyState } from './components/EmptyState';
-import { LoadingSpinner } from './Loading';
 import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
 import { useScrollRestore } from './hooks/useScrollRestore';
 import { useNavigate } from 'react-router-dom';
@@ -76,8 +75,6 @@ interface DashboardQuickAction {
   title: string;
   subtitle: string;
   icon: string;
-  iconClassName: string;
-  cardClassName: string;
   ariaLabel: string;
   onClick: () => void;
   adminOnly?: boolean;
@@ -96,18 +93,22 @@ const QUICK_ACTION_HIDE_ZONE_ID = '__quick-action-hide-zone__';
 const QUICK_ACTION_DRAG_ACTIVATION = { delay: 1000, tolerance: 5 } as const;
 
 const quickActionCardBaseClassName =
-  'flex min-h-[3.5rem] w-full touch-manipulation items-center gap-2.5 rounded-sm border p-2.5 text-left transition-[transform,colors] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.97] active:opacity-90';
+  'app-quick-card touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app';
 
 /** The visual contents of a quick-action card — shared by the live card and the drag clone. */
 const QuickActionCardInner: React.FC<{ action: DashboardQuickAction }> = ({ action }) => (
   <>
-    <span
-      aria-hidden="true"
-      className={`material-symbols-outlined text-2xl ${action.iconClassName}`}
-    >
-      {action.icon}
+    <span aria-hidden="true" className="app-icon-badge">
+      <span className="material-symbols-outlined text-2xl">{action.icon}</span>
     </span>
-    <span className="truncate text-sm font-semibold text-white">{action.title}</span>
+    <span className="app-qa-text min-w-0 flex-1">
+      <span className="block truncate text-sm font-semibold text-white">{action.title}</span>
+      {action.subtitle && (
+        <span className="app-qa-sub mt-0.5 block truncate text-xs text-muted">
+          {action.subtitle}
+        </span>
+      )}
+    </span>
   </>
 );
 
@@ -146,7 +147,7 @@ const SortableQuickActionCard: React.FC<{ action: DashboardQuickAction }> = ({ a
       {isDragging ? (
         <div
           aria-hidden="true"
-          className="h-full min-h-[3.5rem] rounded-sm border-2 border-dashed border-primary/60 bg-primary/10"
+          className="h-full min-h-[4.25rem] rounded-2xl border-2 border-dashed border-primary/60 bg-primary/10"
         />
       ) : (
         <button
@@ -154,7 +155,7 @@ const SortableQuickActionCard: React.FC<{ action: DashboardQuickAction }> = ({ a
           {...attributes}
           {...listeners}
           onClick={action.onClick}
-          className={`${quickActionCardBaseClassName} ${action.cardClassName}`}
+          className={quickActionCardBaseClassName}
           aria-label={action.ariaLabel}
         >
           <QuickActionCardInner action={action} />
@@ -170,10 +171,10 @@ const QuickActionHideZone: React.FC = () => {
   return (
     <div
       ref={setNodeRef}
-      className={`mt-3 flex items-center justify-center gap-2 rounded-sm border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
+      className={`mt-3 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
         isOver
-          ? 'border-red-400 bg-red-500/20 text-red-300'
-          : 'border-white/20 bg-white/[0.02] text-muted'
+          ? 'border-danger bg-danger/20 text-danger-fg'
+          : 'border-line-strong bg-overlay/[0.02] text-muted'
       }`}
     >
       <span aria-hidden="true" className="material-symbols-outlined">
@@ -246,14 +247,14 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
   }, [factorId, refreshMfaGate, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border border-line bg-background-dark p-4 shadow-2xl">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-background-dark p-4 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Security</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
             aria-label="Close"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
@@ -276,7 +277,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
           />
         ) : (
           <div>
-            <div className="mb-4 flex items-start gap-3 rounded-sm border border-line bg-surface-2 p-3">
+            <div className="mb-4 flex items-start gap-3 rounded-2xl border border-line bg-surface-2 p-3">
               <span
                 aria-hidden="true"
                 className={`material-symbols-outlined text-2xl ${hasFactor ? 'text-green-400' : 'text-amber-400'}`}
@@ -298,8 +299,8 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
             </div>
 
             {error && (
-              <div className="mb-4 rounded-sm border border-red-500/30 bg-red-500/20 p-3">
-                <p className="text-center text-sm text-red-400">{error}</p>
+              <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/20 p-3">
+                <p className="text-center text-sm text-danger-fg">{error}</p>
               </div>
             )}
 
@@ -307,7 +308,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
               <button
                 type="button"
                 onClick={() => setView('enroll')}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-xl" aria-hidden>
                   add_moderator
@@ -321,7 +322,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <button
                   type="button"
                   onClick={() => setView('enroll')}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-white/10 font-medium text-white transition-colors hover:bg-white/20"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-overlay/10 font-medium text-white transition-colors hover:bg-overlay/20"
                 >
                   <span className="material-symbols-outlined text-xl" aria-hidden>
                     autorenew
@@ -331,7 +332,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <button
                   type="button"
                   onClick={() => setConfirmRemove(true)}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-sm border border-red-500/30 font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-danger/30 font-medium text-danger-fg transition-colors hover:bg-danger/10"
                 >
                   <span className="material-symbols-outlined text-xl" aria-hidden>
                     remove_moderator
@@ -342,7 +343,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
             )}
 
             {!loading && hasFactor && confirmRemove && (
-              <div className="rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+              <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3">
                 <p className="text-sm font-semibold text-white">
                   Remove two-factor authentication?
                 </p>
@@ -356,7 +357,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     type="button"
                     onClick={() => setConfirmRemove(false)}
                     disabled={removing}
-                    className="h-11 flex-1 rounded-sm bg-white/10 font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                    className="h-11 flex-1 rounded-lg bg-overlay/10 font-medium text-white transition-colors hover:bg-overlay/20 disabled:opacity-50"
                   >
                     Keep
                   </button>
@@ -364,11 +365,11 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     type="button"
                     onClick={() => void handleRemove()}
                     disabled={removing}
-                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-sm bg-red-500/80 font-bold text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-danger/80 font-bold text-on-danger transition-colors hover:bg-danger disabled:opacity-50"
                   >
                     {removing ? (
                       <>
-                        <div className="h-4 w-4 animate-spin rounded-sm border-2 border-white border-t-transparent" />
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                         <span>Removing…</span>
                       </>
                     ) : (
@@ -381,7 +382,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
 
             {loading && (
               <div className="flex justify-center py-4">
-                <div className="h-6 w-6 animate-spin rounded-sm border-2 border-primary border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             )}
           </div>
@@ -554,8 +555,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Shop Floor',
       subtitle: `${activeCount} active · ${pendingCount} pending`,
       icon: 'view_kanban',
-      iconClassName: 'text-blue-500',
-      cardClassName: 'border-blue-500/30 bg-gradient-to-br from-blue-600/20 to-cyan-600/20',
       ariaLabel: 'Open shop floor board',
       onClick: () => onNavigate('board-shop'),
       hideForAdmin: true,
@@ -565,8 +564,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Inventory',
       subtitle: 'Stock & ordering',
       icon: 'inventory_2',
-      iconClassName: 'text-primary',
-      cardClassName: 'border-primary/30 bg-gradient-to-br from-primary/20 to-purple-600/20',
       ariaLabel: 'Open inventory',
       onClick: () => onNavigate('inventory'),
     },
@@ -575,8 +572,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Tools',
       subtitle: 'Tag in / tag out',
       icon: 'handyman',
-      iconClassName: 'text-rose-400',
-      cardClassName: 'border-rose-500/30 bg-gradient-to-br from-rose-600/20 to-pink-600/20',
       ariaLabel: 'Open tools',
       onClick: () => onNavigate('tools'),
     },
@@ -585,8 +580,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Scan',
       subtitle: 'QR Code',
       icon: 'qr_code_scanner',
-      iconClassName: 'text-amber-500',
-      cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20',
       ariaLabel: 'Open QR scanner',
       onClick: () => onNavigate('scanner'),
     },
@@ -595,8 +588,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Calendar',
       subtitle: 'Job timeline',
       icon: 'calendar_month',
-      iconClassName: 'text-cyan-500',
-      cardClassName: 'border-cyan-500/30 bg-gradient-to-br from-cyan-600/20 to-blue-600/20',
       ariaLabel: 'Open calendar',
       onClick: () => onNavigate('calendar'),
       adminOnly: true,
@@ -606,8 +597,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Parts',
       subtitle: 'Parts repository',
       icon: 'precision_manufacturing',
-      iconClassName: 'text-emerald-500',
-      cardClassName: 'border-emerald-500/30 bg-gradient-to-br from-emerald-600/20 to-teal-600/20',
       ariaLabel: 'Open parts repository',
       onClick: () => onNavigate('parts'),
       adminOnly: true,
@@ -617,8 +606,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Quotes',
       subtitle: 'Pricing & estimates',
       icon: 'request_quote',
-      iconClassName: 'text-fuchsia-400',
-      cardClassName: 'border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-600/20 to-purple-700/20',
       ariaLabel: 'Open quotes',
       onClick: () => onNavigate('quotes'),
       adminOnly: true,
@@ -628,8 +615,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Chat',
       subtitle: 'Team messenger',
       icon: 'chat_bubble',
-      iconClassName: 'text-indigo-400',
-      cardClassName: 'border-indigo-500/30 bg-gradient-to-br from-indigo-600/20 to-blue-700/20',
       ariaLabel: 'Open team chat',
       onClick: () => onNavigate('chat'),
     },
@@ -638,8 +623,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Boards',
       subtitle: 'Custom Kanban',
       icon: 'dashboard_customize',
-      iconClassName: 'text-teal-500',
-      cardClassName: 'border-teal-500/30 bg-gradient-to-br from-teal-600/20 to-cyan-600/20',
       ariaLabel: 'Open custom boards',
       onClick: () => onNavigate('boards'),
     },
@@ -648,8 +631,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Admin Board',
       subtitle: 'Kanban view',
       icon: 'view_kanban',
-      iconClassName: 'text-orange-500',
-      cardClassName: 'border-orange-500/30 bg-gradient-to-br from-orange-600/20 to-red-600/20',
       ariaLabel: 'Open admin board',
       onClick: () => onNavigate('board-admin'),
       adminOnly: true,
@@ -659,8 +640,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Time Reports',
       subtitle: isAdmin ? 'View hours' : 'Your shifts',
       icon: 'analytics',
-      iconClassName: 'text-green-500',
-      cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
       ariaLabel: 'Open time reports',
       onClick: () => onNavigate('time-reports'),
     },
@@ -669,8 +648,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Project Hours',
       subtitle: 'Log dev hours',
       icon: 'payments',
-      iconClassName: 'text-lime-400',
-      cardClassName: 'border-lime-500/30 bg-gradient-to-br from-lime-600/20 to-green-600/20',
       ariaLabel: 'Open project hours',
       onClick: () => onNavigate('project-hours'),
       adminOnly: true,
@@ -680,8 +657,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'Import Trello',
       subtitle: 'From JSON',
       icon: 'upload_file',
-      iconClassName: 'text-purple-500',
-      cardClassName: 'border-purple-500/30 bg-gradient-to-br from-purple-600/20 to-pink-600/20',
       ariaLabel: 'Open Trello import',
       onClick: () => onNavigate('trello-import'),
       adminOnly: true,
@@ -691,8 +666,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       title: 'AI Assistant',
       subtitle: 'Ask anything',
       icon: 'smart_toy',
-      iconClassName: 'text-sky-400',
-      cardClassName: 'border-sky-500/30 bg-gradient-to-br from-sky-600/20 to-indigo-600/20',
       ariaLabel: 'Open AI assistant',
       onClick: () => setShowAIAssistant(true),
       adminOnly: true,
@@ -706,9 +679,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             title: 'Accounting',
             subtitle: 'Invoices, bills & ledger',
             icon: 'account_balance',
-            iconClassName: 'text-amber-400',
-            cardClassName:
-              'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-yellow-700/20',
             ariaLabel: 'Open accounting',
             onClick: () => navigate('/app/accounting'),
             adminOnly: true,
@@ -847,18 +817,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
       <SkipLink />
-      <header className="safe-area-top sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-full bg-primary/20">
-            <span aria-hidden="true" className="material-symbols-outlined text-primary">
-              person
-            </span>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
-              {isAdmin ? 'Administrator' : 'User'}
-            </p>
-            <p className="text-sm font-semibold text-white">
+      <header className="safe-area-top sticky top-0 z-header flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="app-brand-mark" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="app-eyebrow">{isAdmin ? 'Administrator' : 'User'}</p>
+            <p className="app-display truncate text-base leading-tight text-white">
               {currentUser?.name || currentUser?.email || '—'}
             </p>
           </div>
@@ -870,7 +834,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setShowMenu((open) => !open)}
-              className={`flex size-11 touch-manipulation items-center justify-center rounded-sm transition-colors hover:bg-white/10 hover:text-white ${showMenu ? 'bg-white/10 text-white' : 'text-muted'}`}
+              className={`flex size-11 touch-manipulation items-center justify-center rounded-lg transition-colors hover:bg-overlay/10 hover:text-white ${showMenu ? 'bg-overlay/10 text-white' : 'text-muted'}`}
               aria-label="Menu"
               title="Menu"
               aria-haspopup="menu"
@@ -883,7 +847,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {showMenu && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-sm border border-white/10 bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
+                className="absolute right-0 top-full z-dropdown mt-1 w-52 overflow-hidden rounded-2xl border border-line bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
               >
                 <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-subtle">
                   Settings
@@ -892,7 +856,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   .filter((item) => !item.adminOnly || isAdmin)
                   .map((item) => (
                     <React.Fragment key={item.label}>
-                      {item.dividerBefore && <div className="my-1 border-t border-white/10" />}
+                      {item.dividerBefore && <div className="my-1 border-t border-line" />}
                       <button
                         type="button"
                         role="menuitem"
@@ -900,7 +864,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                           setShowMenu(false);
                           item.onSelect();
                         }}
-                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-red-300 hover:bg-red-500/10' : 'text-white/90 hover:bg-white/10'}`}
+                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-danger-fg hover:bg-danger/10' : 'text-white/90 hover:bg-overlay/10'}`}
                       >
                         <span
                           aria-hidden="true"
@@ -928,7 +892,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         id="main-content"
         tabIndex={-1}
         aria-labelledby="dashboard-heading"
-        className="content-above-nav min-h-0 flex-1 overflow-y-auto p-4"
+        className="content-above-nav mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto p-4"
         style={{
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain',
@@ -953,30 +917,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             type="button"
             onClick={() => onNavigate('job-detail', resumeJob.id)}
             aria-label={`Resume job #${resumeJob.jobCode} ${resumeJob.name}`}
-            className="mb-4 flex w-full touch-manipulation items-center gap-3 rounded-sm border border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-purple-700/20 p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:opacity-90"
+            className="app-primary-card mb-4 flex w-full touch-manipulation items-center gap-3 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app"
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-2xl text-violet-400">
-              history
+            <span aria-hidden="true" className="app-icon-badge app-icon-badge--accent">
+              <span className="material-symbols-outlined">history</span>
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                Resume Job
-              </p>
+              <p className="app-eyebrow">Resume Job</p>
               <p className="truncate font-bold text-white">
                 #{resumeJob.jobCode} • {resumeJob.name}
               </p>
             </div>
-            <span aria-hidden="true" className="material-symbols-outlined text-white/40">
+            <span aria-hidden="true" className="material-symbols-outlined text-primary">
               chevron_right
             </span>
           </button>
         )}
 
         <section aria-labelledby="quick-actions-heading">
-          <h2
-            id="quick-actions-heading"
-            className="mb-4 text-lg font-bold tracking-tight text-white"
-          >
+          <h2 id="quick-actions-heading" className="app-section-title mb-4">
             Quick Actions
           </h2>
 
@@ -991,7 +950,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               items={visibleQuickActions.map((a) => a.key)}
               strategy={rectSortingStrategy}
             >
-              <ul className="grid grid-cols-2 gap-2.5" role="list">
+              <ul
+                className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5"
+                role="list"
+              >
                 {visibleQuickActions.map((action) => (
                   <SortableQuickActionCard key={action.key} action={action} />
                 ))}
@@ -1004,7 +966,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <DragOverlay>
               {activeDragAction ? (
                 <div
-                  className={`${quickActionCardBaseClassName} ${activeDragAction.cardClassName} shadow-lg shadow-black/40`}
+                  className={`${quickActionCardBaseClassName} border-primary/60 shadow-lg shadow-black/40`}
                 >
                   <QuickActionCardInner action={activeDragAction} />
                 </div>
@@ -1024,7 +986,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   key={action.key}
                   type="button"
                   onClick={() => setHidden(action.key, false)}
-                  className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-white/20 hover:text-white"
+                  className="flex items-center gap-0.5 rounded-full border border-line bg-overlay/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-line-strong hover:text-white"
                   aria-label={`Restore ${action.title}`}
                 >
                   <span aria-hidden="true" className="material-symbols-outlined text-xs">
@@ -1036,7 +998,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={resetCustomization}
-                className="ml-auto flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-white/10 hover:text-white"
+                className="ml-auto flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-overlay/10 hover:text-white"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-xs">
                   restart_alt
@@ -1048,12 +1010,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </section>
 
         <section aria-labelledby="active-jobs-heading" className="mt-6">
-          <h2 id="active-jobs-heading" className="mb-3 text-lg font-bold tracking-tight text-white">
+          <h2 id="active-jobs-heading" className="app-section-title mb-3">
             Active Jobs
           </h2>
           {dataPending ? (
-            <div className="flex justify-center py-12" role="status" aria-live="polite">
-              <LoadingSpinner size="small" text="Loading jobs…" />
+            <div
+              className="app-card flex items-center gap-3 p-4"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <span className="app-icon-badge animate-pulse" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-40 max-w-[70%] animate-pulse rounded-lg bg-surface-3" />
+                <div className="h-3 w-56 max-w-[85%] animate-pulse rounded-lg bg-surface-2" />
+              </div>
+              <span className="sr-only">Loading jobs…</span>
             </div>
           ) : activeCount + pendingCount === 0 ? (
             <EmptyState
@@ -1065,16 +1037,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('board-shop')}
-              className="flex w-full touch-manipulation items-center justify-between gap-3 rounded-sm border border-white/10 bg-white/5 p-4 text-left transition-colors hover:bg-white/10"
+              className="app-card app-card-interactive flex w-full touch-manipulation items-center justify-between gap-3 p-4 text-left"
             >
-              <div>
-                <p className="font-bold text-white">
-                  {activeCount} in progress · {pendingCount} pending
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-                  Tap to open the shop floor board
-                </p>
-              </div>
+              <span className="flex min-w-0 items-center gap-3">
+                <span aria-hidden="true" className="app-icon-badge">
+                  <span className="material-symbols-outlined">work</span>
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-bold text-white">
+                    {activeCount} in progress · {pendingCount} pending
+                  </span>
+                  <span className="block text-[10px] font-bold uppercase tracking-widest text-white/50">
+                    Tap to open the shop floor board
+                  </span>
+                </span>
+              </span>
               <span aria-hidden="true" className="material-symbols-outlined text-primary">
                 arrow_forward
               </span>
@@ -1087,7 +1064,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <button
           type="button"
           onClick={() => setIsTrackerOpen(true)}
-          className="fixed bottom-20 right-4 z-[45] flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
+          className="fixed bottom-20 right-4 z-fab flex min-h-[44px] touch-manipulation items-center gap-2 rounded-lg border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">
             schedule
@@ -1098,14 +1075,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {activeShift && isTrackerOpen && (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-3"
+          className="fixed inset-0 z-sheet flex items-end justify-center bg-black/70 p-3"
           role="dialog"
           aria-modal="true"
           aria-label="Active time tracker"
           onClick={() => setIsTrackerOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-sm border border-primary/30 bg-surface-2 p-4 shadow-2xl"
+            className="w-full max-w-md rounded-3xl border border-primary/30 bg-surface-2 p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -1120,7 +1097,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => setIsTrackerOpen(false)}
-                className="flex size-10 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
                 aria-label="Close time tracker popup"
               >
                 <span aria-hidden="true" className="material-symbols-outlined">
@@ -1129,7 +1106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </button>
             </div>
 
-            <div className="rounded-sm border border-white/10 bg-black/20 p-3">
+            <div className="rounded-2xl border border-line bg-black/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
                 Shift Timer
               </p>
@@ -1142,7 +1119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 type="button"
                 onClick={handleClockOutFromPopup}
                 disabled={isClockOutLoading}
-                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm bg-red-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-muted"
+                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-lg bg-danger px-4 py-3 text-sm font-bold text-on-danger transition-colors hover:bg-danger-hover disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-muted"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-base">
                   logout
@@ -1158,7 +1135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   onNavigate('job-detail', activeJob.id);
                   setIsTrackerOpen(false);
                 }}
-                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-sm border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
+                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-line bg-overlay/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-overlay/10"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">
                   work
@@ -1205,9 +1182,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div
               role="status"
               aria-live="polite"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+              className="fixed inset-0 z-overlay flex items-center justify-center bg-black"
             >
-              <p className="text-sm text-white">Opening scanner...</p>
+              <p className="text-sm text-pure-white">Opening scanner...</p>
             </div>
           }
         >

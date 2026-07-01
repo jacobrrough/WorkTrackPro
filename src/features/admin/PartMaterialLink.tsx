@@ -114,7 +114,7 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
             }
           : undefined
       }
-      className={`flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3 ${onNavigate ? 'cursor-pointer transition-colors hover:border-primary/30 hover:bg-white/10' : ''} ${className}`}
+      className={`flex min-h-[7rem] flex-col rounded border border-line bg-overlay/5 p-3 ${onNavigate ? 'cursor-pointer transition-colors hover:border-primary/30 hover:bg-overlay/10' : ''} ${className}`}
     >
       <div className="min-h-0 flex-1">
         <p className="truncate text-sm font-medium text-white" title={name}>
@@ -141,13 +141,13 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
                   else if (e.key === 'Escape') setEditingQty(false);
                 }}
                 autoFocus
-                className="w-16 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                className="w-16 rounded border border-primary/50 bg-overlay/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
               />
               <input
                 type="text"
                 value={unitValue}
                 onChange={(e) => setUnitValue(e.target.value)}
-                className="w-14 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                className="w-14 rounded border border-primary/50 bg-overlay/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
               />
             </>
           ) : (
@@ -176,7 +176,7 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
               className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
                 material.requiresCnc
                   ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'
-                  : 'bg-white/5 text-muted hover:bg-white/10'
+                  : 'bg-overlay/5 text-muted hover:bg-overlay/10'
               }`}
             >
               <span className="material-symbols-outlined text-[13px]">

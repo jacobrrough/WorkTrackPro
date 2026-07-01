@@ -84,7 +84,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
 
       {error && (
         <p
-          className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+          className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
           role="alert"
         >
           {error}
@@ -94,7 +94,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
       {result && (
         <div className="flex flex-col gap-2">
           <p
-            className={`rounded-sm border p-2 text-sm font-semibold ${
+            className={`rounded-lg border p-2 text-sm font-semibold ${
               result.allTied
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                 : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
@@ -113,7 +113,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
           ))}
 
           {result.sections.map((s) => (
-            <div key={s.title} className="rounded-sm border border-white/10 p-2">
+            <div key={s.title} className="rounded-lg border border-line p-2">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="font-semibold text-white">{s.title}</span>
                 <span className={s.tied ? 'text-emerald-300' : 'text-amber-300'}>
@@ -136,7 +136,7 @@ function VerificationCard({ disabled }: { disabled: boolean }) {
                     {s.mismatches.map((m) => (
                       <tr
                         key={`${s.title}-${m.label}`}
-                        className="border-t border-white/5 text-muted"
+                        className="border-t border-line/60 text-muted"
                       >
                         <td className="py-1 pr-2">{m.label}</td>
                         <td className="px-2 py-1 text-right tabular-nums">{money(m.qboAmount)}</td>
@@ -174,7 +174,7 @@ function PhaseTable({ run }: { run: QboImportRun }) {
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-muted">
+        <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
           <th className="py-1.5 pr-2 font-semibold">Step</th>
           <th className="px-2 py-1.5 text-right font-semibold">Created</th>
           <th className="px-2 py-1.5 text-right font-semibold">Updated</th>
@@ -195,7 +195,7 @@ function PhaseTable({ run }: { run: QboImportRun }) {
                 ? 'In progress'
                 : 'Pending';
           return (
-            <tr key={phase.key} className="border-b border-white/5 text-white">
+            <tr key={phase.key} className="border-b border-line/60 text-white">
               <td className="py-1.5 pr-2">{phase.label}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{tally?.created ?? '—'}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{tally?.updated ?? '—'}</td>
@@ -456,12 +456,12 @@ export default function QuickBooksSyncView() {
 
             {message && (
               <p
-                className={`rounded-sm border p-2 text-sm ${
+                className={`rounded-lg border p-2 text-sm ${
                   loopState === 'failed'
                     ? 'border-red-500/30 bg-red-500/10 text-red-300'
                     : loopState === 'done'
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      : 'border-white/10 bg-white/5 text-muted'
+                      : 'border-line bg-overlay/5 text-muted'
                 }`}
                 role={loopState === 'failed' ? 'alert' : 'status'}
               >
@@ -470,7 +470,7 @@ export default function QuickBooksSyncView() {
             )}
 
             {loopState === 'gated' && gate && (
-              <div className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3">
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
                 <p className="flex items-center gap-2 text-sm font-bold text-amber-200">
                   <span className="material-symbols-outlined text-lg">warning</span>
                   Approve the final step: retire the legacy GL import
@@ -510,13 +510,13 @@ export default function QuickBooksSyncView() {
             )}
 
             {errors.length > 0 && (
-              <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-2">
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
                 <p className="text-sm font-semibold text-amber-200">
                   {errors.length} record{errors.length === 1 ? '' : 's'} need attention
                 </p>
                 <ul className="mt-1 max-h-48 overflow-y-auto text-xs text-amber-100/90">
                   {errors.map((e) => (
-                    <li key={e.id} className="border-b border-white/5 py-1 last:border-0">
+                    <li key={e.id} className="border-b border-line/60 py-1 last:border-0">
                       <span className="font-semibold">{e.entity}</span>
                       {e.qboId ? ` #${e.qboId}` : ''} — {e.message ?? 'failed'}
                     </li>
@@ -526,7 +526,7 @@ export default function QuickBooksSyncView() {
             )}
 
             {skips.length > 0 && (
-              <details className="rounded-sm border border-white/10 bg-white/5 p-2">
+              <details className="app-list-row p-2">
                 <summary className="cursor-pointer text-sm font-semibold text-muted">
                   {skips.length} record{skips.length === 1 ? '' : 's'} skipped — no effect on your
                   books
@@ -537,7 +537,7 @@ export default function QuickBooksSyncView() {
                 </p>
                 <ul className="mt-1 max-h-48 overflow-y-auto text-xs text-muted">
                   {skips.map((e) => (
-                    <li key={e.id} className="border-b border-white/5 py-1 last:border-0">
+                    <li key={e.id} className="border-b border-line/60 py-1 last:border-0">
                       <span className="font-semibold">{e.entity}</span>
                       {e.qboId ? ` #${e.qboId}` : ''} — {e.message ?? 'skipped'}
                     </li>
@@ -559,7 +559,7 @@ export default function QuickBooksSyncView() {
             <h3 className="text-sm font-bold text-white">Recent runs</h3>
             <table className="mt-2 w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-muted">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                   <th className="py-1.5 pr-2 font-semibold">Started</th>
                   <th className="px-2 py-1.5 font-semibold">Mode</th>
                   <th className="px-2 py-1.5 font-semibold">Status</th>
@@ -568,7 +568,7 @@ export default function QuickBooksSyncView() {
               </thead>
               <tbody>
                 {(runsQuery.data ?? []).map((r) => (
-                  <tr key={r.id} className="border-b border-white/5 text-muted">
+                  <tr key={r.id} className="border-b border-line/60 text-muted">
                     <td className="py-1.5 pr-2">{formatWhen(r.startedAt)}</td>
                     <td className="px-2 py-1.5 capitalize">{r.mode}</td>
                     <td

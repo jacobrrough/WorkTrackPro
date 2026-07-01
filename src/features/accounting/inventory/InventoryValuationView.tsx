@@ -55,7 +55,7 @@ function SummaryStat({
   tone?: 'default' | 'accent';
 }) {
   return (
-    <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="rounded-2xl border border-line bg-card-dark p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
@@ -111,7 +111,7 @@ export default function InventoryValuationView() {
         )}
 
         {!isPending && !isError && rows.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">inventory_2</span>
             <p className="text-lg font-bold text-white">No inventory on the books yet</p>
             <p className="max-w-md text-sm text-muted">
@@ -153,10 +153,10 @@ export default function InventoryValuationView() {
               />
             </div>
 
-            <div className="overflow-x-auto rounded-sm border border-white/10">
+            <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5 text-muted">
+                  <tr className="border-b border-line bg-overlay/5 text-muted">
                     <th className="px-3 py-2 text-left font-semibold">Item</th>
                     <th className="px-3 py-2 text-right font-semibold">On hand</th>
                     <th className="px-3 py-2 text-right font-semibold">Avg cost</th>
@@ -169,7 +169,7 @@ export default function InventoryValuationView() {
                     <tr
                       key={row.sourceInventoryId}
                       onClick={() => openItem(row)}
-                      className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                      className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                     >
                       <td className="px-3 py-2">
                         <span className="block truncate font-medium text-white">
@@ -191,7 +191,7 @@ export default function InventoryValuationView() {
                     </tr>
                   ))}
                   {/* Grand totals — asset value ties to GL 1300 */}
-                  <tr className="border-t border-white/10 bg-white/5">
+                  <tr className="border-t border-line bg-overlay/5">
                     <td className="px-3 py-2 font-bold text-white">
                       {totals.itemCount} {totals.itemCount === 1 ? 'item' : 'items'}
                     </td>

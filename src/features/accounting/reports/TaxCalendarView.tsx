@@ -111,7 +111,7 @@ function CalendarRow({ entry, isNext }: { entry: TaxCalendarEntry; isNext: boole
     ? 'border-t border-red-500/30 bg-red-500/[0.07]'
     : isNext
       ? 'border-t border-primary/30 bg-primary/5'
-      : 'border-t border-white/5';
+      : 'border-t border-line/60';
 
   const statusClass = entry.overdue
     ? 'text-red-300'

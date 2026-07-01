@@ -106,7 +106,7 @@ export function OfflinePunchBanner() {
             type="button"
             onClick={handleSyncNow}
             disabled={isSyncing}
-            className={`flex min-h-8 touch-manipulation items-center gap-1 rounded-sm px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60 ${
+            className={`flex min-h-8 touch-manipulation items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60 ${
               isStale
                 ? 'bg-red-500/30 text-red-100 hover:bg-red-500/40'
                 : 'bg-amber-500/30 text-amber-50 hover:bg-amber-500/40'
@@ -122,7 +122,7 @@ export function OfflinePunchBanner() {
           type="button"
           onClick={() => setDismissedSeverity(warning.severity)}
           aria-label="Dismiss"
-          className="flex size-8 touch-manipulation items-center justify-center rounded-sm text-current opacity-70 transition-opacity hover:opacity-100"
+          className="flex size-8 touch-manipulation items-center justify-center rounded-lg text-current opacity-70 transition-opacity hover:opacity-100"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">
             close

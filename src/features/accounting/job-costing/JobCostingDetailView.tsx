@@ -37,7 +37,7 @@ import {
  */
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -45,7 +45,7 @@ const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
 };
 
 const BILL_STATUS_STYLES: Record<BillStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -53,7 +53,7 @@ const BILL_STATUS_STYLES: Record<BillStatus, string> = {
 };
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -63,7 +63,7 @@ const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
 
 function StatusPill({ label, className }: { label: string; className: string }) {
   return (
-    <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${className}`}>
+    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${className}`}>
       {label}
     </span>
   );
@@ -82,7 +82,7 @@ function StatCard({
   const valueColor =
     tone === 'good' ? 'text-green-400' : tone === 'bad' ? 'text-red-400' : 'text-white';
   return (
-    <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="rounded-2xl border border-line bg-card-dark p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p className={`mt-1 font-mono text-lg font-bold tabular-nums ${valueColor}`}>{children}</p>
     </div>
@@ -130,7 +130,7 @@ function InvoicesTable({
         <tr
           key={inv.id}
           onClick={() => onOpen(inv.id)}
-          className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+          className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
         >
           <td className="px-3 py-2 font-mono text-xs text-muted">{inv.invoiceNumber || 'Draft'}</td>
           <td className="px-3 py-2 text-muted">{inv.invoiceDate}</td>
@@ -168,7 +168,7 @@ function BillsTable({ bills, onOpen }: { bills: Bill[]; onOpen: (id: string) => 
         <tr
           key={bill.id}
           onClick={() => onOpen(bill.id)}
-          className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+          className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
         >
           <td className="px-3 py-2 font-mono text-xs text-muted">{bill.billNumber || 'Draft'}</td>
           <td className="px-3 py-2 text-white">{bill.vendorName || bill.vendorId}</td>
@@ -212,7 +212,7 @@ function EstimatesTable({
         <tr
           key={est.id}
           onClick={() => onOpen(est.id)}
-          className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+          className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
         >
           <td className="px-3 py-2 font-mono text-xs text-muted">
             {est.estimateNumber || 'Draft'}
@@ -301,7 +301,7 @@ export default function JobCostingDetailView() {
             <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Estimates</h2>
             {estimatesPending && <p className="text-sm text-subtle">Loading estimates…</p>}
             {!estimatesPending && estimates.length === 0 && (
-              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-subtle">
+              <p className="rounded-lg border border-dashed border-line px-3 py-4 text-sm text-subtle">
                 No estimates quoted to this job.
               </p>
             )}
@@ -318,7 +318,7 @@ export default function JobCostingDetailView() {
             <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Invoices</h2>
             {invoicesPending && <p className="text-sm text-subtle">Loading invoices…</p>}
             {!invoicesPending && invoices.length === 0 && (
-              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-subtle">
+              <p className="rounded-lg border border-dashed border-line px-3 py-4 text-sm text-subtle">
                 No invoices billed to this job.
               </p>
             )}
@@ -335,7 +335,7 @@ export default function JobCostingDetailView() {
             <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Bills</h2>
             {billsPending && <p className="text-sm text-subtle">Loading bills…</p>}
             {!billsPending && bills.length === 0 && (
-              <p className="rounded-sm border border-dashed border-white/10 px-3 py-4 text-sm text-subtle">
+              <p className="rounded-lg border border-dashed border-line px-3 py-4 text-sm text-subtle">
                 No bills charged to this job.
               </p>
             )}

@@ -58,7 +58,7 @@ export default function JobReferencePills({
 
       {customerName && (
         <span
-          className={`${PILL} inline-flex items-center gap-1 bg-white/10 text-white`}
+          className={`${PILL} inline-flex items-center gap-1 bg-overlay/10 text-white`}
           title="Customer (from the linked document)"
         >
           <span className="material-symbols-outlined text-sm leading-none">person</span>

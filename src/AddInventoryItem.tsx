@@ -28,7 +28,7 @@ interface AddInventoryItemProps {
 }
 
 const FIELD_INPUT_CLASS =
-  'min-w-0 flex-1 rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary';
+  'min-w-0 flex-1 rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary';
 
 // Text input paired with a camera Scan button (barcode + bin location both use this).
 // onScan opens the shared scanner; the scanned value is routed back to onChange by the caller.
@@ -52,7 +52,7 @@ const ScannableInput: React.FC<{
     <button
       type="button"
       onClick={onScan}
-      className="flex shrink-0 items-center gap-1.5 rounded-sm border border-white/10 bg-white/5 px-4 font-bold text-white hover:bg-white/10 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-overlay/5 px-4 font-bold text-white hover:bg-overlay/10 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
       aria-label={scanLabel}
     >
       <span className="material-symbols-outlined text-xl">qr_code_scanner</span>
@@ -137,13 +137,13 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
   return (
     <div className="flex h-full flex-col bg-background-dark">
       {/* Header */}
-      <div className="border-b border-white/10 bg-gradient-to-b from-background-light to-background-dark p-4">
+      <div className="border-b border-line bg-gradient-to-b from-background-light to-background-dark p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={onCancel} className="text-white" aria-label="Cancel and go back">
               <span className="material-symbols-outlined">close</span>
             </button>
-            <h1 className="text-xl font-bold text-white">Add Inventory Item</h1>
+            <h1 className="app-section-title text-white">Add Inventory Item</h1>
           </div>
           <Button onClick={handleSubmit} disabled={isSaving} icon="add">
             {isSaving ? 'Adding...' : 'Add'}
@@ -167,7 +167,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
                 if (errors.name) setErrors({ ...errors, name: null });
               }}
               placeholder="e.g., Red Fabric, Foam Sheet"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               autoFocus
               aria-invalid={!!errors.name}
             />
@@ -180,7 +180,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description..."
               rows={3}
-              className="w-full resize-none rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full resize-none rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </FormField>
 
@@ -189,7 +189,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               style={{ colorScheme: 'dark' }}
             >
               {categoryOptions.map((opt) => (
@@ -210,7 +210,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
                 if (errors.unit) setErrors({ ...errors, unit: null });
               }}
               placeholder="e.g., ft, lbs, ea, yards"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.unit}
             />
           </FormField>
@@ -227,7 +227,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
                   if (errors.price) setErrors({ ...errors, price: null });
                 }}
                 placeholder="0.00"
-                className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 aria-invalid={!!errors.price}
               />
             </FormField>
@@ -254,7 +254,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
                 if (errors.inStock) setErrors({ ...errors, inStock: null });
               }}
               placeholder="0"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.inStock}
             />
           </FormField>
@@ -277,7 +277,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
                 if (errors.reorderPoint) setErrors({ ...errors, reorderPoint: null });
               }}
               placeholder="Not set (enter number to enable)"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
               aria-invalid={!!errors.reorderPoint}
             />
           </FormField>
@@ -316,7 +316,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
               value={vendor}
               onChange={(e) => setVendor(e.target.value)}
               placeholder="Optional"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </FormField>
         </Card>

@@ -36,7 +36,7 @@ export default function GeneralLedgerView() {
 
         <TaxDisclaimer />
 
-        <div className="flex flex-col gap-2 rounded-sm border border-white/10 bg-card-dark p-3">
+        <div className="flex flex-col gap-2 rounded-2xl border border-line bg-card-dark p-3">
           <label
             htmlFor="gl-account"
             className="text-xs font-semibold uppercase tracking-wide text-muted"

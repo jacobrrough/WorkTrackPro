@@ -77,12 +77,12 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${
+      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-overlay/5 ${
         isUnread ? 'bg-primary/5' : ''
       }`}
     >
       <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 ${config.color}`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-overlay/10 ${config.color}`}
       >
         <span className="material-symbols-outlined text-lg">{config.icon}</span>
       </div>

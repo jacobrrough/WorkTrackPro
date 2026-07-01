@@ -23,10 +23,10 @@ import { ACCOUNTING_BASE, PROGRESS_BASE } from '../constants';
 import type { ChangeOrder, ProgressInvoice, SovLine } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const CO_STATUS_STYLES: Record<ChangeOrder['status'], string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   approved: 'bg-green-500/15 text-green-400',
   rejected: 'bg-red-500/15 text-red-400',
 };
@@ -89,7 +89,7 @@ function SovSection({ projectId, sovLines }: { projectId: string; sovLines: SovL
         ]}
       >
         {sovLines.map((l) => (
-          <tr key={l.id} className="border-t border-white/5">
+          <tr key={l.id} className="border-t border-line/60">
             <td className="px-3 py-2 text-white">{l.description || '—'}</td>
             <td className="px-3 py-2 text-muted">{l.incomeAccountId ? '—' : 'Default income'}</td>
             <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
@@ -101,14 +101,14 @@ function SovSection({ projectId, sovLines }: { projectId: string; sovLines: SovL
           </tr>
         ))}
         {sovLines.length === 0 && (
-          <tr className="border-t border-white/5">
+          <tr className="border-t border-line/60">
             <td className="px-3 py-2 text-subtle" colSpan={4}>
               No schedule-of-values lines yet. Add the first below.
             </td>
           </tr>
         )}
         {/* Add-row */}
-        <tr className="border-t border-white/10 bg-white/[0.02]">
+        <tr className="border-t border-line bg-overlay/[0.02]">
           <td className="px-3 py-2">
             <input
               aria-label="New SOV description"
@@ -207,7 +207,7 @@ function ChangeOrdersSection({
         ]}
       >
         {changeOrders.map((co) => (
-          <tr key={co.id} className="border-t border-white/5">
+          <tr key={co.id} className="border-t border-line/60">
             <td className="px-3 py-2 font-mono text-xs text-muted">{co.coNumber || '—'}</td>
             <td className="px-3 py-2 text-white">{co.description || '—'}</td>
             <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
@@ -215,7 +215,7 @@ function ChangeOrdersSection({
             </td>
             <td className="px-3 py-2">
               <span
-                className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${CO_STATUS_STYLES[co.status]}`}
+                className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${CO_STATUS_STYLES[co.status]}`}
               >
                 {co.status}
               </span>
@@ -249,14 +249,14 @@ function ChangeOrdersSection({
           </tr>
         ))}
         {changeOrders.length === 0 && (
-          <tr className="border-t border-white/5">
+          <tr className="border-t border-line/60">
             <td className="px-3 py-2 text-subtle" colSpan={5}>
               No change orders. A deduct change order uses a negative amount.
             </td>
           </tr>
         )}
         {/* Add-row */}
-        <tr className="border-t border-white/10 bg-white/[0.02]">
+        <tr className="border-t border-line bg-overlay/[0.02]">
           <td className="px-3 py-2">
             <input
               aria-label="New change-order number"
@@ -331,7 +331,7 @@ function ApplicationsSection({
         ]}
       >
         {applications.map((app) => (
-          <tr key={app.id} className="border-t border-white/5">
+          <tr key={app.id} className="border-t border-line/60">
             <td className="px-3 py-2 font-mono text-xs text-muted">#{app.sequence}</td>
             <td className="px-3 py-2 text-muted">{app.periodEnd}</td>
             <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
@@ -357,7 +357,7 @@ function ApplicationsSection({
           </tr>
         ))}
         {applications.length === 0 && (
-          <tr className="border-t border-white/5">
+          <tr className="border-t border-line/60">
             <td className="px-3 py-2 text-subtle" colSpan={6}>
               No applications billed yet.
             </td>
@@ -397,15 +397,15 @@ function ReleaseRetainageModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+    <div className="app-modal-backdrop z-modal p-4">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Release retainage</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>

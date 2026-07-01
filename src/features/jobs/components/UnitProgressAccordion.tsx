@@ -72,7 +72,7 @@ function VariantRow({
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-2.5 py-1.5">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-overlay/5 px-2.5 py-1.5">
       <span className="font-mono text-sm font-bold text-white">{label}</span>
       <div className="flex items-center gap-2">
         <button
@@ -80,7 +80,7 @@ function VariantRow({
           aria-label={`Decrease ${label}`}
           disabled={disabled || busy || done <= 0}
           onClick={() => onAdjust(-1)}
-          className="flex size-9 items-center justify-center rounded-sm border border-white/15 text-white disabled:opacity-30"
+          className="flex size-9 items-center justify-center rounded-lg border border-line text-white disabled:opacity-30"
         >
           <span className="material-symbols-outlined text-lg">remove</span>
         </button>
@@ -99,7 +99,7 @@ function VariantRow({
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
-            className="w-12 rounded-sm border border-white/15 bg-background-dark px-1 py-1 text-center text-white [appearance:textfield] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="w-12 rounded-lg border border-line bg-background-dark px-1 py-1 text-center text-white [appearance:textfield] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="text-muted">/ {total}</span>
         </div>
@@ -108,7 +108,7 @@ function VariantRow({
           aria-label={`Increase ${label}`}
           disabled={disabled || busy || done >= total}
           onClick={() => onAdjust(1)}
-          className="flex size-9 items-center justify-center rounded-sm border border-primary/40 bg-primary/15 text-primary disabled:opacity-30"
+          className="flex size-9 items-center justify-center rounded-lg border border-primary/40 bg-primary/15 text-primary disabled:opacity-30"
         >
           <span className="material-symbols-outlined text-lg">add</span>
         </button>
@@ -151,7 +151,7 @@ export function UnitProgressAccordion({
   };
 
   return (
-    <div className="mb-3 overflow-hidden rounded-sm border border-primary/30 bg-primary/10">
+    <div className="mb-3 overflow-hidden rounded-lg border border-primary/30 bg-primary/10">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -173,7 +173,7 @@ export function UnitProgressAccordion({
       </button>
 
       {open && (
-        <div className="space-y-1.5 border-t border-white/10 p-2.5">
+        <div className="space-y-1.5 border-t border-line p-2.5">
           {variantKeys.map((key) => {
             // Coerce defensively (mirrors the steppers' sum()) so corrupt counts can't yield
             // a negative/NaN total that produces a garbage delta from the number box.

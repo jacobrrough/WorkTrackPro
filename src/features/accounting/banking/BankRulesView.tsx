@@ -27,7 +27,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const FIELDS = Object.keys(BANK_RULE_FIELD_LABELS) as BankRuleField[];
 const OPS = Object.keys(BANK_RULE_OP_LABELS) as BankRuleOp[];
@@ -319,7 +319,7 @@ function RuleRow({
   const opLabel = rule.matchOp ? BANK_RULE_OP_LABELS[rule.matchOp] : '';
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.04]">
+    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-overlay/[0.04]">
       <span className="w-8 shrink-0 text-center font-mono text-xs text-subtle">
         {rule.priority}
       </span>
@@ -339,7 +339,7 @@ function RuleRow({
         onClick={onToggleActive}
         disabled={busy}
         aria-label={rule.isActive ? 'Deactivate rule' : 'Activate rule'}
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {rule.isActive ? 'toggle_on' : 'toggle_off'}
@@ -350,7 +350,7 @@ function RuleRow({
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit rule"
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -359,7 +359,7 @@ function RuleRow({
         onClick={onDelete}
         disabled={busy}
         aria-label="Delete rule"
-        className="flex size-9 items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">delete</span>
       </button>
@@ -417,7 +417,7 @@ export default function BankRulesView() {
         {isError && <p className="text-red-400">Could not load rules.</p>}
 
         {!isPending && !isError && rules.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">rule</span>
             <p className="text-lg font-bold text-white">No rules yet</p>
             <p className="max-w-sm text-sm text-muted">
@@ -437,7 +437,7 @@ export default function BankRulesView() {
               <span className="flex-1">Rule</span>
               <span className="w-[120px] shrink-0 text-right">Actions</span>
             </div>
-            <div className="divide-y divide-white/10 overflow-hidden rounded-sm border border-white/10">
+            <div className="divide-y divide-overlay/10 overflow-hidden rounded-lg border border-line">
               {rules.map((rule) => (
                 <RuleRow
                   key={rule.id}

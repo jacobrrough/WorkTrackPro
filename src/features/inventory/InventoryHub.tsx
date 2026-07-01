@@ -29,8 +29,11 @@ interface InventoryHubProps {
   onBack: () => void;
 }
 
+// Matches the dashboard quick-action tiles: neutral surface + states from the
+// shared kit. The per-tile accent lives only on the icon badge (see badgeClassName),
+// where the green/amber/red carries real meaning (in / out / low stock).
 const TILE_BASE =
-  'flex w-full touch-manipulation items-center gap-2.5 rounded-sm border p-3 text-left transition-colors active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+  'app-quick-card touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app';
 
 // Generous ceiling on the Recent Items candidates we prepare. The number actually shown
 // is fit to the available viewport height at runtime (see the layout effect below) so the
@@ -142,32 +145,28 @@ export default function InventoryHub({
       key: 'add',
       title: 'Add Part',
       icon: 'add_box',
-      iconClassName: 'text-primary',
-      cardClassName: 'border-primary/30 bg-gradient-to-br from-primary/20 to-purple-600/20',
+      badgeClassName: 'bg-primary/15 text-primary',
       onClick: onAddItem,
     },
     {
       key: 'in',
       title: 'Stock In',
       icon: 'add_circle',
-      iconClassName: 'text-green-400',
-      cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
+      badgeClassName: 'bg-green-500/15 text-green-400',
       onClick: () => onOpenFlow('in'),
     },
     {
       key: 'out',
       title: 'Stock Out',
       icon: 'remove_circle',
-      iconClassName: 'text-amber-400',
-      cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20',
+      badgeClassName: 'bg-amber-500/15 text-amber-400',
       onClick: () => onOpenFlow('out'),
     },
     {
       key: 'low',
       title: 'Low Stock',
       icon: 'warning',
-      iconClassName: 'text-red-400',
-      cardClassName: 'border-red-500/30 bg-gradient-to-br from-red-600/20 to-rose-600/20',
+      badgeClassName: 'bg-red-500/15 text-red-400',
       onClick: () => onViewAll('lowStock'),
       badge: summary.lowStock,
     },
@@ -183,7 +182,7 @@ export default function InventoryHub({
       key: 'total',
       label: 'Total Parts',
       value: summary.total,
-      className: 'border-white/10 bg-white/5 text-white',
+      className: 'border-line bg-overlay/5 text-white',
     },
     {
       key: 'allParts',
@@ -213,17 +212,17 @@ export default function InventoryHub({
         <button
           type="button"
           onClick={() => onOpenDetail(item.id)}
-          className="flex w-full items-center gap-3 rounded-sm border border-white/10 bg-card-dark p-2.5 text-left hover:border-primary/40"
+          className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card-dark p-2.5 text-left hover:border-primary/40"
         >
           {item.hasImage && item.imageUrl ? (
             <img
               src={item.imageUrl}
               alt=""
-              className="size-12 shrink-0 rounded-sm object-cover"
+              className="size-12 shrink-0 rounded-lg object-cover"
               loading="lazy"
             />
           ) : (
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
               <span className="material-symbols-outlined">{categoryIcon(item.category)}</span>
             </span>
           )}
@@ -236,7 +235,7 @@ export default function InventoryHub({
               {item.inStock} <span className="text-xs font-normal text-muted">{item.unit}</span>
             </p>
             <span
-              className={`mt-0.5 inline-block rounded-sm border px-1.5 py-0.5 text-[10px] font-bold ${pill.className}`}
+              className={`mt-0.5 inline-block rounded-full border px-1.5 py-0.5 text-[10px] font-bold ${pill.className}`}
             >
               {pill.label}
             </span>
@@ -250,24 +249,24 @@ export default function InventoryHub({
 
   return (
     <div className="flex h-full flex-col bg-background-dark">
-      <header className="safe-area-top sticky top-0 z-20 border-b border-white/10 bg-background-dark px-3 py-3">
+      <header className="safe-area-top sticky top-0 z-20 border-b border-line bg-background-dark px-3 py-3">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
           <button
             type="button"
             onClick={onBack}
-            className="flex size-10 items-center justify-center rounded-sm border border-white/10 text-white hover:bg-white/10"
+            className="app-icon-btn border border-line text-white"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-white">Inventory</h1>
+            <h1 className="app-section-title text-white">Inventory</h1>
             <p className="text-xs text-muted">Manage your stock</p>
           </div>
           <button
             type="button"
             onClick={() => onViewAll()}
-            className="flex min-h-[40px] items-center gap-1.5 rounded-sm border border-white/10 px-3 text-xs font-bold text-white hover:bg-white/10"
+            className="flex min-h-[40px] items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-bold text-white hover:bg-overlay/10"
           >
             <span className="material-symbols-outlined text-base">format_list_bulleted</span>
             All parts
@@ -280,18 +279,15 @@ export default function InventoryHub({
           {/* Quick-action tiles */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {tiles.map((tile) => (
-              <button
-                key={tile.key}
-                type="button"
-                onClick={tile.onClick}
-                className={`${TILE_BASE} ${tile.cardClassName}`}
-              >
-                <span className={`material-symbols-outlined text-2xl ${tile.iconClassName}`}>
-                  {tile.icon}
+              <button key={tile.key} type="button" onClick={tile.onClick} className={TILE_BASE}>
+                <span
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-2xl ${tile.badgeClassName}`}
+                >
+                  <span className="material-symbols-outlined text-2xl">{tile.icon}</span>
                 </span>
                 <span className="flex-1 text-sm font-bold text-white">{tile.title}</span>
                 {tile.badge != null && tile.badge > 0 && (
-                  <span className="rounded-sm bg-red-500/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded-full bg-red-500/80 px-1.5 py-0.5 text-[10px] font-bold text-pure-white">
                     {tile.badge}
                   </span>
                 )}
@@ -317,7 +313,7 @@ export default function InventoryHub({
                   key={stat.key}
                   type="button"
                   onClick={() => onViewAll(stat.key === 'total' ? undefined : stat.key)}
-                  className={`min-w-[7.5rem] shrink-0 rounded-sm border px-3 py-3 text-left md:min-w-0 ${stat.className}`}
+                  className={`min-w-[7.5rem] shrink-0 rounded-2xl border px-3 py-3 text-left md:min-w-0 ${stat.className}`}
                 >
                   <p className="text-xs opacity-80">{stat.label}</p>
                   <p className="text-2xl font-bold">{stat.value}</p>

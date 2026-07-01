@@ -41,7 +41,7 @@ function Row({
   return (
     <div
       className={`flex items-center justify-between ${
-        strong ? 'border-t border-white/10 pt-2 text-white' : 'text-muted'
+        strong ? 'border-t border-line pt-2 text-white' : 'text-muted'
       }`}
     >
       <span className={strong ? 'font-semibold' : ''}>{label}</span>
@@ -72,7 +72,7 @@ export function SalesDocumentTotalsPanel({
   const totalLabel = kind === 'estimate' ? 'Estimate total' : 'Invoice total';
 
   return (
-    <div className="rounded-lg border border-white/10 bg-card-dark p-4 text-sm">
+    <div className="rounded-lg border border-line bg-card-dark p-4 text-sm">
       <div className="space-y-2">
         <Row label="Subtotal" value={formatMoney(totals.subtotalCents / 100)} />
         <Row label="Taxable subtotal" value={formatMoney(taxableSubtotalCents / 100)} />

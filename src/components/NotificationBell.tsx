@@ -105,20 +105,20 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+        className="relative flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
         aria-label={displayCount > 0 ? `${displayCount} notifications` : 'Notifications'}
         aria-expanded={open}
       >
         <span className="material-symbols-outlined">notifications</span>
         {displayCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-on-accent">
             {displayCount > 99 ? '99+' : displayCount}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-72 max-w-[calc(100vw-1.5rem)] rounded-sm border border-white/10 bg-app-2 shadow-xl sm:w-80">
-          <div className="flex items-center justify-between border-b border-white/10 px-2.5 py-1.5 sm:px-3 sm:py-2">
+        <div className="absolute right-0 top-full z-dropdown mt-1 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-line bg-app-2 shadow-xl sm:w-80">
+          <div className="flex items-center justify-between border-b border-line px-2.5 py-1.5 sm:px-3 sm:py-2">
             <span className="text-xs font-bold text-white sm:text-sm">Notifications</span>
             <div className="flex items-center gap-2">
               {notifications.some((n) => !n.readAt) && (
@@ -136,7 +136,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   setOpen(false);
                   onNavigate?.('notification-settings' as ViewState);
                 }}
-                className="flex size-6 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white sm:size-7"
+                className="flex size-6 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white sm:size-7"
                 aria-label="Notification settings"
               >
                 <span className="material-symbols-outlined text-sm sm:text-base">settings</span>
@@ -154,7 +154,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   key={n.id}
                   type="button"
                   onClick={() => handleSelect(n)}
-                  className={`flex w-full flex-col items-start gap-0.5 border-b border-white/5 px-2.5 py-1.5 text-left transition-colors hover:bg-white/10 sm:px-3 sm:py-2 ${
+                  className={`flex w-full flex-col items-start gap-0.5 border-b border-line/60 px-2.5 py-1.5 text-left transition-colors hover:bg-overlay/10 sm:px-3 sm:py-2 ${
                     n.readAt ? 'opacity-80' : ''
                   }`}
                 >

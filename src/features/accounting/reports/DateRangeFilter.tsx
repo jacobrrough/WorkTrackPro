@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { DateRange } from '../types';
 
 const inputClass =
-  'rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none';
+  'rounded-lg border border-line bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none';
 
 /** A named preset range, resolved relative to "today" when applied. */
 interface Preset {
@@ -97,7 +97,7 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
   const active = activePresetKey(value, today);
 
   return (
-    <div className="flex flex-col gap-2 rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="flex flex-col gap-2 rounded-2xl border border-line bg-card-dark p-3">
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick date ranges">
         {PRESETS.map((p) => {
           const isActive = p.key === active;
@@ -107,10 +107,10 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
               type="button"
               onClick={() => onChange(p.resolve(today))}
               aria-pressed={isActive}
-              className={`rounded-sm px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
                 isActive
                   ? 'bg-primary text-on-accent'
-                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+                  : 'bg-overlay/5 text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               {p.label}

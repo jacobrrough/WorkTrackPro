@@ -36,17 +36,17 @@ export default function JobStatusHistory({ jobId, isAdmin }: JobStatusHistoryPro
       </h3>
 
       {isLoading ? (
-        <div className="rounded-sm bg-surface-2 p-3 text-center text-sm text-muted">Loading...</div>
+        <div className="rounded-lg bg-surface-2 p-3 text-center text-sm text-muted">Loading...</div>
       ) : entries.length === 0 ? (
-        <div className="rounded-sm bg-surface-2 p-3 text-center text-sm text-muted">
+        <div className="rounded-lg bg-surface-2 p-3 text-center text-sm text-muted">
           No status changes recorded yet
         </div>
       ) : (
         <div className="space-y-2">
           {entries.map((entry) => (
-            <div key={entry.id} className="rounded-sm bg-surface-2 p-3">
+            <div key={entry.id} className="rounded-lg bg-surface-2 p-3">
               <div className="flex items-start gap-2">
-                <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-on-accent">
+                <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-on-accent">
                   {entry.userInitials || '??'}
                 </div>
                 <div className="min-w-0 flex-1">

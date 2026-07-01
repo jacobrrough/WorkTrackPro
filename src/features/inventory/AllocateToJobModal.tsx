@@ -45,14 +45,14 @@ export default function AllocateToJobModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 p-3 sm:items-center">
-      <div className="w-full max-w-lg rounded-sm border border-white/10 bg-card-dark p-4">
+    <div className="fixed inset-0 z-picker flex items-end justify-center bg-black/80 p-3 sm:items-center">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-card-dark p-4">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">Allocate To Job</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="app-icon-btn text-muted hover:text-white"
             aria-label="Close allocation dialog"
           >
             <span className="material-symbols-outlined">close</span>
@@ -71,7 +71,7 @@ export default function AllocateToJobModal({
             </label>
             <select
               id="allocate-job"
-              className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+              className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
               value={jobId}
               onChange={(event) => setJobId(event.target.value)}
               required
@@ -94,7 +94,7 @@ export default function AllocateToJobModal({
               type="number"
               min="1"
               step="1"
-              className="min-h-[44px] w-full rounded-sm border border-white/10 bg-white/5 px-3 text-white"
+              className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
               required
@@ -109,7 +109,7 @@ export default function AllocateToJobModal({
             <textarea
               id="allocate-notes"
               rows={2}
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Optional allocation note"
@@ -120,14 +120,14 @@ export default function AllocateToJobModal({
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[44px] rounded-sm border border-white/10 px-4 text-sm font-bold text-white"
+              className="min-h-[44px] rounded-lg border border-line px-4 text-sm font-bold text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !!quantityError || !jobId}
-              className="min-h-[44px] rounded-sm bg-primary px-4 text-sm font-bold text-on-accent disabled:opacity-60"
+              className="min-h-[44px] rounded-lg bg-primary px-4 text-sm font-bold text-on-accent disabled:opacity-60"
             >
               {saving ? 'Allocating...' : 'Allocate'}
             </button>

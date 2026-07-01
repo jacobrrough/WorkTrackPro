@@ -18,7 +18,7 @@ import {
 import type { FixedAssetRegisterRow, RunDepreciationResult } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Today as a bare ISO `YYYY-MM-DD` for the run-depreciation date default. */
 function todayISO(): string {
@@ -59,7 +59,7 @@ function SummaryStat({
   tone?: 'default' | 'accent';
 }) {
   return (
-    <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="rounded-2xl border border-line bg-card-dark p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
@@ -114,15 +114,15 @@ function RunDepreciationModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+    <div className="app-modal-backdrop z-modal p-4">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Run depreciation</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -136,7 +136,7 @@ function RunDepreciationModal({ onClose }: { onClose: () => void }) {
 
         {result ? (
           <div className="flex flex-col gap-3">
-            <div className="rounded-sm border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
               {result.postedCount === 0 ? (
                 <p>
                   Nothing was due through{' '}
@@ -180,7 +180,7 @@ function RunDepreciationModal({ onClose }: { onClose: () => void }) {
 
             {error && (
               <p
-                className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+                className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
                 role="alert"
               >
                 {error}
@@ -256,7 +256,7 @@ export default function FixedAssetsView() {
         )}
 
         {!isPending && !isError && rows.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">
               precision_manufacturing
             </span>
@@ -295,10 +295,10 @@ export default function FixedAssetsView() {
               />
             </div>
 
-            <div className="overflow-x-auto rounded-sm border border-white/10">
+            <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5 text-muted">
+                  <tr className="border-b border-line bg-overlay/5 text-muted">
                     <th className="px-3 py-2 text-left font-semibold">Asset</th>
                     <th className="px-3 py-2 text-left font-semibold">In service</th>
                     <th className="px-3 py-2 text-right font-semibold">Cost</th>
@@ -312,7 +312,7 @@ export default function FixedAssetsView() {
                     <tr
                       key={row.id}
                       onClick={() => openAsset(row)}
-                      className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                      className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                     >
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -334,7 +334,7 @@ export default function FixedAssetsView() {
                     </tr>
                   ))}
                   {/* Grand totals */}
-                  <tr className="border-t border-white/10 bg-white/5">
+                  <tr className="border-t border-line bg-overlay/5">
                     <td className="px-3 py-2 font-bold text-white" colSpan={2}>
                       {totals.assetCount} {totals.assetCount === 1 ? 'asset' : 'assets'}
                     </td>

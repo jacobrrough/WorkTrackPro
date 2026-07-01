@@ -7,7 +7,7 @@ import { useUpdateCustomer } from '../hooks/useAccountingMutations';
 import type { Customer } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Basic email sanity check — only enforced when an email is present. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -43,7 +43,7 @@ function AddressFieldset({
 }) {
   const set = (patch: Partial<AddressValue>) => onChange({ ...value, ...patch });
   return (
-    <fieldset className="flex flex-col gap-3 rounded-sm border border-white/10 p-3">
+    <fieldset className="flex flex-col gap-3 rounded-lg border border-line p-3">
       <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-subtle">
         {legend}
       </legend>
@@ -237,7 +237,7 @@ export default function EditCustomerDrawer({
         <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded-sm border-white/20 bg-background-dark text-primary focus:ring-primary"
+            className="h-4 w-4 rounded border-line-strong bg-background-dark text-primary focus:ring-primary"
             checked={taxExempt}
             onChange={(e) => setTaxExempt(e.target.checked)}
           />

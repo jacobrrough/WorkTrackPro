@@ -27,11 +27,11 @@ const Accordion: React.FC<AccordionProps> = ({
   );
 
   return (
-    <div className={`overflow-hidden rounded-sm border border-white/10 bg-white/5 ${className}`}>
+    <div className={`overflow-hidden rounded-lg border border-line bg-overlay/5 ${className}`}>
       <button
         type="button"
         onClick={toggle}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-overlay/5 active:bg-overlay/10"
         aria-expanded={expanded}
       >
         <span className="text-sm font-semibold text-white">{title}</span>
@@ -44,7 +44,7 @@ const Accordion: React.FC<AccordionProps> = ({
           expand_more
         </span>
       </button>
-      {expanded && <div className="border-t border-white/10 px-4 py-4">{children}</div>}
+      {expanded && <div className="border-t border-line px-4 py-4">{children}</div>}
     </div>
   );
 };

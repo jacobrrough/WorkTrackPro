@@ -13,7 +13,7 @@ import { todayIsoLocal } from '../periodLockView';
 import type { JournalEntry, JournalStatus, NewJournalLineInput } from '../types';
 
 const STATUS_STYLES: Record<JournalStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   posted: 'bg-green-500/15 text-green-400',
   void: 'bg-red-500/15 text-red-400',
 };
@@ -21,7 +21,7 @@ const STATUS_STYLES: Record<JournalStatus, string> = {
 function StatusPill({ status }: { status: JournalStatus }) {
   return (
     <span
-      className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {status}
     </span>
@@ -68,15 +68,15 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col rounded-sm border border-white/10 bg-card-dark shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
+    <div className="app-modal-backdrop z-modal p-4">
+      <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col rounded-lg border border-line bg-card-dark shadow-xl">
+        <div className="flex items-center justify-between border-b border-line p-4">
           <h2 className="text-lg font-bold text-white">New Journal Entry</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -88,7 +88,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
               <input
                 id="je-date"
                 type="date"
-                className="w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
               />
@@ -96,7 +96,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
             <FormField label="Memo" htmlFor="je-memo">
               <input
                 id="je-memo"
-                className="w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 placeholder="Optional description"
@@ -138,7 +138,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
                   onClick={() => removeLine(i)}
                   aria-label={`Remove line ${i + 1}`}
                   disabled={lines.length <= 2}
-                  className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                  className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
                 >
                   <span className="material-symbols-outlined text-lg">delete</span>
                 </button>
@@ -155,7 +155,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
             Add line
           </button>
 
-          <div className="mt-4 flex items-center justify-end gap-6 border-t border-white/10 pt-3 text-sm">
+          <div className="mt-4 flex items-center justify-end gap-6 border-t border-line pt-3 text-sm">
             <span className="text-muted">
               Debits <span className="font-bold text-white">{formatMoney(balance.totalDebit)}</span>
             </span>
@@ -177,7 +177,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-white/10 p-4">
+        <div className="flex justify-end gap-2 border-t border-line p-4">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
@@ -196,7 +196,7 @@ function EntryRow({ entry, onOpen }: { entry: JournalEntry; onOpen: () => void }
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="w-12 shrink-0 font-mono text-xs text-subtle">#{entry.entryNumber}</span>
       <span className="w-24 shrink-0 text-sm text-muted">{entry.entryDate}</span>
@@ -237,7 +237,7 @@ export default function JournalView() {
       )}
 
       {entries.length > 0 && (
-        <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+        <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
           {entries.map((e) => (
             <EntryRow
               key={e.id}

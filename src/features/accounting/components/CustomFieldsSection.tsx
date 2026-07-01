@@ -12,7 +12,7 @@ import type {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /**
  * Local edit-state for the section: one raw value per def id. We keep the *raw* form
@@ -165,7 +165,7 @@ function CustomFieldRow({
         {def.label}
       </label>
       {readOnly ? (
-        <p className="rounded-sm border border-white/5 bg-background-dark/60 px-2 py-1.5 text-sm text-white">
+        <p className="rounded-lg border border-line/60 bg-background-dark/60 px-2 py-1.5 text-sm text-white">
           {formatCustomFieldValue(def, rawValue, '—')}
         </p>
       ) : (

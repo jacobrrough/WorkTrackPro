@@ -121,7 +121,7 @@ function LineRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`grid grid-cols-[24px_minmax(0,1fr)_32px] items-start gap-2 rounded-md border border-white/10 bg-background-dark/40 p-2 md:items-center md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:py-1.5 ${DESKTOP_GRID}`}
+      className={`grid grid-cols-[24px_minmax(0,1fr)_32px] items-start gap-2 rounded-lg border border-line bg-background-dark/40 p-2 md:items-center md:gap-2 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:py-1.5 ${DESKTOP_GRID}`}
     >
       {/* Drag handle — only the handle starts a drag, so the inputs stay usable. */}
       <button
@@ -211,7 +211,7 @@ function LineRow({
               aria-label={`Line ${index + 1} taxable`}
               checked={line.taxable !== false}
               onChange={(e) => onPatch({ taxable: e.target.checked })}
-              className="size-4 rounded-sm border-white/20 bg-background-dark"
+              className="size-4 rounded-lg border-line-strong bg-background-dark"
               disabled={disabled}
             />
           </label>
@@ -223,7 +223,7 @@ function LineRow({
         onClick={onRemove}
         aria-label={`Remove line ${index + 1}`}
         disabled={disabled || !canRemove}
-        className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+        className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
       >
         <span className="material-symbols-outlined text-lg">delete</span>
       </button>
@@ -380,7 +380,7 @@ export default function SalesLineItemsEditor({
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2 md:space-y-0 md:divide-y md:divide-white/5">
+          <div className="space-y-2 md:space-y-0 md:divide-y md:divide-overlay/5">
             {lines.map((line, i) => {
               const amountCents = lineAmountsCents?.[i] ?? localNetCents(line);
               const selItem = line.itemId ? items.find((it) => it.id === line.itemId) : null;
@@ -412,7 +412,7 @@ export default function SalesLineItemsEditor({
         </SortableContext>
       </DndContext>
 
-      <div className="mt-3 flex items-center gap-4 border-t border-white/10 pt-3">
+      <div className="mt-3 flex items-center gap-4 border-t border-line pt-3">
         <button
           type="button"
           onClick={addLine}

@@ -33,10 +33,10 @@ import {
 } from './templateConfig';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const checkboxClass =
-  'size-4 rounded border-white/20 bg-background-dark text-primary focus:ring-primary';
+  'size-4 rounded border-line-strong bg-background-dark text-primary focus:ring-primary';
 
 /**
  * Hardcoded, self-contained sample document used to drive the live preview. Kept small but
@@ -237,7 +237,7 @@ export default function DocumentTemplateSettings() {
                 type="color"
                 value={draft.accentColor}
                 onChange={(e) => patch({ accentColor: e.target.value })}
-                className="size-9 cursor-pointer rounded-sm border border-white/10 bg-background-dark p-0.5"
+                className="size-9 cursor-pointer rounded-lg border border-line bg-background-dark p-0.5"
                 aria-label="Accent color"
               />
               <input
@@ -329,7 +329,7 @@ export default function DocumentTemplateSettings() {
           <span className="text-xs font-semibold uppercase tracking-wide text-subtle">
             Live preview
           </span>
-          <div className="overflow-auto rounded-sm border border-white/10 bg-slate-200 p-3">
+          <div className="overflow-auto rounded-lg border border-line bg-slate-200 p-3">
             <SalesDocument data={SAMPLE} template={previewTemplate} mode="read" />
           </div>
           <p className="text-xs text-subtle">

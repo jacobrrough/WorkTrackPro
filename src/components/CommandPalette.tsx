@@ -29,11 +29,11 @@ export function CommandPalette({
       open={open}
       onOpenChange={onOpenChange}
       label="Global search"
-      className="fixed left-1/2 top-[20%] z-[100] w-full max-w-xl -translate-x-1/2 rounded-sm border border-white/10 bg-app-2 shadow-2xl"
+      className="fixed left-1/2 top-[20%] z-modal w-full max-w-xl -translate-x-1/2 rounded-lg border border-line bg-app-2 shadow-2xl"
     >
       <Command.Input
         placeholder="Search jobs, inventory, people..."
-        className="w-full border-b border-white/10 bg-transparent px-4 py-3 text-white placeholder:text-subtle focus:outline-none"
+        className="w-full border-b border-line bg-transparent px-4 py-3 text-white placeholder:text-subtle focus:outline-none"
       />
       <Command.List className="max-h-72 overflow-y-auto p-2">
         <Command.Empty className="py-6 text-center text-sm text-subtle">
@@ -45,7 +45,7 @@ export function CommandPalette({
               key={job.id}
               value={`job ${job.jobCode} ${job.name} ${job.po ?? ''}`}
               onSelect={() => handleSelect('job-detail', job.id)}
-              className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-white data-[selected=true]:bg-primary/20"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-white data-[selected=true]:bg-primary/20"
             >
               <span className="material-symbols-outlined text-base text-primary">assignment</span>
               <span>
@@ -66,7 +66,7 @@ export function CommandPalette({
                 key={item.id}
                 value={`inv ${item.name} ${sku}`}
                 onSelect={() => handleSelect('inventory-detail', item.id)}
-                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-white data-[selected=true]:bg-primary/20"
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-white data-[selected=true]:bg-primary/20"
               >
                 <span className="material-symbols-outlined text-base text-primary">
                   inventory_2
@@ -84,7 +84,7 @@ export function CommandPalette({
               key={user.id}
               value={`user ${user.name} ${user.email ?? ''}`}
               onSelect={() => handleSelect('dashboard')}
-              className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-white data-[selected=true]:bg-primary/20"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-white data-[selected=true]:bg-primary/20"
             >
               <span className="material-symbols-outlined text-base text-primary">person</span>
               <span>{user.name}</span>

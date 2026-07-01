@@ -102,7 +102,7 @@ export default function JobCostingView() {
       )}
 
       {!isPending && !isError && rows.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
           <span className="material-symbols-outlined text-4xl text-subtle">query_stats</span>
           <p className="text-lg font-bold text-white">No job costing yet</p>
           <p className="max-w-sm text-sm text-muted">
@@ -119,10 +119,10 @@ export default function JobCostingView() {
             row to drill into a job&apos;s invoices and bills.
           </p>
 
-          <div className="overflow-x-auto rounded-sm border border-white/10">
+          <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5 text-muted">
+                <tr className="border-b border-line bg-overlay/5 text-muted">
                   {COLUMNS.map((c) => {
                     const isActive = c.key === sortKey;
                     return (
@@ -159,7 +159,7 @@ export default function JobCostingView() {
                   <tr
                     key={row.jobId}
                     onClick={() => openJob(row)}
-                    className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                    className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                   >
                     <td className="px-3 py-2">
                       <span className="block truncate font-medium text-white">{row.name}</span>
@@ -176,7 +176,7 @@ export default function JobCostingView() {
                   </tr>
                 ))}
                 {/* Grand totals (blended margin %), summed in integer cents. */}
-                <tr className="border-t border-white/10 bg-white/5">
+                <tr className="border-t border-line bg-overlay/5">
                   <td className="px-3 py-2 font-bold text-white" colSpan={2}>
                     {sorted.length} {sorted.length === 1 ? 'job' : 'jobs'}
                   </td>

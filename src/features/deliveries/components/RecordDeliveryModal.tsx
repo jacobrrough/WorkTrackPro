@@ -121,13 +121,13 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4">
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-2xl flex-col rounded-lg border border-white/10 bg-surface-dark"
+        className="flex w-full max-w-2xl flex-col rounded-lg border border-line bg-surface-dark"
         style={{ maxHeight: '90vh' }}
       >
-        <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="text-lg font-semibold text-white">
             {existing ? `Edit Delivery #${existing.deliveryNumber}` : 'Record Delivery'}
           </h2>
@@ -150,7 +150,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={deliveredAt}
                 onChange={(e) => setDeliveredAt(e.target.value)}
                 required
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -159,7 +159,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
                 placeholder="Who received it"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -168,7 +168,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
                 placeholder="UPS, FedEx, customer pickup..."
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -177,7 +177,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 placeholder="Optional"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
           </div>
@@ -195,12 +195,12 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
           </div>
           <div className="mb-4 space-y-2">
             {lines.length === 0 ? (
-              <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-subtle">
+              <p className="rounded border border-dashed border-line py-4 text-center text-sm text-subtle">
                 No items. Click "Add custom item" to add one.
               </p>
             ) : (
               lines.map((line, idx) => (
-                <div key={idx} className="rounded border border-white/10 bg-white/5 p-2">
+                <div key={idx} className="rounded border border-line bg-overlay/5 p-2">
                   <div className="mb-1 flex items-baseline justify-between gap-2">
                     <span className="text-xs font-medium text-muted">
                       {line.partNumber
@@ -226,7 +226,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                       value={line.description}
                       onChange={(e) => updateLine(idx, { description: e.target.value })}
                       placeholder="Description"
-                      className="col-span-6 rounded border border-white/10 bg-transparent px-2 py-1 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                      className="col-span-6 rounded border border-line bg-transparent px-2 py-1 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
                     />
                     <input
                       type="number"
@@ -237,14 +237,14 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                       className={`col-span-3 rounded border bg-transparent px-2 py-1 text-right text-sm text-white focus:outline-none ${
                         overDeliveredKeys.has(deliveryLineKey(line.partNumber, line.variantSuffix))
                           ? 'border-red-500 focus:border-red-500'
-                          : 'border-white/10 focus:border-primary'
+                          : 'border-line focus:border-primary'
                       }`}
                     />
                     <input
                       value={line.unit ?? ''}
                       onChange={(e) => updateLine(idx, { unit: e.target.value })}
                       placeholder="units"
-                      className="col-span-2 rounded border border-white/10 bg-transparent px-2 py-1 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                      className="col-span-2 rounded border border-line bg-transparent px-2 py-1 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
                     />
                     <button
                       type="button"
@@ -266,7 +266,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="w-full resize-none rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               placeholder="Special instructions, packaging notes, etc."
             />
           </div>
@@ -281,7 +281,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
           </div>
         )}
 
-        <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3">
+        <footer className="flex items-center justify-between border-t border-line px-6 py-3">
           <p className="text-sm text-muted">
             Total: <span className="font-semibold text-white">{totalQty}</span>
           </p>

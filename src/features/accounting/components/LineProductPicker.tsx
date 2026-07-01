@@ -52,7 +52,7 @@ export default function LineProductPicker({
       id={id}
       className={
         className ??
-        'h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white'
+        'h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white'
       }
       value={current}
       onChange={(e) => handle(e.target.value)}

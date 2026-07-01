@@ -34,7 +34,7 @@ import { ACCOUNTING_BASE, ESTIMATES_BASE } from '../constants';
 import { ESTIMATE_STATUS_LABELS, type Estimate, type EstimateStatus } from '../types';
 
 const STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -390,7 +390,7 @@ export default function EstimateDetailView() {
           {/* Status + meta — shown in both edit and preview. */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span
-              className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
             >
               {ESTIMATE_STATUS_LABELS[estimate.status]}
             </span>

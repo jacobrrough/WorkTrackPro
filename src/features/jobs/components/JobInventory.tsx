@@ -110,7 +110,7 @@ export default function JobInventory({
         </div>
 
         {!job.inventoryItems || job.inventoryItems.length === 0 ? (
-          <div className="rounded-sm bg-surface-2 p-3 text-center">
+          <div className="rounded-lg bg-surface-2 p-3 text-center">
             <span className="material-symbols-outlined mb-2 text-3xl text-subtle">inventory_2</span>
             <p className="text-sm text-muted">No materials assigned</p>
             {currentUserIsAdmin && canAllocate && (
@@ -134,7 +134,7 @@ export default function JobInventory({
               return (
                 <div
                   key={item.id || item.inventoryId}
-                  className="overflow-hidden rounded-sm bg-surface-2"
+                  className="overflow-hidden rounded-lg bg-surface-2"
                 >
                   <div className="flex items-center justify-between p-3">
                     <div
@@ -149,17 +149,17 @@ export default function JobInventory({
                           if (invItem) onNavigate('inventory-detail', invItem.id);
                         }
                       }}
-                      className="-ml-1 flex flex-1 cursor-pointer items-center gap-3 rounded-sm p-1 text-left transition-colors hover:bg-white/5"
+                      className="-ml-1 flex flex-1 cursor-pointer items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-overlay/5"
                     >
                       {invItem?.imageUrl ? (
                         <img
                           src={invItem.imageUrl}
                           alt={itemName || 'Material'}
-                          className={`size-10 flex-shrink-0 rounded-sm object-cover ${isLow ? 'ring-2 ring-red-500' : ''}`}
+                          className={`size-10 flex-shrink-0 rounded-lg object-cover ${isLow ? 'ring-2 ring-red-500' : ''}`}
                         />
                       ) : (
                         <div
-                          className={`flex size-10 flex-shrink-0 items-center justify-center rounded-sm ${isLow ? 'bg-red-500/20' : 'bg-white/10'}`}
+                          className={`flex size-10 flex-shrink-0 items-center justify-center rounded-lg ${isLow ? 'bg-red-500/20' : 'bg-overlay/10'}`}
                         >
                           <span
                             className={`material-symbols-outlined ${isLow ? 'text-red-400' : 'text-muted'}`}
@@ -198,7 +198,7 @@ export default function JobInventory({
                                 if (e.key === 'Escape') setEditingMaterialQty(null);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="w-16 rounded border border-primary bg-white/10 px-2 py-0.5 text-xs text-white"
+                              className="w-16 rounded border border-primary bg-overlay/10 px-2 py-0.5 text-xs text-white"
                               autoFocus
                             />
                           ) : (
@@ -257,8 +257,8 @@ export default function JobInventory({
       </div>
 
       {showAddInventory && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/80 backdrop-blur-sm">
-          <div className="flex max-h-[80vh] w-full flex-col rounded-t-md border-t border-white/10 bg-background-dark p-4">
+        <div className="fixed inset-0 z-overlay flex items-end bg-black/80 backdrop-blur-sm">
+          <div className="flex max-h-[80vh] w-full flex-col rounded-t-md border-t border-line bg-background-dark p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Add Material</h3>
               <button
@@ -278,7 +278,7 @@ export default function JobInventory({
                 placeholder="Search inventory..."
                 value={inventorySearch}
                 onChange={(e) => setInventorySearch(e.target.value)}
-                className="h-12 w-full rounded-sm border border-white/20 bg-white/10 pl-10 pr-4 text-white"
+                className="h-12 w-full rounded-lg border border-line-strong bg-overlay/10 pl-10 pr-4 text-white"
               />
             </div>
 
@@ -290,10 +290,10 @@ export default function JobInventory({
                     setSelectedInventory(item.id);
                     setSelectedScopeKey('');
                   }}
-                  className={`w-full rounded-sm p-3 text-left ${
+                  className={`w-full rounded-lg p-3 text-left ${
                     selectedInventory === item.id
                       ? 'border border-primary bg-primary/10'
-                      : 'border border-white/10 bg-white/5'
+                      : 'border border-line bg-overlay/5'
                   }`}
                 >
                   <p className="font-medium text-white">{item.name}</p>
@@ -312,7 +312,7 @@ export default function JobInventory({
                 step="0.01"
                 value={inventoryQty}
                 onChange={(e) => setInventoryQty(e.target.value)}
-                className="h-12 w-full rounded-sm border border-white/20 bg-white/10 px-3 text-white"
+                className="h-12 w-full rounded-lg border border-line-strong bg-overlay/10 px-3 text-white"
               />
             </div>
 
@@ -330,7 +330,7 @@ export default function JobInventory({
                   <select
                     value={selectedScopeKey || scopes[0].key}
                     onChange={(e) => setSelectedScopeKey(e.target.value)}
-                    className="h-12 w-full rounded-sm border border-white/20 bg-white/10 px-3 text-white"
+                    className="h-12 w-full rounded-lg border border-line-strong bg-overlay/10 px-3 text-white"
                   >
                     {scopes.map((s) => (
                       <option key={s.key} value={s.key}>
@@ -345,14 +345,14 @@ export default function JobInventory({
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAddInventory(false)}
-                className="h-12 flex-1 rounded-sm border border-white/20 text-muted"
+                className="h-12 flex-1 rounded-lg border border-line-strong text-muted"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddInventory}
                 disabled={!selectedInventory || !inventoryQty || isSubmitting}
-                className="h-12 flex-1 rounded-sm bg-primary font-bold text-on-accent disabled:opacity-50"
+                className="h-12 flex-1 rounded-lg bg-primary font-bold text-on-accent disabled:opacity-50"
               >
                 Add Material
               </button>

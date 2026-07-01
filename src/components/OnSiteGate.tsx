@@ -76,7 +76,7 @@ export const OnSiteGate: React.FC<OnSiteGateProps> = ({
         <button
           type="button"
           onClick={onLogout}
-          className="mt-6 min-h-[44px] touch-manipulation rounded-sm border border-white/20 bg-white/10 px-6 py-3 font-medium text-white transition-colors hover:bg-white/20"
+          className="mt-6 min-h-[44px] touch-manipulation rounded-lg border border-line-strong bg-overlay/10 px-6 py-3 font-medium text-white transition-colors hover:bg-overlay/20"
         >
           Log out
         </button>

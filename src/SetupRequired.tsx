@@ -24,7 +24,7 @@ const SetupRequired: React.FC = () => (
     className="flex min-h-screen flex-col items-center justify-center bg-app p-6 text-white"
     style={containerStyle}
   >
-    <div className="max-w-lg rounded-sm border border-amber-500/30 bg-app/90 p-8 shadow-xl">
+    <div className="max-w-lg rounded-lg border border-amber-500/30 bg-app/90 p-8 shadow-xl">
       <div className="mb-6 flex items-center gap-3">
         <span className="material-symbols-outlined text-4xl text-amber-400">settings</span>
         <div>

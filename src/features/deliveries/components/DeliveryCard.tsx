@@ -26,7 +26,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
   });
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+    <div className="rounded-lg border border-line bg-overlay/5 p-3">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -58,7 +58,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
             <>
               <button
                 onClick={onEdit}
-                className="flex items-center justify-center rounded p-1 text-muted hover:bg-white/10 hover:text-white"
+                className="flex items-center justify-center rounded p-1 text-muted hover:bg-overlay/10 hover:text-white"
                 aria-label="Edit delivery"
                 title="Edit"
               >
@@ -66,7 +66,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
               </button>
               <button
                 onClick={onDelete}
-                className="flex items-center justify-center rounded p-1 text-muted hover:bg-white/10 hover:text-red-400"
+                className="flex items-center justify-center rounded p-1 text-muted hover:bg-overlay/10 hover:text-red-400"
                 aria-label="Delete delivery"
                 title="Delete"
               >
@@ -94,7 +94,7 @@ const DeliveryCard: React.FC<DeliveryCardProps> = ({
         )}
       </div>
       {delivery.notes && (
-        <p className="mt-2 line-clamp-2 border-t border-white/10 pt-2 text-xs italic text-muted">
+        <p className="mt-2 line-clamp-2 border-t border-line pt-2 text-xs italic text-muted">
           {delivery.notes}
         </p>
       )}

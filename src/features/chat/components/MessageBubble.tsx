@@ -46,7 +46,7 @@ export function MessageBubble({ message, isMine }: MessageBubbleProps) {
   if (isSystem) {
     return (
       <div className="flex justify-center py-1">
-        <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-subtle">
+        <span className="rounded-full bg-overlay/5 px-3 py-1 text-xs text-subtle">
           {content ?? 'System message'}
         </span>
       </div>
@@ -66,7 +66,7 @@ export function MessageBubble({ message, isMine }: MessageBubbleProps) {
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-1`}>
       <div
         className={`max-w-[75%] rounded-lg px-3 py-2 ${
-          isMine ? 'border border-primary/30 bg-primary/20' : 'border border-white/10 bg-card-dark'
+          isMine ? 'border border-primary/30 bg-primary/20' : 'border border-line bg-card-dark'
         }`}
       >
         {!isMine && message.senderName && (

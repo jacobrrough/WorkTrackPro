@@ -41,7 +41,7 @@ export function InventoryDetailHistory({
   onRefresh,
 }: InventoryDetailHistoryProps) {
   return (
-    <div className="rounded-sm bg-card-dark p-3">
+    <div className="rounded-lg bg-card-dark p-3">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold text-white">Stock History</h2>
         <button
@@ -58,7 +58,10 @@ export function InventoryDetailHistory({
       ) : (
         <div className="space-y-3">
           {history.map((h) => (
-            <div key={h.id} className="rounded-r border-l-4 border-primary/50 bg-white/5 py-2 pl-3">
+            <div
+              key={h.id}
+              className="rounded-r border-l-4 border-primary/50 bg-overlay/5 py-2 pl-3"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-bold text-white">{getActionLabel(h.action)}</p>
