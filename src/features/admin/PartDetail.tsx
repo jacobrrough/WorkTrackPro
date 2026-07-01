@@ -1317,7 +1317,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 type="text"
                 value={partInfoDraft.name}
                 onChange={(e) => setPartInfoDraft((prev) => ({ ...prev, name: e.target.value }))}
-                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
+                className="app-input"
                 placeholder={partInfoDraft.partNumber || part.partNumber}
                 required
               />
@@ -1340,7 +1340,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 onChange={(e) =>
                   setPartInfoDraft((prev) => ({ ...prev, description: e.target.value }))
                 }
-                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
+                className="app-input"
                 rows={2}
               />
             </div>
@@ -3837,7 +3837,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Required; defaults to part number if empty"
-              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+              className="app-input"
               required
             />
           </div>
@@ -3847,7 +3847,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+              className="app-input"
             />
           </div>
           <div>

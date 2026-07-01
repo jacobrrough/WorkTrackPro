@@ -150,7 +150,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={deliveredAt}
                 onChange={(e) => setDeliveredAt(e.target.value)}
                 required
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -159,7 +159,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={recipientName}
                 onChange={(e) => setRecipientName(e.target.value)}
                 placeholder="Who received it"
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -168,7 +168,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
                 placeholder="UPS, FedEx, customer pickup..."
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -177,7 +177,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 placeholder="Optional"
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
           </div>

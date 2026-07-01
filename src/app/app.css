@@ -184,6 +184,73 @@
   transform: scale(0.99);
 }
 
+/* ---- form controls & buttons (off-Tailwind extraction, step 1) -------------
+ * The most-repeated utility combos in the app, pulled into one place. New code
+ * uses these; the sweep converts the exact-match existing usages. Layout/size
+ * (w-full, mt-*, text-sm, py-*) stays as utilities alongside these. */
+
+.app .app-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgb(var(--c-border));
+  background: rgb(var(--c-overlay) / 0.05);
+  padding: 0.625rem 0.75rem;
+  color: rgb(var(--c-text));
+  transition: border-color 0.15s ease;
+}
+.app .app-input::placeholder {
+  color: rgb(var(--c-text-subtle));
+}
+.app .app-input:focus {
+  border-color: rgb(var(--c-accent) / 0.5);
+  outline: none;
+}
+
+.app .app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  touch-action: manipulation;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.app .app-btn:active {
+  transform: scale(0.98);
+}
+.app .app-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.app .app-btn-primary {
+  background: rgb(var(--c-accent));
+  color: rgb(var(--c-on-accent));
+}
+.app .app-btn-secondary {
+  border: 1px solid rgb(var(--c-border));
+  background: rgb(var(--c-overlay) / 0.05);
+  color: rgb(var(--c-text));
+}
+.app .app-btn-danger {
+  background: rgb(var(--c-danger));
+  color: rgb(var(--c-on-danger));
+}
+@media (hover: hover) {
+  .app .app-btn-primary:hover:not(:disabled) {
+    background: rgb(var(--c-accent-hover));
+  }
+  .app .app-btn-secondary:hover:not(:disabled) {
+    background: rgb(var(--c-overlay) / 0.1);
+  }
+  .app .app-btn-danger:hover:not(:disabled) {
+    background: rgb(var(--c-danger-hover));
+  }
+}
+
 /* Accessibility: honor the OS "reduce motion" setting. Transitions collapse to
    near-instant and the press-scale feedback is dropped, so nothing animates for
    users who opt out (WCAG 2.3.3 / prefers-reduced-motion). */

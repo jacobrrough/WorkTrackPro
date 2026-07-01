@@ -636,7 +636,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={laborRate}
                   onChange={(e) => setLaborRate(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="app-input"
                   placeholder="175"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -654,7 +654,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="0.01"
                   value={materialUpcharge}
                   onChange={(e) => setMaterialUpcharge(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="app-input"
                   placeholder="1.25"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -671,7 +671,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={cncRate}
                   onChange={(e) => setCncRate(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="app-input"
                   placeholder="150"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -688,7 +688,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={printer3DRate}
                   onChange={(e) => setPrinter3DRate(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="app-input"
                   placeholder="100"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -699,7 +699,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
+              className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -819,7 +819,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={employeeCount}
                   onChange={(e) => setEmployeeCount(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="app-input"
                   placeholder="5"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -837,7 +837,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="0.05"
                   value={overtimeMultiplier}
                   onChange={(e) => setOvertimeMultiplier(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="app-input"
                   placeholder="1.50"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -1008,7 +1008,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
+              className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -1041,7 +1041,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         value={siteLat}
                         onChange={(e) => setSiteLat(e.target.value)}
                         placeholder="e.g. 40.7128"
-                        className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                        className="app-input"
                       />
                     </div>
                     <div className="flex-1">
@@ -1052,7 +1052,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         value={siteLng}
                         onChange={(e) => setSiteLng(e.target.value)}
                         placeholder="e.g. -74.0060"
-                        className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                        className="app-input"
                       />
                     </div>
                   </div>
@@ -1084,7 +1084,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       step="10"
                       value={siteRadiusMeters}
                       onChange={(e) => setSiteRadiusMeters(e.target.value)}
-                      className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                      className="app-input"
                       placeholder="200"
                     />
                     <p className="mt-1 text-[10px] text-subtle">
@@ -1181,7 +1181,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             <button
               onClick={handleSave}
               disabled={isSyncing}
-              className="mt-4 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
+              className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
             >
               {isSyncing ? 'Saving...' : 'Save'}
             </button>
@@ -1214,7 +1214,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
               <button
                 onClick={handleSave}
                 disabled={isSyncing}
-                className="mt-4 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90"
+                className="mt-4 w-full app-btn app-btn-primary py-2.5 text-sm"
               >
                 {isSyncing ? 'Saving...' : 'Save'}
               </button>

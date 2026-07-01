@@ -139,7 +139,7 @@ export function NewConversationModal({
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="app-input text-sm"
             />
           </div>
         )}

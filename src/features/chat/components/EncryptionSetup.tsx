@@ -114,7 +114,7 @@ export function EncryptionSetup({
                 type="password"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="app-input"
                 placeholder="Password before the reset"
                 autoFocus
               />
@@ -130,7 +130,7 @@ export function EncryptionSetup({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="app-input"
               placeholder={
                 mode === 'recover' ? 'Your new account password' : 'Your account password'
               }

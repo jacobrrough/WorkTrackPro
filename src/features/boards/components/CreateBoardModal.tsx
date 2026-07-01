@@ -45,7 +45,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
         <label className="mb-1 block text-sm text-muted">Name</label>
         <input
           autoFocus
-          className="mb-4 w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+          className="mb-4 app-input"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Board name"

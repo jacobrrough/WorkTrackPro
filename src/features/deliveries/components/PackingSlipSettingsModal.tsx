@@ -157,7 +157,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
               value={form.companyName}
               onChange={(e) => set({ companyName: e.target.value })}
               placeholder="Your Company, Inc."
-              className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+              className="app-input text-sm"
             />
           </div>
 
@@ -169,7 +169,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
               value={form.companyAddress}
               onChange={(e) => set({ companyAddress: e.target.value })}
               placeholder="123 Shop St, City, ST 00000"
-              className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+              className="app-input text-sm"
             />
           </div>
 
@@ -182,7 +182,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                 value={form.companyPhone}
                 onChange={(e) => set({ companyPhone: e.target.value })}
                 placeholder="(555) 123-4567"
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
             <div>
@@ -192,7 +192,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                 value={form.companyEmail}
                 onChange={(e) => set({ companyEmail: e.target.value })}
                 placeholder="sales@company.com"
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="app-input text-sm"
               />
             </div>
           </div>

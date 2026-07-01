@@ -63,7 +63,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
         <label className="mb-1 block text-sm text-muted">Name</label>
         <input
-          className="mb-4 w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
+          className="mb-4 app-input"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={100}

@@ -94,7 +94,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
           <label className="mb-1 block text-sm text-muted">Title</label>
           <input
             autoFocus
-            className="mb-4 w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+            className="mb-4 app-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Card title"
@@ -145,7 +145,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
             <div>
               <label className="mb-1 block text-sm text-muted">Assignee</label>
               <select
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="app-input text-sm"
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
               >
@@ -161,7 +161,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               <label className="mb-1 block text-sm text-muted">Due date</label>
               <input
                 type="date"
-                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="app-input text-sm"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
               />
