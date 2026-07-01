@@ -29,8 +29,11 @@ interface InventoryHubProps {
   onBack: () => void;
 }
 
+// Matches the dashboard quick-action tiles: neutral surface + states from the
+// shared kit. The per-tile accent lives only on the icon badge (see badgeClassName),
+// where the green/amber/red carries real meaning (in / out / low stock).
 const TILE_BASE =
-  'flex w-full touch-manipulation items-center gap-2.5 rounded-2xl border p-3 text-left transition-colors active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+  'app-quick-card touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app';
 
 // Generous ceiling on the Recent Items candidates we prepare. The number actually shown
 // is fit to the available viewport height at runtime (see the layout effect below) so the
@@ -142,32 +145,28 @@ export default function InventoryHub({
       key: 'add',
       title: 'Add Part',
       icon: 'add_box',
-      iconClassName: 'text-primary',
-      cardClassName: 'border-primary/30 bg-gradient-to-br from-primary/20 to-purple-600/20',
+      badgeClassName: 'bg-primary/15 text-primary',
       onClick: onAddItem,
     },
     {
       key: 'in',
       title: 'Stock In',
       icon: 'add_circle',
-      iconClassName: 'text-green-400',
-      cardClassName: 'border-green-500/30 bg-gradient-to-br from-green-600/20 to-emerald-600/20',
+      badgeClassName: 'bg-green-500/15 text-green-400',
       onClick: () => onOpenFlow('in'),
     },
     {
       key: 'out',
       title: 'Stock Out',
       icon: 'remove_circle',
-      iconClassName: 'text-amber-400',
-      cardClassName: 'border-amber-500/30 bg-gradient-to-br from-amber-600/20 to-orange-600/20',
+      badgeClassName: 'bg-amber-500/15 text-amber-400',
       onClick: () => onOpenFlow('out'),
     },
     {
       key: 'low',
       title: 'Low Stock',
       icon: 'warning',
-      iconClassName: 'text-red-400',
-      cardClassName: 'border-red-500/30 bg-gradient-to-br from-red-600/20 to-rose-600/20',
+      badgeClassName: 'bg-red-500/15 text-red-400',
       onClick: () => onViewAll('lowStock'),
       badge: summary.lowStock,
     },
@@ -284,10 +283,12 @@ export default function InventoryHub({
                 key={tile.key}
                 type="button"
                 onClick={tile.onClick}
-                className={`${TILE_BASE} ${tile.cardClassName}`}
+                className={TILE_BASE}
               >
-                <span className={`material-symbols-outlined text-2xl ${tile.iconClassName}`}>
-                  {tile.icon}
+                <span
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-2xl ${tile.badgeClassName}`}
+                >
+                  <span className="material-symbols-outlined text-2xl">{tile.icon}</span>
                 </span>
                 <span className="flex-1 text-sm font-bold text-white">{tile.title}</span>
                 {tile.badge != null && tile.badge > 0 && (
