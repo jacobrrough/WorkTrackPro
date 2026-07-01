@@ -282,7 +282,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
           if (isMenuOpen || (e.target as HTMLElement).closest('[aria-label="Job menu"]')) return;
           onCardClick(job.id);
         }}
-        className={`relative cursor-pointer rounded-sm border p-2.5 transition-all hover:border-primary/30 hover:bg-surface-3 active:scale-[0.98] ${job.isRush ? 'border-red-500/70 bg-red-500/5' : 'border-white/5 bg-surface-3'} ${isDragged ? 'opacity-50' : ''} ${isMenuOpen ? 'z-40' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
+        className={`relative cursor-pointer rounded-2xl border p-2.5 transition-all hover:border-primary/30 hover:bg-surface-3 active:scale-[0.98] ${job.isRush ? 'border-red-500/70 bg-red-500/5' : 'border-line/60 bg-surface-3'} ${isDragged ? 'opacity-50' : ''} ${isMenuOpen ? 'z-40' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}
       >
         {bulkSelectMode && (
           <div className="absolute left-2 top-2.5 z-10">
@@ -291,7 +291,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
               checked={isSelected}
               onChange={() => {}}
               onClick={(e) => e.stopPropagation()}
-              className="size-4 rounded border-white/30"
+              className="size-4 rounded border-line-strong"
             />
           </div>
         )}
@@ -360,7 +360,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
                 </button>
                 {isMenuOpen && (
                   <div
-                    className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-sm border border-white/20 bg-surface-3 py-1 shadow-2xl backdrop-blur-sm"
+                    className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-2xl border border-line-strong bg-surface-3 py-1 shadow-2xl backdrop-blur-sm"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -379,7 +379,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
                           <span className="material-symbols-outlined text-base">arrow_back</span>
                           Back
                         </button>
-                        <div className="my-1 max-h-[min(60vh,320px)] overflow-y-auto border-t border-white/10">
+                        <div className="my-1 max-h-[min(60vh,320px)] overflow-y-auto border-t border-line">
                           {columns
                             .filter((col) => col.id !== normalizeLegacyRushStatus(job.status))
                             .map((col) => (
@@ -475,7 +475,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
                             Mark as Paid
                           </button>
                         )}
-                        <div className="my-1 border-t border-white/10" />
+                        <div className="my-1 border-t border-line" />
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -553,14 +553,14 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
                 e.preventDefault();
                 onNavigate('time-reports', job.id);
               }}
-              className="rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-muted transition-colors hover:bg-white/10"
+              className="rounded border border-line-strong bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-muted transition-colors hover:bg-white/10"
             >
               Time
             </button>
           </div>
         )}
 
-        <div className="flex items-center justify-between border-t border-white/5 pt-1.5">
+        <div className="flex items-center justify-between border-t border-line/60 pt-1.5">
           <div className="flex items-center gap-1">
             {hasChecklist && (
               <span
@@ -1117,12 +1117,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   return (
     <div className="content-above-nav flex h-full min-h-0 flex-col bg-gradient-to-br from-app-2 to-surface-3">
       {/* Header - Streamlined */}
-      <header className="safe-area-top sticky top-0 z-50 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-md">
+      <header className="safe-area-top sticky top-0 z-50 flex-shrink-0 border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('dashboard')}
-              className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+              className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
@@ -1141,7 +1141,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {isAdmin && (
               <button
                 onClick={() => onNavigate(boardType === 'shopFloor' ? 'board-admin' : 'board-shop')}
-                className="min-h-[44px] touch-manipulation rounded-sm bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+                className="min-h-[44px] touch-manipulation rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
               >
                 {boardType === 'shopFloor' ? 'Admin' : 'Shop'}
               </button>
@@ -1149,7 +1149,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             {isAdmin && (
               <button
                 onClick={onCreateJob}
-                className="flex min-h-[44px] touch-manipulation items-center gap-1 rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-on-accent transition-colors hover:bg-primary/90"
+                className="flex min-h-[44px] touch-manipulation items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-on-accent transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-base">add</span>
                 <span>New</span>
@@ -1160,19 +1160,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 setBulkSelectMode((prev) => !prev);
                 if (bulkSelectMode) setSelectedJobIds(new Set());
               }}
-              className="min-h-[44px] touch-manipulation rounded-sm border border-white/30 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/10"
+              className="min-h-[44px] touch-manipulation rounded-lg border border-line-strong px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/10"
             >
               {bulkSelectMode ? 'Cancel' : 'Select'}
             </button>
           </div>
         </div>
         {activeSearchTerm && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-sm border border-primary/30 bg-primary/10 px-2 py-1.5">
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5">
             <p className="truncate text-[11px] text-primary">Search: "{activeSearchTerm}"</p>
             <button
               type="button"
               onClick={() => updateState({ searchTerm: '' })}
-              className="touch-manipulation rounded-sm border border-primary/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary transition-colors hover:bg-primary/20"
+              className="touch-manipulation rounded-lg border border-primary/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary transition-colors hover:bg-primary/20"
             >
               Clear
             </button>
@@ -1228,7 +1228,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <div
                   key={column.id}
                   data-kanban-column-root="true"
-                  className={`flex h-full shrink-0 snap-center flex-col rounded-sm border bg-black/20 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                  className={`flex h-full shrink-0 snap-center flex-col rounded-2xl border bg-black/20 md:max-w-none md:snap-start ${isOver ? 'border-primary bg-primary/10' : 'border-line/60'}`}
                   style={
                     columnWidth
                       ? {
@@ -1251,7 +1251,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   >
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-xs font-bold text-white">{column.title}</h3>
-                      <span className="rounded-sm bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
                         {columnJobs.length}
                       </span>
                     </div>
@@ -1272,7 +1272,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         {columnMenuOpen === column.id && (
                           <div
                             data-column-menu="true"
-                            className="absolute right-0 top-8 z-50 min-w-[180px] rounded-sm border border-white/20 bg-surface-3 py-1 shadow-xl"
+                            className="absolute right-0 top-8 z-50 min-w-[180px] rounded-2xl border border-line-strong bg-surface-3 py-1 shadow-xl"
                           >
                             <button
                               onClick={(e) => {
@@ -1351,7 +1351,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Bulk action bar */}
       {bulkSelectMode && selectedJobIds.size > 0 && (
-        <div className="safe-area-pb fixed bottom-16 left-0 right-0 z-[45] flex items-center justify-between gap-3 border-t border-white/10 bg-app-2 px-4 py-3 shadow-lg">
+        <div className="safe-area-pb fixed bottom-16 left-0 right-0 z-[45] flex items-center justify-between gap-3 border-t border-line bg-app-2 px-4 py-3 shadow-lg">
           <span className="text-sm font-medium text-white">{selectedJobIds.size} selected</span>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -1368,7 +1368,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <select
               value={bulkTargetStatus ?? ''}
               onChange={(e) => setBulkTargetStatus((e.target.value as JobStatus) || null)}
-              className="rounded border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+              className="rounded border border-line-strong bg-white/10 px-3 py-2 text-sm text-white"
             >
               <option value="">Move to…</option>
               {columns.map((col) => (
@@ -1402,7 +1402,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   setBulkSelectMode(false);
                 }
               }}
-              className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               Apply
             </button>
@@ -1426,7 +1426,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           aria-labelledby="bulk-set-bin-title"
         >
           <div
-            className="w-full max-w-sm rounded-sm border border-white/10 bg-app-2 p-4 shadow-2xl"
+            className="w-full max-w-sm rounded-3xl border border-line bg-app-2 p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 id="bulk-set-bin-title" className="mb-3 text-lg font-bold text-white">
@@ -1444,7 +1444,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 setBulkSetBinError(validateBinLocation(v.trim()) ?? null);
               }}
               placeholder="A4c"
-              className="mb-2 w-full rounded border border-white/20 bg-white/10 px-3 py-2 font-mono text-white placeholder:text-subtle focus:ring-2 focus:ring-primary"
+              className="mb-2 w-full rounded border border-line-strong bg-white/10 px-3 py-2 font-mono text-white placeholder:text-subtle focus:ring-2 focus:ring-primary"
               autoFocus
             />
             {bulkSetBinError && <p className="mb-2 text-xs text-red-400">{bulkSetBinError}</p>}
@@ -1456,7 +1456,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   setBulkSetBinValue('');
                   setBulkSetBinError(null);
                 }}
-                className="flex-1 rounded-sm bg-white/10 py-2.5 font-bold text-white transition-colors hover:bg-white/20"
+                className="flex-1 rounded-lg bg-white/10 py-2.5 font-bold text-white transition-colors hover:bg-white/20"
               >
                 Cancel
               </button>
@@ -1481,7 +1481,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   setBulkSetBinError(null);
                   setBulkSelectMode(false);
                 }}
-                className="flex-1 rounded-sm bg-primary py-2.5 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-primary py-2.5 font-bold text-on-accent transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 Apply
               </button>
@@ -1503,7 +1503,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           aria-modal="true"
           aria-labelledby="delete-dialog-title"
         >
-          <div className="w-full max-w-sm rounded-sm border border-white/10 bg-app-2 p-4 shadow-2xl">
+          <div className="w-full max-w-sm rounded-3xl border border-line bg-app-2 p-4 shadow-2xl">
             <h3 id="delete-dialog-title" className="mb-2 text-lg font-bold text-white">
               Delete Job?
             </h3>
@@ -1514,7 +1514,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   e.stopPropagation();
                   setDeleteConfirm(null);
                 }}
-                className="flex-1 rounded-sm bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20 active:scale-[0.98]"
+                className="flex-1 rounded-lg bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20 active:scale-[0.98]"
               >
                 Cancel
               </button>
@@ -1523,7 +1523,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   e.stopPropagation();
                   handleDelete();
                 }}
-                className="flex-1 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
+                className="flex-1 rounded-lg bg-danger py-3 font-bold text-on-danger transition-colors hover:bg-danger-hover active:scale-[0.98]"
               >
                 Delete
               </button>
@@ -1543,14 +1543,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           aria-modal="true"
           aria-labelledby="files-dialog-title"
         >
-          <div className="w-full max-w-md rounded-sm border border-white/10 bg-app-2 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="w-full max-w-md rounded-3xl border border-line bg-app-2 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <h3 id="files-dialog-title" className="text-base font-bold text-white">
                 Job Files
               </h3>
               <button
                 onClick={() => setFilesForJob(null)}
-                className="flex size-10 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
                 aria-label="Close files"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -1577,7 +1577,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     {visibleAttachments.map((attachment) => (
                       <div
                         key={attachment.id}
-                        className="flex items-center justify-between gap-2 rounded-sm border border-white/10 bg-white/5 p-2.5"
+                        className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-white/5 p-2.5"
                       >
                         <div className="min-w-0">
                           <a
@@ -1597,7 +1597,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             type="button"
                             disabled={deletingAttachmentId === attachment.id}
                             onClick={() => handleDeleteJobAttachment(attachment.id)}
-                            className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
+                            className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
                             aria-label={`Delete ${attachment.filename}`}
                             title="Delete file"
                           >
@@ -1795,10 +1795,10 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-sm border border-white/10 bg-card-dark"
+        className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-line bg-card-dark"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-white/10 p-3">
+        <div className="flex items-center justify-between border-b border-line p-3">
           <h2 className="font-bold text-white">Checklist: {STATUS_LABELS[status]}</h2>
           <button onClick={onClose} className="text-muted hover:text-white">
             <span className="material-symbols-outlined">close</span>
@@ -1814,7 +1814,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
               <button
                 onClick={handleCreateChecklist}
                 disabled={saving}
-                className="rounded-sm bg-primary px-4 py-1.5 font-bold text-on-accent disabled:opacity-50"
+                className="rounded-lg bg-primary px-4 py-1.5 font-bold text-on-accent disabled:opacity-50"
               >
                 {saving ? 'Creating...' : 'Create Checklist'}
               </button>
@@ -1822,7 +1822,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
           ) : (
             <div className="space-y-3">
               {/* Add Item */}
-              <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+              <div className="rounded-2xl border border-line bg-white/5 p-3">
                 <label className="mb-2 block text-xs font-bold uppercase text-muted">
                   Add New Item
                 </label>
@@ -1833,7 +1833,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
                     onChange={(e) => setNewItemText(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
                     placeholder="Enter checklist item..."
-                    className="flex-1 rounded border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                    className="flex-1 rounded border border-line-strong bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary"
                   />
                   <button
                     onClick={handleAddItem}
@@ -1857,7 +1857,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
                     (item: { id: string; text?: string; checked?: boolean }, index: number) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3"
+                        className="flex items-center gap-3 rounded-2xl border border-line bg-white/5 p-3"
                       >
                         <div className="flex flex-col gap-1">
                           <button
