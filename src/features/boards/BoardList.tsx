@@ -44,7 +44,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
-          <h1 className="text-lg font-bold text-white">Boards</h1>
+          <h1 className="app-section-title text-white">Boards</h1>
         </div>
         <button
           onClick={() => setShowCreate(true)}

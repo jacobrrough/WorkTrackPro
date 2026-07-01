@@ -120,7 +120,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
-            <h1 className="text-lg font-bold text-white">Clock In by Code</h1>
+            <h1 className="app-section-title text-white">Clock In by Code</h1>
             <p className="text-xs text-muted">Enter your job code</p>
           </div>
         </div>

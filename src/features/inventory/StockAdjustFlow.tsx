@@ -142,7 +142,7 @@ export default function StockAdjustFlow({
                 <span className="material-symbols-outlined">close</span>
               </button>
               <div className="flex-1">
-                <h1 className="text-lg font-bold text-white">{MODE_LABEL[mode]}</h1>
+                <h1 className="app-section-title text-white">{MODE_LABEL[mode]}</h1>
                 <p className="text-xs text-muted">Search by name or SKU</p>
               </div>
               <button

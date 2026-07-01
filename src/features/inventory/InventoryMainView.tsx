@@ -228,7 +228,7 @@ export default function InventoryMainView({
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
-            <h1 className="text-xl font-bold text-white">Parts Inventory</h1>
+            <h1 className="app-section-title text-white">Parts Inventory</h1>
           </div>
           <div className="flex gap-2">
             <button

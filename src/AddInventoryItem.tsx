@@ -143,7 +143,7 @@ const AddInventoryItem: React.FC<AddInventoryItemProps> = ({
             <button onClick={onCancel} className="text-white" aria-label="Cancel and go back">
               <span className="material-symbols-outlined">close</span>
             </button>
-            <h1 className="text-xl font-bold text-white">Add Inventory Item</h1>
+            <h1 className="app-section-title text-white">Add Inventory Item</h1>
           </div>
           <Button onClick={handleSubmit} disabled={isSaving} icon="add">
             {isSaving ? 'Adding...' : 'Add'}

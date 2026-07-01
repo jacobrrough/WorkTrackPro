@@ -40,7 +40,7 @@ export default function JobDetailHeaderBar({
         </button>
 
         <div className="flex-1 text-center">
-          <h1 className="text-lg font-bold text-white">
+          <h1 className="app-section-title text-white">
             {isEditing ? 'Edit Job' : formatJobCode(jobCode)}
           </h1>
           {!isEditing && <StatusBadge status={status} size="sm" />}

@@ -194,7 +194,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
           >
             <span className="material-symbols-outlined">home</span>
           </button>
-          <h1 className="flex-1 truncate text-lg font-bold text-white">{title ?? 'Accounting'}</h1>
+          <h1 className="app-section-title flex-1 truncate text-white">{title ?? 'Accounting'}</h1>
           {actions}
         </header>
         {/* min-h-0 lets this flex child shrink below content height so overflow-y-auto can

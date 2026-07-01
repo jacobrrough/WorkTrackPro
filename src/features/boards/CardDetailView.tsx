@@ -90,7 +90,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
-          <h1 className="truncate text-lg font-bold text-white">{card.title}</h1>
+          <h1 className="app-section-title truncate text-white">{card.title}</h1>
         </div>
         {!readOnly && (
           <button

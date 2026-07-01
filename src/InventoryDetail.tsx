@@ -449,7 +449,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 <span className="material-symbols-outlined">close</span>
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-white">{currentItem.name}</h1>
+                <h1 className="app-section-title text-white">{currentItem.name}</h1>
                 <p className="text-sm text-muted">{getCategoryLabel(currentItem.category)}</p>
               </div>
             </div>

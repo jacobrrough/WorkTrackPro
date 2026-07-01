@@ -332,7 +332,7 @@ export default function TaxJurisdictionsView() {
         </div>
 
         <div>
-          <h1 className="flex items-center gap-2 text-lg font-bold text-white">
+          <h1 className="app-section-title flex items-center gap-2 text-white">
             <span className="material-symbols-outlined text-primary">map</span>
             Sales-tax jurisdictions
           </h1>

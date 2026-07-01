@@ -614,7 +614,7 @@ function TrelloImportRoute() {
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-lg font-bold text-white">Import Trello</h1>
+        <h1 className="app-section-title text-white">Import Trello</h1>
         <div className="size-10" />
       </header>
       <main className="flex-1 overflow-y-auto p-4">

@@ -64,7 +64,7 @@ export function InventoryDetailEdit({
             <button type="button" onClick={onCancel} className="text-white">
               <span className="material-symbols-outlined">close</span>
             </button>
-            <h1 className="text-xl font-bold text-white">Edit Item</h1>
+            <h1 className="app-section-title text-white">Edit Item</h1>
           </div>
           <button
             type="button"

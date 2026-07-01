@@ -299,23 +299,23 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             <span className="text-sm font-bold text-white">{formatJobCode(job.jobCode)}</span>
             {job.isRush && (
-              <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 Rush
               </span>
             )}
             {overdue && (
-              <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 Overdue
               </span>
             )}
             {atRiskFromProgress && !overdue && (
-              <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 At risk
               </span>
             )}
             {hasCnc && (
               <span
-                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${cncDone ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'}`}
+                className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${cncDone ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'}`}
                 title={cncDone ? 'CNC machining done' : 'CNC machining pending'}
               >
                 <span className="material-symbols-outlined text-[10px]">
@@ -326,7 +326,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
             )}
             {has3DPrint && (
               <span
-                className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${print3DDone ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}
+                className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${print3DDone ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}
                 title={print3DDone ? '3D printing done' : '3D printing pending'}
               >
                 <span className="material-symbols-outlined text-[10px]">
@@ -527,17 +527,17 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
 
         <p className="mb-1.5 flex flex-wrap items-center gap-1.5 gap-y-1">
           {job.dueDate && (
-            <span className="rounded bg-overlay/10 px-1.5 py-0.5 text-[10px] text-muted">
+            <span className="rounded-full bg-overlay/10 px-1.5 py-0.5 text-[10px] text-muted">
               Due {formatDateOnly(job.dueDate).replace(/, \d{4}/, '')}
             </span>
           )}
           {job.ecd && (
-            <span className="rounded bg-overlay/10 px-1.5 py-0.5 text-[10px] text-muted">
+            <span className="rounded-full bg-overlay/10 px-1.5 py-0.5 text-[10px] text-muted">
               ECD {formatDateOnly(job.ecd).replace(/, \d{4}/, '')}
             </span>
           )}
           {job.plannedCompletionDate && (
-            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
+            <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] text-primary">
               Planned {formatDateOnly(job.plannedCompletionDate).replace(/, \d{4}/, '')}
             </span>
           )}
@@ -553,7 +553,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
                 e.preventDefault();
                 onNavigate('time-reports', job.id);
               }}
-              className="rounded border border-line-strong bg-overlay/5 px-1.5 py-0.5 text-[10px] font-bold text-muted transition-colors hover:bg-overlay/10"
+              className="rounded-full border border-line-strong bg-overlay/5 px-1.5 py-0.5 text-[10px] font-bold text-muted transition-colors hover:bg-overlay/10"
             >
               Time
             </button>
@@ -1127,7 +1127,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div>
-              <h1 className="text-base font-bold text-white">
+              <h1 className="app-section-title text-white">
                 {boardType === 'shopFloor' ? 'Shop Floor' : 'Admin'}
               </h1>
               <p className="text-[10px] text-muted">
@@ -1361,14 +1361,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 setBulkSetBinError(null);
                 setBulkSetBinOpen(true);
               }}
-              className="rounded border border-primary/40 bg-primary/20 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/30"
+              className="rounded-lg border border-primary/40 bg-primary/20 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/30"
             >
               Set bin
             </button>
             <select
               value={bulkTargetStatus ?? ''}
               onChange={(e) => setBulkTargetStatus((e.target.value as JobStatus) || null)}
-              className="rounded border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white"
+              className="rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white"
             >
               <option value="">Move to…</option>
               {columns.map((col) => (
@@ -1444,7 +1444,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 setBulkSetBinError(validateBinLocation(v.trim()) ?? null);
               }}
               placeholder="A4c"
-              className="mb-2 w-full rounded border border-line-strong bg-overlay/10 px-3 py-2 font-mono text-white placeholder:text-subtle focus:ring-2 focus:ring-primary"
+              className="mb-2 w-full rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 font-mono text-white placeholder:text-subtle focus:ring-2 focus:ring-primary"
               autoFocus
             />
             {bulkSetBinError && <p className="mb-2 text-xs text-red-400">{bulkSetBinError}</p>}
@@ -1833,12 +1833,12 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
                     onChange={(e) => setNewItemText(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
                     placeholder="Enter checklist item..."
-                    className="flex-1 rounded border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white outline-none focus:border-primary"
+                    className="flex-1 rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white outline-none focus:border-primary"
                   />
                   <button
                     onClick={handleAddItem}
                     disabled={!newItemText.trim() || saving}
-                    className="rounded bg-primary px-4 py-2 text-sm font-bold text-on-accent disabled:opacity-50"
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-accent disabled:opacity-50"
                   >
                     Add
                   </button>

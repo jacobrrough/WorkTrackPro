@@ -367,7 +367,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
-          <h1 className="text-lg font-bold text-white">{board.name}</h1>
+          <h1 className="app-section-title text-white">{board.name}</h1>
         </div>
         {isOwner && (
           <button

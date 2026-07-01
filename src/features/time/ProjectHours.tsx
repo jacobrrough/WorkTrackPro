@@ -141,7 +141,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="truncate text-lg font-bold text-white">Project Hours</h1>
+          <h1 className="app-section-title truncate text-white">Project Hours</h1>
         </div>
         <button
           onClick={() => setShowNewProject((v) => !v)}

@@ -95,7 +95,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-bold text-white">
+            <h1 className="app-section-title truncate text-white">
               {formatJobCode(job.jobCode)}
               {displayPartNumber ? ` – ${displayPartNumber}` : ''}
             </h1>

@@ -27,7 +27,9 @@ export default function AccountingHome() {
                   onClick={() => navigate(t.path)}
                   className="flex flex-col items-start gap-2"
                 >
-                  <span className="material-symbols-outlined text-2xl text-primary">{t.icon}</span>
+                  <span className="app-icon-badge">
+                    <span className="material-symbols-outlined text-2xl">{t.icon}</span>
+                  </span>
                   <span className="font-bold text-white">{t.label}</span>
                 </Card>
               ))}
