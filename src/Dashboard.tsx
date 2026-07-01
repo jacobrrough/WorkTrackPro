@@ -14,7 +14,6 @@ import type { Shift } from './core/types';
 import BinResultsView from './components/BinResultsView';
 import SearchAutocomplete from './components/SearchAutocomplete';
 import { EmptyState } from './components/EmptyState';
-import { LoadingSpinner } from './Loading';
 import { useDashboardPreferencesSync } from '@/hooks/useDashboardPreferencesSync';
 import { useScrollRestore } from './hooks/useScrollRestore';
 import { useNavigate } from 'react-router-dom';
@@ -172,7 +171,7 @@ const QuickActionHideZone: React.FC = () => {
   return (
     <div
       ref={setNodeRef}
-      className={`mt-3 flex items-center justify-center gap-2 rounded-sm border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
+      className={`mt-3 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
         isOver
           ? 'border-danger bg-danger/20 text-danger'
           : 'border-white/20 bg-white/[0.02] text-muted'
@@ -249,13 +248,13 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border border-line bg-background-dark p-4 shadow-2xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-background-dark p-4 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Security</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
@@ -278,7 +277,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
           />
         ) : (
           <div>
-            <div className="mb-4 flex items-start gap-3 rounded-sm border border-line bg-surface-2 p-3">
+            <div className="mb-4 flex items-start gap-3 rounded-2xl border border-line bg-surface-2 p-3">
               <span
                 aria-hidden="true"
                 className={`material-symbols-outlined text-2xl ${hasFactor ? 'text-green-400' : 'text-amber-400'}`}
@@ -300,7 +299,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
             </div>
 
             {error && (
-              <div className="mb-4 rounded-sm border border-danger/30 bg-danger/20 p-3">
+              <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/20 p-3">
                 <p className="text-center text-sm text-danger">{error}</p>
               </div>
             )}
@@ -309,7 +308,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
               <button
                 type="button"
                 onClick={() => setView('enroll')}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary font-bold text-on-accent transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-xl" aria-hidden>
                   add_moderator
@@ -323,7 +322,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <button
                   type="button"
                   onClick={() => setView('enroll')}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-white/10 font-medium text-white transition-colors hover:bg-white/20"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-white/10 font-medium text-white transition-colors hover:bg-white/20"
                 >
                   <span className="material-symbols-outlined text-xl" aria-hidden>
                     autorenew
@@ -333,7 +332,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <button
                   type="button"
                   onClick={() => setConfirmRemove(true)}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-sm border border-danger/30 font-medium text-danger transition-colors hover:bg-danger/10"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-danger/30 font-medium text-danger transition-colors hover:bg-danger/10"
                 >
                   <span className="material-symbols-outlined text-xl" aria-hidden>
                     remove_moderator
@@ -344,7 +343,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
             )}
 
             {!loading && hasFactor && confirmRemove && (
-              <div className="rounded-sm border border-danger/30 bg-danger/10 p-3">
+              <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3">
                 <p className="text-sm font-semibold text-white">
                   Remove two-factor authentication?
                 </p>
@@ -358,7 +357,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     type="button"
                     onClick={() => setConfirmRemove(false)}
                     disabled={removing}
-                    className="h-11 flex-1 rounded-sm bg-white/10 font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                    className="h-11 flex-1 rounded-lg bg-white/10 font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-50"
                   >
                     Keep
                   </button>
@@ -366,11 +365,11 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     type="button"
                     onClick={() => void handleRemove()}
                     disabled={removing}
-                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-sm bg-danger/80 font-bold text-on-danger transition-colors hover:bg-danger disabled:opacity-50"
+                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-danger/80 font-bold text-on-danger transition-colors hover:bg-danger disabled:opacity-50"
                   >
                     {removing ? (
                       <>
-                        <div className="h-4 w-4 animate-spin rounded-sm border-2 border-white border-t-transparent" />
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                         <span>Removing…</span>
                       </>
                     ) : (
@@ -383,7 +382,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
 
             {loading && (
               <div className="flex justify-center py-4">
-                <div className="h-6 w-6 animate-spin rounded-sm border-2 border-primary border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             )}
           </div>
@@ -835,7 +834,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setShowMenu((open) => !open)}
-              className={`flex size-11 touch-manipulation items-center justify-center rounded-sm transition-colors hover:bg-white/10 hover:text-white ${showMenu ? 'bg-white/10 text-white' : 'text-muted'}`}
+              className={`flex size-11 touch-manipulation items-center justify-center rounded-lg transition-colors hover:bg-white/10 hover:text-white ${showMenu ? 'bg-white/10 text-white' : 'text-muted'}`}
               aria-label="Menu"
               title="Menu"
               aria-haspopup="menu"
@@ -848,7 +847,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {showMenu && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-sm border border-white/10 bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
+                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-2xl border border-white/10 bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
               >
                 <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-subtle">
                   Settings
@@ -999,7 +998,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={resetCustomization}
-                className="ml-auto flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-white/10 hover:text-white"
+                className="ml-auto flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-white/10 hover:text-white"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-xs">
                   restart_alt
@@ -1015,8 +1014,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             Active Jobs
           </h2>
           {dataPending ? (
-            <div className="flex justify-center py-12" role="status" aria-live="polite">
-              <LoadingSpinner size="small" text="Loading jobs…" />
+            <div
+              className="app-card flex items-center gap-3 p-4"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <span className="app-icon-badge animate-pulse" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-40 max-w-[70%] animate-pulse rounded-lg bg-surface-3" />
+                <div className="h-3 w-56 max-w-[85%] animate-pulse rounded-lg bg-surface-2" />
+              </div>
+              <span className="sr-only">Loading jobs…</span>
             </div>
           ) : activeCount + pendingCount === 0 ? (
             <EmptyState
@@ -1055,7 +1064,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <button
           type="button"
           onClick={() => setIsTrackerOpen(true)}
-          className="fixed bottom-20 right-4 z-[45] flex min-h-[44px] touch-manipulation items-center gap-2 rounded-sm border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
+          className="fixed bottom-20 right-4 z-[45] flex min-h-[44px] touch-manipulation items-center gap-2 rounded-lg border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">
             schedule
@@ -1073,7 +1082,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           onClick={() => setIsTrackerOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-sm border border-primary/30 bg-surface-2 p-4 shadow-2xl"
+            className="w-full max-w-md rounded-3xl border border-primary/30 bg-surface-2 p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -1088,7 +1097,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => setIsTrackerOpen(false)}
-                className="flex size-10 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
                 aria-label="Close time tracker popup"
               >
                 <span aria-hidden="true" className="material-symbols-outlined">
@@ -1097,7 +1106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </button>
             </div>
 
-            <div className="rounded-sm border border-white/10 bg-black/20 p-3">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
                 Shift Timer
               </p>
@@ -1110,7 +1119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 type="button"
                 onClick={handleClockOutFromPopup}
                 disabled={isClockOutLoading}
-                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-sm bg-danger px-4 py-3 text-sm font-bold text-on-danger transition-colors hover:bg-danger-hover disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-muted"
+                className="flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-lg bg-danger px-4 py-3 text-sm font-bold text-on-danger transition-colors hover:bg-danger-hover disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-muted"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-base">
                   logout
@@ -1126,7 +1135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   onNavigate('job-detail', activeJob.id);
                   setIsTrackerOpen(false);
                 }}
-                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-sm border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
+                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">
                   work
