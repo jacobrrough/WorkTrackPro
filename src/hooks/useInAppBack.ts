@@ -17,12 +17,19 @@ export function useInAppBack(fallback = '/app') {
   const navigate = useNavigate();
   const location = useLocation();
   return useCallback(() => {
+    // Is there an in-app entry to step back to? Prefer history.state.idx when the
+    // router populates it, but this app's URL-sync navigation often leaves idx
+    // null — which made the old `idx > 0` guard always fail, so Back never stepped
+    // back and instead jumped straight to the fallback. React Router also stamps
+    // every navigation with a non-"default" `location.key`; only the very first
+    // entry (cold start, deep link, hard reload) keeps "default". So treat a
+    // non-default key as "we have in-app history" and step back one entry.
     const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
-    if (idx > 0) {
+    if (idx > 0 || location.key !== 'default') {
       navigate(-1);
       return;
     }
     const from = (location.state as { from?: string } | null)?.from;
     navigate(from ?? fallback, { replace: true });
-  }, [navigate, fallback, location.state]);
+  }, [navigate, fallback, location.key, location.state]);
 }
