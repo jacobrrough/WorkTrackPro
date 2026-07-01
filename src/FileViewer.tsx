@@ -90,7 +90,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
   const ext = getFileExtension(attachment.filename);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/95">
+    <div className="fixed inset-0 z-overlay flex flex-col bg-black/95">
       {/* Header - Mobile Optimized */}
       <div className="safe-area-top flex flex-shrink-0 items-center justify-between border-b border-line bg-background-dark p-3 sm:p-4">
         <div className="mr-2 min-w-0 flex-1">

@@ -533,7 +533,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
 
   return (
     <div className="flex h-[100dvh] flex-col bg-gradient-to-br from-app-2 to-surface-3">
-      <header className="sticky top-0 z-50 flex-shrink-0 border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-header flex-shrink-0 border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <button
             onClick={() => onBack?.()}
@@ -1110,7 +1110,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       {/* Edit History Modal */}
       {viewingHistoryFor && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3"
           onClick={() => setViewingHistoryFor(null)}
         >
           <div
@@ -1193,7 +1193,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
       {/* Add Shift Modal (Admin) */}
       {showAddShift && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3"
           onClick={() => !addingShift && setShowAddShift(false)}
         >
           <div

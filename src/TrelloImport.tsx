@@ -2066,10 +2066,10 @@ const TrelloImport: React.FC<TrelloImportProps> = ({ onClose, onImportComplete }
     : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/90 p-3">
       {/* Modal: pick inventory for unmatched material */}
       {unmatchedPrompt && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+        <div className="absolute inset-0 z-dialog flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md rounded-lg border border-line-strong bg-card-dark p-4 shadow-xl">
             <h3 className="mb-2 text-lg font-bold text-white">No match for this material</h3>
             <p className="mb-1 text-sm text-muted">

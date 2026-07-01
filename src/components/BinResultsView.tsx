@@ -233,7 +233,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
   if (addMode === 'create' && onCreateInventory) {
     return (
       <div
-        className="fixed inset-0 z-[100] flex flex-col bg-background-dark"
+        className="fixed inset-0 z-modal flex flex-col bg-background-dark"
         role="dialog"
         aria-modal="true"
       >
@@ -250,7 +250,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
   if (addMode === 'list') {
     return (
       <div
-        className="fixed inset-0 z-[100] flex flex-col bg-background-dark"
+        className="fixed inset-0 z-modal flex flex-col bg-background-dark"
         role="dialog"
         aria-modal="true"
         aria-label={`Add inventory to bin ${binLocation}`}
@@ -324,7 +324,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-background-dark"
+      className="fixed inset-0 z-modal flex flex-col bg-background-dark"
       role="dialog"
       aria-modal="true"
       aria-labelledby="bin-results-title"

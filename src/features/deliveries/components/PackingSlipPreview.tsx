@@ -53,7 +53,7 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
+    <div className="fixed inset-0 z-overlay flex flex-col bg-black/90">
       <header className="flex items-center justify-between border-b border-line bg-surface-dark px-4 py-3">
         <h2 className="text-base font-semibold text-white">
           Packing Slip — Job #{job.jobCode}, Delivery #{delivery.deliveryNumber}

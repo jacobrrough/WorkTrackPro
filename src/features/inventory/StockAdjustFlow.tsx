@@ -117,7 +117,7 @@ export default function StockAdjustFlow({
       />
 
       {step === 'scan' && (
-        <div className="safe-area-pb fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4">
+        <div className="safe-area-pb fixed inset-x-0 bottom-0 z-dialog flex justify-center p-4">
           <button
             type="button"
             onClick={() => setStep('search')}
@@ -130,7 +130,7 @@ export default function StockAdjustFlow({
       )}
 
       {step === 'search' && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background-dark">
+        <div className="fixed inset-0 z-overlay flex flex-col bg-background-dark">
           <header className="safe-area-top sticky top-0 z-10 border-b border-line bg-background-dark px-3 py-3">
             <div className="flex items-center gap-2">
               <button
@@ -200,7 +200,7 @@ export default function StockAdjustFlow({
 
       {step === 'qty' && selected && preview && (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-3"
+          className="fixed inset-0 z-sheet flex items-end justify-center bg-black/70 p-3"
           role="dialog"
           aria-modal="true"
           aria-label={`${MODE_LABEL[mode]} quantity`}

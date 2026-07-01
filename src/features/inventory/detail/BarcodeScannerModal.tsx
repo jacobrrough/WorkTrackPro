@@ -45,7 +45,7 @@ export function BarcodeScannerModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/90 p-3">
       <div className="w-full max-w-md rounded-lg bg-card-dark p-3">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">Scan Barcode</h3>

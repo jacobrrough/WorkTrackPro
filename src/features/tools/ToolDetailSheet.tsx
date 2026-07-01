@@ -225,7 +225,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
       {/* Hand-off coworker picker */}
       {showAssign && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60"
+          className="fixed inset-0 z-overlay flex flex-col justify-end bg-black/60"
           onClick={() => setShowAssign(false)}
         >
           <div

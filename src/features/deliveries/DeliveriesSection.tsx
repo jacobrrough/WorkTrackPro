@@ -191,7 +191,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
       )}
 
       {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-sm rounded-lg border border-line bg-surface-dark p-5">
             <h3 className="mb-2 text-base font-semibold text-white">Delete delivery?</h3>
             <p className="mb-4 text-sm text-muted">

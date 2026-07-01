@@ -101,7 +101,7 @@ const JobList: React.FC<JobListProps> = ({
 
   return (
     <div className="flex min-h-screen flex-col bg-background-dark">
-      <header className="sticky top-0 z-50 border-b border-line bg-background-dark/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-header border-b border-line bg-background-dark/80 backdrop-blur-lg">
         <div className="flex items-center justify-between px-3 py-2.5">
           <button
             onClick={() => onNavigate('dashboard')}

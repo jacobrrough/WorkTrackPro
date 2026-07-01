@@ -606,7 +606,7 @@ function TrelloImportRoute() {
   const { refreshJobs } = useApp();
   return (
     <div className="flex min-h-screen flex-col bg-background-dark">
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-header flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <button
           type="button"
           onClick={() => appNavigate('dashboard')}

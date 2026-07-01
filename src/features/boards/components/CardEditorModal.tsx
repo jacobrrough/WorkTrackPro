@@ -80,7 +80,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
   const attachments = card?.attachments ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4">
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-md flex-col rounded-lg border border-line bg-surface-dark"

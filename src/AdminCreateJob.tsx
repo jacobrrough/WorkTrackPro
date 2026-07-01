@@ -630,7 +630,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
 
   return (
     <div className="flex min-h-screen flex-col bg-background-dark text-white">
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-line/30 bg-background-dark p-4 backdrop-blur-md">
+      <header className="sticky top-0 z-header flex items-center justify-between border-b border-line/30 bg-background-dark p-4 backdrop-blur-md">
         <button
           type="button"
           onClick={() => onNavigate('dashboard')}

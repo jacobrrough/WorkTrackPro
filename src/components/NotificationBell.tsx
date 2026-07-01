@@ -117,7 +117,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-line bg-app-2 shadow-xl sm:w-80">
+        <div className="absolute right-0 top-full z-dropdown mt-1 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-line bg-app-2 shadow-xl sm:w-80">
           <div className="flex items-center justify-between border-b border-line px-2.5 py-1.5 sm:px-3 sm:py-2">
             <span className="text-xs font-bold text-white sm:text-sm">Notifications</span>
             <div className="flex items-center gap-2">

@@ -111,7 +111,7 @@ const ClockInScreen: React.FC<ClockInScreenProps> = ({
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
       {/* Header */}
-      <header className="safe-area-top sticky top-0 z-50 border-b border-line bg-background-dark p-3">
+      <header className="safe-area-top sticky top-0 z-header border-b border-line bg-background-dark p-3">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack || (() => onNavigate('dashboard'))}

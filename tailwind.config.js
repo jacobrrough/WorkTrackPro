@@ -19,6 +19,30 @@ export default {
         '2xl': '12px',
         '3xl': '14px',
       },
+      // Semantic z-index ladder for app chrome. Values mirror the pre-existing
+      // numeric ladder exactly (stacking order unchanged); the names say what
+      // sits at each level. Three roles intentionally share 50 (same plane,
+      // different jobs): sticky page headers, first-tier full-screen overlays
+      // (scanner/file viewer/simple modals), and anchored dropdowns/popovers.
+      // Above them: dialogs-on-overlays (60), bottom sheets (70), the standard
+      // modal tier (100), pickers stacked on modals (120), confirm dialogs
+      // (200), alerts-on-confirms (210), and toasts on top of everything (220 —
+      // was an arbitrary z-[9999]). z-10/20/30 stay numeric for local,
+      // in-component stacking; they are not chrome layers.
+      zIndex: {
+        nav: '40',
+        fab: '45',
+        header: '50',
+        overlay: '50',
+        dropdown: '50',
+        dialog: '60',
+        sheet: '70',
+        modal: '100',
+        picker: '120',
+        confirm: '200',
+        alert: '210',
+        toast: '220',
+      },
       colors: {
         // Theme tokens — resolve to CSS variables set per [data-theme] in index.css.
         // `rgb(var(--c-x) / <alpha-value>)` keeps Tailwind opacity modifiers working

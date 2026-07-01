@@ -60,7 +60,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div className="flex h-[min(85dvh,700px)] w-full max-w-lg flex-col rounded-lg border border-line bg-app-2 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line px-4 py-3">

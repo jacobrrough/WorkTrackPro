@@ -205,7 +205,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
       {/* Mobile drawer */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-50 flex bg-black/50 md:hidden"
+          className="fixed inset-0 z-overlay flex bg-black/50 md:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Accounting menu"

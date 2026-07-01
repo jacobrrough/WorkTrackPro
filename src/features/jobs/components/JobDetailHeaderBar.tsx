@@ -28,7 +28,7 @@ export default function JobDetailHeaderBar({
   onEditOrSave,
 }: JobDetailHeaderBarProps) {
   return (
-    <header className="safe-area-top sticky top-0 z-50 border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
+    <header className="safe-area-top sticky top-0 z-header border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
       <div className="flex items-center justify-between">
         <button
           onClick={onBackOrClose}

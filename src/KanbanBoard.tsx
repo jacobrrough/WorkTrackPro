@@ -360,7 +360,7 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
                 </button>
                 {isMenuOpen && (
                   <div
-                    className="absolute right-0 top-8 z-[100] min-w-[140px] rounded-2xl border border-line-strong bg-surface-3 py-1 shadow-2xl backdrop-blur-sm"
+                    className="absolute right-0 top-8 z-modal min-w-[140px] rounded-2xl border border-line-strong bg-surface-3 py-1 shadow-2xl backdrop-blur-sm"
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1117,7 +1117,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   return (
     <div className="content-above-nav flex h-full min-h-0 flex-col bg-gradient-to-br from-app-2 to-surface-3">
       {/* Header - Streamlined */}
-      <header className="safe-area-top sticky top-0 z-50 flex-shrink-0 border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-md">
+      <header className="safe-area-top sticky top-0 z-header flex-shrink-0 border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
@@ -1272,7 +1272,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         {columnMenuOpen === column.id && (
                           <div
                             data-column-menu="true"
-                            className="absolute right-0 top-8 z-50 min-w-[180px] rounded-2xl border border-line-strong bg-surface-3 py-1 shadow-xl"
+                            className="absolute right-0 top-8 z-dropdown min-w-[180px] rounded-2xl border border-line-strong bg-surface-3 py-1 shadow-xl"
                           >
                             <button
                               onClick={(e) => {
@@ -1351,7 +1351,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Bulk action bar */}
       {bulkSelectMode && selectedJobIds.size > 0 && (
-        <div className="safe-area-pb fixed bottom-16 left-0 right-0 z-[45] flex items-center justify-between gap-3 border-t border-line bg-app-2 px-4 py-3 shadow-lg">
+        <div className="safe-area-pb fixed bottom-16 left-0 right-0 z-fab flex items-center justify-between gap-3 border-t border-line bg-app-2 px-4 py-3 shadow-lg">
           <span className="text-sm font-medium text-white">{selectedJobIds.size} selected</span>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -1413,7 +1413,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Bulk Set bin modal */}
       {bulkSetBinOpen && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-confirm flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setBulkSetBinOpen(false);
@@ -1493,7 +1493,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Delete Confirmation */}
       {deleteConfirm && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-confirm flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setDeleteConfirm(null);
@@ -1535,7 +1535,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Card Files Modal */}
       {filesForJob && (
         <div
-          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-alert flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) setFilesForJob(null);
           }}
@@ -1791,7 +1791,7 @@ const ChecklistEditorModal: React.FC<ChecklistEditorModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
       <div

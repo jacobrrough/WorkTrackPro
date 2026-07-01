@@ -45,7 +45,7 @@ export default function AllocateToJobModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 p-3 sm:items-center">
+    <div className="fixed inset-0 z-picker flex items-end justify-center bg-black/80 p-3 sm:items-center">
       <div className="w-full max-w-lg rounded-2xl border border-line bg-card-dark p-4">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">Allocate To Job</h3>

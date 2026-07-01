@@ -74,7 +74,7 @@ function ConfirmLockDialog({
 
   return (
     <div
-      className="app-modal-backdrop z-[100] p-4"
+      className="app-modal-backdrop z-modal p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="lock-confirm-title"

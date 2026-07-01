@@ -3837,7 +3837,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
       </main>
 
       {!isEditing && (
-        <div className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-background-dark/95 p-3 backdrop-blur-md">
+        <div className="pb-safe fixed bottom-0 left-0 right-0 z-nav border-t border-line bg-background-dark/95 p-3 backdrop-blur-md">
           <div className="flex gap-3">
             {isClockedIn ? (
               <button

@@ -1228,7 +1228,7 @@ const Calendar: React.FC<CalendarProps> = ({
 
       {pastEcdApprovalModal && (
         <div
-          className="app-modal-backdrop z-50 p-4"
+          className="app-modal-backdrop z-overlay p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="past-ecd-title"

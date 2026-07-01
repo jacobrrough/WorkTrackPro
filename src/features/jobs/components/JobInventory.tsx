@@ -257,7 +257,7 @@ export default function JobInventory({
       </div>
 
       {showAddInventory && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-overlay flex items-end bg-black/80 backdrop-blur-sm">
           <div className="flex max-h-[80vh] w-full flex-col rounded-t-md border-t border-line bg-background-dark p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Add Material</h3>

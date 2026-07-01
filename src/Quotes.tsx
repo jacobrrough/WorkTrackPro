@@ -306,7 +306,7 @@ const Quotes: React.FC<QuotesProps> = ({
 
   return (
     <div className="flex h-[100dvh] flex-col bg-background-dark">
-      <header className="sticky top-0 z-50 flex-shrink-0 border-b border-primary/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-header flex-shrink-0 border-b border-primary/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {onBack && (
@@ -647,7 +647,7 @@ const Quotes: React.FC<QuotesProps> = ({
 
         {/* Saved Quotes Modal */}
         {showSavedQuotes && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-overlay flex items-end justify-center bg-black/80 backdrop-blur-sm">
             <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-t-md border-t border-line bg-background-dark p-4">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-white">Saved Quotes</h3>

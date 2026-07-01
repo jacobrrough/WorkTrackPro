@@ -288,7 +288,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
       {/* History Modal */}
       {showHistory && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3"
           onClick={() => setShowHistory(false)}
         >
           <div

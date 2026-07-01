@@ -310,7 +310,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
 
         {/* Forgot Password Modal */}
         {showForgotPassword && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-md border border-line bg-background-dark p-4 shadow-2xl">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white">Reset Password</h3>
@@ -404,7 +404,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp, onResetPassword, error
 
         {/* Contact Admin Modal */}
         {showContactAdmin && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-md border border-line bg-background-dark p-4 shadow-2xl">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white">Contact Administrator</h3>

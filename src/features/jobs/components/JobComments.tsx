@@ -124,7 +124,7 @@ function MentionTextarea({
       {showDropdown && filteredUsers.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute bottom-full left-0 z-50 mb-1 max-h-40 w-56 overflow-y-auto rounded-lg border border-line bg-app-2 shadow-xl"
+          className="absolute bottom-full left-0 z-dropdown mb-1 max-h-40 w-56 overflow-y-auto rounded-lg border border-line bg-app-2 shadow-xl"
         >
           {filteredUsers.slice(0, 8).map((user, i) => (
             <button

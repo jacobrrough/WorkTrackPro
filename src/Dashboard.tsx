@@ -247,7 +247,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
   }, [factorId, refreshMfaGate, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-background-dark p-4 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">Security</h3>
@@ -817,7 +817,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
       <SkipLink />
-      <header className="safe-area-top sticky top-0 z-50 flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="safe-area-top sticky top-0 z-header flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <span className="app-brand-mark" aria-hidden="true" />
           <div className="min-w-0">
@@ -847,7 +847,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {showMenu && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-2xl border border-line bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
+                className="absolute right-0 top-full z-dropdown mt-1 w-52 overflow-hidden rounded-2xl border border-line bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
               >
                 <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-subtle">
                   Settings
@@ -1064,7 +1064,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <button
           type="button"
           onClick={() => setIsTrackerOpen(true)}
-          className="fixed bottom-20 right-4 z-[45] flex min-h-[44px] touch-manipulation items-center gap-2 rounded-lg border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
+          className="fixed bottom-20 right-4 z-fab flex min-h-[44px] touch-manipulation items-center gap-2 rounded-lg border border-primary/30 bg-primary/90 px-4 py-2 text-sm font-bold text-white shadow-lg"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-base">
             schedule
@@ -1075,7 +1075,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {activeShift && isTrackerOpen && (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-3"
+          className="fixed inset-0 z-sheet flex items-end justify-center bg-black/70 p-3"
           role="dialog"
           aria-modal="true"
           aria-label="Active time tracker"
@@ -1182,7 +1182,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div
               role="status"
               aria-live="polite"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+              className="fixed inset-0 z-overlay flex items-center justify-center bg-black"
             >
               <p className="text-sm text-pure-white">Opening scanner...</p>
             </div>

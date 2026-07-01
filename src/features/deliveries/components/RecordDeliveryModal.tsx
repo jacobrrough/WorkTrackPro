@@ -121,7 +121,7 @@ const RecordDeliveryModal: React.FC<RecordDeliveryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/80 p-4">
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-2xl flex-col rounded-lg border border-line bg-surface-dark"

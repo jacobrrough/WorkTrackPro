@@ -93,7 +93,7 @@ export function AccountingDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex animate-fade-in justify-end bg-black/60"
+      className="fixed inset-0 z-modal flex animate-fade-in justify-end bg-black/60"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

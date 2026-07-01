@@ -77,7 +77,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
   const logoKb = hasLogo ? Math.round(dataUrlBytes(form.logoDataUrl) / 1024) : 0;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-dialog flex items-center justify-center bg-black/80 p-4">
       <div
         className="flex w-full max-w-lg flex-col rounded-lg border border-line bg-surface-dark"
         style={{ maxHeight: '90vh' }}

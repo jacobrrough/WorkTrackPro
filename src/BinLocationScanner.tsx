@@ -75,7 +75,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-line bg-background-dark">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line p-4">

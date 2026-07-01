@@ -36,7 +36,7 @@ function BottomNavigation() {
 
   return (
     <nav
-      className="pb-safe fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-app-2/95 pt-2 backdrop-blur-lg md:hidden"
+      className="pb-safe fixed bottom-0 left-0 right-0 z-nav border-t border-line bg-app-2/95 pt-2 backdrop-blur-lg md:hidden"
       aria-label="Bottom navigation"
     >
       <div className="mx-auto flex max-w-md items-center justify-around px-3">

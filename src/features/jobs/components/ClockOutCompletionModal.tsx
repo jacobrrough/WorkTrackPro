@@ -152,7 +152,7 @@ export function ClockOutCompletionModal({
   if (nothingToLog) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 sm:items-center">
+    <div className="fixed inset-0 z-picker flex items-end justify-center bg-black/60 sm:items-center">
       <div className="w-full max-w-md rounded-t-lg border border-line bg-background-dark p-4 sm:rounded-lg">
         {step === 'cnc' && (
           <>
