@@ -9,6 +9,8 @@ import { partsService } from './services/api/parts';
 import { useToast } from './Toast';
 import { useNavigation } from '@/contexts/NavigationContext';
 import { useThrottle } from '@/useThrottle';
+import { useDirectionalBoardScroll } from '@/hooks/useDirectionalBoardScroll';
+import { useViewportWidth } from '@/hooks/useViewportWidth';
 import QRScanner from './components/QRScanner';
 import { calculateJobHoursFromShifts } from '@/lib/laborSuggestion';
 import { validateBinLocation } from '@/core/validation';
@@ -653,9 +655,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [partsByNumber, setPartsByNumber] = useState<
     Record<string, { name: string; setComposition?: Record<string, number> }>
   >({});
-  const [viewportWidth, setViewportWidth] = useState<number>(
-    typeof window !== 'undefined' ? window.innerWidth : 1280
-  );
+  const viewportWidth = useViewportWidth();
   const { showToast } = useToast();
 
   // Refs for column scroll containers and horizontal board container
@@ -734,12 +734,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     scrollPositionsSnapshot.current = navState.scrollPositions;
   }, [navState.scrollPositions]);
 
-  useEffect(() => {
-    const onResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
   // Scroll-vs-tap: if the user moved the pointer enough (e.g. horizontal swipe), don't treat as card tap
   useEffect(() => {
     const el = boardContainerRef.current;
@@ -770,6 +764,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       el.removeEventListener('pointercancel', onPointerUp, true);
     };
   }, []);
+
+  // On tablet/desktop the board is multi-column (md:snap-none); route swipe-over-a-column
+  // gestures by direction so left/right scrolls the board and up/down scrolls the column.
+  // Phone width keeps native one-column snap swiping, so leave it disabled there.
+  useDirectionalBoardScroll(boardContainerRef, viewportWidth >= 768 && jobs.length > 0);
 
   // Restore scroll positions before the first paint so there's no visible flash to column 0.
   // useLayoutEffect runs synchronously after DOM commit but before the browser paints,
@@ -1211,7 +1210,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           className="min-h-0 flex-1 snap-x snap-mandatory overflow-y-hidden overflow-x-scroll md:snap-none md:overflow-x-scroll"
           style={{
             WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-x',
+            // Allow both pan axes so touch devices route vertical gestures to the column
+            // scroller and horizontal gestures to this board scroller. `pan-x` alone made
+            // the ancestor intersection forbid vertical scrolling inside columns on touch.
+            touchAction: 'pan-x pan-y',
             overscrollBehavior: 'contain',
             overscrollBehaviorX: 'contain',
             scrollPaddingInline: 0,
@@ -1299,7 +1301,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden p-1.5"
                     style={{
                       WebkitOverflowScrolling: 'touch',
-                      overscrollBehavior: 'contain',
+                      // Contain only the vertical axis so a horizontal scroll over a column
+                      // chains out to the board container instead of being swallowed here.
+                      overscrollBehaviorY: 'contain',
                     }}
                   >
                     {columnJobs.map((job) => {
