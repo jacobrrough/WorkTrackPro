@@ -45,17 +45,28 @@
 }
 
 /*
- * THEME TOKENS
- * Each color is stored as space-separated RGB channels so Tailwind's
- * `rgb(var(--c-x) / <alpha-value>)` can apply opacity (e.g. bg-surface/40).
- * :root holds the default (Signal Red — the Direction E look) palette so any
- * not-yet-tokenized style and the no-JS first paint still look correct. Each
- * [data-theme] block overrides the full set. Keep the THEME_BG map in
- * src/theme/themes.ts and the pre-paint script in index.html in sync with these
- * background values.
+ * THEME TOKENS — appearance = a color PALETTE × a MODE (light / dark).
+ * Colors are space-separated RGB channels so Tailwind's `rgb(var(--c-x) / <a>)`
+ * opacity modifiers work. Structure (order matters for equal-specificity wins):
+ *   :root                                = Signal Red DARK — no-JS / no-attribute fallback
+ *   [data-theme='X'][data-mode='dark']   = each palette's own dark token set
+ *   [data-mode='dark' | 'light']         = mode-level danger-fg + overlay
+ *   [data-mode='light']                  = shared neutral LIGHT surfaces (+ default red accent)
+ *   [data-theme='X'][data-mode='light']  = that palette's accent, on the light surfaces
+ * `data-mode` is always a resolved 'light'|'dark' (JS resolves 'system'). Keep the
+ * bg maps in src/theme/themes.ts + the pre-paint script in index.html in sync.
  */
+
+/* Destructive FILL — identical in every palette + mode (paired with white text). */
+:root {
+  --c-danger: 220 38 38;
+  --c-danger-hover: 185 28 28;
+  --c-on-danger: 255 255 255;
+}
+
+/* ---- palette DARK token sets ---------------------------------------------- */
 :root,
-[data-theme='signal-red'] {
+[data-theme='signal-red'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 18 18 20;
   --c-bg-2: 24 25 28;
@@ -70,23 +81,9 @@
   --c-accent: 234 68 68;
   --c-accent-hover: 212 42 42;
   --c-on-accent: 255 255 255;
-  /* Destructive/error — deliberately a deeper, cooler red than the bright brand
-     accent so "delete / clock out / error" never reads the same as a primary
-     action. Theme-independent (set on :root, inherited by every [data-theme]). */
-  --c-danger: 220 38 38;
-  --c-danger-hover: 185 28 28;
-  --c-on-danger: 255 255 255;
-  /* Danger FOREGROUND — a lighter red for destructive/error TEXT and outlines on
-     dark surfaces (the #dc2626 fill only clears ~3.6:1 as text; this clears AA).
-     Overridden darker in the light `daylight` theme. */
-  --c-danger-fg: 248 113 113;
-  /* Overlay tint for hover/zebra/pill fills that must read as "a touch lighter
-     than the surface". White on dark themes; flipped dark in `daylight` so these
-     overlays don't invert to dark smudges on a white surface. */
-  --c-overlay: 255 255 255;
 }
 
-[data-theme='deep-ocean'] {
+[data-theme='deep-ocean'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 7 18 31;
   --c-bg-2: 12 26 43;
@@ -103,7 +100,7 @@
   --c-on-accent: 255 255 255;
 }
 
-[data-theme='forest'] {
+[data-theme='forest'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 7 20 14;
   --c-bg-2: 12 31 22;
@@ -120,7 +117,7 @@
   --c-on-accent: 4 20 12;
 }
 
-[data-theme='ember'] {
+[data-theme='ember'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 21 16 10;
   --c-bg-2: 32 24 16;
@@ -137,7 +134,7 @@
   --c-on-accent: 42 24 3;
 }
 
-[data-theme='crimson'] {
+[data-theme='crimson'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 21 4 7;
   --c-bg-2: 32 10 15;
@@ -154,7 +151,7 @@
   --c-on-accent: 255 255 255;
 }
 
-[data-theme='graphite'] {
+[data-theme='graphite'][data-mode='dark'] {
   color-scheme: dark;
   --c-bg: 12 13 16;
   --c-bg-2: 19 20 25;
@@ -171,7 +168,14 @@
   --c-on-accent: 17 21 28;
 }
 
-[data-theme='daylight'] {
+/* ---- mode-level tokens (danger text + overlay flip with light/dark) -------- */
+[data-mode='dark'] {
+  --c-danger-fg: 248 113 113;
+  --c-overlay: 255 255 255;
+}
+
+/* ---- LIGHT: shared neutral surfaces; each palette's identity via its accent -- */
+[data-mode='light'] {
   color-scheme: light;
   --c-bg: 244 246 249;
   --c-bg-2: 234 237 242;
@@ -183,13 +187,32 @@
   --c-text: 20 24 31;
   --c-text-muted: 74 85 104;
   --c-text-subtle: 107 118 137;
-  --c-accent: 147 51 234;
-  --c-accent-hover: 126 34 206;
+  /* default accent (Signal Red), deepened for contrast on white */
+  --c-accent: 220 38 38;
+  --c-accent-hover: 185 28 28;
   --c-on-accent: 255 255 255;
-  /* Light-theme overrides: danger text goes darker (legible on white), and the
-     overlay tint flips to dark ink so hover/zebra fills read on a light surface. */
   --c-danger-fg: 185 28 28;
   --c-overlay: 20 24 31;
+}
+[data-theme='deep-ocean'][data-mode='light'] {
+  --c-accent: 2 132 199;
+  --c-accent-hover: 3 105 161;
+}
+[data-theme='forest'][data-mode='light'] {
+  --c-accent: 4 120 87;
+  --c-accent-hover: 6 95 70;
+}
+[data-theme='ember'][data-mode='light'] {
+  --c-accent: 180 83 9;
+  --c-accent-hover: 146 64 14;
+}
+[data-theme='crimson'][data-mode='light'] {
+  --c-accent: 225 29 72;
+  --c-accent-hover: 190 18 60;
+}
+[data-theme='graphite'][data-mode='light'] {
+  --c-accent: 71 85 105;
+  --c-accent-hover: 51 65 85;
 }
 
 :root {

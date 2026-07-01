@@ -10,25 +10,38 @@
     <meta name="robots" content="index,follow" />
     <meta name="theme-color" content="#ea4444" />
     <script>
-      // Apply the saved theme before first paint to avoid a color flash.
-      // Keep THEME_BG in sync with index.css [data-theme] blocks and src/theme/themes.ts.
+      // Resolve the saved palette + mode before first paint to avoid a color flash.
+      // Appearance = palette (data-theme) x mode (data-mode = resolved light/dark).
+      // Keep DARK_BG / LIGHT_BG in sync with index.css and src/theme/themes.ts.
       (function () {
         try {
-          var THEME_BG = {
+          var DARK_BG = {
             'signal-red': '#121214',
             'deep-ocean': '#07121f',
             forest: '#07140e',
             ember: '#15100a',
             crimson: '#150407',
             graphite: '#0c0d10',
-            daylight: '#f4f6f9',
           };
-          var t = localStorage.getItem('worktrack-theme');
-          if (!t || !THEME_BG[t]) t = 'signal-red';
-          var light = t === 'daylight';
+          var LIGHT_BG = '#f4f6f9';
+          var rawT = localStorage.getItem('worktrack-theme');
+          // Migrate the removed 'daylight' theme -> signal-red palette in light mode.
+          var t = rawT === 'daylight' || !DARK_BG[rawT] ? 'signal-red' : rawT;
+          var m = localStorage.getItem('worktrack-mode');
+          if (m !== 'light' && m !== 'dark' && m !== 'system') {
+            m = rawT === 'daylight' ? 'light' : 'system';
+          }
+          var resolved =
+            m === 'system'
+              ? window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : m;
+          var light = resolved === 'light';
           var d = document.documentElement;
           d.setAttribute('data-theme', t);
-          d.style.background = THEME_BG[t];
+          d.setAttribute('data-mode', resolved);
+          d.style.background = light ? LIGHT_BG : DARK_BG[t];
           d.style.color = light ? '#14181f' : '#f4f5f7';
           d.style.colorScheme = light ? 'light' : 'dark';
         } catch (e) {}
