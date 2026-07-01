@@ -184,10 +184,43 @@
   transform: scale(0.99);
 }
 
-/* ---- form controls & buttons (off-Tailwind extraction, step 1) -------------
+/* ---- form controls & buttons (off-Tailwind extraction) ---------------------
  * The most-repeated utility combos in the app, pulled into one place. New code
  * uses these; the sweep converts the exact-match existing usages. Layout/size
  * (w-full, mt-*, text-sm, py-*) stays as utilities alongside these. */
+
+/* Square icon button (back arrows, header actions, close buttons). Text color +
+   any border/fill stay as utilities; the box + hover tint live here. */
+.app .app-icon-btn {
+  display: inline-flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  touch-action: manipulation;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+@media (hover: hover) {
+  .app .app-icon-btn:hover {
+    background: rgb(var(--c-overlay) / 0.1);
+  }
+}
+
+/* Sticky translucent page header bar. Padding stays a utility (varies by screen). */
+.app .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid rgb(var(--c-border));
+  background: rgb(var(--c-bg) / 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
 
 .app .app-input {
   width: 100%;

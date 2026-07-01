@@ -136,7 +136,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
+                className="app-icon-btn border border-line text-white"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -148,7 +148,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={() => setStep('scan')}
-                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
+                className="app-icon-btn border border-line text-white"
                 aria-label="Back to scanner"
               >
                 <span className="material-symbols-outlined">qr_code_scanner</span>
@@ -227,7 +227,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
+                className="app-icon-btn text-muted hover:text-white"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>

@@ -223,7 +223,7 @@ export default function InventoryMainView({
             <button
               type="button"
               onClick={onBack}
-              className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
+              className="app-icon-btn border border-line text-white"
               aria-label="Back to dashboard"
             >
               <span className="material-symbols-outlined">arrow_back</span>

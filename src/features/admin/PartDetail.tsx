@@ -1248,7 +1248,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-app">
       {/* Header: Part Number first, then Part Name */}
-      <div className="sticky top-0 z-10 border-b border-line bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="app-header px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -3776,7 +3776,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
 
   return (
     <div className="flex h-full flex-col bg-app">
-      <div className="sticky top-0 z-10 border-b border-line bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="app-header px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <button
             onClick={onCancel}

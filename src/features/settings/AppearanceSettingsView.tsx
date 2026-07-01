@@ -18,12 +18,12 @@ export function AppearanceSettingsView({ onBack }: AppearanceSettingsViewProps) 
 
   return (
     <div className="flex h-full flex-col bg-app">
-      <header className="sticky top-0 z-10 border-b border-line bg-app/95 px-4 py-4 backdrop-blur">
+      <header className="app-header px-4 py-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="flex size-10 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
+            className="app-icon-btn border border-line bg-overlay/5 text-white"
             aria-label="Go back"
           >
             <span className="material-symbols-outlined">arrow_back</span>

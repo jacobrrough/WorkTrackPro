@@ -610,7 +610,7 @@ function TrelloImportRoute() {
         <button
           type="button"
           onClick={() => appNavigate('dashboard')}
-          className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
+          className="app-icon-btn text-muted hover:text-white"
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>

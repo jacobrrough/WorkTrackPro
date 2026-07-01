@@ -1550,7 +1550,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </h3>
               <button
                 onClick={() => setFilesForJob(null)}
-                className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
+                className="app-icon-btn text-muted hover:text-white"
                 aria-label="Close files"
               >
                 <span className="material-symbols-outlined">close</span>

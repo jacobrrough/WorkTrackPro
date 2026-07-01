@@ -197,7 +197,7 @@ const Parts: React.FC<PartsProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-app">
-      <header className="sticky top-0 z-10 border-b border-line bg-app/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <header className="app-header px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button

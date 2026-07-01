@@ -171,7 +171,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
             type="button"
             onClick={() => setMobileOpen(true)}
             aria-label="Open accounting menu"
-            className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white md:hidden"
+            className="app-icon-btn text-muted hover:text-white md:hidden"
           >
             <span className="material-symbols-outlined">menu</span>
           </button>
@@ -179,7 +179,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
             type="button"
             onClick={back}
             aria-label="Back"
-            className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
+            className="app-icon-btn text-muted hover:text-white"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -190,7 +190,7 @@ export function AccountingShell({ active, title, actions, children }: Accounting
             type="button"
             onClick={() => navigate('/app')}
             aria-label="Go to app home"
-            className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
+            className="app-icon-btn text-muted hover:text-white"
           >
             <span className="material-symbols-outlined">home</span>
           </button>

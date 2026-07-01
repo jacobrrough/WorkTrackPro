@@ -52,7 +52,7 @@ export default function AllocateToJobModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
+            className="app-icon-btn text-muted hover:text-white"
             aria-label="Close allocation dialog"
           >
             <span className="material-symbols-outlined">close</span>
