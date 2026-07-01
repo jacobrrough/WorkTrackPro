@@ -570,7 +570,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
             <button
               type="button"
               onClick={() => setJobFilter(null)}
-              className="shrink-0 rounded-lg border border-line-strong bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+              className="shrink-0 rounded-lg border border-line-strong bg-overlay/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-overlay/20"
             >
               Show all
             </button>
@@ -587,7 +587,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setSelectedUser(null);
                 }}
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-                  filter === 'mine' ? 'bg-primary text-on-accent' : 'bg-white/10 text-muted'
+                  filter === 'mine' ? 'bg-primary text-on-accent' : 'bg-overlay/10 text-muted'
                 }`}
               >
                 My Time
@@ -599,7 +599,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   setViewMode('users');
                 }}
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-                  filter === 'all' ? 'bg-primary text-on-accent' : 'bg-white/10 text-muted'
+                  filter === 'all' ? 'bg-primary text-on-accent' : 'bg-overlay/10 text-muted'
                 }`}
               >
                 All Users
@@ -618,7 +618,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold uppercase transition-all ${
                   dateRange === range
                     ? 'border border-primary bg-primary/20 text-primary'
-                    : 'bg-white/5 text-muted'
+                    : 'bg-overlay/5 text-muted'
                 }`}
               >
                 {range}
@@ -627,10 +627,10 @@ const TimeReports: React.FC<TimeReportsProps> = ({
           </div>
 
           {dateRange !== 'all' && (
-            <div className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-white/5 p-2">
+            <div className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-overlay/5 p-2">
               <button
                 onClick={() => setPeriodOffset((prev) => prev + 1)}
-                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-lg border border-line bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-white/20"
+                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-lg border border-line bg-overlay/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-overlay/20"
               >
                 <span className="material-symbols-outlined text-sm">chevron_left</span>
                 Older
@@ -641,7 +641,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <button
                 onClick={() => setPeriodOffset((prev) => Math.max(0, prev - 1))}
                 disabled={periodOffset === 0}
-                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-lg border border-line bg-white/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex min-h-10 touch-manipulation items-center gap-1 rounded-lg border border-line bg-overlay/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-overlay/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Newer
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
@@ -676,7 +676,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold uppercase transition-all ${
                     viewMode === mode
                       ? 'border border-primary bg-primary/20 text-primary'
-                      : 'bg-white/5 text-muted'
+                      : 'bg-overlay/5 text-muted'
                   }`}
                 >
                   {mode}
@@ -746,7 +746,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                       }))
                     )
                   }
-                  className="rounded-lg border border-line-strong bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+                  className="rounded-lg border border-line-strong bg-overlay/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-overlay/20"
                 >
                   Export CSV
                 </button>
@@ -807,7 +807,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                       }))
                     )
                   }
-                  className="rounded-lg border border-line-strong bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
+                  className="rounded-lg border border-line-strong bg-overlay/10 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-overlay/20"
                 >
                   Export CSV
                 </button>
@@ -900,7 +900,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                         type="button"
                         onClick={() => handleManualClockOut(s.id)}
                         disabled={manualClockOutShiftId === s.id}
-                        className="mt-2 min-h-[36px] rounded-lg border border-danger/40 bg-danger/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-danger transition-colors hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="mt-2 min-h-[36px] rounded-lg border border-danger/40 bg-danger/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-danger-fg transition-colors hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {manualClockOutShiftId === s.id ? 'Clocking out…' : 'Clock Out User'}
                       </button>
@@ -966,7 +966,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                                 clockInTime: e.target.value,
                               })
                             }
-                            className="w-full rounded border border-line-strong bg-white/10 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                            className="w-full rounded border border-line-strong bg-overlay/10 px-2 py-1 text-xs text-white outline-none focus:border-primary"
                           />
                         </div>
                         <div>
@@ -982,7 +982,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                                 clockOutTime: e.target.value,
                               })
                             }
-                            className="w-full rounded border border-line-strong bg-white/10 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                            className="w-full rounded border border-line-strong bg-overlay/10 px-2 py-1 text-xs text-white outline-none focus:border-primary"
                           />
                         </div>
                         <div>
@@ -995,7 +995,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                               setEditingShiftData({ ...editingShiftData, reason: e.target.value })
                             }
                             placeholder="Required: explain why you're editing this shift..."
-                            className="w-full resize-none rounded border border-line-strong bg-white/10 px-2 py-1 text-xs text-white outline-none focus:border-primary"
+                            className="w-full resize-none rounded border border-line-strong bg-overlay/10 px-2 py-1 text-xs text-white outline-none focus:border-primary"
                             rows={2}
                           />
                         </div>
@@ -1010,7 +1010,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                               });
                             }}
                             disabled={isSaving}
-                            className="flex-1 rounded bg-white/10 py-2 text-xs font-bold text-white disabled:opacity-50"
+                            className="flex-1 rounded bg-overlay/10 py-2 text-xs font-bold text-white disabled:opacity-50"
                           >
                             Cancel
                           </button>
@@ -1080,7 +1080,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                                 e.stopPropagation();
                                 setShiftToDeleteId(s.id);
                               }}
-                              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs font-bold text-danger transition-colors hover:bg-danger/20"
+                              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs font-bold text-danger-fg transition-colors hover:bg-danger/20"
                             >
                               <span className="material-symbols-outlined text-sm">delete</span>
                               Delete
@@ -1132,7 +1132,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               ) : shiftEdits[viewingHistoryFor] && shiftEdits[viewingHistoryFor].length > 0 ? (
                 <div className="space-y-4">
                   {shiftEdits[viewingHistoryFor].map((edit) => (
-                    <div key={edit.id} className="rounded-2xl border border-line bg-white/5 p-3">
+                    <div key={edit.id} className="rounded-2xl border border-line bg-overlay/5 p-3">
                       <div className="mb-3 flex items-start justify-between">
                         <div>
                           <p className="text-sm font-bold text-white">{edit.editedByName}</p>
@@ -1217,7 +1217,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <select
                   value={newShiftData.user}
                   onChange={(e) => setNewShiftData({ ...newShiftData, user: e.target.value })}
-                  className="w-full rounded-lg border border-line-strong bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white"
                 >
                   <option value="">Select user</option>
                   {users.map((u) => (
@@ -1234,7 +1234,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                 <select
                   value={newShiftData.job}
                   onChange={(e) => setNewShiftData({ ...newShiftData, job: e.target.value })}
-                  className="w-full rounded-lg border border-line-strong bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white"
                 >
                   <option value="">Select job</option>
                   {jobs.map((j) => (
@@ -1254,7 +1254,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   onChange={(e) =>
                     setNewShiftData({ ...newShiftData, clockInTime: e.target.value })
                   }
-                  className="w-full rounded-lg border border-line-strong bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white"
                 />
               </div>
               <div>
@@ -1267,7 +1267,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
                   onChange={(e) =>
                     setNewShiftData({ ...newShiftData, clockOutTime: e.target.value })
                   }
-                  className="w-full rounded-lg border border-line-strong bg-white/10 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line-strong bg-overlay/10 px-3 py-2 text-sm text-white"
                 />
                 <p className="mt-1 text-xs text-subtle">Leave empty for an active (open) shift.</p>
               </div>
@@ -1276,7 +1276,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
               <button
                 onClick={() => !addingShift && setShowAddShift(false)}
                 disabled={addingShift}
-                className="flex-1 rounded-lg bg-white/10 py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-lg bg-overlay/10 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
                 Cancel
               </button>

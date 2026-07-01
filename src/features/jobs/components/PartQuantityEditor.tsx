@@ -58,7 +58,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
             const next: Record<string, number> = n > 0 ? { [NO_VARIANT_DASH_KEY]: n } : {};
             onChange(next, { mode: 'variants', setCount: 0 });
           }}
-          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
+          className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
           placeholder="0"
         />
       </div>
@@ -140,7 +140,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
             value={setCount}
             disabled={disabled}
             onChange={(e) => onSetCountChange(parseInt(e.target.value) || 0)}
-            className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
+            className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
             placeholder="0"
           />
           {total > 0 && (
@@ -171,7 +171,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
                     onChange={(e) =>
                       onVariantChange(variant.variantSuffix, parseInt(e.target.value) || 0)
                     }
-                    className="flex-1 rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
+                    className="flex-1 rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
                     placeholder="0"
                   />
                   <span className="text-[10px] text-subtle">units</span>

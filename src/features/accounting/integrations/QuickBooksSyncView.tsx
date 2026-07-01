@@ -461,7 +461,7 @@ export default function QuickBooksSyncView() {
                     ? 'border-red-500/30 bg-red-500/10 text-red-300'
                     : loopState === 'done'
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      : 'border-line bg-white/5 text-muted'
+                      : 'border-line bg-overlay/5 text-muted'
                 }`}
                 role={loopState === 'failed' ? 'alert' : 'status'}
               >
@@ -526,7 +526,7 @@ export default function QuickBooksSyncView() {
             )}
 
             {skips.length > 0 && (
-              <details className="rounded-2xl border border-line bg-white/5 p-2">
+              <details className="rounded-2xl border border-line bg-overlay/5 p-2">
                 <summary className="cursor-pointer text-sm font-semibold text-muted">
                   {skips.length} record{skips.length === 1 ? '' : 's'} skipped — no effect on your
                   books

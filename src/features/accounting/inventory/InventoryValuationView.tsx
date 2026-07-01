@@ -156,7 +156,7 @@ export default function InventoryValuationView() {
             <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-white/5 text-muted">
+                  <tr className="border-b border-line bg-overlay/5 text-muted">
                     <th className="px-3 py-2 text-left font-semibold">Item</th>
                     <th className="px-3 py-2 text-right font-semibold">On hand</th>
                     <th className="px-3 py-2 text-right font-semibold">Avg cost</th>
@@ -169,7 +169,7 @@ export default function InventoryValuationView() {
                     <tr
                       key={row.sourceInventoryId}
                       onClick={() => openItem(row)}
-                      className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+                      className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                     >
                       <td className="px-3 py-2">
                         <span className="block truncate font-medium text-white">
@@ -191,7 +191,7 @@ export default function InventoryValuationView() {
                     </tr>
                   ))}
                   {/* Grand totals — asset value ties to GL 1300 */}
-                  <tr className="border-t border-line bg-white/5">
+                  <tr className="border-t border-line bg-overlay/5">
                     <td className="px-3 py-2 font-bold text-white">
                       {totals.itemCount} {totals.itemCount === 1 ? 'item' : 'items'}
                     </td>

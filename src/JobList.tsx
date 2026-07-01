@@ -269,7 +269,7 @@ const JobList: React.FC<JobListProps> = ({
                             e.stopPropagation();
                             onNavigate('time-reports', job.id);
                           }}
-                          className="flex items-center gap-1 rounded border border-line-strong bg-white/5 px-2 py-1 text-[10px] font-bold text-muted transition-colors hover:bg-white/10"
+                          className="flex items-center gap-1 rounded border border-line-strong bg-overlay/5 px-2 py-1 text-[10px] font-bold text-muted transition-colors hover:bg-overlay/10"
                         >
                           <span className="material-symbols-outlined text-sm">schedule</span>
                           Time

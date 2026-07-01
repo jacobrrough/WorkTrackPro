@@ -110,7 +110,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-cyan-400">local_shipping</span>
           <h3 className="text-base font-semibold text-white">Deliveries</h3>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs text-muted">
+          <span className="rounded bg-overlay/10 px-1.5 py-0.5 text-xs text-muted">
             {deliveries?.length ?? 0}
           </span>
         </div>
@@ -137,7 +137,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
               <span className="text-xs font-semibold text-green-400">Complete</span>
             )}
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1.5 overflow-hidden rounded-full bg-overlay/10">
             <div
               className="h-full rounded-full bg-cyan-500 transition-all"
               style={{ width: `${progressPercent}%` }}

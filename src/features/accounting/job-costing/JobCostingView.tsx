@@ -122,7 +122,7 @@ export default function JobCostingView() {
           <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-line bg-white/5 text-muted">
+                <tr className="border-b border-line bg-overlay/5 text-muted">
                   {COLUMNS.map((c) => {
                     const isActive = c.key === sortKey;
                     return (
@@ -159,7 +159,7 @@ export default function JobCostingView() {
                   <tr
                     key={row.jobId}
                     onClick={() => openJob(row)}
-                    className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+                    className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                   >
                     <td className="px-3 py-2">
                       <span className="block truncate font-medium text-white">{row.name}</span>
@@ -176,7 +176,7 @@ export default function JobCostingView() {
                   </tr>
                 ))}
                 {/* Grand totals (blended margin %), summed in integer cents. */}
-                <tr className="border-t border-line bg-white/5">
+                <tr className="border-t border-line bg-overlay/5">
                   <td className="px-3 py-2 font-bold text-white" colSpan={2}>
                     {sorted.length} {sorted.length === 1 ? 'job' : 'jobs'}
                   </td>

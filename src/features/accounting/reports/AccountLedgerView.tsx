@@ -71,7 +71,7 @@ export default function AccountLedgerView() {
           ]}
         >
           {/* Opening balance carried in from before the window start. */}
-          <tr className="border-t border-line/60 bg-white/[0.03]">
+          <tr className="border-t border-line/60 bg-overlay/[0.03]">
             <td className="px-3 py-2 text-muted" colSpan={5}>
               Opening balance
             </td>
@@ -97,7 +97,7 @@ export default function AccountLedgerView() {
           ))}
 
           {/* Period totals: gross debits and credits posted in the window. */}
-          <tr className="border-t border-line bg-white/5">
+          <tr className="border-t border-line bg-overlay/5">
             <td className="px-3 py-2 font-bold text-white" colSpan={3}>
               Period totals
             </td>
@@ -105,7 +105,7 @@ export default function AccountLedgerView() {
             <MoneyCell amount={data.totalCredit} strong />
             <td className="px-3 py-2" />
           </tr>
-          <tr className="border-t border-line bg-white/5">
+          <tr className="border-t border-line bg-overlay/5">
             <td className="px-3 py-2 font-bold text-white" colSpan={5}>
               Closing balance
             </td>

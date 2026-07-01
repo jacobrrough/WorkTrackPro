@@ -246,7 +246,7 @@ export default function BudgetEditorView() {
               <div className="overflow-x-auto rounded-lg border border-line">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-white/5 text-muted">
+                    <tr className="border-b border-line bg-overlay/5 text-muted">
                       <th className="sticky left-0 z-10 bg-app-2 px-3 py-2 text-left font-semibold">
                         Account
                       </th>
@@ -269,7 +269,7 @@ export default function BudgetEditorView() {
                       />
                     ))}
                     {/* Grand totals row */}
-                    <tr className="border-t border-line bg-white/5">
+                    <tr className="border-t border-line bg-overlay/5">
                       <td className="sticky left-0 z-10 bg-surface px-3 py-2 font-bold text-white">
                         All accounts
                       </td>
@@ -329,7 +329,7 @@ function BudgetTypeGroup({
 
   return (
     <>
-      <tr className="bg-white/[0.03]">
+      <tr className="bg-overlay/[0.03]">
         <td
           className="sticky left-0 z-10 bg-app-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-muted"
           colSpan={14}
@@ -365,7 +365,7 @@ function BudgetTypeGroup({
         );
       })}
       {/* Group subtotal */}
-      <tr className="border-t border-line/60 bg-white/[0.02]">
+      <tr className="border-t border-line/60 bg-overlay/[0.02]">
         <td className="sticky left-0 z-10 bg-app-2 px-3 py-1.5 text-right text-xs font-semibold text-muted">
           {ACCOUNT_TYPE_LABELS[type]} subtotal
         </td>

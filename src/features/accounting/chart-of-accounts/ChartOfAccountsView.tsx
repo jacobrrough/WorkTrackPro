@@ -61,7 +61,7 @@ function AccountFormModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -207,7 +207,7 @@ export default function ChartOfAccountsView() {
                     <span className="flex-1 text-white">{a.name}</span>
                     <span className="text-xs uppercase text-subtle">{a.normalBalance}</span>
                     {a.isSystem && (
-                      <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                      <span className="rounded-full bg-overlay/5 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
                         system
                       </span>
                     )}

@@ -207,7 +207,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
 
   // Full view for detail page
   return (
-    <div className="rounded-2xl border border-line bg-white/5 p-3">
+    <div className="rounded-2xl border border-line bg-overlay/5 p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">checklist</span>
@@ -233,7 +233,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
               className={`flex cursor-pointer items-start gap-3 rounded p-2 transition-all ${
                 item.checked
                   ? 'border border-green-500/20 bg-green-500/10'
-                  : 'border border-line bg-white/5 hover:border-primary/50'
+                  : 'border border-line bg-overlay/5 hover:border-primary/50'
               }`}
             >
               <input
@@ -241,7 +241,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                 checked={item.checked}
                 onChange={() => handleToggleItem(index)}
                 disabled={updating}
-                className="mt-1 h-4 w-4 rounded border-line-strong bg-white/10 text-primary focus:ring-primary focus:ring-offset-0"
+                className="mt-1 h-4 w-4 rounded border-line-strong bg-overlay/10 text-primary focus:ring-primary focus:ring-offset-0"
               />
               <div className="flex-1">
                 <p
@@ -309,7 +309,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                   {history.map((record) => (
                     <div
                       key={record.id}
-                      className="rounded-2xl border border-line bg-white/5 p-3"
+                      className="rounded-2xl border border-line bg-overlay/5 p-3"
                     >
                       <div className="mb-2 flex items-start justify-between gap-2">
                         <div>

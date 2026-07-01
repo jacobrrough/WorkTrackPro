@@ -94,7 +94,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
           <label className="mb-1 block text-sm text-muted">Title</label>
           <input
             autoFocus
-            className="mb-4 w-full rounded border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+            className="mb-4 w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Card title"
@@ -103,7 +103,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
 
           <label className="mb-1 block text-sm text-muted">Description</label>
           <textarea
-            className="mb-4 w-full resize-none rounded border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+            className="mb-4 w-full resize-none rounded border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -117,7 +117,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
                 <label className="text-sm text-muted">
                   Attachments
                   {attachments.length > 0 && (
-                    <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-muted">
+                    <span className="ml-2 rounded bg-overlay/10 px-1.5 py-0.5 text-xs text-muted">
                       {attachments.length}
                     </span>
                   )}
@@ -136,7 +136,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               />
             </div>
           ) : (
-            <p className="mb-4 rounded border border-dashed border-line bg-white/5 px-3 py-2 text-xs text-subtle">
+            <p className="mb-4 rounded border border-dashed border-line bg-overlay/5 px-3 py-2 text-xs text-subtle">
               Save the card to upload files.
             </p>
           )}
@@ -145,7 +145,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
             <div>
               <label className="mb-1 block text-sm text-muted">Assignee</label>
               <select
-                className="w-full rounded border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
               >
@@ -161,7 +161,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               <label className="mb-1 block text-sm text-muted">Due date</label>
               <input
                 type="date"
-                className="w-full rounded border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
               />
@@ -198,7 +198,7 @@ const CardEditorModal: React.FC<CardEditorModalProps> = ({
               <button
                 type="button"
                 onClick={onDelete}
-                className="text-sm text-danger hover:underline"
+                className="text-sm text-danger-fg hover:underline"
               >
                 Delete card
               </button>

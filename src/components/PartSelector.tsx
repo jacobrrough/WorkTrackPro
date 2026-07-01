@@ -248,7 +248,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
   const hasSetMode = !!effectiveSetComposition;
 
   return (
-    <div className="rounded-2xl border border-line bg-white/5 p-4">
+    <div className="rounded-2xl border border-line bg-overlay/5 p-4">
       <h3 className="mb-3 text-sm font-bold text-white">Part & Dash Numbers</h3>
 
       <div className="mb-3">
@@ -269,7 +269,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
               handleSearch();
             }}
             placeholder="e.g., SK-F35-0911"
-            className="flex-1 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+            className="flex-1 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
           />
           {loading && (
             <span className="material-symbols-outlined animate-spin text-primary">refresh</span>
@@ -286,7 +286,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                     setShowSuggestions(false);
                     loadPart(suggestion.partNumber);
                   }}
-                  className="flex w-full items-center justify-between border-b border-line/60 px-3 py-2 text-left hover:bg-white/5"
+                  className="flex w-full items-center justify-between border-b border-line/60 px-3 py-2 text-left hover:bg-overlay/5"
                 >
                   <span className="font-mono text-xs text-white">{suggestion.partNumber}</span>
                   <span className="truncate pl-3 text-xs text-muted">{suggestion.name}</span>
@@ -348,7 +348,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                 step="1"
                 value={setCount}
                 onChange={(e) => handleSetCountChange(parseInt(e.target.value) || 0)}
-                className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                 placeholder="0"
               />
               {totalQuantity > 0 && (
@@ -387,7 +387,7 @@ const PartSelector: React.FC<PartSelectorProps> = ({
                         onChange={(e) =>
                           handleQuantityChange(variant.variantSuffix, parseInt(e.target.value) || 0)
                         }
-                        className="flex-1 rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                        className="flex-1 rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                         placeholder="0"
                       />
                       <span className="text-[10px] text-subtle">units</span>

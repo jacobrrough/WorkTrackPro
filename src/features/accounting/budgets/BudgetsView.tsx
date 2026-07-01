@@ -74,7 +74,7 @@ function NewBudgetModal({ onClose }: { onClose: (createdId?: string) => void }) 
             type="button"
             onClick={() => onClose()}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -202,7 +202,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
               className={`rounded-full px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
                 active
                   ? 'bg-primary text-on-accent'
-                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white disabled:opacity-50'
+                  : 'bg-overlay/5 text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-50'
               }`}
             >
               {BUDGET_STATUS_LABELS[s]}

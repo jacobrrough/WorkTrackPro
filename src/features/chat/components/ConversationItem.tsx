@@ -36,12 +36,12 @@ export function ConversationItem({
       className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
         isActive
           ? 'border-l-2 border-primary bg-primary/10'
-          : 'border-l-2 border-transparent hover:bg-white/5'
+          : 'border-l-2 border-transparent hover:bg-overlay/5'
       }`}
     >
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-          isGroup ? 'bg-primary/20 text-primary' : 'bg-white/10 text-muted'
+          isGroup ? 'bg-primary/20 text-primary' : 'bg-overlay/10 text-muted'
         }`}
       >
         <span className="material-symbols-outlined text-xl">{isGroup ? 'group' : 'person'}</span>

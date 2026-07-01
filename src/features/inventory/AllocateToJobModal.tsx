@@ -52,7 +52,7 @@ export default function AllocateToJobModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Close allocation dialog"
           >
             <span className="material-symbols-outlined">close</span>
@@ -71,7 +71,7 @@ export default function AllocateToJobModal({
             </label>
             <select
               id="allocate-job"
-              className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white"
+              className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
               value={jobId}
               onChange={(event) => setJobId(event.target.value)}
               required
@@ -94,7 +94,7 @@ export default function AllocateToJobModal({
               type="number"
               min="1"
               step="1"
-              className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white"
+              className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
               required
@@ -109,7 +109,7 @@ export default function AllocateToJobModal({
             <textarea
               id="allocate-notes"
               rows={2}
-              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Optional allocation note"

@@ -16,7 +16,7 @@ import {
 } from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',

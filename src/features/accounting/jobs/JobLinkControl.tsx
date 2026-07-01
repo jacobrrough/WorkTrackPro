@@ -140,7 +140,7 @@ export default function JobLinkControl({
                 type="button"
                 onClick={() => void apply(null)}
                 disabled={mutation.isPending}
-                className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-muted hover:bg-white/10 disabled:opacity-50"
+                className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-muted hover:bg-overlay/10 disabled:opacity-50"
               >
                 Unlink
               </button>
@@ -149,7 +149,7 @@ export default function JobLinkControl({
               type="button"
               onClick={openPicker}
               disabled={mutation.isPending}
-              className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-overlay/10 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-sm">
                 {currentJobId ? 'swap_horiz' : 'add_link'}
@@ -192,7 +192,7 @@ export default function JobLinkControl({
                     onClick={() => void apply(j.id)}
                     onMouseEnter={() => setActiveIndex(i)}
                     className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm ${
-                      i === activeIndex ? 'bg-primary/20' : 'hover:bg-white/5'
+                      i === activeIndex ? 'bg-primary/20' : 'hover:bg-overlay/5'
                     } ${j.id === currentJobId ? 'text-primary' : 'text-white'}`}
                   >
                     <span className="truncate">{jobLabel(j)}</span>

@@ -118,7 +118,7 @@ export default function ToolsScreen({
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex size-10 items-center justify-center rounded-lg border border-line bg-white/5 text-white transition-colors hover:bg-white/10"
+            className="flex size-10 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -146,7 +146,7 @@ export default function ToolsScreen({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, barcode, bin, or who has it"
-            className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white"
+            className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
           />
 
           {visible.length === 0 ? (
@@ -166,7 +166,7 @@ export default function ToolsScreen({
                   <button
                     type="button"
                     onClick={() => setSelectedToolId(tool.id)}
-                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-overlay/5 p-3 text-left transition-colors hover:bg-overlay/10"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-bold text-white">{tool.name}</p>

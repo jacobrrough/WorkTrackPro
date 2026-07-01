@@ -62,7 +62,7 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
           {canEditBranding && (
             <button
               onClick={() => setEditingBranding(true)}
-              className="flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+              className="flex items-center gap-1.5 rounded bg-overlay/10 px-3 py-1.5 text-sm text-white hover:bg-overlay/20"
               title="Edit company name, contact info and logo"
             >
               <span className="material-symbols-outlined text-base">branding_watermark</span>
@@ -71,7 +71,7 @@ const PackingSlipPreview: React.FC<PackingSlipPreviewProps> = ({
           )}
           <button
             onClick={() => handlePrint()}
-            className="flex items-center gap-1.5 rounded bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+            className="flex items-center gap-1.5 rounded bg-overlay/10 px-3 py-1.5 text-sm text-white hover:bg-overlay/20"
           >
             <span className="material-symbols-outlined text-base">print</span>
             Print

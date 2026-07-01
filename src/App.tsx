@@ -295,7 +295,7 @@ export default function App() {
   if (currentUser && currentUser.isApproved === false) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background-dark px-4">
-        <div className="w-full max-w-sm rounded-lg border border-line bg-white/5 p-6 text-center">
+        <div className="w-full max-w-sm rounded-lg border border-line bg-overlay/5 p-6 text-center">
           <span className="material-symbols-outlined text-4xl text-primary">shield_lock</span>
           <h2 className="mt-4 text-lg font-bold text-white">Pending approval</h2>
           <p className="mt-2 text-sm text-muted">

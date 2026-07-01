@@ -89,7 +89,7 @@ export default function JournalEntryDetail() {
                 </td>
               </tr>
             ))}
-            <tr className="border-t border-line bg-white/5 font-bold">
+            <tr className="border-t border-line bg-overlay/5 font-bold">
               <td className="px-3 py-2 text-white" colSpan={2}>
                 Total
               </td>

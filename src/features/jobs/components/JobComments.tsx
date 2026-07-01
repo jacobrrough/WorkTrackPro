@@ -135,7 +135,7 @@ function MentionTextarea({
                 insertMention(user);
               }}
               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                i === selectedIndex ? 'bg-primary/20 text-white' : 'text-muted hover:bg-white/5'
+                i === selectedIndex ? 'bg-primary/20 text-white' : 'text-muted hover:bg-overlay/5'
               }`}
             >
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-600 text-[10px] font-bold text-white">

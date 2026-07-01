@@ -88,7 +88,7 @@ function ConfirmLockDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -195,7 +195,7 @@ function DefaultAccountGroupSection({
         <span className="text-[11px] text-subtle">{summary.label}</span>
       </div>
       <p className="mb-2 text-xs text-subtle">{caption}</p>
-      <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+      <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
         {rows.map((row) => (
           <DefaultAccountRow key={row.key} row={row} />
         ))}

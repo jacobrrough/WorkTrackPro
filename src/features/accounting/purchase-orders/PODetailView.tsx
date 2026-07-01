@@ -24,7 +24,7 @@ import {
 } from '../types';
 
 const STATUS_STYLES: Record<PoStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_received: 'bg-amber-500/15 text-amber-400',
   received: 'bg-green-500/15 text-green-400',
@@ -70,7 +70,7 @@ function ReceiveModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void 
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -209,12 +209,12 @@ function VariancePanel({ po }: { po: PurchaseOrder }) {
       {totalBillCount > 0 && (
         <div className="mt-3">
           <h3 className="mb-1 text-xs font-semibold uppercase text-subtle">Bills from this PO</h3>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {bills.map((b) => (
               <a
                 key={b.id}
                 href={`${ACCOUNTING_BASE}/bills/${b.id}`}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-white/5"
+                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-overlay/5"
               >
                 <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
                   {b.billNumber || 'Draft'}

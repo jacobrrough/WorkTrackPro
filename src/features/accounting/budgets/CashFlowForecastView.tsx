@@ -86,7 +86,7 @@ export default function CashFlowForecastView() {
                   className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
                     active
                       ? 'bg-primary text-on-accent'
-                      : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+                      : 'bg-overlay/5 text-muted hover:bg-overlay/10 hover:text-white'
                   }`}
                 >
                   {h} mo
@@ -180,7 +180,7 @@ export default function CashFlowForecastView() {
                 </td>
               </tr>
             ))}
-            <tr className="border-t border-line bg-white/5">
+            <tr className="border-t border-line bg-overlay/5">
               <td className="px-3 py-2 font-bold text-white">Horizon total</td>
               <MoneyCell amount={data.totalInflow} strong />
               <MoneyCell amount={data.totalOutflow} strong />

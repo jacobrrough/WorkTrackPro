@@ -60,7 +60,7 @@ function NewReconciliationModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -120,9 +120,9 @@ function ReconciliationRow({ rec, onOpen }: { rec: Reconciliation; onOpen: () =>
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-muted">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-overlay/5 text-muted">
         <span className="material-symbols-outlined text-lg">
           {done ? 'check_circle' : 'balance'}
         </span>
@@ -205,7 +205,7 @@ export default function BankReconcileView() {
         )}
 
         {reconciliations.length > 0 && (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {reconciliations.map((rec) => (
               <ReconciliationRow key={rec.id} rec={rec} onOpen={() => openDetail(rec.id)} />
             ))}

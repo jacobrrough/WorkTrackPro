@@ -26,7 +26,7 @@ const inputClass =
   'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const CO_STATUS_STYLES: Record<ChangeOrder['status'], string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   approved: 'bg-green-500/15 text-green-400',
   rejected: 'bg-red-500/15 text-red-400',
 };
@@ -108,7 +108,7 @@ function SovSection({ projectId, sovLines }: { projectId: string; sovLines: SovL
           </tr>
         )}
         {/* Add-row */}
-        <tr className="border-t border-line bg-white/[0.02]">
+        <tr className="border-t border-line bg-overlay/[0.02]">
           <td className="px-3 py-2">
             <input
               aria-label="New SOV description"
@@ -256,7 +256,7 @@ function ChangeOrdersSection({
           </tr>
         )}
         {/* Add-row */}
-        <tr className="border-t border-line bg-white/[0.02]">
+        <tr className="border-t border-line bg-overlay/[0.02]">
           <td className="px-3 py-2">
             <input
               aria-label="New change-order number"
@@ -405,7 +405,7 @@ function ReleaseRetainageModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>

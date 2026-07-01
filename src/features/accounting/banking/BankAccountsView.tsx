@@ -67,7 +67,7 @@ function NewBankAccountModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -180,7 +180,7 @@ function BankAccountRow({ account, onOpen }: { account: BankAccount; onOpen: () 
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
         <span className="material-symbols-outlined text-lg">
@@ -257,7 +257,7 @@ export default function BankAccountsView() {
         )}
 
         {accounts.length > 0 && (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {accounts.map((account) => (
               <BankAccountRow
                 key={account.id}

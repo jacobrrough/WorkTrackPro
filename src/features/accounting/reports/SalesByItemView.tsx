@@ -53,7 +53,7 @@ export default function SalesByItemView() {
               <MoneyCell amount={r.amount} />
             </tr>
           ))}
-          <tr className="border-t border-line bg-white/5">
+          <tr className="border-t border-line bg-overlay/5">
             <td className="px-3 py-2 font-bold text-white" colSpan={2}>
               Total sales
             </td>

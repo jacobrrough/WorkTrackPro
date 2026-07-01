@@ -90,12 +90,12 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
   const archived = !!project.archivedAt;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-white/5">
+    <div className="overflow-hidden rounded-lg border border-line bg-overlay/5">
       <button
         onClick={onToggle}
         aria-expanded={expanded}
         aria-label={`${project.name}, ${expanded ? 'collapse' : 'expand'}`}
-        className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-white/5"
+        className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-overlay/5"
       >
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -117,7 +117,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                 {project.status === 'finished' ? 'Finished' : 'Active'}
               </span>
               {archived && (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-muted">
+                <span className="rounded bg-overlay/10 px-1.5 py-0.5 text-[10px] text-muted">
                   Archived
                 </span>
               )}
@@ -165,7 +165,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                   setNameDraft(project.name);
                   setEditingName(false);
                 }}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-overlay/10"
               >
                 Cancel
               </button>
@@ -233,14 +233,14 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                 setNameDraft(project.name);
                 setEditingName((v) => !v);
               }}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+              className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-overlay/10"
             >
               Rename
             </button>
             {project.status === 'finished' ? (
               <button
                 onClick={() => mutations.setProjectStatus(project.id, 'active')}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-overlay/10"
               >
                 Reopen
               </button>
@@ -255,7 +255,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
             {archived ? (
               <button
                 onClick={() => mutations.unarchiveProject(project.id)}
-                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-overlay/10"
               >
                 Restore
               </button>
@@ -268,7 +268,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                     onConfirm: () => mutations.archiveProject(project.id),
                   })
                 }
-                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-overlay/10"
               >
                 Archive
               </button>

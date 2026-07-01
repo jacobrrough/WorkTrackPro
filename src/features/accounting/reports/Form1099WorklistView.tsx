@@ -131,7 +131,7 @@ export default function Form1099WorklistView() {
               {data.rows.map((r) => (
                 <Worklist1099Row key={r.vendorId} row={r} />
               ))}
-              <tr className="border-t border-line bg-white/5">
+              <tr className="border-t border-line bg-overlay/5">
                 <td className="px-3 py-2 font-bold text-white" colSpan={4}>
                   Total reportable
                 </td>
@@ -162,7 +162,7 @@ function Worklist1099Row({ row }: { row: Form1099Row }) {
       <td className="px-3 py-2 text-white">
         {row.vendorName || row.vendorId}
         {row.exempt && (
-          <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
+          <span className="ml-2 rounded-full bg-overlay/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
             Exempt
           </span>
         )}

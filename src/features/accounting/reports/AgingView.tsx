@@ -97,7 +97,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                       r.bucket === 'current'
-                        ? 'bg-white/10 text-muted'
+                        ? 'bg-overlay/10 text-muted'
                         : r.bucket === '90+'
                           ? 'bg-red-500/15 text-red-400'
                           : 'bg-amber-500/15 text-amber-400'
@@ -109,7 +109,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
                 <MoneyCell amount={r.balanceDue} />
               </tr>
             ))}
-            <tr className="border-t border-line bg-white/5">
+            <tr className="border-t border-line bg-overlay/5">
               <td className="px-3 py-2 font-bold text-white" colSpan={5}>
                 Total outstanding
               </td>

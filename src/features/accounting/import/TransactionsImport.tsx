@@ -364,7 +364,7 @@ export default function TransactionsImport() {
                     <Fragment key={e.index}>
                       <tr
                         onClick={() => toggle(e.index)}
-                        className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+                        className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                       >
                         <td className="px-3 py-1.5 text-muted">{e.date || '—'}</td>
                         <td className="px-3 py-1.5 text-muted">{e.type || '—'}</td>
@@ -418,7 +418,7 @@ export default function TransactionsImport() {
                   : `Import ${summary.ready} balanced ${summary.ready === 1 ? 'entry' : 'entries'}`}
               </Button>
               {importing && (
-                <div className="h-2 w-48 overflow-hidden rounded-full bg-white/10">
+                <div className="h-2 w-48 overflow-hidden rounded-full bg-overlay/10">
                   <div
                     className="h-full bg-primary transition-all"
                     style={{

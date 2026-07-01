@@ -22,7 +22,7 @@ const AddColumnButton: React.FC<AddColumnButtonProps> = ({ onAdd }) => {
       <div className="flex w-60 flex-shrink-0 flex-col gap-2 rounded-lg border border-line bg-surface-dark p-3">
         <input
           autoFocus
-          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+          className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {

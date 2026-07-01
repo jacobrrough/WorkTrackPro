@@ -76,6 +76,14 @@
   --c-danger: 220 38 38;
   --c-danger-hover: 185 28 28;
   --c-on-danger: 255 255 255;
+  /* Danger FOREGROUND — a lighter red for destructive/error TEXT and outlines on
+     dark surfaces (the #dc2626 fill only clears ~3.6:1 as text; this clears AA).
+     Overridden darker in the light `daylight` theme. */
+  --c-danger-fg: 248 113 113;
+  /* Overlay tint for hover/zebra/pill fills that must read as "a touch lighter
+     than the surface". White on dark themes; flipped dark in `daylight` so these
+     overlays don't invert to dark smudges on a white surface. */
+  --c-overlay: 255 255 255;
 }
 
 [data-theme='deep-ocean'] {
@@ -178,6 +186,10 @@
   --c-accent: 147 51 234;
   --c-accent-hover: 126 34 206;
   --c-on-accent: 255 255 255;
+  /* Light-theme overrides: danger text goes darker (legible on white), and the
+     overlay tint flips to dark ink so hover/zebra fills read on a light surface. */
+  --c-danger-fg: 185 28 28;
+  --c-overlay: 20 24 31;
 }
 
 :root {
@@ -229,6 +241,32 @@ option {
 option {
   background-color: rgb(var(--c-surface-2));
   color: rgb(var(--c-text));
+}
+
+/* App-wide keyboard focus ring (WCAG 2.4.7). The public surface has its own in
+   public.css; this covers every employee-app control, including chrome rendered
+   outside the `.app` scope (modals via portal, login). Accent-filled controls
+   opt into an on-accent ring so the red ring stays visible on red. */
+:where(a, button, [role='button'], input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+}
+.focus-ring-on-accent:focus-visible {
+  outline-color: rgb(var(--c-on-accent));
+}
+
+/* Global reduced-motion (WCAG 2.3.3). The `.app` kit has its own block, but
+   Tailwind keyframes (slide-in, fade-in, scan-line) and animate-pulse/spin also
+   run on chrome outside `.app`; honor the OS setting document-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer utilities {

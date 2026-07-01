@@ -185,7 +185,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
               </button>
               <button
                 onClick={onClose}
-                className="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-95 sm:py-3 sm:text-base"
+                className="rounded-lg bg-overlay/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-overlay/20 active:scale-95 sm:py-3 sm:text-base"
               >
                 Close
               </button>
@@ -193,7 +193,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
           </div>
         ) : (
           <div className="p-4 text-center">
-            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-lg bg-white/5 sm:h-32 sm:w-32">
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-lg bg-overlay/5 sm:h-32 sm:w-32">
               <span className="material-symbols-outlined text-5xl text-white sm:text-6xl">
                 {fileType === 'document' ? 'description' : 'attachment'}
               </span>
@@ -226,7 +226,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ attachment, onClose, onDelete, 
             <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-lg bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-95 sm:py-3 sm:text-base"
+                className="flex-1 rounded-lg bg-overlay/10 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-overlay/20 active:scale-95 sm:py-3 sm:text-base"
               >
                 Cancel
               </button>

@@ -177,15 +177,15 @@ export default function InventoryMainView({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="min-w-[3.25rem] rounded-lg bg-white/5 px-2 py-1 text-center">
+          <div className="min-w-[3.25rem] rounded-lg bg-overlay/5 px-2 py-1 text-center">
             <span className="block text-[10px] text-subtle">In</span>
             <span className="block text-xs font-bold text-white">{item.inStock}</span>
           </div>
-          <div className="min-w-[3.25rem] rounded-lg bg-white/5 px-2 py-1 text-center">
+          <div className="min-w-[3.25rem] rounded-lg bg-overlay/5 px-2 py-1 text-center">
             <span className="block text-[10px] text-subtle">Alloc</span>
             <span className="block text-xs font-bold text-yellow-300">{stock.allocated}</span>
           </div>
-          <div className="min-w-[3.25rem] rounded-lg bg-white/5 px-2 py-1 text-center">
+          <div className="min-w-[3.25rem] rounded-lg bg-overlay/5 px-2 py-1 text-center">
             <span className="block text-[10px] text-subtle">Avail</span>
             <span className={`block text-xs font-bold ${availColor}`}>{stock.available}</span>
           </div>
@@ -223,7 +223,7 @@ export default function InventoryMainView({
             <button
               type="button"
               onClick={onBack}
-              className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
+              className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
               aria-label="Back to dashboard"
             >
               <span className="material-symbols-outlined">arrow_back</span>
@@ -248,7 +248,7 @@ export default function InventoryMainView({
               type="button"
               onClick={() => setTab(t.key)}
               className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-lg px-4 text-xs font-bold ${
-                tab === t.key ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'
+                tab === t.key ? 'bg-primary text-on-accent' : 'bg-overlay/5 text-muted'
               }`}
             >
               {t.label}
@@ -274,13 +274,13 @@ export default function InventoryMainView({
                 value={filters.search}
                 onChange={(event) => onFiltersChange({ search: event.target.value })}
                 placeholder="Search name, SKU, bin, category"
-                className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white"
+                className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white"
               />
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <select
                   value={filters.category}
                   onChange={(event) => onFiltersChange({ category: event.target.value })}
-                  className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-sm text-white"
+                  className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-sm text-white"
                 >
                   <option value="all">All Categories</option>
                   {categoryOptions.map((cat) => (
@@ -292,7 +292,7 @@ export default function InventoryMainView({
                 <select
                   value={filters.supplier}
                   onChange={(event) => onFiltersChange({ supplier: event.target.value })}
-                  className="min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-sm text-white"
+                  className="min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-sm text-white"
                 >
                   <option value="all">All Suppliers</option>
                   {suppliers.map((supplier) => (
@@ -305,7 +305,7 @@ export default function InventoryMainView({
             </div>
 
             <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:text-sm">
-              <div className="rounded-lg border border-line bg-white/5 px-3 py-2 text-white">
+              <div className="rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white">
                 <p className="text-muted">Parts</p>
                 <p className="font-bold text-white">{summary.total}</p>
               </div>
@@ -329,7 +329,7 @@ export default function InventoryMainView({
           aria-expanded={headerExpanded}
           aria-controls="inventory-filters-panel"
           aria-label={headerExpanded ? 'Collapse filters' : 'Expand filters'}
-          className="mt-2 flex w-full items-center justify-center rounded-lg py-1 text-muted hover:bg-white/5 hover:text-white"
+          className="mt-2 flex w-full items-center justify-center rounded-lg py-1 text-muted hover:bg-overlay/5 hover:text-white"
         >
           <span
             className={`material-symbols-outlined text-xl transition-transform duration-300 ease-in-out ${
@@ -363,7 +363,7 @@ export default function InventoryMainView({
             {binLetterGroups.map((letterGroup) => (
               <details
                 key={letterGroup.letter}
-                className="rounded-lg border border-line bg-white/5"
+                className="rounded-lg border border-line bg-overlay/5"
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-white">
                   <span>{letterGroup.letter}</span>

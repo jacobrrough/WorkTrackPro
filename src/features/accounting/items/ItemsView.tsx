@@ -120,7 +120,7 @@ function ItemEditorModal({ item, onClose }: { item: Item | null; onClose: () => 
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -295,7 +295,7 @@ function ItemRow({
         disabled={update.isPending}
         aria-label={item.isActive ? 'Deactivate' : 'Reactivate'}
         title={item.isActive ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {item.isActive ? 'toggle_on' : 'toggle_off'}
@@ -305,7 +305,7 @@ function ItemRow({
         type="button"
         onClick={onEdit}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -377,7 +377,7 @@ export default function ItemsView() {
         )}
 
         {!isPending && !isError && items.length > 0 && (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {items.map((i) => (
               <ItemRow
                 key={i.id}

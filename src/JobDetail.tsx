@@ -2319,7 +2319,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           }}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="e.g., SK-F35-0911"
                         />
                       ) : (
@@ -2333,7 +2333,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           }}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 font-mono text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="e.g., SK-F35-0911"
                         />
                       )}
@@ -2347,11 +2347,11 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onChange={(e) => setEditForm({ ...editForm, revision: e.target.value })}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="A, B, NC"
                         />
                       ) : (
-                        <div className="rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-subtle">
+                        <div className="rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-subtle">
                           —
                         </div>
                       )}
@@ -2366,15 +2366,15 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onBlur={partsLocked ? undefined : savePartName}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Part name"
                         />
                       ) : linkedParts?.[idx] ? (
-                        <div className="rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white">
+                        <div className="rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white">
                           {linkedParts[idx].name || '—'}
                         </div>
                       ) : (
-                        <div className="rounded border border-line bg-white/5 px-2 py-1.5 text-xs text-subtle">
+                        <div className="rounded border border-line bg-overlay/5 px-2 py-1.5 text-xs text-subtle">
                           —
                         </div>
                       )}
@@ -2385,7 +2385,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             {/* Job details */}
-            <div className="rounded-2xl border border-line bg-white/5 p-3">
+            <div className="rounded-2xl border border-line bg-overlay/5 p-3">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
                 Job details
               </p>
@@ -2398,7 +2398,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <label className="mb-0.5 block text-[11px] text-muted">Customer</label>
                     <Suspense
                       fallback={
-                        <div className="h-[34px] w-full rounded border border-line bg-white/5" />
+                        <div className="h-[34px] w-full rounded border border-line bg-overlay/5" />
                       }
                     >
                       <JobCustomerSelect
@@ -2406,7 +2406,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         onChange={(customerId) =>
                           setEditForm({ ...editForm, customerId: customerId ?? '' })
                         }
-                        className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                        className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                       />
                     </Suspense>
                   </div>
@@ -2417,7 +2417,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.estNumber}
                     onChange={(e) => setEditForm({ ...editForm, estNumber: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="EST #"
                   />
                 </div>
@@ -2427,7 +2427,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.rfqNumber}
                     onChange={(e) => setEditForm({ ...editForm, rfqNumber: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="RFQ #"
                   />
                 </div>
@@ -2437,7 +2437,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.invNumber}
                     onChange={(e) => setEditForm({ ...editForm, invNumber: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="INV #"
                   />
                 </div>
@@ -2447,7 +2447,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.po}
                     onChange={(e) => setEditForm({ ...editForm, po: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="PO"
                   />
                 </div>
@@ -2457,7 +2457,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="text"
                     value={editForm.owrNumber}
                     onChange={(e) => setEditForm({ ...editForm, owrNumber: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="OWR#"
                   />
                 </div>
@@ -2467,7 +2467,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="date"
                     value={editForm.dueDate}
                     onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -2476,7 +2476,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     type="date"
                     value={editForm.ecd}
                     onChange={(e) => setEditForm({ ...editForm, ecd: e.target.value })}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -2486,7 +2486,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     onChange={(e) =>
                       setEditForm({ ...editForm, status: e.target.value as JobStatus })
                     }
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                   >
                     {ALL_STATUSES.map((s) => (
                       <option key={s.id} value={s.id} className="bg-surface text-white">
@@ -2504,7 +2504,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       onChange={(e) =>
                         setEditForm({ ...editForm, binLocation: e.target.value.toUpperCase() })
                       }
-                      className="min-w-0 flex-1 rounded border border-line bg-white/5 px-2 py-1.5 font-mono text-sm uppercase text-white focus:border-primary/50 focus:outline-none"
+                      className="min-w-0 flex-1 rounded border border-line bg-overlay/5 px-2 py-1.5 font-mono text-sm uppercase text-white focus:border-primary/50 focus:outline-none"
                       placeholder="A4c"
                       maxLength={10}
                     />
@@ -2518,12 +2518,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     </button>
                   </div>
                 </div>
-                <div className="col-span-2 flex items-center justify-between rounded border border-line bg-white/5 px-2 py-1.5">
+                <div className="col-span-2 flex items-center justify-between rounded border border-line bg-overlay/5 px-2 py-1.5">
                   <span className="text-[11px] font-medium text-white">Rush</span>
                   <button
                     type="button"
                     onClick={() => setEditForm({ ...editForm, isRush: !editForm.isRush })}
-                    className={`h-5 w-9 rounded-full transition-colors ${editForm.isRush ? 'bg-red-500' : 'bg-white/20'}`}
+                    className={`h-5 w-9 rounded-full transition-colors ${editForm.isRush ? 'bg-red-500' : 'bg-overlay/20'}`}
                   >
                     <div
                       className={`h-4 w-4 transform rounded-full bg-white transition-transform ${editForm.isRush ? 'translate-x-4' : 'translate-x-0.5'}`}
@@ -2539,7 +2539,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setEditForm({ ...editForm, description: e.target.value });
                       autosizeDescription();
                     }}
-                    className="min-h-[4.5rem] w-full resize-none overflow-hidden rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="min-h-[4.5rem] w-full resize-none overflow-hidden rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="Description..."
                   />
                 </div>
@@ -2567,7 +2567,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   ? setDashQuantities
                   : (next: Record<string, number>) => setEditingPartDashQuantities(partIdx, next);
               return (
-                <div key={link.partId} className="rounded-2xl border border-line bg-white/5 p-2">
+                <div key={link.partId} className="rounded-2xl border border-line bg-overlay/5 p-2">
                   {editingParts.length > 1 && (
                     <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
                       Part {partIdx + 1}: {link.partNumber}
@@ -2596,7 +2596,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               checked={quantityInputMode === 'sets'}
                               onChange={() => setQuantityInputMode('sets')}
                               disabled={partsLocked}
-                              className="h-4 w-4 border-line-strong bg-white/5 text-primary focus:ring-primary"
+                              className="h-4 w-4 border-line-strong bg-overlay/5 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-white">Full sets</span>
                           </label>
@@ -2609,7 +2609,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               checked={quantityInputMode === 'variants'}
                               onChange={() => setQuantityInputMode('variants')}
                               disabled={partsLocked}
-                              className="h-4 w-4 border-line-strong bg-white/5 text-primary focus:ring-primary"
+                              className="h-4 w-4 border-line-strong bg-overlay/5 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-white">Variants</span>
                           </label>
@@ -2633,7 +2633,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                             }}
                             disabled={partsLocked}
                             title={partsLockedReason ?? undefined}
-                            className="w-24 rounded border border-line bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-24 rounded border border-line bg-overlay/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Number of sets"
                           />
                           {derivedCompleteSets > 0 && (
@@ -2662,7 +2662,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                               return (
                                 <div
                                   key={variant.id}
-                                  className="flex flex-col gap-1 rounded border border-line bg-white/5 px-2 py-1.5"
+                                  className="flex flex-col gap-1 rounded border border-line bg-overlay/5 px-2 py-1.5"
                                 >
                                   <label
                                     htmlFor={`dash-qty-${partIdx}-${variant.id}`}
@@ -2693,7 +2693,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                       }}
                                       disabled={partsLocked}
                                       title={partsLockedReason ?? undefined}
-                                      className="w-16 rounded border border-line bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="w-16 rounded border border-line bg-overlay/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                       aria-label={`Quantity for ${label}`}
                                     />
                                     <span className="text-[10px] text-muted">Qty</span>
@@ -2714,7 +2714,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       )}
                       <label className="mb-0.5 block text-[11px] text-muted">Sets</label>
                       {totalFromDashQuantities(qtyForPart) > 0 ? (
-                        <div className="rounded border border-line bg-white/5 px-2 py-1 text-sm text-muted">
+                        <div className="rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-muted">
                           {formatDashSummary(qtyForPart)} → Total{' '}
                           {totalFromDashQuantities(qtyForPart)}
                         </div>
@@ -2725,12 +2725,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })}
                           disabled={partsLocked}
                           title={partsLockedReason ?? undefined}
-                          className="w-full max-w-24 rounded border border-line bg-white/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                          className="w-full max-w-24 rounded border border-line bg-overlay/5 px-2 py-1 text-base text-white focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                           placeholder="Sets"
                           aria-label="Quantity (sets)"
                         />
                       ) : (
-                        <div className="rounded border border-line bg-white/5 px-2 py-1 text-sm text-subtle">
+                        <div className="rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-subtle">
                           —
                         </div>
                       )}
@@ -2741,12 +2741,12 @@ const JobDetail: React.FC<JobDetailProps> = ({
             })}
 
             {/* Labor & Materials intertwined with variants section */}
-            <div className="rounded-2xl border border-line bg-white/5 p-3">
+            <div className="rounded-2xl border border-line bg-overlay/5 p-3">
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">
                 Labor & materials
               </h3>
               {editingParts.length > 1 && perPartBreakdowns && (
-                <div className="mb-3 rounded-2xl border border-line bg-white/5 p-2">
+                <div className="mb-3 rounded-2xl border border-line bg-overlay/5 p-2">
                   <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                     Per-part (read-only)
                   </p>
@@ -2789,14 +2789,14 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setLaborHoursFromPart(false);
                       setEditForm({ ...editForm, laborHours: e.target.value });
                     }}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
                 {canViewFinancials && (
                   <div>
                     <label className="mb-0.5 block text-[11px] text-muted">Rate</label>
-                    <div className="rounded border border-line bg-white/5 px-2 py-1.5 text-xs text-white">
+                    <div className="rounded border border-line bg-overlay/5 px-2 py-1.5 text-xs text-white">
                       ${laborRate}/hr
                     </div>
                   </div>
@@ -2804,7 +2804,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 {canViewFinancials && (
                   <div>
                     <label className="mb-0.5 block text-[11px] text-muted">Labor $</label>
-                    <div className="rounded border border-line bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
+                    <div className="rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm font-semibold text-white">
                       ${laborCost.toFixed(2)}
                     </div>
                   </div>
@@ -2820,7 +2820,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setAllocationSource('total');
                       setEditForm({ ...editForm, cncHours: e.target.value });
                     }}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2835,7 +2835,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       setAllocationSource('total');
                       setEditForm({ ...editForm, printer3DHours: e.target.value });
                     }}
-                    className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                     placeholder="0"
                   />
                 </div>
@@ -2852,7 +2852,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       onChange={(e) =>
                         setEditForm({ ...editForm, progressEstimatePercent: e.target.value })
                       }
-                      className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-base text-white focus:border-primary/50 focus:outline-none"
                       placeholder="Optional 0–100"
                     />
                   </div>
@@ -2867,7 +2867,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         </span>
                       )}
                     </label>
-                    <div className="rounded border border-line bg-white/5 px-2 py-1.5 text-sm font-semibold text-white">
+                    <div className="rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm font-semibold text-white">
                       ${displayMaterialTotal.toFixed(2)}
                     </div>
                   </div>
@@ -2910,7 +2910,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         return (
                           <li
                             key={item.id}
-                            className="flex items-center justify-between rounded border border-line bg-white/5 px-2 py-1.5"
+                            className="flex items-center justify-between rounded border border-line bg-overlay/5 px-2 py-1.5"
                           >
                             <div className="flex min-w-0 flex-1 items-center gap-2">
                               <button
@@ -2952,7 +2952,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </div>
 
             {linkedPart && (
-              <div className="rounded-2xl border border-line bg-white/5 p-3">
+              <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                 <h3 className="mb-1.5 text-xs font-semibold text-white">
                   Part BOM ({linkedPart.partNumber})
                 </h3>
@@ -2986,7 +2986,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           return (
                             <div
                               key={inventoryId}
-                              className="flex items-center justify-between rounded border border-line bg-white/5 px-2 py-1.5"
+                              className="flex items-center justify-between rounded border border-line bg-overlay/5 px-2 py-1.5"
                             >
                               <div className="flex min-w-0 items-center gap-2">
                                 {invItem ? (
@@ -3030,7 +3030,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
               <button
                 onClick={handleCancelEdit}
-                className="flex-1 rounded-lg bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20"
+                className="flex-1 rounded-lg bg-overlay/10 py-3 font-bold text-white transition-colors hover:bg-overlay/20"
               >
                 Cancel
               </button>
@@ -3091,19 +3091,19 @@ const JobDetail: React.FC<JobDetailProps> = ({
 
               {/* Job info grid: Due, Status, ECD, Bin */}
               <div className="mb-3 grid grid-cols-2 gap-2">
-                <div className="rounded-2xl bg-white/5 p-2.5">
+                <div className="rounded-2xl bg-overlay/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">Due Date</p>
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.dueDate)}</p>
                 </div>
-                <div className="rounded-2xl bg-white/5 p-2.5">
+                <div className="rounded-2xl bg-overlay/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">Status</p>
                   <StatusBadge status={job.status} size="sm" />
                 </div>
-                <div className="rounded-2xl bg-white/5 p-2.5">
+                <div className="rounded-2xl bg-overlay/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">ECD</p>
                   <p className="text-sm font-bold text-white">{formatDateOnly(job.ecd)}</p>
                 </div>
-                <div className="rounded-2xl bg-white/5 p-2.5">
+                <div className="rounded-2xl bg-overlay/5 p-2.5">
                   <p className="mb-0.5 text-[9px] font-bold uppercase text-muted">Bin</p>
                   <p className="text-sm font-bold text-white">{job.binLocation || '—'}</p>
                 </div>
@@ -3123,7 +3123,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
 
               {currentUser.isAdmin && (
-                <div className="mb-3 rounded-2xl border border-line bg-white/5 p-2.5">
+                <div className="mb-3 rounded-2xl border border-line bg-overlay/5 p-2.5">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
                       Completion
@@ -3144,7 +3144,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       </span>
                     </div>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-overlay/10">
                     <div
                       className={`h-full rounded-full transition-all ${
                         completionProgress.laborOverEstimate ? 'bg-red-500' : 'bg-primary'
@@ -3213,7 +3213,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               )}
 
               {/* Time / Shifts - list and link to Time Reports */}
-              <div className="mb-3 rounded-2xl border border-line bg-white/5 p-2.5">
+              <div className="mb-3 rounded-2xl border border-line bg-overlay/5 p-2.5">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Time</p>
                   <button
@@ -3279,7 +3279,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           key={s.id}
                           type="button"
                           onClick={() => onNavigate('time-reports', job.id)}
-                          className="flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-left text-[10px] transition-colors hover:bg-white/10"
+                          className="flex w-full cursor-pointer items-center justify-between rounded px-2 py-1.5 text-left text-[10px] transition-colors hover:bg-overlay/10"
                         >
                           <span className="text-muted">
                             {formatDateOnly(s.clockInTime)} · {s.userName || s.userInitials || '—'}
@@ -3362,7 +3362,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
               {!job.binLocation && currentUser.isAdmin && (
                 <button
                   onClick={() => setShowBinLocationScanner(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-white/5 p-2.5 transition-colors hover:bg-white/10"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-overlay/5 p-2.5 transition-colors hover:bg-overlay/10"
                 >
                   <span className="material-symbols-outlined text-base text-primary">
                     add_location
@@ -3427,7 +3427,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           </div>
                         </div>
                         {Object.keys(link.dashQuantities ?? {}).length > 0 ? (
-                          <div className="mb-2 rounded-2xl border border-line bg-white/5 p-2">
+                          <div className="mb-2 rounded-2xl border border-line bg-overlay/5 p-2">
                             <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                               Variants & quantities
                             </p>
@@ -3441,7 +3441,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                           // part isn't left without a quantity readout.
                           idx === 0 &&
                           job.qty && (
-                            <div className="mb-2 rounded-2xl border border-line bg-white/5 p-2">
+                            <div className="mb-2 rounded-2xl border border-line bg-overlay/5 p-2">
                               <p className="mb-1 text-[10px] font-bold uppercase text-muted">
                                 Quantity
                               </p>
@@ -3471,7 +3471,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                         <button
                           type="button"
                           onClick={() => setShowAddPartToJob(true)}
-                          className="flex items-center gap-2 rounded border border-dashed border-line-strong bg-white/5 px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-primary/50 hover:bg-white/10 hover:text-primary"
+                          className="flex items-center gap-2 rounded border border-dashed border-line-strong bg-overlay/5 px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-primary/50 hover:bg-overlay/10 hover:text-primary"
                         >
                           <span className="material-symbols-outlined text-base">add</span>
                           Add part to job
@@ -3651,7 +3651,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => onNavigate('inventory-detail', invItem.id)}
-                                      className="-ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-white/5"
+                                      className="-ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-overlay/5"
                                     >
                                       <span className="truncate font-medium text-primary hover:underline">
                                         {materialName}
@@ -3705,7 +3705,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                     <button
                       key={drawing.id}
                       onClick={() => window.open(drawing.url, '_blank')}
-                      className="flex min-h-[48px] w-full touch-manipulation items-center gap-3 rounded-2xl border border-line bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                      className="flex min-h-[48px] w-full touch-manipulation items-center gap-3 rounded-2xl border border-line bg-overlay/5 p-3 text-left transition-colors hover:bg-overlay/10"
                     >
                       <span className="material-symbols-outlined text-primary">picture_as_pdf</span>
                       <span className="truncate font-medium text-white">{drawing.filename}</span>

@@ -468,7 +468,7 @@ const InventoryDetail: React.FC<InventoryDetailProps> = ({
                 type="button"
                 onClick={() => setActiveSection(section)}
                 className={`min-h-[40px] rounded-lg px-3 text-sm font-bold capitalize ${
-                  activeSection === section ? 'bg-primary text-on-accent' : 'bg-white/5 text-muted'
+                  activeSection === section ? 'bg-primary text-on-accent' : 'bg-overlay/5 text-muted'
                 }`}
               >
                 {section}

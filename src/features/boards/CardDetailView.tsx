@@ -85,7 +85,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={onBack}
-            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Back to board"
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -110,7 +110,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
           <div className="flex flex-wrap items-center gap-2">
             {column && (
               <span
-                className={`rounded px-2.5 py-1 text-xs font-medium text-white ${column.color ?? 'bg-white/20'}`}
+                className={`rounded px-2.5 py-1 text-xs font-medium text-white ${column.color ?? 'bg-overlay/20'}`}
               >
                 {column.name}
               </span>
@@ -118,7 +118,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
             {card.dueDate && (
               <span
                 className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium ${
-                  overdue ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-muted'
+                  overdue ? 'bg-red-500/20 text-red-400' : 'bg-overlay/10 text-muted'
                 }`}
               >
                 <span className="material-symbols-outlined text-sm">schedule</span>
@@ -142,7 +142,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
           {card.description && (
             <div>
               <h3 className="mb-2 text-sm font-medium text-muted">Description</h3>
-              <p className="whitespace-pre-wrap rounded-lg border border-line bg-white/5 p-4 text-sm leading-relaxed text-white">
+              <p className="whitespace-pre-wrap rounded-lg border border-line bg-overlay/5 p-4 text-sm leading-relaxed text-white">
                 {card.description}
               </p>
             </div>
@@ -153,7 +153,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
               <h3 className="text-sm font-medium text-muted">
                 Attachments
                 {attachments.length > 0 && (
-                  <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs text-muted">
+                  <span className="ml-2 rounded bg-overlay/10 px-1.5 py-0.5 text-xs text-muted">
                     {attachments.length}
                   </span>
                 )}

@@ -173,8 +173,8 @@ const QuickActionHideZone: React.FC = () => {
       ref={setNodeRef}
       className={`mt-3 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
         isOver
-          ? 'border-danger bg-danger/20 text-danger'
-          : 'border-line-strong bg-white/[0.02] text-muted'
+          ? 'border-danger bg-danger/20 text-danger-fg'
+          : 'border-line-strong bg-overlay/[0.02] text-muted'
       }`}
     >
       <span aria-hidden="true" className="material-symbols-outlined">
@@ -254,7 +254,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
           <button
             type="button"
             onClick={onClose}
-            className="flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
             aria-label="Close"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
@@ -300,7 +300,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
 
             {error && (
               <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/20 p-3">
-                <p className="text-center text-sm text-danger">{error}</p>
+                <p className="text-center text-sm text-danger-fg">{error}</p>
               </div>
             )}
 
@@ -322,7 +322,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <button
                   type="button"
                   onClick={() => setView('enroll')}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-white/10 font-medium text-white transition-colors hover:bg-white/20"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-overlay/10 font-medium text-white transition-colors hover:bg-overlay/20"
                 >
                   <span className="material-symbols-outlined text-xl" aria-hidden>
                     autorenew
@@ -332,7 +332,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 <button
                   type="button"
                   onClick={() => setConfirmRemove(true)}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-danger/30 font-medium text-danger transition-colors hover:bg-danger/10"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-danger/30 font-medium text-danger-fg transition-colors hover:bg-danger/10"
                 >
                   <span className="material-symbols-outlined text-xl" aria-hidden>
                     remove_moderator
@@ -357,7 +357,7 @@ const SecuritySettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     type="button"
                     onClick={() => setConfirmRemove(false)}
                     disabled={removing}
-                    className="h-11 flex-1 rounded-lg bg-white/10 font-medium text-white transition-colors hover:bg-white/20 disabled:opacity-50"
+                    className="h-11 flex-1 rounded-lg bg-overlay/10 font-medium text-white transition-colors hover:bg-overlay/20 disabled:opacity-50"
                   >
                     Keep
                   </button>
@@ -834,7 +834,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => setShowMenu((open) => !open)}
-              className={`flex size-11 touch-manipulation items-center justify-center rounded-lg transition-colors hover:bg-white/10 hover:text-white ${showMenu ? 'bg-white/10 text-white' : 'text-muted'}`}
+              className={`flex size-11 touch-manipulation items-center justify-center rounded-lg transition-colors hover:bg-overlay/10 hover:text-white ${showMenu ? 'bg-overlay/10 text-white' : 'text-muted'}`}
               aria-label="Menu"
               title="Menu"
               aria-haspopup="menu"
@@ -864,7 +864,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                           setShowMenu(false);
                           item.onSelect();
                         }}
-                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-danger hover:bg-danger/10' : 'text-on-danger/90 hover:bg-white/10'}`}
+                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-danger-fg hover:bg-danger/10' : 'text-white/90 hover:bg-overlay/10'}`}
                       >
                         <span
                           aria-hidden="true"
@@ -986,7 +986,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   key={action.key}
                   type="button"
                   onClick={() => setHidden(action.key, false)}
-                  className="flex items-center gap-0.5 rounded-full border border-line bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-line-strong hover:text-white"
+                  className="flex items-center gap-0.5 rounded-full border border-line bg-overlay/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-line-strong hover:text-white"
                   aria-label={`Restore ${action.title}`}
                 >
                   <span aria-hidden="true" className="material-symbols-outlined text-xs">
@@ -998,7 +998,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={resetCustomization}
-                className="ml-auto flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-white/10 hover:text-white"
+                className="ml-auto flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[11px] font-medium text-subtle transition-colors hover:bg-overlay/10 hover:text-white"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-xs">
                   restart_alt
@@ -1097,7 +1097,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <button
                 type="button"
                 onClick={() => setIsTrackerOpen(false)}
-                className="flex size-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
                 aria-label="Close time tracker popup"
               >
                 <span aria-hidden="true" className="material-symbols-outlined">
@@ -1135,7 +1135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   onNavigate('job-detail', activeJob.id);
                   setIsTrackerOpen(false);
                 }}
-                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-line bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
+                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-line bg-overlay/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-overlay/10"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">
                   work

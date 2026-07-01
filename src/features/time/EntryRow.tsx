@@ -96,7 +96,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           </button>
           <button
             onClick={cancel}
-            className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-overlay/10"
           >
             Cancel
           </button>
@@ -108,7 +108,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
   const paid = isEntryPaid(entry);
 
   return (
-    <li className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm">
+    <li className="flex items-center justify-between gap-2 rounded-lg bg-overlay/5 px-3 py-2 text-sm">
       <div className="min-w-0">
         <span className="text-white">{entry.entryDate}</span>
         <span className="ml-2 text-muted">
@@ -126,7 +126,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           // A settled entry is locked (no edit/delete); it can only be reopened.
           <button
             onClick={() => mutations.unmarkEntryPaid(entry.id)}
-            className="rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-white/10"
+            className="rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-overlay/10"
           >
             Unmark paid
           </button>
@@ -134,7 +134,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           <>
             <button
               onClick={openEdit}
-              className="flex size-7 items-center justify-center rounded-full text-subtle hover:bg-white/10 hover:text-white"
+              className="flex size-7 items-center justify-center rounded-full text-subtle hover:bg-overlay/10 hover:text-white"
               aria-label="Edit entry"
             >
               <span className="material-symbols-outlined text-base">edit</span>

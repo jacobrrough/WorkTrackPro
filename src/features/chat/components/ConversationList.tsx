@@ -40,7 +40,7 @@ export function ConversationList({
             <button
               type="button"
               onClick={onBack}
-              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white md:flex"
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white md:flex"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
@@ -67,7 +67,7 @@ export function ConversationList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full rounded-lg border border-line bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+            className="w-full rounded-lg border border-line bg-overlay/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
           />
         </div>
       </div>
@@ -80,7 +80,7 @@ export function ConversationList({
           className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
             activeConversationId === SYSTEM_NOTIFICATIONS_ID
               ? 'border-l-2 border-primary bg-primary/10'
-              : 'border-l-2 border-transparent hover:bg-white/5'
+              : 'border-l-2 border-transparent hover:bg-overlay/5'
           }`}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">

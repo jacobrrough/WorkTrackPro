@@ -27,7 +27,7 @@ const inputClass =
   'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const STATUS_STYLES: Record<BillStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -89,7 +89,7 @@ function RecordVendorPaymentModal({ bill, onClose }: { bill: Bill; onClose: () =
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -345,7 +345,7 @@ export default function BillDetailView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Payments
               </h2>
-              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+              <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <span className="w-24 shrink-0 text-muted">{p.paymentDate}</span>

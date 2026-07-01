@@ -105,7 +105,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+        className="relative flex size-11 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
         aria-label={displayCount > 0 ? `${displayCount} notifications` : 'Notifications'}
         aria-expanded={open}
       >
@@ -136,7 +136,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   setOpen(false);
                   onNavigate?.('notification-settings' as ViewState);
                 }}
-                className="flex size-6 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white sm:size-7"
+                className="flex size-6 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white sm:size-7"
                 aria-label="Notification settings"
               >
                 <span className="material-symbols-outlined text-sm sm:text-base">settings</span>
@@ -154,7 +154,7 @@ export function NotificationBell({ onNavigate }: NotificationBellProps) {
                   key={n.id}
                   type="button"
                   onClick={() => handleSelect(n)}
-                  className={`flex w-full flex-col items-start gap-0.5 border-b border-line/60 px-2.5 py-1.5 text-left transition-colors hover:bg-white/10 sm:px-3 sm:py-2 ${
+                  className={`flex w-full flex-col items-start gap-0.5 border-b border-line/60 px-2.5 py-1.5 text-left transition-colors hover:bg-overlay/10 sm:px-3 sm:py-2 ${
                     n.readAt ? 'opacity-80' : ''
                   }`}
                 >

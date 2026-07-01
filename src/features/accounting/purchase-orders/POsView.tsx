@@ -7,7 +7,7 @@ import { PURCHASE_ORDERS_BASE } from '../constants';
 import { PO_STATUS_LABELS, type PurchaseOrder, type PoStatus } from '../types';
 
 const STATUS_STYLES: Record<PoStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_received: 'bg-amber-500/15 text-amber-400',
   received: 'bg-green-500/15 text-green-400',
@@ -30,7 +30,7 @@ function PORow({ po, onOpen }: { po: PurchaseOrder; onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
         {po.poNumber || 'Draft'}
@@ -95,7 +95,7 @@ export default function POsView() {
             <span className="w-28 shrink-0 text-right">Total</span>
             <span className="w-[88px] shrink-0" />
           </div>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {pos.map((po) => (
               <PORow
                 key={po.id}

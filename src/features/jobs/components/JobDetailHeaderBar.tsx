@@ -33,7 +33,7 @@ export default function JobDetailHeaderBar({
         <button
           onClick={onBackOrClose}
           disabled={pendingAttachmentToggleCount > 0}
-          className="flex size-12 touch-manipulation items-center justify-center rounded-lg text-muted hover:bg-white/5 hover:text-white disabled:opacity-50"
+          className="flex size-12 touch-manipulation items-center justify-center rounded-lg text-muted hover:bg-overlay/5 hover:text-white disabled:opacity-50"
           aria-label={isEditing ? 'Cancel editing and close' : 'Close job detail'}
         >
           <span className="material-symbols-outlined">close</span>
@@ -51,7 +51,7 @@ export default function JobDetailHeaderBar({
           {isAdmin && !isEditing && (
             <button
               onClick={onToggleMinimalView}
-              className="flex size-12 touch-manipulation items-center justify-center rounded-lg text-muted hover:bg-white/5 hover:text-white"
+              className="flex size-12 touch-manipulation items-center justify-center rounded-lg text-muted hover:bg-overlay/5 hover:text-white"
               title="Toggle minimal view"
               aria-label="Toggle minimal view"
             >
@@ -69,7 +69,7 @@ export default function JobDetailHeaderBar({
                 isEditing
                   ? 'text-green-400 hover:text-green-300'
                   : 'text-primary hover:text-primary/80'
-              } ${isSubmitting ? 'opacity-50' : 'hover:bg-white/5'}`}
+              } ${isSubmitting ? 'opacity-50' : 'hover:bg-overlay/5'}`}
               aria-label={isEditing ? 'Save job changes' : 'Edit job'}
             >
               <span className="material-symbols-outlined">{isEditing ? 'check' : 'edit'}</span>
@@ -77,7 +77,7 @@ export default function JobDetailHeaderBar({
           )}
 
           {!isAdmin && (
-            <div className="rounded-lg border border-line bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
+            <div className="rounded-lg border border-line bg-overlay/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
               View Only
             </div>
           )}

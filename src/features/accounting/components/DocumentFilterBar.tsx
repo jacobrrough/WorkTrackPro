@@ -125,7 +125,7 @@ export function DocumentFilterBar({
         <button
           type="button"
           onClick={() => onChange(initialDocFilters(defaultStatus))}
-          className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-white/10 hover:text-white"
+          className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-overlay/10 hover:text-white"
         >
           Clear
         </button>

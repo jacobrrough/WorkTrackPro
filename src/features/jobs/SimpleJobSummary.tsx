@@ -89,7 +89,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
             aria-label="Back"
           >
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -143,7 +143,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         ) : null}
 
         {/* Due date */}
-        <div className="rounded-2xl border border-line bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-overlay/5 p-3">
           <p className="mb-1 text-xs font-bold uppercase text-muted">Due</p>
           <p className="text-lg font-bold text-white">
             {job.dueDate ? formatDateOnly(job.dueDate) : job.ecd ? formatDateOnly(job.ecd) : '—'}
@@ -151,7 +151,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* View Drawing */}
-        <div className="rounded-2xl border border-line bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-overlay/5 p-3">
           {drawingUrl ? (
             <a
               href={drawingUrl}
@@ -168,7 +168,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* Checklist */}
-        <div className="rounded-2xl border border-line bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-overlay/5 p-3">
           <p className="mb-3 text-xs font-bold uppercase text-muted">Checklist</p>
           <ChecklistDisplay
             jobId={job.id}
@@ -181,7 +181,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* Clock In / Out + timer */}
-        <div className="rounded-2xl border border-line bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-overlay/5 p-3">
           {isClockedIn ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/20 p-3">
@@ -211,7 +211,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* Current status */}
-        <div className="rounded-2xl border border-line bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-overlay/5 p-3">
           <p className="mb-2 text-xs font-bold uppercase text-muted">Status</p>
           <StatusBadge status={job.status} size="md" />
         </div>

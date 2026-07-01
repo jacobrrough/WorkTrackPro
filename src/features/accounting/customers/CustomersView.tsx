@@ -86,7 +86,7 @@ export default function CustomersView() {
                 <span className="flex-1 truncate text-white">
                   {c.displayName || c.companyName || c.contactName || 'Customer'}
                   {!c.isActive && (
-                    <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
+                    <span className="ml-2 rounded-full bg-overlay/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
                       Inactive
                     </span>
                   )}

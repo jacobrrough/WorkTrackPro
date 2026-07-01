@@ -23,7 +23,7 @@ import {
 } from '../types';
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -31,7 +31,7 @@ const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
 };
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -139,7 +139,7 @@ function NewTransactionMenu({ items }: { items: NewTransactionItem[] }) {
                 setOpen(false);
                 it.onSelect();
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/[0.06]"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-overlay/[0.06]"
             >
               <span className="material-symbols-outlined text-base text-muted">{it.icon}</span>
               {it.label}
@@ -337,7 +337,7 @@ export default function CustomerDetailView() {
                   </span>
                 )}
                 {!customer.isActive && (
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase text-muted">
+                  <span className="rounded-full bg-overlay/10 px-2 py-0.5 text-xs font-semibold uppercase text-muted">
                     Inactive
                   </span>
                 )}
@@ -438,7 +438,7 @@ export default function CustomerDetailView() {
                       {o.label}
                       <span
                         className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
-                          active ? 'bg-primary/20 text-primary' : 'bg-white/10 text-muted'
+                          active ? 'bg-primary/20 text-primary' : 'bg-overlay/10 text-muted'
                         }`}
                       >
                         {count}

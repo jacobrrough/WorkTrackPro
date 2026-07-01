@@ -35,7 +35,7 @@ function RemoveLineButton({
       onClick={onRemove}
       aria-label={`Remove line ${index + 1}`}
       disabled={count <= 1}
-      className="flex items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+      className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
     >
       <span className="material-symbols-outlined text-lg">delete</span>
     </button>
@@ -164,7 +164,7 @@ export function InvoicePayloadEditor({
         {payload.lines.map((line, i) => (
           <div
             key={i}
-            className="flex flex-col gap-2 rounded-lg border border-line/60 bg-white/[0.02] p-2"
+            className="flex flex-col gap-2 rounded-lg border border-line/60 bg-overlay/[0.02] p-2"
           >
             <div className="grid grid-cols-[1fr_60px_84px_32px] items-center gap-2">
               <input
@@ -309,7 +309,7 @@ export function BillPayloadEditor({
         {payload.lines.map((line, i) => (
           <div
             key={i}
-            className="flex flex-col gap-2 rounded-lg border border-line/60 bg-white/[0.02] p-2"
+            className="flex flex-col gap-2 rounded-lg border border-line/60 bg-overlay/[0.02] p-2"
           >
             <div className="grid grid-cols-[1fr_60px_84px_32px] items-center gap-2">
               <input
@@ -409,7 +409,7 @@ export function JournalPayloadEditor({
           {payload.lines.map((line, i) => (
             <div
               key={i}
-              className="flex flex-col gap-2 rounded-lg border border-line/60 bg-white/[0.02] p-2"
+              className="flex flex-col gap-2 rounded-lg border border-line/60 bg-overlay/[0.02] p-2"
             >
               <div className="grid grid-cols-[1fr_84px_84px_32px] items-center gap-2">
                 <AccountPicker
@@ -448,7 +448,7 @@ export function JournalPayloadEditor({
         <AddLineButton onAdd={addLine} />
 
         {/* Live balance indicator */}
-        <div className="mt-3 flex items-center justify-between rounded-lg border border-line bg-white/5 px-3 py-2 text-sm">
+        <div className="mt-3 flex items-center justify-between rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm">
           <span className="flex items-center gap-4">
             <span className="text-muted">
               Debits{' '}

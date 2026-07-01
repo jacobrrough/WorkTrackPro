@@ -100,7 +100,7 @@ function OpenDriftRow({ drift, onOpen }: { drift: TaxTableDrift; onOpen: () => v
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-overlay/5"
     >
       <span className="material-symbols-outlined text-amber-300">warning</span>
       <div className="min-w-0 flex-1">
@@ -269,7 +269,7 @@ export default function TaxTableUpdatesView() {
             )}
 
           {!openDrift.isPending && !openDrift.isError && driftRows.length > 0 && (
-            <Card padding="none" className="divide-y divide-white/5 overflow-hidden">
+            <Card padding="none" className="divide-y divide-overlay/5 overflow-hidden">
               {driftRows.map((drift) => (
                 <OpenDriftRow
                   key={drift.id}
@@ -314,7 +314,7 @@ export default function TaxTableUpdatesView() {
           )}
 
           {!sources.isPending && !sources.isError && (sources.data ?? []).length > 0 && (
-            <Card padding="none" className="divide-y divide-white/5 overflow-hidden">
+            <Card padding="none" className="divide-y divide-overlay/5 overflow-hidden">
               {(sources.data ?? []).map((source) => (
                 <SourceRow key={source.id} source={source} />
               ))}

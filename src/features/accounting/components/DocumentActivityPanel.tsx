@@ -80,7 +80,7 @@ function VersionRow({
       <button
         type="button"
         onClick={() => expandable && setOpen((v) => !v)}
-        className={`flex w-full items-start gap-3 px-3 py-2 text-left ${expandable ? 'hover:bg-white/5' : 'cursor-default'}`}
+        className={`flex w-full items-start gap-3 px-3 py-2 text-left ${expandable ? 'hover:bg-overlay/5' : 'cursor-default'}`}
         aria-expanded={expandable ? open : undefined}
       >
         <span className="material-symbols-outlined mt-0.5 text-lg text-muted">

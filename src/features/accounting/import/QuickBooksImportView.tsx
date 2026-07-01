@@ -71,7 +71,7 @@ export default function QuickBooksImportView() {
               key={imp.key}
               type="button"
               onClick={() => navigate(imp.path)}
-              className="flex items-start gap-3 rounded-lg border border-line bg-card-dark p-4 text-left transition-colors hover:border-primary/40 hover:bg-white/5"
+              className="flex items-start gap-3 rounded-lg border border-line bg-card-dark p-4 text-left transition-colors hover:border-primary/40 hover:bg-overlay/5"
             >
               <span className={`material-symbols-outlined text-3xl ${imp.iconClass}`}>
                 {imp.icon}

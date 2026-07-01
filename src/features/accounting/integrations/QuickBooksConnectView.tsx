@@ -53,7 +53,7 @@ function StatusCard({ status }: { status: QboStatus }) {
       className={`rounded-lg border p-3 ${
         connected
           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-          : 'border-line bg-white/5 text-muted'
+          : 'border-line bg-overlay/5 text-muted'
       }`}
       role="status"
     >

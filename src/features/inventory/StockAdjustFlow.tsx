@@ -136,7 +136,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
+                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -148,7 +148,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={() => setStep('scan')}
-                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
+                className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
                 aria-label="Back to scanner"
               >
                 <span className="material-symbols-outlined">qr_code_scanner</span>
@@ -160,7 +160,7 @@ export default function StockAdjustFlow({
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Part name, SKU, bin, category…"
               autoFocus
-              className="mt-3 min-h-[44px] w-full rounded-lg border border-line bg-white/5 px-3 text-white focus:border-primary focus:outline-none"
+              className="mt-3 min-h-[44px] w-full rounded-lg border border-line bg-overlay/5 px-3 text-white focus:border-primary focus:outline-none"
             />
           </header>
           <ScrollablePage className="p-3">
@@ -227,7 +227,7 @@ export default function StockAdjustFlow({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+                className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
                 aria-label="Cancel"
               >
                 <span className="material-symbols-outlined">close</span>
@@ -260,7 +260,7 @@ export default function StockAdjustFlow({
                 step="any"
                 value={qtyText}
                 onChange={(e) => setQtyText(e.target.value)}
-                className="min-h-[48px] flex-1 rounded-lg border border-line bg-white/5 px-3 text-center text-lg font-bold text-white focus:border-primary focus:outline-none"
+                className="min-h-[48px] flex-1 rounded-lg border border-line bg-overlay/5 px-3 text-center text-lg font-bold text-white focus:border-primary focus:outline-none"
               />
               <button
                 type="button"

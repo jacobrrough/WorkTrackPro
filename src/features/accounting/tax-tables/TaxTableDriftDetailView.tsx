@@ -122,7 +122,7 @@ function ConfirmActionDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -376,7 +376,7 @@ export default function TaxTableDriftDetailView() {
                 </div>
               </Card>
             ) : (
-              <div className="rounded-2xl border border-line bg-white/5 p-3 text-sm text-muted">
+              <div className="rounded-2xl border border-line bg-overlay/5 p-3 text-sm text-muted">
                 This alert is{' '}
                 <span className="font-semibold text-muted">
                   {TAX_TABLE_DRIFT_STATUS_LABELS[drift.status].toLowerCase()}

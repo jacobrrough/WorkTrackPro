@@ -45,7 +45,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
         <label className="mb-1 block text-sm text-muted">Name</label>
         <input
           autoFocus
-          className="mb-4 w-full rounded border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+          className="mb-4 w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Board name"
@@ -54,7 +54,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
 
         <label className="mb-1 block text-sm text-muted">Description (optional)</label>
         <textarea
-          className="mb-4 w-full resize-none rounded border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+          className="mb-4 w-full resize-none rounded border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}

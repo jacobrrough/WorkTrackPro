@@ -82,7 +82,7 @@ function StatusSwitcher({ asset }: { asset: FixedAssetRegisterRow }) {
               className={`rounded-full px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
                 active
                   ? 'bg-primary text-on-accent'
-                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white disabled:opacity-50'
+                  : 'bg-overlay/5 text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-50'
               }`}
             >
               {FIXED_ASSET_STATUS_LABELS[s]}
@@ -313,7 +313,7 @@ export default function FixedAssetDetailView() {
                 </span>
                 <span className="font-mono tabular-nums">{Math.round(progress * 100)}%</span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-overlay/10">
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${Math.round(progress * 100)}%` }}
@@ -353,7 +353,7 @@ export default function FixedAssetDetailView() {
                 <div className="overflow-x-auto rounded-lg border border-line">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="border-b border-line bg-white/5 text-muted">
+                      <tr className="border-b border-line bg-overlay/5 text-muted">
                         <th className="px-3 py-2 text-left font-semibold">#</th>
                         <th className="px-3 py-2 text-left font-semibold">Period end</th>
                         <th className="px-3 py-2 text-right font-semibold">Amount</th>

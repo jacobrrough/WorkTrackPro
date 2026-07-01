@@ -17,7 +17,7 @@ export function AppearanceSettingsView({ onBack }: AppearanceSettingsViewProps) 
           <button
             type="button"
             onClick={onBack}
-            className="flex size-10 items-center justify-center rounded-lg border border-line bg-white/5 text-white transition-colors hover:bg-white/10"
+            className="flex size-10 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
             aria-label="Go back"
           >
             <span className="material-symbols-outlined">arrow_back</span>

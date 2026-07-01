@@ -72,7 +72,7 @@ function VariantRow({
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-2.5 py-1.5">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-overlay/5 px-2.5 py-1.5">
       <span className="font-mono text-sm font-bold text-white">{label}</span>
       <div className="flex items-center gap-2">
         <button

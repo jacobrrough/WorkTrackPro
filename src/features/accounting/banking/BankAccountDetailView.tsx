@@ -193,7 +193,7 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
               onClick={() => onToggleExcluded(true)}
               disabled={busy}
               aria-label="Exclude transaction"
-              className="flex size-9 items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-amber-400 disabled:opacity-40"
+              className="flex size-9 items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-amber-400 disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-lg">block</span>
             </button>
@@ -365,7 +365,7 @@ export default function BankAccountDetailView() {
                     className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
                       isActive
                         ? 'bg-primary text-on-accent'
-                        : 'text-muted hover:bg-white/10 hover:text-white'
+                        : 'text-muted hover:bg-overlay/10 hover:text-white'
                     }`}
                   >
                     {t.label}
@@ -405,7 +405,7 @@ export default function BankAccountDetailView() {
             )}
 
             {transactions.length > 0 && (
-              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+              <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
                 {transactions.map((txn) => (
                   <TransactionRow key={txn.id} txn={txn} />
                 ))}

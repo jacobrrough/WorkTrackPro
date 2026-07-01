@@ -37,7 +37,7 @@ import {
  */
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -45,7 +45,7 @@ const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
 };
 
 const BILL_STATUS_STYLES: Record<BillStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   open: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-green-500/15 text-green-400',
@@ -53,7 +53,7 @@ const BILL_STATUS_STYLES: Record<BillStatus, string> = {
 };
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -130,7 +130,7 @@ function InvoicesTable({
         <tr
           key={inv.id}
           onClick={() => onOpen(inv.id)}
-          className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+          className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
         >
           <td className="px-3 py-2 font-mono text-xs text-muted">{inv.invoiceNumber || 'Draft'}</td>
           <td className="px-3 py-2 text-muted">{inv.invoiceDate}</td>
@@ -168,7 +168,7 @@ function BillsTable({ bills, onOpen }: { bills: Bill[]; onOpen: (id: string) => 
         <tr
           key={bill.id}
           onClick={() => onOpen(bill.id)}
-          className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+          className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
         >
           <td className="px-3 py-2 font-mono text-xs text-muted">{bill.billNumber || 'Draft'}</td>
           <td className="px-3 py-2 text-white">{bill.vendorName || bill.vendorId}</td>
@@ -212,7 +212,7 @@ function EstimatesTable({
         <tr
           key={est.id}
           onClick={() => onOpen(est.id)}
-          className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+          className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
         >
           <td className="px-3 py-2 font-mono text-xs text-muted">
             {est.estimateNumber || 'Draft'}

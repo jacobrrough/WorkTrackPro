@@ -63,7 +63,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
         <label className="mb-1 block text-sm text-muted">Name</label>
         <input
-          className="mb-4 w-full rounded border border-line bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
+          className="mb-4 w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={100}
@@ -71,7 +71,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
         <label className="mb-1 block text-sm text-muted">Description</label>
         <textarea
-          className="mb-4 w-full resize-none rounded border border-line bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
+          className="mb-4 w-full resize-none rounded border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -122,7 +122,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
         <div className="border-t border-line pt-4">
           {confirmDelete ? (
             <div className="space-y-2">
-              <p className="text-sm text-danger">
+              <p className="text-sm text-danger-fg">
                 Delete this board? All columns, cards, and members will be removed. This cannot be
                 undone.
               </p>
@@ -146,7 +146,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-sm text-danger hover:underline"
+              className="text-sm text-danger-fg hover:underline"
             >
               Delete this board
             </button>

@@ -124,7 +124,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
         </div>
         <button
           onClick={onClose}
-          className="flex size-10 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20"
+          className="flex size-10 items-center justify-center rounded-lg bg-overlay/10 text-white hover:bg-overlay/20"
           aria-label="Close scanner"
         >
           <span className="material-symbols-outlined">close</span>
@@ -138,7 +138,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
 
       {/* Instructions */}
       <div className="bg-gradient-to-t from-black to-transparent p-6">
-        <div className="rounded-lg bg-white/10 p-4 backdrop-blur">
+        <div className="rounded-lg bg-overlay/10 p-4 backdrop-blur">
           <div className="flex items-start gap-3">
             <span className="material-symbols-outlined text-2xl text-primary">qr_code</span>
             <div className="flex-1">

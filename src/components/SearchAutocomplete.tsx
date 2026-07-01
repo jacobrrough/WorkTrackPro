@@ -247,7 +247,7 @@ const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                   onClick={() => selectSuggestion(suggestion)}
                   onMouseEnter={() => setActiveIndex(index)}
                   className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
-                    index === activeIndex ? 'bg-primary/20' : 'hover:bg-white/5'
+                    index === activeIndex ? 'bg-primary/20' : 'hover:bg-overlay/5'
                   } ${suggestion.type === 'search' ? 'border-t border-line' : ''}`}
                 >
                   <span className="material-symbols-outlined text-lg text-muted">

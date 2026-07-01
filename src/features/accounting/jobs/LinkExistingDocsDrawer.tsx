@@ -149,7 +149,7 @@ export default function LinkExistingDocsDrawer({
         ) : visible.length === 0 ? (
           <p className="text-sm italic text-subtle">No matching documents to link.</p>
         ) : (
-          <ul className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <ul className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {visible.map((d) => (
               <li key={`${d.kind}-${d.id}`} className="flex items-center gap-3 px-3 py-2">
                 <span

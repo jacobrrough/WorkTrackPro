@@ -751,7 +751,7 @@ export default function InvoiceDetailView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Payments
               </h2>
-              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+              <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <span className="w-24 shrink-0 text-muted">{p.paymentDate}</span>
@@ -774,7 +774,7 @@ export default function InvoiceDetailView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Email history
               </h2>
-              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+              <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
                 {emails.map((em) => (
                   <div key={em.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <span className="w-28 shrink-0 text-muted">{em.createdAt.slice(0, 10)}</span>

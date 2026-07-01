@@ -36,7 +36,7 @@ function DeltaRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-overlay/5 px-3 py-2">
       <div className="min-w-0">
         <span className="font-mono text-sm font-bold text-white">{label}</span>
         <span className="ml-2 text-[11px] text-muted">

@@ -151,7 +151,7 @@ export default function SalesTaxLiabilityView() {
                 {data.agencies.map((a) => (
                   <AgencyRow key={a.agencyId} agency={a} />
                 ))}
-                <tr className="border-t border-line bg-white/5">
+                <tr className="border-t border-line bg-overlay/5">
                   <td className="px-3 py-2 font-bold text-white" colSpan={4}>
                     Total tax collected
                   </td>

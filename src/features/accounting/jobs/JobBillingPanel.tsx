@@ -31,7 +31,7 @@ import LinkExistingDocsDrawer from './LinkExistingDocsDrawer';
  */
 
 const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-emerald-500/15 text-emerald-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -40,7 +40,7 @@ const ESTIMATE_STATUS_STYLES: Record<EstimateStatus, string> = {
 };
 
 const INVOICE_STATUS_STYLES: Record<InvoiceStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   partially_paid: 'bg-amber-500/15 text-amber-400',
   paid: 'bg-emerald-500/15 text-emerald-400',
@@ -132,14 +132,14 @@ export default function JobBillingPanel({ job }: { job: Job }) {
         <div className="flex flex-wrap gap-2">
           <Link
             to={`${ESTIMATES_BASE}/new?jobId=${job.id}`}
-            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-overlay/10"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New estimate
           </Link>
           <Link
             to={`${ACCOUNTING_BASE}/invoices/new?jobId=${job.id}`}
-            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-overlay/10"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New invoice
@@ -147,7 +147,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           <button
             type="button"
             onClick={() => setShowLink(true)}
-            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-overlay/10"
           >
             <span className="material-symbols-outlined text-sm">add_link</span>
             Link existing
@@ -204,7 +204,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
               <li key={e.id}>
                 <Link
                   to={`${ESTIMATES_BASE}/${e.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                  className="flex flex-wrap items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-white hover:bg-overlay/5"
                 >
                   <span className="font-semibold text-white">{e.estimateNumber ?? 'Estimate'}</span>
                   <span className="text-xs text-muted">{e.estimateDate}</span>
@@ -235,7 +235,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
               <li key={inv.id}>
                 <Link
                   to={`${ACCOUNTING_BASE}/invoices/${inv.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                  className="flex flex-wrap items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-white hover:bg-overlay/5"
                 >
                   <span className="font-semibold text-white">{inv.invoiceNumber ?? 'Invoice'}</span>
                   <span className="text-xs text-muted">{inv.invoiceDate}</span>

@@ -110,7 +110,7 @@ export function DateRangeFilter({ value, onChange, asOfOnly = false }: DateRange
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
                 isActive
                   ? 'bg-primary text-on-accent'
-                  : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white'
+                  : 'bg-overlay/5 text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               {p.label}

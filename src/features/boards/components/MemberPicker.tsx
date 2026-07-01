@@ -32,7 +32,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
   return (
     <div>
       <div className="mb-3 space-y-2">
-        <div className="flex items-center justify-between rounded border border-line bg-white/5 px-3 py-2">
+        <div className="flex items-center justify-between rounded border border-line bg-overlay/5 px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/30 text-xs font-medium text-primary">
               {users.find((u) => u.id === ownerId)?.initials ?? 'O'}
@@ -47,7 +47,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
         {members.map((m) => (
           <div
             key={m.id}
-            className="flex items-center justify-between rounded border border-line bg-white/5 px-3 py-2"
+            className="flex items-center justify-between rounded border border-line bg-overlay/5 px-3 py-2"
           >
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-600 text-xs font-medium text-muted">
@@ -68,7 +68,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
               </select>
               <button
                 onClick={() => onRemove(m.userId)}
-                className="text-subtle hover:text-danger"
+                className="text-subtle hover:text-danger-fg"
                 aria-label="Remove member"
               >
                 <span className="material-symbols-outlined text-base">close</span>
@@ -82,7 +82,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
         <div>
           <input
             autoFocus
-            className="mb-2 w-full rounded border border-line bg-white/5 px-3 py-1.5 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+            className="mb-2 w-full rounded border border-line bg-overlay/5 px-3 py-1.5 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email"
@@ -99,7 +99,7 @@ const MemberPicker: React.FC<MemberPickerProps> = ({
                     setSearch('');
                     setShowSearch(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-white/10"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-muted hover:bg-overlay/10"
                 >
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 text-[10px] font-medium text-muted">
                     {u.initials ?? u.name?.slice(0, 2)?.toUpperCase() ?? '?'}

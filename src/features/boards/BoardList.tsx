@@ -39,7 +39,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate('dashboard')}
-            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -82,7 +82,7 @@ const BoardList: React.FC<BoardListProps> = ({ onNavigate }) => {
                 <button
                   key={board.id}
                   onClick={() => onNavigate('board-detail', board.id)}
-                  className="flex flex-col items-start rounded-lg border border-line bg-surface-dark p-4 text-left transition-colors hover:border-line-strong hover:bg-white/5"
+                  className="flex flex-col items-start rounded-lg border border-line bg-surface-dark p-4 text-left transition-colors hover:border-line-strong hover:bg-overlay/5"
                 >
                   <div className="mb-2 flex w-full items-start justify-between">
                     <h3 className="font-semibold text-white">{board.name}</h3>

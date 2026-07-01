@@ -88,7 +88,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
         attachments.map((attachment) => (
           <div
             key={attachment.id}
-            className="flex w-full items-center gap-3 rounded-2xl border border-line bg-white/5 p-3 transition-colors hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-2xl border border-line bg-overlay/5 p-3 transition-colors hover:bg-overlay/10"
           >
             <button
               type="button"
@@ -126,7 +126,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
                     e.stopPropagation();
                     onToggleAdminOnly(attachment.id, e.target.checked);
                   }}
-                  className="h-4 w-4 rounded border-line-strong bg-white/10 text-primary focus:ring-primary"
+                  className="h-4 w-4 rounded border-line-strong bg-overlay/10 text-primary focus:ring-primary"
                 />
               </label>
             )}

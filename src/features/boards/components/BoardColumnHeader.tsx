@@ -94,14 +94,14 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
           {column.name}
         </span>
       )}
-      <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
+      <span className="rounded-full bg-overlay/20 px-1.5 py-0.5 text-[10px] font-bold text-white">
         {cardCount}
       </span>
       {!readOnly && (
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu((v) => !v)}
-            className="flex items-center justify-center rounded p-0.5 text-subtle hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded p-0.5 text-subtle hover:bg-overlay/10 hover:text-white"
             aria-label="Column options"
           >
             <span className="material-symbols-outlined text-base">more_vert</span>
@@ -114,7 +114,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                     setShowMenu(false);
                     onAddCard();
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-white/10"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-overlay/10"
                 >
                   <span className="material-symbols-outlined text-base">add</span>
                   Add card
@@ -125,14 +125,14 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
                   setShowMenu(false);
                   setEditing(true);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-white/10"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-overlay/10"
               >
                 <span className="material-symbols-outlined text-base">edit</span>
                 Rename
               </button>
               <button
                 onClick={() => setShowColors((v) => !v)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-white/10"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted hover:bg-overlay/10"
               >
                 <span className="material-symbols-outlined text-base">palette</span>
                 Color
@@ -158,7 +158,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
               )}
               {confirmingDelete ? (
                 <div className="space-y-1.5 px-3 py-2">
-                  <p className="text-xs text-danger">
+                  <p className="text-xs text-danger-fg">
                     {`Delete column${
                       cardCount > 0 ? ` and ${cardCount} card${cardCount === 1 ? '' : 's'}` : ''
                     }?`}
@@ -185,7 +185,7 @@ const BoardColumnHeader: React.FC<BoardColumnHeaderProps> = ({
               ) : (
                 <button
                   onClick={() => setConfirmingDelete(true)}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-danger hover:bg-white/10"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-danger-fg hover:bg-overlay/10"
                 >
                   <span className="material-symbols-outlined text-base">delete</span>
                   Delete column

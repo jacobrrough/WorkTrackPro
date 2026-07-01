@@ -71,7 +71,7 @@ export function SubtotalRow({
   colSpan: number;
 }) {
   return (
-    <tr className="border-t border-line bg-white/5">
+    <tr className="border-t border-line bg-overlay/5">
       <td className="px-3 py-2 font-bold text-white" colSpan={colSpan}>
         {label}
       </td>
@@ -83,7 +83,7 @@ export function SubtotalRow({
 /** A labeled section header row spanning the table. */
 export function SectionHeaderRow({ title, span }: { title: string; span: number }) {
   return (
-    <tr className="bg-white/[0.03]">
+    <tr className="bg-overlay/[0.03]">
       <td
         className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-muted"
         colSpan={span}

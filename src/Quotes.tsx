@@ -510,7 +510,7 @@ const Quotes: React.FC<QuotesProps> = ({
                         {item.isManual && (
                           <button
                             onClick={() => removeLineItem(index)}
-                            className="text-danger hover:text-danger"
+                            className="text-danger-fg hover:text-danger-fg"
                           >
                             <span className="material-symbols-outlined text-sm">delete</span>
                           </button>

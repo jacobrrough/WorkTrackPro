@@ -81,7 +81,7 @@ export function EncryptionSetup({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-lg border border-line bg-white/5 p-6">
+      <div className="w-full max-w-sm rounded-lg border border-line bg-overlay/5 p-6">
         <div className="mb-4 flex items-center gap-3">
           <span className="material-symbols-outlined text-3xl text-primary">
             {mode === 'regenerate' ? 'restart_alt' : 'lock'}
@@ -114,7 +114,7 @@ export function EncryptionSetup({
                 type="password"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
                 placeholder="Password before the reset"
                 autoFocus
               />
@@ -130,7 +130,7 @@ export function EncryptionSetup({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
               placeholder={
                 mode === 'recover' ? 'Your new account password' : 'Your account password'
               }

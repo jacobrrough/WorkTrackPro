@@ -96,7 +96,7 @@ export function NewConversationModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -113,7 +113,7 @@ export function NewConversationModal({
               className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 mode === 'direct'
                   ? 'bg-primary text-on-accent'
-                  : 'bg-white/5 text-muted hover:text-white'
+                  : 'bg-overlay/5 text-muted hover:text-white'
               }`}
             >
               Direct Message
@@ -124,7 +124,7 @@ export function NewConversationModal({
               className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 mode === 'group'
                   ? 'bg-primary text-on-accent'
-                  : 'bg-white/5 text-muted hover:text-white'
+                  : 'bg-overlay/5 text-muted hover:text-white'
               }`}
             >
               Group Chat
@@ -139,7 +139,7 @@ export function NewConversationModal({
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
             />
           </div>
         )}
@@ -154,7 +154,7 @@ export function NewConversationModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users..."
-              className="w-full rounded-lg border border-line bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-line bg-overlay/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               autoFocus
             />
           </div>
@@ -191,10 +191,10 @@ export function NewConversationModal({
                   }
                 }}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
-                  isSelected ? 'bg-primary/10' : 'hover:bg-white/5'
+                  isSelected ? 'bg-primary/10' : 'hover:bg-overlay/5'
                 }`}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-muted">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-overlay/10 text-xs font-bold text-muted">
                   {user.initials ?? user.name?.charAt(0) ?? '?'}
                 </div>
                 <div className="min-w-0 flex-1">

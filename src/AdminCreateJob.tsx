@@ -825,7 +825,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
                     <div
                       key={`${part.id}-${idx}`}
-                      className="space-y-2 rounded border border-line bg-white/5 px-3 py-2.5"
+                      className="space-y-2 rounded border border-line bg-overlay/5 px-3 py-2.5"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-sm text-white">

@@ -182,7 +182,7 @@ export default function InventoryHub({
       key: 'total',
       label: 'Total Parts',
       value: summary.total,
-      className: 'border-line bg-white/5 text-white',
+      className: 'border-line bg-overlay/5 text-white',
     },
     {
       key: 'allParts',
@@ -254,7 +254,7 @@ export default function InventoryHub({
           <button
             type="button"
             onClick={onBack}
-            className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-white/10"
+            className="flex size-10 items-center justify-center rounded-lg border border-line text-white hover:bg-overlay/10"
             aria-label="Back to dashboard"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -266,7 +266,7 @@ export default function InventoryHub({
           <button
             type="button"
             onClick={() => onViewAll()}
-            className="flex min-h-[40px] items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-bold text-white hover:bg-white/10"
+            className="flex min-h-[40px] items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-bold text-white hover:bg-overlay/10"
           >
             <span className="material-symbols-outlined text-base">format_list_bulleted</span>
             All parts

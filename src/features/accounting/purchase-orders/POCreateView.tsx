@@ -208,7 +208,7 @@ export default function POCreateView() {
                     onClick={() => removeLine(i)}
                     aria-label={`Remove line ${i + 1}`}
                     disabled={lines.length <= 1}
-                    className="flex items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                    className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
                   </button>

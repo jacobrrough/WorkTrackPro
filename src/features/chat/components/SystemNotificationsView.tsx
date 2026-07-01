@@ -69,7 +69,7 @@ export function SystemNotificationsView({ onBack, onNavigate }: SystemNotificati
         <button
           type="button"
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white md:hidden"
         >
           <span className="material-symbols-outlined text-xl">arrow_back</span>
         </button>

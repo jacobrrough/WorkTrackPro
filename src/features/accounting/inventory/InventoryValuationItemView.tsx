@@ -128,7 +128,7 @@ export default function InventoryValuationItemView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Lifetime activity
               </h2>
-              <div className="divide-y divide-white/5 rounded-lg border border-line bg-card-dark">
+              <div className="divide-y divide-overlay/5 rounded-lg border border-line bg-card-dark">
                 <FactRow
                   label="Units received (all layers)"
                   value={formatQty(row.qtyReceivedTotal)}

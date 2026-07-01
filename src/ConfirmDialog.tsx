@@ -102,11 +102,11 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {message}
           </p>
         </div>
-        <div className="flex gap-3 border-t border-line bg-white/5 px-4 py-3">
+        <div className="flex gap-3 border-t border-line bg-overlay/5 px-4 py-3">
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="flex-1 rounded-lg bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/15"
+            className="flex-1 rounded-lg bg-overlay/10 py-3 font-bold text-white transition-colors hover:bg-overlay/15"
           >
             {cancelText}
           </button>

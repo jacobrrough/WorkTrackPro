@@ -15,7 +15,7 @@ const inputClass =
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
   active: 'bg-sky-500/15 text-sky-400',
-  closed: 'bg-white/10 text-muted',
+  closed: 'bg-overlay/10 text-muted',
 };
 
 function StatusPill({ status }: { status: ProjectStatus }) {
@@ -72,7 +72,7 @@ function NewProjectModal({ onClose }: { onClose: (projectId?: string) => void })
             type="button"
             onClick={() => onClose()}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -158,7 +158,7 @@ function ProjectRow({ project, onOpen }: { project: Project; onOpen: () => void 
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="flex-1 truncate text-white">{project.name}</span>
       <span className="hidden flex-1 truncate text-sm text-muted sm:block">
@@ -221,7 +221,7 @@ export default function ProjectsView() {
             <span className="w-16 shrink-0 text-right">Retainage</span>
             <span className="w-[58px] shrink-0" />
           </div>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {projects.map((p) => (
               <ProjectRow
                 key={p.id}

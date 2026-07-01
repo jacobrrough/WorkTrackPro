@@ -72,7 +72,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-overlay/10 hover:text-white"
             aria-label="Close AI Assistant"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -97,7 +97,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
                 className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                   msg.role === 'user'
                     ? 'bg-primary/30 text-white'
-                    : 'border border-line bg-white/5 text-white/90'
+                    : 'border border-line bg-overlay/5 text-white/90'
                 }`}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.content}</p>
@@ -106,7 +106,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
           ))}
           {isLoading && (
             <div className="mb-3 flex justify-start">
-              <div className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white/60">
+              <div className="flex items-center gap-2 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white/60">
                 <span className="material-symbols-outlined animate-spin text-[16px]">
                   progress_activity
                 </span>
@@ -132,7 +132,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle/40 outline-none transition-colors focus:border-primary/50"
+              className="flex-1 resize-none rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle/40 outline-none transition-colors focus:border-primary/50"
             />
             <button
               onClick={handleSend}

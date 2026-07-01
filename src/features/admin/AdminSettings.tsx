@@ -509,7 +509,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="flex size-10 items-center justify-center rounded-lg border border-line bg-white/5 text-white transition-colors hover:bg-white/10"
+              className="flex size-10 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
             >
               <span className="material-symbols-outlined text-lg">arrow_back</span>
             </button>
@@ -524,7 +524,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-md space-y-6">
           {isAdmin && (
-            <div className="rounded-2xl border border-line bg-white/5 p-4">
+            <div className="rounded-2xl border border-line bg-overlay/5 p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-white">Users</h2>
@@ -573,7 +573,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                           type="button"
                           disabled={busyUserId === u.id}
                           onClick={() => handleApprove(u.id, true)}
-                          className="min-h-[44px] touch-manipulation rounded-lg border border-line bg-white/5 px-3 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-60"
+                          className="min-h-[44px] touch-manipulation rounded-lg border border-line bg-overlay/5 px-3 py-3 text-sm font-bold text-white hover:bg-overlay/10 disabled:opacity-60"
                         >
                           Approve + Admin
                         </button>
@@ -589,7 +589,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   {approvedUsers.map((u) => (
                     <div
                       key={u.id}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-white/5 p-3"
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-overlay/5 p-3"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-white">
@@ -611,7 +611,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                           type="button"
                           disabled={busyUserId === u.id || currentUser?.id === u.id}
                           onClick={() => handleToggleAdmin(u.id, !u.isAdmin)}
-                          className="min-h-[44px] touch-manipulation rounded-lg border border-line bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                          className="min-h-[44px] touch-manipulation rounded-lg border border-line bg-overlay/5 px-3 py-2 text-xs font-semibold text-white hover:bg-overlay/10 disabled:opacity-60"
                         >
                           {u.isAdmin ? 'Remove admin' : 'Make admin'}
                         </button>
@@ -623,7 +623,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
           )}
 
-          <div className="rounded-2xl border border-line bg-white/5 p-4">
+          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">Pricing</h2>
             <div className="space-y-4">
               <div>
@@ -636,7 +636,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={laborRate}
                   onChange={(e) => setLaborRate(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="175"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -654,7 +654,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="0.01"
                   value={materialUpcharge}
                   onChange={(e) => setMaterialUpcharge(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="1.25"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -671,7 +671,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={cncRate}
                   onChange={(e) => setCncRate(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="150"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -688,7 +688,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={printer3DRate}
                   onChange={(e) => setPrinter3DRate(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="100"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -706,7 +706,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           </div>
 
           {isAdmin && (
-            <div className="rounded-2xl border border-line bg-white/5 p-4">
+            <div className="rounded-2xl border border-line bg-overlay/5 p-4">
               <h2 className="mb-1 text-sm font-semibold text-white">Inventory categories</h2>
               <p className="mb-3 text-[11px] text-subtle">
                 Categories available when adding or editing inventory items. The 7 built-in
@@ -721,7 +721,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       key={opt.key}
                       className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold ${
                         builtIn
-                          ? 'border-line bg-white/5 text-muted'
+                          ? 'border-line bg-overlay/5 text-muted'
                           : 'border-primary/50 bg-primary/20 text-primary'
                       }`}
                     >
@@ -758,7 +758,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     }
                   }}
                   placeholder="New category name (e.g. Adhesives)"
-                  className="min-h-[44px] flex-1 rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="min-h-[44px] flex-1 rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                 />
                 <button
                   type="button"
@@ -772,7 +772,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
           )}
 
-          <div className="rounded-2xl border border-line bg-white/5 p-4">
+          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
             <h2 className="mb-1 text-sm font-semibold text-white">CNC-able material categories</h2>
             <p className="mb-3 text-[11px] text-subtle">
               Materials in these categories are deducted when units are marked CNC-done. Everything
@@ -795,7 +795,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
                       selected
                         ? 'border-primary/50 bg-primary/20 text-primary'
-                        : 'border-line bg-white/5 text-muted hover:bg-white/10'
+                        : 'border-line bg-overlay/5 text-muted hover:bg-overlay/10'
                     } disabled:opacity-50`}
                   >
                     {opt.label}
@@ -806,7 +806,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line bg-white/5 p-4">
+          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">Scheduling Capacity</h2>
             <div className="space-y-4">
               <div>
@@ -819,7 +819,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="1"
                   value={employeeCount}
                   onChange={(e) => setEmployeeCount(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="5"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -837,7 +837,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   step="0.05"
                   value={overtimeMultiplier}
                   onChange={(e) => setOvertimeMultiplier(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                   placeholder="1.50"
                 />
                 <p className="mt-1 text-[10px] text-subtle">
@@ -855,7 +855,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     return (
                       <div
                         key={day}
-                        className="rounded-2xl border border-line bg-white/5 p-3 text-xs text-muted"
+                        className="rounded-2xl border border-line bg-overlay/5 p-3 text-xs text-muted"
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <div>
@@ -872,7 +872,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                             onClick={() =>
                               updateDaySchedule(day, { enabled: !daySchedule.enabled })
                             }
-                            className={`h-6 w-12 rounded-full transition-colors ${daySchedule.enabled ? 'bg-primary' : 'bg-white/20'}`}
+                            className={`h-6 w-12 rounded-full transition-colors ${daySchedule.enabled ? 'bg-primary' : 'bg-overlay/20'}`}
                             aria-label={`${short} enabled`}
                           >
                             <span
@@ -891,7 +891,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                 updateDaySchedule(day, { standardStart: e.target.value })
                               }
                               disabled={!daySchedule.enabled}
-                              className="mt-1 w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                              className="mt-1 w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                             />
                           </label>
                           <label className="text-[10px] text-muted">
@@ -903,7 +903,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                 updateDaySchedule(day, { standardEnd: e.target.value })
                               }
                               disabled={!daySchedule.enabled}
-                              className="mt-1 w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                              className="mt-1 w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                             />
                           </label>
                           <label className="text-[10px] text-muted">
@@ -920,7 +920,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                 })
                               }
                               disabled={!daySchedule.enabled}
-                              className="mt-1 w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                              className="mt-1 w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                             />
                           </label>
                         </div>
@@ -938,7 +938,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                 })
                               }
                               disabled={!daySchedule.enabled}
-                              className={`h-5 w-10 rounded-full transition-colors ${daySchedule.overtimeEnabled ? 'bg-amber-500' : 'bg-white/20'} disabled:opacity-40`}
+                              className={`h-5 w-10 rounded-full transition-colors ${daySchedule.overtimeEnabled ? 'bg-amber-500' : 'bg-overlay/20'} disabled:opacity-40`}
                               aria-label={`${short} overtime enabled`}
                             >
                               <span
@@ -956,7 +956,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                   updateDaySchedule(day, { overtimeStart: e.target.value })
                                 }
                                 disabled={!daySchedule.enabled || !daySchedule.overtimeEnabled}
-                                className="mt-1 w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                                className="mt-1 w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                               />
                             </label>
                             <label className="text-[10px] text-muted">
@@ -968,7 +968,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                   updateDaySchedule(day, { overtimeEnd: e.target.value })
                                 }
                                 disabled={!daySchedule.enabled || !daySchedule.overtimeEnabled}
-                                className="mt-1 w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
+                                className="mt-1 w-full rounded border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white disabled:opacity-50"
                               />
                             </label>
                           </div>
@@ -1014,7 +1014,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </button>
           </div>
 
-          <div className="rounded-2xl border border-line bg-white/5 p-4">
+          <div className="rounded-2xl border border-line bg-overlay/5 p-4">
             <h2 className="mb-4 text-sm font-semibold text-white">On-site check</h2>
             <p className="mb-4 text-xs text-muted">
               Require employees to be within a radius of your site when clocking in (and optionally
@@ -1026,7 +1026,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                   type="checkbox"
                   checked={requireOnSite}
                   onChange={(e) => setRequireOnSite(e.target.checked)}
-                  className="size-5 rounded border-line-strong bg-white/5"
+                  className="size-5 rounded border-line-strong bg-overlay/5"
                 />
                 <span className="text-sm text-white">Require on-site to clock in</span>
               </label>
@@ -1041,7 +1041,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         value={siteLat}
                         onChange={(e) => setSiteLat(e.target.value)}
                         placeholder="e.g. 40.7128"
-                        className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                        className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                       />
                     </div>
                     <div className="flex-1">
@@ -1052,7 +1052,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                         value={siteLng}
                         onChange={(e) => setSiteLng(e.target.value)}
                         placeholder="e.g. -74.0060"
-                        className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                        className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1084,7 +1084,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       step="10"
                       value={siteRadiusMeters}
                       onChange={(e) => setSiteRadiusMeters(e.target.value)}
-                      className="w-full rounded-lg border border-line bg-white/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2.5 text-white focus:border-primary/50 focus:outline-none"
                       placeholder="200"
                     />
                     <p className="mt-1 text-[10px] text-subtle">
@@ -1096,7 +1096,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       type="checkbox"
                       checked={enforceOnSiteAtLogin}
                       onChange={(e) => setEnforceOnSiteAtLogin(e.target.checked)}
-                      className="size-5 rounded border-line-strong bg-white/5"
+                      className="size-5 rounded border-line-strong bg-overlay/5"
                     />
                     <span className="text-sm text-white">
                       Also require on-site at login (block app until on site)
@@ -1107,7 +1107,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
             </div>
             {/* Shelf / Bin Reconcile */}
             {isAdmin && (
-              <div className="rounded-2xl border border-line bg-white/5 p-4">
+              <div className="rounded-2xl border border-line bg-overlay/5 p-4">
                 <h2 className="mb-1 text-sm font-semibold text-white">Shelf / Bin Reconcile</h2>
                 <p className="mb-3 text-[10px] text-subtle">
                   Clear a shelf to remove bin location from all jobs and inventory at that bin. Use
@@ -1122,13 +1122,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                       return (
                         <li
                           key={rack}
-                          className="overflow-hidden rounded border border-line bg-white/5"
+                          className="overflow-hidden rounded border border-line bg-overlay/5"
                         >
                           <button
                             type="button"
                             onClick={() => toggleRack(rack)}
                             aria-expanded={isOpen}
-                            className="flex w-full items-center gap-2 p-2 text-left transition-colors hover:bg-white/5"
+                            className="flex w-full items-center gap-2 p-2 text-left transition-colors hover:bg-overlay/5"
                           >
                             <span
                               aria-hidden="true"
@@ -1148,7 +1148,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                               {bins.map(({ bin, jobIds, inventoryIds }) => (
                                 <li
                                   key={bin}
-                                  className="flex items-center justify-between gap-3 rounded border border-line bg-white/5 p-2"
+                                  className="flex items-center justify-between gap-3 rounded border border-line bg-overlay/5 p-2"
                                 >
                                   <div className="min-w-0">
                                     <span className="font-mono font-semibold text-primary">
@@ -1163,7 +1163,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                                     type="button"
                                     disabled={clearingBin === bin}
                                     onClick={() => handleClearShelf(bin)}
-                                    className="shrink-0 rounded-lg border border-danger/40 bg-danger/20 px-2 py-1.5 text-xs font-bold text-danger transition-colors hover:bg-danger/30 disabled:opacity-50"
+                                    className="shrink-0 rounded-lg border border-danger/40 bg-danger/20 px-2 py-1.5 text-xs font-bold text-danger-fg transition-colors hover:bg-danger/30 disabled:opacity-50"
                                   >
                                     {clearingBin === bin ? 'Clearing…' : 'Clear shelf'}
                                   </button>
@@ -1188,7 +1188,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
           </div>
 
           {isAdmin && (
-            <div className="rounded-2xl border border-line bg-white/5 p-4">
+            <div className="rounded-2xl border border-line bg-overlay/5 p-4">
               <h2 className="mb-4 text-sm font-semibold text-white">Security</h2>
               <p className="mb-4 text-xs text-muted">
                 Two-factor authentication adds a one-time code at login. Use &quot;Reset 2FA&quot;
@@ -1200,7 +1200,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onNavigate: _onNavigate, 
                     type="checkbox"
                     checked={requireMfa}
                     onChange={(e) => setRequireMfa(e.target.checked)}
-                    className="size-5 rounded border-line-strong bg-white/5"
+                    className="size-5 rounded border-line-strong bg-overlay/5"
                   />
                   <span className="text-sm text-white">
                     Require two-factor authentication (administrators)

@@ -66,7 +66,7 @@ export function DocumentSentBadge({
 const TONE_STYLES: Record<'green' | 'amber' | 'grey', string> = {
   green: 'border-green-500/30 bg-green-500/10 text-green-300',
   amber: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
-  grey: 'border-line bg-white/5 text-muted',
+  grey: 'border-line bg-overlay/5 text-muted',
 };
 
 function Pill({

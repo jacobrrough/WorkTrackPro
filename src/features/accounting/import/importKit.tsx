@@ -129,7 +129,7 @@ export function ImportStepper({ steps, current }: { steps: string[]; current: Im
         <div key={label} className="flex items-center gap-2">
           <span
             className={`rounded-lg px-2 py-1 font-semibold ${
-              i <= idx ? 'bg-primary/20 text-primary' : 'bg-white/5 text-subtle'
+              i <= idx ? 'bg-primary/20 text-primary' : 'bg-overlay/5 text-subtle'
             }`}
           >
             {i + 1}. {label}

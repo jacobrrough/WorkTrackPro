@@ -58,7 +58,7 @@ export function MessageInput({ onSendText, onSendFile, onTyping, disabled }: Mes
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || sending}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white disabled:opacity-50"
           title="Attach file"
         >
           <span className="material-symbols-outlined text-xl">attach_file</span>
@@ -82,7 +82,7 @@ export function MessageInput({ onSendText, onSendFile, onTyping, disabled }: Mes
           placeholder="Type a message..."
           disabled={disabled || sending}
           rows={1}
-          className="max-h-32 min-h-[40px] flex-1 resize-none rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none disabled:opacity-50"
+          className="max-h-32 min-h-[40px] flex-1 resize-none rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none disabled:opacity-50"
         />
 
         <button

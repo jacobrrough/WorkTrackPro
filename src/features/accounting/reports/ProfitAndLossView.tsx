@@ -97,7 +97,7 @@ export default function ProfitAndLossView() {
           </LedgerTable>
 
           {/* Net income callout */}
-          <div className="ml-auto flex w-full max-w-xs items-center justify-between rounded-lg border border-line bg-white/5 px-3 py-2">
+          <div className="ml-auto flex w-full max-w-xs items-center justify-between rounded-lg border border-line bg-overlay/5 px-3 py-2">
             <span className="font-bold text-white">Net income</span>
             <span
               className={`font-mono text-base font-bold tabular-nums ${

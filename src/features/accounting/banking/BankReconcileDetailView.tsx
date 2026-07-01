@@ -207,7 +207,7 @@ export default function BankReconcileDetailView() {
             )}
 
             {rows.length > 0 && (
-              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+              <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
                 {rows.map((txn) => (
                   <ClearableRow
                     key={txn.id}

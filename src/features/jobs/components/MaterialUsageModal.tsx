@@ -114,7 +114,7 @@ export function MaterialUsageModal({ job, onComplete }: MaterialUsageModalProps)
           {lines.map((l) => (
             <div
               key={l.inventoryId}
-              className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded-lg bg-overlay/5 px-3 py-2"
             >
               <div className="min-w-0">
                 <span className="block truncate text-sm font-bold text-white">{l.name}</span>
@@ -133,7 +133,7 @@ export function MaterialUsageModal({ job, onComplete }: MaterialUsageModalProps)
                   aria-label={`Extra ${l.unit} of ${l.name} used beyond the estimate of ${l.estimate}`}
                   value={extraText[l.inventoryId] ?? ''}
                   onChange={(e) => setExtraText((p) => ({ ...p, [l.inventoryId]: e.target.value }))}
-                  className="h-10 w-20 rounded-lg border border-line bg-white/5 px-2 text-center text-base font-bold tabular-nums text-white"
+                  className="h-10 w-20 rounded-lg border border-line bg-overlay/5 px-2 text-center text-base font-bold tabular-nums text-white"
                 />
                 <span className="whitespace-nowrap text-xs font-medium text-muted">{l.unit}</span>
               </div>

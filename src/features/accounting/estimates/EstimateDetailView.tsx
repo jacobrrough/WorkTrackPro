@@ -34,7 +34,7 @@ import { ACCOUNTING_BASE, ESTIMATES_BASE } from '../constants';
 import { ESTIMATE_STATUS_LABELS, type Estimate, type EstimateStatus } from '../types';
 
 const STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',

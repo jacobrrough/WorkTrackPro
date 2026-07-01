@@ -311,7 +311,7 @@ export default function RecurringTemplatesView() {
 
         {/* Due summary + generate-all */}
         {!isPending && !isError && templates.length > 0 && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white/5 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-overlay/5 px-3 py-2.5">
             <span className="text-sm text-muted">
               {dueCount > 0 ? (
                 <>
@@ -336,18 +336,18 @@ export default function RecurringTemplatesView() {
         {/* Results of the last run */}
         {results && results.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-line">
-            <div className="flex items-center justify-between border-b border-line bg-white/5 px-3 py-2">
+            <div className="flex items-center justify-between border-b border-line bg-overlay/5 px-3 py-2">
               <span className="text-sm font-bold text-white">Last run</span>
               <button
                 type="button"
                 onClick={() => setResults(null)}
                 aria-label="Dismiss results"
-                className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+                className="flex size-7 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
               >
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-overlay/5">
               {results.map(({ result, name }, i) => (
                 <ResultRow key={`${result.templateId}-${i}`} result={result} templateName={name} />
               ))}

@@ -122,7 +122,7 @@ function RunDepreciationModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -298,7 +298,7 @@ export default function FixedAssetsView() {
             <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-white/5 text-muted">
+                  <tr className="border-b border-line bg-overlay/5 text-muted">
                     <th className="px-3 py-2 text-left font-semibold">Asset</th>
                     <th className="px-3 py-2 text-left font-semibold">In service</th>
                     <th className="px-3 py-2 text-right font-semibold">Cost</th>
@@ -312,7 +312,7 @@ export default function FixedAssetsView() {
                     <tr
                       key={row.id}
                       onClick={() => openAsset(row)}
-                      className="cursor-pointer border-t border-line/60 hover:bg-white/5"
+                      className="cursor-pointer border-t border-line/60 hover:bg-overlay/5"
                     >
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -334,7 +334,7 @@ export default function FixedAssetsView() {
                     </tr>
                   ))}
                   {/* Grand totals */}
-                  <tr className="border-t border-line bg-white/5">
+                  <tr className="border-t border-line bg-overlay/5">
                     <td className="px-3 py-2 font-bold text-white" colSpan={2}>
                       {totals.assetCount} {totals.assetCount === 1 ? 'asset' : 'assets'}
                     </td>

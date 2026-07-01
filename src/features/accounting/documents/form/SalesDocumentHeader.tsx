@@ -83,7 +83,7 @@ export function SalesDocumentHeader({
         <div className="space-y-2 lg:w-[26rem]">
           <FieldBlock label={numberLabel}>
             <div
-              className={`${docInputClass} flex items-center bg-white/[0.03] text-muted`}
+              className={`${docInputClass} flex items-center bg-overlay/[0.03] text-muted`}
               aria-label={numberLabel}
             >
               {docNumber ? (

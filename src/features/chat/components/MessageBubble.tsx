@@ -46,7 +46,7 @@ export function MessageBubble({ message, isMine }: MessageBubbleProps) {
   if (isSystem) {
     return (
       <div className="flex justify-center py-1">
-        <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-subtle">
+        <span className="rounded-full bg-overlay/5 px-3 py-1 text-xs text-subtle">
           {content ?? 'System message'}
         </span>
       </div>

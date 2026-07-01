@@ -753,7 +753,7 @@ const Calendar: React.FC<CalendarProps> = ({
               {onBack && (
                 <button
                   onClick={onBack}
-                  className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
                   aria-label="Back"
                 >
                   <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -771,7 +771,7 @@ const Calendar: React.FC<CalendarProps> = ({
               className={`min-h-[44px] touch-manipulation rounded-lg px-2 py-2 text-xs font-semibold transition-colors sm:px-3 ${
                 includeOvertimeInSchedule
                   ? 'bg-amber-500/20 text-amber-300'
-                  : 'bg-white/5 text-muted hover:bg-white/10'
+                  : 'bg-overlay/5 text-muted hover:bg-overlay/10'
               }`}
             >
               <span className="hidden sm:inline">
@@ -782,7 +782,7 @@ const Calendar: React.FC<CalendarProps> = ({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => changeMonth(-1)}
-                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
                 aria-label="Previous month"
               >
                 <span className="material-symbols-outlined text-xl">chevron_left</span>
@@ -792,7 +792,7 @@ const Calendar: React.FC<CalendarProps> = ({
               </h2>
               <button
                 onClick={() => changeMonth(1)}
-                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
                 aria-label="Next month"
               >
                 <span className="material-symbols-outlined text-xl">chevron_right</span>
@@ -834,7 +834,7 @@ const Calendar: React.FC<CalendarProps> = ({
           )}
         </div>
 
-        <div className="mb-4 rounded-2xl border border-line bg-white/5 p-2.5 sm:p-3">
+        <div className="mb-4 rounded-2xl border border-line bg-overlay/5 p-2.5 sm:p-3">
           <h3 className="mb-2 text-sm font-bold text-white sm:mb-3">New Job Planner</h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
             <label className="col-span-2 text-xs text-muted sm:col-span-1">
@@ -845,7 +845,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 step="0.01"
                 value={plannerLaborHours}
                 onChange={(e) => setPlannerLaborHours(e.target.value)}
-                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-overlay/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="text-xs text-muted">
@@ -856,7 +856,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 step="0.01"
                 value={plannerCncHours}
                 onChange={(e) => setPlannerCncHours(e.target.value)}
-                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-overlay/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="text-xs text-muted">
@@ -867,7 +867,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 step="0.01"
                 value={plannerPrinter3DHours}
                 onChange={(e) => setPlannerPrinter3DHours(e.target.value)}
-                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-overlay/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="text-xs text-muted">
@@ -876,7 +876,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 type="date"
                 value={plannerDueDate}
                 onChange={(e) => setPlannerDueDate(e.target.value)}
-                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-white/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
+                className="mt-1 min-h-[44px] w-full touch-manipulation rounded border border-line bg-overlay/5 px-2 py-2 text-sm text-white focus:border-primary/50 focus:outline-none sm:min-h-0"
               />
             </label>
             <label className="col-span-2 text-xs text-muted sm:col-span-1">
@@ -887,7 +887,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 className={`mt-1 flex min-h-[44px] w-full touch-manipulation items-center justify-center rounded border px-2 text-sm font-medium transition-colors ${
                   plannerUseOvertime
                     ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
-                    : 'border-line bg-white/5 text-muted'
+                    : 'border-line bg-overlay/5 text-muted'
                 }`}
               >
                 {plannerUseOvertime ? 'Yes' : 'No'}
@@ -1005,8 +1005,8 @@ const Calendar: React.FC<CalendarProps> = ({
                 key={idx}
                 className={`min-h-[72px] rounded border p-0.5 sm:min-h-[80px] sm:p-1 ${
                   dayData.isCurrentMonth
-                    ? 'border-line bg-white/5'
-                    : 'bg-white/2 border-line/60'
+                    ? 'border-line bg-overlay/5'
+                    : 'bg-overlay/2 border-line/60'
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
               >
                 <div
@@ -1077,7 +1077,7 @@ const Calendar: React.FC<CalendarProps> = ({
         </div>
 
         {/* Summary: Upcoming jobs - mobile-friendly wrap and touch targets */}
-        <div className="mt-4 rounded-2xl border border-line bg-white/5 p-2.5 sm:p-3">
+        <div className="mt-4 rounded-2xl border border-line bg-overlay/5 p-2.5 sm:p-3">
           <h3 className="mb-2 text-base font-bold text-white sm:mb-3 sm:text-lg">Upcoming Jobs</h3>
           {jobTimelines.length === 0 ? (
             <p className="text-sm text-muted">No jobs with due dates</p>
@@ -1090,7 +1090,7 @@ const Calendar: React.FC<CalendarProps> = ({
                   <button
                     key={tl.job.id}
                     onClick={() => onNavigate('job-detail', tl.job.id)}
-                    className="w-full touch-manipulation rounded-2xl border border-line bg-white/5 p-2.5 text-left transition-colors active:bg-white/10 sm:p-3 sm:hover:bg-white/10"
+                    className="w-full touch-manipulation rounded-2xl border border-line bg-overlay/5 p-2.5 text-left transition-colors active:bg-overlay/10 sm:p-3 sm:hover:bg-overlay/10"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -1188,7 +1188,7 @@ const Calendar: React.FC<CalendarProps> = ({
                                 <span>{progress.weightedPercent.toFixed(0)}%</span>
                               </div>
                             </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-overlay/10">
                               <div
                                 className={`h-full rounded-full transition-all ${
                                   progress.laborOverEstimate ? 'bg-danger' : 'bg-primary'
@@ -1207,7 +1207,7 @@ const Calendar: React.FC<CalendarProps> = ({
                                 e.preventDefault();
                                 onNavigate('time-reports', tl.job.id);
                               }}
-                              className="min-h-[44px] touch-manipulation rounded border border-line-strong bg-white/5 px-3 py-2 text-[10px] font-bold text-muted transition-colors active:bg-white/10 sm:hover:bg-white/10"
+                              className="min-h-[44px] touch-manipulation rounded border border-line-strong bg-overlay/5 px-3 py-2 text-[10px] font-bold text-muted transition-colors active:bg-overlay/10 sm:hover:bg-overlay/10"
                             >
                               Time
                             </button>
@@ -1247,7 +1247,7 @@ const Calendar: React.FC<CalendarProps> = ({
               <button
                 type="button"
                 onClick={() => handlePastEcdApproval(false)}
-                className="min-h-[44px] touch-manipulation rounded border border-line-strong px-4 py-2 text-sm font-medium text-muted hover:bg-white/10"
+                className="min-h-[44px] touch-manipulation rounded border border-line-strong px-4 py-2 text-sm font-medium text-muted hover:bg-overlay/10"
               >
                 Skip
               </button>

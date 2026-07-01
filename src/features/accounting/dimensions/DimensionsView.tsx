@@ -115,7 +115,7 @@ function DimensionEditorModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -216,7 +216,7 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
         disabled={busy}
         aria-label={dimension.isActive ? 'Deactivate' : 'Reactivate'}
         title={dimension.isActive ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {dimension.isActive ? 'toggle_on' : 'toggle_off'}
@@ -227,7 +227,7 @@ function DimensionRow({ dimension, onEdit }: { dimension: Dimension; onEdit: () 
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -265,7 +265,7 @@ function DimensionSection({
           No {plural.toLowerCase()} yet. {TYPE_HINT[type]}
         </p>
       ) : (
-        <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+        <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
           {dimensions.map((d) => (
             <DimensionRow key={d.id} dimension={d} onEdit={() => onEdit(d)} />
           ))}

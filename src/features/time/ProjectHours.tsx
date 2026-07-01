@@ -136,7 +136,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={onBack}
-            className="flex size-9 items-center justify-center rounded-full text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-9 items-center justify-center rounded-full text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Back"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -156,7 +156,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
         <div className="mx-auto max-w-2xl space-y-4">
           {/* New project form */}
           {showNewProject && (
-            <div className="flex gap-2 rounded-2xl border border-line bg-white/5 p-3">
+            <div className="flex gap-2 rounded-2xl border border-line bg-overlay/5 p-3">
               <input
                 autoFocus
                 aria-label="Project name"
@@ -209,7 +209,7 @@ const ProjectHours: React.FC<ProjectHoursProps> = ({ onBack }) => {
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
                     range === r.key
                       ? 'border border-primary bg-primary/20 text-primary'
-                      : 'bg-white/10 text-muted'
+                      : 'bg-overlay/10 text-muted'
                   }`}
                 >
                   {r.label}

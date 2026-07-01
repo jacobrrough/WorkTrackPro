@@ -15,7 +15,7 @@ import {
 } from '../components/DocumentFilterBar';
 
 const STATUS_STYLES: Record<EstimateStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   sent: 'bg-sky-500/15 text-sky-400',
   accepted: 'bg-green-500/15 text-green-400',
   declined: 'bg-red-500/15 text-red-400',
@@ -56,7 +56,7 @@ function EstimateRow({ estimate, onOpen }: { estimate: Estimate; onOpen: () => v
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="w-24 shrink-0 truncate font-mono text-xs text-subtle">
         {estimate.estimateNumber || 'Draft'}
@@ -154,7 +154,7 @@ export default function EstimatesView() {
             <span className="w-28 shrink-0 text-right">Total</span>
             <span className="w-[58px] shrink-0" />
           </div>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {filtered.map((est) => (
               <EstimateRow
                 key={est.id}

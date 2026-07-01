@@ -223,7 +223,7 @@ function LineRow({
         onClick={onRemove}
         aria-label={`Remove line ${index + 1}`}
         disabled={disabled || !canRemove}
-        className="flex items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+        className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
       >
         <span className="material-symbols-outlined text-lg">delete</span>
       </button>
@@ -380,7 +380,7 @@ export default function SalesLineItemsEditor({
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2 md:space-y-0 md:divide-y md:divide-white/5">
+          <div className="space-y-2 md:space-y-0 md:divide-y md:divide-overlay/5">
             {lines.map((line, i) => {
               const amountCents = lineAmountsCents?.[i] ?? localNetCents(line);
               const selItem = line.itemId ? items.find((it) => it.id === line.itemId) : null;

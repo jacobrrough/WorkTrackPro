@@ -223,7 +223,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
       <button
         type="button"
         onClick={onClose}
-        className="mt-2 rounded-lg bg-white/10 py-3 text-sm font-bold text-white"
+        className="mt-2 rounded-lg bg-overlay/10 py-3 text-sm font-bold text-white"
       >
         Done
       </button>
@@ -275,7 +275,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
             value={pickerSearch}
             onChange={(e) => setPickerSearch(e.target.value)}
             placeholder="Search inventory by name or barcode"
-            className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -293,7 +293,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       type="button"
                       onClick={() => handleAssignToBin(item)}
                       disabled={assigningId !== null}
-                      className="flex w-full items-center gap-3 rounded border border-line bg-white/5 p-3 text-left disabled:opacity-50"
+                      className="flex w-full items-center gap-3 rounded border border-line bg-overlay/5 p-3 text-left disabled:opacity-50"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-white">{item.name}</span>
@@ -362,7 +362,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       return (
                         <li
                           key={j.id}
-                          className="flex items-center gap-3 rounded border border-line bg-white/5 p-2"
+                          className="flex items-center gap-3 rounded border border-line bg-overlay/5 p-2"
                         >
                           <button
                             type="button"
@@ -412,7 +412,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       return (
                         <li
                           key={item.id}
-                          className="flex items-center gap-3 rounded border border-line bg-white/5 p-2"
+                          className="flex items-center gap-3 rounded border border-line bg-overlay/5 p-2"
                         >
                           <input
                             type="checkbox"

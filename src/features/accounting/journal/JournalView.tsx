@@ -13,7 +13,7 @@ import { todayIsoLocal } from '../periodLockView';
 import type { JournalEntry, JournalStatus, NewJournalLineInput } from '../types';
 
 const STATUS_STYLES: Record<JournalStatus, string> = {
-  draft: 'bg-white/10 text-muted',
+  draft: 'bg-overlay/10 text-muted',
   posted: 'bg-green-500/15 text-green-400',
   void: 'bg-red-500/15 text-red-400',
 };
@@ -76,7 +76,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -138,7 +138,7 @@ function NewEntryModal({ onClose }: { onClose: () => void }) {
                   onClick={() => removeLine(i)}
                   aria-label={`Remove line ${i + 1}`}
                   disabled={lines.length <= 2}
-                  className="flex items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                  className="flex items-center justify-center rounded-lg text-subtle hover:bg-overlay/10 hover:text-red-400 disabled:opacity-30"
                 >
                   <span className="material-symbols-outlined text-lg">delete</span>
                 </button>
@@ -196,7 +196,7 @@ function EntryRow({ entry, onOpen }: { entry: JournalEntry; onOpen: () => void }
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
+      className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-overlay/5"
     >
       <span className="w-12 shrink-0 font-mono text-xs text-subtle">#{entry.entryNumber}</span>
       <span className="w-24 shrink-0 text-sm text-muted">{entry.entryDate}</span>
@@ -237,7 +237,7 @@ export default function JournalView() {
       )}
 
       {entries.length > 0 && (
-        <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+        <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
           {entries.map((e) => (
             <EntryRow
               key={e.id}

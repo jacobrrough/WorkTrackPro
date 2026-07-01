@@ -362,7 +362,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Back to boards"
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
@@ -372,7 +372,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
         {isOwner && (
           <button
             onClick={() => setShowSettings(true)}
-            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-white"
+            className="flex items-center justify-center rounded-full p-1.5 text-muted hover:bg-overlay/10 hover:text-white"
             aria-label="Board settings"
           >
             <span className="material-symbols-outlined text-xl">settings</span>

@@ -197,7 +197,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               className={`min-h-[36px] rounded px-3 text-sm font-medium transition-colors ${
                 quoteBy === 'sets'
                   ? 'bg-primary text-on-accent'
-                  : 'text-muted hover:bg-white/10 hover:text-white'
+                  : 'text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               Sets
@@ -211,7 +211,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               className={`min-h-[36px] rounded px-3 text-sm font-medium transition-colors ${
                 quoteBy === 'variants'
                   ? 'bg-primary text-on-accent'
-                  : 'text-muted hover:bg-white/10 hover:text-white'
+                  : 'text-muted hover:bg-overlay/10 hover:text-white'
               }`}
             >
               Variants
@@ -235,7 +235,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
               const n = parseInt(e.target.value, 10);
               setQuantityInput(!Number.isNaN(n) && n >= 1 ? String(n) : '1');
             }}
-            className="w-24 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
+            className="w-24 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white focus:border-primary/50 focus:outline-none"
           />
         </div>
       )}
@@ -257,7 +257,7 @@ const QuoteCalculator: React.FC<QuoteCalculatorProps> = ({
                     value={variantQtyInputs[key] ?? ''}
                     onChange={(e) => setVariantQty(key, e.target.value)}
                     placeholder="0"
-                    className="w-20 rounded-lg border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
+                    className="w-20 rounded-lg border border-line bg-overlay/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none"
                   />
                 </label>
               );

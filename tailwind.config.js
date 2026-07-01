@@ -26,7 +26,6 @@ export default {
         primary: {
           DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
           hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
-          muted: 'rgb(var(--c-accent) / 0.2)',
         },
         accent: {
           DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
@@ -34,11 +33,17 @@ export default {
         },
         'on-accent': 'rgb(var(--c-on-accent) / <alpha-value>)',
         // Destructive/error — distinct from the brand accent (see --c-danger).
+        // `danger` = solid FILL (pair with text-on-danger). `danger-fg` = legible
+        // red for danger TEXT/outlines on dark (the fill fails AA as small text).
         danger: {
           DEFAULT: 'rgb(var(--c-danger) / <alpha-value>)',
           hover: 'rgb(var(--c-danger-hover) / <alpha-value>)',
+          fg: 'rgb(var(--c-danger-fg) / <alpha-value>)',
         },
         'on-danger': 'rgb(var(--c-on-danger) / <alpha-value>)',
+        // Overlay tint (hover/zebra/pill fills). Theme-aware: white on dark, dark
+        // on light — use bg-overlay/N instead of bg-white/N so light theme works.
+        overlay: 'rgb(var(--c-overlay) / <alpha-value>)',
         // Legacy names kept so existing bg-background-dark / bg-card-dark / etc. re-theme.
         'background-dark': 'rgb(var(--c-bg) / <alpha-value>)',
         'background-light': 'rgb(var(--c-bg-2) / <alpha-value>)',
@@ -50,8 +55,6 @@ export default {
         surface: 'rgb(var(--c-surface) / <alpha-value>)',
         'surface-2': 'rgb(var(--c-surface-2) / <alpha-value>)',
         'surface-3': 'rgb(var(--c-surface-3) / <alpha-value>)',
-        field: 'rgb(var(--c-surface-2) / <alpha-value>)',
-        panel: 'rgb(var(--c-surface) / <alpha-value>)',
         line: 'rgb(var(--c-border) / <alpha-value>)',
         'line-strong': 'rgb(var(--c-border-strong) / <alpha-value>)',
         muted: 'rgb(var(--c-text-muted) / <alpha-value>)',

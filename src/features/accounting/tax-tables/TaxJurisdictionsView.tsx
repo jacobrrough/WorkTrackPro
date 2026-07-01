@@ -405,7 +405,7 @@ export default function TaxJurisdictionsView() {
           )}
 
           {!loading && !loadError && rows.length > 0 && (
-            <Card padding="none" className="divide-y divide-white/5 overflow-hidden">
+            <Card padding="none" className="divide-y divide-overlay/5 overflow-hidden">
               {rows.map((j) => (
                 <JurisdictionRow
                   key={j.id}

@@ -100,7 +100,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                     <p className="mb-1 font-bold text-white">Bin Location Format</p>
                     <p className="mb-2 text-sm text-muted">
                       Use format:{' '}
-                      <span className="rounded bg-white/10 px-2 py-0.5 font-mono">A4c</span>
+                      <span className="rounded bg-overlay/10 px-2 py-0.5 font-mono">A4c</span>
                     </p>
                     <ul className="space-y-1 text-xs text-muted">
                       <li>• First letter (A-Z) = Rack</li>
@@ -121,7 +121,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
                   value={inputValue}
                   onChange={(e) => handleInputChange(e.target.value)}
                   placeholder="e.g., A4c"
-                  className={`h-12 w-full rounded-lg border bg-white/10 px-4 font-mono text-lg uppercase text-white ${
+                  className={`h-12 w-full rounded-lg border bg-overlay/10 px-4 font-mono text-lg uppercase text-white ${
                     validationError ? 'border-red-500' : 'border-line-strong'
                   }`}
                   maxLength={10}
@@ -182,7 +182,7 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
           <div className="flex gap-3 border-t border-line p-4">
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-line-strong bg-white/10 py-3 font-bold text-white transition-colors hover:bg-white/20"
+              className="flex-1 rounded-lg border border-line-strong bg-overlay/10 py-3 font-bold text-white transition-colors hover:bg-overlay/20"
             >
               Cancel
             </button>

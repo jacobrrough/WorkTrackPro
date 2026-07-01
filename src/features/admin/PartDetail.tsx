@@ -158,7 +158,7 @@ function NoVariantSetQtyEditor({ qty, onSave }: { qty: number; onSave: (n: numbe
         min={1}
         value={value}
         onChange={(e) => setValue(parseInt(e.target.value, 10) || 1)}
-        className="w-16 rounded border border-line bg-white/5 px-2 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="w-16 rounded border border-line bg-overlay/5 px-2 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <span className="text-sm text-muted">× unit</span>
       <button
@@ -171,7 +171,7 @@ function NoVariantSetQtyEditor({ qty, onSave }: { qty: number; onSave: (n: numbe
       <button
         type="button"
         onClick={handleCancel}
-        className="rounded-lg border border-line bg-white/5 px-2 py-0.5 text-xs font-medium text-muted hover:bg-white/10"
+        className="rounded-lg border border-line bg-overlay/5 px-2 py-0.5 text-xs font-medium text-muted hover:bg-overlay/10"
       >
         Cancel
       </button>
@@ -1253,7 +1253,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           <div className="flex items-center gap-4">
             <button
               onClick={onNavigateBack}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-white/5 text-white transition-colors hover:bg-white/10"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
               aria-label="Go back"
             >
               <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -1295,7 +1295,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {/* Section 1: Part Information (always expanded) */}
-        <div className="rounded-2xl border border-line bg-white/5 p-3 sm:p-4">
+        <div className="rounded-2xl border border-line bg-overlay/5 p-3 sm:p-4">
           <h2 className="mb-3 text-base font-semibold text-white sm:text-lg">Part Information</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -1306,7 +1306,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 onChange={(e) =>
                   setPartInfoDraft((prev) => ({ ...prev, partNumber: e.target.value }))
                 }
-                className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 font-mono text-white focus:border-primary/50 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 font-mono text-white focus:border-primary/50 focus:outline-none"
                 placeholder="e.g. SK-F35-0911"
                 required
               />
@@ -1317,7 +1317,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 type="text"
                 value={partInfoDraft.name}
                 onChange={(e) => setPartInfoDraft((prev) => ({ ...prev, name: e.target.value }))}
-                className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
                 placeholder={partInfoDraft.partNumber || part.partNumber}
                 required
               />
@@ -1328,7 +1328,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 type="text"
                 value={partInfoDraft.rev}
                 onChange={(e) => setPartInfoDraft((prev) => ({ ...prev, rev: e.target.value }))}
-                className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 font-mono text-white focus:border-primary/50 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 font-mono text-white focus:border-primary/50 focus:outline-none"
                 placeholder="--"
                 required
               />
@@ -1340,7 +1340,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 onChange={(e) =>
                   setPartInfoDraft((prev) => ({ ...prev, description: e.target.value }))
                 }
-                className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white focus:border-primary/50 focus:outline-none"
                 rows={2}
               />
             </div>
@@ -1352,7 +1352,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   onChange={(e) =>
                     setPartInfoDraft((prev) => ({ ...prev, showOnStore: e.target.checked }))
                   }
-                  className="h-4 w-4 rounded border-line-strong bg-white/5 text-primary focus:ring-primary"
+                  className="h-4 w-4 rounded border-line-strong bg-overlay/5 text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-white">Show on store</span>
               </label>
@@ -1374,12 +1374,12 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   type="button"
                   onClick={handleResetPartInfo}
                   disabled={!isPartInfoDirty || savingPartInfo}
-                  className="min-h-[44px] rounded-lg border border-line bg-white/5 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[44px] rounded-lg border border-line bg-overlay/5 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-overlay/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Reset
                 </button>
                 {!isVirtualPart && (
-                  <div className="flex min-w-[280px] flex-1 flex-wrap items-center gap-2 rounded-2xl border border-line bg-white/5 p-2">
+                  <div className="flex min-w-[280px] flex-1 flex-wrap items-center gap-2 rounded-2xl border border-line bg-overlay/5 p-2">
                     <label className="text-xs text-muted">Apply pricing/materials from</label>
                     <select
                       value={templateSourcePartId}
@@ -1421,7 +1421,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           type="button"
                           onClick={() => setConfirmDeletePart(false)}
                           disabled={deletingPart}
-                          className="min-h-[44px] rounded-lg border border-line bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="min-h-[44px] rounded-lg border border-line bg-overlay/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-overlay/10 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -1476,7 +1476,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                           href={drawing.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+                          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white hover:bg-overlay/10"
                         >
                           <span className="material-symbols-outlined text-primary">
                             picture_as_pdf
@@ -1564,7 +1564,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
         {/* Section 2: Variants / Dash Numbers — set composition, "all copies" checkbox, then per-variant cards */}
         {!isVirtualPart && (
           <div className="space-y-3">
-            <div className="rounded-lg border border-line bg-white/5 px-4 py-3">
+            <div className="rounded-lg border border-line bg-overlay/5 px-4 py-3">
               <h3 className="text-sm font-semibold text-white">
                 Variants / Dash Numbers ({part.variants?.length ?? 0})
               </h3>
@@ -1624,7 +1624,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                   )}
                 </div>
                 {part.variants && part.variants.length >= 2 && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-white/5 p-3">
+                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-overlay/5 p-3">
                     <button
                       type="button"
                       onClick={async () => {
@@ -1827,17 +1827,17 @@ const PartDetail: React.FC<PartDetailProps> = ({
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-line bg-white/5 p-3">
+                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Completed jobs</p>
                   <p className="text-lg font-bold text-white">{laborFeedback.completedJobCount}</p>
                 </div>
-                <div className="rounded-2xl border border-line bg-white/5 p-3">
+                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Total actual hours</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.totalActualHours.toFixed(1)}h
                   </p>
                 </div>
-                <div className="rounded-2xl border border-line bg-white/5 p-3">
+                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Actual avg / set</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.averageActualPerSet != null
@@ -1845,7 +1845,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                       : '—'}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-line bg-white/5 p-3">
+                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                   <p className="text-[10px] font-bold uppercase text-muted">Estimate / set</p>
                   <p className="text-lg font-bold text-white">
                     {laborFeedback.estimatePerSet != null
@@ -1864,7 +1864,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
               </div>
 
               {laborFeedback.variantRows.length > 0 && (
-                <div className="rounded-2xl border border-line bg-white/5 p-3">
+                <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                   <p className="mb-2 text-xs font-bold uppercase text-muted">
                     Dash labor performance
                   </p>
@@ -1902,7 +1902,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                 </div>
               )}
 
-              <div className="rounded-2xl border border-line bg-white/5 p-3">
+              <div className="rounded-2xl border border-line bg-overlay/5 p-3">
                 <p className="mb-2 text-xs font-bold uppercase text-muted">
                   Recent completed jobs feeding estimates
                 </p>
@@ -1943,7 +1943,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
                     key={job.id}
                     type="button"
                     onClick={() => onNavigate('job-detail', job.id)}
-                    className="flex w-full items-center justify-between rounded-lg border border-line bg-white/5 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-white/10"
+                    className="flex w-full items-center justify-between rounded-lg border border-line bg-overlay/5 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-overlay/10"
                   >
                     <div className="min-w-0 flex-1">
                       <span className="font-mono text-sm font-semibold text-primary">
@@ -2115,7 +2115,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-line bg-white/5 p-3 sm:p-4">
+    <div className="rounded-2xl border border-line bg-overlay/5 p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <span className="font-mono font-semibold text-primary">
@@ -2127,7 +2127,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Variant name (optional)"
-              className="mt-1 w-full rounded border border-line bg-white/5 px-2 py-1 text-sm text-white"
+              className="mt-1 w-full rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-white"
             />
           ) : (
             variant.name && <p className="mt-1 text-sm text-white">{variant.name}</p>
@@ -2143,7 +2143,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
             </button>
             <button
               onClick={onCancel}
-              className="min-h-[44px] rounded bg-white/10 px-3 py-1 text-sm text-white"
+              className="min-h-[44px] rounded bg-overlay/10 px-3 py-1 text-sm text-white"
             >
               Cancel
             </button>
@@ -2190,7 +2190,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                 step="0.01"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="w-full rounded border border-line bg-white/5 px-2 py-1 text-sm text-white"
+                className="w-full rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-white"
                 placeholder="0.00"
               />
             </div>
@@ -2213,7 +2213,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
               step="0.01"
               value={laborHours}
               onChange={(e) => setLaborHours(e.target.value)}
-              className="w-full rounded border border-line bg-white/5 px-2 py-1 text-sm text-white"
+              className="w-full rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-white"
               placeholder={autoLaborHours != null ? autoLaborHours.toString() : '0.0'}
             />
           </div>
@@ -2236,7 +2236,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
               min={0}
               value={cncHours}
               onChange={(e) => setCncHours(e.target.value)}
-              className="w-full rounded border border-line bg-white/5 px-2 py-1 text-sm text-white"
+              className="w-full rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-white"
               placeholder={autoCncHours != null ? autoCncHours.toString() : '0.0'}
             />
           </div>
@@ -2248,7 +2248,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
               min={0}
               value={printer3DHours}
               onChange={(e) => setPrinter3DHours(e.target.value)}
-              className="w-full rounded border border-line bg-white/5 px-2 py-1 text-sm text-white"
+              className="w-full rounded border border-line bg-overlay/5 px-2 py-1 text-sm text-white"
               placeholder="0.0"
             />
           </div>
@@ -2291,7 +2291,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                     type="checkbox"
                     checked={addMaterialToAllVariants}
                     onChange={(e) => setAddMaterialToAllVariants(e.target.checked)}
-                    className="h-4 w-4 rounded border-line-strong bg-white/10 text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-line-strong bg-overlay/10 text-primary focus:ring-primary"
                   />
                   <span className="text-sm text-white">
                     {addMaterialToAllVariants ? 'All variants' : 'This variant only'}
@@ -2332,7 +2332,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                       onNavigate?.('inventory-detail', material.inventoryId);
                     }
                   }}
-                  className="flex min-h-[7rem] cursor-pointer flex-col rounded border border-line bg-white/5 p-3 transition-colors hover:border-primary/30 hover:bg-white/10"
+                  className="flex min-h-[7rem] cursor-pointer flex-col rounded border border-line bg-overlay/5 p-3 transition-colors hover:border-primary/30 hover:bg-overlay/10"
                 >
                   <div className="min-h-0 flex-1">
                     <p
@@ -2415,7 +2415,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                               }
                             }}
                             autoFocus
-                            className="w-16 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                            className="w-16 rounded border border-primary/50 bg-overlay/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
                           />
                           <input
                             type="text"
@@ -2426,7 +2426,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                                 [material.id]: e.target.value,
                               }))
                             }
-                            className="w-14 rounded border border-primary/50 bg-white/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
+                            className="w-14 rounded border border-primary/50 bg-overlay/5 px-1.5 py-1 text-xs text-white focus:border-primary focus:outline-none"
                           />
                         </>
                       ) : (
@@ -2486,7 +2486,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
                           className={`flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold transition-colors ${
                             material.requiresCnc
                               ? 'bg-amber-600/20 text-amber-300 hover:bg-amber-600/30'
-                              : 'bg-white/5 text-muted hover:bg-white/10'
+                              : 'bg-overlay/5 text-muted hover:bg-overlay/10'
                           }`}
                         >
                           <span className="material-symbols-outlined text-[13px]">
@@ -2940,7 +2940,7 @@ function VariantQuoteMini({
                 setHasUserEditedLabor(true);
               }}
               onBlur={handleLaborHoursBlur}
-              className="w-20 rounded border border-line bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              className="w-20 rounded border border-line bg-overlay/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
               placeholder={autoLaborHours?.toString() ?? '0'}
             />
           </div>
@@ -2976,7 +2976,7 @@ function VariantQuoteMini({
                 setHasUserEditedCnc(true);
               }}
               onBlur={handleCncHoursBlur}
-              className="w-20 rounded border border-line bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              className="w-20 rounded border border-line bg-overlay/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
               placeholder={autoCncHours?.toString() ?? '0'}
             />
           </div>
@@ -3012,7 +3012,7 @@ function VariantQuoteMini({
                 setHasUserEdited3D(true);
               }}
               onBlur={handlePrinter3DBlur}
-              className="w-20 rounded border border-line bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              className="w-20 rounded border border-line bg-overlay/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
               placeholder={autoPrinter3DHours?.toString() ?? '0'}
             />
           </div>
@@ -3055,7 +3055,7 @@ function VariantQuoteMini({
                 setHasUserEditedTotal(true);
               }}
               onBlur={handleTotalBlur}
-              className="w-24 rounded border border-line bg-white/5 px-2 py-1 text-right font-medium text-white focus:border-primary/50 focus:outline-none"
+              className="w-24 rounded border border-line bg-overlay/5 px-2 py-1 text-right font-medium text-white focus:border-primary/50 focus:outline-none"
               placeholder={result.total.toFixed(2)}
             />
           </div>
@@ -3098,7 +3098,7 @@ function VariantQuoteMini({
                 setHasUserEditedLabor(true);
               }}
               onBlur={handleLaborHoursBlur}
-              className="w-20 rounded border border-line bg-white/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
+              className="w-20 rounded border border-line bg-overlay/5 px-2 py-1 text-right text-white focus:border-primary/50 focus:outline-none"
               placeholder={autoLaborHours?.toString() ?? '0'}
             />
           </div>
@@ -3133,7 +3133,7 @@ function VariantQuoteMini({
                 setHasUserEditedTotal(true);
               }}
               onBlur={handleTotalBlur}
-              className="w-24 rounded border border-line bg-white/5 px-2 py-1 text-right font-medium text-white focus:border-primary/50 focus:outline-none"
+              className="w-24 rounded border border-line bg-overlay/5 px-2 py-1 text-right font-medium text-white focus:border-primary/50 focus:outline-none"
               placeholder="0"
             />
           </div>
@@ -3244,7 +3244,7 @@ const AddVariantInline: React.FC<AddVariantInlineProps> = ({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="e.g. 14 (creates -01 through -14)"
-        className="w-48 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+        className="w-48 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
         disabled={loading}
       />
       <button
@@ -3379,7 +3379,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
             step="0.01"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full rounded border border-line bg-white/5 px-3 py-2 text-white"
+            className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white"
             required
           />
         </div>
@@ -3389,7 +3389,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
             type="text"
             value={unit}
             onChange={(e) => setUnit(e.target.value)}
-            className="w-full rounded border border-line bg-white/5 px-3 py-2 text-white"
+            className="w-full rounded border border-line bg-overlay/5 px-3 py-2 text-white"
             placeholder="From material"
             required
           />
@@ -3405,7 +3405,7 @@ const AddMaterialForm: React.FC<AddMaterialFormProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded bg-white/10 px-4 py-2 text-sm font-medium text-white"
+          className="rounded bg-overlay/10 px-4 py-2 text-sm font-medium text-white"
         >
           Cancel
         </button>
@@ -3497,7 +3497,7 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
                         [variant.variantSuffix]: val,
                       }));
                     }}
-                    className="w-14 rounded border border-line bg-white/5 px-1.5 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-14 rounded border border-line bg-overlay/5 px-1.5 py-1 text-center text-sm text-white [appearance:textfield] focus:border-primary/50 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     placeholder="0"
                     aria-label={`Qty for -${variant.variantSuffix}`}
                   />
@@ -3516,7 +3516,7 @@ const SetCompositionEditor: React.FC<SetCompositionEditorProps> = ({
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+              className="rounded bg-overlay/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-overlay/20"
             >
               Cancel
             </button>
@@ -3602,7 +3602,7 @@ const ProductImageRow: React.FC<ProductImageRowProps> = ({ img, partId, onChange
         href={img.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white hover:bg-overlay/10"
       >
         <span className="material-symbols-outlined text-primary">image</span>
         {img.filename}
@@ -3618,7 +3618,7 @@ const ProductImageRow: React.FC<ProductImageRowProps> = ({ img, partId, onChange
         type="button"
         onClick={() => replaceInputRef.current?.click()}
         disabled={busy}
-        className="min-h-[44px] rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[44px] rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm text-white hover:bg-overlay/10 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? 'Working…' : 'Replace'}
       </button>
@@ -3780,7 +3780,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
         <div className="flex items-center gap-4">
           <button
             onClick={onCancel}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white/5 text-white transition-colors hover:bg-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-overlay/5 text-white transition-colors hover:bg-overlay/10"
             aria-label="Cancel"
           >
             <span className="material-symbols-outlined text-lg">arrow_back</span>
@@ -3791,7 +3791,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         <form
           onSubmit={handleSubmit}
-          className="mx-auto max-w-lg space-y-3 rounded-2xl border border-line bg-white/5 p-4"
+          className="mx-auto max-w-lg space-y-3 rounded-2xl border border-line bg-overlay/5 p-4"
         >
           <div>
             <label className="mb-1 block text-sm font-medium text-muted">Part Number</label>
@@ -3805,7 +3805,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               }}
               placeholder="e.g. SK-F35-0911"
               aria-invalid={duplicateError ? true : undefined}
-              className={`w-full rounded-lg border bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:outline-none ${
+              className={`w-full rounded-lg border bg-overlay/5 px-3 py-2 text-white placeholder:text-subtle focus:outline-none ${
                 duplicateError
                   ? 'border-red-500/70 focus:border-red-500'
                   : 'border-line focus:border-primary/50'
@@ -3837,7 +3837,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Required; defaults to part number if empty"
-              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
               required
             />
           </div>
@@ -3847,7 +3847,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-3 py-2 text-white placeholder:text-subtle focus:border-primary/50 focus:outline-none"
             />
           </div>
           <div>
@@ -3860,7 +3860,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
                 {images.map((file, index) => (
                   <div
                     key={`${file.name}-${index}`}
-                    className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2"
+                    className="flex items-center gap-2 rounded-lg border border-line bg-overlay/5 px-3 py-2"
                   >
                     <span className="material-symbols-outlined text-primary">image</span>
                     <span className="min-w-0 flex-1 truncate text-sm text-white">{file.name}</span>
@@ -3886,7 +3886,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              className="flex items-center gap-2 rounded-lg border border-line bg-overlay/5 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-overlay/10"
             >
               <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
               {images.length > 0 ? 'Add another image' : 'Add image'}
@@ -3903,7 +3903,7 @@ const CreatePartForm: React.FC<CreatePartFormProps> = ({ onCreated, onCancel, sh
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-lg border border-line bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              className="rounded-lg border border-line bg-overlay/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-overlay/10"
             >
               Cancel
             </button>

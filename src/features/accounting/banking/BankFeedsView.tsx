@@ -154,7 +154,7 @@ const STATUS_BADGE: Record<
   },
   disconnected: {
     label: 'Disconnected',
-    className: 'border-line bg-white/5 text-muted',
+    className: 'border-line bg-overlay/5 text-muted',
     icon: 'link_off',
   },
 };
@@ -398,7 +398,7 @@ function MappingStep({
           type="button"
           onClick={onClose}
           aria-label="Close mapping"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
@@ -909,7 +909,7 @@ export default function BankFeedsView() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
+          <div className="divide-y divide-overlay/5 overflow-hidden rounded-lg border border-line">
             {items.map((item) => (
               <ConnectionRow
                 key={item.id}

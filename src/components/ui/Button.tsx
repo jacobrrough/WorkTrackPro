@@ -27,9 +27,9 @@ export const Button: React.FC<ButtonProps> = ({
     primary:
       'bg-primary text-on-accent hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed',
     secondary:
-      'bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed',
+      'bg-overlay/10 text-white hover:bg-overlay/20 disabled:opacity-50 disabled:cursor-not-allowed',
     ghost:
-      'bg-transparent text-muted hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed',
+      'bg-transparent text-muted hover:text-white hover:bg-overlay/5 disabled:opacity-50 disabled:cursor-not-allowed',
     danger:
       'bg-danger text-on-danger hover:bg-danger-hover disabled:opacity-50 disabled:cursor-not-allowed',
   };

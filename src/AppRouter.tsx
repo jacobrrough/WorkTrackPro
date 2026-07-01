@@ -80,7 +80,7 @@ function NotFound({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-lg border border-line-strong px-4 py-2 font-bold text-white hover:bg-white/10"
+            className="rounded-lg border border-line-strong px-4 py-2 font-bold text-white hover:bg-overlay/10"
           >
             Try again
           </button>
@@ -610,7 +610,7 @@ function TrelloImportRoute() {
         <button
           type="button"
           onClick={() => appNavigate('dashboard')}
-          className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
+          className="flex size-10 items-center justify-center rounded-lg text-muted hover:bg-overlay/10 hover:text-white"
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>

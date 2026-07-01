@@ -139,7 +139,7 @@ export function InventoryDetailEdit({
               type="text"
               value={form.editName}
               onChange={(e) => setForm({ editName: e.target.value })}
-              className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
           </div>
           <div>
@@ -149,7 +149,7 @@ export function InventoryDetailEdit({
               onChange={(e) => setForm({ editDescription: e.target.value })}
               placeholder="Optional description..."
               rows={3}
-              className="w-full resize-none rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full resize-none rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
           </div>
           <div>
@@ -173,7 +173,7 @@ export function InventoryDetailEdit({
               value={form.editUnit}
               onChange={(e) => setForm({ editUnit: e.target.value })}
               placeholder="e.g., ft, lbs, ea"
-              className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
           </div>
           {isAdmin && (
@@ -185,7 +185,7 @@ export function InventoryDetailEdit({
                 value={form.editPrice || ''}
                 onChange={(e) => setForm({ editPrice: parseFloat(e.target.value) || 0 })}
                 placeholder="0.00"
-                className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
               />
             </div>
           )}
@@ -200,7 +200,7 @@ export function InventoryDetailEdit({
               step={1}
               value={form.editInStock}
               onChange={(e) => setForm({ editInStock: parseFloat(e.target.value) || 0 })}
-              className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
             {form.editInStock !== currentItem.inStock && (
               <p className="mt-1 text-xs text-yellow-400">
@@ -218,17 +218,17 @@ export function InventoryDetailEdit({
                 value={form.editReason}
                 onChange={(e) => setForm({ editReason: e.target.value })}
                 placeholder="e.g., Physical count, received shipment, correction"
-                className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+                className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
               />
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-line bg-white/5 px-4 py-3">
+            <div className="rounded-lg border border-line bg-overlay/5 px-4 py-3">
               <p className="mb-1 text-xs text-muted">Allocated</p>
               <p className="text-lg font-bold text-yellow-400">{allocated}</p>
               <p className="text-xs text-subtle">(auto-calculated)</p>
             </div>
-            <div className="rounded-lg border border-line bg-white/5 px-4 py-3">
+            <div className="rounded-lg border border-line bg-overlay/5 px-4 py-3">
               <p className="mb-1 text-xs text-muted">Available</p>
               <p className="text-lg font-bold text-green-400">
                 {Math.max(0, form.editInStock - allocated)}
@@ -248,7 +248,7 @@ export function InventoryDetailEdit({
                 setForm({ editReorderPoint: val });
               }}
               placeholder="Not set (enter number to enable)"
-              className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
             <p className="mt-1 text-xs text-subtle">
               Alert when available stock falls below this level. Leave empty or set to 0 to disable.
@@ -262,7 +262,7 @@ export function InventoryDetailEdit({
               value={form.editOnOrder || ''}
               onChange={(e) => setForm({ editOnOrder: parseFloat(e.target.value) || 0 })}
               placeholder="0"
-              className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
           </div>
         </div>
@@ -277,7 +277,7 @@ export function InventoryDetailEdit({
                 value={form.editBarcode}
                 onChange={(e) => setForm({ editBarcode: e.target.value })}
                 placeholder="Scan or enter manually"
-                className="flex-1 rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+                className="flex-1 rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
               />
               <button
                 type="button"
@@ -296,7 +296,7 @@ export function InventoryDetailEdit({
                 value={form.editBinLocation}
                 onChange={(e) => setForm({ editBinLocation: e.target.value })}
                 placeholder="e.g., A4c"
-                className="flex-1 rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+                className="flex-1 rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
               />
               <button
                 type="button"
@@ -314,7 +314,7 @@ export function InventoryDetailEdit({
               type="text"
               value={form.editVendor}
               onChange={(e) => setForm({ editVendor: e.target.value })}
-              className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white"
+              className="w-full rounded-lg border border-line bg-overlay/5 px-4 py-3 text-white"
             />
           </div>
         </div>

@@ -123,7 +123,7 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
           <button
             type="button"
             onClick={() => setAddingToBin(false)}
-            className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
             aria-label="Back to bin"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -150,7 +150,7 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
         <button
           type="button"
           onClick={() => (onBack ? onBack() : onNavigate('dashboard'))}
-          className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
+          className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-overlay/10 hover:text-white"
           aria-label="Back to home"
         >
           <span className="material-symbols-outlined">arrow_back</span>
