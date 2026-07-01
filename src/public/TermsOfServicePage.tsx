@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import './public.css';
 
 /**
  * Public (no-auth) Terms of Service page served at /terms.
@@ -14,35 +15,35 @@ const EFFECTIVE_DATE = 'June 17, 2026';
 
 const TermsOfServicePage: React.FC = () => {
   return (
-    <div className="h-[100dvh] overflow-y-auto bg-slate-50 text-slate-800">
+    <div className="rcm-site rcm-page">
       <main className="mx-auto w-full max-w-3xl px-6 py-12 sm:py-16">
-        <header className="mb-10 border-b border-slate-200 pb-8">
+        <header className="mb-10 border-b border-line pb-8">
           <Link
             to="/"
-            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+            className="text-sm font-semibold text-primary hover:text-primary hover:underline"
           >
             &larr; Rough Cut Manufacturing
           </Link>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Terms of Service
           </h1>
           <p className="mt-4 text-base leading-relaxed text-subtle">
-            <span className="font-semibold text-slate-900">Rough Cut Manufacturing</span>{' '}
+            <span className="font-semibold text-white">Rough Cut Manufacturing</span>{' '}
             ("Company," "we," "us") provides the WorkTrackPro application (the "Service"). These
             Terms of Service ("Terms") govern your access to and use of the Service.
           </p>
           <dl className="mt-6 space-y-1 text-sm text-subtle">
             <div>
-              <dt className="inline font-semibold text-slate-900">Effective date: </dt>
+              <dt className="inline font-semibold text-white">Effective date: </dt>
               <dd className="inline">{EFFECTIVE_DATE}</dd>
             </div>
             <div>
-              <dt className="inline font-semibold text-slate-900">Contact: </dt>
+              <dt className="inline font-semibold text-white">Contact: </dt>
               <dd className="inline">
                 Jacob Rough, CEO &mdash;{' '}
                 <a
                   href="mailto:jacobrrough@gmail.com"
-                  className="text-indigo-600 hover:text-indigo-700 hover:underline"
+                  className="text-primary hover:text-primary hover:underline"
                 >
                   jacobrrough@gmail.com
                 </a>
@@ -51,9 +52,9 @@ const TermsOfServicePage: React.FC = () => {
           </dl>
         </header>
 
-        <article className="space-y-10 text-base leading-relaxed text-slate-700">
+        <article className="space-y-10 text-base leading-relaxed text-white">
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">
+            <h2 className="mb-3 text-xl font-semibold text-white">
               1. Acceptance of these Terms
             </h2>
             <p>
@@ -64,7 +65,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">2. The Service</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">2. The Service</h2>
             <p>
               WorkTrackPro provides job and manufacturing management, inventory, and accounting
               features, including invoicing, estimates, and&mdash;where enabled&mdash;bank-feed and
@@ -73,7 +74,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">
+            <h2 className="mb-3 text-xl font-semibold text-white">
               3. Accounts and eligibility
             </h2>
             <p>
@@ -84,7 +85,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">4. Acceptable use</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">4. Acceptable use</h2>
             <p>
               You agree not to: (a) use the Service unlawfully or to violate the rights of others;
               (b) attempt to gain unauthorized access to the Service or its systems; (c) interfere
@@ -94,7 +95,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">5. Your data and content</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">5. Your data and content</h2>
             <p>
               You retain ownership of the data and content you submit ("Customer Data"). You grant
               us a limited license to host and process Customer Data solely to provide and support
@@ -104,7 +105,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">
+            <h2 className="mb-3 text-xl font-semibold text-white">
               6. Financial-account connections
             </h2>
             <p>
@@ -116,7 +117,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">7. Third-party services</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">7. Third-party services</h2>
             <p>
               The Service integrates with third-party providers (e.g., Supabase, Netlify, Plaid,
               Intuit). Your use of those services may be subject to their terms and privacy
@@ -125,7 +126,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">8. Intellectual property</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">8. Intellectual property</h2>
             <p>
               The Service, including its software, design, and content (excluding Customer Data), is
               owned by the Company and its licensors and is protected by applicable law. We grant
@@ -135,7 +136,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">9. Disclaimers</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">9. Disclaimers</h2>
             <p>
               The Service is provided "as is" and "as available," without warranties of any kind,
               express or implied, including merchantability, fitness for a particular purpose, and
@@ -146,7 +147,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">
+            <h2 className="mb-3 text-xl font-semibold text-white">
               10. Limitation of liability
             </h2>
             <p>
@@ -159,7 +160,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">11. Indemnification</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">11. Indemnification</h2>
             <p>
               You agree to indemnify and hold the Company harmless from claims arising out of your
               Customer Data, your use of the Service, or your violation of these Terms or applicable
@@ -168,7 +169,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">12. Termination</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">12. Termination</h2>
             <p>
               You may stop using the Service at any time. We may suspend or terminate access if you
               violate these Terms or to protect the Service or its users. On termination, your right
@@ -178,7 +179,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">13. Governing law</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">13. Governing law</h2>
             <p>
               These Terms are governed by the laws of the State of California, without regard to
               conflict-of-laws rules. Disputes will be resolved in the state or federal courts
@@ -187,7 +188,7 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">
+            <h2 className="mb-3 text-xl font-semibold text-white">
               14. Changes to these Terms
             </h2>
             <p>
@@ -198,12 +199,12 @@ const TermsOfServicePage: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="mb-3 text-xl font-semibold text-slate-900">15. Contact</h2>
+            <h2 className="mb-3 text-xl font-semibold text-white">15. Contact</h2>
             <p>
               Rough Cut Manufacturing &mdash; Jacob Rough, CEO &mdash;{' '}
               <a
                 href="mailto:jacobrrough@gmail.com"
-                className="text-indigo-600 hover:text-indigo-700 hover:underline"
+                className="text-primary hover:text-primary hover:underline"
               >
                 jacobrrough@gmail.com
               </a>
@@ -211,12 +212,12 @@ const TermsOfServicePage: React.FC = () => {
           </section>
         </article>
 
-        <footer className="mt-12 border-t border-slate-200 pt-6 text-sm text-subtle">
+        <footer className="mt-12 border-t border-line pt-6 text-sm text-subtle">
           <nav className="flex flex-wrap gap-x-6 gap-y-2">
-            <Link to="/" className="hover:text-slate-700 hover:underline">
+            <Link to="/" className="hover:text-white hover:underline">
               Home
             </Link>
-            <Link to="/privacy" className="hover:text-slate-700 hover:underline">
+            <Link to="/privacy" className="hover:text-white hover:underline">
               Privacy Policy
             </Link>
           </nav>
