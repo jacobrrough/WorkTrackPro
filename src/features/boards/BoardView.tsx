@@ -358,7 +358,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
-      <header className="safe-area-top flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="safe-area-top flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -401,7 +401,7 @@ const BoardView: React.FC<BoardViewProps> = ({ boardId, onNavigate, onBack }) =>
               // relies on the flex container's default align-items:stretch.
               <div
                 key={col.id}
-                className="flex min-h-0 w-[calc(100vw-2rem)] flex-shrink-0 snap-center flex-col rounded-lg border border-white/10 bg-surface-dark md:w-72"
+                className="flex min-h-0 w-[calc(100vw-2rem)] flex-shrink-0 snap-center flex-col rounded-lg border border-line bg-surface-dark md:w-72"
               >
                 <div className="p-3 pb-0">
                   <BoardColumnHeader

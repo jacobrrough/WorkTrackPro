@@ -38,14 +38,14 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg border border-white/10 bg-surface-dark p-6"
+        className="w-full max-w-md rounded-lg border border-line bg-surface-dark p-6"
       >
         <h2 className="mb-4 text-lg font-semibold text-white">New Board</h2>
 
         <label className="mb-1 block text-sm text-muted">Name</label>
         <input
           autoFocus
-          className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+          className="mb-4 w-full rounded border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Board name"
@@ -54,7 +54,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
 
         <label className="mb-1 block text-sm text-muted">Description (optional)</label>
         <textarea
-          className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
+          className="mb-4 w-full resize-none rounded border border-line bg-white/5 px-3 py-2 text-white placeholder-subtle focus:border-primary focus:outline-none"
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -70,7 +70,7 @@ const CreateBoardModal: React.FC<CreateBoardModalProps> = ({ onClose, onCreate }
               className={`flex cursor-pointer items-center gap-3 rounded border px-3 py-2 transition-colors ${
                 visibility === opt.value
                   ? 'border-primary bg-primary/10 text-white'
-                  : 'border-white/10 text-muted hover:border-white/20'
+                  : 'border-line text-muted hover:border-line-strong'
               }`}
             >
               <input

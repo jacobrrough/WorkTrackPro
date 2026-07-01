@@ -81,7 +81,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
-      <header className="safe-area-top flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="safe-area-top flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={onBack}
@@ -142,7 +142,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
           {card.description && (
             <div>
               <h3 className="mb-2 text-sm font-medium text-muted">Description</h3>
-              <p className="whitespace-pre-wrap rounded-lg border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-white">
+              <p className="whitespace-pre-wrap rounded-lg border border-line bg-white/5 p-4 text-sm leading-relaxed text-white">
                 {card.description}
               </p>
             </div>

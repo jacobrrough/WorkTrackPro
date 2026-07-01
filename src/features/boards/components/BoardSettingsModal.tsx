@@ -53,7 +53,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="w-full max-w-md rounded-lg border border-white/10 bg-surface-dark p-6">
+      <div className="w-full max-w-md rounded-lg border border-line bg-surface-dark p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Board Settings</h2>
           <button onClick={onClose} className="text-muted hover:text-white" aria-label="Close">
@@ -63,7 +63,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
         <label className="mb-1 block text-sm text-muted">Name</label>
         <input
-          className="mb-4 w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
+          className="mb-4 w-full rounded border border-line bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={100}
@@ -71,7 +71,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
 
         <label className="mb-1 block text-sm text-muted">Description</label>
         <textarea
-          className="mb-4 w-full resize-none rounded border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
+          className="mb-4 w-full resize-none rounded border border-line bg-white/5 px-3 py-2 text-white focus:border-primary focus:outline-none"
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -87,7 +87,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
               className={`rounded px-3 py-1.5 text-xs font-medium capitalize ${
                 visibility === v
                   ? 'bg-primary text-on-accent'
-                  : 'border border-white/10 text-muted hover:text-white'
+                  : 'border border-line text-muted hover:text-white'
               }`}
             >
               {v}
@@ -119,10 +119,10 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
           </button>
         )}
 
-        <div className="border-t border-white/10 pt-4">
+        <div className="border-t border-line pt-4">
           {confirmDelete ? (
             <div className="space-y-2">
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-danger">
                 Delete this board? All columns, cards, and members will be removed. This cannot be
                 undone.
               </p>
@@ -131,7 +131,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
                   onClick={async () => {
                     await onDelete();
                   }}
-                  className="rounded bg-red-600 px-4 py-1.5 text-sm font-medium text-white"
+                  className="rounded-lg bg-danger px-4 py-1.5 text-sm font-medium text-on-danger"
                 >
                   Delete
                 </button>
@@ -146,7 +146,7 @@ const BoardSettingsModal: React.FC<BoardSettingsModalProps> = ({
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-sm text-red-400 hover:underline"
+              className="text-sm text-danger hover:underline"
             >
               Delete this board
             </button>
