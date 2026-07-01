@@ -1,0 +1,32 @@
+# Netlify security headers. Vite copies /public/_headers -> /dist/_headers at build.
+#
+# ONE policy applied to /* (every route). This is deliberate: the app is an SPA, so Netlify
+# rewrites every unmatched path to the same index.html. A per-route CSP would be bypassable by
+# just loading the app via an unlisted path (same bundle, no header) — so the CSP MUST cover /*.
+#
+# The single policy is therefore the UNION of what the whole app loads:
+#   - self + inline (index.html has inline theme/font-preload scripts + inline styles)
+#   - Cloudflare Turnstile      (public quote form anti-spam)
+#   - Google Fonts              (fonts.googleapis.com / fonts.gstatic.com)
+#   - Supabase                  (REST + realtime wss + storage images + PDF preview iframe)
+#   - Plaid Link                (cdn.plaid.com script; *.plaid.com frames/connect) — accounting
+#   - Office / Google Docs      (view.officeapps.live.com, docs.google.com) — attachment viewers
+#   - api.trello.com            (Trello import)
+#
+# 'unsafe-inline' is required by the inline scripts/styles above; the policy still blocks loading
+# scripts / connecting / framing to any origin not listed here. Tightening script-src to
+# nonces/hashes is a follow-up. No worker-src/wasm needed: the barcode scanner uses the native
+# BarcodeDetector + a pure-JS jsQR fallback, and the service worker (/sw.js) is same-origin.
+#
+# SMOKE-TEST BEFORE TRUSTING IN PROD: load a deploy preview and exercise Plaid Link, the
+# Office/Docs attachment viewers, PDF preview, and the barcode scanner while watching the
+# console for CSP violations. Quick rollback if something trips: rename the header to
+# `Content-Security-Policy-Report-Only` (reports, does not block) until the missing origin is added.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: geolocation=(), payment=(), usb=(), microphone=(self), camera=(self)
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdn.plaid.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://*.plaid.com https://cdn.plaid.com https://api.trello.com; frame-src 'self' blob: https://*.supabase.co https://challenges.cloudflare.com https://*.plaid.com https://cdn.plaid.com https://view.officeapps.live.com https://docs.google.com

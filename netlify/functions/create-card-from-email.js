@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import { isAuthorized } from './lib/addonAuth.mjs';
 
 // Creates a board card from Gmail email data (subject, body, attachments).
 // Authenticated via a static API key (GMAIL_ADDON_API_KEY env var).
+
+// Re-exported so existing unit tests can import the auth boundary from this module.
+export { isAuthorized };
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,17 +18,6 @@ const MAX_ATTACHMENTS = 10;
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5 MB per file (before base64 encoding)
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 2000;
-
-// Pure Bearer-token check. Holds the exact comparison used to gate this
-// endpoint: a missing/empty expected key never authorizes, the header must
-// carry a "Bearer " prefix, and the trimmed token must equal the key exactly.
-// Exported so the boundary can be unit-tested without invoking the handler.
-export function isAuthorized(authHeader, expectedKey) {
-  if (!expectedKey) return false;
-  const auth = (authHeader || '').trim();
-  if (!auth.startsWith('Bearer ')) return false;
-  return auth.slice(7).trim() === expectedKey;
-}
 
 function verifyApiKey(event) {
   const key = process.env.GMAIL_ADDON_API_KEY;
@@ -140,8 +133,29 @@ export async function handler(event) {
       // Validate columnId against the known status ids for this board type
       // (mirrors ADMIN_COLUMNS/SHOP_COLUMNS in boards-for-addon.js) so an
       // invalid/arbitrary status can't be written straight into jobs.status.
-      const ADMIN_STATUSES = ['toBeQuoted', 'quoted', 'rfqReceived', 'rfqSent', 'pod', 'pending', 'inProgress', 'qualityControl', 'onHold', 'finished', 'delivered', 'waitingForPayment', 'projectCompleted'];
-      const SHOP_FLOOR_STATUSES = ['pending', 'inProgress', 'qualityControl', 'finished', 'delivered', 'onHold'];
+      const ADMIN_STATUSES = [
+        'toBeQuoted',
+        'quoted',
+        'rfqReceived',
+        'rfqSent',
+        'pod',
+        'pending',
+        'inProgress',
+        'qualityControl',
+        'onHold',
+        'finished',
+        'delivered',
+        'waitingForPayment',
+        'projectCompleted',
+      ];
+      const SHOP_FLOOR_STATUSES = [
+        'pending',
+        'inProgress',
+        'qualityControl',
+        'finished',
+        'delivered',
+        'onHold',
+      ];
       const validStatuses = boardType === 'admin' ? ADMIN_STATUSES : SHOP_FLOOR_STATUSES;
       if (!validStatuses.includes(columnId)) {
         return {
@@ -219,14 +233,21 @@ export async function handler(event) {
         const mimeType = sanitizeText(att.mimeType) || 'application/octet-stream';
         const base64Data = sanitizeText(att.base64Data);
 
-        if (!base64Data) { warnings.push(`Skipped ${filename}: no data`); continue; }
+        if (!base64Data) {
+          warnings.push(`Skipped ${filename}: no data`);
+          continue;
+        }
 
         let buffer;
-        try { buffer = Buffer.from(base64Data, 'base64'); } catch {
-          warnings.push(`Skipped ${filename}: invalid base64`); continue;
+        try {
+          buffer = Buffer.from(base64Data, 'base64');
+        } catch {
+          warnings.push(`Skipped ${filename}: invalid base64`);
+          continue;
         }
         if (buffer.length > MAX_ATTACHMENT_SIZE) {
-          warnings.push(`Skipped ${filename}: exceeds 5 MB limit`); continue;
+          warnings.push(`Skipped ${filename}: exceeds 5 MB limit`);
+          continue;
         }
 
         const safeName = sanitizeFileName(filename);
@@ -239,7 +260,8 @@ export async function handler(event) {
 
         if (uploadErr) {
           console.error(`Attachment upload failed (${filename}):`, uploadErr.message);
-          warnings.push(`Failed to upload ${filename}`); continue;
+          warnings.push(`Failed to upload ${filename}`);
+          continue;
         }
 
         const { error: insertErr } = await supabase.from('attachments').insert({
@@ -251,7 +273,8 @@ export async function handler(event) {
 
         if (insertErr) {
           console.error(`Attachment record insert failed (${filename}):`, insertErr.message);
-          warnings.push(`Uploaded ${filename} but failed to save record`); continue;
+          warnings.push(`Uploaded ${filename} but failed to save record`);
+          continue;
         }
         attachmentResults.push({ filename, storagePath });
       }
