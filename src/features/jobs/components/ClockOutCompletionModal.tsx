@@ -36,7 +36,7 @@ function DeltaRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-3 py-2">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2">
       <div className="min-w-0">
         <span className="font-mono text-sm font-bold text-white">{label}</span>
         <span className="ml-2 text-[11px] text-muted">
@@ -49,7 +49,7 @@ function DeltaRow({
           aria-label={`Decrease ${label}`}
           disabled={value <= 0}
           onClick={() => onChange(value - 1)}
-          className="flex size-10 items-center justify-center rounded-sm border border-white/15 text-white disabled:opacity-30"
+          className="flex size-10 items-center justify-center rounded-lg border border-line text-white disabled:opacity-30"
         >
           <span className="material-symbols-outlined text-lg">remove</span>
         </button>
@@ -61,7 +61,7 @@ function DeltaRow({
           aria-label={`Increase ${label}`}
           disabled={value >= max}
           onClick={() => onChange(value + 1)}
-          className="flex size-10 items-center justify-center rounded-sm border border-primary/40 bg-primary/15 text-primary disabled:opacity-30"
+          className="flex size-10 items-center justify-center rounded-lg border border-primary/40 bg-primary/15 text-primary disabled:opacity-30"
         >
           <span className="material-symbols-outlined text-lg">add</span>
         </button>
@@ -153,7 +153,7 @@ export function ClockOutCompletionModal({
 
   return (
     <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="w-full max-w-md rounded-t-lg border border-white/10 bg-background-dark p-4 sm:rounded-lg">
+      <div className="w-full max-w-md rounded-t-lg border border-line bg-background-dark p-4 sm:rounded-lg">
         {step === 'cnc' && (
           <>
             <h2 className="text-lg font-bold text-white">Any CNC finished?</h2>
@@ -177,7 +177,7 @@ export function ClockOutCompletionModal({
               <button
                 type="button"
                 onClick={() => setStep('units')}
-                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white"
+                className="flex-1 rounded-lg border border-line px-3 py-2.5 text-sm font-bold text-white"
               >
                 {Object.values(cncDelta).some((v) => v > 0) ? 'Next' : 'None — next'}
               </button>
@@ -209,7 +209,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={() => void submit(false)}
-                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-lg border border-line px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 Nothing finished
               </button>
@@ -217,7 +217,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={onUnitsDone}
-                className="flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50"
+                className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Done'}
               </button>
@@ -237,7 +237,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={() => void submit(false)}
-                className="flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-lg border border-line px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 No
               </button>
@@ -245,7 +245,7 @@ export function ClockOutCompletionModal({
                 type="button"
                 disabled={saving}
                 onClick={() => void submit(true)}
-                className="flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50"
+                className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Yes'}
               </button>

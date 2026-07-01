@@ -103,7 +103,7 @@ export function MaterialUsageModal({ job, onComplete }: MaterialUsageModalProps)
 
   return (
     <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="w-full max-w-md rounded-t-lg border border-white/10 bg-background-dark p-4 sm:rounded-lg">
+      <div className="w-full max-w-md rounded-t-lg border border-line bg-background-dark p-4 sm:rounded-lg">
         <h2 className="text-lg font-bold text-white">Used more than estimated?</h2>
         <p className="mb-3 text-xs text-muted">
           {partLabel} — if anything got scrapped or you used more than the estimate, add the extra
@@ -114,7 +114,7 @@ export function MaterialUsageModal({ job, onComplete }: MaterialUsageModalProps)
           {lines.map((l) => (
             <div
               key={l.inventoryId}
-              className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-3 py-2"
+              className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2"
             >
               <div className="min-w-0">
                 <span className="block truncate text-sm font-bold text-white">{l.name}</span>
@@ -133,7 +133,7 @@ export function MaterialUsageModal({ job, onComplete }: MaterialUsageModalProps)
                   aria-label={`Extra ${l.unit} of ${l.name} used beyond the estimate of ${l.estimate}`}
                   value={extraText[l.inventoryId] ?? ''}
                   onChange={(e) => setExtraText((p) => ({ ...p, [l.inventoryId]: e.target.value }))}
-                  className="h-10 w-20 rounded-sm border border-white/15 bg-white/5 px-2 text-center text-base font-bold tabular-nums text-white"
+                  className="h-10 w-20 rounded-lg border border-line bg-white/5 px-2 text-center text-base font-bold tabular-nums text-white"
                 />
                 <span className="whitespace-nowrap text-xs font-medium text-muted">{l.unit}</span>
               </div>
@@ -148,8 +148,8 @@ export function MaterialUsageModal({ job, onComplete }: MaterialUsageModalProps)
             onClick={() => void submit()}
             className={
               anyExtra
-                ? 'flex-1 rounded-sm bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50'
-                : 'flex-1 rounded-sm border border-white/15 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50'
+                ? 'flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-on-accent disabled:opacity-50'
+                : 'flex-1 rounded-lg border border-line px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50'
             }
           >
             {saving

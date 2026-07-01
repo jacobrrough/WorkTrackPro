@@ -58,7 +58,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
             const next: Record<string, number> = n > 0 ? { [NO_VARIANT_DASH_KEY]: n } : {};
             onChange(next, { mode: 'variants', setCount: 0 });
           }}
-          className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
+          className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
           placeholder="0"
         />
       </div>
@@ -96,14 +96,14 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
   return (
     <div className="space-y-2">
       {hasSetMode && (
-        <div className="space-y-2 rounded-sm border border-primary/20 bg-primary/5 px-2.5 py-2">
+        <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-muted">One set:</span>
             <span className="text-xs font-medium text-white">
               {formatSetComposition(effectiveSetComposition)}
             </span>
           </div>
-          <div className="inline-flex rounded-sm border border-primary/30 bg-background-dark p-0.5">
+          <div className="inline-flex rounded-lg border border-primary/30 bg-background-dark p-0.5">
             <button
               type="button"
               disabled={disabled}
@@ -131,7 +131,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
       )}
 
       {mode === 'sets' && hasSetMode ? (
-        <div className="space-y-2 rounded-sm border border-white/10 bg-background-dark/40 p-2.5">
+        <div className="space-y-2 rounded-2xl border border-line bg-background-dark/40 p-2.5">
           <label className="block text-xs font-medium text-muted">Number of sets</label>
           <input
             type="number"
@@ -140,7 +140,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
             value={setCount}
             disabled={disabled}
             onChange={(e) => onSetCountChange(parseInt(e.target.value) || 0)}
-            className="w-full rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
+            className="w-full rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
             placeholder="0"
           />
           {total > 0 && (
@@ -171,7 +171,7 @@ const PartQuantityEditor: React.FC<PartQuantityEditorProps> = ({
                     onChange={(e) =>
                       onVariantChange(variant.variantSuffix, parseInt(e.target.value) || 0)
                     }
-                    className="flex-1 rounded border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
+                    className="flex-1 rounded border border-line bg-white/5 px-2 py-1.5 text-sm text-white focus:border-primary/50 focus:outline-none disabled:opacity-50"
                     placeholder="0"
                   />
                   <span className="text-[10px] text-subtle">units</span>

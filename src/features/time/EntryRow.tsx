@@ -75,7 +75,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
 
   if (editing) {
     return (
-      <li className="space-y-2 rounded-sm bg-background-dark/60 p-3 text-sm">
+      <li className="space-y-2 rounded-lg bg-background-dark/60 p-3 text-sm">
         <HoursFields
           date={date}
           hours={hoursStr}
@@ -90,13 +90,13 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           <button
             onClick={handleSave}
             disabled={!parsed.valid || saving}
-            className="flex-1 rounded-sm bg-primary py-1.5 text-xs font-bold text-on-accent disabled:opacity-50"
+            className="flex-1 rounded-lg bg-primary py-1.5 text-xs font-bold text-on-accent disabled:opacity-50"
           >
             Save{parsed.valid ? ` (${formatUsd(payFromHours(parsed.hours, entry.rate))})` : ''}
           </button>
           <button
             onClick={cancel}
-            className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+            className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
           >
             Cancel
           </button>
@@ -108,7 +108,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
   const paid = isEntryPaid(entry);
 
   return (
-    <li className="flex items-center justify-between gap-2 rounded-sm bg-white/5 px-3 py-2 text-sm">
+    <li className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm">
       <div className="min-w-0">
         <span className="text-white">{entry.entryDate}</span>
         <span className="ml-2 text-muted">
@@ -126,7 +126,7 @@ const EntryRow: React.FC<EntryRowProps> = ({ entry, range, mutations, requestCon
           // A settled entry is locked (no edit/delete); it can only be reopened.
           <button
             onClick={() => mutations.unmarkEntryPaid(entry.id)}
-            className="rounded-sm border border-white/10 px-2 py-1 text-[11px] font-medium text-muted hover:bg-white/10"
+            className="rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-muted hover:bg-white/10"
           >
             Unmark paid
           </button>

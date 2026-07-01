@@ -61,9 +61,9 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="flex h-[min(85dvh,700px)] w-full max-w-lg flex-col rounded-sm border border-white/10 bg-app-2 shadow-2xl">
+      <div className="flex h-[min(85dvh,700px)] w-full max-w-lg flex-col rounded-lg border border-line bg-app-2 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary" aria-hidden="true">
               smart_toy
@@ -72,7 +72,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close AI Assistant"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -94,10 +94,10 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
               className={`mb-3 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] rounded-sm px-3 py-2 text-sm ${
+                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                   msg.role === 'user'
                     ? 'bg-primary/30 text-white'
-                    : 'border border-white/10 bg-white/5 text-white/90'
+                    : 'border border-line bg-white/5 text-white/90'
                 }`}
               >
                 <p className="whitespace-pre-wrap break-words">{msg.content}</p>
@@ -106,7 +106,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
           ))}
           {isLoading && (
             <div className="mb-3 flex justify-start">
-              <div className="flex items-center gap-2 rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60">
+              <div className="flex items-center gap-2 rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white/60">
                 <span className="material-symbols-outlined animate-spin text-[16px]">
                   progress_activity
                 </span>
@@ -115,7 +115,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
             </div>
           )}
           {error && (
-            <div className="mb-3 rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+            <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
               {error}
             </div>
           )}
@@ -123,7 +123,7 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
         </div>
 
         {/* Input */}
-        <div className="border-t border-white/10 px-4 py-3">
+        <div className="border-t border-line px-4 py-3">
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
@@ -132,12 +132,12 @@ const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({ onClose }) => {
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               rows={1}
-              className="flex-1 resize-none rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle/40 outline-none transition-colors focus:border-primary/50"
+              className="flex-1 resize-none rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle/40 outline-none transition-colors focus:border-primary/50"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="flex size-9 items-center justify-center rounded-sm bg-primary text-on-accent transition-opacity disabled:opacity-40"
+              className="flex size-9 items-center justify-center rounded-lg bg-primary text-on-accent transition-opacity disabled:opacity-40"
               aria-label="Send message"
             >
               <span className="material-symbols-outlined text-[18px]">send</span>

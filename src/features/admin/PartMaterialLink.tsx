@@ -114,7 +114,7 @@ const PartMaterialLink: React.FC<PartMaterialLinkProps> = ({
             }
           : undefined
       }
-      className={`flex min-h-[7rem] flex-col rounded border border-white/10 bg-white/5 p-3 ${onNavigate ? 'cursor-pointer transition-colors hover:border-primary/30 hover:bg-white/10' : ''} ${className}`}
+      className={`flex min-h-[7rem] flex-col rounded border border-line bg-white/5 p-3 ${onNavigate ? 'cursor-pointer transition-colors hover:border-primary/30 hover:bg-white/10' : ''} ${className}`}
     >
       <div className="min-h-0 flex-1">
         <p className="truncate text-sm font-medium text-white" title={name}>

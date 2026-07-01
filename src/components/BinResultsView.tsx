@@ -196,7 +196,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
         <button
           type="button"
           onClick={onAddByScan}
-          className="flex items-center justify-center gap-2 rounded-sm border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
+          className="flex items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
         >
           <span className="material-symbols-outlined">qr_code_scanner</span>
           Scan a code
@@ -205,7 +205,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
       <button
         type="button"
         onClick={() => setAddMode('list')}
-        className="flex items-center justify-center gap-2 rounded-sm border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
+        className="flex items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
       >
         <span className="material-symbols-outlined">list</span>
         Pick from a list
@@ -214,7 +214,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
         <button
           type="button"
           onClick={() => setAddMode('create')}
-          className="flex items-center justify-center gap-2 rounded-sm border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
+          className="flex items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/20 py-3 text-sm font-bold text-primary"
         >
           <span className="material-symbols-outlined">add_circle</span>
           Create a new part
@@ -223,7 +223,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
       <button
         type="button"
         onClick={onClose}
-        className="mt-2 rounded-sm bg-white/10 py-3 text-sm font-bold text-white"
+        className="mt-2 rounded-lg bg-white/10 py-3 text-sm font-bold text-white"
       >
         Done
       </button>
@@ -255,7 +255,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
         aria-modal="true"
         aria-label={`Add inventory to bin ${binLocation}`}
       >
-        <header className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-background-dark/95 px-4 py-3">
+        <header className="flex shrink-0 items-center gap-3 border-b border-line bg-background-dark/95 px-4 py-3">
           <button
             type="button"
             onClick={() => {
@@ -275,7 +275,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
             value={pickerSearch}
             onChange={(e) => setPickerSearch(e.target.value)}
             placeholder="Search inventory by name or barcode"
-            className="w-full rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border border-line bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -293,7 +293,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       type="button"
                       onClick={() => handleAssignToBin(item)}
                       disabled={assigningId !== null}
-                      className="flex w-full items-center gap-3 rounded border border-white/10 bg-white/5 p-3 text-left disabled:opacity-50"
+                      className="flex w-full items-center gap-3 rounded border border-line bg-white/5 p-3 text-left disabled:opacity-50"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-white">{item.name}</span>
@@ -330,7 +330,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
       aria-labelledby="bin-results-title"
     >
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3">
+        <header className="flex shrink-0 items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3">
           <h2 id="bin-results-title" className="text-lg font-bold text-white">
             Bin {binLocation}
           </h2>
@@ -362,7 +362,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       return (
                         <li
                           key={j.id}
-                          className="flex items-center gap-3 rounded border border-white/10 bg-white/5 p-2"
+                          className="flex items-center gap-3 rounded border border-line bg-white/5 p-2"
                         >
                           <button
                             type="button"
@@ -412,14 +412,14 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       return (
                         <li
                           key={item.id}
-                          className="flex items-center gap-3 rounded border border-white/10 bg-white/5 p-2"
+                          className="flex items-center gap-3 rounded border border-line bg-white/5 p-2"
                         >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleInventorySelection(item.id)}
                             disabled={removingInventory}
-                            className="size-5 shrink-0 rounded border-white/20"
+                            className="size-5 shrink-0 rounded border-line-strong"
                             aria-label={`Select ${item.name} for removal from bin`}
                           />
                           <button
@@ -447,7 +447,7 @@ const BinResultsView: React.FC<BinResultsViewProps> = ({
                       type="button"
                       onClick={handleRemoveSelectedInventory}
                       disabled={removingInventory}
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-sm border border-red-500/40 bg-red-500/20 py-3 text-sm font-bold text-red-300 disabled:opacity-50"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-500/20 py-3 text-sm font-bold text-red-300 disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined" aria-hidden>
                         {removingInventory ? 'hourglass_empty' : 'remove_circle'}

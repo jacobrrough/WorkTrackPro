@@ -174,7 +174,7 @@ const QuickActionHideZone: React.FC = () => {
       className={`mt-3 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-sm font-semibold transition-colors ${
         isOver
           ? 'border-danger bg-danger/20 text-danger'
-          : 'border-white/20 bg-white/[0.02] text-muted'
+          : 'border-line-strong bg-white/[0.02] text-muted'
       }`}
     >
       <span aria-hidden="true" className="material-symbols-outlined">
@@ -817,7 +817,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
       <SkipLink />
-      <header className="safe-area-top sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="safe-area-top sticky top-0 z-50 flex items-center justify-between border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <span className="app-brand-mark" aria-hidden="true" />
           <div className="min-w-0">
@@ -847,7 +847,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {showMenu && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-2xl border border-white/10 bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
+                className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-2xl border border-line bg-background-dark/95 py-1 shadow-lg shadow-black/40 backdrop-blur-md"
               >
                 <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-subtle">
                   Settings
@@ -856,7 +856,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   .filter((item) => !item.adminOnly || isAdmin)
                   .map((item) => (
                     <React.Fragment key={item.label}>
-                      {item.dividerBefore && <div className="my-1 border-t border-white/10" />}
+                      {item.dividerBefore && <div className="my-1 border-t border-line" />}
                       <button
                         type="button"
                         role="menuitem"
@@ -864,7 +864,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                           setShowMenu(false);
                           item.onSelect();
                         }}
-                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-danger hover:bg-danger/10' : 'text-white/90 hover:bg-white/10'}`}
+                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium transition-colors ${item.danger ? 'text-danger hover:bg-danger/10' : 'text-on-danger/90 hover:bg-white/10'}`}
                       >
                         <span
                           aria-hidden="true"
@@ -986,7 +986,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   key={action.key}
                   type="button"
                   onClick={() => setHidden(action.key, false)}
-                  className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-white/20 hover:text-white"
+                  className="flex items-center gap-0.5 rounded-full border border-line bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-muted transition-colors hover:border-line-strong hover:text-white"
                   aria-label={`Restore ${action.title}`}
                 >
                   <span aria-hidden="true" className="material-symbols-outlined text-xs">
@@ -1106,7 +1106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </button>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+            <div className="rounded-2xl border border-line bg-black/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
                 Shift Timer
               </p>
@@ -1135,7 +1135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   onNavigate('job-detail', activeJob.id);
                   setIsTrackerOpen(false);
                 }}
-                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
+                className="mt-3 flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-lg border border-line bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-white/10"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-sm">
                   work

@@ -34,13 +34,13 @@ export function ConversationList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <div className="flex items-center gap-2">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white md:flex"
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white md:flex"
             >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
@@ -50,7 +50,7 @@ export function ConversationList({
         <button
           type="button"
           onClick={onNewConversation}
-          className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary/20 text-primary transition-colors hover:bg-primary/30"
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary transition-colors hover:bg-primary/30"
           title="New conversation"
         >
           <span className="material-symbols-outlined text-xl">edit_square</span>
@@ -67,7 +67,7 @@ export function ConversationList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full rounded-sm border border-white/10 bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+            className="w-full rounded-lg border border-line bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export function ConversationList({
           </div>
         </button>
 
-        <div className="mx-4 border-b border-white/5" />
+        <div className="mx-4 border-b border-line/60" />
 
         {isLoading && (
           <div className="flex items-center justify-center py-8">
@@ -117,7 +117,7 @@ export function ConversationList({
               <button
                 type="button"
                 onClick={onNewConversation}
-                className="mt-2 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
+                className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
               >
                 Start a conversation
               </button>

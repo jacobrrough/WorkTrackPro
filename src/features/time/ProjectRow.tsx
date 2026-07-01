@@ -90,7 +90,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
   const archived = !!project.archivedAt;
 
   return (
-    <div className="overflow-hidden rounded-sm border border-white/10 bg-white/5">
+    <div className="overflow-hidden rounded-lg border border-line bg-white/5">
       <button
         onClick={onToggle}
         aria-expanded={expanded}
@@ -135,10 +135,10 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
       </button>
 
       {expanded && (
-        <div className="space-y-3 border-t border-white/10 p-3">
+        <div className="space-y-3 border-t border-line p-3">
           {/* Rename */}
           {editingName && (
-            <div className="flex gap-2 rounded-sm bg-background-dark/60 p-3">
+            <div className="flex gap-2 rounded-lg bg-background-dark/60 p-3">
               <input
                 autoFocus
                 aria-label="Project name"
@@ -151,12 +151,12 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                     setEditingName(false);
                   }
                 }}
-                className="flex-1 rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white"
+                className="flex-1 rounded-lg border border-line bg-background-dark px-2 py-1.5 text-sm text-white"
               />
               <button
                 onClick={handleRename}
                 disabled={!nameDraft.trim() || renaming}
-                className="rounded-sm bg-primary px-3 py-1.5 text-xs font-bold text-on-accent disabled:opacity-50"
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-on-accent disabled:opacity-50"
               >
                 Save
               </button>
@@ -165,7 +165,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                   setNameDraft(project.name);
                   setEditingName(false);
                 }}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Cancel
               </button>
@@ -174,7 +174,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
 
           {/* Add-hours form */}
           {!archived && (
-            <div className="space-y-2 rounded-sm bg-background-dark/60 p-3">
+            <div className="space-y-2 rounded-lg bg-background-dark/60 p-3">
               <HoursFields
                 date={date}
                 hours={hours}
@@ -187,7 +187,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
               <button
                 onClick={handleAdd}
                 disabled={!parsed.valid || saving}
-                className="w-full rounded-sm bg-primary py-2 text-sm font-bold text-on-accent disabled:opacity-50"
+                className="w-full rounded-lg bg-primary py-2 text-sm font-bold text-on-accent disabled:opacity-50"
               >
                 Log hours
                 {parsed.valid ? ` (${formatUsd(payFromHours(parsed.hours))})` : ''}
@@ -223,7 +223,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                     onConfirm: () => mutations.markPaid(owedEntryIds(allEntries)),
                   })
                 }
-                className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+                className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
               >
                 Mark paid
               </button>
@@ -233,21 +233,21 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                 setNameDraft(project.name);
                 setEditingName((v) => !v);
               }}
-              className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+              className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
             >
               Rename
             </button>
             {project.status === 'finished' ? (
               <button
                 onClick={() => mutations.setProjectStatus(project.id, 'active')}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Reopen
               </button>
             ) : (
               <button
                 onClick={() => mutations.setProjectStatus(project.id, 'finished')}
-                className="rounded-sm border border-green-500/40 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/20"
+                className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/20"
               >
                 Mark finished
               </button>
@@ -255,7 +255,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
             {archived ? (
               <button
                 onClick={() => mutations.unarchiveProject(project.id)}
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Restore
               </button>
@@ -268,7 +268,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                     onConfirm: () => mutations.archiveProject(project.id),
                   })
                 }
-                className="rounded-sm border border-white/10 px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted hover:bg-white/10"
               >
                 Archive
               </button>
@@ -287,7 +287,7 @@ const ProjectRow: React.FC<ProjectRowProps> = ({
                   ? 'This project has paid hours and can’t be deleted — archive it instead.'
                   : undefined
               }
-              className="rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Delete
             </button>

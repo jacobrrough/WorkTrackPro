@@ -207,7 +207,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
 
   // Full view for detail page
   return (
-    <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+    <div className="rounded-2xl border border-line bg-white/5 p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">checklist</span>
@@ -233,7 +233,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
               className={`flex cursor-pointer items-start gap-3 rounded p-2 transition-all ${
                 item.checked
                   ? 'border border-green-500/20 bg-green-500/10'
-                  : 'border border-white/10 bg-white/5 hover:border-primary/50'
+                  : 'border border-line bg-white/5 hover:border-primary/50'
               }`}
             >
               <input
@@ -241,7 +241,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                 checked={item.checked}
                 onChange={() => handleToggleItem(index)}
                 disabled={updating}
-                className="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0"
+                className="mt-1 h-4 w-4 rounded border-line-strong bg-white/10 text-primary focus:ring-primary focus:ring-offset-0"
               />
               <div className="flex-1">
                 <p
@@ -292,10 +292,10 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
           onClick={() => setShowHistory(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-sm border border-white/10 bg-card-dark"
+            className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-lg border border-line bg-card-dark"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/10 p-3">
+            <div className="flex items-center justify-between border-b border-line p-3">
               <h3 className="font-bold text-white">Checklist History</h3>
               <button onClick={() => setShowHistory(false)} className="text-muted hover:text-white">
                 <span className="material-symbols-outlined">close</span>
@@ -309,7 +309,7 @@ const ChecklistDisplay: React.FC<ChecklistDisplayProps> = ({
                   {history.map((record) => (
                     <div
                       key={record.id}
-                      className="rounded-sm border border-white/10 bg-white/5 p-3"
+                      className="rounded-2xl border border-line bg-white/5 p-3"
                     >
                       <div className="mb-2 flex items-start justify-between gap-2">
                         <div>

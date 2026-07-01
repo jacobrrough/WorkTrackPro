@@ -85,11 +85,11 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
   return (
     <div className="flex min-h-0 flex-col bg-gradient-to-br from-app-2 to-surface-3 pb-24">
       {/* Header with back */}
-      <header className="sticky top-0 z-30 flex-shrink-0 border-b border-white/10 bg-background-dark/95 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex-shrink-0 border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Back"
           >
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
@@ -112,7 +112,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         {(isMultiPart &&
           (job.parts ?? []).some((p) => Object.keys(p.dashQuantities ?? {}).length > 0)) ||
         (job.dashQuantities && Object.keys(job.dashQuantities).length > 0) ? (
-          <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+          <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
             <p className="mb-1 text-xs font-bold uppercase text-muted">Quantities</p>
             {isMultiPart ? (
               <div className="space-y-1">
@@ -143,7 +143,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         ) : null}
 
         {/* Due date */}
-        <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-white/5 p-3">
           <p className="mb-1 text-xs font-bold uppercase text-muted">Due</p>
           <p className="text-lg font-bold text-white">
             {job.dueDate ? formatDateOnly(job.dueDate) : job.ecd ? formatDateOnly(job.ecd) : '—'}
@@ -151,13 +151,13 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* View Drawing */}
-        <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-white/5 p-3">
           {drawingUrl ? (
             <a
               href={drawingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-primary px-4 py-3 font-bold text-on-accent transition-colors hover:bg-primary/90 active:scale-[0.98]"
+              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-bold text-on-accent transition-colors hover:bg-primary/90 active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-xl">picture_as_pdf</span>
               View Drawing
@@ -168,7 +168,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* Checklist */}
-        <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-white/5 p-3">
           <p className="mb-3 text-xs font-bold uppercase text-muted">Checklist</p>
           <ChecklistDisplay
             jobId={job.id}
@@ -181,19 +181,19 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* Clock In / Out + timer */}
-        <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-white/5 p-3">
           {isClockedIn ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-sm border border-green-500/30 bg-green-500/20 p-3">
+              <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/20 p-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 animate-pulse rounded-sm bg-green-500" />
+                  <div className="h-2 w-2 animate-pulse rounded-lg bg-green-500" />
                   <span className="text-sm font-medium text-green-400">Clocked in</span>
                 </div>
                 <span className="font-mono text-xl font-bold text-green-400">{timer}</span>
               </div>
               <button
                 onClick={onClockOut}
-                className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-red-500 py-3 font-bold text-white transition-colors hover:bg-red-600 active:scale-[0.98]"
+                className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg bg-danger py-3 font-bold text-on-danger transition-colors hover:bg-danger-hover active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined">logout</span>
                 Clock Out
@@ -202,7 +202,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
           ) : (
             <button
               onClick={onClockIn}
-              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
+              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
             >
               <span className="material-symbols-outlined">login</span>
               Clock In
@@ -211,7 +211,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         </div>
 
         {/* Current status */}
-        <div className="rounded-sm border border-white/10 bg-white/5 p-3">
+        <div className="rounded-2xl border border-line bg-white/5 p-3">
           <p className="mb-2 text-xs font-bold uppercase text-muted">Status</p>
           <StatusBadge status={job.status} size="md" />
         </div>
@@ -219,7 +219,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
         {/* More / Full Details */}
         <button
           onClick={() => onNavigate('job-detail', job.id)}
-          className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-sm border-2 border-primary bg-primary/20 py-3 font-bold text-primary transition-colors hover:bg-primary/30 active:scale-[0.98]"
+          className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg border-2 border-primary bg-primary/20 py-3 font-bold text-primary transition-colors hover:bg-primary/30 active:scale-[0.98]"
         >
           <span className="material-symbols-outlined">open_in_new</span>
           More / Full Details

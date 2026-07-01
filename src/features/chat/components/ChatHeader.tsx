@@ -25,11 +25,11 @@ export function ChatHeader({
   const onlineOthers = otherMembers.filter((m) => onlineUserIds?.has(m.userId)).length;
 
   return (
-    <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+    <div className="flex items-center gap-3 border-b border-line px-4 py-3">
       <button
         type="button"
         onClick={onBack}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white md:hidden"
       >
         <span className="material-symbols-outlined">arrow_back</span>
       </button>
@@ -71,7 +71,7 @@ export function ChatHeader({
         <button
           type="button"
           onClick={onSettings}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
           title="Group settings"
         >
           <span className="material-symbols-outlined text-xl">settings</span>

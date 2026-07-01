@@ -27,7 +27,7 @@ const Accordion: React.FC<AccordionProps> = ({
   );
 
   return (
-    <div className={`overflow-hidden rounded-sm border border-white/10 bg-white/5 ${className}`}>
+    <div className={`overflow-hidden rounded-lg border border-line bg-white/5 ${className}`}>
       <button
         type="button"
         onClick={toggle}
@@ -44,7 +44,7 @@ const Accordion: React.FC<AccordionProps> = ({
           expand_more
         </span>
       </button>
-      {expanded && <div className="border-t border-white/10 px-4 py-4">{children}</div>}
+      {expanded && <div className="border-t border-line px-4 py-4">{children}</div>}
     </div>
   );
 };

@@ -20,7 +20,7 @@ export const Card: React.FC<CardProps> = ({
     lg: 'p-4',
   };
 
-  const baseClasses = 'bg-card-dark rounded-sm border border-white/10 shadow';
+  const baseClasses = 'bg-card-dark rounded-lg border border-line shadow';
   const interactiveClasses = onClick
     ? 'cursor-pointer hover:border-primary/30 transition-colors active:scale-[0.98]'
     : '';

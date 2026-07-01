@@ -79,10 +79,10 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
       <div
-        className="flex w-full max-w-lg flex-col rounded-lg border border-white/10 bg-surface-dark"
+        className="flex w-full max-w-lg flex-col rounded-lg border border-line bg-surface-dark"
         style={{ maxHeight: '90vh' }}
       >
-        <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-white">Packing Slip Branding</h2>
             <p className="text-xs text-muted">Shown on every packing slip you print or export.</p>
@@ -102,7 +102,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted">Logo</label>
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded border border-white/10 bg-white">
+              <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded border border-line bg-white">
                 {hasLogo ? (
                   <img
                     src={form.logoDataUrl}
@@ -128,7 +128,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                     type="button"
                     onClick={() => set({ logoDataUrl: '' })}
                     disabled={busy}
-                    className="flex items-center gap-1.5 rounded border border-white/10 px-3 py-1.5 text-sm text-muted hover:bg-white/10 disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded border border-line px-3 py-1.5 text-sm text-muted hover:bg-white/10 disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-base">delete</span>
                     Remove
@@ -157,7 +157,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
               value={form.companyName}
               onChange={(e) => set({ companyName: e.target.value })}
               placeholder="Your Company, Inc."
-              className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+              className="w-full rounded border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
             />
           </div>
 
@@ -169,7 +169,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
               value={form.companyAddress}
               onChange={(e) => set({ companyAddress: e.target.value })}
               placeholder="123 Shop St, City, ST 00000"
-              className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+              className="w-full rounded border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
             />
           </div>
 
@@ -182,7 +182,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                 value={form.companyPhone}
                 onChange={(e) => set({ companyPhone: e.target.value })}
                 placeholder="(555) 123-4567"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
               />
             </div>
             <div>
@@ -192,7 +192,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
                 value={form.companyEmail}
                 onChange={(e) => set({ companyEmail: e.target.value })}
                 placeholder="sales@company.com"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                className="w-full rounded border border-line bg-white/5 px-3 py-2 text-sm text-white focus:border-primary focus:outline-none"
               />
             </div>
           </div>
@@ -202,7 +202,7 @@ const PackingSlipSettingsModal: React.FC<PackingSlipSettingsModalProps> = ({ onC
           </p>
         </div>
 
-        <footer className="flex justify-end gap-2 border-t border-white/10 px-6 py-4">
+        <footer className="flex justify-end gap-2 border-t border-line px-6 py-4">
           <button
             type="button"
             onClick={onClose}

@@ -105,7 +105,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
   };
 
   return (
-    <section className="mb-4 rounded-md border border-white/10 bg-surface-dark p-3">
+    <section className="mb-4 rounded-lg border border-line bg-surface-dark p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-cyan-400">local_shipping</span>
@@ -149,7 +149,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
       {isLoading ? (
         <p className="py-4 text-center text-sm text-subtle">Loading deliveries...</p>
       ) : !deliveries?.length ? (
-        <p className="rounded border border-dashed border-white/10 py-4 text-center text-sm text-subtle">
+        <p className="rounded border border-dashed border-line py-4 text-center text-sm text-subtle">
           No deliveries recorded yet.
         </p>
       ) : (
@@ -192,7 +192,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
 
       {confirmDeleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-white/10 bg-surface-dark p-5">
+          <div className="w-full max-w-sm rounded-lg border border-line bg-surface-dark p-5">
             <h3 className="mb-2 text-base font-semibold text-white">Delete delivery?</h3>
             <p className="mb-4 text-sm text-muted">
               This removes the record permanently. The packing slip can no longer be reprinted.
@@ -206,7 +206,7 @@ const DeliveriesSection: React.FC<DeliveriesSectionProps> = ({
               </button>
               <button
                 onClick={handleDelete}
-                className="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white"
+                className="rounded bg-danger px-3 py-1.5 text-sm font-medium text-on-danger"
               >
                 Delete
               </button>

@@ -88,7 +88,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
         attachments.map((attachment) => (
           <div
             key={attachment.id}
-            className="flex w-full items-center gap-3 rounded-sm border border-white/10 bg-white/5 p-3 transition-colors hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-2xl border border-line bg-white/5 p-3 transition-colors hover:bg-white/10"
           >
             <button
               type="button"
@@ -96,7 +96,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
             >
               {/* Icon */}
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm bg-primary/20">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/20">
                 <span className="material-symbols-outlined text-primary">
                   {getFileIcon(attachment.filename)}
                 </span>
@@ -126,7 +126,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
                     e.stopPropagation();
                     onToggleAdminOnly(attachment.id, e.target.checked);
                   }}
-                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-primary focus:ring-primary"
+                  className="h-4 w-4 rounded border-line-strong bg-white/10 text-primary focus:ring-primary"
                 />
               </label>
             )}
@@ -136,7 +136,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
                 type="button"
                 onClick={(e) => handleDelete(e, attachment)}
                 disabled={deletingId === attachment.id}
-                className="flex size-10 flex-shrink-0 items-center justify-center rounded-sm text-muted transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
+                className="flex size-10 flex-shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50"
                 aria-label={`Delete ${attachment.filename}`}
               >
                 <span className="material-symbols-outlined text-lg">

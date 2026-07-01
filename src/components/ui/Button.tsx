@@ -31,7 +31,7 @@ export const Button: React.FC<ButtonProps> = ({
     ghost:
       'bg-transparent text-muted hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed',
     danger:
-      'bg-red-500 text-pure-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed',
+      'bg-danger text-on-danger hover:bg-danger-hover disabled:opacity-50 disabled:cursor-not-allowed',
   };
 
   const sizeClasses = {
@@ -47,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const baseClasses =
-    'font-bold rounded-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark';
+    'font-bold rounded-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-dark';
 
   return (
     <button

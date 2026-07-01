@@ -90,7 +90,7 @@ function ChatViewInner({
     <div className="flex h-[100dvh] bg-background-dark">
       {/* Conversation list — always visible on desktop, hidden when chat is open on mobile */}
       <aside
-        className={`w-full border-r border-white/10 md:flex md:w-80 md:flex-col ${
+        className={`w-full border-r border-line md:flex md:w-80 md:flex-col ${
           showList ? 'flex flex-col' : 'hidden'
         }`}
       >
@@ -135,7 +135,7 @@ function ChatViewInner({
             <button
               type="button"
               onClick={() => setShowNewModal(true)}
-              className="mt-2 rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
+              className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90"
             >
               New Conversation
             </button>

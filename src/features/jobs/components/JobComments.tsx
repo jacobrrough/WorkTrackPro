@@ -124,7 +124,7 @@ function MentionTextarea({
       {showDropdown && filteredUsers.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute bottom-full left-0 z-50 mb-1 max-h-40 w-56 overflow-y-auto rounded-sm border border-white/10 bg-app-2 shadow-xl"
+          className="absolute bottom-full left-0 z-50 mb-1 max-h-40 w-56 overflow-y-auto rounded-lg border border-line bg-app-2 shadow-xl"
         >
           {filteredUsers.slice(0, 8).map((user, i) => (
             <button
@@ -186,9 +186,9 @@ export default function JobComments({
         Comments ({comments.length})
       </h3>
 
-      <div className="mb-3 rounded-sm bg-surface-2 p-3">
+      <div className="mb-3 rounded-lg bg-surface-2 p-3">
         <div className="flex gap-2">
-          <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-bold text-on-accent">
+          <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-on-accent">
             {currentUser.initials}
           </div>
           <div className="flex-1">
@@ -204,7 +204,7 @@ export default function JobComments({
               <button
                 onClick={onSubmitComment}
                 disabled={!newComment.trim() || isSubmitting}
-                className="rounded-sm bg-primary px-4 py-2 text-xs font-bold text-on-accent disabled:opacity-50"
+                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-on-accent disabled:opacity-50"
               >
                 {isSubmitting ? 'Posting...' : 'Post'}
               </button>
@@ -225,9 +225,9 @@ export default function JobComments({
             comment.createdAt;
 
           return (
-            <div key={comment.id} className="rounded-sm bg-surface-2 p-3">
+            <div key={comment.id} className="rounded-lg bg-surface-2 p-3">
               <div className="flex items-start gap-2">
-                <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-sm bg-slate-600 text-xs font-bold text-white">
+                <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-600 text-xs font-bold text-white">
                   {comment.userInitials || 'U'}
                 </div>
                 <div className="flex-1">

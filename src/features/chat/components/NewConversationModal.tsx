@@ -90,19 +90,19 @@ export function NewConversationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-lg border border-white/10 bg-background-dark shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div className="w-full max-w-md rounded-lg border border-line bg-background-dark shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h3 className="text-lg font-bold text-white">New Conversation</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div className="border-b border-white/10 px-4 py-2">
+        <div className="border-b border-line px-4 py-2">
           <div className="flex gap-2">
             <button
               type="button"
@@ -110,7 +110,7 @@ export function NewConversationModal({
                 setMode('direct');
                 setSelectedIds([]);
               }}
-              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 mode === 'direct'
                   ? 'bg-primary text-on-accent'
                   : 'bg-white/5 text-muted hover:text-white'
@@ -121,7 +121,7 @@ export function NewConversationModal({
             <button
               type="button"
               onClick={() => setMode('group')}
-              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 mode === 'group'
                   ? 'bg-primary text-on-accent'
                   : 'bg-white/5 text-muted hover:text-white'
@@ -133,13 +133,13 @@ export function NewConversationModal({
         </div>
 
         {mode === 'group' && (
-          <div className="border-b border-white/10 px-4 py-3">
+          <div className="border-b border-line px-4 py-3">
             <input
               type="text"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
             />
           </div>
         )}
@@ -154,7 +154,7 @@ export function NewConversationModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users..."
-              className="w-full rounded-sm border border-white/10 bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-line bg-white/5 py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle focus:border-primary focus:outline-none"
               autoFocus
             />
           </div>
@@ -190,7 +190,7 @@ export function NewConversationModal({
                     handleToggleUser(user.id);
                   }
                 }}
-                className={`flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
                   isSelected ? 'bg-primary/10' : 'hover:bg-white/5'
                 }`}
               >
@@ -211,11 +211,11 @@ export function NewConversationModal({
           })}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-white/10 px-4 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-sm px-4 py-2 text-sm text-muted hover:text-white"
+            className="rounded-lg px-4 py-2 text-sm text-muted hover:text-white"
           >
             Cancel
           </button>
@@ -223,7 +223,7 @@ export function NewConversationModal({
             type="button"
             onClick={handleCreate}
             disabled={!canCreate || loading}
-            className="rounded-sm bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-accent hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? 'Creating...' : mode === 'direct' ? 'Start Chat' : 'Create Group'}
           </button>
