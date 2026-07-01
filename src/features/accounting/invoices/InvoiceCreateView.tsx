@@ -21,7 +21,7 @@ import { ACCOUNTING_BASE } from '../constants';
 import type { NewInvoiceInput, NewInvoiceLineInput } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -79,14 +79,14 @@ function FromJobDialog({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-sm rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Build from a job</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -400,7 +400,7 @@ export default function InvoiceCreateView() {
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={() => navigate(`${ACCOUNTING_BASE}/invoices`)}>
             Cancel
           </Button>

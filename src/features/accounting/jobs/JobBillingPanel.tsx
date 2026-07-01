@@ -123,7 +123,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           };
 
   return (
-    <section className="rounded-md border border-line bg-surface-2/60 p-4">
+    <section className="rounded-lg border border-line bg-surface-2/60 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
           <span className="material-symbols-outlined text-base text-primary">request_quote</span>
@@ -132,14 +132,14 @@ export default function JobBillingPanel({ job }: { job: Job }) {
         <div className="flex flex-wrap gap-2">
           <Link
             to={`${ESTIMATES_BASE}/new?jobId=${job.id}`}
-            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New estimate
           </Link>
           <Link
             to={`${ACCOUNTING_BASE}/invoices/new?jobId=${job.id}`}
-            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New invoice
@@ -147,7 +147,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
           <button
             type="button"
             onClick={() => setShowLink(true)}
-            className="flex items-center gap-1 rounded-sm border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
+            className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
           >
             <span className="material-symbols-outlined text-sm">add_link</span>
             Link existing
@@ -176,7 +176,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
                 type="button"
                 onClick={handleBridge}
                 disabled={bridgeBusy}
-                className="flex items-center gap-1 rounded-sm border border-primary/40 px-2 py-0.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-full border border-primary/40 px-2 py-0.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-sm">person_add</span>
                 {bridgeBusy ? 'Creating…' : `Create customer from lead (${proposal.contactName})`}
@@ -204,7 +204,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
               <li key={e.id}>
                 <Link
                   to={`${ESTIMATES_BASE}/${e.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-sm px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                  className="flex flex-wrap items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-white hover:bg-white/5"
                 >
                   <span className="font-semibold text-white">{e.estimateNumber ?? 'Estimate'}</span>
                   <span className="text-xs text-muted">{e.estimateDate}</span>
@@ -235,7 +235,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
               <li key={inv.id}>
                 <Link
                   to={`${ACCOUNTING_BASE}/invoices/${inv.id}`}
-                  className="flex flex-wrap items-center gap-2 rounded-sm px-1 py-0.5 text-sm text-white hover:bg-white/5"
+                  className="flex flex-wrap items-center gap-2 rounded-lg px-1 py-0.5 text-sm text-white hover:bg-white/5"
                 >
                   <span className="font-semibold text-white">{inv.invoiceNumber ?? 'Invoice'}</span>
                   <span className="text-xs text-muted">{inv.invoiceDate}</span>
@@ -258,7 +258,7 @@ export default function JobBillingPanel({ job }: { job: Job }) {
 
       {/* Legacy free-text references (read-only; real documents above are authoritative) */}
       {legacyRefs.length > 0 && (
-        <p className="mt-3 border-t border-white/10 pt-2 text-[11px] text-subtle">
+        <p className="mt-3 border-t border-line pt-2 text-[11px] text-subtle">
           Imported references: {legacyRefs.join(' · ')}
         </p>
       )}

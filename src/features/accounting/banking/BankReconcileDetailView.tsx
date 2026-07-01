@@ -29,7 +29,7 @@ function Stat({
   const tone =
     emphasis === 'good' ? 'text-green-400' : emphasis === 'bad' ? 'text-amber-400' : 'text-white';
   return (
-    <div className="rounded-sm border border-white/10 bg-card-dark px-3 py-2">
+    <div className="rounded-lg border border-line bg-card-dark px-3 py-2">
       <div className="text-xs uppercase tracking-wide text-subtle">{label}</div>
       <div className={`font-mono text-base font-bold tabular-nums ${tone}`}>{children}</div>
     </div>
@@ -178,7 +178,7 @@ export default function BankReconcileDetailView() {
         {rec && (
           <>
             {locked && (
-              <div className="rounded-sm border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
                 This reconciliation is complete and locked. Transactions cleared against it are
                 shown below.
               </div>
@@ -200,14 +200,14 @@ export default function BankReconcileDetailView() {
             {txnsLoading && <p className="text-muted">Loading transactions…</p>}
 
             {!txnsLoading && rows.length === 0 && (
-              <div className="rounded-sm border border-dashed border-white/15 px-6 py-12 text-center text-sm text-muted">
+              <div className="rounded-lg border border-dashed border-line px-6 py-12 text-center text-sm text-muted">
                 No transactions are available to clear for this account. Import and accept
                 transactions first.
               </div>
             )}
 
             {rows.length > 0 && (
-              <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
                 {rows.map((txn) => (
                   <ClearableRow
                     key={txn.id}

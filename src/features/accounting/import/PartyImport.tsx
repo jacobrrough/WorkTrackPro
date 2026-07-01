@@ -217,7 +217,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
         <ImportStepper steps={['Upload', 'Review', 'Done']} current={csv.step} />
 
         {csv.error && (
-          <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {csv.error}
           </div>
         )}
@@ -295,7 +295,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
               )}
             </div>
 
-            <div className="max-h-[48vh] overflow-auto rounded-md border border-white/10">
+            <div className="max-h-[48vh] overflow-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-muted">
                   <tr>
@@ -310,7 +310,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.rowNumber} className="border-t border-white/5">
+                    <tr key={r.rowNumber} className="border-t border-line/60">
                       <td className="px-3 py-1.5 text-subtle">{r.rowNumber}</td>
                       <td className="px-3 py-1.5 text-white">
                         {r.displayName || <em className="text-subtle">—</em>}
@@ -319,7 +319,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
                       <td className="px-3 py-1.5 text-muted">{r.extra || '—'}</td>
                       <td className="px-3 py-1.5">
                         <span
-                          className={`rounded-sm px-1.5 py-0.5 text-xs font-semibold ${
+                          className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
                             r.status === 'ready'
                               ? 'bg-emerald-500/15 text-emerald-300'
                               : r.status === 'duplicate'
@@ -361,7 +361,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
 
         {csv.step === 'done' && result && (
           <div className="space-y-4">
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
               <span className="material-symbols-outlined text-5xl text-emerald-400">task_alt</span>
               <h2 className="mt-2 text-xl font-bold text-white">{copy.plural} imported</h2>
               <p className="mt-1 text-sm text-muted">
@@ -374,7 +374,7 @@ export default function PartyImport({ kind }: { kind: PartyKind }) {
               </p>
             </div>
             {result.failed.length > 0 && (
-              <div className="rounded-md border border-red-500/20 bg-card-dark p-4 text-sm">
+              <div className="rounded-lg border border-red-500/20 bg-card-dark p-4 text-sm">
                 <h3 className="mb-2 font-semibold text-red-300">Rows that failed</h3>
                 <ul className="space-y-1 text-muted">
                   {result.failed.map((f) => (

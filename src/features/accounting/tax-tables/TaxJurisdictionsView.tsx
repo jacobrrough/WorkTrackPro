@@ -11,7 +11,7 @@ import { SETTINGS_BASE } from '../constants';
 import type { TaxCode, TaxJurisdiction, UpdateTaxJurisdictionInput } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Blank draft for the "add a mapping" row. country defaults to US. */
 const emptyDraft = (): UpdateTaxJurisdictionInput => ({
@@ -343,7 +343,7 @@ export default function TaxJurisdictionsView() {
             at an <span className="font-semibold text-muted">existing tax code</span> — it never
             creates a rate.
           </p>
-          <p className="mt-2 rounded-sm border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
+          <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
             <span className="font-semibold">ZIP-level accuracy caveat:</span> a single ZIP code can
             span more than one taxing district, so a ZIP match is an approximation — verify with a
             CPA/EA. Rooftop/parcel-level accuracy (e.g. an Avalara-style provider) is a possible
@@ -385,7 +385,7 @@ export default function TaxJurisdictionsView() {
           {loading && <p className="text-sm text-muted">Loading mappings…</p>}
 
           {!loading && loadError && (
-            <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
               <p className="text-sm text-red-300">{loadError}</p>
               <Button size="sm" variant="secondary" icon="refresh" onClick={reload}>
                 Retry
@@ -394,7 +394,7 @@ export default function TaxJurisdictionsView() {
           )}
 
           {!loading && !loadError && rows.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line px-6 py-12 text-center">
               <span className="material-symbols-outlined text-3xl text-subtle">map</span>
               <p className="font-bold text-white">No jurisdiction mappings yet</p>
               <p className="max-w-md text-sm text-muted">

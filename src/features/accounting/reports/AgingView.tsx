@@ -48,7 +48,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
             {AGING_BUCKETS.map((b) => (
               <div
                 key={b}
-                className="rounded-sm border border-white/10 bg-card-dark p-2 text-center"
+                className="rounded-2xl border border-line bg-card-dark p-2 text-center"
               >
                 <p className="text-[10px] font-semibold uppercase text-subtle">
                   {AGING_BUCKET_LABELS[b]}
@@ -61,7 +61,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
                 </p>
               </div>
             ))}
-            <div className="rounded-sm border border-primary/30 bg-primary/10 p-2 text-center">
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-2 text-center">
               <p className="text-[10px] font-semibold uppercase text-primary">Total</p>
               <p className="font-mono text-sm font-bold tabular-nums text-white">
                 {data.summary.total.toLocaleString('en-US', {
@@ -84,7 +84,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
             ]}
           >
             {data.rows.map((r) => (
-              <tr key={r.documentId} className="border-t border-white/5">
+              <tr key={r.documentId} className="border-t border-line/60">
                 <td className="px-3 py-2 font-mono text-xs text-muted">
                   {r.documentNumber || '—'}
                 </td>
@@ -95,7 +95,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
                 </td>
                 <td className="px-3 py-2">
                   <span
-                    className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                       r.bucket === 'current'
                         ? 'bg-white/10 text-muted'
                         : r.bucket === '90+'
@@ -109,7 +109,7 @@ export function AgingView({ kind, query }: AgingViewProps) {
                 <MoneyCell amount={r.balanceDue} />
               </tr>
             ))}
-            <tr className="border-t border-white/10 bg-white/5">
+            <tr className="border-t border-line bg-white/5">
               <td className="px-3 py-2 font-bold text-white" colSpan={5}>
                 Total outstanding
               </td>

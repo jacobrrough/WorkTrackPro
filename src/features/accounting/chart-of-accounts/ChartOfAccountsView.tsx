@@ -15,7 +15,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 function AccountFormModal({ onClose }: { onClose: () => void }) {
   const createAccount = useCreateAccount();
@@ -54,14 +54,14 @@ function AccountFormModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">New Account</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -193,12 +193,12 @@ export default function ChartOfAccountsView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 {ACCOUNT_TYPE_LABELS[type]}
               </h2>
-              <div className="overflow-hidden rounded-sm border border-white/10">
+              <div className="overflow-hidden rounded-lg border border-line">
                 {rows.map((a, i) => (
                   <div
                     key={a.id}
                     className={`flex items-center gap-3 px-3 py-2 ${
-                      i > 0 ? 'border-t border-white/5' : ''
+                      i > 0 ? 'border-t border-line/60' : ''
                     } ${a.isActive ? '' : 'opacity-50'}`}
                   >
                     <span className="w-14 shrink-0 font-mono text-xs text-subtle">
@@ -207,7 +207,7 @@ export default function ChartOfAccountsView() {
                     <span className="flex-1 text-white">{a.name}</span>
                     <span className="text-xs uppercase text-subtle">{a.normalBalance}</span>
                     {a.isSystem && (
-                      <span className="rounded-sm bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                      <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
                         system
                       </span>
                     )}

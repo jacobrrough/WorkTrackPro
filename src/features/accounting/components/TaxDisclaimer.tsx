@@ -15,7 +15,7 @@ export function TaxDisclaimer({
 }) {
   return (
     <div
-      className={`rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300 ${className}`}
+      className={`rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300 ${className}`}
       role="note"
     >
       <span className="font-bold">Disclaimer:</span> Not certified tax software. Always verify with

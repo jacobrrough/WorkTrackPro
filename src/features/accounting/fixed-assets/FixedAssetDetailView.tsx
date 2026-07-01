@@ -41,7 +41,7 @@ function StatCard({
   tone?: 'default' | 'accent';
 }) {
   return (
-    <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="rounded-2xl border border-line bg-card-dark p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
@@ -79,7 +79,7 @@ function StatusSwitcher({ asset }: { asset: FixedAssetRegisterRow }) {
               disabled={setStatus.isPending || active}
               onClick={() => onSet(s)}
               aria-pressed={active}
-              className={`rounded-sm px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
+              className={`rounded-full px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
                 active
                   ? 'bg-primary text-on-accent'
                   : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white disabled:opacity-50'
@@ -122,7 +122,7 @@ function ScheduleRow({
 
   return (
     <>
-      <tr className="border-t border-white/5">
+      <tr className="border-t border-line/60">
         <td className="px-3 py-2 text-muted">{index + 1}</td>
         <td className="px-3 py-2 text-white">{formatAssetDate(row.periodDate)}</td>
         <td className="px-3 py-2 text-right font-mono tabular-nums text-white">
@@ -343,17 +343,17 @@ export default function FixedAssetDetailView() {
               )}
 
               {!scheduleLoading && !scheduleError && schedule.length === 0 && (
-                <div className="rounded-sm border border-dashed border-white/15 px-4 py-8 text-center text-sm text-muted">
+                <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
                   No schedule rows. This asset has nothing to depreciate (salvage may equal cost),
                   or the schedule has not been generated.
                 </div>
               )}
 
               {!scheduleLoading && !scheduleError && schedule.length > 0 && (
-                <div className="overflow-x-auto rounded-sm border border-white/10">
+                <div className="overflow-x-auto rounded-lg border border-line">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="border-b border-white/10 bg-white/5 text-muted">
+                      <tr className="border-b border-line bg-white/5 text-muted">
                         <th className="px-3 py-2 text-left font-semibold">#</th>
                         <th className="px-3 py-2 text-left font-semibold">Period end</th>
                         <th className="px-3 py-2 text-right font-semibold">Amount</th>

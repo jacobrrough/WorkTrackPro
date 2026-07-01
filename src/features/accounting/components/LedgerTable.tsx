@@ -47,11 +47,11 @@ export function LedgerTable({
     .join(' ');
 
   return (
-    <div className="overflow-x-auto rounded-sm border border-white/10">
+    <div className="overflow-x-auto rounded-lg border border-line">
       <table className={tableClass}>
         <thead>
           <tr
-            className={`border-b border-white/10 bg-white/5 text-muted ${
+            className={`border-b border-line bg-white/5 text-muted ${
               stickyHeader ? 'sticky top-0 z-10' : ''
             }`}
           >

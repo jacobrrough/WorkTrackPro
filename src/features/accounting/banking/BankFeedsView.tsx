@@ -52,7 +52,7 @@ import type { BankAccount } from '../types';
  */
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none disabled:opacity-50';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none disabled:opacity-50';
 
 /**
  * Plaid OAuth redirect support (ADDITIVE — only engages when an OAuth bank redirects back).
@@ -154,7 +154,7 @@ const STATUS_BADGE: Record<
   },
   disconnected: {
     label: 'Disconnected',
-    className: 'border-white/10 bg-white/5 text-muted',
+    className: 'border-line bg-white/5 text-muted',
     icon: 'link_off',
   },
 };
@@ -163,7 +163,7 @@ function StatusBadge({ status }: { status: PlaidItemStatus_State }) {
   const b = STATUS_BADGE[status] ?? STATUS_BADGE.error;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[11px] font-semibold ${b.className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold ${b.className}`}
     >
       <span className="material-symbols-outlined text-sm">{b.icon}</span>
       {b.label}
@@ -381,7 +381,7 @@ function MappingStep({
   const mappedCount = result.accounts.filter((a) => rows[a.plaidAccountId]?.kind !== 'skip').length;
 
   return (
-    <div className="rounded-sm border border-primary/30 bg-primary/5 p-4">
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-base font-bold text-white">
@@ -398,14 +398,14 @@ function MappingStep({
           type="button"
           onClick={onClose}
           aria-label="Close mapping"
-          className="flex size-8 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
       </div>
 
       {result.accounts.length === 0 ? (
-        <p className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
           Plaid returned no accounts for this institution. You can close this and try reconnecting.
         </p>
       ) : (
@@ -419,7 +419,7 @@ function MappingStep({
             return (
               <div
                 key={acct.plaidAccountId}
-                className="rounded-sm border border-white/10 bg-card-dark p-3"
+                className="rounded-2xl border border-line bg-card-dark p-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -536,7 +536,7 @@ function MappingStep({
           })}
 
           {allDone ? (
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-emerald-500/30 bg-emerald-500/10 p-3">
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
               <p className="text-sm text-emerald-200">
                 Mappings saved. Run a sync below to pull in transactions — they&rsquo;ll arrive as
                 unreviewed and can be categorized with your Bank Rules.
@@ -593,7 +593,7 @@ function ConnectionRow({
 
   return (
     <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
         <span className="material-symbols-outlined text-lg">account_balance</span>
       </span>
       <div className="min-w-0 flex-1">
@@ -658,7 +658,7 @@ function SyncResultPanel({ result }: { result: PlaidSyncResult }) {
   const hasErrors = !!result.errors && result.errors.length > 0;
   return (
     <div
-      className={`rounded-sm border p-3 text-sm ${
+      className={`rounded-lg border p-3 text-sm ${
         hasErrors
           ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
           : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
@@ -882,7 +882,7 @@ export default function BankFeedsView() {
 
         {error && (
           <p
-            className="rounded-sm border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300"
+            className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300"
             role="alert"
           >
             {error}
@@ -897,7 +897,7 @@ export default function BankFeedsView() {
         {itemsQuery.isPending ? (
           <p className="text-muted">Loading connected banks…</p>
         ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">account_balance</span>
             <p className="text-lg font-bold text-white">No banks connected</p>
             <p className="max-w-sm text-sm text-muted">
@@ -909,7 +909,7 @@ export default function BankFeedsView() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
             {items.map((item) => (
               <ConnectionRow
                 key={item.id}

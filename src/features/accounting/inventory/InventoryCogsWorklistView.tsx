@@ -81,7 +81,7 @@ function JobCogsEvents({ jobId }: { jobId: string }) {
         ]}
       >
         {events.map((ev) => (
-          <tr key={ev.id} className="border-t border-white/5">
+          <tr key={ev.id} className="border-t border-line/60">
             <td className="px-3 py-1.5 text-muted">{formatEventDate(ev.consumedAt)}</td>
             <td className="px-3 py-1.5 text-right font-mono tabular-nums text-muted">
               {formatQty(ev.qty)}
@@ -117,7 +117,7 @@ function JobRow({
   const isCosted = job.costed || result?.costed;
 
   return (
-    <div className="flex flex-col gap-2 rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="flex flex-col gap-2 rounded-2xl border border-line bg-card-dark p-3">
       <div className="flex items-start gap-3">
         <span className="material-symbols-outlined mt-0.5 text-xl text-primary">work</span>
         <div className="min-w-0 flex-1">
@@ -142,7 +142,7 @@ function JobRow({
 
       {/* Result feedback for a job we just posted */}
       {result && (
-        <div className="rounded-sm border border-white/5 bg-background-dark px-3 py-2 text-xs">
+        <div className="rounded-lg border border-line/60 bg-background-dark px-3 py-2 text-xs">
           {result.error ? (
             <span className="text-red-300">{result.error}</span>
           ) : result.uncosted ? (
@@ -159,7 +159,7 @@ function JobRow({
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2 border-t border-white/5 pt-2">
+      <div className="flex items-center justify-end gap-2 border-t border-line/60 pt-2">
         {isCosted && (
           <Button
             size="sm"
@@ -258,7 +258,7 @@ export default function InventoryCogsWorklistView() {
         )}
 
         {!isPending && !isError && jobs.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">checklist</span>
             <p className="text-lg font-bold text-white">No consumed jobs to cost</p>
             <p className="max-w-md text-sm text-muted">
@@ -309,7 +309,7 @@ export default function InventoryCogsWorklistView() {
         )}
 
         {!isPending && !isError && jobs.length > 0 && pending.length === 0 && (
-          <p className="rounded-sm border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-300">
+          <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-300">
             All consumed jobs have their COGS posted.
           </p>
         )}

@@ -50,10 +50,10 @@ function StatusCard({ status }: { status: QboStatus }) {
 
   return (
     <div
-      className={`rounded-sm border p-3 ${
+      className={`rounded-lg border p-3 ${
         connected
           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-          : 'border-white/10 bg-white/5 text-muted'
+          : 'border-line bg-white/5 text-muted'
       }`}
       role="status"
     >
@@ -175,7 +175,7 @@ export default function QuickBooksConnectView() {
 
         {feedback && (
           <p
-            className={`rounded-sm border p-2 text-sm ${
+            className={`rounded-lg border p-2 text-sm ${
               feedback.kind === 'success'
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                 : 'border-red-500/30 bg-red-500/10 text-red-300'

@@ -113,14 +113,14 @@ export default function BankImportView() {
         </div>
 
         {parseError && (
-          <div className="rounded-sm border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
             {parseError}
           </div>
         )}
 
         {/* Post-import result */}
         {result && (
-          <div className="rounded-sm border border-white/10 bg-card-dark p-4">
+          <div className="rounded-2xl border border-line bg-card-dark p-4">
             <div className="mb-2 flex items-center gap-2">
               <span className="material-symbols-outlined text-green-400">task_alt</span>
               <h2 className="font-bold text-white">Import complete</h2>
@@ -177,7 +177,7 @@ export default function BankImportView() {
             </div>
 
             {parsed.warnings.length > 0 && (
-              <details className="rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+              <details className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
                 <summary className="cursor-pointer font-semibold">
                   {parsed.warnings.length} row
                   {parsed.warnings.length === 1 ? '' : 's'} skipped while parsing
@@ -199,7 +199,7 @@ export default function BankImportView() {
               ]}
             >
               {previewRows.map((t, i) => (
-                <tr key={i} className="border-t border-white/5">
+                <tr key={i} className="border-t border-line/60">
                   <td className="whitespace-nowrap px-3 py-2 text-xs text-muted">{t.txnDate}</td>
                   <td className="px-3 py-2 text-white">
                     {t.description || t.merchant || '—'}

@@ -193,7 +193,7 @@ function TransactionRow({ txn }: { txn: BankTransaction }) {
               onClick={() => onToggleExcluded(true)}
               disabled={busy}
               aria-label="Exclude transaction"
-              className="flex size-9 items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-amber-400 disabled:opacity-40"
+              className="flex size-9 items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-amber-400 disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-lg">block</span>
             </button>
@@ -330,14 +330,14 @@ export default function BankAccountDetailView() {
                 </span>
               )}
               {reviewCount > 0 && (
-                <span className="rounded-sm bg-sky-500/15 px-2 py-0.5 text-xs font-semibold text-sky-400">
+                <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-semibold text-sky-400">
                   {reviewCount} to review
                 </span>
               )}
             </div>
 
             {!account.accountId && (
-              <div className="rounded-sm border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
                 This bank account is not linked to a general-ledger account, so transactions cannot
                 be posted. Link one before accepting transactions.
               </div>
@@ -345,7 +345,7 @@ export default function BankAccountDetailView() {
 
             {ruleMsg && (
               <div
-                className="rounded-sm border border-sky-500/30 bg-sky-500/10 p-2 text-sm text-sky-300"
+                className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-2 text-sm text-sky-300"
                 role="status"
               >
                 {ruleMsg}
@@ -362,7 +362,7 @@ export default function BankAccountDetailView() {
                     type="button"
                     onClick={() => setTab(t.key)}
                     aria-current={isActive ? 'true' : undefined}
-                    className={`shrink-0 rounded-sm px-3 py-1.5 text-sm font-semibold transition-colors ${
+                    className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
                       isActive
                         ? 'bg-primary text-on-accent'
                         : 'text-muted hover:bg-white/10 hover:text-white'
@@ -381,7 +381,7 @@ export default function BankAccountDetailView() {
             )}
 
             {!txnsLoading && !txnsError && transactions.length === 0 && (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+              <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
                 <span className="material-symbols-outlined text-4xl text-subtle">receipt_long</span>
                 <p className="text-lg font-bold text-white">
                   {tab === 'all' ? 'No transactions yet' : `No ${tab} transactions`}
@@ -405,7 +405,7 @@ export default function BankAccountDetailView() {
             )}
 
             {transactions.length > 0 && (
-              <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
                 {transactions.map((txn) => (
                   <TransactionRow key={txn.id} txn={txn} />
                 ))}

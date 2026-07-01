@@ -226,7 +226,7 @@ export default function BudgetEditorView() {
 
             {saveError && (
               <p
-                className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+                className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
                 role="alert"
               >
                 {saveError}
@@ -234,7 +234,7 @@ export default function BudgetEditorView() {
             )}
 
             {grid.rows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+              <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
                 <span className="material-symbols-outlined text-4xl text-subtle">account_tree</span>
                 <p className="text-lg font-bold text-white">No accounts to budget</p>
                 <p className="max-w-sm text-sm text-muted">
@@ -243,10 +243,10 @@ export default function BudgetEditorView() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-sm border border-white/10">
+              <div className="overflow-x-auto rounded-lg border border-line">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 bg-white/5 text-muted">
+                    <tr className="border-b border-line bg-white/5 text-muted">
                       <th className="sticky left-0 z-10 bg-app-2 px-3 py-2 text-left font-semibold">
                         Account
                       </th>
@@ -269,7 +269,7 @@ export default function BudgetEditorView() {
                       />
                     ))}
                     {/* Grand totals row */}
-                    <tr className="border-t border-white/10 bg-white/5">
+                    <tr className="border-t border-line bg-white/5">
                       <td className="sticky left-0 z-10 bg-surface px-3 py-2 font-bold text-white">
                         All accounts
                       </td>
@@ -341,7 +341,7 @@ function BudgetTypeGroup({
         const values = cells.get(row.accountId) ?? row.monthly;
         const rowTotal = sumDollars(values);
         return (
-          <tr key={row.accountId} className="border-t border-white/5">
+          <tr key={row.accountId} className="border-t border-line/60">
             <td className="sticky left-0 z-10 bg-background-dark px-3 py-1.5 text-white">
               {row.accountNumber ? (
                 <span className="mr-2 font-mono text-xs text-subtle">{row.accountNumber}</span>
@@ -365,7 +365,7 @@ function BudgetTypeGroup({
         );
       })}
       {/* Group subtotal */}
-      <tr className="border-t border-white/5 bg-white/[0.02]">
+      <tr className="border-t border-line/60 bg-white/[0.02]">
         <td className="sticky left-0 z-10 bg-app-2 px-3 py-1.5 text-right text-xs font-semibold text-muted">
           {ACCOUNT_TYPE_LABELS[type]} subtotal
         </td>

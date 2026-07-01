@@ -75,7 +75,7 @@ export default function JournalEntryDetail() {
             ]}
           >
             {lines.map((l) => (
-              <tr key={l.id} className="border-t border-white/5">
+              <tr key={l.id} className="border-t border-line/60">
                 <td className="px-3 py-2 text-white">
                   {l.accountNumber ? `${l.accountNumber} · ` : ''}
                   {l.accountName ?? l.accountId}
@@ -89,7 +89,7 @@ export default function JournalEntryDetail() {
                 </td>
               </tr>
             ))}
-            <tr className="border-t border-white/10 bg-white/5 font-bold">
+            <tr className="border-t border-line bg-white/5 font-bold">
               <td className="px-3 py-2 text-white" colSpan={2}>
                 Total
               </td>

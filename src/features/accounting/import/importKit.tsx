@@ -20,7 +20,7 @@ export interface ColumnRoleDef {
 }
 
 const selectClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none';
 
 /**
  * Encapsulates the upload + parse + auto-map + step state shared by every wizard.
@@ -128,7 +128,7 @@ export function ImportStepper({ steps, current }: { steps: string[]; current: Im
       {steps.map((label, i) => (
         <div key={label} className="flex items-center gap-2">
           <span
-            className={`rounded-sm px-2 py-1 font-semibold ${
+            className={`rounded-lg px-2 py-1 font-semibold ${
               i <= idx ? 'bg-primary/20 text-primary' : 'bg-white/5 text-subtle'
             }`}
           >
@@ -168,8 +168,8 @@ export function UploadDropzone({
     <div className={`grid gap-4 ${instructions ? 'md:grid-cols-[1fr_340px]' : ''}`}>
       <div
         {...dragHandlers}
-        className={`flex flex-col items-center justify-center gap-3 rounded-md border-2 border-dashed p-10 text-center transition-colors ${
-          dragging ? 'border-primary bg-primary/5' : 'border-white/15 bg-card-dark'
+        className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
+          dragging ? 'border-primary bg-primary/5' : 'border-line bg-card-dark'
         }`}
       >
         <span className="material-symbols-outlined text-5xl text-primary">upload_file</span>
@@ -189,7 +189,7 @@ export function UploadDropzone({
         />
       </div>
       {instructions && (
-        <aside className="rounded-md border border-white/10 bg-card-dark p-4 text-sm text-muted">
+        <aside className="rounded-lg border border-line bg-card-dark p-4 text-sm text-muted">
           {instructions}
         </aside>
       )}
@@ -211,7 +211,7 @@ export function ColumnMapper({
   note?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-white/10 bg-card-dark p-4">
+    <div className="rounded-lg border border-line bg-card-dark p-4">
       <h3 className="mb-3 text-sm font-semibold text-white">Match your columns</h3>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {roles.map(({ role, label, required }) => (
@@ -242,7 +242,7 @@ export function ColumnMapper({
 
 export function Chip({ children, className }: { children: React.ReactNode; className: string }) {
   return (
-    <span className={`rounded-sm px-2 py-1 text-sm font-semibold ${className}`}>{children}</span>
+    <span className={`rounded-lg px-2 py-1 text-sm font-semibold ${className}`}>{children}</span>
   );
 }
 

@@ -104,23 +104,23 @@ export function AccountingDrawer({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`flex h-full w-full animate-slide-in-right flex-col border-l border-white/10 bg-card-dark shadow-xl focus:outline-none ${
+        className={`flex h-full w-full animate-slide-in-right flex-col border-l border-line bg-card-dark shadow-xl focus:outline-none ${
           width === 'lg' ? 'sm:max-w-xl' : 'sm:max-w-md'
         }`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
           <h2 className="text-lg font-bold text-white">{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
-        {footer && <div className="shrink-0 border-t border-white/10 p-4">{footer}</div>}
+        {footer && <div className="shrink-0 border-t border-line p-4">{footer}</div>}
       </div>
     </div>
   );

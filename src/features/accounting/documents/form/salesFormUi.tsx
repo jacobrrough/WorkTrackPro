@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 
 /** One shared input style so every field across all four screens looks identical. */
 export const docInputClass =
-  'w-full rounded-md border border-white/10 bg-background-dark px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary focus:outline-none disabled:opacity-60';
+  'w-full rounded-lg border border-line bg-background-dark px-3 py-2 text-sm text-white placeholder:text-subtle focus:border-primary focus:outline-none disabled:opacity-60';
 
 /** A titled section "card" — the QB paper-section look in the app's dark theme. */
 export function SalesFormCard({
@@ -27,10 +27,10 @@ export function SalesFormCard({
 }) {
   return (
     <section
-      className={`overflow-hidden rounded-lg border border-white/10 bg-card-dark ${className}`}
+      className={`overflow-hidden rounded-lg border border-line bg-card-dark ${className}`}
     >
       {(title || right) && (
-        <header className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2.5">
+        <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           {title ? <h2 className="text-sm font-semibold text-white">{title}</h2> : <span />}
           {right}
         </header>

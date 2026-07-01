@@ -92,7 +92,7 @@ function AccountRow({ row }: { row: BudgetVsActualRow }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <tr className="border-t border-white/5">
+      <tr className="border-t border-line/60">
         <td className="px-3 py-2 text-white">
           <button
             type="button"
@@ -193,7 +193,7 @@ export default function BudgetVsActualView() {
           {data.rows.map((row) => (
             <AccountRow key={row.accountId} row={row} />
           ))}
-          <tr className="border-t border-white/10 bg-white/5">
+          <tr className="border-t border-line bg-white/5">
             <td className="px-3 py-2 font-bold text-white">Total</td>
             <MoneyCell amount={data.totalBudget} strong />
             <MoneyCell amount={data.totalActual} strong />

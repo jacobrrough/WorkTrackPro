@@ -53,7 +53,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Per-status color for an invoice_emails row (the #6 email history list). */
 const EMAIL_STATUS_STYLES: Record<InvoiceEmail['status'], string> = {
@@ -344,7 +344,7 @@ function InvoiceEditPanel({ invoice, onClose }: { invoice: Invoice; onClose: () 
   return (
     <div className="flex flex-col gap-4">
       {hasPayments && (
-        <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           This invoice has payments applied — you can edit text and dates, but changing the amounts
           requires unapplying the payments first (or use void &amp; reissue).
         </p>
@@ -713,7 +713,7 @@ export default function InvoiceDetailView() {
           ) : (
             /* The branded read-only "paper" (Preview / what the customer sees). printRef is what
                Download PDF rasterizes, so it must be mounted to export. */
-            <div className="overflow-hidden rounded-sm shadow-lg">
+            <div className="overflow-hidden rounded-lg shadow-lg">
               <SalesDocument
                 ref={printRef}
                 data={invoiceToSalesDocumentData(invoice)}
@@ -751,7 +751,7 @@ export default function InvoiceDetailView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Payments
               </h2>
-              <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <span className="w-24 shrink-0 text-muted">{p.paymentDate}</span>
@@ -774,7 +774,7 @@ export default function InvoiceDetailView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Email history
               </h2>
-              <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+              <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
                 {emails.map((em) => (
                   <div key={em.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <span className="w-28 shrink-0 text-muted">{em.createdAt.slice(0, 10)}</span>
@@ -802,13 +802,13 @@ export default function InvoiceDetailView() {
 
           {/* #7 — freshly minted portal link (shown once so the admin can copy/share it). */}
           {portalLink && (
-            <div className="flex flex-col gap-2 rounded-sm border border-primary/30 bg-primary/10 p-3">
+            <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3">
               <p className="text-sm font-semibold text-white">Customer portal link created</p>
               <div className="flex items-center gap-2">
                 <input
                   readOnly
                   value={portalLink}
-                  className="w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 font-mono text-xs text-white"
+                  className="w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 font-mono text-xs text-white"
                   onFocus={(e) => e.currentTarget.select()}
                 />
                 <Button

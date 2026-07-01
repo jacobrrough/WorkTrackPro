@@ -26,7 +26,7 @@ const STATUS_STYLES: Record<BillStatus, string> = {
 function StatusPill({ status }: { status: BillStatus }) {
   return (
     <span
-      className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {BILL_STATUS_LABELS[status]}
     </span>
@@ -97,7 +97,7 @@ export default function BillsView() {
       )}
 
       {!isPending && !isError && bills.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
           <span className="material-symbols-outlined text-4xl text-subtle">request_quote</span>
           <p className="text-lg font-bold text-white">No bills yet</p>
           <p className="max-w-sm text-sm text-muted">

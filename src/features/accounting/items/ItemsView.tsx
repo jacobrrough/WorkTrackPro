@@ -17,7 +17,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 interface ItemDraft {
   name: string;
@@ -111,7 +111,7 @@ function ItemEditorModal({ item, onClose }: { item: Item | null; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">
             {item ? 'Edit product or service' : 'New product or service'}
@@ -120,7 +120,7 @@ function ItemEditorModal({ item, onClose }: { item: Item | null; onClose: () => 
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -206,7 +206,7 @@ function ItemEditorModal({ item, onClose }: { item: Item | null; onClose: () => 
             </FormField>
           </div>
 
-          <details className="rounded-sm border border-white/10 bg-background-dark/40 px-3 py-2">
+          <details className="rounded-lg border border-line bg-background-dark/40 px-3 py-2">
             <summary className="cursor-pointer text-sm font-medium text-muted">
               Purchasing (optional)
             </summary>
@@ -295,7 +295,7 @@ function ItemRow({
         disabled={update.isPending}
         aria-label={item.isActive ? 'Deactivate' : 'Reactivate'}
         title={item.isActive ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {item.isActive ? 'toggle_on' : 'toggle_off'}
@@ -305,7 +305,7 @@ function ItemRow({
         type="button"
         onClick={onEdit}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -371,13 +371,13 @@ export default function ItemsView() {
         )}
 
         {!isPending && !isError && items.length === 0 && (
-          <p className="rounded-sm border border-dashed border-white/15 px-3 py-6 text-center text-sm text-subtle">
+          <p className="rounded-lg border border-dashed border-line px-3 py-6 text-center text-sm text-subtle">
             No products or services yet. Add Labor, Delivery, Material, and anything else you bill.
           </p>
         )}
 
         {!isPending && !isError && items.length > 0 && (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
             {items.map((i) => (
               <ItemRow
                 key={i.id}

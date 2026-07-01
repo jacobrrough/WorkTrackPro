@@ -22,7 +22,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Short caption shown above each entity-type section explaining what the fields extend. */
 const ENTITY_HINT: Record<CustomFieldEntityType, string> = {
@@ -118,7 +118,7 @@ function OptionsEditor({
             type="button"
             onClick={() => remove(i)}
             aria-label={`Remove choice ${i + 1}`}
-            className="flex size-9 shrink-0 items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-red-400"
           >
             <span className="material-symbols-outlined text-lg">delete</span>
           </button>
@@ -239,7 +239,7 @@ function DefEditorModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">
             {isEdit
@@ -250,7 +250,7 @@ function DefEditorModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -393,7 +393,7 @@ function DefRow({ def, onEdit }: { def: CustomFieldDef; onEdit: () => void }) {
         disabled={busy}
         aria-label={def.active ? 'Deactivate' : 'Reactivate'}
         title={def.active ? 'Deactivate' : 'Reactivate'}
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">
           {def.active ? 'toggle_on' : 'toggle_off'}
@@ -404,7 +404,7 @@ function DefRow({ def, onEdit }: { def: CustomFieldDef; onEdit: () => void }) {
         onClick={onEdit}
         disabled={busy}
         aria-label="Edit"
-        className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
+        className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-lg">edit</span>
       </button>
@@ -440,11 +440,11 @@ function EntitySection({
       </div>
 
       {defs.length === 0 ? (
-        <p className="rounded-sm border border-dashed border-white/15 px-3 py-4 text-center text-sm text-subtle">
+        <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-sm text-subtle">
           No custom fields yet. {ENTITY_HINT[entityType]}
         </p>
       ) : (
-        <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+        <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
           {defs.map((d) => (
             <DefRow key={d.id} def={d} onEdit={() => onEdit(d)} />
           ))}

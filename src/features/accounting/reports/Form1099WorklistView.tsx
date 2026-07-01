@@ -36,12 +36,12 @@ function YearPicker({ value, onChange }: { value: number; onChange: (year: numbe
   const now = currentYear();
   const years = [now, now - 1, now - 2, now - 3, now - 4];
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card-dark p-3">
       <label className="flex items-center gap-2 text-sm font-semibold text-muted">
         Tax year
         <select
           aria-label="Tax year"
-          className="rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none"
+          className="rounded-lg border border-line bg-background-dark px-2 py-1.5 text-sm text-white focus:border-primary focus:outline-none"
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
         >
@@ -83,7 +83,7 @@ export default function Form1099WorklistView() {
         <>
           {/* What this report is and what it deliberately leaves out. */}
           <div
-            className="rounded-sm border border-white/10 bg-card-dark p-3 text-xs text-muted"
+            className="rounded-2xl border border-line bg-card-dark p-3 text-xs text-muted"
             role="note"
           >
             Lists vendors marked <span className="font-semibold text-white">1099</span> whose posted
@@ -101,7 +101,7 @@ export default function Form1099WorklistView() {
           {/* Incomplete-W-9 warning: reportable vendors missing legal name + TIN. */}
           {data.incompleteCount > 0 && (
             <div
-              className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
               role="alert"
             >
               <span className="font-bold">
@@ -131,7 +131,7 @@ export default function Form1099WorklistView() {
               {data.rows.map((r) => (
                 <Worklist1099Row key={r.vendorId} row={r} />
               ))}
-              <tr className="border-t border-white/10 bg-white/5">
+              <tr className="border-t border-line bg-white/5">
                 <td className="px-3 py-2 font-bold text-white" colSpan={4}>
                   Total reportable
                 </td>
@@ -158,11 +158,11 @@ export default function Form1099WorklistView() {
 /** One reportable-vendor row; an incomplete W-9 is flagged inline. */
 function Worklist1099Row({ row }: { row: Form1099Row }) {
   return (
-    <tr className="border-t border-white/5">
+    <tr className="border-t border-line/60">
       <td className="px-3 py-2 text-white">
         {row.vendorName || row.vendorId}
         {row.exempt && (
-          <span className="ml-2 rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
+          <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
             Exempt
           </span>
         )}

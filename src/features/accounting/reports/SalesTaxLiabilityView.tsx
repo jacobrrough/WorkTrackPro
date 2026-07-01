@@ -44,8 +44,8 @@ function SummaryTile({
 }) {
   return (
     <div
-      className={`flex flex-col gap-0.5 rounded-sm border p-3 ${
-        emphasize ? 'border-primary/30 bg-primary/5' : 'border-white/10 bg-card-dark'
+      className={`flex flex-col gap-0.5 rounded-lg border p-3 ${
+        emphasize ? 'border-primary/30 bg-primary/5' : 'border-line bg-card-dark'
       }`}
     >
       <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
@@ -86,7 +86,7 @@ export default function SalesTaxLiabilityView() {
           {/* Reconciliation failure — the figures could not be fully tied to the ledger. */}
           {!data.reconciled && (
             <div
-              className="rounded-sm border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300"
+              className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300"
               role="alert"
             >
               <span className="font-bold">Reconciliation failed.</span> The per-agency tax does not
@@ -100,7 +100,7 @@ export default function SalesTaxLiabilityView() {
           {/* No liability account configured → nothing can be tied back. */}
           {!data.liabilityAccountId && (
             <div
-              className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
               role="note"
             >
               <span className="font-bold">No Sales Tax Payable account configured.</span> Set the
@@ -112,7 +112,7 @@ export default function SalesTaxLiabilityView() {
           {/* Unattributed tax present, but the report still reconciles → review, not failure. */}
           {data.reconciled && data.unattributedTax !== 0 && (
             <div
-              className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
               role="note"
             >
               <span className="font-bold">
@@ -151,7 +151,7 @@ export default function SalesTaxLiabilityView() {
                 {data.agencies.map((a) => (
                   <AgencyRow key={a.agencyId} agency={a} />
                 ))}
-                <tr className="border-t border-white/10 bg-white/5">
+                <tr className="border-t border-line bg-white/5">
                   <td className="px-3 py-2 font-bold text-white" colSpan={4}>
                     Total tax collected
                   </td>
@@ -192,7 +192,7 @@ function AgencyRow({ agency }: { agency: SalesTaxAgencyLine }) {
     );
   }
   return (
-    <tr className="border-t border-white/5">
+    <tr className="border-t border-line/60">
       <td className="px-3 py-2 text-white">{agency.agencyName}</td>
       <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
         {rateLabel(agency.rate)}

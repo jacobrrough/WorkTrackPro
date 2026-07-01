@@ -113,7 +113,7 @@ function ConfirmActionDialog({
       aria-modal="true"
       aria-labelledby="drift-confirm-title"
     >
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="drift-confirm-title" className="text-lg font-bold text-white">
             {isApply ? 'Apply these rates?' : 'Dismiss this alert?'}
@@ -122,7 +122,7 @@ function ConfirmActionDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -137,7 +137,7 @@ function ConfirmActionDialog({
 
         {error && (
           <p
-            className="mb-3 rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+            className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
             role="alert"
           >
             {error}
@@ -247,7 +247,7 @@ export default function TaxTableDriftDetailView() {
         {driftQuery.isPending && <p className="text-sm text-muted">Loading drift…</p>}
 
         {!driftQuery.isPending && driftQuery.isError && (
-          <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
             <p className="text-sm text-red-300">
               Could not load this drift. Confirm the accounting schema is exposed and you have an
               accounting role.
@@ -264,7 +264,7 @@ export default function TaxTableDriftDetailView() {
         )}
 
         {!driftQuery.isPending && !driftQuery.isError && !drift && (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line px-6 py-12 text-center">
             <span className="material-symbols-outlined text-3xl text-subtle">search_off</span>
             <p className="font-bold text-white">Drift not found</p>
             <p className="max-w-md text-sm text-muted">
@@ -290,7 +290,7 @@ export default function TaxTableDriftDetailView() {
 
               {ratesQuery.isError && (
                 <p
-                  className="mb-2 rounded-sm border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300"
+                  className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300"
                   role="alert"
                 >
                   Could not load your current stored rates, so the “stored” column may be
@@ -299,7 +299,7 @@ export default function TaxTableDriftDetailView() {
               )}
 
               {rows.length === 0 ? (
-                <div className="rounded-sm border border-dashed border-white/15 px-6 py-10 text-center text-sm text-muted">
+                <div className="rounded-lg border border-dashed border-line px-6 py-10 text-center text-sm text-muted">
                   This alert lists no rate changes.
                 </div>
               ) : (
@@ -314,7 +314,7 @@ export default function TaxTableDriftDetailView() {
                   ]}
                 >
                   {rows.map((row, i) => (
-                    <tr key={`${row.rateName}-${i}`} className="border-t border-white/5">
+                    <tr key={`${row.rateName}-${i}`} className="border-t border-line/60">
                       <td className="px-3 py-2">
                         <span className="font-medium text-white">{row.rateName || '—'}</span>
                         {row.label && (
@@ -376,7 +376,7 @@ export default function TaxTableDriftDetailView() {
                 </div>
               </Card>
             ) : (
-              <div className="rounded-sm border border-white/10 bg-white/5 p-3 text-sm text-muted">
+              <div className="rounded-2xl border border-line bg-white/5 p-3 text-sm text-muted">
                 This alert is{' '}
                 <span className="font-semibold text-muted">
                   {TAX_TABLE_DRIFT_STATUS_LABELS[drift.status].toLowerCase()}

@@ -19,7 +19,7 @@ import {
 
 function AccountRow({ line, range }: { line: ReportLine; range: DateRange }) {
   return (
-    <tr className="border-t border-white/5">
+    <tr className="border-t border-line/60">
       <td className="px-3 py-2">
         {/* The synthetic "Net income" line (sentinel id) renders as plain, non-clickable text. */}
         <AccountLink
@@ -110,7 +110,7 @@ export default function BalanceSheetView() {
                 {data.totalAssets.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
               </span>
             </div>
-            <div className="flex justify-between border-b border-white/10 pb-1 text-muted">
+            <div className="flex justify-between border-b border-line pb-1 text-muted">
               <span>Liabilities + equity</span>
               <span className="font-mono tabular-nums text-white">
                 {(data.totalLiabilities + data.totalEquity).toLocaleString('en-US', {

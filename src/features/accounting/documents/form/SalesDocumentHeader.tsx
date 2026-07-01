@@ -150,7 +150,7 @@ export function SalesDocumentHeader({
       </div>
 
       {/* P.O. / Sales Rep / Terms — PO + Rep are estimate-only; Terms always present. */}
-      <div className="mt-5 flex flex-wrap gap-4 border-t border-white/10 pt-5">
+      <div className="mt-5 flex flex-wrap gap-4 border-t border-line pt-5">
         {onPoNumber && (
           <FieldBlock label="P.O. Number" htmlFor={`${idp}-po`} className="min-w-[200px] flex-1">
             <input

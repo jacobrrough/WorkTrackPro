@@ -76,7 +76,7 @@ function VersionRow({
       : `${change.totalChanges} change${change.totalChanges === 1 ? '' : 's'}`;
 
   return (
-    <li className="border-b border-white/5 last:border-b-0">
+    <li className="border-b border-line/60 last:border-b-0">
       <button
         type="button"
         onClick={() => expandable && setOpen((v) => !v)}
@@ -100,7 +100,7 @@ function VersionRow({
       </button>
 
       {open && expandable && (
-        <div className="flex flex-col gap-2 border-t border-white/5 bg-black/20 px-3 py-2 pl-10 text-sm">
+        <div className="flex flex-col gap-2 border-t border-line/60 bg-black/20 px-3 py-2 pl-10 text-sm">
           {change.totalChanges === 0 && (
             <p className="text-xs text-muted">No tracked field changes in this version.</p>
           )}
@@ -211,11 +211,11 @@ export function DocumentActivityPanel({
       <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Audit history</h2>
 
       {events.length > 0 && (
-        <ol className="flex flex-col gap-0 overflow-hidden rounded-sm border border-white/10">
+        <ol className="flex flex-col gap-0 overflow-hidden rounded-lg border border-line">
           {events.map((ev: DocumentTimelineEvent, i) => (
             <li
               key={`${ev.at}-${i}`}
-              className="flex items-start gap-3 border-b border-white/5 px-3 py-2 last:border-b-0"
+              className="flex items-start gap-3 border-b border-line/60 px-3 py-2 last:border-b-0"
             >
               <span
                 className={`material-symbols-outlined mt-0.5 text-lg ${KIND_COLOR[ev.kind] ?? 'text-muted'}`}
@@ -244,7 +244,7 @@ export function DocumentActivityPanel({
       {hasVersionHistory && (
         <div className="flex flex-col gap-2">
           <h3 className="text-xs font-bold uppercase tracking-wide text-subtle">Version history</h3>
-          <ol className="flex flex-col gap-0 overflow-hidden rounded-sm border border-white/10">
+          <ol className="flex flex-col gap-0 overflow-hidden rounded-lg border border-line">
             {changes.map((c, i) => (
               <VersionRow
                 key={c.id ?? `current-${i}`}

@@ -30,7 +30,7 @@ function StatCard({
   tone?: 'default' | 'accent';
 }) {
   return (
-    <div className="rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="rounded-2xl border border-line bg-card-dark p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle">{label}</p>
       <p
         className={`mt-1 font-mono text-lg font-bold tabular-nums ${
@@ -128,7 +128,7 @@ export default function InventoryValuationItemView() {
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
                 Lifetime activity
               </h2>
-              <div className="divide-y divide-white/5 rounded-sm border border-white/10 bg-card-dark">
+              <div className="divide-y divide-white/5 rounded-lg border border-line bg-card-dark">
                 <FactRow
                   label="Units received (all layers)"
                   value={formatQty(row.qtyReceivedTotal)}

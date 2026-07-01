@@ -20,7 +20,7 @@ import { PROGRESS_BASE } from '../constants';
 import type { NewProgressInvoiceInput, NewProgressInvoiceLineInput } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -269,7 +269,7 @@ export default function ProgressInvoiceCreateView() {
             {rows.map((r) => {
               const c = computed.find((x) => x.sovLineId === r.sovLineId);
               return (
-                <tr key={r.sovLineId} className="border-t border-white/5">
+                <tr key={r.sovLineId} className="border-t border-line/60">
                   <td className="px-3 py-2 text-white">{r.description}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums text-muted">
                     {formatMoney(r.scheduledValue)}
@@ -305,14 +305,14 @@ export default function ProgressInvoiceCreateView() {
                       aria-label={`Taxable: ${r.description}`}
                       checked={r.taxable}
                       onChange={(e) => updateRow(r.sovLineId, { taxable: e.target.checked })}
-                      className="size-4 rounded-sm border-white/20 bg-background-dark"
+                      className="size-4 rounded-lg border-line-strong bg-background-dark"
                     />
                   </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
-              <tr className="border-t border-white/5">
+              <tr className="border-t border-line/60">
                 <td className="px-3 py-2 text-subtle" colSpan={7}>
                   This project has no schedule-of-values lines yet. Add them on the project page.
                 </td>
@@ -322,7 +322,7 @@ export default function ProgressInvoiceCreateView() {
         </section>
 
         {/* Period totals */}
-        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
+        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-line pt-3 text-sm">
           <div className="flex justify-between text-muted">
             <span>Work this period</span>
             <span className="font-mono tabular-nums text-white">
@@ -343,7 +343,7 @@ export default function ProgressInvoiceCreateView() {
               </span>
             </div>
           )}
-          <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
+          <div className="flex justify-between border-t border-line pt-1 text-base font-bold text-white">
             <span>Current due</span>
             <span className="font-mono tabular-nums">{formatMoney(currentDueCents / 100)}</span>
           </div>
@@ -355,12 +355,12 @@ export default function ProgressInvoiceCreateView() {
             Journal entry preview
           </h2>
           {previewError && (
-            <p className="rounded-sm border border-dashed border-white/10 px-3 py-3 text-sm text-amber-400">
+            <p className="rounded-lg border border-dashed border-line px-3 py-3 text-sm text-amber-400">
               {previewError}
             </p>
           )}
           {!previewError && !previewLines && (
-            <p className="rounded-sm border border-dashed border-white/10 px-3 py-3 text-sm text-subtle">
+            <p className="rounded-lg border border-dashed border-line px-3 py-3 text-sm text-subtle">
               Enter a percent complete above to preview the balanced entry.
             </p>
           )}
@@ -374,7 +374,7 @@ export default function ProgressInvoiceCreateView() {
               ]}
             >
               {previewLines.map((l, i) => (
-                <tr key={i} className="border-t border-white/5">
+                <tr key={i} className="border-t border-line/60">
                   <td className="px-3 py-2 font-mono text-xs text-muted">
                     {accountLabel(l.accountId)}
                   </td>
@@ -397,7 +397,7 @@ export default function ProgressInvoiceCreateView() {
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={() => navigate(`${PROGRESS_BASE}/${projectId}`)}>
             Cancel
           </Button>

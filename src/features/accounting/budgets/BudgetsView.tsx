@@ -19,7 +19,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Lifecycle pill — grey draft, green active, slate archived. */
 function StatusBadge({ status }: { status: BudgetStatus }) {
@@ -67,14 +67,14 @@ function NewBudgetModal({ onClose }: { onClose: (createdId?: string) => void }) 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">New budget</h2>
           <button
             type="button"
             onClick={() => onClose()}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -166,7 +166,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-sm border border-white/10 bg-card-dark p-3">
+    <div className="flex flex-col gap-3 rounded-2xl border border-line bg-card-dark p-3">
       <div className="flex items-start gap-3">
         <span className="material-symbols-outlined mt-0.5 text-xl text-primary">savings</span>
         <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
               disabled={busy || active}
               onClick={() => setStatus.mutate({ id: budget.id, status: s })}
               aria-pressed={active}
-              className={`rounded-sm px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
+              className={`rounded-full px-2 py-0.5 font-semibold transition-colors disabled:cursor-default ${
                 active
                   ? 'bg-primary text-on-accent'
                   : 'bg-white/5 text-muted hover:bg-white/10 hover:text-white disabled:opacity-50'
@@ -217,7 +217,7 @@ function BudgetCard({ budget }: { budget: Budget }) {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-white/5 pt-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line/60 pt-2">
         {confirmDelete ? (
           <>
             <span className="mr-auto text-xs text-muted">Delete this budget and its lines?</span>
@@ -302,9 +302,9 @@ export default function BudgetsView() {
         <button
           type="button"
           onClick={() => navigate(cashFlowForecastPath())}
-          className="flex items-center gap-3 rounded-sm border border-white/10 bg-card-dark px-3 py-2.5 text-left hover:border-primary/30"
+          className="flex items-center gap-3 rounded-lg border border-line bg-card-dark px-3 py-2.5 text-left hover:border-primary/30"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
             <span className="material-symbols-outlined text-lg">waterfall_chart</span>
           </span>
           <span className="min-w-0 flex-1">
@@ -325,7 +325,7 @@ export default function BudgetsView() {
         )}
 
         {!isPending && !isError && sorted.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">savings</span>
             <p className="text-lg font-bold text-white">No budgets yet</p>
             <p className="max-w-sm text-sm text-muted">

@@ -14,7 +14,7 @@ import { PURCHASE_ORDERS_BASE } from '../constants';
 import type { NewPurchaseOrderInput, NewPurchaseOrderLineInput } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -208,7 +208,7 @@ export default function POCreateView() {
                     onClick={() => removeLine(i)}
                     aria-label={`Remove line ${i + 1}`}
                     disabled={lines.length <= 1}
-                    className="flex items-center justify-center rounded-sm text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
+                    className="flex items-center justify-center rounded-lg text-subtle hover:bg-white/10 hover:text-red-400 disabled:opacity-30"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
                   </button>
@@ -232,7 +232,7 @@ export default function POCreateView() {
         </div>
 
         {/* Totals */}
-        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-white/10 pt-3 text-sm">
+        <div className="ml-auto w-full max-w-xs space-y-1 border-t border-line pt-3 text-sm">
           <div className="flex justify-between text-muted">
             <span>Subtotal</span>
             <span className="font-mono tabular-nums text-white">
@@ -252,7 +252,7 @@ export default function POCreateView() {
               />
             </div>
           </div>
-          <div className="flex justify-between border-t border-white/10 pt-1 text-base font-bold text-white">
+          <div className="flex justify-between border-t border-line pt-1 text-base font-bold text-white">
             <span>Total</span>
             <span className="font-mono tabular-nums">{formatMoney(totals.totalCents / 100)}</span>
           </div>
@@ -264,7 +264,7 @@ export default function POCreateView() {
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={() => navigate(PURCHASE_ORDERS_BASE)}>
             Cancel
           </Button>

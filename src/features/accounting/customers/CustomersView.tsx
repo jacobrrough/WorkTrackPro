@@ -38,7 +38,7 @@ export default function CustomersView() {
       )}
 
       {!isPending && !isError && customers.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
           <span className="material-symbols-outlined text-4xl text-subtle">group</span>
           <p className="text-lg font-bold text-white">No customers yet</p>
           <p className="max-w-sm text-sm text-muted">
@@ -55,14 +55,14 @@ export default function CustomersView() {
               type="search"
               aria-label="Search customers"
               placeholder="Search name, company, email, phone…"
-              className="w-full rounded-sm border border-white/10 bg-background-dark px-3 py-2 text-sm text-white focus:border-primary focus:outline-none sm:max-w-sm"
+              className="w-full rounded-lg border border-line bg-background-dark px-3 py-2 text-sm text-white focus:border-primary focus:outline-none sm:max-w-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded-sm border-white/20 bg-background-dark text-primary focus:ring-primary"
+                className="h-4 w-4 rounded border-line-strong bg-background-dark text-primary focus:ring-primary"
                 checked={showInactive}
                 onChange={(e) => setShowInactive(e.target.checked)}
               />
@@ -86,7 +86,7 @@ export default function CustomersView() {
                 <span className="flex-1 truncate text-white">
                   {c.displayName || c.companyName || c.contactName || 'Customer'}
                   {!c.isActive && (
-                    <span className="ml-2 rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
+                    <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted">
                       Inactive
                     </span>
                   )}

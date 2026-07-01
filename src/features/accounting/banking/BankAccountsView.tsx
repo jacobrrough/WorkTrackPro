@@ -17,7 +17,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const BANK_ACCOUNT_TYPES = Object.keys(BANK_ACCOUNT_TYPE_LABELS) as BankAccountType[];
 
@@ -60,14 +60,14 @@ function NewBankAccountModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">New Bank Account</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -182,7 +182,7 @@ function BankAccountRow({ account, onOpen }: { account: BankAccount; onOpen: () 
       onClick={onOpen}
       className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-primary/15 text-primary">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
         <span className="material-symbols-outlined text-lg">
           {account.accountType === 'credit_card' ? 'credit_card' : 'account_balance'}
         </span>
@@ -198,7 +198,7 @@ function BankAccountRow({ account, onOpen }: { account: BankAccount; onOpen: () 
         </span>
       </span>
       {!account.accountId && (
-        <span className="shrink-0 rounded-sm bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-400">
+        <span className="shrink-0 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-400">
           No GL
         </span>
       )}
@@ -241,7 +241,7 @@ export default function BankAccountsView() {
         )}
 
         {!isPending && !isError && accounts.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
             <span className="material-symbols-outlined text-4xl text-subtle">
               account_balance_wallet
             </span>
@@ -257,7 +257,7 @@ export default function BankAccountsView() {
         )}
 
         {accounts.length > 0 && (
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
             {accounts.map((account) => (
               <BankAccountRow
                 key={account.id}

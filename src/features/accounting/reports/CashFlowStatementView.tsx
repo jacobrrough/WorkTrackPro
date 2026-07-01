@@ -20,7 +20,7 @@ import {
 /** One activity-section line. Real accounts drill into the GL register; net income does not. */
 function CashFlowRow({ line, range }: { line: ReportLine; range: DateRange }) {
   return (
-    <tr className="border-t border-white/5">
+    <tr className="border-t border-line/60">
       <td className="px-3 py-2">
         <AccountLink
           accountId={line.accountId}
@@ -52,7 +52,7 @@ function ActivitySection({
         <CashFlowRow key={`${l.accountId}-${i}`} line={l} range={range} />
       ))}
       {section.lines.length === 0 && (
-        <tr className="border-t border-white/5">
+        <tr className="border-t border-line/60">
           <td className="px-3 py-2 text-subtle" colSpan={2}>
             No activity in this section.
           </td>
@@ -147,7 +147,7 @@ export default function CashFlowStatementView() {
                 })}
               </span>
             </div>
-            <div className="flex justify-between border-b border-white/10 pb-1 text-muted">
+            <div className="flex justify-between border-b border-line pb-1 text-muted">
               <span>Change in cash accounts</span>
               <span className="font-mono tabular-nums text-white">
                 {data.cashChange.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
@@ -163,7 +163,7 @@ export default function CashFlowStatementView() {
 
           {!data.balanced && (
             <div
-              className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
               role="note"
             >
               <span className="font-bold">This statement does not reconcile.</span> The change

@@ -28,7 +28,7 @@ export function QuantityInput({
         const n = Number.parseInt(e.target.value, 10);
         onValueChange(Number.isFinite(n) ? Math.max(1, n) : 1);
       }}
-      className={`w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-right text-white placeholder:text-subtle focus:border-primary focus:outline-none ${className}`}
+      className={`w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-right text-white placeholder:text-subtle focus:border-primary focus:outline-none ${className}`}
       placeholder="1"
       {...props}
     />

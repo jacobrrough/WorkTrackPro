@@ -80,7 +80,7 @@ function CheckNowBar() {
 
       {feedback && (
         <p
-          className={`rounded-sm border p-2 text-sm ${
+          className={`rounded-lg border p-2 text-sm ${
             feedback.ok
               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
               : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
@@ -236,7 +236,7 @@ export default function TaxTableUpdatesView() {
           {openDrift.isPending && <p className="text-sm text-muted">Loading alerts…</p>}
 
           {!openDrift.isPending && openDrift.isError && (
-            <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
               <p className="text-sm text-red-300">
                 Could not load drift alerts. Confirm the accounting schema is exposed and you have
                 an accounting role.
@@ -256,7 +256,7 @@ export default function TaxTableUpdatesView() {
             !openDrift.isError &&
             !hasOpenDrift(count) &&
             driftRows.length === 0 && (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 px-6 py-12 text-center">
+              <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line px-6 py-12 text-center">
                 <span className="material-symbols-outlined text-3xl text-emerald-400">
                   task_alt
                 </span>
@@ -294,7 +294,7 @@ export default function TaxTableUpdatesView() {
           {sources.isPending && <p className="text-sm text-muted">Loading sources…</p>}
 
           {!sources.isPending && sources.isError && (
-            <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
               <p className="text-sm text-red-300">Could not load tax-table sources.</p>
               <Button
                 size="sm"
@@ -308,7 +308,7 @@ export default function TaxTableUpdatesView() {
           )}
 
           {!sources.isPending && !sources.isError && (sources.data ?? []).length === 0 && (
-            <div className="rounded-sm border border-dashed border-white/15 px-6 py-10 text-center text-sm text-muted">
+            <div className="rounded-lg border border-dashed border-line px-6 py-10 text-center text-sm text-muted">
               No tax-table sources are configured.
             </div>
           )}

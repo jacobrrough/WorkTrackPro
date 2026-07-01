@@ -66,7 +66,7 @@ export function DocumentSentBadge({
 const TONE_STYLES: Record<'green' | 'amber' | 'grey', string> = {
   green: 'border-green-500/30 bg-green-500/10 text-green-300',
   amber: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
-  grey: 'border-white/10 bg-white/5 text-muted',
+  grey: 'border-line bg-white/5 text-muted',
 };
 
 function Pill({
@@ -80,7 +80,7 @@ function Pill({
 }) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-2 rounded-sm border px-3 py-2 text-sm ${TONE_STYLES[tone]}`}
+      className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm ${TONE_STYLES[tone]}`}
     >
       <span className="material-symbols-outlined text-lg">{icon}</span>
       {children}

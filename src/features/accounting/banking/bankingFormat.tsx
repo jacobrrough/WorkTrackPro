@@ -18,7 +18,7 @@ const STATUS_STYLES: Record<BankTransactionStatus, string> = {
 export function TxnStatusPill({ status }: { status: BankTransactionStatus }) {
   return (
     <span
-      className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {BANK_TXN_STATUS_LABELS[status]}
     </span>

@@ -11,7 +11,7 @@ import { PROGRESS_BASE } from '../constants';
 import type { NewProjectInput, Project, ProjectStatus } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
   active: 'bg-sky-500/15 text-sky-400',
@@ -21,7 +21,7 @@ const STATUS_STYLES: Record<ProjectStatus, string> = {
 function StatusPill({ status }: { status: ProjectStatus }) {
   return (
     <span
-      className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATUS_STYLES[status]}`}
     >
       {status}
     </span>
@@ -65,14 +65,14 @@ function NewProjectModal({ onClose }: { onClose: (projectId?: string) => void })
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">New project</h2>
           <button
             type="button"
             onClick={() => onClose()}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -199,7 +199,7 @@ export default function ProjectsView() {
       )}
 
       {!isPending && !isError && projects.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-white/15 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line px-6 py-16 text-center">
           <span className="material-symbols-outlined text-4xl text-subtle">foundation</span>
           <p className="text-lg font-bold text-white">No projects yet</p>
           <p className="max-w-sm text-sm text-muted">
@@ -221,7 +221,7 @@ export default function ProjectsView() {
             <span className="w-16 shrink-0 text-right">Retainage</span>
             <span className="w-[58px] shrink-0" />
           </div>
-          <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+          <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
             {projects.map((p) => (
               <ProjectRow
                 key={p.id}

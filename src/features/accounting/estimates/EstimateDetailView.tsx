@@ -390,7 +390,7 @@ export default function EstimateDetailView() {
           {/* Status + meta — shown in both edit and preview. */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span
-              className={`rounded-sm px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${STATUS_STYLES[estimate.status]}`}
             >
               {ESTIMATE_STATUS_LABELS[estimate.status]}
             </span>

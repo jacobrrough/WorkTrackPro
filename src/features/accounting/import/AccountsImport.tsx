@@ -143,7 +143,7 @@ export default function AccountsImport() {
         <ImportStepper steps={['Upload', 'Review & map', 'Done']} current={csv.step} />
 
         {csv.error && (
-          <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {csv.error}
           </div>
         )}
@@ -218,7 +218,7 @@ export default function AccountsImport() {
               )}
             </div>
 
-            <div className="max-h-[48vh] overflow-auto rounded-md border border-white/10">
+            <div className="max-h-[48vh] overflow-auto rounded-lg border border-line">
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 bg-background-dark text-left text-xs uppercase text-muted">
                   <tr>
@@ -231,7 +231,7 @@ export default function AccountsImport() {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.rowNumber} className="border-t border-white/5">
+                    <tr key={r.rowNumber} className="border-t border-line/60">
                       <td className="px-3 py-1.5 text-subtle">{r.accountNumber ?? r.rowNumber}</td>
                       <td className="px-3 py-1.5 text-white">
                         {r.name || <em className="text-subtle">—</em>}
@@ -267,7 +267,7 @@ export default function AccountsImport() {
                       </td>
                       <td className="px-3 py-1.5">
                         <span
-                          className={`rounded-sm px-1.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status].className}`}
+                          className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[r.status].className}`}
                           title={
                             r.status === 'duplicate' && r.duplicateName
                               ? `Matches "${r.duplicateName}"`
@@ -303,7 +303,7 @@ export default function AccountsImport() {
 
         {csv.step === 'done' && result && (
           <div className="space-y-4">
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
               <span className="material-symbols-outlined text-5xl text-emerald-400">task_alt</span>
               <h2 className="mt-2 text-xl font-bold text-white">Accounts imported</h2>
               <p className="mt-1 text-sm text-muted">
@@ -316,7 +316,7 @@ export default function AccountsImport() {
               </p>
             </div>
             {result.failed.length > 0 && (
-              <div className="rounded-md border border-red-500/20 bg-card-dark p-4 text-sm">
+              <div className="rounded-lg border border-red-500/20 bg-card-dark p-4 text-sm">
                 <h3 className="mb-2 font-semibold text-red-300">Rows that failed</h3>
                 <ul className="space-y-1 text-muted">
                   {result.failed.map((f) => (

@@ -43,7 +43,7 @@ const PAYMENT_STATUS_STYLE = 'bg-green-500/15 text-green-400';
 
 function StatCard({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1 rounded-sm border border-white/10 bg-background-dark/40 px-4 py-3">
+    <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-line bg-background-dark/40 px-4 py-3">
       <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{label}</span>
       <span
         className={`truncate font-mono text-base font-bold tabular-nums ${tone ?? 'text-white'}`}
@@ -128,7 +128,7 @@ function NewTransactionMenu({ items }: { items: NewTransactionItem[] }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-sm border border-white/10 bg-background-dark shadow-lg"
+          className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-line bg-background-dark shadow-lg"
         >
           {items.map((it) => (
             <button
@@ -157,7 +157,7 @@ function CustomerNotes({ notes }: { notes: string | null }) {
   // Heuristic for "needs a toggle": long text or several lines (avoids measuring layout).
   const isLong = !!notes && (notes.length > 140 || (notes.match(/\n/g)?.length ?? 0) >= 2);
   return (
-    <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
+    <div className="flex flex-col gap-1 border-t border-line pt-3">
       <span className="text-[11px] font-semibold uppercase tracking-wide text-subtle">Notes</span>
       {notes ? (
         <>
@@ -325,19 +325,19 @@ export default function CustomerDetailView() {
       {customer && (
         <div className="mx-auto flex max-w-5xl flex-col gap-5">
           {/* QuickBooks-style customer info card: prominent name, labeled fields, notes */}
-          <div className="flex flex-col gap-4 rounded-sm border border-white/10 bg-background-dark/40 p-5">
+          <div className="flex flex-col gap-4 rounded-lg border border-line bg-background-dark/40 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 className="text-2xl font-bold text-white">
                   {customer.displayName || customer.companyName || 'Customer'}
                 </h2>
                 {customer.taxExempt && (
-                  <span className="rounded-sm bg-amber-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-amber-400">
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-amber-400">
                     Tax exempt
                   </span>
                 )}
                 {!customer.isActive && (
-                  <span className="rounded-sm bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase text-muted">
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold uppercase text-muted">
                     Inactive
                   </span>
                 )}
@@ -411,7 +411,7 @@ export default function CustomerDetailView() {
 
           {/* Unified transaction list with Chrome-tab-style type switcher */}
           <section className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-end justify-between gap-2 border-b border-white/10">
+            <div className="flex flex-wrap items-end justify-between gap-2 border-b border-line">
               <div className="flex items-end gap-1" role="tablist" aria-label="Transaction type">
                 {TYPE_OPTIONS.map((o) => {
                   const active = typeFilter === o.value;
@@ -431,7 +431,7 @@ export default function CustomerDetailView() {
                       }}
                       className={`-mb-px flex items-center gap-2 rounded-t-md border px-3 py-2 text-sm font-semibold transition-colors ${
                         active
-                          ? 'border-white/10 border-b-background-dark bg-background-dark/40 text-white'
+                          ? 'border-line border-b-background-dark bg-background-dark/40 text-white'
                           : 'border-transparent text-muted hover:text-white'
                       }`}
                     >
@@ -466,12 +466,12 @@ export default function CustomerDetailView() {
             </div>
 
             {/* Status filter + running total of whatever is currently shown (QuickBooks-style). */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-white/10 bg-background-dark/40 px-4 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-background-dark/40 px-4 py-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="font-semibold uppercase tracking-wide text-subtle">Status</span>
                 <select
                   aria-label="Filter by status"
-                  className="rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-sm text-white focus:border-primary focus:outline-none"
+                  className="rounded-lg border border-line bg-background-dark px-2 py-1 text-sm text-white focus:border-primary focus:outline-none"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
@@ -546,7 +546,7 @@ export default function CustomerDetailView() {
                         {row.balance == null ? '—' : formatMoney(row.balance)}
                       </span>
                       <span
-                        className={`w-20 shrink-0 rounded-sm px-1.5 py-0.5 text-center text-[10px] font-semibold uppercase ${row.statusStyle}`}
+                        className={`w-20 shrink-0 rounded-full px-1.5 py-0.5 text-center text-[10px] font-semibold uppercase ${row.statusStyle}`}
                       >
                         {row.statusLabel}
                       </span>

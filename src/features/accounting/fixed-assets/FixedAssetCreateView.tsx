@@ -23,7 +23,7 @@ import {
 } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Today as a bare ISO `YYYY-MM-DD` for the in-service date default. */
 function todayISO(): string {
@@ -278,7 +278,7 @@ export default function FixedAssetCreateView() {
         </section>
 
         {/* Live straight-line preview */}
-        <section className="rounded-sm border border-white/10 bg-card-dark p-3">
+        <section className="rounded-2xl border border-line bg-card-dark p-3">
           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
             Schedule preview
           </h2>
@@ -333,14 +333,14 @@ export default function FixedAssetCreateView() {
 
         {error && (
           <p
-            className="rounded-sm border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
+            className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300"
             role="alert"
           >
             {error}
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={() => navigate(FIXED_ASSETS_BASE)}>
             Cancel
           </Button>

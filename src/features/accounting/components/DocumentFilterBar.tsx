@@ -54,7 +54,7 @@ export function applyDocFilters<T>(items: T[], f: DocFilters, a: DocFilterAccess
 }
 
 const ctrl =
-  'rounded-sm border border-white/10 bg-background-dark px-2 py-1 text-xs text-muted focus:border-primary focus:outline-none';
+  'rounded-lg border border-line bg-background-dark px-2 py-1 text-xs text-muted focus:border-primary focus:outline-none';
 
 export function DocumentFilterBar({
   filters,
@@ -125,7 +125,7 @@ export function DocumentFilterBar({
         <button
           type="button"
           onClick={() => onChange(initialDocFilters(defaultStatus))}
-          className="rounded-sm px-2 py-1 text-xs font-semibold text-muted hover:bg-white/10 hover:text-white"
+          className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-white/10 hover:text-white"
         >
           Clear
         </button>

@@ -33,7 +33,7 @@ import {
 } from '../defaultAccountsView';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** What the confirmation dialog is about to do. `date: null` means re-open the books. */
 type PendingAction = { date: string | null };
@@ -79,7 +79,7 @@ function ConfirmLockDialog({
       aria-modal="true"
       aria-labelledby="lock-confirm-title"
     >
-      <div className="w-full max-w-md rounded-sm border border-white/10 bg-card-dark p-4 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-card-dark p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="lock-confirm-title" className="text-lg font-bold text-white">
             {reopening ? 'Re-open the books?' : 'Close the books?'}
@@ -88,7 +88,7 @@ function ConfirmLockDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-sm text-muted hover:bg-white/10 hover:text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-muted hover:bg-white/10 hover:text-white"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -129,7 +129,7 @@ function LockStatusCard({ closedThrough }: { closedThrough: string | null }) {
   const locked = !!closedThrough;
   return (
     <div
-      className={`rounded-sm border p-3 ${
+      className={`rounded-lg border p-3 ${
         locked
           ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
           : 'border-green-500/30 bg-green-500/10 text-green-200'
@@ -167,7 +167,7 @@ function DefaultAccountRow({ row }: { row: ResolvedDefaultAccount }) {
             )}
           </>
         ) : (
-          <span className="rounded-sm bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-amber-300">
+          <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-amber-300">
             Not configured
           </span>
         )}
@@ -195,7 +195,7 @@ function DefaultAccountGroupSection({
         <span className="text-[11px] text-subtle">{summary.label}</span>
       </div>
       <p className="mb-2 text-xs text-subtle">{caption}</p>
-      <div className="divide-y divide-white/5 overflow-hidden rounded-sm border border-white/10">
+      <div className="divide-y divide-white/5 overflow-hidden rounded-lg border border-line">
         {rows.map((row) => (
           <DefaultAccountRow key={row.key} row={row} />
         ))}
@@ -247,7 +247,7 @@ function DefaultAccountsPanel() {
       {isPending && <p className="mt-3 text-sm text-muted">Loading default accounts…</p>}
 
       {!isPending && isError && (
-        <div className="mt-3 flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+        <div className="mt-3 flex flex-col items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
           <p className="text-sm text-red-300">
             Could not load the default-account mappings. Confirm the accounting schema is exposed
             and you have an accounting role.
@@ -453,7 +453,7 @@ function DunningSettingsPanel() {
               type="checkbox"
               checked={config.enabled}
               onChange={(e) => update('enabled', e.target.checked)}
-              className="size-4 rounded border-white/20 bg-background-dark text-primary focus:ring-primary"
+              className="size-4 rounded border-line-strong bg-background-dark text-primary focus:ring-primary"
             />
             <span className="text-sm font-medium text-white">Enable automated reminders</span>
           </label>
@@ -612,7 +612,7 @@ export default function AccountingSettingsView() {
         {isPending && <p className="text-muted">Loading the period lock…</p>}
 
         {isError && (
-          <div className="flex flex-col items-start gap-3 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
             <p className="text-sm text-red-300">
               Could not load the books-closed date. Confirm the accounting schema is exposed and you
               have an accounting role.
@@ -675,23 +675,23 @@ export default function AccountingSettingsView() {
           </Card>
         )}
 
-        <div className="border-t border-white/10 pt-5">
+        <div className="border-t border-line pt-5">
           <DefaultAccountsPanel />
         </div>
 
-        <div className="border-t border-white/10 pt-5">
+        <div className="border-t border-line pt-5">
           <DocumentTemplatePanel />
         </div>
 
-        <div className="border-t border-white/10 pt-5">
+        <div className="border-t border-line pt-5">
           <DunningSettingsPanel />
         </div>
 
-        <div className="border-t border-white/10 pt-5">
+        <div className="border-t border-line pt-5">
           <TaxTableUpdatesPanel />
         </div>
 
-        <div className="border-t border-white/10 pt-5">
+        <div className="border-t border-line pt-5">
           <TaxJurisdictionsPanel />
         </div>
       </div>

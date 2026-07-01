@@ -5,7 +5,7 @@ import { useUpsertVendorTaxInfo } from '../hooks/useAccountingMutations';
 import { FEDERAL_ENTITY_TYPE_LABELS, type FederalEntityType } from '../types';
 
 const inputClass =
-  'w-full rounded-sm border border-white/10 bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
+  'w-full rounded-lg border border-line bg-background-dark px-2 py-1.5 text-white focus:border-primary focus:outline-none';
 
 /** Local edit-state for the W-9 form (raw strings; boxed on save). */
 interface FormState {
