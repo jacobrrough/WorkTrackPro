@@ -8,6 +8,7 @@ import { useBoardMutations } from '@/hooks/useBoardMutations';
 import AttachmentsList from '@/AttachmentsList';
 import FileUploadButton from '@/FileUploadButton';
 import CardEditorModal, { type CardSaveData } from './components/CardEditorModal';
+import { canManageCard } from './permissions';
 
 interface CardDetailViewProps {
   boardId: string;
@@ -32,6 +33,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
   const isOwner = board?.createdBy === currentUser?.id;
   const memberEntry = members.find((m) => m.userId === currentUser?.id);
   const readOnly = !isOwner && memberEntry?.role === 'viewer';
+  const canDeleteCard = canManageCard(card, board, members, currentUser);
 
   const column = card ? columns.find((col) => col.id === card.columnId) : null;
   const assignee = card?.assigneeId ? users.find((u) => u.id === card.assigneeId) : null;
@@ -181,7 +183,7 @@ const CardDetailView: React.FC<CardDetailViewProps> = ({ boardId, cardId, onBack
           canManageAttachments={!readOnly}
           onClose={() => setEditing(false)}
           onSave={handleUpdateCard}
-          onDelete={handleDeleteCard}
+          onDelete={canDeleteCard ? handleDeleteCard : undefined}
           onUploadAttachment={(cId, file) => mutations.addCardAttachment(boardId, cId, file)}
           onDeleteAttachment={(attachmentId) =>
             mutations.deleteCardAttachment(boardId, attachmentId)

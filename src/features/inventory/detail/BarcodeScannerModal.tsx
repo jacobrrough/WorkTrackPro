@@ -12,7 +12,8 @@ interface BarcodeScannerModalProps {
 /**
  * Modal barcode/QR scanner used when assigning a barcode to an inventory item or
  * scanning to find one. Backed by the shared `useBarcodeScanner` engine, which
- * reads 1D barcodes too on browsers with the native BarcodeDetector.
+ * reads QR and 1D barcodes on every browser (native BarcodeDetector where
+ * available, bundled ZXing wasm elsewhere).
  */
 export function BarcodeScannerModal({
   open,

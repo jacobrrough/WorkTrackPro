@@ -3,6 +3,12 @@ import { useToast } from '../Toast';
 import { validateBinLocation } from '../core/validation';
 import { useBarcodeScanner } from '../scanner/useBarcodeScanner';
 import { ScannerViewport } from '../scanner/ScannerViewport';
+import type { ScannerFormat } from '../scanner/detectors';
+
+// Bin and job labels are app-generated QR codes. Restricting those scan types
+// keeps a stray 1D product barcode on a nearby box from being decoded first and
+// rejected (which would bounce the user out of the scan).
+const QR_ONLY: ScannerFormat[] = ['qr_code'];
 
 export type ScanType = 'inventory' | 'job' | 'bin' | 'any';
 
@@ -42,13 +48,13 @@ const getTitle = (scanType: ScanType, title?: string) => {
   if (title) return title;
   switch (scanType) {
     case 'inventory':
-      return 'Scan Inventory QR Code';
+      return 'Scan Inventory Code';
     case 'job':
       return 'Scan Job QR Code';
     case 'bin':
       return 'Scan Bin Location QR Code';
     default:
-      return 'Scan QR Code';
+      return 'Scan Code';
   }
 };
 
@@ -56,13 +62,13 @@ const getDescription = (scanType: ScanType, description?: string) => {
   if (description) return description;
   switch (scanType) {
     case 'inventory':
-      return 'Point camera at inventory item QR code';
+      return "Point camera at the item's QR code or barcode";
     case 'job':
       return 'Point camera at job QR code';
     case 'bin':
       return 'Point camera at bin location QR code (format: A4c)';
     default:
-      return 'Point camera at QR code';
+      return 'Point camera at a QR code or barcode';
   }
 };
 
@@ -109,6 +115,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
     onError: handleError,
     transform: transformForType(scanType),
     validate: validateForType(scanType),
+    formats: scanType === 'bin' || scanType === 'job' ? QR_ONLY : undefined,
     // "any" is the find-by-scan mode (Dashboard / Scanner tab) — keep scanning so an
     // unrecognized code doesn't dead-end the screen. Specific types are single-shot.
     continuous: scanType === 'any',
