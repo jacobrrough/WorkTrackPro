@@ -6,15 +6,18 @@ export default {
   ],
   theme: {
     extend: {
+      // Direction E: rounded cards. Scale aligned to the public surface
+      // (controls/cards ~8px, cards ~12px, large ~14px). `full` keeps Tailwind's
+      // 9999px default (extend merges).
       borderRadius: {
-        DEFAULT: '0',
+        DEFAULT: '6px',
         none: '0',
-        sm: '0',
-        md: '1px',
-        lg: '2px',
-        xl: '3px',
-        '2xl': '4px',
-        '3xl': '4px',
+        sm: '4px',
+        md: '6px',
+        lg: '8px',
+        xl: '10px',
+        '2xl': '12px',
+        '3xl': '14px',
       },
       colors: {
         // Theme tokens — resolve to CSS variables set per [data-theme] in index.css.
@@ -30,6 +33,12 @@ export default {
           hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
         },
         'on-accent': 'rgb(var(--c-on-accent) / <alpha-value>)',
+        // Destructive/error — distinct from the brand accent (see --c-danger).
+        danger: {
+          DEFAULT: 'rgb(var(--c-danger) / <alpha-value>)',
+          hover: 'rgb(var(--c-danger-hover) / <alpha-value>)',
+        },
+        'on-danger': 'rgb(var(--c-on-danger) / <alpha-value>)',
         // Legacy names kept so existing bg-background-dark / bg-card-dark / etc. re-theme.
         'background-dark': 'rgb(var(--c-bg) / <alpha-value>)',
         'background-light': 'rgb(var(--c-bg-2) / <alpha-value>)',
@@ -57,7 +66,9 @@ export default {
         'pure-black': '#000000',
       },
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+        // Direction E typography, self-hosted (@font-face in src/index.css).
+        sans: ['Hanken Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'system-ui', 'Arial', 'sans-serif'],
+        display: ['Schibsted Grotesk', 'Hanken Grotesk', 'system-ui', 'Arial', 'sans-serif'],
       },
       animation: {
         'slide-in-right': 'slideInRight 0.3s ease-out',

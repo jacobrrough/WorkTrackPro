@@ -3,7 +3,7 @@
 // Keep `bg` here and the THEME_BG map in index.html in sync with those blocks.
 
 export type ThemeId =
-  | 'midnight-purple'
+  | 'signal-red'
   | 'deep-ocean'
   | 'forest'
   | 'ember'
@@ -26,12 +26,12 @@ export interface ThemeMeta {
 
 export const THEMES: ThemeMeta[] = [
   {
-    id: 'midnight-purple',
-    label: 'Midnight Purple',
-    description: 'The original — violet on near-black.',
+    id: 'signal-red',
+    label: 'Signal Red',
+    description: 'The default — crimson red on charcoal.',
     mode: 'dark',
-    bg: '#0f0218',
-    swatch: { bg: '#0f0218', surface: '#1e0f2e', accent: '#9333ea', muted: '#ad93c8' },
+    bg: '#121214',
+    swatch: { bg: '#121214', surface: '#1e2024', accent: '#ea4444', muted: '#a8aeb7' },
   },
   {
     id: 'deep-ocean',
@@ -83,7 +83,7 @@ export const THEMES: ThemeMeta[] = [
   },
 ];
 
-export const DEFAULT_THEME: ThemeId = 'midnight-purple';
+export const DEFAULT_THEME: ThemeId = 'signal-red';
 export const THEME_STORAGE_KEY = 'worktrack-theme';
 
 const THEME_IDS = new Set<string>(THEMES.map((t) => t.id));
