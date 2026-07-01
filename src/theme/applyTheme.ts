@@ -35,6 +35,9 @@ export function applyTheme(theme: ThemeId, mode: AppearanceMode): void {
   root.setAttribute('data-theme', theme);
   root.setAttribute('data-mode', resolved);
   root.style.removeProperty('background');
+  // Also the longhand: the pre-paint script sets the `background` shorthand, and
+  // not every engine cascades shorthand removal to its longhands (jsdom doesn't).
+  root.style.removeProperty('background-color');
   root.style.removeProperty('color');
   root.style.removeProperty('color-scheme');
   const themeColor = document.querySelector('meta[name="theme-color"]');
