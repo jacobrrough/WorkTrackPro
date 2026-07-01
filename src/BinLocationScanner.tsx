@@ -53,6 +53,9 @@ const BinLocationScanner: React.FC<BinLocationScannerProps> = ({
     onError: handleError,
     transform: stripBinPrefix,
     validate: validateBinLocation,
+    // Bin labels are app-generated QR codes — don't let a stray 1D product
+    // barcode on a nearby box decode first and bounce the user back to manual.
+    formats: ['qr_code'],
   });
 
   const handleInputChange = (value: string) => {

@@ -34,7 +34,8 @@
     "react-plaid-link": "^4.1.1",
     "react-router-dom": "^7.17.0",
     "react-to-print": "^3.3.0",
-    "read-excel-file": "^9.0.10"
+    "read-excel-file": "^9.0.10",
+    "zxing-wasm": "^3.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
