@@ -656,7 +656,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
       <main className="flex-1 overflow-y-auto px-4 py-6 pb-28">
         {/* Error Banner */}
         {error && (
-          <div className="mb-4 flex items-start gap-3 rounded-sm border border-red-500 bg-red-500/10 p-4">
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-500 bg-red-500/10 p-4">
             <span className="material-symbols-outlined text-red-400">error</span>
             <div className="flex-1">
               <p className="mb-1 font-bold text-red-400">Error</p>
@@ -668,7 +668,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           </div>
         )}
         {Object.keys(validationErrors).length > 0 && (
-          <div className="mb-4 rounded-sm border border-red-500/40 bg-red-500/10 p-3">
+          <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-3">
             <p className="mb-2 text-sm font-bold text-red-300">Validation details</p>
             <ul className="space-y-1 text-xs text-red-200">
               {Object.entries(validationErrors)
@@ -703,7 +703,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-muted">Rev</label>
                 <input
-                  className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-subtle"
+                  className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-subtle"
                   placeholder="e.g. A, B, NC"
                   value={formData.revision}
                   onChange={(e) => setFormData({ ...formData, revision: e.target.value })}
@@ -715,7 +715,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <label className="pb-1 text-xs font-medium text-muted">Part Name</label>
                 {selectedPart ? (
                   <input
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                     placeholder="Part name"
                     value={partNameEdit}
                     onChange={(e) => setPartNameEdit(e.target.value)}
@@ -736,7 +736,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                     disabled={isSubmitting}
                   />
                 ) : (
-                  <div className="flex h-10 w-full items-center rounded-sm border border-line bg-surface-2/50 px-3 py-2 text-sm text-subtle">
+                  <div className="flex h-10 w-full items-center rounded-lg border border-line bg-surface-2/50 px-3 py-2 text-sm text-subtle">
                     Select a part above to set part name
                   </div>
                 )}
@@ -756,7 +756,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                       {!hasVariantQty ? 'Sets' : inSetsMode ? 'Sets' : 'Variant qty'}
                     </label>
                     {hasVariantQty ? (
-                      <div className="flex h-10 w-full items-center rounded-sm border border-line bg-surface-2/50 px-3 py-2 text-sm text-muted">
+                      <div className="flex h-10 w-full items-center rounded-lg border border-line bg-surface-2/50 px-3 py-2 text-sm text-muted">
                         {inSetsMode ? (
                           <>
                             {primaryAllocation.setCount} sets
@@ -772,7 +772,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                       </div>
                     ) : (
                       <input
-                        className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                        className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                         placeholder="e.g. 50 sets"
                         value={formData.qty}
                         onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
@@ -786,7 +786,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 );
               })()}
               {selectedPart && (
-                <div className="rounded-sm border border-primary/30 bg-primary/10 p-3">
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3">
                   <p className="text-xs font-bold uppercase tracking-widest text-primary">
                     Auto Price (Master Part)
                   </p>
@@ -819,13 +819,13 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               )}
             </div>
             {additionalParts.length > 0 && (
-              <div className="mt-4 space-y-3 rounded-sm border border-line bg-surface-2/30 p-3">
+              <div className="mt-4 space-y-3 rounded-2xl border border-line bg-surface-2/30 p-3">
                 <p className="text-xs font-medium text-muted">Additional parts</p>
                 {additionalParts.map(
                   ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
                     <div
                       key={`${part.id}-${idx}`}
-                      className="space-y-2 rounded border border-white/10 bg-white/5 px-3 py-2.5"
+                      className="space-y-2 rounded border border-line bg-white/5 px-3 py-2.5"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-sm text-white">
@@ -865,7 +865,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               </div>
             )}
             {addingPart && (
-              <div className="mt-4 rounded-sm border border-primary/40 bg-primary/10 p-3">
+              <div className="mt-4 rounded-2xl border border-primary/40 bg-primary/10 p-3">
                 <p className="mb-2 text-xs font-medium text-primary">Select part to add</p>
                 <PartSelector
                   onSelect={handleAddPartSelect}
@@ -909,7 +909,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <button
                   type="button"
                   onClick={handleRegenerateJobCode}
-                  className="flex h-10 w-full items-center rounded-sm border border-line bg-surface-2/50 px-3 transition-colors hover:border-primary hover:bg-surface-2"
+                  className="flex h-10 w-full items-center rounded-lg border border-line bg-surface-2/50 px-3 transition-colors hover:border-primary hover:bg-surface-2"
                   title="Click to regenerate code"
                 >
                   <span className="font-mono text-sm font-bold text-primary">
@@ -936,7 +936,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   <label className="pb-1 text-xs font-medium text-muted">Customer</label>
                   <Suspense
                     fallback={
-                      <div className="h-10 w-full rounded-sm border border-line bg-surface-2" />
+                      <div className="h-10 w-full rounded-lg border border-line bg-surface-2" />
                     }
                   >
                     <JobCustomerSelect
@@ -952,7 +952,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-muted">PO #</label>
                 <input
-                  className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                  className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                   placeholder="5300170272"
                   value={formData.po}
                   onChange={(e) => setFormData({ ...formData, po: e.target.value })}
@@ -963,7 +963,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <div className="flex flex-col">
                   <label className="pb-1 text-xs font-medium text-muted">EST #</label>
                   <input
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                     placeholder="EST #"
                     value={formData.estNumber}
                     onChange={(e) => setFormData({ ...formData, estNumber: e.target.value })}
@@ -973,7 +973,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <div className="flex flex-col">
                   <label className="pb-1 text-xs font-medium text-muted">RFQ #</label>
                   <input
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                     placeholder="RFQ #"
                     value={formData.rfqNumber}
                     onChange={(e) => setFormData({ ...formData, rfqNumber: e.target.value })}
@@ -983,7 +983,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <div className="flex flex-col">
                   <label className="pb-1 text-xs font-medium text-muted">INV #</label>
                   <input
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                     placeholder="INV #"
                     value={formData.invNumber}
                     onChange={(e) => setFormData({ ...formData, invNumber: e.target.value })}
@@ -993,7 +993,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <div className="flex flex-col">
                   <label className="pb-1 text-xs font-medium text-muted">OWR #</label>
                   <input
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                     placeholder="OWR #"
                     value={formData.owrNumber ?? ''}
                     onChange={(e) => setFormData({ ...formData, owrNumber: e.target.value })}
@@ -1006,7 +1006,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   <label className="pb-1 text-xs font-medium text-muted">Due Date</label>
                   <input
                     type="date"
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white"
                     value={formData.dueDate}
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                     disabled={isSubmitting}
@@ -1019,7 +1019,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   <label className="pb-1 text-xs font-medium text-muted">ECD (latest finish)</label>
                   <input
                     type="date"
-                    className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white"
+                    className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white"
                     value={formData.ecd}
                     onChange={(e) => setFormData({ ...formData, ecd: e.target.value })}
                     disabled={isSubmitting}
@@ -1032,7 +1032,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-muted">Bin Location</label>
                 <input
-                  className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-subtle"
+                  className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm uppercase text-white placeholder:text-subtle"
                   placeholder="e.g., A4c"
                   value={formData.binLocation}
                   onChange={(e) =>
@@ -1045,7 +1045,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-muted">Initial Status</label>
                 <select
-                  className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 text-sm text-white"
+                  className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-white"
                   value={formData.status}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value as JobStatus })
@@ -1062,7 +1062,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
               <div className="flex flex-col">
                 <label className="pb-1 text-xs font-medium text-muted">Description</label>
                 <textarea
-                  className="min-h-[80px] w-full resize-none rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                  className="min-h-[80px] w-full resize-none rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                   placeholder="Enter job requirements, notes, or instructions..."
                   value={formData.description}
                   onChange={(e) =>
@@ -1071,7 +1071,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   disabled={isSubmitting}
                 />
               </div>
-              <div className="flex items-center justify-between rounded-sm border border-red-500/20 bg-red-500/10 px-3 py-3">
+              <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-3">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-red-500">bolt</span>
                   <div>
@@ -1084,11 +1084,11 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, isRush: !formData.isRush })}
-                  className={`relative h-6 w-12 rounded-sm transition-colors ${formData.isRush ? 'bg-red-500' : 'bg-surface-3'}`}
+                  className={`relative h-6 w-12 rounded-full transition-colors ${formData.isRush ? 'bg-red-500' : 'bg-surface-3'}`}
                   disabled={isSubmitting}
                 >
                   <div
-                    className={`absolute top-1 size-4 rounded-sm bg-white transition-all ${formData.isRush ? 'right-1' : 'left-1'}`}
+                    className={`absolute top-1 size-4 rounded-full bg-white transition-all ${formData.isRush ? 'right-1' : 'left-1'}`}
                   ></div>
                 </button>
               </div>
@@ -1102,7 +1102,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
             </p>
             <div className="space-y-3">
               {selectedPart && (
-                <div className="rounded-sm border border-line/50 bg-surface-2/30 p-3">
+                <div className="rounded-2xl border border-line/50 bg-surface-2/30 p-3">
                   <p className="text-xs font-medium text-muted">{selectedPart.partNumber}</p>
                   {totalFromDashQuantities(dashQuantities) > 0 ? (
                     <p className="mt-1 text-sm text-muted">
@@ -1120,7 +1120,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                 ({ part, dashQuantities: dq, allocationMode, setCount }, idx) => (
                   <div
                     key={`${part.id}-${idx}`}
-                    className="rounded-sm border border-line/50 bg-surface-2/30 p-3"
+                    className="rounded-2xl border border-line/50 bg-surface-2/30 p-3"
                   >
                     <p className="text-xs font-medium text-muted">{part.partNumber}</p>
                     {totalFromDashQuantities(dq ?? {}) > 0 ? (
@@ -1154,7 +1154,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   {createPerPartBreakdowns.perPart.map((b, i) => (
                     <div
                       key={i}
-                      className="flex flex-wrap items-center gap-3 rounded-sm border border-line/50 bg-surface-2/30 px-3 py-2 text-sm text-muted"
+                      className="flex flex-wrap items-center gap-3 rounded-lg border border-line/50 bg-surface-2/30 px-3 py-2 text-sm text-muted"
                     >
                       <span className="font-mono text-xs text-muted">{b.partNumber}</span>
                       <span>Labor {(b.laborHours || 0).toFixed(1)}h</span>
@@ -1190,7 +1190,7 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
                   type="number"
                   step="0.01"
                   min="0"
-                  className="h-10 w-full rounded-sm border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
+                  className="h-10 w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-subtle"
                   placeholder={
                     createPerPartBreakdowns?.combined
                       ? String(createPerPartBreakdowns.combined.laborHours.toFixed(1))
@@ -1217,12 +1217,12 @@ const AdminCreateJob: React.FC<AdminCreateJobProps> = ({
           onClick={() => {
             handleSubmit();
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary py-3 font-bold text-on-accent shadow-lg transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-bold text-on-accent shadow-lg transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isSubmitting}
         >
           {isSubmitting ? (
             <>
-              <div className="h-5 w-5 animate-spin rounded-sm border-2 border-white border-t-transparent"></div>
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
               <span>Creating Job...</span>
             </>
           ) : (
