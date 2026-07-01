@@ -117,7 +117,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
   return (
     <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/60" onClick={onClose}>
       <div
-        className="max-h-[88vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-background-dark p-4"
+        className="max-h-[88vh] overflow-y-auto rounded-t-2xl border-t border-line bg-background-dark p-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -142,7 +142,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
         {item.description && <p className="mb-3 text-sm text-muted">{item.description}</p>}
 
         {wrongBinMsg && (
-          <div className="mb-3 rounded-sm border border-red-500/40 bg-red-500/10 p-3 text-sm font-semibold text-red-300">
+          <div className="mb-3 rounded-2xl border border-danger/40 bg-danger/10 p-3 text-sm font-semibold text-danger">
             {wrongBinMsg}
           </div>
         )}
@@ -154,7 +154,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
               type="button"
               disabled={busy}
               onClick={handleTake}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm bg-primary px-4 font-bold text-on-accent disabled:opacity-50"
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 font-bold text-on-accent disabled:opacity-50"
             >
               <span className="material-symbols-outlined">back_hand</span>
               {isOut ? `Take from ${holderName(users, item.currentHolderId)}` : 'Take / Use'}
@@ -165,7 +165,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
               type="button"
               disabled={busy}
               onClick={startPutAway}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm border border-primary/50 bg-primary/15 px-4 font-bold text-primary disabled:opacity-50"
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-primary/50 bg-primary/15 px-4 font-bold text-primary disabled:opacity-50"
             >
               <span className="material-symbols-outlined">inventory_2</span>
               Put away
@@ -175,7 +175,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
             type="button"
             disabled={busy}
             onClick={() => setShowAssign(true)}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm border border-white/10 bg-white/5 px-4 font-bold text-white hover:bg-white/10 disabled:opacity-50"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-line bg-white/5 px-4 font-bold text-white hover:bg-white/10 disabled:opacity-50"
           >
             <span className="material-symbols-outlined">group</span>
             Hand off to coworker
@@ -186,7 +186,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
         <button
           type="button"
           onClick={() => setShowHistory((v) => !v)}
-          className="mt-4 flex w-full items-center justify-between rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white"
+          className="mt-4 flex w-full items-center justify-between rounded-2xl border border-line bg-white/5 px-4 py-3 text-sm font-semibold text-white"
         >
           <span>Custody history</span>
           <span className="material-symbols-outlined">
@@ -202,7 +202,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
             {history.map((ev) => (
               <div
                 key={ev.id}
-                className="flex items-start gap-3 rounded-sm border border-white/10 bg-white/5 p-3"
+                className="flex items-start gap-3 rounded-2xl border border-line bg-white/5 p-3"
               >
                 <span className="material-symbols-outlined text-base text-muted">
                   {EVENT_ICON[ev.eventType] ?? 'history'}
@@ -232,7 +232,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
           onClick={() => setShowAssign(false)}
         >
           <div
-            className="max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-background-dark p-4"
+            className="max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-line bg-background-dark p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -255,7 +255,7 @@ export function ToolDetailSheet({ item, onClose }: ToolDetailSheetProps) {
                     type="button"
                     disabled={busy}
                     onClick={() => handleAssign(u.id)}
-                    className="flex min-h-[48px] w-full items-center gap-3 rounded-sm border border-white/10 bg-white/5 px-4 text-left font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+                    className="flex min-h-[48px] w-full items-center gap-3 rounded-lg border border-line bg-white/5 px-4 text-left font-semibold text-white hover:bg-white/10 disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-muted">person</span>
                     {u.name || u.email}
