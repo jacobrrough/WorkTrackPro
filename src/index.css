@@ -266,6 +266,58 @@ option {
   color: rgb(var(--c-text));
 }
 
+/* ---- Light-mode status-text legibility (WCAG 1.4.3) --------------------------
+ * The semantic status vocabulary (green success, amber caution, blue info,
+ * red overdue/rush) is written as Tailwind literals tuned for DARK surfaces
+ * (text-red-400, text-green-300, ...). On the light-mode surfaces those shades
+ * fall to 1.1-2.8:1 (measured: inventory "Needs Reorder" 1.07:1). Rather than
+ * rewrite ~700 call sites, remap each light shade to its dark-on-light
+ * equivalent (same hue, 700/800 step, all >=4.5:1 on the light surfaces) when
+ * [data-mode='light'] — the same per-mode strategy as --c-danger-fg/--c-overlay.
+ * Scoped to .app: the public .rcm-site and always-black camera/lightbox
+ * surfaces (which use text-pure-white / literal hex) are untouched.
+ * Hover variants that RE-COLOR text to a status hue get the same remap. */
+[data-mode='light']
+  .app
+  :is(.text-red-100, .text-red-200, .text-red-300, .text-red-400, .text-red-500) {
+  color: #b91c1c; /* red-700 */
+}
+[data-mode='light'] .app :is(.text-green-200, .text-green-300, .text-green-400, .text-green-500) {
+  color: #15803d; /* green-700 */
+}
+[data-mode='light'] .app :is(.text-emerald-200, .text-emerald-300, .text-emerald-400) {
+  color: #047857; /* emerald-700 */
+}
+[data-mode='light'] .app :is(.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400) {
+  color: #92400e; /* amber-800 (amber needs the extra step for 4.5:1 on tints) */
+}
+[data-mode='light'] .app :is(.text-yellow-200, .text-yellow-300, .text-yellow-400) {
+  color: #854d0e; /* yellow-800 */
+}
+[data-mode='light'] .app :is(.text-sky-300, .text-sky-400) {
+  color: #0369a1; /* sky-700 */
+}
+[data-mode='light'] .app :is(.text-blue-200, .text-blue-300, .text-blue-400) {
+  color: #1d4ed8; /* blue-700 */
+}
+[data-mode='light'] .app :is(.text-orange-300, .text-orange-400) {
+  color: #c2410c; /* orange-700 */
+}
+[data-mode='light'] .app :is(.text-teal-300, .text-teal-400) {
+  color: #0f766e; /* teal-700 */
+}
+[data-mode='light']
+  .app
+  :is(.hover\:text-red-300, .hover\:text-red-400, .hover\:text-red-500):hover {
+  color: #b91c1c;
+}
+[data-mode='light'] .app .hover\:text-green-300:hover {
+  color: #15803d;
+}
+[data-mode='light'] .app :is(.hover\:text-amber-300, .hover\:text-amber-400):hover {
+  color: #92400e;
+}
+
 /* App-wide keyboard focus ring (WCAG 2.4.7). The public surface has its own in
    public.css; this covers every employee-app control, including chrome rendered
    outside the `.app` scope (modals via portal, login). Accent-filled controls

@@ -56,7 +56,7 @@ export function ScannerViewport({
       {/* Starting indicator */}
       {status === 'starting' && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-          <span className="rounded-full bg-black/60 px-3 py-1 text-xs text-white">
+          <span className="rounded-full bg-black/60 px-3 py-1 text-xs text-pure-white">
             Starting camera…
           </span>
         </div>
@@ -64,7 +64,7 @@ export function ScannerViewport({
 
       {/* Live status chip */}
       {status === 'scanning' && (
-        <div className="pointer-events-none absolute left-3 top-3 rounded bg-black/50 px-2 py-1 text-xs text-white">
+        <div className="pointer-events-none absolute left-3 top-3 rounded bg-black/50 px-2 py-1 text-xs text-pure-white">
           Scanning… ({frameCount})
         </div>
       )}
@@ -74,7 +74,7 @@ export function ScannerViewport({
         <button
           type="button"
           onClick={toggleTorch}
-          className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
+          className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-full bg-black/50 text-pure-white transition-colors hover:bg-black/70"
           aria-label={torchOn ? 'Turn off flashlight' : 'Turn on flashlight'}
         >
           <span className="material-symbols-outlined">
@@ -86,8 +86,8 @@ export function ScannerViewport({
       {/* Recoverable error overlay */}
       {status === 'error' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/85 p-6 text-center">
-          <span className="material-symbols-outlined text-4xl text-red-400">videocam_off</span>
-          <p className="max-w-xs text-sm text-white">{error || 'Camera error'}</p>
+          <span className="material-symbols-outlined text-4xl text-[#f87171]">videocam_off</span>
+          <p className="max-w-xs text-sm text-pure-white">{error || 'Camera error'}</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
@@ -101,7 +101,7 @@ export function ScannerViewport({
               <button
                 type="button"
                 onClick={onManualEntry}
-                className="min-h-[44px] rounded-sm border border-white/20 bg-white/10 px-4 font-bold text-white"
+                className="min-h-[44px] rounded-sm border border-white/20 bg-white/10 px-4 font-bold text-pure-white"
               >
                 Enter manually
               </button>
@@ -113,7 +113,9 @@ export function ScannerViewport({
       {/* Bottom hint */}
       {hint && status !== 'error' && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-          <p className="rounded bg-black/50 px-3 py-1 text-center text-xs text-white/90">{hint}</p>
+          <p className="rounded bg-black/50 px-3 py-1 text-center text-xs text-pure-white/90">
+            {hint}
+          </p>
         </div>
       )}
     </div>

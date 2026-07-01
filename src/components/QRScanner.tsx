@@ -126,12 +126,12 @@ const QRScanner: React.FC<QRScannerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between bg-gradient-to-b from-black to-transparent p-4">
         <div>
-          <h2 className="text-lg font-bold text-white">{getTitle(scanType, title)}</h2>
-          <p className="text-xs text-muted">{scanner.frameCount} frames scanned</p>
+          <h2 className="text-lg font-bold text-pure-white">{getTitle(scanType, title)}</h2>
+          <p className="text-xs text-pure-white/60">{scanner.frameCount} frames scanned</p>
         </div>
         <button
           onClick={onClose}
-          className="flex size-10 items-center justify-center rounded-lg bg-overlay/10 text-white hover:bg-overlay/20"
+          className="flex size-10 items-center justify-center rounded-lg bg-pure-white/10 text-pure-white hover:bg-pure-white/20"
           aria-label="Close scanner"
         >
           <span className="material-symbols-outlined">close</span>
@@ -145,13 +145,13 @@ const QRScanner: React.FC<QRScannerProps> = ({
 
       {/* Instructions */}
       <div className="bg-gradient-to-t from-black to-transparent p-6">
-        <div className="rounded-lg bg-overlay/10 p-4 backdrop-blur">
+        <div className="rounded-lg bg-pure-white/10 p-4 backdrop-blur">
           <div className="flex items-start gap-3">
             <span className="material-symbols-outlined text-2xl text-primary">qr_code</span>
             <div className="flex-1">
-              <p className="mb-1 font-bold text-white">Position code in frame</p>
-              <p className="text-sm text-muted">{getDescription(scanType, description)}</p>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mb-1 font-bold text-pure-white">Position code in frame</p>
+              <p className="text-sm text-pure-white/60">{getDescription(scanType, description)}</p>
+              <p className="mt-1 text-xs text-pure-white/60">
                 Hold steady. Scanner will detect automatically.
               </p>
             </div>

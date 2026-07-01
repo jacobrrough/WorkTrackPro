@@ -1184,7 +1184,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               aria-live="polite"
               className="fixed inset-0 z-50 flex items-center justify-center bg-black"
             >
-              <p className="text-sm text-white">Opening scanner...</p>
+              <p className="text-sm text-pure-white">Opening scanner...</p>
             </div>
           }
         >
