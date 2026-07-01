@@ -15,8 +15,11 @@
 #
 # 'unsafe-inline' is required by the inline scripts/styles above; the policy still blocks loading
 # scripts / connecting / framing to any origin not listed here. Tightening script-src to
-# nonces/hashes is a follow-up. No worker-src/wasm needed: the barcode scanner uses the native
-# BarcodeDetector + a pure-JS jsQR fallback, and the service worker (/sw.js) is same-origin.
+# nonces/hashes is a follow-up. 'wasm-unsafe-eval' is required by the barcode scanner's ZXing
+# WebAssembly fallback (src/scanner/detectors.ts) on browsers without a fully capable native
+# BarcodeDetector (iOS Safari, desktop) — it permits wasm compilation only, NOT JS eval(). The
+# .wasm itself is bundled and fetched same-origin (connect-src 'self'), no CDN involved. The
+# service worker (/sw.js) is same-origin.
 #
 # SMOKE-TEST BEFORE TRUSTING IN PROD: load a deploy preview and exercise Plaid Link, the
 # Office/Docs attachment viewers, PDF preview, and the barcode scanner while watching the
@@ -29,4 +32,4 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Permissions-Policy: geolocation=(), payment=(), usb=(), microphone=(self), camera=(self)
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdn.plaid.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://*.plaid.com https://cdn.plaid.com https://api.trello.com; frame-src 'self' blob: https://*.supabase.co https://challenges.cloudflare.com https://*.plaid.com https://cdn.plaid.com https://view.officeapps.live.com https://docs.google.com
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://cdn.plaid.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https://*.plaid.com https://cdn.plaid.com https://api.trello.com; frame-src 'self' blob: https://*.supabase.co https://challenges.cloudflare.com https://*.plaid.com https://cdn.plaid.com https://view.officeapps.live.com https://docs.google.com
