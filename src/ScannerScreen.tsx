@@ -119,16 +119,16 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
   if (addingToBin && scannedBinLocation) {
     return (
       <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
-        <header className="safe-area-top flex shrink-0 items-center justify-between border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
+        <header className="safe-area-top flex shrink-0 items-center justify-between border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
           <button
             type="button"
             onClick={() => setAddingToBin(false)}
-            className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+            className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Back to bin"
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="text-lg font-bold text-white">Add to bin {scannedBinLocation}</h1>
+          <h1 className="app-section-title text-white">Add to bin {scannedBinLocation}</h1>
           <div className="size-11" aria-hidden />
         </header>
         <div className="min-h-0 flex-1">
@@ -146,16 +146,16 @@ const ScannerScreen: React.FC<ScannerScreenProps> = ({
 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background-dark">
-      <header className="safe-area-top flex shrink-0 items-center justify-between border-b border-white/10 bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
+      <header className="safe-area-top flex shrink-0 items-center justify-between border-b border-line bg-background-dark/95 px-3 py-2 backdrop-blur-sm">
         <button
           type="button"
           onClick={() => (onBack ? onBack() : onNavigate('dashboard'))}
-          className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-sm text-muted transition-colors hover:bg-white/10 hover:text-white"
+          className="flex size-11 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-white"
           aria-label="Back to home"
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="text-lg font-bold text-white">Scan</h1>
+        <h1 className="app-section-title text-white">Scan</h1>
         <div className="size-11" aria-hidden />
       </header>
       <div className="min-h-0 flex-1">
