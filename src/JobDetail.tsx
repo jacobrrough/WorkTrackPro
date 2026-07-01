@@ -3049,7 +3049,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             <div className="bg-gradient-to-br from-surface-3 to-app-2 p-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {job.isRush && (
-                  <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold uppercase text-white">
+                  <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold uppercase text-pure-white">
                     Rush
                   </span>
                 )}
@@ -3850,7 +3850,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             ) : (
               <button
                 onClick={handleClockIn}
-                className="flex-1 rounded-lg bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
+                className="flex-1 rounded-lg bg-green-500 py-3 font-bold text-pure-white transition-colors hover:bg-green-600 active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined mr-2 align-middle">login</span>
                 Clock In

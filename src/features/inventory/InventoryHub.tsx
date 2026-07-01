@@ -287,7 +287,7 @@ export default function InventoryHub({
                 </span>
                 <span className="flex-1 text-sm font-bold text-white">{tile.title}</span>
                 {tile.badge != null && tile.badge > 0 && (
-                  <span className="rounded-full bg-red-500/80 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded-full bg-red-500/80 px-1.5 py-0.5 text-[10px] font-bold text-pure-white">
                     {tile.badge}
                   </span>
                 )}

@@ -535,10 +535,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
     <div className="flex h-[100dvh] flex-col bg-gradient-to-br from-app-2 to-surface-3">
       <header className="sticky top-0 z-header flex-shrink-0 border-b border-line bg-background-dark/95 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => onBack?.()}
-            className="text-white transition-colors hover:text-primary"
-          >
+          <button onClick={() => onBack?.()} className="app-icon-btn text-white hover:text-primary">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <h1 className="app-display text-xl uppercase tracking-wider text-white">
@@ -547,7 +544,7 @@ const TimeReports: React.FC<TimeReportsProps> = ({
           {!readOnly && (
             <button
               onClick={exportToCSV}
-              className="text-primary transition-colors hover:text-primary/80"
+              className="app-icon-btn text-primary hover:text-primary/80"
               title="Export to CSV"
             >
               <span className="material-symbols-outlined">download</span>

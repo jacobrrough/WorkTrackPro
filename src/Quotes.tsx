@@ -637,7 +637,7 @@ const Quotes: React.FC<QuotesProps> = ({
             {/* Save Button */}
             <button
               onClick={saveQuote}
-              className="flex h-14 w-full items-center justify-center gap-3 rounded-lg bg-green-600 px-6 text-white shadow-lg shadow-green-600/25"
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-lg bg-green-600 px-6 text-pure-white shadow-lg shadow-green-600/25"
             >
               <span className="material-symbols-outlined">save</span>
               <span className="text-base font-bold tracking-wide">Save Quote</span>

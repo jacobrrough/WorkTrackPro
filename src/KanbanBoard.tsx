@@ -299,17 +299,17 @@ const KanbanJobCard = React.memo<KanbanJobCardProps>(
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             <span className="text-sm font-bold text-white">{formatJobCode(job.jobCode)}</span>
             {job.isRush && (
-              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-pure-white">
                 Rush
               </span>
             )}
             {overdue && (
-              <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-pure-white">
                 Overdue
               </span>
             )}
             {atRiskFromProgress && !overdue && (
-              <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-pure-white">
                 At risk
               </span>
             )}

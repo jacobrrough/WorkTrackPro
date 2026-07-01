@@ -1281,7 +1281,7 @@ const PartDetail: React.FC<PartDetailProps> = ({
           <button
             onClick={handleCreateInRepository}
             disabled={creatingPart}
-            className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-pure-white transition-colors hover:bg-amber-600 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-lg">add_circle</span>
             {creatingPart ? 'Creating...' : 'Create in repository'}

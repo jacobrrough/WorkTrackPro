@@ -353,7 +353,7 @@ export function InventoryDetailOverview({
               <button
                 type="button"
                 onClick={onConfirmReceiveOrder}
-                className="min-h-[44px] rounded-lg bg-green-600 px-3 text-sm font-bold text-white"
+                className="min-h-[44px] rounded-lg bg-green-600 px-3 text-sm font-bold text-pure-white"
               >
                 Confirm
               </button>

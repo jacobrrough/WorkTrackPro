@@ -202,7 +202,7 @@ const SimpleJobSummary: React.FC<SimpleJobSummaryProps> = ({
           ) : (
             <button
               onClick={onClockIn}
-              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg bg-green-500 py-3 font-bold text-white transition-colors hover:bg-green-600 active:scale-[0.98]"
+              className="flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg bg-green-500 py-3 font-bold text-pure-white transition-colors hover:bg-green-600 active:scale-[0.98]"
             >
               <span className="material-symbols-outlined">login</span>
               Clock In
