@@ -1,0 +1,204 @@
+/* =============================================================================
+ * WorkTrack Pro — employee app surface ("Direction E")
+ *
+ * Reusable, semantic component classes scoped under `.app` (set on AppShell),
+ * so the redesign language is defined ONCE here and adopted by every sector —
+ * not re-invented per screen. Mirrors how src/public/public.css scopes the
+ * public marketing surface under `.rcm-site`.
+ *
+ * Everything reads the global `--c-*` tokens via `rgb(var(--c-x) / <alpha>)`, so
+ * the theme picker ([data-theme] on <html>) keeps re-theming it across all 7
+ * palettes. Tailwind still works alongside these during the progressive
+ * migration off utilities — this file grows as each sector is converted.
+ * ========================================================================== */
+
+.app {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, Arial,
+    sans-serif;
+}
+
+/* ---- typography ----------------------------------------------------------- */
+
+/* Display type — Schibsted Grotesk, for hero headings and big numbers. */
+.app .app-display {
+  font-family: 'Schibsted Grotesk', 'Hanken Grotesk', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Small uppercase kicker (role tag, section eyebrow). */
+.app .app-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(var(--c-accent));
+}
+
+/* Section heading. */
+.app .app-section-title {
+  font-family: 'Schibsted Grotesk', 'Hanken Grotesk', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-size: 1.125rem;
+  line-height: 1.2;
+  color: rgb(var(--c-text));
+}
+
+/* Brand mark — the Rough Cut badger, reused from the public surface as a masked
+   monochrome logo tinted to the live theme accent (so it re-themes across all 7
+   palettes, same technique as .rcm-badger). */
+.app .app-brand-mark {
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  background-color: rgb(var(--c-accent));
+  -webkit-mask: url('/logo-purple.png') center / contain no-repeat;
+  mask: url('/logo-purple.png') center / contain no-repeat;
+}
+
+/* ---- surfaces ------------------------------------------------------------- */
+
+/* Base surface card. */
+.app .app-card {
+  background: rgb(var(--c-surface));
+  border: 1px solid rgb(var(--c-border) / 0.7);
+  border-radius: 14px;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.app .app-card-interactive {
+  cursor: pointer;
+}
+.app .app-card-interactive:hover {
+  border-color: rgb(var(--c-border-strong));
+  background: rgb(var(--c-surface-2));
+}
+.app .app-card-interactive:active {
+  transform: scale(0.99);
+}
+
+/* Neutral icon badge — the app's default. Sits on a raised neutral fill so the
+   icon reads clearly in bright shop light without color-coding every tile.
+   Interaction color is applied by the parent (see .app-quick-card:hover). */
+.app .app-icon-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  background: rgb(var(--c-surface-3));
+  color: rgb(var(--c-text));
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Accent badge — for the ONE primary/current surface on a screen (active shift,
+   resume-work), where red carries meaning rather than decoration. */
+.app .app-icon-badge--accent {
+  background: rgb(var(--c-accent) / 0.16);
+  color: rgb(var(--c-accent));
+}
+
+/* Quick-action tile — restrained by default (neutral surface + border), accent
+   only on interaction. Full state vocabulary for an all-day touch tool:
+   default → hover → focus-visible → active. Per-action rainbow color is
+   intentionally gone; the accent means "you're touching this", not "this is
+   the green one". */
+.app .app-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 4.25rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 14px;
+  text-align: left;
+  touch-action: pan-y;
+  background: rgb(var(--c-surface));
+  border: 1px solid rgb(var(--c-border) / 0.7);
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+@media (hover: hover) {
+  .app .app-quick-card:hover {
+    background: rgb(var(--c-surface-2));
+    border-color: rgb(var(--c-border-strong));
+  }
+  .app .app-quick-card:hover .app-icon-badge {
+    background: rgb(var(--c-accent) / 0.16);
+    color: rgb(var(--c-accent));
+  }
+}
+.app .app-quick-card:active {
+  transform: scale(0.97);
+  border-color: rgb(var(--c-accent) / 0.6);
+}
+
+/* Compact icon grid on desktop — icon-forward, dense, no subtitle. Mobile keeps
+   the readable full-width rows. */
+@media (min-width: 1024px) {
+  .app .app-quick-card {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.625rem;
+    min-height: 6rem;
+    padding: 1rem;
+  }
+  .app .app-quick-card .app-qa-sub {
+    display: none;
+  }
+}
+
+/* Primary/current surface — the one accent-carrying card (resume work, active
+   shift). Draws the eye first; everything else stays neutral. */
+.app .app-primary-card {
+  background: rgb(var(--c-accent) / 0.1);
+  border: 1px solid rgb(var(--c-accent) / 0.4);
+  border-radius: 14px;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+@media (hover: hover) {
+  .app .app-primary-card:hover {
+    background: rgb(var(--c-accent) / 0.16);
+    border-color: rgb(var(--c-accent) / 0.6);
+  }
+}
+.app .app-primary-card:active {
+  transform: scale(0.99);
+}
+
+/* Accessibility: honor the OS "reduce motion" setting. Transitions collapse to
+   near-instant and the press-scale feedback is dropped, so nothing animates for
+   users who opt out (WCAG 2.3.3 / prefers-reduced-motion). */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .app .app-quick-card:active,
+  .app .app-primary-card:active,
+  .app .app-card-interactive:active {
+    transform: none;
+  }
+}

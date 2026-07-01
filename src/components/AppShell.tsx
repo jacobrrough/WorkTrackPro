@@ -1,4 +1,5 @@
 import { type ReactNode, Suspense } from 'react';
+import '../app/app.css';
 import { NavigationProvider } from '../contexts/NavigationContext';
 import { SettingsProvider } from '../contexts/SettingsContext';
 import { ClockInProvider } from '../contexts/ClockInContext';
@@ -36,7 +37,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <NavigationProvider>
       <SettingsProvider>
         <ClockInProvider>
-          <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
+          {/* `.app` is the Direction-E styling scope (mirrors `.rcm-site`): new
+              semantic app CSS in src/app/app.css keys off it, and it fills #root
+              as a flex column so views host the same as before. */}
+          <div className="app">
+            <Suspense fallback={<AppViewFallback />}>{children}</Suspense>
+          </div>
           <ClockOutPromptHost />
           <QcMaterialPromptHost />
         </ClockInProvider>
